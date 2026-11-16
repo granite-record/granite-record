@@ -2423,6 +2423,16 @@ roster's day -- the seat has two tenures, and the manifest lists the
 difference. Measured on the files of 7 November: 10,084 records, about 2.2 MB,
 built in under half a second, the same bytes under two hash seeds.
 
+The step stops only where a file it needs is missing or will not read:
+`check_site` fails a night on any step that failed, optional or not, and no page
+reads the model. What it cannot place or hold -- a member who moved chamber within
+a term under two numbers careers.json joins, a roster id no person holds, a
+chair's office the settings do not list, a successor in a place of the hand file
+no rule knows -- it says on its log and in the manifest, and keeps where it can;
+a rule the model breaks goes into the manifest's problems, and
+`_entities_give_back_today` fails the night's check on it, which holds the night
+for a person.
+
 ## The data API's records, a file each (16 November 2026)
 
 `src/pages/api_records.py`, which `build_exports.py` calls once its CSVs and

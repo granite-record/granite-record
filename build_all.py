@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.97
+# GRANITE_VERSION: 2026-09-05.98
 """
 Run the whole pipeline in the right order.
 
@@ -1213,8 +1213,10 @@ def plan(a):
         # downloads write -- with the hand files and generated/careers.json, and it writes
         # data/entities/ and nothing else: never site/, so nothing of it is published. Nothing
         # reads it yet; preflight holds that each of today's files is a view of it. Optional,
-        # because no page waits on it: a failure is said in site/build.json, and the model's
-        # check of the built site fails on it.
+        # because no page waits on it -- though check_site still fails a night on any failed
+        # step, which is why the step stops only where a file it needs is missing or will not
+        # read, and says the rest (build_entities.build), and the model's check of the built
+        # site fails on what it says is wrong.
         Step("people, offices, terms, districts and elections, as one model",
              ["build_entities.py", "--out", "data/entities"],
              needs=["site/data/manifest.json", "site/meta.json", "site/districts.json",

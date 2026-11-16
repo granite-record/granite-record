@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 The model of people, offices, terms, districts and elections, written to data/entities/ from
 the files on disk (src/lib/entities.py says what the model is).
@@ -118,7 +118,9 @@ FIRST_OFFICES = ("governor", "executive-council", "us-house", "us-senate", "secr
 
 
 class Refused(Exception):
-    """A file that will not read, or a record the model cannot place: the step stops and says."""
+    """A file the step needs that is not there or will not read: the step stops and says. What
+    the model cannot place or hold is not a stop: it is said, and kept as the file has it where
+    it can be (build)."""
 
 
 def _read(root, rel, default=None):
@@ -196,9 +198,13 @@ def people_and_service(root, settings, report):
         c = careers[key]
         for term, v in sorted((c.get("by_term") or {}).items()):
             nums, chambers = list(v.get("employee_nos") or []), list(v.get("chambers") or [])
+            # A MEMBER WHO MOVED CHAMBER IN A TERM, under two numbers careers.json joins, is two
+            # numbers in two chambers in one term, and nothing says which sat where. The model
+            # gives each number each chamber, as careers.json and people.json do, and says so.
             if len(nums) > 1 and len(chambers) > 1:
-                raise Refused(f"{CAREERS} {key}, {term}: {len(nums)} numbers in {len(chambers)} "
-                              "chambers, and nothing says which number sat in which")
+                report["notes"].append(f"{CAREERS} {key}, {term}: {len(nums)} numbers in "
+                                       f"{len(chambers)} chambers, and nothing says which sat "
+                                       "where: each number is given each chamber, as the file does")
             for n in nums:
                 for ch in chambers:
                     office = offices.get(ch)
@@ -236,12 +242,25 @@ def people_and_service(root, settings, report):
         p = by_mid.get(mid)
         office = offices.get(r.get("chamber"))
         if p is None or office is None:
-            raise Refused(f"{ROSTER} {mid} ({r.get('name')}): no person of people.json holds "
-                          "this id, or its chamber is unknown")
+            report["disagreements"].append({
+                "what": "a sitting member the people file does not hold", "where": f"{ROSTER} {mid}",
+                "says": f"{r.get('name')}, chamber {r.get('chamber')!r}",
+                "other": f"{PEOPLE} gives that id to no person" if p is None else "no such chamber"})
+            continue
         ts = by_key.get((p["person"], office, term)) or []
         if len(ts) > 1:
-            raise Refused(f"{ROSTER} {mid}: {len(ts)} numbers of {p['person']} sat in {office} "
-                          f"in {term}, which is two people")
+            # Two of the person's numbers voted in the chamber in the term (careers.json's
+            # joining, under the moved-chamber note above). The roster's id is one of them where
+            # it is an employee number; otherwise its seat is a tenure of its own (a PersonID is
+            # never six digits, so its id is no number's), since nothing says which holds it.
+            own = [t for t in ts if t.get("gc_employee_number") == mid]
+            if len(own) == 1:
+                ts = own
+            else:
+                report["notes"].append(f"{ROSTER} {mid}: {len(ts)} numbers of person {p['person']} "
+                                       f"voted in the {office} in {term}; the seat the roster gives "
+                                       "is a tenure of its own")
+                ts = []
         if not ts:
             t = {"tenure": f"{office}:{term}:{mid}", "office": office, "term": term,
                  "person": p["person"], "files": []}
@@ -454,8 +473,11 @@ def hand_offices(root, settings, by_page, register, report):
             return x
         hit = next((o for pat, o in SLOTS if _match(path, pat)), None)
         if hit is None and "elect" in x:
-            raise Refused(f"the hand file's {_dotted(path)} names a successor in a place the model "
-                          "does not know as an office's: add it to build_entities.SLOTS")
+            # Kept as written, so the file still comes back whole; said, so the place is added.
+            report["unplaced"].append(f"the hand file's {_dotted(path)} names a successor in a place "
+                                      "the model does not know as an office's: kept in the layout as "
+                                      "written, with no tenure; add the place to build_entities.SLOTS")
+            return json.loads(json.dumps(x))
         if hit is not None:
             ts = holder(path, x, office_of(hit, path, x))
             tenures.extend(ts)
@@ -497,16 +519,24 @@ def gr_candidates(root=".", settings=None, register=None):
 
 # ---- the chair's offices --------------------------------------------------------------------
 
-def officer_tenures(root, settings, by_mid):
-    """site/officers.json's tenures, each of the office its name is in the settings."""
+def officer_tenures(root, settings, by_mid, report):
+    """(tenures, offices): site/officers.json's tenures, each of the office its name is in the
+    settings; an office the settings do not list is an office of its own, from the file, and
+    said."""
     doc = _read(root, OFFICERS)
     by_name = {(o["name"], o.get("code")): o["office"] for o in EN.offices(settings) if o["scope"] == "chamber"}
-    out = []
+    out, extra = [], {}
     for r in doc.get("officers") or []:
         office = by_name.get((r.get("office"), r.get("b")))
         if office is None:
-            raise Refused(f"{OFFICERS} names an office the settings do not list: {r.get('office')!r} "
-                          f"of {r.get('b')!r}")
+            office = f"officer:{EN.slug(r.get('office'))}"
+            if office not in extra:
+                extra[office] = {"office": office, "name": str(r.get("office")), "scope": "chamber",
+                                 "code": str(r.get("b")), "filled_by": None, "constitution": [],
+                                 "source": f"{OFFICERS}, which names an office the settings do not list"}
+                report["notes"].append(f"{OFFICERS} names an office the settings do not list, "
+                                       f"{r.get('office')!r} of {r.get('b')!r}: an office of its own; "
+                                       "add it to src/lib/state_settings.json offices")
         mid = str(r["id"])
         p = by_mid.get(mid)
         t = {"tenure": f"officers:{office}:{r['from']}:{mid}", "office": office,
@@ -515,7 +545,7 @@ def officer_tenures(root, settings, by_mid):
              "from": r["from"], "to": r["to"], "keys": {"ballot_sort": r["s"]},
              "files": [OFFICERS], "source": r["source"]}
         out.append(t)
-    return out
+    return out, list(extra.values())
 
 
 # ---- the members-elect ----------------------------------------------------------------------
@@ -628,7 +658,10 @@ def county_roster(root, hand_tenures):
     for r in roster.get("officers") or []:
         office = offices.get(r.get("office"))
         if office is None:
-            raise Refused(f"{COUNTY_ROSTER} names an office the model does not know: {r.get('office')!r}")
+            out.append({"what": "a county office the model does not know", "where": f"{COUNTY_ROSTER}",
+                        "says": f"{r.get('county')} {r.get('office')}: {r.get('name')}",
+                        "other": "compared with nothing, and held by no tenure"})
+            continue
         county = str(r.get("county"))
         seat = str(r["district"]) if office == "county-commissioner" else None
         district = EN.district_id("county", None, EN.slug(county))
@@ -687,15 +720,19 @@ def roster_party_disagreements(tenures, persons):
 # ---- the model ------------------------------------------------------------------------------
 
 def build(root=".", settings=None):
-    """(model, layouts, report) from the files under `root`. Refused where one it needs is not
-    there or will not read, or holds a record the model cannot place."""
+    """(model, layouts, report) from the files under `root`. Refused only where a file it needs
+    is not there or will not read: what the model cannot place is kept as the file has it where
+    it can be and said (report "unplaced" and "notes"), and a rule the model breaks is said
+    (report "problems"), so that a model no page reads never stops a night; the model's check
+    of the built site fails on a problem, and holds the night for a person."""
     root = Path(root)
     settings = settings or ST.SETTINGS
     missing = [n for n in NEEDED if not (root / n).is_file()]
     if missing:
         raise Refused("not here: " + ", ".join(missing))
-    report = {"unplaced": [], "not_rebuilt": [f"{CAREERS}: each record's votes, a count of ballots, "
-                                              "which are the roll calls' and not this model's"],
+    report = {"unplaced": [], "notes": [],
+              "not_rebuilt": [f"{CAREERS}: each record's votes, a count of ballots, "
+                              "which are the roll calls' and not this model's"],
               "disagreements": []}
     register = None
     rp = root / REGISTER
@@ -706,7 +743,7 @@ def build(root=".", settings=None):
     by_page = {p["page"]: p for p in persons if p.get("page")}
     hand_off, hand_ten, layout = hand_offices(root, settings, by_page, register, report)
     county_ten, county_diff, n_county = county_roster(root, hand_ten)
-    off_ten = officer_tenures(root, settings, by_mid)
+    off_ten, off_extra = officer_tenures(root, settings, by_mid, report)
     contests, cands, elect_ten, elect_layout = members_elect(root, settings, by_mid)
     districts, places = districts_and_places(root, settings)
     gr_people = []
@@ -717,7 +754,7 @@ def build(root=".", settings=None):
     meta = _read(root, META)
     term_names = set(meta.get("terms") or []) | {t["term"] for t in all_ten if t.get("term")} | \
         {c["term"] for c in contests if c.get("term")}
-    model = {"person": persons + gr_people, "office": EN.offices(settings) + hand_off,
+    model = {"person": persons + gr_people, "office": EN.offices(settings) + hand_off + off_extra,
              "district": districts, "place": places, "term": terms_of(term_names), "tenure": all_ten,
              "contest": contests, "candidacy": cands}
     unnumbered = [{"what": "a member-elect linked to an id no person holds", "where": x["candidacy"],
@@ -872,6 +909,8 @@ def manifest(model, report, root):
             "read_through": {HAND: hashlib.sha256(hand).hexdigest()},
             "not_rebuilt": report["not_rebuilt"],
             "unplaced": report["unplaced"],
+            "notes": report["notes"],
+            "problems": report["problems"],
             "disagreements": report["disagreements"]}
 
 
@@ -892,12 +931,14 @@ def main():
     secs = time.perf_counter() - t0
     counts = ", ".join(f"{len(model[k]):,} {k}" for k in EN.KINDS)
     print(f"entities: {counts}")
-    if report["problems"]:
-        print(f"REFUSED: the model breaks {len(report['problems'])} rule(s):", file=sys.stderr)
-        for p in report["problems"][:20]:
-            print(f"  {p}", file=sys.stderr)
-        return 1
-    for line in report["unplaced"]:
+    # WHAT IT CANNOT PLACE OR HOLD IS SAID, AND THE STEP GOES ON: nothing reads the model yet,
+    # and build_all fails a night on any step that fails, so a rule broken by the files is a
+    # warning here, in the manifest and on the night's check of the model, which holds it.
+    for p in report["problems"][:20]:
+        print(f"  WARNING: the model breaks a rule: {p}")
+    if len(report["problems"]) > 20:
+        print(f"  WARNING: and {len(report['problems']) - 20} more rule(s), in the manifest")
+    for line in report["unplaced"] + report["notes"]:
         print(f"  WARNING: {line}")
     for d in report["disagreements"]:
         print(f"  disagree: {d['where']}: {d['says']}; {d['other']}")

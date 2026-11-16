@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -78,7 +78,7 @@ def _careers_record(terms, first="", last="", party="", chamber="", person_id=""
             "terms": ts, "votes": 7}
 
 
-def _world(root, PE):
+def _world(root, PE, careers_extra=None):
     """A made-up tree for the model to be proved on, every file it reads in the shape its writer
     gives it: two sitting representatives in one seat and a sitting member with no vote yet; a
     senator who sat in the House before, and an unnamed number of 1999; the chair's offices; a
@@ -97,6 +97,7 @@ def _world(root, PE):
                                   "Cy", "Lund", "R", "S", "11700"),
         "201723": _careers_record({"1999-2000": ("S", "201723")}),
     }
+    careers.update(careers_extra or {})
     (root / "generated").mkdir(parents=True, exist_ok=True)
     (root / "generated" / "careers.json").write_text(json.dumps(careers, indent=1, sort_keys=True),
                                                      encoding="utf-8")
@@ -487,6 +488,77 @@ def _entities_round_trip(BE, EN, PE, GR, BME):
                   "byte for byte; a new member-elect has no person, a page link and a register id issued for "
                   "the place link and a shared name does not; a county seat kept twice is two tenures; four "
                   "losses each seen")
+
+
+@check("build", "build_entities.py says what the model cannot place or hold and goes on, and every file still comes back",
+       needs=("build_entities", "entities", "people"))
+def _entities_say_and_go_on(BE, EN, PE):
+    """A model no page reads must not stop a night: build_all records a failed step, optional or
+    not, and check_site fails the night on it. On a made-up tree (_world) holding each thing the
+    model cannot place or hold -- a member who moved chamber within a term under two numbers
+    careers.json joins (two numbers in two chambers, one term), a sitting member's id no person
+    holds, a chair's office the settings do not list, a successor in a place of the hand file no
+    rule knows, a county office the model does not know, and a House of 401 seats, which breaks
+    a rule -- the script exits 0, writes data/entities/ and nothing else, and its manifest says
+    each; every file it reads still comes back byte for byte; and the rule broken is in the
+    manifest and in the model's own problems, on which the night's check of the model fails."""
+    moved = {"by_term": {"2025-2026": {"chambers": ["H", "S"], "employee_nos": ["209009", "376009"]}},
+             "chamber_last": "S", "district_by_term": {}, "employee_nos": ["209009", "376009"],
+             "first": "Gus", "first_term": "2025-2026", "last": "Mover", "last_term": "2025-2026",
+             "named": True, "party": "R", "person_id": "", "returned_after_a_gap": False,
+             "terms": ["2025-2026"], "votes": 3}
+    tmp = Path(tempfile.mkdtemp(prefix="gr-entities-"))
+    try:
+        _world(tmp, PE, {"376009": moved})
+        roster = json.loads((tmp / "site" / "legislators.json").read_text(encoding="utf-8"))
+        roster.append({"id": "99999", "name": "Ghost, Al", "chamber": "H", "party": "Republican",
+                       "county": "Carroll", "district": "1", "slug": "al-ghost-carr-1"})
+        (tmp / "site" / "legislators.json").write_text(json.dumps(roster), encoding="utf-8")
+        off = json.loads((tmp / "site" / "officers.json").read_text(encoding="utf-8"))
+        off["officers"].append({"b": "H", "office": "Majority Leader of the House", "title": "Majority Leader",
+                                "name": "Hart", "id": "376002", "s": "hart, bo", "from": "2025-01-01",
+                                "to": "2026-12-02", "kind": "term", "source": "made up"})
+        (tmp / "site" / "officers.json").write_text(json.dumps(off, separators=(",", ":")), encoding="utf-8")
+        hand = json.loads((tmp / "corrections" / "officials.json").read_text(encoding="utf-8"))
+        hand["lieutenant"] = {"office": "Made up", "name": "Lu Tenant",
+                              "elect": {"name": "Next One", "takes_office": "2027-01-06"}}
+        (tmp / "corrections" / "officials.json").write_text(json.dumps(hand, indent=2), encoding="utf-8")
+        cr = json.loads((tmp / "collected" / "county_officials.json").read_text(encoding="utf-8"))
+        cr["officers"].append({"county": "Carroll", "office": "County Surveyor", "name": "Sy Vey"})
+        (tmp / "collected" / "county_officials.json").write_text(json.dumps(cr), encoding="utf-8")
+        house = tmp / "records" / "districts" / "house.txt"
+        text = house.read_text(encoding="utf-8")
+        assert "Belknap County District 1\n" in text, "house.txt's first district is not as this check knows it"
+        house.write_text(text.replace("Belknap County District 1\n", "Belknap County District 1 (2 seats)\n", 1),
+                         encoding="utf-8")
+        before = _tree_digest(tmp)
+        r = _run([sys.executable, str(_paths.script("build_entities.py")), "--out", "data/entities"],
+                 cwd=tmp, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, f"build_entities.py stopped ({r.returncode}): {(r.stderr or r.stdout)[-600:]}"
+        after = _tree_digest(tmp)
+        assert all(k.startswith("data/entities/") for k in set(before) ^ set(after) | {
+            k for k in before if before[k] != after.get(k)}), "build_entities.py wrote outside data/entities/"
+        model, layouts, manifest = EN.load(tmp / "data" / "entities")
+        said = json.dumps(manifest)
+        for what, words in (("the member who moved chamber", "nothing says which sat where"),
+                            ("the chair's office the settings do not list", "Majority Leader of the House"),
+                            ("the successor in an unknown place", "lieutenant names a successor"),
+                            ("the id no person holds", "Ghost, Al"),
+                            ("the county office the model does not know", "County Surveyor"),
+                            ("the House of 401", "hold 401 seats")):
+            assert words in said, f"the manifest does not say {what}"
+        assert any("401" in p for p in EN.problems(model)), "the House of 401 broke no rule of the model's"
+        mover = sorted((t["office"], t["gc_employee_number"]) for t in model["tenure"]
+                       if t.get("keys", {}).get("careers") == "376009")
+        assert mover == [("house", "209009"), ("house", "376009"), ("senate", "209009"), ("senate", "376009")], mover
+        bad = [(rel, w) for rel, ok, w in BE.rebuilt(model, layouts, tmp) if ok is not True]
+        assert not bad, "a file is not given back: " + "; ".join(f"{r_}: {w[:300]}" for r_, w in bad)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a moved member's two numbers, a sitting id no one holds, an unlisted office, a successor "
+                  "in an unknown place, an unknown county office and a House of 401 seats are each said, "
+                  "the step exits 0 and writes only data/entities/, and every file still comes back; the "
+                  "broken rule is the model's problem, for the night's check")
 
 
 @check("pipeline", "build_all builds the model last, after every step whose files it reads, into data/entities/ alone, and nothing reads it yet",
