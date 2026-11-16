@@ -407,7 +407,60 @@ where a verdict from before yesterday is called stale) and the change lists
 `site/`. Reader reports are not pulled on GitHub's machine:
 `compile_reports.py`, run on the laptop, reads them from the D1 database
 `functions/api/report.js` writes them to, screens every one without a model, and writes the triage file read in the
-morning, holding back the words of any report the screen stops.
+morning, holding back the words of any report the screen stops. Every pull
+ends with the laptop's own records of its backup, below.
+
+**The laptop's backup** (16 November 2026). `cloud.py backup` sends everything
+in the working folder that git does not hold to the bucket's `backup/`, with
+`state/backup-manifest.json` naming each file's size, sha256 and date. Before
+it, from the repository that holds `secrets.json`, it copies what it could not
+otherwise reach into `archive/backup-extras/`: a `git bundle --all` (the local
+commits and tags no push has sent), Claude Code's memory of the project, the
+`granite-*` scheduled tasks' instructions and the "Granite Record" Task
+Scheduler entries, each read for a credential's shape first
+(`cloud.gather_extras`). `cloud.py restore DEST` brings the backup back into
+an empty folder outside the working folder, each file checked against the
+manifest as `kit-down` checks the kit, and `restore --sample N` does the same
+for N files chosen across it, in a folder it then deletes, recording how it
+went in `archive/cloud/restore-sample.json`; neither writes to the bucket. The
+laptop's weekly job, `src/ops/backup_weekly.py` under Task Scheduler
+(`src/ops/README.md` says how it is registered), runs the backup and, every
+four weeks, a sample of 50; each records itself in `archive/cloud/`, and every
+`pull` prints both records, a failure as FAILED and an old one as STALE, for
+the morning triage. On GitHub, `state-down` looks once at the manifest's date
+-- one HEAD request -- and the night's verdict warns when the backup is more
+than 14 days old (`nightly.backup_warned`, of a kind the gate never holds a
+night for), which catches a week the job never ran.
+
+*Its own bucket and key* (designed, not built). `backup/` sits in the night's
+bucket, and the night's key, a repository secret every workflow can reach,
+can delete it. The owner approved a bucket of its own with a key only the
+laptop holds. When she has made them -- a private bucket (say
+`granite-record-laptop-backup`) and an R2 token with Object Read & Write on
+that bucket alone -- this is what changes:
+
+- `secrets.json` gains `R2_BACKUP_ACCESS_KEY_ID`, `R2_BACKUP_SECRET_ACCESS_KEY`
+  and `R2_BACKUP_BUCKET` beside the R2 names it holds (the account is the
+  same `R2_ACCOUNT_ID`), and `secrets.example.json` shows them.
+- `src/lib/keys.py` gains `r2_backup()`, reading those from `secrets.json`
+  only, never the environment, so that no workflow can be handed the key;
+  `cloud.py` opens that bucket for `backup` and `restore` alone (beside
+  `open_bucket` and `open_to_read`), with the same layout inside it --
+  `backup/`, `state/backup-manifest.json`, `replaced/<day>/backup/` -- so
+  `send`, `write_manifest`, `restore_into` and the checks of them stand as
+  they are.
+- The night can no longer see that manifest, and must not be given a key
+  that can. So after each backup the laptop also puts a small receipt in the
+  night's bucket with its own key there, `state/backup-receipt.json` (when,
+  how many files, how many bytes), and `state-down`'s one HEAD
+  (`cloud.backup_seen`) looks at that instead; the warning does not change.
+- The move is 44 GB from one bucket to the other. Whether R2 copies between
+  two buckets on its own side (CopyObject, with a key that reads one and
+  writes the other) is not tried here; sending again from the laptop works
+  either way and takes about as long as the first backup did. Once
+  `restore --sample` against the new bucket has passed, a person removes
+  `backup/` from the old one, and the night's key can then delete nothing of
+  the laptop's.
 
 **The captions, in the night.** Before the build, the night's livestream step
 (`src/ops/livestreams.py --since-state`) lists the House and Senate channels'
