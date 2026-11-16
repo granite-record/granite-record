@@ -406,13 +406,19 @@ that nothing is found missing a session later. Every one ends the same way:
 4. A check that reads a built site uses `_fixture_site_shared()` (read only)
    or `_fixture_site_whole(root)` (a copy it may write), rather than building
    its own.
-5. A data check runs on the night after the build unless it is named in
+5. A check that reads the text of one of the repository's own files --
+   `app.js`, a builder, a workflow, a README -- reads it with
+   `_source("src/pages/app.js")` (or `_source(_paths.locate("nightly.py"))`,
+   `_source(MODULE.__file__)`), not `read_text()`: it is read once a run, and
+   a later move of code between files changes the table `_SOURCES`, not the
+   check. `_sources_read_in_one_place` fails on a read that does not.
+6. A data check runs on the night after the build unless it is named in
    `NOT_ON_THE_NIGHT` with its reason; one that compares against the
    official record goes in `RECORD_CHECKS`, so it warns rather than holds
    the night.
-6. A check written ahead of the change that makes it pass carries
+7. A check written ahead of the change that makes it pass carries
    `expect_fail="the change"`.
-7. A check of what the whole run left behind carries `last=True`, and
+8. A check of what the whole run left behind carries `last=True`, and
    `main()` runs it after every other check wherever it is defined:
    `_no_watch_left`, which counts the machine watches the others left going.
 

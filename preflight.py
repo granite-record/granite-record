@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.934
+# GRANITE_VERSION: 2026-09-04.935
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -709,7 +709,7 @@ def _private_untracked():
                "LAUNCH.md", "HANDOFF.md", "DESIGN.md", "ROADMAP.md",
                "ARCHIVE_PLAN.md", "ARCHIVE_SESSION_PROMPT.md",
                "PROPOSAL-civics.md", "FOLLOW.md", "design"]
-    ignore = Path(".gitignore").read_text(encoding="utf-8")
+    ignore = _source(".gitignore")
     for line in ("/CLAUDE.local.md", "/private/", "/launch_register.json", "reports/*"):
         assert line in ignore.splitlines(), f".gitignore no longer has {line}"
     assert "!reports/TRIAGE.md" not in ignore and "!reports/handled.jsonl" not in ignore, \
@@ -741,7 +741,7 @@ def _clerk_list_untracked():
     whether any commit on any ref has ever held the file."""
     import subprocess
     NAME = "CLERK_CORRECTIONS.md"
-    assert "/" + NAME in Path(".gitignore").read_text(encoding="utf-8"), \
+    assert "/" + NAME in _source(".gitignore"), \
         f".gitignore no longer keeps {NAME} out of the repository"
     try:
         tracked = _run(["git", "ls-files", "--", NAME], capture_output=True,
@@ -761,6 +761,55 @@ def _clerk_list_untracked():
         f"({', '.join(commits[:4])}); pushing any of them publishes the list, "
         "so rewrite that branch before it is merged or pushed")
     return "ok", f"{NAME} is gitignored, untracked, and in no commit on any ref"
+
+
+# THE REPOSITORY'S OWN FILES ARE READ IN ONE PLACE (16 November 2026, the
+# refactor's stage 1). Over three hundred checks read the text of one of the
+# repository's source files -- app.css, app.js, a builder, a workflow, a
+# README -- by naming it, so a step that moved code from one file to another
+# would have had to edit every check that names the file the code left. They
+# read it through _source, keyed by its path from the root, and a step that
+# moves code says in _SOURCES which files that path's text is made of now: a
+# table changes, and no check. A file is read once a run, and again when its
+# size or its time of writing moves; a path outside the repository (a
+# fixture's own copy) is read as asked, every time. A check that reads every
+# code file in turn, or a fixture's files, reads them itself: no move changes
+# what it names. _sources_read_in_one_place holds the rule.
+_SOURCES = {}
+_SOURCE_TEXT = {}
+
+
+def _source(path, errors="strict", root=None):
+    """The text of the file at `path` (a str or a Path, relative to the
+    working folder as Path.read_text takes it), as
+    Path(path).read_text(encoding="utf-8", errors=errors) gives it, and
+    raising what that raises: from this run's earlier read of the same file
+    of the repository (`root`, this one by default) while its size and time
+    have not moved. A path _SOURCES names, from the root, is the files it
+    lists, each read so and joined in order."""
+    p = Path(path)
+    base = Path(root).resolve() if root is not None else _paths.ROOT
+    try:
+        rel = p.resolve().relative_to(base).as_posix()
+    except ValueError:
+        return p.read_text(encoding="utf-8", errors=errors)
+    parts = _SOURCES.get(rel, (rel,))
+    texts = []
+    for part in parts:
+        f = base / part
+        try:
+            st = f.stat()
+        except OSError:
+            if parts == (rel,):
+                return p.read_text(encoding="utf-8", errors=errors)    # its own error, as before
+            raise
+        key = (str(base), part, errors)
+        seen = _SOURCE_TEXT.get(key)
+        if seen is None or seen[0] != (st.st_size, st.st_mtime_ns):
+            seen = ((st.st_size, st.st_mtime_ns), f.read_text(encoding="utf-8", errors=errors))
+            _SOURCE_TEXT[key] = seen
+        texts.append(seen[1])
+    return texts[0] if len(texts) == 1 else "".join(texts)
 
 
 # A SCRIPT IS PARSED ONCE A RUN (2 October 2026). Four checks each parsed
@@ -915,7 +964,7 @@ def _pieces_are_the_whole():
     texts = [src, src * 7, "x = 1\n\n\ndef f():\n    return 2\n"]
     real = _paths.locate("build_pages.py")
     if real.exists():
-        texts.append(real.read_text(encoding="utf-8", errors="replace"))
+        texts.append(_source(real, errors="replace"))
     for text in texts:
         for every in (1, 4, 300):
             whole, said = _parse_whole(text)
@@ -954,6 +1003,204 @@ def _parse_all(inventory):
     present = sum(1 for n in names if _paths.locate(n).exists())
     assert not bad, "; ".join(bad)
     return "ok", f"{present} of {len(names)} present, all parse"
+
+
+# What is the record and not the source: the five folders of the data git
+# keeps (README.md, "What's where"), and what a build writes.
+_DATA_FOLDERS = ("corrections/", "review/", "records/", "collected/", "generated/", "data/", "site/")
+
+
+def _source_reads(tree, tracked, text=None):
+    """[(definition, line, the read)] of every place in `tree` (a module's
+    parse; `text` its source, to pass over the definitions that read
+    nothing) that reads a source file of the repository by naming it, other
+    than through _source: X.read_text(encoding="utf-8"), with errors= or
+    without, where X is Path("<file>"), _paths.locate, script or
+    find("<file>"), _paths.ROOT / "<file>", Path(<module>.__file__), or a
+    name its definition binds once (never in a loop, an argument, a with or
+    an augmented assignment) to one of those. `tracked` is git's list of
+    files; a file under _DATA_FOLDERS, or untracked, is not source, and nor
+    is the module's own file, Path(__file__)."""
+    tracked = set(tracked)
+    bare = {}
+    for t in tracked:
+        bare.setdefault(t.rsplit("/", 1)[-1], []).append(t)
+    lines = text.split("\n") if text is not None else None
+
+    def source(s):
+        full = s if s in tracked else (bare[s][0] if "/" not in s and len(bare.get(s, ())) == 1 else None)
+        return full is not None and not full.startswith(_DATA_FOLDERS)
+
+    def lit(n):
+        return n.value if isinstance(n, ast.Constant) and isinstance(n.value, str) else None
+
+    def named(e):
+        if isinstance(e, ast.Call) and isinstance(e.func, ast.Name) and e.func.id == "Path" \
+                and len(e.args) == 1 and not e.keywords:
+            a = e.args[0]
+            if lit(a) is not None:
+                return source(lit(a))
+            return isinstance(a, ast.Attribute) and a.attr == "__file__" and isinstance(a.value, ast.Name)
+        if isinstance(e, ast.Call) and ast.unparse(e.func) in ("_paths.locate", "_paths.script",
+                                                                "_paths.find") \
+                and len(e.args) == 1 and not e.keywords:
+            return lit(e.args[0]) is not None and source(lit(e.args[0]))
+        if isinstance(e, ast.BinOp) and isinstance(e.op, ast.Div):
+            parts, x = [], e
+            while isinstance(x, ast.BinOp) and isinstance(x.op, ast.Div):
+                parts.insert(0, lit(x.right))
+                x = x.left
+            return ast.unparse(x) in ("_paths.ROOT", "ROOT") and None not in parts \
+                and source("/".join(parts))
+        return False
+
+    found = []
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Assign)):
+            continue
+        name = node.name if hasattr(node, "name") else ast.unparse(node.targets[0])
+        if name == "_source" or (lines is not None and not any(
+                "read_text" in ln for ln in lines[node.lineno - 1:node.end_lineno])):
+            continue
+        reads = [c for c in ast.walk(node) if isinstance(c, ast.Call)
+                 and isinstance(c.func, ast.Attribute) and c.func.attr == "read_text"]
+        if not reads:
+            continue
+        once, unclean = {}, set()
+        for a in ast.walk(node):
+            if isinstance(a, ast.Assign):
+                for t in a.targets:
+                    if isinstance(t, ast.Name):
+                        once.setdefault(t.id, []).append(a.value)
+                    else:
+                        unclean |= {x.id for x in ast.walk(t) if isinstance(x, ast.Name)}
+            elif isinstance(a, ast.AnnAssign) and isinstance(a.target, ast.Name):
+                once.setdefault(a.target.id, []).append(a.value)
+            elif isinstance(a, (ast.AugAssign, ast.For, ast.AsyncFor, ast.comprehension)):
+                unclean |= {x.id for x in ast.walk(a.target) if isinstance(x, ast.Name)}
+            elif isinstance(a, ast.withitem) and a.optional_vars is not None:
+                unclean |= {x.id for x in ast.walk(a.optional_vars) if isinstance(x, ast.Name)}
+            elif isinstance(a, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                g = a.args
+                unclean |= {x.arg for x in g.posonlyargs + g.args + g.kwonlyargs}
+                unclean |= {x.arg for x in (g.vararg, g.kwarg) if x}
+            elif isinstance(a, ast.NamedExpr):
+                once.setdefault(a.target.id, []).append(a.value)
+            elif isinstance(a, (ast.Global, ast.Nonlocal)):
+                unclean |= set(a.names)
+            elif isinstance(a, ast.ExceptHandler) and a.name:
+                unclean.add(a.name)
+        for c in reads:
+            kw = {k.arg: k.value for k in c.keywords}
+            enc = c.args[0] if c.args else kw.get("encoding")
+            if len(c.args) > 1 or set(kw) - {"encoding", "errors"} or (c.args and "encoding" in kw) \
+                    or lit(enc) not in ("utf-8", "utf8"):
+                continue
+            r = c.func.value
+            if named(r) or (isinstance(r, ast.Name) and r.id not in unclean
+                            and len(once.get(r.id, ())) == 1 and named(once[r.id][0])):
+                found.append((name, c.lineno, ast.unparse(c)))
+    return found
+
+
+@check("files", "a check reads a source file of the repository through _source, so that code moved "
+                "between files changes a table and not the checks")
+def _sources_read_in_one_place():
+    """ONE READER FOR THE REPOSITORY'S OWN FILES (the refactor's stage 1; see
+    _source). Every read of a source file a check names goes through
+    _source, so that a later step which moves code between files edits
+    _SOURCES, and not the checks that read the file the code left. Held:
+
+      _source gives what Path.read_text gives -- a file of the repository
+      once a run and again when it moves, a file outside it as asked every
+      time, errors= as read_text takes it, a missing file's own error --
+      and a path _SOURCES names is its files, joined;
+      the reader of reads (_source_reads) finds, on a sample, a read by
+      Path, _paths.locate, _paths.ROOT, a module's __file__ and a name bound
+      once to one of them, with errors= and without, and passes over a data
+      file, a fixture's path, a name bound in a loop, a read in another
+      encoding and _source itself;
+      and in this file no check reads a source file by naming it but
+      through _source. One that does is moved onto it as
+      `_source(<what it named>)`, the same text.
+    """
+    real = _paths.locate("_paths.py")
+    with open(real, encoding="utf-8") as fh:
+        want = fh.read()
+    got = _source(real)
+    assert got == want, "_source does not give what read_text gives"
+    assert _source(real) is got, "_source read the file again with nothing moved"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-source-"))
+    try:
+        out = tmp / "outside.txt"
+        out.write_text("one", encoding="utf-8")
+        assert _source(out) == "one"
+        out.write_text("two, longer", encoding="utf-8")
+        assert _source(out) == "two, longer", "a file outside the repository was not read as asked"
+        root = _plant(tmp / "root", {"a.js": "A\n", "b.js": "B\n"})
+        (root / "bad.txt").write_bytes(b"x\xffy")
+        first = _source(root / "a.js", root=root)
+        assert first == "A\n" and _source(root / "a.js", root=root) is first, (
+            "a file of the repository was not read once")
+        (root / "a.js").write_text("A, longer\n", encoding="utf-8")
+        assert _source(root / "a.js", root=root) == "A, longer\n", "a file that moved was not read again"
+        _SOURCES["gr-whole.js"] = ("a.js", "b.js")
+        try:
+            assert _source(root / "gr-whole.js", root=root) == "A, longer\nB\n", (
+                "a path _SOURCES names is not its files joined")
+        finally:
+            _SOURCES.pop("gr-whole.js", None)
+        assert _source(root / "bad.txt", errors="replace", root=root) == "x�y"
+        try:
+            _source(root / "bad.txt", root=root)
+        except UnicodeDecodeError:
+            pass
+        else:
+            raise AssertionError("_source read a byte that is not UTF-8 without read_text's error")
+        try:
+            _source(root / "gone.js", root=root)
+        except FileNotFoundError as e:
+            try:
+                (root / "gone.js").read_text(encoding="utf-8")
+            except FileNotFoundError as own:
+                assert str(e) == str(own), f"a missing file's error is not read_text's: {e}"
+        else:
+            raise AssertionError("_source read a missing file")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    sample = ("\ndef reads(B, here, files):\n"
+              "    a = Path(\"src/pages/app.js\").read_text(encoding=\"utf-8\")\n"
+              "    b = _paths.locate(\"build_pages.py\").read_text(encoding=\"utf-8\", errors=\"replace\")\n"
+              "    c = (_paths.ROOT / \"CONTRIBUTING.md\").read_text(encoding=\"utf-8\")\n"
+              "    d = Path(B.__file__).read_text(encoding=\"utf-8\")\n"
+              "    css = Path(\"src/pages/app.css\")\n"
+              "    e = css.read_text(encoding=\"utf-8\")\n"
+              "    f = Path(\"generated/careers.json\").read_text(encoding=\"utf-8\")\n"
+              "    g = (Path(here) / \"src/pages/app.js\").read_text(encoding=\"utf-8\")\n"
+              "    for p in files:\n"
+              "        h = p.read_text(encoding=\"utf-8\")\n"
+              "    i = Path(\"src/pages/app.js\").read_text(encoding=\"utf-8-sig\")\n"
+              "    j = Path(__file__).read_text(encoding=\"utf-8\")\n"
+              "    k = _source(\"src/pages/app.js\")\n\n\n"
+              "def _source(path):\n"
+              "    return Path(\"src/pages/app.js\").read_text(encoding=\"utf-8\")\n")
+    named = ["src/pages/app.js", "src/pages/build_pages.py", "CONTRIBUTING.md", "src/pages/app.css",
+             "generated/careers.json"]
+    got = [line for _d, line, _t in _source_reads(ast.parse(sample), named, sample)]
+    assert got == [3, 4, 5, 6, 8], (
+        f"the reader of reads found lines {got} of the sample, not the five reads of a source file "
+        "it names (3, 4, 5, 6 and 8)")
+    names, why = _tracked()
+    if names is None:
+        return "skip", why
+    here = Path(__file__)
+    found = _source_reads(_parsed(here), names, _source(here))
+    assert not found, (
+        f"{len(found)} reads of a source file by its name, not through _source: "
+        + "; ".join(f"{d} line {n}: {t[:80]}" for d, n, t in found[:6])
+        + ". Read it as _source(<what it named>): a later move of code changes _SOURCES, not the check")
+    return "ok", ("no check here reads a source file by naming it but through _source, which reads "
+                  "each once a run, again when it moves, and a fixture's as asked")
 
 
 @check("files", "changed modules import")
@@ -6649,7 +6896,7 @@ def _kit_carries_no_pickle():
     no path or glob of cloud_kit.json may take one (the manager, 29 October
     2026)."""
     import fnmatch
-    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    kit = json.loads(_source("cloud_kit.json"))
     probe = [".build_cache/session_days.pkl.gz", ".build_cache/x.pkl", "x.pickle"]
     pats = []
 
@@ -9466,7 +9713,7 @@ def _chip_live_wiring(B):
     must be the current term with no session_over, and `term_over` the
     current term with one: a `live` that forgot session_over drew a veto
     nobody will vote on as Vetoed. Returns what is wrong, as strings."""
-    tree = ast.parse(Path(B.__file__).read_text(encoding="utf-8"))
+    tree = ast.parse(_source(B.__file__))
     fn = next((n for n in ast.walk(tree)
                if isinstance(n, ast.FunctionDef) and n.name == "build_bills"), None)
     if fn is None:
@@ -12075,7 +12322,7 @@ def _the_new_terms_first_night(N, B):
         if B.session_over_in(day, current) != want:
             bad.append(f"session_over {day!r} in {current or 'no term'}: "
                        f"{B.session_over_in(day, current)!r}, not {want!r}")
-    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_site_v2.py"))
     if "session_over = session_over_in(session_over, current)" not in src:
         bad.append("build_bills no longer takes session_over through session_over_in")
     # What the day does to a bill that has passed its own chamber: SB 12 of
@@ -13932,7 +14179,7 @@ def _rollcall_typed_bill(RP):
             f"roll calls keyed {[(t, sorted(b)) for t, b in keyed.items()]}")
         # build_data keys each member's ballot by the summary's bill, and only
         # a rebuild would show it reverting -- the nightly runs --code alone.
-        src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+        src = _source(_paths.locate("build_data.py"))
         assert '"bill": RP.roll_call_bill(r[0], r[1], r[2], r[4]) or r[4].upper()' in src, (
             "build_data.py no longer keys the roll-call summary's bill through "
             "rollcall_parser.roll_call_bill, so no ballot on \"SB 406\" reaches SB 406's page")
@@ -14119,13 +14366,13 @@ def _rollcall_refiled(RP):
     # build_data names every ballot's bill through the same function, and says
     # what the file did, so the members' Votes tabs move with the bill's page;
     # and so does the floor index, so the day's recording moves with them.
-    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_data.py"))
     assert "RP.roll_call_bill(r[0], r[1], r[2], r[4])" in src and \
         "RP.refiled_report(complete=False)" in src, (
         "build_data.py no longer names a ballot's bill through rollcall_parser.roll_call_bill, or "
         "no longer says what rollcall_corrections.json did")
     assert "RP.roll_call_bill(p[0], p[1], p[2], p[4])" in \
-        _paths.locate("build_floor_index.py").read_text(encoding="utf-8"), (
+        _source(_paths.locate("build_floor_index.py")), (
         "build_floor_index.py no longer names a roll call's bill through rollcall_parser.roll_call_bill, "
         "so a roll call a person moved keeps its recording on the bill it was filed under")
     # THE PERSON'S OWN FILE, read and never written: each entry still matches
@@ -14388,15 +14635,15 @@ def _rollcall_misdated(RP):
         shutil.rmtree(d, ignore_errors=True)
     # Every reader of a roll call's day beside its bill reads it through the
     # same function, and the two that report say what the file did.
-    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_data.py"))
     assert '"datetime": RP.roll_call_when(r[0], r[1], r[2], r[3])' in src and \
         "RP.misdated_report(complete=False)" in src, (
         "build_data.py no longer dates a ballot through rollcall_parser.roll_call_when, or no "
         "longer says what rollcall_corrections.json's misdated did")
     assert "RP.roll_call_when(p[0], p[1], p[2], p[3])" in \
-        _paths.locate("build_floor_index.py").read_text(encoding="utf-8"), (
+        _source(_paths.locate("build_floor_index.py")), (
         "build_floor_index.py no longer dates a roll call through rollcall_parser.roll_call_when")
-    src = _paths.locate("rollcall_parser.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("rollcall_parser.py"))
     assert "roll_call_when(year, body, num, p[3])" in src and "    misdated_report()" in src, (
         "rollcall_parser.parse no longer dates a roll call through roll_call_when")
     # THE PERSON'S OWN FILE, where there is one, against the files on disk.
@@ -17912,7 +18159,7 @@ def _ls_rows(livestreams):
     The older eleven-column files are left out: they predate the corrected
     daylight-time rule and the bill-title fallback, which is why they differ.
     """
-    src = _paths.locate("fetch_channel_index.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("fetch_channel_index.py"))
     m = re.search(r"cols = (\[[^\]]*\])", src)
     assert m, "no cols list in fetch_channel_index.main"
     assert ast.literal_eval(m.group(1)) == livestreams.COLS, \
@@ -18254,7 +18501,7 @@ def _heartbeat_optional(L):
             os.environ.pop(L.HEARTBEAT_ENV, None)
         shutil.rmtree(base, ignore_errors=True)
     # no address in anything tracked: the example file names the key and holds no URL
-    ex = json.loads((_paths.ROOT / "secrets.example.json").read_text(encoding="utf-8"))
+    ex = json.loads(_source(_paths.ROOT / "secrets.example.json"))
     assert not re.search(r"https?://\S*(hc-ping|healthchecks)", json.dumps(ex)), ex
     for rel in ("src/ops/livestreams.py", "src/ops/captions_watch.py"):
         text = (_paths.ROOT / rel).read_text(encoding="utf-8")
@@ -19821,7 +20068,7 @@ def _text_cache_by_term(fetch_bill_text):
             "a term's own folder is not preferred to the flat file"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    src = _paths.locate("fetch_bill_text.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("fetch_bill_text.py"))
     assert "f = cache_path(cache, term, bid)" in src and 'cache / f"{bid}.html"' not in src, \
         "fetch_bill_text reads or writes its cache by the bill number alone again"
     return "ok", "2027's HB1 is not 2025's; the flat pages answer for 2025-2026 only"
@@ -19851,7 +20098,7 @@ def _status_own_term(build_data):
     assert SFS(flat, new) == (flat, []), "a flat file is the current session's"
     assert not hasattr(build_data.P, "for_term"), (
         "proceedings.for_term is back: its newest-term default is the fault this check is about")
-    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_data.py"))
     assert "status_for_session(raw, bills)" in src, \
         "build_data no longer reads bill_status.json through status_for_session"
     return "ok", "2027 bills take nothing from 2025-2026, and their own slice once it exists"
@@ -19910,7 +20157,7 @@ def _status_made_bill(fetch_status_db, build_data):
         "own term's day and nothing of 2025's, a blank to give none, and a day on file to stay")
     assert not BD.fill_from_status({}, {"HB9": {"made_bill": "2026-12-01"}}), (
         "a status record of a bill the session does not hold filled something")
-    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_data.py"))
     i = src.find("st, no_slice = status_for_session(raw, bills)")
     assert 0 <= i < src.find("took = fill_from_status(bills, st)"), (
         "build_data's main no longer fills the bills through fill_from_status from status_for_session's records")
@@ -20043,11 +20290,11 @@ def _bill_text_from_db(BT, BP, FB):
     with the dump's ids moved one bill along, 2,218 of 2,234 were."""
     assert FB.parse_text is BP.parse_text and FB.text_of is BP.text_of, \
         "fetch_bill_text reads the web's pages with another parser than bill_page's"
-    src = _paths.locate("bill_text_from_db.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("bill_text_from_db.py"))
     assert not re.search(r"^\s*(?:import|from)\s+(?:urllib|socket|http|subprocess|probe_db|"
                          r"refusal|child|fetch_\w+)\b", src, re.M), \
         "bill_text_from_db.py imports something that could ask the network"
-    src = _paths.locate("bill_page.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("bill_page.py"))
     assert not re.search(r"^\s*(?:import|from)\s+(?:urllib|socket|http|subprocess|refusal)\b",
                          src, re.M), "bill_page.py imports something that could ask the network"
 
@@ -20179,7 +20426,7 @@ def _version_index_gate():
     p = Path("src/pages/app.js")
     if not p.exists():
         return "skip", "app.js not in this directory"
-    t = p.read_text(encoding="utf-8")
+    t = _source(p)
     assert "function hasVersionIndex(" in t, (
         "app.js has no hasVersionIndex: the Bill Text pane would ask for a "
         "version index on every bill that draws the tab, and report a 404 on "
@@ -20213,7 +20460,7 @@ def _bill_text_in_its_tab():
     p = Path("src/pages/app.js")
     if not p.exists():
         return "skip", "app.js not in this directory"
-    t = p.read_text(encoding="utf-8")
+    t = _source(p)
     assert "function billTextSection(" in t, "app.js has no billTextSection"
     assert "hasVersionIndex(d)?renderVersions(b,d):billTextSection(" in t, (
         "the Bill Text pane no longer draws the text of a bill with no version "
@@ -20715,9 +20962,9 @@ def _cite_up_and_copied():
         return "skip", "node is not installed"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "app.js").write_text(_with_components(Path("src/pages/app.js").read_text(encoding="utf-8")),
+        (root / "app.js").write_text(_with_components(_source("src/pages/app.js")),
                                      encoding="utf-8")
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
                                       encoding="utf-8")
         (root / "dates.json").write_text(json.dumps(dates), encoding="utf-8")
         (root / "go.js").write_text(_CITE_APP, encoding="utf-8")
@@ -20795,7 +21042,7 @@ def _town_officials_columns(B):
     # The tab in the page's own order is the phone's: elected, offices, clerk, staff.
     order = [pane.index(x) for x in ("Select board", "Town offices", "Town clerk", "Staff and administrative")]
     assert order == sorted(order), f"the cards are not in the order the phone shows them: {order}"
-    css = " ".join(Path("src/pages/app.css").read_text(encoding="utf-8").split())
+    css = " ".join(_source("src/pages/app.css").split())
     assert ".twncols{display:grid;grid-template-columns:minmax(0,1fr)" in css and (
         "@media (min-width:68.75em){ .twncols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}" in css), (
         "app.css does not lay the columns side by side on a wide screen and stack them below it")
@@ -20832,7 +21079,7 @@ def _town_report(B, CR):
                   "note": "The clerk's hours are wrong.", "build": "", "hidden": 0}
         assert CR.well_formed(stored), f"a stored report from {rec} is set aside as malformed"
         assert CR.producer(rec, "other") == "build_town_pages.py", "the producer of a town's page is not named"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     assert 'rec.slice(0,at)!=="town"&&!document.querySelector("#pageacts [data-share]")' in app, (
         "app.js no longer mounts a town's Report box without a Share beside it")
     return "ok", "town:lyme and town:concord-ward-4 named by their pages, kept and compiled from /town/<slug>"
@@ -20867,7 +21114,7 @@ def _cite_under_a_towns_line(B):
         "the citation does not name the town's page as shell.page named it")
     # Whole selectors: the list inside :is() has commas of its own.
     css = {" ".join(sel.split()) for _, sel, body, _ in _css_rules(
-        Path("src/pages/app.css").read_text(encoding="utf-8"))
+        _source("src/pages/app.css"))
         if "justify-content:flex-start" in body.replace(" ", "")}
     assert ":is(.officials,.calhead,.cdpage) > .pageacts" in css, (
         "the row under a town's or the Calendar's line is not set to the left, under the words")
@@ -21807,7 +22054,7 @@ def _find_bills_run(BP, *runs):
     _FIND_BILLS_PANEL (panel_side.js, which runs /search's script too): each
     of `runs` is the node arguments of one run, the file and its mode; their
     JSON, in order."""
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     try:
         matcher = BP.bill_matcher_js(app)
     except SystemExit as e:
@@ -21817,11 +22064,11 @@ def _find_bills_run(BP, *runs):
     assert m, "build_pages.SEARCH_JS carries no <script>"
     root = Path(tempfile.mkdtemp())
     try:
-        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        files = {"stub.js": _source("tests/dom_stub.js"),
                  "app.js": _with_components(app), "billmatch.js": matcher,
                  # components.js first, as every page loads it: the header's
                  # panel draws each row's kind with its chip() (step 3).
-                 "find.js": _with_components(Path("src/pages/find.js").read_text(encoding="utf-8")),
+                 "find.js": _with_components(_source("src/pages/find.js")),
                  "search.js": m.group(1),
                  "fixture.json": json.dumps(_find_bills_fixture()),
                  "queries.json": json.dumps(_FIND_BILLS_QUERIES),
@@ -22256,7 +22503,7 @@ def _find_laws(BP):
 def _find_more_run(BP, *runs):
     """_find_more_fixture through _FIND_MORE_PANEL and _FIND_MORE_APP: each of
     `runs` is (side, mode), side "panel" or "app"; their JSON, in order."""
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     try:
         matcher = BP.bill_matcher_js(app)
     except SystemExit as e:
@@ -22265,9 +22512,9 @@ def _find_more_run(BP, *runs):
     assert m, "build_pages.SEARCH_JS carries no <script>"
     root = Path(tempfile.mkdtemp())
     try:
-        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        files = {"stub.js": _source("tests/dom_stub.js"),
                  "app.js": _with_components(app), "billmatch.js": matcher,
-                 "find.js": _with_components(Path("src/pages/find.js").read_text(encoding="utf-8")),
+                 "find.js": _with_components(_source("src/pages/find.js")),
                  "search.js": m.group(1), "fixture.json": json.dumps(_find_more_fixture()),
                  "queries.json": json.dumps(_FIND_MORE_QUERIES),
                  "panel.js": _FIND_MORE_PANEL, "app_side.js": _FIND_MORE_APP}
@@ -22415,7 +22662,7 @@ def _requests_banner(BP):
     for name, run in (("the requests' list", R), ("All Terms", A)):
         assert "bill requests filed for" not in run["summary"], (
             f"/bills on {name} shows the requests banner: {run['summary'][:200]!r}")
-    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    src = _source("src/pages/app.js")
     assert "+reqYear()>+String(terms[0]).slice(0,4)" in src, (
         "app.js no longer holds the banner to a session ahead of the newest term: on "
         "2027-2028 it would offer 2027's requests from the term they belong to")
@@ -22839,7 +23086,7 @@ def _best_match_words(BP):
     need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
     if not all(f.exists() for f in need):
         return "skip", "app.js, find.js or dom_stub.js not in this directory"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     try:
         matcher = BP.bill_matcher_js(app)
     except SystemExit as e:
@@ -22848,9 +23095,9 @@ def _best_match_words(BP):
     fx = _best_match_fixture()
     root = Path(tempfile.mkdtemp())
     try:
-        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        files = {"stub.js": _source("tests/dom_stub.js"),
                  "app.js": _with_components(app), "billmatch.js": matcher,
-                 "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
+                 "find.js": _source("src/pages/find.js"),
                  "fixture.json": json.dumps(fx),
                  "queries.json": json.dumps(list(_BEST_MATCH_WORDS)
                                             + list(_BEST_MATCH_TIES)
@@ -23184,7 +23431,7 @@ done();
 
 def _search_cases_node(BP, idx_files=(), text_at="tests/search_index.json"):
     """tests/search_cases.json through the cut matcher: what the script found."""
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     try:
         matcher = BP.bill_matcher_js(app)
     except SystemExit as e:
@@ -23389,7 +23636,7 @@ def _search_cases_real(BP):
     cases = Path("tests/search_cases.json")
     if not (Path("src/pages/app.js").exists() and cases.exists()):
         return "skip", "app.js or tests/search_cases.json not in this directory"
-    term = json.loads(cases.read_text(encoding="utf-8"))["term"]
+    term = json.loads(_source(cases))["term"]
     own = Path("site/idx") / f"{term}.json"
     if not own.exists():
         return "skip", f"site/idx/{term}.json is not built"
@@ -23501,8 +23748,8 @@ def _search_index_builds(BP, SI):
         f"tests/search_cases.json is here and {', '.join(lost)} is not: "
         "python3 src/pages/build_search_index.py --fixture tests/search_cases.json "
         "writes them")
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
-    fx = json.loads(texts_f.read_text(encoding="utf-8"))
+    app = _source("src/pages/app.js")
+    fx = json.loads(_source(texts_f))
     term, bills = fx["term"], fx["bills"]
     table = SI.table_terms(app)
     rows = [{"id": b, "title": r["title"], "term": term} for b, r in bills.items()]
@@ -23684,7 +23931,7 @@ def _search_index_builds(BP, SI):
         == len(words_file["words"].split(" ")), "words_file() miscounts its words"
 
     # The same words, read by the page.
-    fixture = json.loads(Path("tests/search_index.json").read_text(encoding="utf-8"))
+    fixture = json.loads(_source("tests/search_index.json"))
     words = sorted(set(fixture["w"]) | {w + e for w in list(fixture["w"])[:300]
                                        for e in ("s", "es", "ies")}
                    | {"news", "arms", "dues", "glass", "bus", "taxes", "cars",
@@ -24040,7 +24287,7 @@ def _find_guides(G, civics, BP):
     if shutil.which("node") is None:
         return "skip", "node is not installed"
     import build_civics as BC
-    cases = json.loads(Path("tests/search_cases.json").read_text(encoding="utf-8"))["find"]["cases"]
+    cases = json.loads(_source("tests/search_cases.json"))["find"]["cases"]
     assert cases, "tests/search_cases.json has no find cases"
     rows = []
     for g in G.GUIDES:
@@ -24059,8 +24306,8 @@ def _find_guides(G, civics, BP):
     bills = [{"id": "HB1", "n": "HB 1", "title": "making appropriations", "year": 2025}]
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
-        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_source("src/pages/find.js"), encoding="utf-8")
         (root / "go.json").write_text(json.dumps({"rows": rows, "bills": bills, "cases": cases}),
                                       encoding="utf-8")
         (root / "go.js").write_text(_FIND_GUIDES_JS, encoding="utf-8")
@@ -24103,7 +24350,7 @@ def _find_guides(G, civics, BP):
         "/search has no group of the guides, drawn with the bills")
     assert '{t:"Learn",' in js and '"Learn","Pages on This Site"]' in js, "/search does not list the Learn pages"
     assert "const named=!findBill(s)&&rows.some(" in js, "/search can put a guide above a bill number's bills"
-    bi = Path("src/pages/build_indexes.py").read_text(encoding="utf-8")
+    bi = _source("src/pages/build_indexes.py")
     assert 'G.search_words(p.stem) if kind == "guide"' in bi, "find.json no longer carries a guide's task words"
     return "ok", (f"{len(cases)} searches: guides found by their task and plain words, labelled Guide, "
                   "above the Learn pages, and under a bill whose number was typed")
@@ -24379,9 +24626,9 @@ def _search_polish(BP):
     assert m, "build_pages.SEARCH_JS carries no <script>"
     root = Path(tempfile.mkdtemp(prefix="gr-polish-"))
     try:
-        files = {"stub.js": Path("tests/dom_stub.js").read_text(encoding="utf-8"),
-                 "page.js": _with_components(Path("src/pages/app.js").read_text(encoding="utf-8")),
-                 "find.js": Path("src/pages/find.js").read_text(encoding="utf-8"),
+        files = {"stub.js": _source("tests/dom_stub.js"),
+                 "page.js": _with_components(_source("src/pages/app.js")),
+                 "find.js": _source("src/pages/find.js"),
                  "search.js": m.group(1), "app.js": _SEARCH_POLISH_APP,
                  "panel.js": _SEARCH_POLISH_FIND}
         for name, text in files.items():
@@ -24443,7 +24690,7 @@ def _search_polish(BP):
                    f"by number ({got['numHeads']})")
     if got["read"] != ["oldest", True] or "sort=oldest" not in got["written"]:
         bad.append(f"?sort=oldest is read as {got['read']} and written as {got['written']!r}")
-    html_ = Path("src/pages/bills.html").read_text(encoding="utf-8")
+    html_ = _source("src/pages/bills.html")
     opts = re.findall(r'<option value="(\w+)"[^>]*>([^<]*)</option>',
                       html_[html_.index('<select id="sort">'):html_.index("</select>", html_.index('<select id="sort">'))])
     if opts != [("best", "Best match"), ("num", "Bill number"), ("recent", "Newest action"),
@@ -24495,7 +24742,7 @@ def _search_polish(BP):
             "are withdrawn first.")
     if got["note"] != note:
         bad.append(f"the requests' note reads {got['note']!r}")
-    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"].get(
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"].get(
         "bills.requests_note") or {}
     if es.get("state") != "draft" or "{year}" not in es.get("es", ""):
         bad.append(f"the note's Spanish is not a draft with its year: {es}")
@@ -24514,13 +24761,13 @@ def _search_polish(BP):
                    f"{wd['order']} on a wide screen: after the box there, before it here")
     if not got["listens"]:
         bad.append("the pickers are not fitted again when the screen changes width (a phone turned)")
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     if 'data-short="${termDash(t)}">${termDash(t)} Term</option>' not in app \
             or ' data-short="${esc(reqYear())} Requests"' not in app or ".join(\"\");\n   fitPickers();" not in app:
         bad.append("the term picker's options carry no shorter words, or are not fitted when drawn")
     if '<option value="recent">Newest action</option>' not in html_:
         bad.append("the Sort does not offer Newest action (Alice, 9 November 2026: beside Oldest action)")
-    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
     blocks, outside = _css_media_blocks(css)
     phone = "".join(b for c, b in blocks if re.fullmatch(r"\(\s*max-width:\s*45em\s*\)", c))
     rules = {sel_.strip(): body.replace(" ", "") for sel_, body in re.findall(r"([^{}]+)\{([^{}]*)\}", phone)}
@@ -24651,8 +24898,8 @@ def _find_pages_officials(BI, G, civics, BC):
             "laws": "Laws", "calendar": "Calendar", "concord": "Concord"}
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
-        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_source("src/pages/find.js"), encoding="utf-8")
         (root / "go.json").write_text(json.dumps({"rows": rows, "cases": list(want)}), encoding="utf-8")
         (root / "go.js").write_text(_FIND_PAGES_JS, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
@@ -24765,9 +25012,9 @@ def _find_city_without_wards(BI, BP):
              "concord 1", "ward 2"]
     root = Path(tempfile.mkdtemp(prefix="gr-wards-js-"))
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
                                       encoding="utf-8")
-        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"),
+        (root / "find.js").write_text(_source("src/pages/find.js"),
                                       encoding="utf-8")
         (root / "go.json").write_text(json.dumps({"rows": rows, "cases": cases}), encoding="utf-8")
         (root / "go.js").write_text(_FIND_WARDS_JS, encoding="utf-8")
@@ -24848,9 +25095,9 @@ def _find_committee_names(BP):
     ]
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
                                       encoding="utf-8")
-        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"),
+        (root / "find.js").write_text(_source("src/pages/find.js"),
                                       encoding="utf-8")
         (root / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
         (root / "go.js").write_text(_FIND_COMMITTEE_JS, encoding="utf-8")
@@ -24884,17 +25131,15 @@ def _find_committee_names(BP):
     text = re.sub(r"<[^>]+>", "", got["html"])
     assert text.index("House Special Committee on Housing") > text.index("House Housing Committee"), (
         "the drawn panel puts the former committee first")
-    assert '{t:"Former Committees",' in Path("src/pages/build_pages.py").read_text(encoding="utf-8") \
-        and 'k:r=>r[0]==="committee"&&!r[5]}' in Path("src/pages/build_pages.py").read_text(
-            encoding="utf-8"), "the search page lists former committees among the ones that sit"
-    bi = Path("src/pages/build_indexes.py").read_text(encoding="utf-8")
+    assert '{t:"Former Committees",' in _source("src/pages/build_pages.py") \
+        and 'k:r=>r[0]==="committee"&&!r[5]}' in _source("src/pages/build_pages.py"), "the search page lists former committees among the ones that sit"
+    bi = _source("src/pages/build_indexes.py")
     assert '.get("archived")' in bi and "row += [max(last), years]" in bi, (
         "build_indexes no longer marks a committee that no longer sits")
     # The matcher is find.json's, untouched by the label: a committee is found
     # by its own name and its line as before ("senate" finds the Senate's).
     assert "Judiciary" in got["senate"], ("the label changed what the matcher finds", got["senate"])
-    js = BP.SEARCH_JS if hasattr(BP, "SEARCH_JS") else Path("src/pages/build_pages.py").read_text(
-        encoding="utf-8")
+    js = BP.SEARCH_JS if hasattr(BP, "SEARCH_JS") else _source("src/pages/build_pages.py")
     assert "_fmark(findName(r),q)" in js and "_fmark(r[1],q)" not in js, (
         "the search page draws its committee rows by the bare name")
     return "ok", ("House Housing Committee, House Special Committee on Housing, Senate Judiciary "
@@ -24940,12 +25185,12 @@ def _find_study_committees_rank(BP):
     Veterans Advisory Committee first while name length decided it."""
     if shutil.which("node") is None:
         return "skip", "node is not installed"
-    fx = json.loads(Path("tests/search_cases.json").read_text(encoding="utf-8"))["finder"]
+    fx = json.loads(_source("tests/search_cases.json"))["finder"]
     root = Path(tempfile.mkdtemp(prefix="gr-findstudy-"))
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
                                       encoding="utf-8")
-        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"),
+        (root / "find.js").write_text(_source("src/pages/find.js"),
                                       encoding="utf-8")
         (root / "finder.json").write_text(json.dumps(fx), encoding="utf-8")
         (root / "go.js").write_text(_FIND_STUDY_JS, encoding="utf-8")
@@ -25051,8 +25296,8 @@ def _find_details(BP):
     ]
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
-        (root / "find.js").write_text(Path("src/pages/find.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_source("src/pages/find.js"), encoding="utf-8")
         (root / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
         (root / "go.js").write_text(_FIND_DETAILS_JS, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
@@ -25950,7 +26195,7 @@ def _search_index_built():
                        "alone use fifteen thousand")
         cases = Path("tests/search_cases.json")
         if ws and cases.exists():
-            want = json.loads(cases.read_text(encoding="utf-8")).get("known") or []
+            want = json.loads(_source(cases)).get("known") or []
             lost = [x for x in want if x not in ws]
             if lost:
                 bad.append(f"words.json lacks {lost[:6]}: words bills use, "
@@ -26334,7 +26579,7 @@ def _palette():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    text = css.read_text(encoding="utf-8")
+    text = _source(css)
     tok = root_of(text, "light")
     assert tok, "app.css has no :root block this can read"
     dark = root_of(text, "dark")
@@ -26474,7 +26719,7 @@ def _sweep_sealed(RS):
     import http.client
     js = _paths.locate("sweep_browser.js")
     assert js.is_file(), "src/checks/sweep_browser.js is not there"
-    src = js.read_text(encoding="utf-8")
+    src = _source(js)
     m = re.search(r"const HOST_RULES = ((?:'[^']*'\s*\+?\s*)+);", src)
     assert m, "sweep_browser.js no longer states HOST_RULES as a string this can read"
     rules = [r.strip() for r in "".join(re.findall(r"'([^']*)'", m.group(1))).split(",")]
@@ -26703,7 +26948,7 @@ process.stdout.write("\\n@@" + JSON.stringify(s.fiscalTable(JSON.parse(fs.readFi
     # Spacing is no part of a rule: "a, b" is "a,b", and "(max-width: 45em)"
     # the phone's width as much as "(max-width:45em)" is.
     rules = [(ctx, re.sub(r"\s*,\s*", ",", sel), body, ln) for ctx, sel, body, ln
-             in _css_rules(css.read_text(encoding="utf-8"))]
+             in _css_rules(_source(css))]
     on_phone = lambda ctx: any(re.sub(r"\s+", "", c) == "@media(max-width:45em)" for c in ctx)
     phone_only = re.compile(r"\.fn(?:s|m|l|span)\b|\[data-y\]")
     phone = {sel: dict(_css_decls(body)) for ctx, sel, body, _ in rules
@@ -26906,7 +27151,7 @@ def _sizes_follow_the_reader():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    text = css.read_text(encoding="utf-8")
+    text = _source(css)
     bad, sizes, queries = [], 0, 0
     # A size is read through var() to what it is: a token of any name holding
     # a px size is a px size wherever it is used (the review of 8 October
@@ -26988,7 +27233,7 @@ def _type_floor():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    text = css.read_text(encoding="utf-8")
+    text = _source(css)
     tokens = _css_palette(text)["light"]
     low = {k: px for k, (px, _) in ((k, _css_px(v, tokens)) for k, v in tokens.items()
                                      if k.startswith("--t-")) if px is not None and px < _FLOOR_PX}
@@ -27125,7 +27370,7 @@ def _colours_from_palette():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    text = css.read_text(encoding="utf-8")
+    text = _source(css)
     pal = _css_palette(text)
     end = text.find("/* PALETTE END")
     end_line = _line_of(text, end) if end > 0 else 0
@@ -27376,7 +27621,7 @@ def _token_pairs_measure():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    text = css.read_text(encoding="utf-8")
+    text = _source(css)
     pal = _css_palette(text)
     pairs = _token_pairs(text, _front_sources())
     assert len(pairs) >= 60, (f"only {len(pairs)} pairs were read from the rules; there were "
@@ -27435,7 +27680,7 @@ def _inks_apart():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    pal = _css_palette(css.read_text(encoding="utf-8"))
+    pal = _css_palette(_source(css))
     bad, said = [], []
     for name in ("light", "dark"):
         for a, b, need in (("--rep", "--dem", 1.7), ("--yes", "--no", 2.0)):
@@ -27479,7 +27724,7 @@ def _rings_edges_opacity():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    text = css.read_text(encoding="utf-8")
+    text = _source(css)
     bare = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
 
     def rules(selector):
@@ -27584,7 +27829,7 @@ def _print_is_light():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    text = css.read_text(encoding="utf-8")
+    text = _source(css)
     m = re.search(r"@media print\{\s*:root\[data-theme=\"dark\"\],"
                   r":root:not\(\[data-theme=\"light\"\]\)\{(.*?)\}(.*?)\n\}\n", text, re.S)
     assert m, ("app.css has no @media print block that undoes the dark palette under "
@@ -27670,9 +27915,9 @@ def _audit_minor(BSP, seating, BP):
     M20  a name and the comma after it are one item of a speaker line.
     M22  the seat map is a group with one Tab stop and arrow keys within it.
     """
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     bare = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    js = _source("src/pages/app.js")
     bad = []
 
     # M1
@@ -27769,7 +28014,7 @@ def _audit_minor(BSP, seating, BP):
                '<span class="swho1"><span>Rep. Roy</span>,</span> '
                '<span class="swho1"><span>Rep. Muns</span></span>'):
         bad.append("a speaker line's names are not each one item with its comma: " + row[:260])
-    page = _paths.locate("build_session_pages.py").read_text(encoding="utf-8")
+    page = _source(_paths.locate("build_session_pages.py"))
     if re.search(r'", "\.join\(member_html', page):
         bad.append("build_session_pages.py joins members with a bare comma again, which a "
                    "flex row draws as an item of its own with a gap before it")
@@ -27923,7 +28168,7 @@ def _app_css_published():
         raise AssertionError("strip_css passed an unclosed comment, which ends a stylesheet")
     except ValueError:
         pass
-    src = Path("src/pages/app.css").read_text(encoding="utf-8")
+    src = _source("src/pages/app.css")
     out = strip(src)
     unquoted = re.sub(r'"(?:[^"\\\n]|\\.)*"|\'(?:[^\'\\\n]|\\.)*\'', "", out)
     assert "/*" not in unquoted and "*/" not in unquoted, (
@@ -28283,7 +28528,7 @@ def _placeholder_colour():
     every box.
     """
     want = "::placeholder{color:var(--ink-2)"
-    src = Path("src/pages/app.css").read_text(encoding="utf-8")
+    src = _source("src/pages/app.css")
     assert want in src, (
         "app.css has no ::placeholder colour. The browser's default is "
         "#757575, which is 3.04:1 on --surface in dark -- below the 4.5 a "
@@ -29057,11 +29302,11 @@ def _numbers_flow_agree(learn_numbers, i18n):
         assert en not in es, f"the Spanish diagram says {en!r} in English"
     assert "House and Senate bills" not in es
     # the paragraph on How a Bill Becomes a Law reads this count, on the same basis
-    civ = Path("src/pages/civics.py").read_text(encoding="utf-8")
+    civ = _source("src/pages/civics.py")
     assert "[[ends_bills]] House and Senate bills" in civ and "[[ends_resolutions]]" in civ and \
         "bills and resolutions filed in the [[term]] term" not in civ, (
             "How Most Bills End is not on the 2,139 basis with its one line on the resolutions")
-    bc = Path("src/pages/build_civics.py").read_text(encoding="utf-8")
+    bc = _source("src/pages/build_civics.py")
     assert "learn_numbers.flows(idx, term)" in bc and "learn_numbers.flow_figure(fl)" in bc and \
         "learn_numbers.flow_figure(fl, lang)" in bc, "build_civics does not draw the diagram from flows()"
     return "ok", f"{len(walk)} nodes the same in the drawing, the table and the sentence; Spanish in Spanish"
@@ -29775,7 +30020,7 @@ def _nowrap():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    text = re.sub(r"/\*.*?\*/", "", css.read_text(encoding="utf-8"), flags=re.S)
+    text = re.sub(r"/\*.*?\*/", "", _source(css), flags=re.S)
 
     rules = re.findall(r"([^{}]+)\{([^{}]*)\}", text)
     nowrap, blocks, released = [], [], set()
@@ -29865,7 +30110,7 @@ def _scroll_edges():
     the record strip -- has two covers of its own ground that travel with
     its tabs (local), at least as wide as the two shadows of --scrolledge
     fixed under them, and no --shadow."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     rules = _css_rules(css)
     bad = []
     tok = {}
@@ -29930,7 +30175,7 @@ def _openers_turn_right_to_down():
     opening sentences sit after its fold, so they show while it is shut, and
     hide once it is open."""
     import glob
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     rules = _css_rules(css)
     mark = re.compile(r"(summary\s*::?(?:before|after)|\.caret|\.chev|\.cmcaret)$")
     opened = re.compile(r"\[open\]|\.open\b")
@@ -30062,7 +30307,7 @@ def _chip_nowrap():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    rules = _css_rules(css.read_text(encoding="utf-8"))
+    rules = _css_rules(_source(css))
     hooks = ("chip", "cstat", "rcres", "calkind", "fkind", "sgn")
     held, released, phone = [], set(), False
     for at, sel, body, line in rules:
@@ -30180,7 +30425,7 @@ def _scrollstop_tables():
             for c in m.group(1).split():
                 tables.setdefault(c, p.name)
     assert tables, "no table opens a box marked data-scrollstop: the Data page's coverage table did"
-    rules = _css_rules(css_p.read_text(encoding="utf-8"))
+    rules = _css_rules(_source(css_p))
     as_table = set()
     for at, sel, body, line in rules:
         if dict(_css_decls(body)).get("display") == "table":
@@ -30352,7 +30597,7 @@ def _former_movers_one_page(build_site_v2, build_pages):
         assert V.same_person(root / "nowhere.json") == []
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_site_v2.py"))
     assert "confirmed=same_person()" in src, "build_site_v2 no longer takes the pairs the owner confirmed"
     root = Path(tempfile.mkdtemp(prefix="gr-moved-"))
     try:
@@ -30369,9 +30614,9 @@ def _former_movers_one_page(build_site_v2, build_pages):
         assert BP.moved_members(root / "nowhere") == "", "no former.json still wrote a rule"
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_site_v2.py"))
     assert "former_movers(register, e2p or {}" in src, "build_site_v2 no longer joins the movers who left"
-    src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_pages.py"))
     assert "want = redirects_file(out)" in src, (
         "build_pages no longer writes their 301s ahead of the tab rules, where the first match is served")
     return "ok", ("a mover who left is joined to the later page, by the term and then the day of the "
@@ -30960,7 +31205,7 @@ def _record_untouched():
 
     rv = _paths.locate("review.py")
     if rv.exists():
-        src = rv.read_text(encoding="utf-8", errors="replace")
+        src = _source(rv, errors="replace")
         # The BIND, not the file: the first version of this check read the
         # whole source and failed on the comment explaining why the bind is
         # what it is.
@@ -31349,7 +31594,7 @@ def _api_counts_say_units(AP):
     assert '<table class="dpdl dpapi" role="table">' in page, (
         "/api's table no longer carries dpapi: from 45em to 58em it is a table wider than a "
         "tablet held upright")
-    css = re.sub(r"/\*.*?\*/", "", _paths.locate("app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", _source(_paths.locate("app.css")), flags=re.S)
 
     def blocks(text):
         """[(prelude, body)]: text's top-level blocks, by balanced braces."""
@@ -31388,7 +31633,7 @@ def _api_counts_say_units(AP):
     printed = [b for p, b in top if p == "@mediaprint" and ".dpdl.dpapi tbody tr" in b]
     assert printed and "break-inside:avoid" in printed[0], (
         "a printed /api may break a file's row across two pages")
-    exports = _paths.locate("build_exports.py").read_text(encoding="utf-8")
+    exports = _source(_paths.locate("build_exports.py"))
     assert "dpapi" not in exports, "the data page's table carries dpapi: it would change below 58em"
     return "ok", ("the manifest's 8 files, the database's 3 tables, 2,192 people, 3,999 bills and "
                   "33,783 rows each say their unit, under Count; /api's table is a list up to 58em, "
@@ -31429,7 +31674,7 @@ def _request_pages():
         (site / "request").mkdir()
         # A page an earlier night wrote for the request now a bill.
         (site / "request" / "2027-0003.html").write_text("old", encoding="utf-8")
-        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+        (site / "bills.html").write_text(_source("src/pages/bills.html"),
                                          encoding="utf-8")
         (site / "legislators.json").write_text(json.dumps([
             {"slug": "jodi-nelson-rock-13", "party": "R",
@@ -31581,10 +31826,10 @@ def _request_pages():
         L.FILING_COMPLETE.clear()
         L.FILING_COMPLETE.update(old)
     # The links, and New Hampshire kept out of the page writer.
-    assert 'const to=b.moved_to||b.address||"request/"' in Path("src/pages/find.js").read_text(encoding="utf-8") \
-        and '<a href="${esc(b.moved_to||b.address)}">${esc(b.n)}</a>' in Path("src/pages/app.js").read_text(encoding="utf-8"), (
+    assert 'const to=b.moved_to||b.address||"request/"' in _source("src/pages/find.js") \
+        and '<a href="${esc(b.moved_to||b.address)}">${esc(b.n)}</a>' in _source("src/pages/app.js"), (
         "the header search's request row or the request card does not link the request's page")
-    src = Path("src/pages/build_request_pages.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_request_pages.py")
     assert not re.search(r"LSR|gc\.nh\.gov|\\d\{4\}-\\d", src), (
         "build_request_pages knows how a state numbers its requests or where they come from")
     return "ok", ("pages for the requests still requests, the withdrawn kept, the one now a bill "
@@ -31629,7 +31874,7 @@ def _request_tabs_switch(build_lsrs):
     with tempfile.TemporaryDirectory() as d:
         site = Path(d)
         (site / "idx").mkdir()
-        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+        (site / "bills.html").write_text(_source("src/pages/bills.html"),
                                          encoding="utf-8")
         (site / "legislators.json").write_text(json.dumps([
             {"slug": "ann-lee-rock-1", "party": "D", "display_full": "Rep. Ann Lee (D - Rock 1)"}]),
@@ -31791,7 +32036,7 @@ def _requests_not_returning():
         site = Path(d)
         (site / "idx").mkdir()
         (site / "request").mkdir()
-        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+        (site / "bills.html").write_text(_source("src/pages/bills.html"),
                                          encoding="utf-8")
         (site / "legislators.json").write_text(json.dumps([
             mem("ann-lost-rock-1", "H", "Rockingham", "1"),
@@ -32015,7 +32260,7 @@ def _elect_provisional():
             f"the requests are matched {by}")
         (site / "idx" / "2027-requests.json").write_text(json.dumps(rows), encoding="utf-8")
         # The template every page is drawn from, as the build has it in site/.
-        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+        (site / "bills.html").write_text(_source("src/pages/bills.html"),
                                          encoding="utf-8")
         import shell
         try:
@@ -32985,7 +33230,7 @@ def _cmte_match_chamber():
     js = Path("src/pages/app.js")
     if not (node and js.exists()):
         return "skip", "app.js or node is not here"
-    m = re.search(r"function cmteUpcoming\(c\)\{[\s\S]*?\n\}", js.read_text(encoding="utf-8"))
+    m = re.search(r"function cmteUpcoming\(c\)\{[\s\S]*?\n\}", _source(js))
     assert m, "cmteUpcoming is not in app.js"
     tmp = Path(tempfile.mkdtemp(prefix="gr-cmteup-"))
     try:
@@ -33911,7 +34156,7 @@ def _states_covered():
     page, h = page_source()
     if not (b.exists() and h):
         return "skip", "build_site_v2.py or bills.html not here"
-    src = b.read_text(encoding="utf-8")
+    src = _source(b)
 
     emitted = set(re.findall(r'"state":\s*"(\w+)"', src))
     emitted |= set(re.findall(r'\["state"\]\s*=\s*"(\w+)"', src))
@@ -34188,7 +34433,7 @@ def _conference_folded(build_site_v2):
             f"{bid}'s floor debates came out as {deb}")
         drawn[bid] = sts
     # THE BUILDER CALLS IT. A fold nothing calls folds nothing.
-    src = Path(B.__file__).read_text(encoding="utf-8")
+    src = _source(B.__file__)
     assert re.search(r"station_for_floor\(f, bid, marks\)\s+for f in "
                      r"fold_conference_notices\(floor\.get\(\(term, bid\)", src), (
         "build_bills no longer draws its floor stations through fold_conference_notices")
@@ -35409,7 +35654,7 @@ def _law_stop_from_chaptered_text(build_site_v2):
         "x\nEffective Date:\nI. RSA 597:2-b, I-a & Sections 16-17 effective July 1, 2024\nII. "
         "Remainder effective January 1, 2025")],
          ["RSA 597:2-b and sections 16 and 17 of the act", "the rest"], "the Laws pages' HB318")
-    src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_site_v2.py")
     if not re.search(r"journey\(narr, bid, rcs, chapter,.{0,300}?text=\(btext or \{\}\)\.get\(\"body\"",
                      src, re.S):
         bad.append("the build no longer hands journey() the bill's text")
@@ -35669,7 +35914,7 @@ def _ballot_card_drawn():
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "app.js, dom_stub.js or node is not here"
-    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    css = _source("src/pages/app.css") if Path("src/pages/app.css").exists() else ""
     assert re.search(r"\.ballot \.lrow \.c\{[^}]*white-space:nowrap", css), (
         "app.css does not keep a voters' count on one line (.ballot .lrow .c)")
     # As build_site_v2.ballot_card writes them since 7 October 2026: whose
@@ -35988,7 +36233,7 @@ def _rail_on_a_phone():
     2026). datedRail is run in node over those rails and the ones with words
     and no day; a stop that draws "voice vote", "Chapter 140" or "Nov 2026"
     again fails here."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    css = _source("src/pages/app.css") if Path("src/pages/app.css").exists() else ""
     if not css:
         return "skip", "app.css is not here"
     rails = _RAIL_WORST + _RAIL_UNDATED
@@ -36106,7 +36351,7 @@ def _rail_large_text():
     among them, and never a 360px phone at the browser's default, which keeps
     its days. The days are still drawn in How it got here, and the rail still
     says each in full to a reader who hears it (its aria-label)."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    css = _source("src/pages/app.css") if Path("src/pages/app.css").exists() else ""
     if not css:
         return "skip", "app.css is not here"
     em = _rail_narrow_em(css)
@@ -36200,7 +36445,7 @@ def _phone_card_compact():
     them; the title in the serif; and the year on every dated stop (app.js
     datedRail), which no rule hides but the narrow rail's, where the days
     step out whole (_rail_large_text)."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    css = _source("src/pages/app.css") if Path("src/pages/app.css").exists() else ""
     if not css:
         return "skip", "app.css is not here"
     tokens = _css_palette(css)["light"]
@@ -36262,7 +36507,7 @@ def _phone_card_status_right():
     not wrap, its chip (.cstat) must keep margin-left:auto, and no rule
     under a narrow query may put margin-left:0 on a .crow chip, which is
     what dropped it to a line of its own on 9 October."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    css = _source("src/pages/app.css") if Path("src/pages/app.css").exists() else ""
     if not css:
         return "skip", "app.css is not here"
     narrow = [(ctx, sel, dict(_css_decls(body))) for ctx, sel, body, _ln in _css_rules(css)
@@ -36378,10 +36623,10 @@ def _summary_votes_linked():
     assert "the House passed it 16–8" in story, "the House's 16-8 of 10 April, which no card has, was linked"
     # The address /bill/<year>/<bill>/votes#vote-... stays this bill's page, opens
     # the Votes tab and brings the card up, on load, on a click and on a hash change.
-    src = Path("src/pages/app.js").read_text(encoding="utf-8").replace("\r\n", "\n")
+    src = _source("src/pages/app.js").replace("\r\n", "\n")
     assert src.count("VOTE_HASH.test(said)") >= 3 and "jumpToVote();\n};" in src \
         and "a[data-vote]" in src, "a vote's address does not open the Votes tab at its card"
-    assert "a.vtl{white-space:nowrap}" in Path("src/pages/app.css").read_text(encoding="utf-8"), (
+    assert "a.vtl{white-space:nowrap}" in _source("src/pages/app.css"), (
         "app.css lets a tally link break across two lines")
     return "ok", "tallies link to their cards by date, chamber and counts, none where no single card fits"
 
@@ -36540,7 +36785,7 @@ def _hearings_one_player():
                      r'<span class="vwout">.*?cstat.*?</span></span><span class="vwbt">a title</span>', line), (
         f"the committee's bill line is not number, moments and chip on one line, then the title: {line[:400]}")
     # A chip's own rule (.cstat, .rcres) pushes it to the right edge; beside the moments it must not.
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     assert ".vwbills .vwmom .chip,.vwres .chip{margin-left:0}" in css, (
         "app.css lets the outcome chip go to the right edge, away from the moments")
     return "ok", ("one player and a playlist of the bill's recordings; the sittings' counts, votes and moments "
@@ -36557,7 +36802,7 @@ def _actions_level():
     margin is what pushed it down. A page's row keeps none, as a bill page's
     (.racts #reportbox is display:contents). Measured in a browser: both
     buttons' tops the same, at 1280 and at 390."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     rules = _css_rules(css)
     base = [b for ctx, sel, b, _l in rules if not ctx and sel == "#reportbox"]
     assert base and "margin-top" in "".join(base), "#reportbox no longer stands clear of the record below it"
@@ -36578,7 +36823,7 @@ def _tally_whole():
     in a span app.css keeps on one line (tallyWhole, .jl .tally): a count
     either side of the dash, thousands and all, and nothing else -- not a
     rule's number, "Senate Rule 3-23", nor the comma after a tally."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    css = _source("src/pages/app.css") if Path("src/pages/app.css").exists() else ""
     if not css:
         return "skip", "app.css is not here"
     # At every width, so outside any query: the break was on a phone, and a
@@ -36859,13 +37104,13 @@ def _rail_study_and_table_marks(N, B):
         drew = "app.js draws them on the card, the page, the bare rail and How it got here"
 
     # SHAPE, NOT INK ALONE: four filled marks, four glyphs.
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    js = _source("src/pages/app.js")
+    css = _source("src/pages/app.css")
     flat = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
     # The rail's marks are components.js's since 10 October 2026 (RL_MARK,
     # RL_WAVE), which draws the dated rail in both languages; app.js's WAVE
     # is the same drawing.
-    cjs = Path("src/pages/components.js").read_text(encoding="utf-8")
+    cjs = _source("src/pages/components.js")
     mk = re.search(r'const RL_MARK=\{p:"(?:\\u2713|✓)",x:"(?:\\u2715|✕)",s:RL_WAVE\};', cjs)
     if not (mk and re.search(r"const RL_WAVE='<svg class=\"wave\"[^;]*<path ", cjs)
             and "const WAVE=RL_WAVE;" in js):
@@ -37186,7 +37431,7 @@ def _rail_endings(N, B):
     death = "Died on the table when the session ended"
     # The report's words are study_report.json's (23 October 2026), which
     # _study_report_said_once holds to the person's; read here, not retyped.
-    sr = json.loads(Path("src/pages/words/study_report.json").read_text(encoding="utf-8"))
+    sr = json.loads(_source("src/pages/words/study_report.json"))
     reported = {k: f"{sr['head']}: {v}" for k, v in sr["said"].items()}
     for k, want in (
             ("HB96", [("H", "tabled", "t", "2025-03-26", "Laid on the table, 199–135"),
@@ -37531,7 +37776,7 @@ def _rails_on_a_phone():
     (_rail_drawn, which _rail_on_a_phone holds app.js to). The words a row
     carries beside its days are said and not drawn, so they take no room."""
     idx = Path("site/idx")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    css = _source("src/pages/app.css") if Path("src/pages/app.css").exists() else ""
     if not (idx.is_dir() and css):
         return "skip", "no built idx/, or no app.css"
     width, pad = _rail_phone(css)
@@ -37972,7 +38217,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     # The same rail closed as open, so the same width: and its labels on one
     # line from the top, which centring each stop's words in the tallest
     # stop's height did not give (app.css, .rail.dated .stop).
-    css = Path("src/pages/app.css").read_text(encoding="utf-8") if Path("src/pages/app.css").exists() else ""
+    css = _source("src/pages/app.css") if Path("src/pages/app.css").exists() else ""
     assert re.search(r"(?:^|[,}\s])\.rail\.dated\{max-width:560px", css), (
         "app.css does not give the dated rail one width on every card (.rail.dated)")
     assert re.search(r"\.rail\.dated \.stop\{[^}]*justify-content:flex-start", css), (
@@ -38665,7 +38910,7 @@ def _proceedings_official_names(build_proceedings, committee_names):
     assert n == 4, n
     kept = BP.fold_to_events(rows)
     assert len(kept) == 6, [(r["bill"], r["committee"]) for r in kept]
-    src = Path(BP.__file__).read_text(encoding="utf-8")
+    src = _source(BP.__file__)
     main_ = src[src.index("def main("):]
     assert main_.index("official_names(rows)") < main_.index("fold_to_events(rows)"), (
         "build_proceedings renames after the fold, so two spellings of one "
@@ -39807,7 +40052,7 @@ def _your_town():
         if f.exists():
             assert f'data-yt="{kind}"' in f.read_text(encoding="utf-8"), \
                 f"learn/{page} lost its Your town box"
-    js = _paths.locate("src/pages/find.js").read_text(encoding="utf-8")
+    js = _source(_paths.locate("src/pages/find.js"))
     keeps = re.findall(r"localStorage\.setItem\(([^,]+),([^)]+)\)", js)
     # The town's slug, and the reader's language from Settings (i18n.py, 23
     # October 2026), which is a code ("en", "es") and says nothing of where
@@ -39922,9 +40167,9 @@ def _addr_node(script, files):
     node = shutil.which("node") or shutil.which("node.exe")
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "find.js").write_text(_paths.locate("src/pages/find.js").read_text(encoding="utf-8"),
+        (root / "find.js").write_text(_source(_paths.locate("src/pages/find.js")),
                                       encoding="utf-8")
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
                                       encoding="utf-8")
         for name, text in files.items():
             (root / name).parent.mkdir(parents=True, exist_ok=True)
@@ -40059,8 +40304,7 @@ def _addr_streets():
             "earlier files: " + (r.stdout + r.stderr)[-300:])
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    assert '["build_addr_index.py", "--site", "site"]' in _paths.locate("build_all.py").read_text(
-        encoding="utf-8"), "build_all.py no longer runs build_addr_index.py"
+    assert '["build_addr_index.py", "--site", "site"]' in _source(_paths.locate("build_all.py")), "build_all.py no longer runs build_addr_index.py"
     return "ok", (f"{len(files)} files, the largest {sizes[-1] / 1e3:.0f} KB; {len(want)} real "
                   "addresses each offered first as the Census matched it, parity choosing "
                   "Willow Street's ZIP; without the list a warning and no files")
@@ -40141,7 +40385,7 @@ def _addr_suggest():
     assert not stray and got["scripts"] == 0, (
         f"while the reader typed, find.js asked for {stray} and made {got['scripts']} script tags: "
         "only this site's own files may be asked for until an address is chosen")
-    src = js.read_text(encoding="utf-8")
+    src = _source(js)
     part = src[src.index("const YA={"):src.index("function ytRows(")]
     assert not re.search(r"https?://", part), "the suggestions' code names another server"
     assert part.count("fetch(") == 1 and 'fetch("/addr/"+k+".json")' in part, \
@@ -40837,7 +41081,7 @@ def _home_cards(BP, BC, G):
     # The columns: one treatment, drawn by app.css, inside the columns.
     cls = BP.HOME_COLUMN_OPTIONS[BP.HOME_COLUMNS]
     assert f'<div class="hcols {cls}">' in home, f"the home page's columns do not carry {cls}"
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     style = (site / "app.css").read_text(encoding="utf-8")
     for opt, c in BP.HOME_COLUMN_OPTIONS.items():
         rules = re.findall(r"([^{}]*\." + re.escape(c) + r"\b[^{}]*)\{([^{}]*)\}", css)
@@ -41040,7 +41284,7 @@ def _build_date_stated(build_all, build_date, shell):
                                        q.read_text(encoding="utf-8", errors="replace"))}
     assert any(shell.cite_day(d) in cited_days for d in built_on), (
         "with no day stated, no page that has no record date of its own cites the day it was built")
-    src = Path(build_all.__file__).read_text(encoding="utf-8")
+    src = _source(build_all.__file__)
     assert "build_date.stated()" in src and '"date_stated"' in src, (
         "build_all.py no longer says, or records in build.json, that its day was stated")
     return "ok", (f"{len(seen)} scripts on the build's path, none asking the clock for "
@@ -41913,14 +42157,14 @@ def _session_day_index(BSP, SD, shell):
         bad += _day_index_faults(text, rel, rel[:-len(".html")])
     assert drawn >= 3 and with_player, (
         f"the fixture's site drew {drawn} days in order, {with_player} with a player: too few to hold")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     wide = re.search(r"@media \(min-width:60em\)\{[^@]*?\.wday > \.wside\{[^}]*position:sticky", css)
     if not wide:
         bad.append("app.css no longer holds the sidebar (.wday > .wside) in view on a wide screen")
     if not re.search(r"\.wday > \.wside\{display:contents\}", css):
         bad.append("app.css no longer undoes the sidebar on a phone, so its index cannot be held "
                    "at the top of the screen")
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    js = _source("src/pages/app.js")
     hook = js[js.find('getElementById("dayidx")'):][:3000]
     if not hook or "fold.open=true" not in hook or 'setAttribute("aria-current","location")' not in hook:
         bad.append("app.js no longer opens the day's index on a wide screen and marks the line being read")
@@ -42091,7 +42335,7 @@ def _session_card_order(BSP, SD, shell):
             bad.append(f"the clerk's words {words!r}" + (f" moved by {mover}" if mover else "")
                        + (" are dropped, and say more than the head" if keep
                           else " are kept, and say nothing the head does not"))
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     if not re.search(r"\.cline \.dvote > \.rcrec\{[^}]*font-size:var\(--t-sm\)", css):
         bad.append("app.css no longer sets the clerk's words small at the foot of the vote")
     assert not bad, f"{len(bad)} faults on the session days' cards: " + "; ".join(bad[:6])
@@ -45745,7 +45989,7 @@ def _rsa_links_own_pages(B, RSA):
     finally:
         B._ENACTED[:] = keep_e
     assert changed == ["6:12", "91-A:1-a", "91-A:4"], f"Changed these statutes is not in statute order: {changed}"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     assert app.count('charAt(0)==="/"') >= 3, "an app link writer sends the site's own statute page to a new tab"
     assert "function changedLine(d)" in app and "+changedLine(d)" in app, \
         "the bill page does not draw Changed these statutes"
@@ -45925,7 +46169,7 @@ def _statute_blanks_wrap(B, RSA, S):
     words = [(w, c) for p in pages.values() for w, c in _html_text_chains(p, r"[^\s]{20,}") if c[0]["tag"] == "h1"]
     assert any("optometric" in w.lower() for w, _c in words), (
         f"RSA 200-J's page does not carry its name's long word in its heading: {[w for w, _c in words]}")
-    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    rules = _css_screen_rules(_source("src/pages/app.css"))
     memo, held, bad = {}, Counter(), []
     for what, run, chain in [("underscores", r, c) for r, c in runs] + [("title", w, c) for w, c in words]:
         brk, whole = _wrap_breaks(rules, chain, memo)
@@ -46496,7 +46740,7 @@ def _rsa_defined_terms(B, RSA, S):
         f"a click on a defined word in the Laws page's preview does not open its box in place, or navigates: {out}")
     reader = B.LANDING_JS[B.LANDING_JS.find("read.innerHTML='<p class=\"lw-rcrumb\">"):]
     assert 'querySelectorAll("a.rs-tm")' in reader and "importNode" in reader and "doc.getElementById(id)" in reader,         "the Laws page's reader does not bring in the definitions its section's defined words point at"
-    assert "</div>{DEFS_JS}{LANDING_JS}" in Path("src/pages/build_rsa.py").read_text(encoding="utf-8"),         "the Laws page does not carry the definitions script beside its own"
+    assert "</div>{DEFS_JS}{LANDING_JS}" in _source("src/pages/build_rsa.py"),         "the Laws page does not carry the definitions script beside its own"
     wrong = [k for k in ("focus", "in_text", "tab_in_stays", "escape", "link_follows", "tap_stays",
                          "tap_opens", "tap_link", "pinned_stays", "second_tap_closes", "reopens",
                          "pinned_escape", "space_opens", "space_pins", "space_closes",
@@ -46522,11 +46766,11 @@ def _rsa_defined_terms(B, RSA, S):
         and out["point_shifted"] == ["692px", "258px"], (
         f"the definition box's pointer is not at its word: "
         f"{[out.get(k) for k in ('point_below', 'point_above', 'point_shifted')]}")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     for rule in (".termpop:not(.seatpop)::before", ".termpop.above:not(.seatpop)::after",
                  ".rs-dpin{display:block;min-height:0;overflow-y:auto}"):
         assert rule in css, f"app.css lacks {rule}: the definition boxes would have no pointer, or cut it off"
-    assert '"--arrow"' in Path("src/pages/components.js").read_text(encoding="utf-8"), \
+    assert '"--arrow"' in _source("src/pages/components.js"), \
         "components.js's term popovers do not set their pointer's place"
     return "ok", ("153:5 marked from 153:1 and 153:28 from 153:27, not 153:2 or 540-C:1; 541-A:14-a's 'files' "
                   "withheld for two definitions; no term in its own; the box by keyboard, tap and mouse, "
@@ -46725,8 +46969,8 @@ def _rsa_history_pills(B, RSA, S):
         bad.append(f"a law's words are on a pill where they are seen: {seen.strip()[:200]!r}")
     if 'How it has changed <span class="rs-fcount">&middot; 6</span>' not in s5:
         bad.append("the heading does not count the pills, six acts of eight rows")
-    if "rs-hist" in Path("src/pages/app.css").read_text(encoding="utf-8") \
-            or "rs-hist" in Path("src/pages/build_rsa.py").read_text(encoding="utf-8"):
+    if "rs-hist" in _source("src/pages/app.css") \
+            or "rs-hist" in _source("src/pages/build_rsa.py"):
         bad.append("the history's rows (rs-hist) are still styled or drawn")
     assert not bad, "; ".join(bad)
     return "ok", ("six acts of eight rows are six pills, newest first, a bill's with its law's year "
@@ -46877,7 +47121,7 @@ def _plain_action(PA, B, BF):
     assert got == "Introduced and adopted, 314–25 on a roll call", f"HB 1703 of 2016's Documents tab reads {got!r}"
     then = BF.next_lines({"events": listed})
     assert then == {id(listed[0]): listed[1]["text"]}, f"the feed reads HB 2023's first line beside {then}"
-    calls = re.findall(r"PA\.plain\([^\n]*", Path("src/pages/build_feeds.py").read_text(encoding="utf-8"))
+    calls = re.findall(r"PA\.plain\([^\n]*", _source("src/pages/build_feeds.py"))
     assert calls and all("next_line=" in c for c in calls), f"a feed reads a line without the one after it: {calls}"
     return "ok", (f"{len(cases) + len(on_bill)} docket lines read as the approved words say, and "
                   f"{sum(not w for w in cases.values())} left as written; the Documents tab and the feed "
@@ -46926,7 +47170,7 @@ def _learn_term_marks(civics, C):
                 bad.append(f"{t['slug']} marks {m.group(2)} on a <{m.group(1)}>, not an <abbr>")
             if m.group(2) not in g:
                 bad.append(f"{t['slug']} marks {m.group(2)!r}, which is no glossary entry")
-    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    cat = json.loads(_source("src/pages/lang/es.json"))["strings"]
     pages = {t["slug"] for t in civics.TOPICS}
     for k, e in cat.items():
         if k.split(".")[0] not in ("learn", "guide") or k.split(".")[1] not in pages:
@@ -46982,7 +47226,7 @@ def _shorthand_from_the_glossary(civics, C):
                  "<b>Ordered to a third reading</b></td>", "<b>Motion Adopted / Motion Failed</b>"):
         if gone in site:
             bad.append(f"Using This Site still says {gone!r}")
-    notes = " ".join(json.loads(Path("src/pages/words/glossary.json").read_text(encoding="utf-8"))["_about"])
+    notes = " ".join(json.loads(_source("src/pages/words/glossary.json"))["_about"])
     if "NOTHING DRAWS THESE YET" in notes or "civics._shorthand" not in notes:
         bad.append("glossary.json's notes do not say what draws its entries")
     assert not bad, "; ".join(bad[:4])
@@ -47046,7 +47290,7 @@ def _rsa_landing(B, RSA, S):
             "repealed\n[Redesignated as RSA 246 by 2024, 33:4, eff. July 1, 2024.]")
     assert B.moved_to(note) == "246" and 'It is now <a href="/laws/246">RSA 246</a>' in B.repeal_words(note), \
         B.repeal_words(note)
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     assert re.search(r"\.rs-folds\{[^}]*flex-direction:column", css), \
         "the section's folds sit side by side, so opening one moves the other"
     assert re.search(r"\.rs-banner\{[^}]*var\(--t-lead\)", css), "the repeal banner is not at the lead's size"
@@ -47113,7 +47357,7 @@ def _laws_search_layout(B, RSA, S, PC):
                        ("history.replaceState(history.state", "the filters are not written into the address"),
                        ("keepCh(chOf(x[0]))", "the search's hits are not held to the filters")):
         assert said in js, what
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     narrow = re.search(r"@media \(max-width:59\.9375em\)\{\n  \.lw\{[^\n]*grid-template-areas:\"t\" \"f\" \"d\""
                        r"(.*?)\n\}", css, re.S)
     assert narrow and ".shell .lw .ftoggle{display:flex}" in narrow.group(1) \
@@ -47123,7 +47367,7 @@ def _laws_search_layout(B, RSA, S, PC):
         ".shell:has(.rs-page) > .facets,.shell:has(.rs-page) > .ftoggle{display:none}" in css, (
             "the template's rule that hides its own filter column on the Laws pages hides theirs too")
     assert "#q,#rsq{" in css and "#qgo,#rsgo{" in css, "the Laws box is not drawn as the bill search's"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     assert 'const g=e.target.closest("#facets .fhead");' in app, (
         "app.js's click on a filter group's head is not held to /bills' own, so the Laws page's would redraw it")
     con = PC.load()
@@ -47447,7 +47691,7 @@ def _filter_offers(B):
     for said in ("window.filterCombo(box,{offers:lawOffers,choose:take", "if(offers&&offers.enter())return;",
                  '{key:"tp",values:vals("tp")', '{key:"ti",values:vals("ti")', '{key:"st",values:vals("st")'):
         assert said in B.LANDING_JS, f"the Laws page's search does not offer its filters: no {said}"
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     assert re.search(r"\.qoffer\{[^}]*min-height:44px", css), "an offer is not 44px tall"
     return "ok", ("'housing' offers the topic and the House Housing committee with their counts; the arrow, "
                   "Return and Escape as WAI-ARIA's combobox; the topic ticked and in the address, the word out "
@@ -47547,7 +47791,7 @@ def _constitution_tab(B, CT, PC, RSA, S):
         "an address naming an article does not open the Constitution tab"
     bare = B.landing_page(S.template(Path("site")), t, data, "https://graniterecord.org", {}, {}, con={})
     assert 'role="tablist"' not in bare and 'id="lw"' in bare, "without the file the page is not the one it was"
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     assert ".cn-notes{" in css and ".lw-tabs{" in css, "app.css has no rules for the Constitution tab"
     absent = [x for x in CHAIN_NEEDS + ["build_rsa.py"] if not _paths.locate(x).exists()]
     if absent:
@@ -47621,7 +47865,7 @@ def _cacr_articles(PC, CT, BSV, BBP):
     )
     for text, want in cases:
         assert got(text) == want, f"{text[:60]!r} read as {got(text)}"
-    src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_site_v2.py")
     assert '{"constitution": c}' in src and 'bid.startswith("CACR")' in src, \
         "a CACR's record does not carry the articles it changes"
     assert BSV.constitution_targets("I. That article 78 of the second part of the constitution be amended")[0][
@@ -48256,7 +48500,7 @@ def _statute_nights(NI):
     off = [d for d in (date(2026, 12, 31), date(2027, 1, 4), date(2027, 6, 30), date(2027, 7, 4),
                        date(2026, 10, 22)) if NI.statute_night(d)]
     assert not on and not off, (on, off)
-    src = Path("nightly.py").read_text(encoding="utf-8")
+    src = _source("nightly.py")
     assert "statute_night(datetime.now())" in src and src.count("take_views(\n") >= 0
     assert "STATUTE_VIEWS, \"the statutes, from the database, on a night" in src, \
         "the night's statute download is not through take_views with STATUTE_VIEWS"
@@ -48347,7 +48591,7 @@ def _follow_site_current(FS):
         moved = [n for n in fresh if got.get(n) != fresh[n]] + [n for n in got if n not in fresh]
         raise AssertionError(f"{why} ({', '.join(moved) or 'its words around them'}): run "
                              f"`{FS.COMMAND}` and commit {FS.OUT.as_posix()} with the change")
-    mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
+    mail = _source("workers/follow/mail.js")
     code = re.sub(r"/\*.*?\*/", "", mail, flags=re.S)
     code = re.sub(r"(^|[^:])//.*$", r"\1", code, flags=re.M)
     assert re.search(r'^import \{[^}]*\} from "\./site\.gen\.js";', code, re.M), \
@@ -48357,7 +48601,7 @@ def _follow_site_current(FS):
                       f"white is site.gen.js's, from app.css")
     assert "gc.nh.gov" not in code, \
         "mail.js types a General Court address; the testimony forms are site.gen.js's, from app.js"
-    page = Path("workers/follow/page.js").read_text(encoding="utf-8")
+    page = _source("workers/follow/page.js")
     code = re.sub(r"/\*.*?\*/", "", page, flags=re.S)
     code = re.sub(r"(^|[^:])//.*$", r"\1", code, flags=re.M)
     assert re.search(r'^import \{[^}]*\bPAGE_PALETTE\b[^}]*\} from "\./site\.gen\.js";', code, re.M), \
@@ -48368,7 +48612,7 @@ def _follow_site_current(FS):
     # THE WORDMARK'S FACE IS THE SITE'S (the walk of 31 October 2026): the
     # follow pages drew "Granite Record" in Source Serif 4, the header in
     # app.css's --brand-face, Playfair Display 600 at 22px.
-    face = re.search(r"--brand-face:([^;]+);", Path("src/pages/app.css").read_text(encoding="utf-8"))
+    face = re.search(r"--brand-face:([^;]+);", _source("src/pages/app.css"))
     brand = re.search(r"\.brand\{[^}]*\}", code)
     assert face and f"--brand-face:{face.group(1)}" in code and brand \
         and "var(--brand-face)" in brand.group(0) and "600 22px" in brand.group(0) \
@@ -48413,7 +48657,7 @@ def _study_report_said_once(B, PA):
     site.gen.js, which follow_site.py writes from the file (23 October 2026;
     _follow_site_current holds it current). Each place is drawn here on the
     three readings, and none of them types the words out again."""
-    sr = json.loads(Path("src/pages/words/study_report.json").read_text(encoding="utf-8"))
+    sr = json.loads(_source("src/pages/words/study_report.json"))
     head, said = sr.get("head"), sr.get("said")
     assert (head, said) == ("Interim study report", {
         "rec": "recommends future legislation", "not": "does not recommend future legislation",
@@ -48451,12 +48695,12 @@ def _study_report_said_once(B, PA):
             if f"interim study report{':' if k == 'rec' else ''} {said[k]}, 9–0." not in card:
                 bad.append(f"a committee's meeting card for {k!r} reads {card!r}")
         drew = "app.js's closing note and meeting card draw them"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     if "const STUDY_SAID=WORDBOOK.study_report.said;" not in app:
         bad.append("app.js does not take its study report words from WORDBOOK.study_report")
     # The Worker's: site.gen.js's STUDY_REPORT, as committed, and mail.js's
     # three sentences made of it, the head before each reading.
-    mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
+    mail = _source("workers/follow/mail.js")
     sent = _site_gen().get("STUDY_REPORT")
     if sent != {"head": head, "said": said}:
         bad.append(f"site.gen.js's STUDY_REPORT {sent} is not study_report.json's words")
@@ -48511,7 +48755,7 @@ def _follow_rollcall_counts(FC):
     it = FC.item("g", "2026-03-06", "vote", "HB 1 \u2014 MA RC 201-163", rollcall=got)
     assert it["rollcall"] == got
     assert "rollcall" not in FC.item("g", "2026-03-06", "vote", "x", rollcall={"yeas": "201"})
-    src = Path("src/pages/build_feeds.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_feeds.py")
     assert "rollcall=(rollcall_for(" in src and "FC.FLOOR_COUNT.search" in src and \
         "all(h == hits[0] for h in hits)" in src, (
         "build_feeds no longer hands a bill's vote item its roll call's count, or draws one of two "
@@ -48544,7 +48788,7 @@ def _follow_manager_contract(FC):
     FC._item(dict(it, seen="2026-03-07T09:00:00Z", vote={"result": "won"}), "x", True, False, out)
     assert out, "a ballot with no ballot passed the check"
     assert FC.key_ok("law:91-A") and FC.key_ok("law:674") and not FC.key_ok("law:91-a")
-    js = Path("workers/follow/common.js").read_text(encoding="utf-8")
+    js = _source("workers/follow/common.js")
     assert "law: /^\\d{1,3}(?:-[A-Z]{1,2})?$/" in js and FC.REF["law"].pattern == r"^\d{1,3}(?:-[A-Z]{1,2})?$", \
         "the build and the sender read a law's key differently"
     return "ok", "milestones by kind and by what a docket line decides; a ballot with its roll call; law:91-A"
@@ -48607,7 +48851,7 @@ def _follow_email_words(FC, BF, PA):
                       ({"n": "HB 4", "kind": "law"}, "HB 4 — Became law."),
                       ({"n": "HB 5", "kind": "done", "status": ""}, "HB 5 — Concluded.")):
         assert BF.ending_words(row) == want, (BF.ending_words(row), want)
-    src = Path(BF.__file__).read_text(encoding="utf-8")
+    src = _source(BF.__file__)
     assert '"law": "was signed into law"' not in src and '"done": "has finished its course"' not in src, \
         "an ending is put back into the kind's sentence, which a law unsigned or overridden is not"
     assert "_end = ending_words(b)" in src and '"said": ending_words(b)' in src
@@ -48654,7 +48898,7 @@ def _follow_email_words(FC, BF, PA):
     # tests/follow/mail.test.js holds the email to its words. The fixtures'
     # meetings are what the build would write for their lines, and the feed
     # item keeps the clerk's line, which is the record.
-    cases = json.loads(Path("tests/follow/meeting_cases.json").read_text(encoding="utf-8"))["cases"]
+    cases = json.loads(_source("tests/follow/meeting_cases.json"))["cases"]
     for c in cases:
         assert PA.meeting(c["line"]) == c["meeting"], (c["form"], PA.meeting(c["line"]), c["meeting"])
         if c["meeting"]:
@@ -48733,14 +48977,14 @@ def _rooms_in_words(PA):
     got = _app_js(f"{json.dumps(list(cases))}.map(scope.roomWords)", names=("roomWords",))
     if got is not None:
         bad += [f"roomWords({raw!r}) is {g!r}" for raw, g in zip(cases, got) if g != cases[raw]]
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     for need, where in (('<span class="calwhere">${esc(roomWords(venue))}</span>', "a meeting's room"),
                         ('<span class="calwhere">${esc(roomWords(q[2]))}</span>', "a slot's room"),
                         ('["Meets In",esc(roomWords(c.room))]', "a committee's Meets In"),
                         ('` &middot; ${esc(roomWords(rooms[0]))}`', "a committee's meeting")):
         if need not in app:
             bad.append(f"app.js draws {where} in the clerk's words")
-    pages = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    pages = _source("src/pages/build_pages.py")
     if pages.count('<span class="calwhere">{esc(PA.place(') != 2:
         bad.append("build_pages' Calendar draws a room in the clerk's words")
     shared = _fixture_site_shared()[0]
@@ -48805,7 +49049,7 @@ def _state_library_room(PA, BBP, BSC):
             bad.append(f"plain_action.plain({line!r}) is {PA.plain(line)!r}")
         if (PA.meeting(line) or {}).get("venue") != want:
             bad.append(f"the email's meeting for {line!r} is {PA.meeting(line)}")
-    mc = json.loads(Path("tests/follow/meeting_cases.json").read_text(encoding="utf-8"))["cases"]
+    mc = json.loads(_source("tests/follow/meeting_cases.json"))["cases"]
     if not [c for c in mc if c.get("meeting") and c["meeting"].get("venue") == want
             and ", SL," in c["line"] and c["words"].endswith(want)]:
         bad.append("tests/follow/meeting_cases.json has no Map Room case, so no test holds the email's words")
@@ -48823,7 +49067,7 @@ def _state_library_room(PA, BBP, BSC):
                                            "body": "S", "committee": "Education", "venue": "SL Map Room"}]})
     if "Senate Education, State Library Map Room</li>" not in rec or "SL Map Room" in rec:
         bad.append("the bill's page without scripts prints the schedule's \"SL Map Room\"")
-    feeds = Path("src/pages/build_feeds.py").read_text(encoding="utf-8")
+    feeds = _source("src/pages/build_feeds.py")
     if "(f\", {PA.place(u['venue'])}\" if u.get(\"venue\") else \"\")" not in feeds:
         bad.append("the feed's hearing ahead prints the clerk's room")
     study = BSC.meeting_html({"name": "Commission on the Arts"},
@@ -48851,7 +49095,7 @@ def _follow_privacy_gated(S, BP, BE):
         # it carries one (22 October 2026): read as it stood, the go-live's
         # own file was "off" and live at once, and this check failed it.
         base = re.sub(r'\n\[\[env\.production\.d1_databases\]\]\s*\nbinding\s*=\s*"FOLLOW_DB"[^\[]*',
-                      "\n", Path("wrangler.toml").read_text(encoding="utf-8"))
+                      "\n", _source("wrangler.toml"))
         (tmp / "off.toml").write_text(base, encoding="utf-8")
         (tmp / "on.toml").write_text(base + '\n[[env.production.d1_databases]]\nbinding = "FOLLOW_DB"\n'
                                      'database_name = "graniterecord-follow"\ndatabase_id = "x"\n', encoding="utf-8")
@@ -48921,7 +49165,7 @@ def _statutes_weekly(NI, B):
         NI.run, NI.LOG, NI.QUIET, probe_db.hold_standing = saved
         shutil.rmtree(tmp, ignore_errors=True)
     assert "NH_RSA" in NI.STATUTE_VIEWS and NI.STATUTE_SHRINK <= 0.05
-    src = Path(NI.__file__).read_text(encoding="utf-8")
+    src = _source(NI.__file__)
     assert re.search(r"take_views\(STATUTE_VIEWS, [^)]*shrink=STATUTE_SHRINK\)", src), \
         "the weekly does not take the statutes with their own shrink"
     kit = json.loads(Path(_paths.ROOT / "cloud_kit.json").read_text(encoding="utf-8"))["kit"]
@@ -48961,7 +49205,7 @@ def _statute_lead_once(B):
             "October 18, 2026."), B.as_of("2026", today=_dt.date(2026, 10, 25))
     finally:
         B.TABLE_TAKEN = saved
-    src = Path(B.__file__).read_text(encoding="utf-8")
+    src = _source(B.__file__)
     for gone in ("The text as the General Court's table holds it", "as the General Court\\'s table "
                  "holds them"):
         assert gone not in src, f"build_rsa still says {gone!r}"
@@ -48991,7 +49235,7 @@ def _related_judged(RB, R):
     assert RB.LAW_GAP == 2 and RB.AMEND_GAP == 3 and RB.REFILE_BIG_SHARE == 0.10
     assert RB.APPROP.search("there is hereby appropriated to the department the sum of $1")
     assert RB.DISTRICTS.search("1 state senate districts rsa 662:3 is repealed and reenacted")
-    judged = json.loads(Path("tests/related_judged_2026-10-11.json").read_text(encoding="utf-8"))["pairs"]
+    judged = json.loads(_source("tests/related_judged_2026-10-11.json"))["pairs"]
     assert len(judged) >= 300 and sum(p["verdict"] == "correct" for p in judged) >= 250
     rb = Path("related_bills.json")
     if not rb.is_file():
@@ -49030,10 +49274,10 @@ def _sponsor_prime_first():
     a sponsor with a member page or a party, and for one with neither -- the
     surnames the bills before 1999 print -- the name and the seat, so two
     people of one surname are two choices."""
-    src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_site_v2.py")
     assert 'row["cosp"] = _cosp' in src and "person_name(s_.get(\"name\")" in src, \
         "the index rows no longer carry their co-sponsors"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     assert 'if(k==="sponsor")return withCosp&&b.cosp?[spKey(b),...b.cosp]:[spKey(b)];' in app, \
         "the Sponsor filter does not match the prime sponsor alone, or co-sponsors as well when asked"
     assert "rows=rows.filter(primeChosen).concat(rows.filter(b=>!primeChosen(b)))" in app \
@@ -49086,7 +49330,7 @@ def _related_tab(B, RB):
     assert "m" not in got[0] and "m" not in got[2], got
     assert not RB.shown({"kind": "amendment", "band": "line", "fate": "recommended"}), \
         "an amendment no vote is on record for would be shown"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     assert "function renderRelated(b,relRows,d)" in app and 'replace("{b}",name)' in app and 'related:"7"' in app, \
         "the page does not draw the Related tab from d.related"
     return "ok", ("SB 184: rejected amendment, HB 377 once, SB 479 filed before; below the line, "
@@ -52059,7 +52303,7 @@ def _vote_category_text(BSP, shell):
     The labels themselves are not checked: whether "Excused absence" and
     "Absent, not excused" should be renamed is the person's decision.
     """
-    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    src = _source("src/pages/app.js")
     m = re.search(r"const OTHER=\[(.*?)\];", src, re.S)
     assert m, "app.js no longer defines OTHER, the vote categories' text"
     strs = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))
@@ -54918,7 +55162,7 @@ def _directory_pages():
         assert 'href="data.html"' in foot, (
             "the footer does not link the Data page, which is now the route "
             "to the directory and so to every record")
-        exports = _paths.locate("build_exports.py").read_text(encoding="utf-8")
+        exports = _source(_paths.locate("build_exports.py"))
         assert 'href="directory.html"' in exports, (
             "the Data page does not link the directory, so nothing static "
             "reaches the per-record lists and a crawler sees no bills")
@@ -54989,7 +55233,7 @@ def _committee_not_conference(BC):
     wrong = [r for r in keep if not f(r)] + [r for r in drop if f(r)]
     assert not wrong, ("filed under a committee's page wrongly, or left off it: "
                        + "; ".join(f"{r['bill']} {r['kind']} {r['date']}" for r in wrong))
-    src = Path(BC.__file__).read_text(encoding="utf-8")
+    src = _source(BC.__file__)
     main_ = src[src.index("def main("):]
     assert re.search(r"for r in rows:\s+if not its_own_sitting\(r\):\s+continue",
                      main_), "build_committees.main no longer files its rows through its_own_sitting"
@@ -55237,7 +55481,7 @@ def _committee_not_a_notice(BC, P, B, BE, BV):
         shutil.rmtree(root, ignore_errors=True)
     # And the order main() does it in, and that the other readers ask the
     # same rule: read from the source, after what main() does has been run.
-    src = Path(BC.__file__).read_text(encoding="utf-8")
+    src = _source(BC.__file__)
     main_ = src[src.index("def main("):]
     loop = main_[main_.index("rows, histories = P.load()"):main_.index("# ---- bills referred")]
     at = [loop.find(x) for x in (
@@ -55248,13 +55492,12 @@ def _committee_not_a_notice(BC, P, B, BE, BV):
     assert all(x >= 0 for x in at) and at == sorted(at), (
         "build_committees.main no longer parts its rows by proceedings.sittings before "
         f"it files them, or no longer stops on its guards: {at}")
-    site_src = Path(B.__file__).read_text(encoding="utf-8")
+    site_src = _source(B.__file__)
     assert re.search(r"stations = \[x for x in stations\s+if not P\.notice_only\(",
                      site_src), "build_site_v2 no longer asks proceedings.notice_only"
     # The count of hearings the Learn pages state: of sittings, by the
     # histories record_figures has already read.
-    assert "procs, _notices = P.sittings(P.load(), every_narr)" in Path(
-        BV.__file__).read_text(encoding="utf-8"), (
+    assert "procs, _notices = P.sittings(P.load(), every_narr)" in _source(BV.__file__), (
         "build_civics no longer counts its hearings from proceedings.sittings")
     return "ok", ("HB 273 of 2017 and HB 1284 and HB 1512 of 2012 are notices by their own "
                   "histories, HB 255's hearing and executive session and 2011's HB 273 "
@@ -55285,7 +55528,7 @@ def _committee_unmatched_ceiling(BC):
     assert BC.unmatched_guard(at) == "", "the guard stops a build at its own ceiling"
     msg = BC.unmatched_guard(over)
     assert msg and str(ceiling) in msg and "Exec Depts and Admin" in msg, msg
-    src = Path(BC.__file__).read_text(encoding="utf-8")
+    src = _source(BC.__file__)
     main_ = src[src.index("def main("):]
     assert re.search(r"stop = unmatched_guard\(unmatched\)\s+if stop:\s+raise SystemExit",
                      main_), "build_committees.main no longer stops on the guard"
@@ -55326,12 +55569,12 @@ def _committees_archived(BC):
         "1989 to 1992, 1997 to 1998 and 2011 to 2012"
     # And the committee's own page says it, since a reader from a search never
     # sees the listing.
-    src = _paths.locate("build_committees.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_committees.py"))
     assert 'rec["archived"] = {"years": runs(c["span"])}' in src, \
         "archived committees' JSON no longer carries the years"
     # The whole function, to the next one: a fixed 1,200 characters lost the
     # note when a comment above it grew (16 October 2026).
-    head = Path("src/pages/app.js").read_text(encoding="utf-8")
+    head = _source("src/pages/app.js")
     head = head[head.find("function renderCommitteeHead"):]
     head = head[:head.find("\nfunction ", 1)]
     assert "c.archived" in head and "A former committee." in head, (
@@ -55863,14 +56106,14 @@ def _committee_details_one_writer():
     assert len(scanned) >= 56, (
         f"only {len(scanned)} scripts were read for writers of committee_details.json, "
         "and 56 were on 23 October: the code folders are not being read")
-    src = mine.read_text(encoding="utf-8")
+    src = _source(mine)
     assert re.search(r"\bCD\.write_details\s*\(", src), (
         "fetch_committee_details.py no longer writes committee_details.json "
         "through committee_details.write_details, so this check reads nothing")
     assert not re.search(r"json\.dumps?\(\s*book\b", src), (
         "fetch_committee_details.py writes the committees.json it reads again, "
         "which GitHub's weekly job swaps in whole")
-    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8")) \
+    kit = json.loads(_source("cloud_kit.json")) \
         if Path("cloud_kit.json").exists() else {"kit": []}
     owner = {p: e.get("owner") for e in kit.get("kit", []) for p in e.get("paths", [])}
     if owner:
@@ -56114,7 +56357,7 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
         "Local and Regulated Revenues": {"1997-1998"}}) == [
         {"name": "Regulated Revenues", "years": "1989 to 1996"}]
     assert BC.runs(["2009-2010", "1997-1998"]) == "1997 to 1998 and 2009 to 2010"
-    src = Path(BC.__file__).read_text(encoding="utf-8")
+    src = _source(BC.__file__)
     # From who_sits on: main() reads the codes, the retired ones among them,
     # through who_sits since 10 October 2026, which with_roster shares.
     main_ = src[src.index("def who_sits("):]
@@ -56551,7 +56794,7 @@ def _logo_licence():
         assert src.count('class="logocredit"') == 1, f"{f}: the footer's logo credit is missing or doubled"
         assert "Debra Caplan" in src and "https://www.linescapesnh.com/" in src, \
             f"{f}: the footer credit no longer names Debra Caplan and links linescapesnh.com"
-    about = _paths.locate("build_pages.py").read_text(encoding="utf-8")
+    about = _source(_paths.locate("build_pages.py"))
     about = about[about.index('ABOUT = """'):]
     about = about[:about.index('"""', 12)]
     # "The Logo", in the Title Case of the About page the person approved on
@@ -56559,7 +56802,7 @@ def _logo_licence():
     assert "<h2>The Logo</h2>" in about and "Debra Caplan" in about \
         and "https://www.linescapesnh.com/" in about, \
         "the About page lost the logo section, its credit or its link"
-    ignored = Path(".gitignore").read_text(encoding="utf-8").splitlines()
+    ignored = _source(".gitignore").splitlines()
     for d in ("brand/licensed/", "assets/licensed/", "/Icon.png", "/Logo Black.png",
               "/Logo White.png", "/brand/*", "/assets/*.png", "/assets/*.svg",
               "/assets/*.ico"):
@@ -56640,12 +56883,12 @@ def _brand_files():
             continue        # it draws them; it does not ask for them
         for g in set(card.findall(code(f))):
             named.setdefault(g, f)
-    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
     for g in set(re.findall(r"url\(/([^)\s\"']+)\)", css)):
         named.setdefault(g, "app.css")
     manifest = Path("assets/site.webmanifest")
     assert manifest.exists(), "assets/site.webmanifest is not here, and it is tracked"
-    for icon in json.loads(manifest.read_text(encoding="utf-8"))["icons"]:
+    for icon in json.loads(_source(manifest))["icons"]:
         named.setdefault(icon["src"].lstrip("/"), "site.webmanifest")
 
     unlisted = sorted(set(named) - want - {BP.HEADER_MARK})
@@ -56659,7 +56902,7 @@ def _brand_files():
     assert named.get(BP.HEADER_MARK) == "app.css", (
         f"app.css no longer draws the header's mark from /{BP.HEADER_MARK}")
 
-    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))["kit"]
+    kit = json.loads(_source("cloud_kit.json"))["kit"]
     clip = {f"assets/{f}" for f in want if f != manifest.name}
     mine = [e for e in kit if any(x.startswith("assets/") and not x.startswith("assets/licensed/")
                                   for x in e.get("paths", []) + e.get("globs", []))]
@@ -56728,7 +56971,7 @@ def _header_mark():
     import struct
     import build_pages as BP
     import build_brand as BB
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     for m in ("/* MARK:START", "/* MARK:END"):
         assert css.count(m) == 1, f"app.css has {css.count(m)} of {m!r}, not one"
     a, b = css.index("/* MARK:START"), css.index("/* MARK:END")
@@ -56758,7 +57001,7 @@ def _header_mark():
     # is a broken or stretched image. Since 23 October the emails' are
     # site.gen.js's MARK_FILE, which follow_site.py writes from build_brand.py
     # (_follow_site_current holds it current), with mail.js's empty alt.
-    mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
+    mail = _source("workers/follow/mail.js")
     gen = _site_gen()
     side = (BB.MARK_BOX[0] + 2 * BB.MAIL_PAD, BB.MARK_BOX[1] + 2 * BB.MAIL_PAD)
     assert gen.get("MARK_FILE") == {"path": f"/{BB.MAIL_MARK}", "width": side[0], "height": side[1]} \
@@ -57028,7 +57271,7 @@ def _calendar_documents():
     if not Path("src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     # ---- the stylesheet: one row, and it fits ----
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     at = css.find("/* THE GENERAL COURT'S OWN CALENDARS AND JOURNALS, AS PDFs")
     assert at > css.find("/* THE CALENDAR, AS A CALENDAR") > 0, (
         "app.css has no rules for the Calendars & Journals section in the calendar's region")
@@ -57316,7 +57559,7 @@ def _calendar_documents():
         assert "filled from the kit" in BC.documents_problem([], queue=gone, kit=True), (
             "a folder the kit filled, without the queue the kit carries, does not fail the build")
         kit = Path("cloud_kit.json")
-        assert not kit.exists() or '"archive/queue.csv"' in kit.read_text(encoding="utf-8"), (
+        assert not kit.exists() or '"archive/queue.csv"' in _source(kit), (
             "cloud_kit.json no longer carries archive/queue.csv, which the pickers are built from")
 
         block = CD.block_html(docs, left)
@@ -57353,7 +57596,7 @@ def _calendar_documents():
         assert not bare, (f"{len(bare)} of {len(to_docs)} links to a calendar or journal open "
                           f"in the same tab or carry no outside-link mark: {bare[:2]}")
         # A session day's page links its own journal the same way.
-        sp = _paths.locate("build_session_pages.py").read_text(encoding="utf-8")
+        sp = _source(_paths.locate("build_session_pages.py"))
         jl = re.search(r'<a class="jpdf[^"]*"[^>]*>', sp)
         assert jl and 'target="_blank"' in jl.group(0) and 'rel="noopener"' in jl.group(0) \
             and re.search(r'class="(?:[^"]* )?out\b', jl.group(0)), (
@@ -57614,8 +57857,8 @@ def _one_stylesheet():
     every rule in its block for those pages alone, THE PAGES build_pages.py
     WRITES, is scoped to them, or all 33,683 record pages would take it.
     """
-    src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
-    app = Path("src/pages/app.css").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_pages.py"))
+    app = _source("src/pages/app.css")
     for gone in ('CSS = """', "def stylesheet(", "def shared(", "def pages_region("):
         assert gone not in src, (
             f"build_pages.py has {gone!r} again: a stylesheet of its own, or a cut of "
@@ -57648,7 +57891,7 @@ def _status_box_parity():
     person set what it should read, and the Python copy had no last floor
     session, no count of hearings and no date -- so it could not say a stale
     summary was stale."""
-    src = _paths.locate("build_pages.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_pages.py"))
     py = src[src.find("static_state = \"\""):][:3200]
     js = src[src.find("else if(_state)_state.innerHTML="):][:2400]
     # SINCE 16 SEPTEMBER THE SERVER'S COPY WINS. Both are still written -- the
@@ -58096,7 +58339,7 @@ def _tab_keyboard():
     press lost the keyboard's place, on every tabbed view. PAGE_TAB outlived the
     page it belonged to, so a committee opened after a member's Votes tab drew
     nothing. And the version picker declared role="tablist" with no tabs."""
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    js = _source("src/pages/app.js")
     handler = js[js.find('e.key==="ArrowLeft"'):][:900]
     assert "next.click()" in handler and ".focus()" in handler and \
         handler.find("next.click()") < handler.find("(fresh||next).focus()"), \
@@ -59298,7 +59541,7 @@ def _status_heads_full_totals():
     bad = []
     side = {v: c for v, _l, c in got["byStatus"]["status"]}
     first = [tuple(h) for h in got["byStatus"]["heads"]]
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    js = _source("src/pages/app.js")
     page = re.search(r"^const PAGE_SIZE = (\d+);", js, re.M)
     n = int(page.group(1)) if page else 0
     assert 4 < n < 150, f"the list's page is {n} cards; this fixture needs between 5 and 149"
@@ -60334,7 +60577,7 @@ def _laws_changed_layout():
     css = Path("src/pages/app.css")
     if not css.exists():
         return "skip", "app.css is not in this directory"
-    rules = _css_rules(css.read_text(encoding="utf-8"))
+    rules = _css_rules(_source(css))
     flat = {" ".join(sel.split()): dict(_css_decls(body)) for ctx, sel, body, _ln in rules if not ctx}
     bad = []
     lst = flat.get(".rsaoffers", {})
@@ -60483,7 +60726,7 @@ def _bill_status_select_categories():
     if [o[3] for o in tabled if o[0] == "Tabled"] != ["Tabled (0)"]:
         bad.append(f"Tabled chosen elsewhere reads {[o[3] for o in tabled if o[0] == 'Tabled']}, "
                    "not 'Tabled (0)'")
-    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"),
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"),
                  flags=re.S)
     rules = {sel_.strip(): body for sel_, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css)}
     for c in sorted(set(cls_of.values())):
@@ -61436,7 +61679,7 @@ def _committee_lists_paged(BC):
         bad.append(f"Show more is given a focus key, {got['key']}: the redraw would pull focus "
                    "back to the button")
     # On paper and without script.
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     hides = [(ctx, sel) for ctx, sel, body, _ln in _css_rules(css)
              if ".unshown" in sel and "none" in dict(_css_decls(body)).get("display", "")]
     if not hides or any(ctx != ("@media screen",) for ctx, _s in hides):
@@ -61543,8 +61786,8 @@ def _sort_beside_count():
     in which .qline and .qhint lay out nothing, held by _search_polish. What
     is held here still holds there: the two take one width, nothing gives
     either a width of its own, and the Sort comes before the count."""
-    html = Path("src/pages/bills.html").read_text(encoding="utf-8")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    html = _source("src/pages/bills.html")
+    css = _source("src/pages/app.css")
     bad = []
     hint = re.search(r'<div class="qhint">(.*?)</div>', html, re.S)
     if not hint:
@@ -61640,7 +61883,7 @@ def _review_of_audit_fixes(BP):
     the panel that clips them; the home page's activity is a list with no
     bullets; and the roster says what its finder found.
     """
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     bare = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
     js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
@@ -61696,13 +61939,13 @@ def _review_of_audit_fixes(BP):
         bad.append("the home page's activity list has its bullets and indent again below 1180px")
 
     # ---- read: the pages' own markup -----------------------------------
-    pages = _paths.locate("build_pages.py").read_text(encoding="utf-8")
+    pages = _source(_paths.locate("build_pages.py"))
     if '<p class="sr" id="lsay" role="status"></p>' not in pages \
             or 'document.getElementById("lsay")' not in BP.LEGFIND_JS \
             or "say.textContent=text" not in BP.LEGFIND_JS:
         bad.append("the roster's finder no longer says what it found: #lsay, role=\"status\", "
                    "and the script that writes the count into it")
-    exports = _paths.locate("build_exports.py").read_text(encoding="utf-8")
+    exports = _source(_paths.locate("build_exports.py"))
     cov = re.search(r'<div class="covwrap"([^>]*)>', exports)
     if not cov or 'data-scrollstop="1"' not in cov.group(1) or 'role="region"' not in cov.group(1) \
             or "aria-label=" not in cov.group(1) or "tabindex" in cov.group(1):
@@ -62220,7 +62463,7 @@ def _seat_callout(BP, SEAT):
         m = re.search(rf'data-slug="{slug}"[^>]*>', drawn)
         if not m or "data-party=" not in m.group(0) or "data-dist=" not in m.group(0):
             bad.append(f"seating.svg does not write a seat's party and district: {m.group(0) if m else slug}")
-    src = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_pages.py")
     if '"party": party_word(' not in src or '"dist": " ".join(' not in src:
         bad.append("the roster does not hand seating.svg each member's party and district")
     # THE ROWS UNDER THE CHART: the district for a screen reader alone, the
@@ -62228,7 +62471,7 @@ def _seat_callout(BP, SEAT):
     # hidden with the district, the party was the chip's bar's colour alone,
     # and nothing in forced colours). Read off the fixture's legislators page,
     # each row's chip as the page writes it, through app.css's cascade.
-    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    rules = _css_screen_rules(_source("src/pages/app.css"))
     one = BP.seat_row_tag('<span class="mchip p-R"><a href="x">Rep. A <span class="mtag">(R - Belk 6)</span>'
                           '</a></span>')
     if '<span class="mtag">(R<span class="mdist"> - Belk 6)</span><span aria-hidden="true">)</span></span>' not in one:
@@ -62389,7 +62632,7 @@ def _seat_number_in_card(BP, SEAT):
         bad.append("the Speaker's card on the fixture's rostrum carries a number")
     # Through the cascade: the full number clipped, the chip a row on its
     # baseline that its name gives way in, the number at its right on one line.
-    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    rules = _css_screen_rules(_source("src/pages/app.css"))
     found = {}
 
     def keep(c):
@@ -62414,7 +62657,7 @@ def _seat_number_in_card(BP, SEAT):
         bad.append("the number in the card is hidden from the eye")
     # The rostrum's card a division's width: in a division's columns below five
     # abreast, and five abreast one of the five wide, by the grid's own gap.
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     g = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*:where\(body\.pg\) \.seatdivs\{display:grid;"
                   r"gap:var\(--sp-(\d+)\);", css)
     tail = css[g.end():g.end() + 1200] if g else ""
@@ -62460,8 +62703,8 @@ def _map_zoom_fit_icon():
     29 October 2026, and of the map, 30 October). Read in map.js, map.css and
     lang/es.json: the button is drawn by the script."""
     import build_pages as BP
-    js = Path("src/pages/map.js").read_text(encoding="utf-8")
-    css = Path("src/pages/map.css").read_text(encoding="utf-8")
+    js = _source("src/pages/map.js")
+    css = _source("src/pages/map.css")
     bad = []
     m = re.search(r'<button type="button" class="zf"([^>]*)>(.*?)</button>', js, re.S)
     assert m, "map.js draws no Zoom to fit button (class zf)"
@@ -62472,7 +62715,7 @@ def _map_zoom_fit_icon():
         bad.append(f"it is not named by its title alone, map.zoom_fit: {attrs}")
     if re.search(r'\.gm \.gmzoom \.zf\s*\{|\.gmzoom button:(?:last-child|nth-child)[^{]*\{', css):
         bad.append("Zoom to fit has a box of its own, not - and +'s")
-    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"]
     e = es.get("map.zoom_fit") or {}
     if e.get("en") != "Zoom to fit" or not e.get("es") or e.get("es") == "Zoom to fit":
         bad.append(f"map.zoom_fit has no Spanish of its own: {e}")
@@ -62496,7 +62739,7 @@ def _map_borders_chained():
     that encloses nothing); meshD and outlineD must use it. Read in map.js,
     and chainD is run in node on arcs that meet at a bend."""
     import subprocess
-    js = Path("src/pages/map.js").read_text(encoding="utf-8")
+    js = _source("src/pages/map.js")
     bad = []
     for fn in ("meshD", "outlineD"):
         m = re.search(r"function " + fn + r"\(.*?\n(?=function |/\*)", js, re.S)
@@ -62553,7 +62796,7 @@ def _seat_zoom_fit_icon():
                        f"language: {attrs} {body[:80]}")
         if "Fit<" in m.group(1) or ">Ajustar<" in m.group(1):
             bad.append(f"{page}: the word Fit is still on the button")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     box = re.search(r":where\(body\.pg\) \.seatzoom button\{([^}]*)\}", css)
     if not box or "min-width:40px" not in box.group(1) or "min-height:40px" not in box.group(1):
         bad.append("the zoom buttons are not one 40px box")
@@ -63556,7 +63799,7 @@ def _state_sources_apart(CL, SS):
     import contextlib
     import hashlib
     import io
-    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    kit = json.loads(_source("cloud_kit.json"))
     samples = ["sources/manifest.json", "sources/reports/20261030T000000000000.json"]
     samples += [f"sources/sos-register-vote/2026-10-30{n}.{x}"
                 for x in sorted(SS.EXTS) for n in ("", "-2")]
@@ -63790,7 +64033,7 @@ def _state_sources_officials(SS):
     finally:
         shutil.rmtree(t, ignore_errors=True)
     assert hand.read_bytes() == hand_before, "the officials file changed during the check"
-    src = _paths.locate("state_sources.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("state_sources.py"))
     code = re.sub(r'"""[\s\S]*?"""|#[^\n]*', "", src)
     assert "corrections" not in code.replace('HAND_FILE = "the officials file in corrections/"',
                                              ""), (
@@ -67497,7 +67740,7 @@ def _cloud_send_night(CL, R, livestreams):
     CS, SP = "candidate_segments.json", "caption_spans.json"
     try:
         # THE JOB'S TIME, held to the workflow: a night may run this long.
-        yml = Path(".github/workflows/nightly.yml").read_text(encoding="utf-8")
+        yml = _source(".github/workflows/nightly.yml")
         assert max(int(m) for m in re.findall(r"timeout-minutes:\s*(\d+)", yml)) == \
             CL.NIGHT_JOB_MINUTES, "cloud.NIGHT_JOB_MINUTES is not the night job's timeout-minutes"
         os.environ.pop("GITHUB_ACTIONS", None)
@@ -68422,7 +68665,7 @@ def _cloud_pull(CL, R):
     assert any(isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "put_bytes"
                for d in _reached(probe, "cmd_pull").values() for n in ast.walk(d)), \
         "the reader of pull's code misses a put two calls down"
-    tree = ast.parse(Path(CL.__file__).read_text(encoding="utf-8"))
+    tree = ast.parse(_source(CL.__file__))
     reached = _reached(tree, "cmd_pull", leaves={"FolderBucket", "NotAsked", "R2Bucket"})
     WRITERS = {"put_file", "put_bytes", "copy", "delete", "keep"}
     NAMED = {"send", "write_manifest", "put_logs", "state_up", "Replacer", "Checkpoint",
@@ -68926,7 +69169,7 @@ def _no_bucket_here(CL):
         shutil.copy(CL.KIT_FILE, tmp / CL.KIT_FILE)
         code, out = _cloud_call(CL, "state-down", "--root", str(tmp))
         assert code == 1 and CL.NO_BUCKET in out, out[-300:]
-        src = Path(CL.__file__).read_text(encoding="utf-8")
+        src = _source(CL.__file__)
         assert src.count("R2Bucket(") == 1 and "return R2Bucket(keys.r2()" in src, (
             "R2Bucket is made somewhere other than make_bucket, past GRANITE_NO_BUCKET")
     finally:
@@ -70231,8 +70474,7 @@ def _testimony_dated(build_site_v2):
 
 def _hearing_fixture(S):
     """The six real Senate hearing reports in tests/, parsed and finished."""
-    fx = json.loads(Path("tests/senate_hearing_reports.json")
-                    .read_text(encoding="utf-8"))
+    fx = json.loads(_source("tests/senate_hearing_reports.json"))
     out = {}
     for b in ("SB4", "SB11", "SB160", "SB14", "HB666", "HB277"):
         docs = S.parse_report(fx[b]["HTMLText"])
@@ -72056,8 +72298,7 @@ def _publish_calls():
         return "skip", "no publish.bat"
     scripts = {"npx", "npm", "yarn", "pnpm", "wrangler"}
     bad = []
-    for i, line in enumerate(bat.read_text(encoding="utf-8",
-                                           errors="replace").splitlines(), 1):
+    for i, line in enumerate(_source(bat, errors="replace").splitlines(), 1):
         words = line.strip().lstrip("@").split()
         if not words or words[0].upper() == "REM" or words[0].startswith("::"):
             continue
@@ -72093,8 +72334,8 @@ def _plate_agrees():
     node = shutil.which("node") or shutil.which("node.exe")
     if not node:
         return "skip", "node is not on PATH, so the JavaScript copies cannot be run"
-    js = Path("src/pages/app.js").read_text(encoding="utf-8", errors="replace")
-    bp = _paths.locate("build_pages.py").read_text(encoding="utf-8", errors="replace")
+    js = _source("src/pages/app.js", errors="replace")
+    bp = _source(_paths.locate("build_pages.py"), errors="replace")
     grab = lambda src, name: re.search(
         r"function plate\(\w+\)\{.*?\n(?:\s*)\}", src, re.S)
     got = {}
@@ -72226,7 +72467,7 @@ def _words_written_once(B):
             bad.append(f"build_session_pages.{name} is not closing.json's {key}")
 
     # The browser reads them, and nothing types them again.
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     for want in ("const KIND=WORDBOOK.chips.kind;", "const CHIPCLASS=WORDBOOK.chips.chip;",
                  "const STATUSCATS=Object.keys(WORDBOOK.chips.category);",
                  "const CATCLASS=Object.assign(Object.create(null),WORDBOOK.chips.category);",
@@ -72272,7 +72513,7 @@ def _words_written_once(B):
         bad.append("the search for copies misses the old tables: " + ", ".join(unfound))
 
     # The markers, and nothing typed between them.
-    src = Path("src/pages/components.js").read_text(encoding="utf-8")
+    src = _source("src/pages/components.js")
     a, b = src.find(BP.WORDBOOK_START), src.find(BP.WORDBOOK_END)
     if (src.count(BP.WORDBOOK_START), src.count(BP.WORDBOOK_END)) != (1, 1) or not -1 < a < b:
         bad.append(f"components.js does not hold one {BP.WORDBOOK_START} and one {BP.WORDBOOK_END} "
@@ -72378,7 +72619,7 @@ def _meet_kind_colours():
     assert got == want, ("meeting kinds take the wrong colour: "
                          + ", ".join(f"{k} is {got[k]!r}, not {want[k]!r}"
                                      for k in want if got[k] != want[k]))
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     tok = {"k-hearing": "hear", "k-exec": "exec", "k-meet": "meet",
            "k-conf": "conf", "k-floor": "floor", "k-study": "study", "k-date": "date"}
     for cls, t in tok.items():
@@ -73334,7 +73575,7 @@ def _study_committee_pages(SC, S):
         assert locs == ["H43", "ss1451"] and (added, dropped) == (0, 1), (
             f"build_committees' sitemap merge keeps {locs}: it must take out H99, which it no "
             "longer writes, and leave the study committee's page it does not write")
-        src = _paths.locate("build_committees.py").read_text(encoding="utf-8")
+        src = _source(_paths.locate("build_committees.py"))
         assert re.search(r"spare=STUDY_PAGES", src) and '"/committee/ss*"' in src, (
             "build_committees no longer spares the study committees' pages in the sitemap")
         # A RUN THAT WOULD WRITE NONE FAILS, with the copy gone and with one
@@ -73773,7 +74014,7 @@ def _study_committee_tabs(SC, BP):
     slugs = {slug for _p, _w, slug in SC.TABS if slug}
     assert slugs <= set(BP.COMMITTEE_TAB_SLUGS), (
         f"a study committee's tab is at an address the committee rewrite does not serve: {slugs - set(BP.COMMITTEE_TAB_SLUGS)}")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     for rule, why in (("\nhtml:not(.js) .sstabs{display:none}", "without JavaScript the strip is shown"),
                       ("\nhtml.js .sspane:not([data-on]){display:none}", "with JavaScript every pane is shown"),
                       (".rhead ~ #ppane,.rhead ~ .sspane{background:var(--surface)", "a pane is not the record's sheet"),
@@ -74742,7 +74983,7 @@ def _card_background_in_a_tab_panel():
     js = Path("src/pages/app.js")
     if not node or not js.exists():
         return "skip", "node or app.js is not here"
-    m = re.search(r"(?ms)^function cardBackground\(e\)\{.*?^\}", js.read_text(encoding="utf-8"))
+    m = re.search(r"(?ms)^function cardBackground\(e\)\{.*?^\}", _source(js))
     assert m, "app.js has no function cardBackground(e){...}; this check reads it by that name"
     prog = r"""
 function El(tag, cls, attrs, parent){this.tag=tag;this.cls=cls?cls.split(" "):[];
@@ -75196,7 +75437,7 @@ def _headings_of_sections():
     out += [(h, "narrative.STAGE_LABEL") for h in N.STAGE_LABEL.values()]
     out += [(N.stage_label(("H", "committee", "Health, Human Services and Elderly Affairs")),
              "narrative.stage_label")]
-    v2 = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    v2 = _source("src/pages/build_site_v2.py")
     out += [(h, "build_site_v2.py") for h in re.findall(r'"label": "([A-Z][^"]+)"', v2)
             if not h.startswith(("Ought", "Inexpedient"))]
     shared, _base, _ran, _days = _fixture_site_shared()
@@ -75292,7 +75533,7 @@ def _card_words_short():
            "To the Governor", "Nonconcurred", "In Conference", "Adopted", "Adopted by House",
            "Adopted by Senate", "To the Voters", "Ratified", "Not Ratified", "Not Introduced",
            "Special Session"}
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     words = set(re.findall(r'"([A-Z][a-z][^"]{2,80})":"(?:Passed|Died|In Progress|Interim Study|'
                            r'Tabled|Vetoed|Withdrawn)"', app))
     words |= set(re.findall(r'"((?:In|Retained|Re-referred|Committee|Passed|One|Conference)[^"]{2,80})"',
@@ -75347,7 +75588,7 @@ def _term_popovers():
     writer marks (the vote words' abbreviations, a recommendation's code) is a glossary
     entry; and the shared stylesheet draws the popover, so it shows on any page."""
     import components as C
-    js = Path("src/pages/components.js").read_text(encoding="utf-8")
+    js = _source("src/pages/components.js")
     a, b = js.find("// BEHAVIOUR:START"), js.find("// BEHAVIOUR:END")
     assert 0 < a < b, "components.js has no behaviour between its markers"
     beh = js[a:b]
@@ -75371,7 +75612,7 @@ def _term_popovers():
     keys |= {"OTP", "OTPA", "ITL", "IS"}
     missing = sorted(keys - glossary)
     assert not missing, f"terms marked with no glossary entry: {missing}"
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     for rule in (".termbtn{", ".termpop{", ".termpop[hidden]{display:none}"):
         assert rule in css, f"app.css does not draw {rule}"
     return "ok", (f"the behaviour is one IIFE between its markers; {len(keys)} marked terms, "
@@ -75537,11 +75778,11 @@ def _sortable_tables(LN):
         or sorted(g1[:5]) == [f"House C{i}" for i in range(5)], f"a sort keeps the chambers together: {g1}"
     assert all(x.startswith("Senate") for x in g1[5:]), g1
     assert sorted(g2[:5]) != sorted(g1[:5]) or g2 != g1 or True
-    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"]
     for k in ("nums.sort_by", "nums.sorted_asc", "nums.sorted_desc", "nums.sorted_none"):
         assert k in es and es[k]["es"], f"es.json has no Spanish for {k}"
-        assert f'"{k}"' in Path("src/pages/components.js").read_text(encoding="utf-8")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+        assert f'"{k}"' in _source("src/pages/components.js")
+    css = _source("src/pages/app.css")
     for rule in (".l-sort{", "th[aria-sort=ascending] .l-sort-i", ".l-sortlive{"):
         assert rule in css, f"app.css lacks {rule}"
     return "ok", ("a button in each head of a table over eight rows, aria-sort, descending first for a "
@@ -75557,7 +75798,7 @@ def _cite_triangle():
     words, a quarter turn when open; a record page's Cite button has the
     pane's nub (.racts, summary::after) instead, and the two would share
     one pseudo-element, so the chevron is not drawn there."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     for rule in (".pcite:not(.racts .pcite) > summary::after{",
                  ".pcite:not(.racts .pcite)[open] > summary::after{transform:rotate(90deg)}",
                  ".racts :is(.pcite,.follow,.testify,.report) > summary::after{"):
@@ -75661,9 +75902,9 @@ def _motion_keys():
     assert "mrec" not in MO.classify("Ought to Pass with Amendment 2026-0998h", "HB1", "H", words)
     assert MO.classify("House Concurs with Senate Amendment 2026-1709s", "HB1", "H", words)["mrec"]
     assert MO.classify("Refer to Finance", "HB1", "H", words)["mf"] == {"Committee": "Finance"}
-    v2 = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    v2 = _source("src/pages/build_site_v2.py")
     assert "MO.classify(" in v2, "the bills' Votes tabs no longer carry the motion's key"
-    sd = Path("src/pages/build_session_pages.py").read_text(encoding="utf-8")
+    sd = _source("src/pages/build_session_pages.py")
     assert "MO.classify(" in sd, "a session day no longer reads the motion's key"
     return "ok", f"{len(MOTION_CASES)} forms of the record's questions, each the approved words' key"
 
@@ -75831,7 +76072,7 @@ def _movers_by_term(B2, BL, BP, BI):
         "WARNING" not in said, (kept, page.get("moved_from"), said)
     assert "205005, who has no former page now" in unjoined, (
         "the case no longer shows a recorded number lost without the joins")
-    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_site_v2.py"))
     assert "keep_moved(former, links=links,\n" in src and \
         "sitting={_member_address(m) for m in legs.values()" in src, (
         "build_site_v2 no longer hands keep_moved the joins and the sitting members' addresses: a "
@@ -75884,7 +76125,7 @@ def _movers_by_term(B2, BL, BP, BI):
     assert "served in the New Hampshire Senate, 1999 to 2024." in BL.describe(m), BL.describe(m)
     sitting = {"display_full": "Sen. Cindy Rosenwald (D - SD13)", "chamber": "S", "towns": ["Nashua"]}
     assert BL.describe(sitting, two) == BL.describe(sitting), BL.describe(sitting, two)
-    src = _paths.locate("build_legislator_pages.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_legislator_pages.py"))
     assert "description=describe(m, rec)" in src, (
         "the member pages no longer hand describe their own record: a joined page's description "
         "names one chamber")
@@ -75950,12 +76191,12 @@ def _movers_by_term(B2, BL, BP, BI):
     # with: a joined row's starts with its page's, as a one-chamber row's does.
     assert found.get("jeb-bradley-sd-3") == "Senate · SD3 · 2009–2024 · House 1999–2002" \
         and found.get("nancy-alone-sd-24") == "Senate · SD24 · 2011–2016", found
-    grouped = _paths.locate("build_pages.py").read_text(encoding="utf-8")
+    grouped = _source(_paths.locate("build_pages.py"))
     assert 'k:r=>r[0]==="former"&&/^Senate/.test(r[2])' in grouped and \
         'k:r=>r[0]==="former"&&/^House/.test(r[2])' in grouped, (
         "the site search no longer groups former members by the chamber their line starts with; "
         "say here what it groups by now")
-    src = _paths.locate("build_site_v2.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_site_v2.py"))
     assert 'row["service"] = ML.service(mv)' in src, (
         "former.json's rows no longer carry each chamber's years for a joined page")
     assert re.search(r"mv = sorted\(\[v for x in \(mid, \*joined\)[^\n]*\n\s*key=service_order, "
@@ -76039,7 +76280,7 @@ def _former_directory_years_are_the_pages(BL, BI):
     assert BL.on_record_text(sytek, {"attendance": {"1999-2000": {}}}) == "House, 1989–2000", (
         BL.on_record_text(sytek, {"attendance": {"1999-2000": {}}}))
     # The directory's own words claim nothing the record does not: not "since 1999".
-    src = _paths.locate("build_indexes.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_indexes.py"))
     assert "since 1999" not in src, "the directory still says the record begins in 1999"
     return "ok", ("a former member's directory line and search entry give the page's own years: "
                   "Sytek 1989–2000, a gap kept as a gap, a 1990s Senate term under its chamber, "
@@ -76295,7 +76536,7 @@ def _session_day_folds():
     if '<p class="dvh">' in text and 'class="rhead rh-day"' not in text:
         bad.append("a session day has no record head")
     assert not bad, "; ".join(bad)
-    src = Path("src/pages/build_session_pages.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_session_pages.py")
     assert BSP.CONSENT_CLASS == {"Passed": "s-law", "Killed": "s-done",
                                  "Sent to Interim Study": "s-study",
                                  "Sent Back to Committee": "s-active", "Adopted": "s-adopted"}, (
@@ -76321,7 +76562,7 @@ def _session_day_folds():
                       ("by_party", "the excused are not counted by party")):
         assert need in src, why
     assert BSP.and_list(["a", "b", "c"]) == "a, b, and c" and BSP.and_list(["a", "b"]) == "a and b"
-    v2 = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    v2 = _source("src/pages/build_site_v2.py")
     fm = v2[v2.index("def floor_moment("):v2.index("def write_floor_record(")]
     assert '"consent"' not in fm or "return None" in fm
     import build_site_v2 as B2
@@ -76418,7 +76659,7 @@ def _chips_one_shape():
     the frame gone, a status chip and a kind chip written by hand -- and
     must find every one, and must pass the person chip and the Calendar's
     own controls, which are other names."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     planted = css + (".calkind{border-radius:var(--r-pill)}\n"
                      ".btv{text-transform:uppercase;letter-spacing:.04em}\n"
                      ".chip.k-hearing{box-shadow:inset 0 0 0 1px var(--cal-hear)}\n"
@@ -77402,7 +77643,7 @@ def _no_index_off_the_list():
                     "box": q and q.group(1)}
         js = Path("src/pages/app.js")
         words = re.search(r'function hideListControls\(\)\{.*?q\.placeholder="([^"]+)"',
-                          js.read_text(encoding="utf-8") if js.exists() else "", re.S)
+                          _source(js) if js.exists() else "", re.S)
         wants = {"term label": True, "term": True, "hint row": True, "sort label": True,
                  "sort": True, "count": "", "box": words and words.group(1)}
         bill = controls(pages["bill"])
@@ -77416,7 +77657,7 @@ def _no_index_off_the_list():
         if controls(pages["no globals"]) != controls(tpl):
             bad.append(f"shell.page changed the bill search's own controls: "
                        f"{controls(pages['no globals'])}, where bills.html has {controls(tpl)}")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     if "html.js .static-rec:not(.shown){display:none}" not in css:
         bad.append("app.css does not show a record's plain HTML when app.js marks it shown")
     assert not bad, "; ".join(bad)
@@ -77768,13 +78009,13 @@ def _print_sheet():
     if not node:
         assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly, which installs it"
         return "skip", "node is not on PATH"
-    cases = json.loads(Path("tests/print_cases.json").read_text(encoding="utf-8"))
+    cases = json.loads(_source("tests/print_cases.json"))
     root = Path(tempfile.mkdtemp(prefix="gr-print-"))
     try:
-        js = Path("src/pages/app.js").read_text(encoding="utf-8") + "\n;\n" + \
-            Path("src/pages/print.js").read_text(encoding="utf-8")
+        js = _source("src/pages/app.js") + "\n;\n" + \
+            _source("src/pages/print.js")
         (root / "page.js").write_text(_with_components(js), encoding="utf-8")
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
         (root / "cases.json").write_text(json.dumps({"cases": cases["cases"], "qr": cases["qr"]}),
                                          encoding="utf-8")
         (root / "go.js").write_text(_PRINT_GO, encoding="utf-8")
@@ -78056,7 +78297,7 @@ def _print_sheet_css():
                             (".ps-law-add", "font-style", "italic")):
         if word not in marks.get(sel, {}).get(prop, ""):
             bad.append(f"{sel} is not {word}: a change would be said by colour or not at all")
-    js = Path("src/pages/print.js").read_text(encoding="utf-8") if Path("src/pages/print.js").exists() else ""
+    js = _source("src/pages/print.js") if Path("src/pages/print.js").exists() else ""
     # THE PAGES ARE COUNTED AS PAPER BREAKS THEM (print.js countPages, the
     # person's "always list the full number of pages", 10 October 2026): the
     # sheet laid out again in a frame a page's width, in columns a page's
@@ -78159,10 +78400,10 @@ process.stdout.write("\n@@" + JSON.stringify({n, bad}));
 """
     root = Path(tempfile.mkdtemp(prefix="gr-print-data-"))
     try:
-        js = Path("src/pages/app.js").read_text(encoding="utf-8") + "\n;\n" + \
-            Path("src/pages/print.js").read_text(encoding="utf-8")
+        js = _source("src/pages/app.js") + "\n;\n" + \
+            _source("src/pages/print.js")
         (root / "page.js").write_text(_with_components(js), encoding="utf-8")
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
         (root / "go.js").write_text(go, encoding="utf-8")
         r = _run([node, "--max-old-space-size=4096", "go.js", str(site.resolve())], cwd=root,
                  capture_output=True, text=True, timeout=600)
@@ -78563,10 +78804,10 @@ def _spanish_glossary(i18n, BC, chrome):
         bad.append("the English glossary does not name its Spanish twin")
     if 'href="learn/glossary.html"' not in chrome.footer_html("en"):
         bad.append("the English footer's Glossary link moved")
-    beh = Path("src/pages/components.js").read_text(encoding="utf-8")
+    beh = _source("src/pages/components.js")
     if "window.GR_GLOSS" not in beh or "L.says" not in beh:
         bad.append("the term pop-ups do not read the Spanish words (GR_GLOSS)")
-    bp = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    bp = _source("src/pages/build_pages.py")
     if "i18n.gloss_js(lang)" not in bp:
         bad.append("the shared words file no longer carries the glossary's words")
     assert not bad, "; ".join(bad)
@@ -78659,7 +78900,7 @@ def _vw_lands_clear_of_strip():
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and node):
         return "skip", "app.js or node is not here"
-    src = js.read_text(encoding="utf-8")
+    src = _source(js)
     land = re.search(r"function vwLand\(slot\)\{[\s\S]*?\n\}", src)
     assert land and re.search(r"scrollIntoView\(\{block:\"start\"\}\);\s*vwClearStrip\(slot\);", land.group(0)), (
         "vwLand no longer clears the tab strip after bringing the view to the top")
@@ -78872,7 +79113,7 @@ def _guide_parts(BC, G):
     number in brackets, and would have passed three of the six it was for.)"""
     import html as _h
     import json as _j
-    es = _j.loads((_paths.ROOT / "src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    es = _j.loads(_source(_paths.ROOT / "src/pages/lang/es.json"))["strings"]
     num = re.compile(r"\b(?:steps?|pasos?) \d+", re.I)
     named = re.compile(r"\(([^()]*?), (?:step|paso) (\d+)\)")
     parted, bad = 0, []
@@ -78935,7 +79176,7 @@ def _times_as_clock(G):
     web = BP.home_webinar("2026-11-01")
     if re.search(r"\d(?:\s|&nbsp;)?[ap]\.m\.", web) or not re.search(r"6:30&nbsp;PM", web):
         bad.append(f"the home page's webinar line: {re.sub(r'<[^>]+>', ' ', web)[:120]!r}")
-    es = _json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    es = _json.loads(_source("src/pages/lang/es.json"))["strings"]
     for k, e in es.items():
         if not isinstance(e, dict) or not (k.startswith("guide.") or k.startswith("web.")):
             continue
@@ -79072,7 +79313,7 @@ def _assistant_guard():
              if (got := guard.decide(tool, inp)) and got[0] != want]
     assert not wrong, f"{len(wrong)} of {len(table)} calls answered wrongly: " + "; ".join(wrong[:6])
 
-    cfg = json.loads(Path(".claude/settings.json").read_text(encoding="utf-8"))
+    cfg = json.loads(_source(".claude/settings.json"))
     wired = [h for e in cfg.get("hooks", {}).get("PreToolUse", [])
              for h in e.get("hooks", []) if "guard.py" in h.get("command", "")
              and all(re.search(e.get("matcher", ""), t) for t in
@@ -79099,7 +79340,7 @@ def _guide_sources_keys():
     has already lost the evidence."""
     import ast
     path = Path("src/fetch/other/guide_sources.py")
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+    tree = ast.parse(_source(path))
     twice = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Dict):
@@ -79318,7 +79559,7 @@ def _one_language_note(chrome, i18n):
         bad.append(f"only {built} Spanish pages built on the fixture to look at")
     # The markers show only where a listed page is still in English, which on
     # the fixture none is, so the code that draws them is what is held.
-    if 'class="r-en">(' not in Path("src/pages/build_civics.py").read_text(encoding="utf-8"):
+    if 'class="r-en">(' not in _source("src/pages/build_civics.py"):
         bad.append("the \"(en inglés)\" markers on a list's English pages are gone")
     old = ("home.lang_note", "guides.lang_note", "guides.hub_lang_note", "learn.lang_note")
     code = "".join(p.read_text(encoding="utf-8") for p in Path("src/pages").glob("*.py"))
@@ -79874,7 +80115,7 @@ def _translation_report(chrome, i18n, CR):
     node = shutil.which("node")
     if not node:
         return "skip", "node is not on PATH"
-    js = Path("src/pages/components.js").read_text(encoding="utf-8")
+    js = _source("src/pages/components.js")
     words = i18n.words_js("es", BP.with_words(js))
     want = {"box": [html_escape(strings["trrep.title"]["es"]), 'name="note"', 'name="website"',
                     'name="quote" checked', 'id="trbox-h"', "mailto:contact@graniterecord.org"],
@@ -80045,7 +80286,7 @@ def _spanish_home(i18n):
     def session_html(t):
         m = re.search(r'<div id="session">(.*?)</div>\s*</section>', t, re.S)
         return m.group(1) if m else ""
-    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))
+    cat = json.loads(_source("src/pages/lang/es.json"))
     cat = cat.get("strings", cat)
     es_s = session_html(es)
     want = [cat["sess.recent"]["es"], cat["sess.play_house"]["es"].split("{date}")[0]]
@@ -80254,7 +80495,7 @@ def _weak_marker_approximate(B):
         st = B.station_for_floor(f, "HB1002", m)
         assert st["start"] == 1200.0 and st["start_stated"] is stated, (
             f"a floor start found by {how!r} is drawn start_stated={st.get('start_stated')}")
-    app = _paths.locate("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source(_paths.locate("src/pages/app.js"))
     for need, why in (('h.approx=!s.start_stated', "the bill page's player"),
                       # "approximate", one word, on a floor card too since
                       # 25 October 2026 (S2), where it said "about where the
@@ -80263,7 +80504,7 @@ def _weak_marker_approximate(B):
                        "the floor player"),
                       ('&&!i.inferred', "the committee page's line")):
         assert need in app, f"app.js: {why} no longer says an inferred start is one ({need})"
-    cm = _paths.locate("src/pages/build_committees.py").read_text(encoding="utf-8")
+    cm = _source(_paths.locate("src/pages/build_committees.py"))
     assert '{"inferred": True}' in cm and 'st.get("start_stated") is False' in cm, (
         "build_committees no longer carries a weak marker's inference to the committee page")
     return "ok", ("a stated opening drawn plainly and a weak marker's start drawn approximate, "
@@ -80299,7 +80540,7 @@ def _nobill_ring_on_session_day():
         cards = json.loads(nb.read_text(encoding="utf-8")).get("rollcalls") or []
         assert i < len(cards) and cards[i].get("members"), (
             f"{where}: card {i} of nobill/{term}.json has no members to draw")
-    app = _paths.locate("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source(_paths.locate("src/pages/app.js"))
     assert "(nb?nobillRecord:billRecord)(key,drawSessionVotes)" in app, (
         "app.js's session-day ring does not read a term's record of roll calls on no bill")
     return "ok", f"{len(found)} roll calls on no bill on the fixture's session days, each from its card"
@@ -80403,7 +80644,7 @@ def _outside_links():
     find = Path("src/pages/find.js")
     if not css.exists() or not find.exists():
         return "skip", "app.css or find.js is not here"
-    text = css.read_text(encoding="utf-8")
+    text = _source(css)
     rule = re.search(r':is\(a\[href\^="https:"\],a\[href\^="http:"\]\):not\(\[href\^='
                      r'"https://graniterecord\.org"\]\)::after\{([^}]*)\}', text)
     assert rule, "app.css does not mark a link that leaves the site by its address"
@@ -80446,7 +80687,7 @@ def _outside_links():
                        f"{line.strip()[:60]}")
     assert not bad, ("an outside link that is not marked or does not open a new tab: "
                      + "; ".join(bad[:6]))
-    js = find.read_text(encoding="utf-8")
+    js = _source(find)
     fn = re.search(r"function leavesSite\(a,here\)\{.*?\n\}", js, re.S)
     hook = re.search(r'document\.addEventListener\("click",function\(e\)\{\s*var a=e\.target&&'
                      r'e\.target\.closest&&e\.target\.closest\("a\[href\]"\);\s*if\(!leavesSite\(a,'
@@ -80591,7 +80832,7 @@ def _committees_full_sessions():
         assert r.returncode == 0, "the chamber page's script would not run: " + (r.stderr or "")[-300:]
         assert r.stdout == FS.day_section("H", d), (
             f"the script draws a day as {r.stdout[:200]!r}, the page as {FS.day_section('H', d)[:200]!r}")
-    plan = Path("build_all.py").read_text(encoding="utf-8")
+    plan = _source("build_all.py")
     assert plan.index('"build_full_sessions.py"') > plan.index(
         '"a page for every day the Senate and the House sat"'), \
         "build_all draws the chambers before their pages"
@@ -80923,7 +81164,7 @@ def _static_videos_wiring(FS):
         "a chamber's list of recordings does not head the tab as an h2: "
         + (re.search(r"<h\d class=\"vwh\"[^>]*>", got["view"]) or [""])[0])
     # Drawn as the committee's h3 is: as an h2 it took the page's serif.
-    assert re.search(r"\n\.vwh\{[^}]*font-family:var\(--sans\)", Path("src/pages/app.css").read_text(encoding="utf-8")), (
+    assert re.search(r"\n\.vwh\{[^}]*font-family:var\(--sans\)", _source("src/pages/app.css")), (
         "app.css: a chamber's list heading, an h2, is not drawn in the committee's h3's face")
     strip = got["strip"] or ""
     assert strip.startswith("afterend ") and re.findall(r'<button class="tab" role="tab" id="chtab_(\d)" '
@@ -81010,7 +81251,7 @@ def _nav_ladder():
     button taking none; from 721 to 1007 it is a row of its own, five equal
     cells after the controls; Search shows its drawing alone, its word kept
     for a screen reader."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8").replace("\r\n", "\n")
+    css = _source("src/pages/app.css").replace("\r\n", "\n")
     shared = css
     wide = _braced(shared, "@media (min-width:63em){")
     assert ".navtabs{position:static;transform:none;flex-wrap:nowrap;width:max-content;margin:0 auto}" \
@@ -81045,8 +81286,8 @@ def _search_filters_5acd():
     short list, and a ticked zero, which keeps its place among the zeros; and
     the stylesheet's 60em block, which puts the button first, the panel
     after it, and the panel away until it is opened."""
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    js = _source("src/pages/app.js")
+    css = _source("src/pages/app.css")
     m = re.search(r"const openGroups=new Set\((\[[^\]]*\])\);", js)
     # 12 October 2026: Status alone open; Bill Type folds with the rest.
     assert m and json.loads(m.group(1)) == ["status"], (
@@ -82511,7 +82752,7 @@ def _calendar_layout():
     rather than removed, so a pointer, Space and a screen reader reach it;
     the box shows where focus is; and the row is hidden without script.
     """
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     a = css.find("/* THE CALENDAR, AS A CALENDAR")
     assert a >= 0, "app.css has no calendar block"
     block = css[a:css.index("/* HOW THE DAY BEGAN.", a)]
@@ -82929,7 +83170,7 @@ def _coming_up_scrolls():
     assert page.index("<h2>Coming Up</h2>") < page.index('class="calscroll"'), (
         "the Coming up heading is not above the box")
 
-    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
     m = re.search(r":where\(body\.pg\) \.calscroll\{([^}]*)\}", css)
     assert m, "app.css has no :where(body.pg) .calscroll rule"
     depth = css[:m.start()].count("{") - css[:m.start()].count("}")
@@ -83280,7 +83521,7 @@ def _key_dates_link_built_laws(KD):
         assert "<a " not in got[name], (
             f"a build whose table lacks RSA 39:1 ({name}) links it: {got[name]!r}, to a Laws page "
             "that build never wrote")
-    reader = Path(KD.__file__).read_text(encoding="utf-8").split("def _sections_on_disk", 1)[1]
+    reader = _source(KD.__file__).split("def _sections_on_disk", 1)[1]
     assert "rsa.TABLE" not in reader.split("\ndef ", 1)[0], (
         "key_dates reads rsa.TABLE again: the repository's table, whatever folder the build runs in")
     return "ok", ("a statute's key date is a link where the build's own table holds the section, "
@@ -83677,7 +83918,7 @@ def _webinar_under_search(BP):
                                      '<div class="entry">')]
         if -1 in at or at != sorted(at):
             bad.append(f"{lang}: the search, its help, the webinar and the cards stand at {at}")
-    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
     orders = {}
     for sel in ("searchbig", "hqhint", "webinar"):
         m = re.search(r"\.hcols \." + sel + r"\b[^{]*\{order:(\d+)\}", css)
@@ -83715,7 +83956,7 @@ def _demo_path(CV, G):
     doc = _paths.ROOT / "docs" / "DEMO_PATH.md"
     if not doc.is_file():
         return "skip", "no docs/DEMO_PATH.md here"
-    text = doc.read_text(encoding="utf-8")
+    text = _source(doc)
     assert "draft for the owner's approval" in " ".join(text.split()), \
         "docs/DEMO_PATH.md no longer says it is a draft for the owner's approval"
     stops = re.findall(r"(?m)^(\d+)\. `(/[^`]*)`", text)
@@ -83723,11 +83964,11 @@ def _demo_path(CV, G):
     # 27 October 2026: "the demo path gains the same stops").
     assert 10 <= len(stops) <= 15 and [int(n) for n, _ in stops] == list(range(1, len(stops) + 1)), \
         f"the demo path has {len(stops)} stops, numbered {[n for n, _ in stops]}: ten to fifteen, in order"
-    app = (_paths.ROOT / "src/pages/app.js").read_text(encoding="utf-8")
+    app = _source(_paths.ROOT / "src/pages/app.js")
     tabs = re.search(r"const BILL_TABS=\{([^}]*)\}", app)
     assert tabs, "app.js no longer says BILL_TABS where this check reads it"
     bill_tabs = set(re.findall(r"(\w+):", tabs.group(1)))
-    town = (_paths.ROOT / "src/pages/build_town_pages.py").read_text(encoding="utf-8")
+    town = _source(_paths.ROOT / "src/pages/build_town_pages.py")
     guides = set(CV.HOW_TO) | {g["slug"] for g in G.GUIDES}
     bad = []
     for n, addr in stops:
@@ -83811,7 +84052,7 @@ def _hearing_note_wording():
     assert not any("for or against" in n for n in home), "Coming up keeps the old sentence"
     # The upcoming-hearings feed takes the note from build_pages, by the
     # hearing's chamber, and types neither.
-    feeds = _paths.locate("build_feeds.py").read_text(encoding="utf-8")
+    feeds = _source(_paths.locate("build_feeds.py"))
     flat = " ".join(re.sub(r'"\s*\n\s*"', "", feeds).split())
     assert 'BP.hearing_note(u.get("body"))' in flat, \
         "the upcoming-hearings feed does not take its note from build_pages.hearing_note"
@@ -84210,7 +84451,7 @@ def _text_box_focus_shows():
     takes it away, ahead of the one that draws it, fails here."""
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
-    rules = _css_screen_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    rules = _css_screen_rules(_source("src/pages/app.css"))
 
     def text_box(chain):
         el = chain[0]
@@ -84310,7 +84551,7 @@ def _tap_targets_24(C, BSP):
     <main> -- is held to --tap-line, and to the margins it would have had
     without the tap rules, each less the token: the box is a line's, 24px
     at the least, and nothing beside it moves."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     rules = _css_screen_rules(css)
     # What each side's margin would be without the tap rules, which a line's
     # box gives its padding back from.
@@ -84351,7 +84592,7 @@ def _tap_targets_24(C, BSP):
     # bills.html's list, where app.js draws its cards: the ancestors a card
     # is drawn in, out to the root.
     held_in = []
-    _html_walk(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+    _html_walk(_source("src/pages/bills.html"),
                element=lambda c: held_in.append(c) if "results" in c[0]["ids"] else None)
     assert held_in, "bills.html has no #results for its cards"
     _html_walk(card, element=lambda c: take(c + held_in[0], "a card in bills.html's #results"))
@@ -84426,7 +84667,7 @@ def _terms_with_a_dash(C):
     bad = []
     if (C.term_words("2025-2026"), C.term_words("2027-requests"), C.term_words(None)) != ("2025–2026", "2027-requests", ""):
         bad.append("components.term_words does not write a term with a dash, and leave the rest")
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     for need in ('${termDash(t)} Term</option>', ':`in the ${termDash(term)} term`',
                  # A member's picker names the requests' term by its label
                  # and every other term by termDash (_member_requests).
@@ -84467,7 +84708,7 @@ def _one_word_per_meaning(BP):
     identified yet", lower case and unstopped, on a committee's meeting. One
     word each now. The bill's own segment buttons ("Play hearing on this
     bill -- 1:14:38-1:20:02") say which part they play and keep their words."""
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     bad = []
     if "<b>Killed:</b>" in app or "<b>Died:</b>" not in app:
         bad.append("a committee meeting's card names a bill that ended \"Killed\"")
@@ -84509,7 +84750,7 @@ def _learn_tables_reachable(BCV):
     if got.count('data-scrollstop="1" data-scrolllabel="') != 3 or 'data-scrolllabel="Seats in each chamber"' not in got \
             or got.count('data-scrolllabel="The Numbers, 2025-2026"') != 2 or 'role="region"' in got:
         bad.append(f"build_civics.section does not name and mark a table's box: {got[:400]}")
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     stops = app[app.find("function scrollStops"):app.find("function scrollStops") + 1200]
     if not re.search(r'querySelectorAll\("\[data-scrollstop\]"\)', stops) or "scrollStops();" not in app \
             or 'setAttribute("role","region")' not in stops or 'removeAttribute("role")' not in stops \
@@ -84539,7 +84780,7 @@ def _subsections_under_sections():
     were the same 19px as their sections, so neither could be told from the
     other. A section heading there is --t-h3 in the serif; every h3 and h4
     the pages write under one is --t-read, which must stay the smaller."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     size = {}
     for k in ("t-read", "t-h3"):
         m = re.search(rf"--{k}:([\d.]+)rem", css)
@@ -84612,7 +84853,7 @@ def _interim_report_one_colour(BP):
     node for a committee's meeting card, and app.css's .mrec, .mkill and
     .mwithout; and build_pages.STUDY_KIND for a sitting's page. Each must
     come to the same token: --st-law, --st-done, or none."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     colour, order = {}, {}
     for n, (at, sel, body, _l) in enumerate(_css_rules(css)):
         if at:
@@ -84672,7 +84913,7 @@ def _interim_report_one_colour(BP):
     for k in ("rec", "not", "without"):
         if order.get(f".jl .jrec-{k} .jg", -1) <= first:
             bad.append(f".jl .jrec-{k} .jg is not after .jl .j-istudy .jg, so the orange wins")
-    src = Path("src/pages/build_site_v2.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_site_v2.py")
     if '"rec": rep["rec"]' not in src:
         bad.append("build_site_v2's interim report line no longer says which of the three it was")
     assert not bad, "; ".join(bad[:8])
@@ -84705,13 +84946,13 @@ def _polish_11nov(G, CV):
         bad.append(f"the qualifications table names the domicile years in {len(cells)} rows, not 4")
     bad += [f"a qualification says no 'immediately': {c!r}" for c in cells
             if "immediately preceding the election" not in c]
-    gov = re.sub(r"\s+", " ", Path("src/pages/civics.py").read_text(encoding="utf-8"))
+    gov = re.sub(r"\s+", " ", _source("src/pages/civics.py"))
     if "for the 7 years immediately before the election" not in gov:
         bad.append("the Learn page's governor is not for the 7 years immediately before the election")
     later = [g["slug"] for g in G.GUIDES if G.sources_checked(g) and G.sources_checked(g) > G.checked_on(g)]
     if not later:
         bad.append("no guide has a claim read later than its first, so nothing here tells the dates apart")
-    bc = Path("src/pages/build_civics.py").read_text(encoding="utf-8")
+    bc = _source("src/pages/build_civics.py")
     if bc.count("G.sources_checked(g)") < 2 or "Checked against its sources" in bc:
         bad.append("a guide's page in one of its languages does not say Sources last checked on its newest claim")
     if '" Check each step against the official page it links before you "' not in bc \
@@ -84721,17 +84962,17 @@ def _polish_11nov(G, CV):
         bad.append("a Spanish guide draws In the Record's year menu without its script")
     if " — Granite Record" in bc:
         bad.append("a page in another language still titles itself ' — Granite Record'")
-    bp = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
-    mp = Path("src/pages/map.js").read_text(encoding="utf-8")
+    bp = _source("src/pages/build_pages.py")
+    mp = _source("src/pages/map.js")
     for key, src in (("comp.filled_vacant_one", bp), ("roster.filled_vacant_one", bp),
                      ("map.n_vacant_one", mp), ("map.dot_vacant_one", mp)):
         if f'"{key}"' not in src:
             bad.append(f"one vacancy is said with the plural's words: {key} is not asked for")
-    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"]
     for key in ("comp.filled_vacant_one", "roster.filled_vacant_one", "map.n_vacant_one", "map.dot_vacant_one"):
         if "vacantes" in (es.get(key) or {}).get("es", "vacantes"):
             bad.append(f"{key}'s Spanish is not the singular")
-    if 'tr("lf.wards"' not in Path("src/pages/find.js").read_text(encoding="utf-8"):
+    if 'tr("lf.wards"' not in _source("src/pages/find.js"):
         bad.append("a city's search row is said in English on a Spanish page")
     for key, v in es.items():
         if key.startswith("guide.run-for-office.registered-voter-domiciled") and \
@@ -84745,8 +84986,7 @@ def _polish_11nov(G, CV):
     hint = (es.get("home.search_hint") or {}).get("es", "")
     if len(hint) > len("Bill number, topic, name or town") + 3:
         bad.append(f"the home page's Spanish search hint runs past its box: {hint!r}")
-    if ":where(body.pg) .oftabs:lang(es) [role=tab]{padding-left:var(--sp-5)" not in Path(
-            "src/pages/app.css").read_text(encoding="utf-8"):
+    if ":where(body.pg) .oftabs:lang(es) [role=tab]{padding-left:var(--sp-5)" not in _source("src/pages/app.css"):
         bad.append("the Spanish Officials tabs keep the padding that hid the last one")
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(cells)} domicile rows immediately preceding; {len(later)} guides whose newest "
@@ -84777,7 +85017,7 @@ def _guide_parts_in_index(BC, G):
                 bad.append(f"{g['slug']}: no heading carries id {pid}")
             if f'href="/g#{pid}"' not in sub or 'class="l-otpsub"' not in sub:
                 bad.append(f"{g['slug']}: {label!r} is not listed under Step by Step")
-    src = Path("src/pages/build_civics.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_civics.py")
     if "otp_items(secs, S.canon(path), step_parts(g))" not in src:
         bad.append("guide_page's On This Page does not list the parts")
     if "lang_otp(secs, page, lang, step_parts(g, w))" not in src:
@@ -84794,7 +85034,7 @@ def _learn_index_heads_outrank():
     13px capitals over 16px links, against app.css's own rule that a
     heading reads no smaller than what it heads. The group's name is the
     size of its links now, as a footer column's head is."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     tokens = {m.group(1): float(m.group(2)) for m in re.finditer(r"--(t-[\w-]+):([\d.]+)rem", css)}
     size = {}
     for at, sel, body, _l in _css_rules(css):
@@ -84883,7 +85123,7 @@ def _bill_panes_one_heading():
     Read three ways: the three rules agree in app.css; every h2 the panes'
     renderers write, from renderReports to renderRelated, is a .sech; and
     Sponsors and Documents, drawn in node, open with one."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     won = {}
     for at, sel, body, _l in _css_rules(css):
         if at:
@@ -84900,7 +85140,7 @@ def _bill_panes_one_heading():
         if (size, fam, weight) != ("var(--t-h3)", "var(--serif)", "600") or d.get("text-transform") != "none":
             bad.append(f"{sel} is {size} {fam} {weight}, text-transform {d.get('text-transform')}, "
                        "not --t-h3 serif 600 as typed")
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     a, z = app.find("function renderReports("), app.find("function renderRelated(")
     z = app.find("\n}\n", z)
     assert -1 < a < z, "app.js has no renderReports or renderRelated"
@@ -84952,7 +85192,7 @@ def _one_search_box():
     One box now: --surface, --t-ui, 44px (a height, or a least height where
     the box is a row's), and the Bills page's term menu beside it the same
     height. Each rule is read as the cascade has it."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     won = {}
     for at, sel, body, _l in _css_rules(css):
         if at:
@@ -85038,7 +85278,7 @@ def _term_button_24():
     to hold it. Measured on the preview at 390: a tap 11px left, right,
     above and below the "A" lands on it in all four, against two before, and
     every button's own box is the size it was."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     rules = _css_rules(css)
     won = {}
     for at, sel, body, _l in rules:
@@ -85080,7 +85320,7 @@ def _vote_tick_said(I):
     another language and once with the Spanish the catalog gives for the
     two keys, and each tick they draw must be hidden and followed by the
     word; and no tick in app.js is written anywhere but wonMark."""
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    js = _source("src/pages/app.js")
     marks = re.findall(r'<span class="won"[^>]*>', js)
     assert len(marks) == 1 and 'aria-hidden="true"' in marks[0], (
         f"app.js writes a tally's tick {len(marks)} times, not once in wonMark, hidden: {marks[:3]}")
@@ -85190,12 +85430,12 @@ def _headings_outrank(B, RSA, S):
     padding above and margin below, each with half the line, what .75rem
     and half of 16.9px are (_css_calc_px reads the cascade's calc()) -- so
     that the page does not move."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     rules = _css_screen_rules(css)
     tokens = _css_palette(css)["light"]
     memo = {}
     held_in = []
-    _html_walk(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+    _html_walk(_source("src/pages/bills.html"),
                element=lambda c: held_in.append(c) if "results" in c[0]["ids"] else None)
     assert held_in, "bills.html has no #results"
     glance = _app_js('scope.termGlance({term_figures:{"2025-2026":{bills_filed:12,prime:4,cosponsored:8,'
@@ -85614,7 +85854,7 @@ def _testify_in_the_row():
     # comment names the emails' testifyWords, which say it, and says the pane
     # no longer does; and both halves are read off the code.
     sentence = "The page that confirms your sign-in says how to send written testimony."
-    bp_lines = Path("src/pages/build_pages.py").read_text(encoding="utf-8").splitlines()
+    bp_lines = _source("src/pages/build_pages.py").splitlines()
     at = next(i for i, x in enumerate(bp_lines) if x.startswith("HEARING_NOTE_SENATE = "))
     above = []
     for x in reversed(bp_lines[:at]):
@@ -85622,9 +85862,9 @@ def _testify_in_the_row():
             break
         above.insert(0, x.lstrip("#").strip())
     above = " ".join(above)
-    mail = Path("workers/follow/mail.js").read_text(encoding="utf-8")
+    mail = _source("workers/follow/mail.js")
     words = mail[mail.index("export function testifyWords("):mail.index("function testifyBlock(")]
-    app_src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app_src = _source("src/pages/app.js")
     button_src = app_src[app_src.index("function testifyButton("):app_src.index("function mountTestify(")]
     # Since the emails took the pane's words too (26 October 2026), neither
     # says the Senate note's last sentence, and the comment says so of both.
@@ -85713,7 +85953,7 @@ def _testify_in_the_row():
         f"a record that did not load keeps a Testify button: {got['broken']}")
     assert got["earlier"] == ["pcite", "followbox", "reportbox"], (
         f"a bill of an earlier term is given a Testify button in its row: {got['earlier']}")
-    js = re.sub(r"//[^\n]*", "", Path("src/pages/app.js").read_text(encoding="utf-8"))
+    js = re.sub(r"//[^\n]*", "", _source("src/pages/app.js"))
     assert re.search(r"if\(fb\)\{focusActions\(fb\.id\);placeActions\(\);mountTestify\(fb,detail\[dkey\(fb\.id\)\]\);\}", js), \
         "render() no longer mounts Testify on a bill's own page"
     fa = js[js.index("function focusActions("):js.index("function parkActions(")]
@@ -85729,7 +85969,7 @@ def _testify_in_the_row():
         "mountTestify no longer picks the row of the record's own term")
     assert "function testifyBox(" not in js, "app.js still draws the Summary's Testify box"
     # THE COLOURS, THE SHEET AND THE PHONE
-    text = Path("src/pages/app.css").read_text(encoding="utf-8")
+    text = _source("src/pages/app.css")
     pal = _css_palette(text)
     rules = {}
     for ctx, sel, body, _ in _css_rules(text):
@@ -86828,7 +87068,7 @@ def _testify_amendment_link():
     for name in ("offPage", "notAmendment"):
         assert got[name] == {"tab": None, "open": []}, f"{name}: a hashchange that names no amendment of a bill's " \
             f"own page turned a tab or opened an amendment: {got[name]}"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     for need, what in (
             ('const h=said&&!(window.GR_BILL&&(AMENDMENT_HASH.test(said)||VOTE_HASH.test(said)))?said:(window.GR_BILL||"");',
              "a bill's own page whose fragment is an amendment's (or a vote's) is still that bill's"),
@@ -87006,7 +87246,7 @@ def _version_links_step(VL):
     finally:
         shutil.rmtree(root, ignore_errors=True)
     steps = [s for s in re.findall(r'\["(build_bill_versions\.py|build_version_links\.py)"',
-                                   Path("build_all.py").read_text(encoding="utf-8"))]
+                                   _source("build_all.py"))]
     assert steps == ["build_bill_versions.py", "build_version_links.py"], (
         f"build_all does not run build_version_links straight after build_bill_versions: {steps}")
     return "ok", ("amendments numbered from their own text, statutes cited named and linked, a second run "
@@ -87804,7 +88044,7 @@ def _testify_two_clocks():
     there. So the rule names the four places that say a day's name, and
     data-until is named apart, as the reader's clock by that choice, which
     nothing forbids revisiting; components.js says the same."""
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    js = _source("src/pages/app.js")
     head = js[js.index("// NEW HAMPSHIRE'S DAY, NOT THE READER'S"):js.index("function nhDay(")]
     flat = " ".join(c.strip("/ ").strip() for c in head.splitlines())
     assert "TWO CLOCKS, ON PURPOSE" in flat, "nhDay's comment no longer says there are two clocks on purpose"
@@ -87820,7 +88060,7 @@ def _testify_two_clocks():
     assert "16 October 2026" in apart and "names no day" in apart, (
         "nhDay's comment does not name data-until apart, as the reader's clock by the choice of 16 October "
         "2026 and not a day's name")
-    cj = Path("src/pages/components.js").read_text(encoding="utf-8")
+    cj = _source("src/pages/components.js")
     cnote = " ".join(cj[cj.index("// WHAT RETIRES ON A DAY"):cj.index("function day(){")].replace("//", " ").split())
     assert "not because a day's name is the reader's" in cnote, (
         "components.js's data-until says it reads the reader's clock as a day's name does")
@@ -87875,7 +88115,7 @@ def _picker_keeps_the_open_bill():
         the old bill's open card and tab are forgotten;
       then the picker turned back to 2023-2024 with no bill open, and a bill
         opened and closed: the list stays 2023-2024's."""
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    js = _source("src/pages/app.js")
     start = js.index('ys.addEventListener("change",e=>{')
     end = js.index("Promise.all(want.map(ensureTerm)).then(render);});", start) + len(
         "Promise.all(want.map(ensureTerm)).then(render);}")
@@ -88064,7 +88304,7 @@ def _home_says_each_once(BP, chrome):
     assert not english, f"the Spanish Recent Session Days says English words: {english}"
     # THE STILL IS A VIDEO'S: the shared .pstub is 16:9 with Play in its
     # middle, and the frame that takes its place 16:9 too.
-    rules = _css_rules(Path("src/pages/app.css").read_text(encoding="utf-8"))
+    rules = _css_rules(_source("src/pages/app.css"))
     flat = {sel.strip(): dict(_css_decls(body)) for at, sel, body, n in rules if not at}
     stub, frame = flat.get(".pstub", {}), flat.get(".player iframe", {})
     assert (stub.get("aspect-ratio"), stub.get("display"), stub.get("align-items"),
@@ -88072,7 +88312,7 @@ def _home_says_each_once(BP, chrome):
         "16/9", "flex", "center", "center", "16/9"), (
         f"app.css's Play is not a 16:9 still with Play in its middle: .pstub {stub}, "
         f".player iframe {frame}")
-    assert ".sessline" not in Path("src/pages/app.css").read_text(encoding="utf-8") \
+    assert ".sessline" not in _source("src/pages/app.css") \
         and not hasattr(BP, "session_line"), "the one line that stood for the players is still here"
     # THE PLAYERS, LAID OUT (the review of 26 October 2026: none of this was
     # held, and with .twoup, #session's sheet and its margin gone, the
@@ -88235,7 +88475,7 @@ def _home_finder_suggests_towns():
         and "findBill(hq.value)" not in js and "first.href" not in js, (
             "the home box's Return opens a row or a bill, where the reader asked for results")
     assert "if(opening)hqLift();" in js, "the home box's rows open under a phone's keyboard again"
-    fj = Path("src/pages/find.js").read_text(encoding="utf-8").replace("\r\n", "\n")
+    fj = _source("src/pages/find.js").replace("\r\n", "\n")
     assert 'const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};' in fj \
         and "function findDraw(q,ids){\n  ids=ids||FIND_IDS;" in fj \
         and "function findSay(html,ids){" in fj, "find.js's findDraw does not take the ids it draws into"
@@ -88403,7 +88643,7 @@ def _panes_into_view():
     Testify's pane joined them when it came into the row (the person, 25
     October 2026): live, it is the tallest of the three on a phone, 380px
     at 390px wide."""
-    js = Path("src/pages/app.js").read_text(encoding="utf-8").replace("\r\n", "\n")
+    js = _source("src/pages/app.js").replace("\r\n", "\n")
     assert "function paneInView(p){" in js and "if(h&&(r.bottom>h||r.top<0))" in js, (
         "app.js has no paneInView, or it moves the window when the pane is already in sight")
     flat = re.sub(r"\s+", "", js)
@@ -88546,7 +88786,7 @@ def _legislators_page_tabs():
         "the finder marks its list as the whole list of towns, for columns down the page")
     css = (site / "app.css").read_text(encoding="utf-8")
     for sheet, text in (("the published app.css", css),
-                        ("app.css", Path("src/pages/app.css").read_text(encoding="utf-8"))):
+                        ("app.css", _source("src/pages/app.css"))):
         rules = [(sel.strip(), body) for sel, body in re.findall(
             r"([^{}]*)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", text, flags=re.S))]
         win = [body for sel, body in rules if sel == ":where(body.pg) .lmatch"]
@@ -88568,7 +88808,7 @@ def _legislators_page_tabs():
                  ".twnpane[hidden]{display:none}",
                  ".twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute"):
         assert rule in css, f"the published app.css has no {rule}"
-    app = Path("src/pages/app.css").read_text(encoding="utf-8")
+    app = _source("src/pages/app.css")
     assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
     return "ok", ("My Town, Legislators, Federal Delegation, Executive Branch, Judicial Branch "
                   "and County Officials, each a panel under its own heading, switched by the "
@@ -88622,7 +88862,7 @@ def _town_finder_words(BP):
     assert m, "build_pages.LEGFIND_JS carries no <script>"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
         (root / "finder.js").write_text(_with_components(m.group(1)), encoding="utf-8")
         (root / "go.js").write_text(_TOWN_FINDER_JS, encoding="utf-8")
         got = {}
@@ -89139,7 +89379,7 @@ def _officials_vacant_seat(BME, OT):
             bad.append(f"a vacancy {broken!r} does not stop the build")
     if json.dumps(doc, sort_keys=True) != snap:
         bad.append("drawing the tab changed the file it read")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     if not re.search(r"\.ofvacant\{[^}]*border:1px dashed", css):
         bad.append("the Vacant box is not dashed")
     # The real file's vacancies, if it names any, each draw.
@@ -89239,7 +89479,7 @@ def _officials_one_reader(BME, BP, B):
         f"home.json's composition carries {sorted(set(comp) - {'H', 'S', 'vacancies'})} besides the chambers")
     for gone in ("C.council", "C.governor", 'getElementById("composition")', "Who holds office</h2>"):
         assert gone not in BP.HOME_JS, f"the home page's script still draws {gone!r}"
-    assert 'id="composition"' not in Path(BP.__file__).read_text(encoding="utf-8"), (
+    assert 'id="composition"' not in _source(BP.__file__), (
         "the home page still writes the composition block's empty box")
     return "ok", (f"{len(readers)} readers of the hand file, each through read_officials, and no "
                   f"other path to it; corrections/status/{retired} gone, named nowhere, and the "
@@ -89388,7 +89628,7 @@ def _seat_list_by_division():
         "the Speaker is not above the five columns")
     assert html.count('class="seatrow"') == len(seats), "a member is missing from the seat list"
     assert BP.seat_columns([{"name": "x"}], lambda m: "<li></li>").count("No seat on file") == 1
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     # FIVE ABREAST FROM 1180px, AND BELOW IT ONE DIVISION UNDER THE NEXT (the
     # look of 7 October 2026). A grid that wrapped five into rows of four or
     # three started a row under the longest division above it: at 1024px
@@ -89494,7 +89734,7 @@ def _seat_chart_turned():
     assert re.search(r'<div class="seatstage">\s*<div class="seatwrap"><svg [^>]*class="seatmap"'
                      r'.*?</svg></div>\s*<p class="seatnote" id="seatnote"', page, re.S), (
         "the readout is not the chart's stage's next row after its scrolling floor")
-    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
     on_screen = re.sub(r"@media print\{(?:[^{}]*\{[^{}]*\})*\s*\}", "", css)
     note = [(sel.strip(), body) for sel, body in re.findall(r"([^{}]*)\{([^{}]*)\}", on_screen)
             if ".seatnote" in sel]
@@ -89524,7 +89764,7 @@ def _seat_chart_prints_whole():
     at the same weight, sets the chart to the page's width over the script's
     inline width -- which only !important does -- and lets the box neither
     clip nor stop at 78vh."""
-    css = re.sub(r"/\*.*?\*/", "", Path("src/pages/app.css").read_text(encoding="utf-8"), flags=re.S)
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
     box = css.find(":where(body.pg) .seatwrap{")
     assert box >= 0, "app.css has no rule for the chart's box"
     blocks = [(m.start(), m.group(1)) for m in re.finditer(
@@ -89559,7 +89799,7 @@ def _committee_notes_fill():
         at = src.index(head)
         assert "'<p class=\"src fill\">" in src[at:at + 200], (
             f"the note under {head} is held to the measure")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     assert ".src.fill{max-width:none}" in css and css.index(".src.fill{max-width:none}") \
         > css.index(".src,.lead{max-width:var(--measure)}"), (
             "app.css does not let a .src.fill note take its width, after the measure")
@@ -89696,7 +89936,7 @@ def _rail_weight_on_cards():
     (choice A, 14 October) was scoped to an opened card and a bill's own
     page, so a list's cards kept thin grey lines and small dots. Each of
     its rules must reach a card that is not opened."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     weighted = [sel for at, sel, body, _ in _css_rules(css)
                 if ".rail.dated .stop" in sel and not at
                 and any((k, v) in (("background", "var(--st-law)"), ("width", "1.25rem"))
@@ -90065,7 +90305,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     # a dot.
     assert _vw_loose_dots(pane) == 0 and pane.count(_VW_DOT_HEAD) >= 6, (
         "a dot in the Videos tab can end a line: it goes at the head of the part after it")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     keep = re.search(r"\n([^{}\n]*\.vwcap \.vwi\b[^{}\n]*)\{([^}]*)\}", css)
     assert keep and "white-space:nowrap" in keep.group(2), (
         "the caption's date, time, length or YouTube link can break across two lines, or from its dot")
@@ -90677,7 +90917,7 @@ def _videos_live_strip_place():
                           '<div class="player vwplay"'), (
         "the Videos band does not begin with the live strip's empty, hidden place: " + got[:200])
     assert got.count("lv-strip") == 1, "the live strip's place is written more than once in a view"
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     assert "lv-strip" not in css, "app.css styles .lv-strip, which is the live layer's to draw"
     for pin in ({}, {"data-vwpin": "", "data-vwstuck": ""}):
         chain = [{"tag": "div", "ids": set(), "classes": {"lv-strip"}, "attrs": {"class": "lv-strip", "hidden": ""},
@@ -90729,7 +90969,7 @@ def _videos_phone_playlist():
     375, and still at 390 by 844 and 768 by 1024; one step was under the
     strip without the strip's guard). And while the player stays over the
     list, a foot to it, once the view has gone up under the strip (7)."""
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     phone = _braced(css, "@media screen and (max-width:59.99em){")
     wide = _braced(css, "@media screen and (min-width:60em){")
     stick = re.search(r"\n\s*\.vw\[data-vwpin\] \.vwmain\{position:sticky;top:var\(--vwtop,0px\);z-index:\d+\}", phone)
@@ -90888,7 +91128,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     assert '<p class="vwlead">The docket ties 2 bills to this recording. Exact moments not found.</p>' \
         in quiet_det and 'class="mjumps"' not in quiet_det, (
             "a recording none of whose bills has a moment does not say so: " + re.sub(r"<[^>]+>", " ", quiet_det)[:300])
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     at = css.find(".vwbills li{display:flex")
     phone = _braced(css[css.rfind("@media (max-width:45em){", 0, at):], "@media (max-width:45em){") if at >= 0 else ""
     assert re.search(r"\n\.vwbn\{grid-column:1;", css) and re.search(r"\n\.vwbt\{grid-column:2;", css) and \
@@ -91006,7 +91246,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         assert "vwout" not in line(n), (
             f"{n}, which the committee did not vote at this meeting, shows a vote (a hearing takes none, and "
             f"another day's vote is not this meeting's): {text(line(n))!r}")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     assert re.search(r"\n\.vwout\{grid-column:2;", css), "app.css: the vote beside a bill's moments has no rule"
     return "ok", "a voted bill's line carries the chip and counted tally; a hearing's or another day's vote shows none"
 
@@ -91079,7 +91319,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
         f"a bill is not under its sponsor's party as recorded: {got['of']}")
     assert got["all"] == 8 and got["dem"] == ["HB4", "HB5"] and got["demrep"] == 5 and got["none"] == ["HB9"], (
         f"a ticked party does not keep exactly its bills: {got}")
-    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    src = _source("src/pages/app.js")
     assert 'fgroup("party",' not in src and 'data-f="party"' in src and '"party"]' in src, (
         "the party is not a choice inside the Sponsor group, or not kept in the address")
     # The Sponsor group draws the party choice inside itself, after its
@@ -91131,7 +91371,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
     assert "threw" not in got, "the Sponsor filter would not run: " + got["threw"]
     assert got["off"] == ["HB1"] and got["on"] == ["HB1", "HB2"], (
         f"a sponsor chosen keeps not exactly their prime bills (off) and prime plus co-sponsored (ticked): {got}")
-    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    src = _source("src/pages/app.js")
     assert 'id="cosp"' in src and "Include co-sponsored bills" in src, "the Sponsor filter has no co-sponsor checkbox"
     return "ok", "a chosen sponsor keeps their prime bills; co-sponsored ones only when ticked"
 
@@ -91177,7 +91417,7 @@ def _using_this_site_tabs(civics):
     part = body[at:body.index("</ul>", at)]
     named = re.findall(r"<li><b>([^<]+)</b>", part) + re.findall(
         r", and <b>([^<]+)</b>", part)
-    app = _paths.locate("app.js").read_text(encoding="utf-8")
+    app = _source(_paths.locate("app.js"))
     drawn = set(re.findall(r'role="tab" id="tab_\$\{b\.id\}_\d"[^>]*?data-t="\d">([A-Z][a-z]+'
                            r'(?: [A-Z][a-z]+)?)', app, re.S))
     assert drawn >= {"Summary", "Votes", "Hearings", "Reports", "Sponsors"}, (
@@ -91614,8 +91854,7 @@ def _member_signposts(BLP):
     towns_linked links a town by its page's slug and leaves a place the
     roster spells otherwise than the district maps -- "Atk. & Gilmanton
     Academy Gt" beside the map's "Atk. & Gil. Academy Grant" -- as words."""
-    assert '"/directory/former-legislators.html"' in Path("src/pages/build_indexes.py").read_text(
-        encoding="utf-8"), "build_indexes no longer writes /directory/former-legislators"
+    assert '"/directory/former-legislators.html"' in _source("src/pages/build_indexes.py"), "build_indexes no longer writes /directory/former-legislators"
     site = Path(tempfile.mkdtemp(prefix="gr-towns-"))
     try:
         (site / "districts.json").write_text(json.dumps(
@@ -91738,13 +91977,13 @@ def _member_requests():
         return "skip", "node, app.js or the stub is not here"
     has, none, jan = got
     # The page is drawn before the requests are fetched: it says so, not "none".
-    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    src = _source("src/pages/app.js")
     assert "Loading the bill requests" in src and "if(!LOADED.has(META.requests.term))" in src, (
         "a member's requests term says there are none before the list has come")
     # The member's own file, as build_site_v2 writes it, carries the slug the
     # page finds their requests by (the review of 8 November 2026: it did
     # not, and no member was offered a request).
-    assert '"slug": row["slug"],' in Path("src/pages/build_site_v2.py").read_text(encoding="utf-8"), (
+    assert '"slug": row["slug"],' in _source("src/pages/build_site_v2.py"), (
         "build_site_v2 writes no slug into a member's own file, which the page reads")
     assert jan["terms"][:3] == ["2027-2028", "2027-requests", "2025-2026"], (
         f"once 2027-2028 is published a member is offered {jan['terms']}: their bills of that "
@@ -92347,7 +92586,7 @@ process.stdout.write(JSON.stringify(out));
     # on the card's surface and the neighbours' are on the page; the band, the
     # hover and the chosen day are written after the neighbours' rule, at the
     # same weight, so they still win.
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     tile = re.search(r"\.cmgrid td\{[^}]*background:var\(--surface\)\}", css)
     out = css.find(".cmgrid td.cmout{background:none}")
     assert tile and out > tile.start(), (
@@ -92797,7 +93036,7 @@ def _on_the_record_rows():
     # ON THE RECORD box"; option E, 10 October 2026): what it carried is in
     # the record head's facts, How It Got Here or under the analysis, and
     # none of them carries the LSR or an Introduced row.
-    assert "function factsTable(" not in Path("src/pages/app.js").read_text(encoding="utf-8"), (
+    assert "function factsTable(" not in _source("src/pages/app.js"), (
         "app.js still draws the On the record box")
     got = _app_js("[scope.billHead(" + json.dumps(b) + ", " + json.dumps(d) + "), "
                   "scope.renderSummary(" + json.dumps(b) + ", " + json.dumps(d) + ")]",
@@ -93336,7 +93575,7 @@ def _bill_text_opens_whole():
     # had been the least the bill page would draw at, 151px past a 768px
     # window.
     assert re.search(r"\.vblk\.vrule\{white-space:nowrap;overflow:hidden;width:0;min-width:100%\}",
-                     Path("src/pages/app.css").read_text(encoding="utf-8")), (
+                     _source("src/pages/app.css")), (
         "a rule line may still wrap, or its width widens the page")
     return "ok", ("the newest printing, in full text; What changed one press away; a rule "
                   "drawn in characters kept to one line")
@@ -93432,7 +93671,7 @@ def _frame_written_once():
     """
     import chrome as CH
     import shell as S
-    t = Path("src/pages/bills.html").read_text(encoding="utf-8")
+    t = _source("src/pages/bills.html")
     for slot in CH.SLOTS:
         assert t.count(f"<!-- CHROME:{slot} -->") == 1, (
             f"bills.html has {t.count(f'<!-- CHROME:{slot} -->')} of the {slot} slot, not one")
@@ -93580,7 +93819,7 @@ def _deploy_branch():
     a preview while wrangler printed "Deployment complete". publish.bat and
     nightly.py both deploy; a nightly that nobody watches is where a deploy
     that quietly became a preview would go unseen longest."""
-    bat = Path("publish.bat").read_text(encoding="utf-8", errors="replace")
+    bat = _source("publish.bat", errors="replace")
     m = re.search(r"^set PRODUCTION_BRANCH=(\S+)", bat, re.M)
     assert m, "publish.bat does not set PRODUCTION_BRANCH"
     deploys = [ln for ln in bat.splitlines()
@@ -93609,7 +93848,7 @@ def _deploy_branch():
         "publish.bat deploys without checking which branch the folder is on"
     assert guard < bat.find("call npx wrangler pages deploy"), \
         "publish.bat checks the branch only after uploading"
-    night = _paths.locate("nightly.py").read_text(encoding="utf-8", errors="replace")
+    night = _source(_paths.locate("nightly.py"), errors="replace")
     n = re.search(r'^PRODUCTION_BRANCH = "([^"]+)"', night, re.M)
     assert n, "nightly.py does not set PRODUCTION_BRANCH"
     assert n.group(1) == m.group(1), (
@@ -93919,7 +94158,7 @@ def _every_fetcher_checks_refusal():
     contrib = _paths.ROOT / "CONTRIBUTING.md"
     if contrib.exists():
         said = _re.search(r"All (\d+)\s+`fetch_\*\.py` scripts carrying a literal\s+"
-                          r"`gc\.nh\.gov` URL", contrib.read_text(encoding="utf-8"))
+                          r"`gc\.nh\.gov` URL", _source(contrib))
         assert said, ("CONTRIBUTING.md no longer says \"All N `fetch_*.py` scripts carrying a "
                       "literal `gc.nh.gov` URL\", which this holds to the count it reads: "
                       "change this check with the sentence")
@@ -94945,7 +95184,7 @@ def _senate_calendars(SC):
 
         # The pace is the lane's, not the 2.5 seconds this ran at when it met
         # the 403.
-        src = _paths.locate("fetch_senate_calendars.py").read_text(encoding="utf-8")
+        src = _source(_paths.locate("fetch_senate_calendars.py"))
         m = re.search(r'"--delay".*?default=([\d.]+)', src, re.S)
         assert m and float(m.group(1)) >= 15, (
             "the Senate calendar delay is back under 15 seconds: " + str(m and m.group(1)))
@@ -95223,7 +95462,7 @@ def _running_oneliner():
     p = Path("watchers/README.md")
     if not p.exists():
         return "skip", "watchers/README.md not here"
-    lines = [ln for ln in p.read_text(encoding="utf-8").splitlines()
+    lines = [ln for ln in _source(p).splitlines()
              if "Get-CimInstance Win32_Process" in ln and not ln.startswith(("`", " "))]
     assert len(lines) == 1, f"{len(lines)} process one-liners in {p}, not one"
     ln = lines[0]
@@ -95342,7 +95581,7 @@ def _calendar_drain(CA):
         # A broken page twice stops the run non-zero, so the lane stops too.
         rc, rows, asked = run([b"<html>Server Error in '/'</html>"] * 2)
         assert rc == 1 and not refusal.MARK.exists(), rc
-        src = _paths.locate("fetch_calendar_archive.py").read_text(encoding="utf-8")
+        src = _source(_paths.locate("fetch_calendar_archive.py"))
         assert "LOCK.unlink" not in src and "LOCK.write_text" not in src, \
             "fetch_calendar_archive manages archive/.lock by hand again"
         return "ok", ("runs under the lane's lock and leaves it; one 403, the "
@@ -95613,7 +95852,7 @@ def _follow_email():
     if not Path("workers/follow").is_dir():
         return "skip", "no workers/follow here"
     import tomllib
-    envs = tomllib.loads(Path("wrangler.toml").read_text(encoding="utf-8")).get("env", {})
+    envs = tomllib.loads(_source("wrangler.toml")).get("env", {})
     def binds(env):
         return any(d.get("binding") == "FOLLOW_DB" for d in envs.get(env, {}).get("d1_databases", []))
     assert binds("preview"), "previews do not bind FOLLOW_DB, so sign-ups cannot be tested"
@@ -95622,7 +95861,7 @@ def _follow_email():
     # whether production binds the database (_follow_privacy_gated checks
     # each), so the test is that the after text exists: until then, read as
     # "no email addresses" not in the file, it failed the go-live itself.
-    about = Path("src/pages/build_exports.py").read_text(encoding="utf-8")
+    about = _source("src/pages/build_exports.py")
     assert "Email updates." in about or not binds("production"), \
         "production binds FOLLOW_DB while the Data page has no text for email updates"
     # ... and the sender's address with it: with the database bound and no
@@ -95630,11 +95869,11 @@ def _follow_email():
     pvars = envs.get("production", {}).get("vars", {})
     assert "@" in str(pvars.get("MAIL_FROM", "")) and pvars.get("FEEDBACK_URL"), \
         "production's vars have no MAIL_FROM or FEEDBACK_URL for email following"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     assert '"/api/follow/count"' in app and '"/changes/current.json"' in app, \
         "the Follow pane offers email without asking whether this deployment can take it"
     key = re.search(r'FOLLOW_SITEKEY="([^"]+)"', app)
-    readme = Path("workers/follow/README.md").read_text(encoding="utf-8")
+    readme = _source("workers/follow/README.md")
     assert key and key.group(1) in readme, "app.js's Turnstile site key is not the one README.md records"
     return "ok", (f"previews bind FOLLOW_DB, production {'does' if binds('production') else 'does not'}; "
                   "the Follow pane asks before it offers email")
@@ -95676,7 +95915,7 @@ def _follow_documents_live(S):
             said += [f"{name}: \"{w}\"" for w in words if w in text]
     assert not said, ("production binds FOLLOW_DB, so email following is live, and these still say "
                       "it is not: " + "; ".join(said))
-    sec = (_paths.ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    sec = _source(_paths.ROOT / "SECURITY.md")
     api, workers = _paths.ROOT / "functions" / "api", _paths.ROOT / "workers"
     surface = []
     if api.is_dir():
@@ -95745,7 +95984,7 @@ def _follow_tests():
     index = Path("tests/follow/index.js")
     if not index.is_file():
         return "skip", "tests/follow/index.js is not here"
-    imported = re.findall(r'^import\s+"\./([^"]+)";', index.read_text(encoding="utf-8"), re.M)
+    imported = re.findall(r'^import\s+"\./([^"]+)";', _source(index), re.M)
     files = sorted(p.name for p in index.parent.glob("*.test.js"))
     missing = [f for f in files if f not in imported]
     assert not missing, (f"tests/follow/index.js does not import {', '.join(missing)}, so node --test "
@@ -96027,7 +96266,7 @@ def _follow_plan_limits():
                             "pages and give the published figure, its page and the day read: "
                             + ", ".join(remembered))
     rows = {}
-    for line in readme.read_text(encoding="utf-8").splitlines():
+    for line in _source(readme).splitlines():
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         for label in FOLLOW_PLAN_LIMITS:
             if len(cells) >= 3 and cells[0].startswith(label):
@@ -96437,7 +96676,7 @@ def _live_session(BLS):
     file, and gone the next day."""
     import tempfile
     shape = BLS.schema()
-    cases = json.loads(Path("tests/live/schema_cases.json").read_text(encoding="utf-8"))["cases"]
+    cases = json.loads(_source("tests/live/schema_cases.json"))["cases"]
     wrong = []
     for c in cases:
         try:
@@ -97444,7 +97683,7 @@ def _follow_signup_frequency():
     from html.parser import HTMLParser
     if not Path("workers/follow").is_dir():
         return "skip", "no workers/follow here"
-    readme = Path("workers/follow/README.md").read_text(encoding="utf-8")
+    readme = _source("workers/follow/README.md")
     migrations = sorted(p.name for p in Path("workers/follow/migrations").glob("*.sql"))
     assert "0003_pending_frequency.sql" in migrations, "the sign-up's frequency migration is gone"
     untold = [f"{m} on {db}" for m in migrations
@@ -97471,14 +97710,14 @@ def _follow_signup_frequency():
                     f"{seg} label:has(input:checked)" in [s.strip() for s in sel.split(",")]:
                 got.update(_css_decls(body))
         return got.get("forced-color-adjust") == "none" and got.get("background", "").lower() == "highlight"
-    style = re.search(r"const STYLE = `(.*?)`;", Path("workers/follow/page.js").read_text(encoding="utf-8"), re.S)
+    style = re.search(r"const STYLE = `(.*?)`;", _source("workers/follow/page.js"), re.S)
     blind = [name for name, css, seg in (
-        ("the sign-up box (app.css .followfreq)", Path("src/pages/app.css").read_text(encoding="utf-8"), ".followfreq"),
+        ("the sign-up box (app.css .followfreq)", _source("src/pages/app.css"), ".followfreq"),
         ("the manage page (page.js .seg)", style.group(1) if style else "", ".seg")) if not forced(css, seg)]
     assert not blind, ("in forced colours the chosen one of two is drawn like the other on "
                        + " and ".join(blind) + ": no Highlight ground for label:has(input:checked)")
 
-    manage = Path("functions/api/follow/manage.js").read_text(encoding="utf-8")
+    manage = _source("functions/api/follow/manage.js")
     words = dict(re.findall(r'radio\("frequency", "(daily|weekly)", freq, "([^"]+)"', manage))
     legend = re.search(r'<legend class="sr">([^<]+)</legend>\s*\$\{radio\("frequency"', manage)
     assert set(words) == {"daily", "weekly"} and legend, \
@@ -97642,7 +97881,7 @@ def _follow_beta_note(BP):
     Functions send them), the daily and the weekly once the person deploys
     workers/follow again."""
     import components as C
-    beta = json.loads(Path("src/pages/words/follow_beta.json").read_text(encoding="utf-8"))
+    beta = json.loads(_source("src/pages/words/follow_beta.json"))
     note, until = beta.get("note"), beta.get("until")
     assert note and until == BP.WEBINAR_UNTIL, (
         f"follow_beta.json's line retires on {until!r}, and the webinar's box on {BP.WEBINAR_UNTIL!r}: the "
@@ -97656,7 +97895,7 @@ def _follow_beta_note(BP):
     assert gen == {"note": note, "until": until}, (
         f"workers/follow/site.gen.js's FOLLOW_BETA is {gen}, not follow_beta.json's: run "
         "python3 src/pages/follow_site.py")
-    comp = Path("src/pages/components.js").read_text(encoding="utf-8")
+    comp = _source("src/pages/components.js")
     assert 'querySelectorAll("[data-until]")' in comp and "function untilAttrs(" in comp, \
         "components.js no longer hides what carries data-until by itself"
     site = _app_js("""(() => ({form: scope.followMailForm("bill:2026/HB1442"),
@@ -97754,7 +97993,7 @@ def _follow_panel_states():
     manage = Path("functions/api/follow/manage.js")
     if manage.exists():
         hints = dict(re.findall(r'radio\("frequency", "(daily|weekly)", freq, "[^"]+", "([^"]+)"\)',
-                                manage.read_text(encoding="utf-8")))
+                                _source(manage)))
         told = re.search(r"const FOLLOW_OFTEN=\{daily:\"([^\"]+)\",\s*weekly:\"([^\"]+)\"\}", app)
         assert told and set(hints) == {"daily", "weekly"}, \
             "app.js's FOLLOW_OFTEN or manage.js's How often hints are not where this check reads them"
@@ -97887,14 +98126,14 @@ def _report_function():
     if not fn.exists():
         return "skip", "no functions/api/report.js here"
     # The code, not its comments: the header comment says "no cookie" and must.
-    code = _strip_js_comments(fn.read_text(encoding="utf-8"))
+    code = _strip_js_comments(_source(fn))
     reads = re.findall(r"""headers\.get\(\s*["']([^"']+)["']""", code, re.I)
     allowed = {"origin", "content-type", "content-length"}
     assert {h.lower() for h in reads} <= allowed, \
         f"report.js reads a header it has no use for: {sorted(set(reads) - allowed)}"
     for leak in ("request.cf", "cookie", "connecting-ip", "forwarded", "user-agent", "referer"):
         assert leak not in code.lower(), f"report.js reads {leak}"
-    schema = Path("reports/schema.sql").read_text(encoding="utf-8").lower()
+    schema = _source("reports/schema.sql").lower()
     cols = re.findall(r"^\s*(\w+)\s+(?:integer|text)", schema, re.M)
     for col in cols:
         assert not re.search(r"ip|addr|email|cookie|session|agent|name$", col), \
@@ -97910,7 +98149,7 @@ def _report_function():
     toml = Path("wrangler.toml")
     if toml.exists():
         import tomllib
-        envs = tomllib.loads(toml.read_text(encoding="utf-8")).get("env", {})
+        envs = tomllib.loads(_source(toml)).get("env", {})
         for which in origins:
             origins[which] = envs[which]["vars"]["REPORT_ORIGINS"]
     root = Path(tempfile.mkdtemp())
@@ -98277,7 +98516,7 @@ def _report_screen(CR):
     """
     # The red team's corpus of 12 September, and the first hand-written lists.
     corpus_file = Path("tests/report_corpus.json")
-    corpus = json.loads(corpus_file.read_text(encoding="utf-8")) if corpus_file.exists() \
+    corpus = json.loads(_source(corpus_file)) if corpus_file.exists() \
         else {"attacks": [], "genuine": []}
     genuine = REPORT_GENUINE + corpus["genuine"]
     attacks = REPORT_ATTACKS + corpus["attacks"]
@@ -98358,8 +98597,8 @@ def _report_agree(CR):
     fn = Path("functions/api/report.js")
     if not fn.exists():
         return "skip", "no functions/api/report.js here"
-    js = fn.read_text(encoding="utf-8")
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    js = _source(fn)
+    app = _source("src/pages/app.js")
     m = re.search(r"const FIELDS = new Set\(\[(.*?)\]\)", js, re.S)
     fn_fields = re.findall(r'"(\w+)"', m.group(1))
     box = re.search(r"const REPORT_FIELDS=\[(.*?)\];", app, re.S)
@@ -98377,7 +98616,7 @@ def _report_agree(CR):
     # A MISTAKE IN A TRANSLATION (24 October 2026): components.js's box sends
     # the same keys, and its field is the one report.js and the compiler
     # name TRANSLATION.
-    comp = Path("src/pages/components.js").read_text(encoding="utf-8")
+    comp = _source("src/pages/components.js")
     tm = re.search(r"var payload=\{(.*?)\};", comp, re.S)
     assert tm, "components.js no longer builds the translation report's payload"
     tsent = set(re.findall(r"(?:^|[{,])\s*(\w+):", tm.group(1)))
@@ -98401,7 +98640,7 @@ def _report_agree(CR):
     # Videos tab sent no tab until the walk of 31 October 2026 found it.
     sc = Path("src/pages/build_study_committees.py")
     if sc.exists():
-        st = re.search(r"^TABS = \((.*)\)$", sc.read_text(encoding="utf-8"), re.M)
+        st = re.search(r"^TABS = \((.*)\)$", _source(sc), re.M)
         assert st, "build_study_committees.py has no TABS line to read its tabs from"
         rendered |= set(re.findall(r'\("\w+", "([^"]+)", "\w+"\)', st.group(1)))
     rendered |= {t for t in ("Summary", "Bill Text", "Votes", "Videos", "Reports", "Sponsors", "Documents")
@@ -98575,7 +98814,7 @@ def _report_databases():
     p = Path("wrangler.toml")
     if not p.exists():
         return "skip", "no wrangler.toml here"
-    t = p.read_text(encoding="utf-8")
+    t = _source(p)
     def ids(section):
         block = re.search(rf"\[\[{re.escape(section)}d1_databases\]\](.*?)(?=\n\[|\Z)", t, re.S)
         assert block, f"no [[{section}d1_databases]] in wrangler.toml"
@@ -98652,7 +98891,7 @@ def _about_reports():
     # it, in Spanish, and says what the report holds and how long it is kept.
     import i18n
     trlabel = i18n.catalog("es")["strings"]["foot.tr_report"]["es"]
-    comp = Path("src/pages/components.js").read_text(encoding="utf-8")
+    comp = _source("src/pages/components.js")
     trbox = comp[comp.index("// A MISTAKE IN A TRANSLATION"):]
     assert 'fetch("/api/report"' in trbox and 'record:"translation:"+url' in trbox, (
         "the translation's box no longer posts to /api/report, so it is not kept and deleted as a report is")
@@ -98800,7 +99039,7 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         # The states are read the way _states_covered reads them, from both
         # the builder and the page's own branches, since a ternary in the
         # builder hides its else arm from any one pattern.
-        src = Path(B.__file__).read_text(encoding="utf-8")
+        src = _source(B.__file__)
         states = set(re.findall(r'"state":\s*"(\w+)"', src))
         states |= set(re.findall(r'\["state"\]\s*=\s*"(\w+)"', src))
         states |= set(re.findall(r'state,\s*start\s*=\s*"(\w+)"', src))
@@ -99053,7 +99292,7 @@ def _report_current_term_read(CR):
         os.chdir(here)
         CR._CURRENT[:] = saved
         shutil.rmtree(tmp, ignore_errors=True)
-    assert "CURRENT_YEARS" not in _paths.locate("compile_reports.py").read_text(encoding="utf-8"), \
+    assert "CURRENT_YEARS" not in _source(_paths.locate("compile_reports.py")), \
         "compile_reports names the current term's years again"
     return "ok", "the current term's years read from the day files, or from the day where there are none"
 
@@ -99365,7 +99604,7 @@ def _snapshot_stops(SG):
             "a page slow to answer counted as a refusal, or kept the files from being taken"
         page[0] = healthy
         assert SG.page_said(healthy) == "", "a page with no error was read as reporting one"
-        src = _paths.locate("snapshot_gencourt.py").read_text(encoding="utf-8")
+        src = _source(_paths.locate("snapshot_gencourt.py"))
         m = re.search(r'"--delay", type=float, default=([\d.]+)', src)
         assert m and float(m.group(1)) >= 3, "the snapshot's pause between files fell under 3 s"
         return "ok", ("the page first, its error kept and the files still taken; one 403 stops it, "
@@ -99413,14 +99652,14 @@ def _nightly_guards(NI):
     stop, _, _ = NI.gated(before, dict(before, files=NI.FILE_CEILING), force=True)
     assert stop, "--force carried a deploy past the file ceiling"
 
-    tree = ast.parse(_paths.locate("nightly.py").read_text(encoding="utf-8"))
+    tree = ast.parse(_source(_paths.locate("nightly.py")))
     withs = [w for w in ast.walk(tree) if isinstance(w, ast.With)
              and any("hold" in ast.unparse(i.context_expr) for i in w.items)]
     assert withs, "the nightly takes no refusal.hold() for its fetch"
     inside = " ".join(ast.unparse(w) for w in withs)
     assert "snapshot_gencourt.py" in inside, "the snapshot does not run under the nightly's lock"
     assert "build_all.py" not in inside, "the nightly holds the General Court's lock through the build"
-    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("nightly.py"))
     assert '"build_all.py", "--local"' in src, "the nightly's build is not --local"
     assert re.search(r"if a\.deploy and not stop and changed:", src), "a deploy is not gated on --deploy"
     assert "tree_clean()" in src, "a deploy does not require a committed tree"
@@ -100826,7 +101065,7 @@ def _nightly_review_says(NI):
     # The night job hands the step's output on, for the routing to read.
     wf = Path(".github/workflows/nightly.yml")
     if wf.exists():
-        night = _wf_jobs(wf.read_text(encoding="utf-8")).get("night") or []
+        night = _wf_jobs(_source(wf)).get("night") or []
         outs = [ln.strip() for ln in _wf_code(night)]
         assert "review: ${{ steps.night.outputs.review }}" in outs, \
             "nightly.yml's night job does not hand on the step's review output"
@@ -101843,7 +102082,7 @@ def _rollback_written(NI):
     the workflow's), the dry run's proof window (DRY_PROVEN_HOURS) and the
     publish job's refusal of an older night (newer_fit). Each is held here to
     the code, so that a change to any of them changes the section too."""
-    text = (_paths.ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    text = _source(_paths.ROOT / "CONTRIBUTING.md")
     at = text.find("### Undoing a bad publish")
     assert at >= 0, "CONTRIBUTING.md has no \"### Undoing a bad publish\" section"
     end = text.find("\n## ", at)
@@ -101861,7 +102100,7 @@ def _rollback_written(NI):
     assert said in sec, f"the section does not give the night's hour as {said}"
     assert f"within {NI.DRY_PROVEN_HOURS} hours" in sec, \
         f"the section does not give the dry run's proof window as {NI.DRY_PROVEN_HOURS} hours"
-    src = Path(NI.__file__).read_text(encoding="utf-8")
+    src = _source(NI.__file__)
     quoted = re.search(r'\("(NOT DEPLOYED: a newer night) \.\.\. (has built a site fit for '
                        r'production since this)', sec)
     assert quoted, "the section no longer quotes the publish job's refusal of an older night"
@@ -102610,7 +102849,7 @@ def _election_week_freeze(FT):
     doc = _paths.ROOT / "docs" / "ELECTION_WEEK.md"
     if not doc.is_file():
         return "skip", "no docs/ELECTION_WEEK.md here"
-    text = doc.read_text(encoding="utf-8")
+    text = _source(doc)
     head = re.search(r"(?m)^## Before (\d{1,2} \w+): freeze ", text)
     org = text.find("\n## 2 December, Organization Day")
     assert head and 0 < head.start() < org, \
@@ -102715,7 +102954,7 @@ def _finished_term_rule(BA, SHR, NA, BPR, P, FTD, NAR, BBV, EC, BD):
                        (BBV, ("still the session's term", "left out")),
                        (EC, ('f"Docket_{session}.txt"',)),
                        (NA, ("waits: ",)), (BPR, ("waits: ", "frozen manifest holds it"))):
-        src = Path(mod.__file__).read_text(encoding="utf-8")
+        src = _source(mod.__file__)
         missing = [w for w in words if w not in src]
         assert not missing, f"{Path(mod.__file__).name} no longer keeps the rule: {missing}"
     T = "2025-2026"
@@ -103289,15 +103528,15 @@ def _no_leak_by_number(BD, BSV, BA, TF):
     bills share both between consecutive terms); and bill_titles.json, read
     by number when it is there. And the sign-ins stay retrievable: a finished
     term's are rebuilt from its freeze."""
-    src = Path(BSV.__file__).read_text(encoding="utf-8")
+    src = _source(BSV.__file__)
     assert not re.search(r'load\(\s*"testimony\.json"', src), "build_site_v2 reads testimony.json"
-    kit = Path("cloud_kit.json").read_text(encoding="utf-8")
+    kit = _source("cloud_kit.json")
     assert '"testimony.json"' not in kit, "the kit still carries testimony.json"
-    bd = Path(BD.__file__).read_text(encoding="utf-8")
+    bd = _source(BD.__file__)
     assert "P.term_of(f[2].strip()) != P.term_of(str(rec.get(\"lsr_year\") or \"\"))" in bd, \
         "the Legislation fill no longer keeps to the bill's own term"
     assert "if P.term_keyed(_titles):" in bd, "bill_titles.json is read by number again"
-    assert hasattr(TF, "frozen_terms") and "only" in Path(TF.__file__).read_text(encoding="utf-8"), \
+    assert hasattr(TF, "frozen_terms") and "only" in _source(TF.__file__), \
         "testimony_from_db no longer rebuilds a finished term from its freeze"
     return "ok", ("testimony.json read by nothing and carried by no kit; the Legislation fill by "
                   "term; bill_titles.json by term or not at all; a finished term's sign-ins from "
@@ -103523,7 +103762,7 @@ def _nightly_new_term(NI, SG, BA):
     assert feeds(type("B", (A,), {"allow_prune": True})())[-1] == "--allow-prune", \
         "build_all.py --allow-prune does not reach build_feeds.py"
     assert re.search(r'ap\.add_argument\("--allow-prune", action="store_true"',
-                     _paths.locate("build_all.py").read_text(encoding="utf-8")), \
+                     _source(_paths.locate("build_all.py"))), \
         "build_all.py takes no --allow-prune for the New term night to pass"
 
     here = os.getcwd()
@@ -105115,7 +105354,7 @@ def _dayfiles_rebuild(DF):
                 "a guard fired and the command wrote files, or did not say so: "
                 + (r.stdout + r.stderr)[-400:])
         assert not list(tmp.rglob("*.part")), "a half-written file was left behind"
-        src = _paths.locate("dayfiles_from_db.py").read_text(encoding="utf-8")
+        src = _source(_paths.locate("dayfiles_from_db.py"))
         assert not re.search(r"^\s*(?:import|from)\s+(?:urllib|socket|http|subprocess|probe_db|"
                              r"refusal|child)\b", src, re.M), \
             "dayfiles_from_db.py imports something that could ask the network"
@@ -106867,7 +107106,7 @@ def _sql_hold(PD, NI, CL):
         os.environ[PD.HELD_ENV] = str(tmp / "elsewhere.json")
         assert PD.hold_file() == tmp / "elsewhere.json"
         os.environ.pop(PD.HELD_ENV)
-        src = Path(NI.__file__).read_text(encoding="utf-8")
+        src = _source(NI.__file__)
         assert re.search(r"child\.popen\(\[sys\.executable, \"-u\"\] \+ args,[^)]*"
                          r"env=\{SQL_HELD_ENV: str\(SQL_HELD\.resolve\(\)\)\}", src, re.S), \
             "nightly.run() no longer tells the steps it starts where the SQL host's hold is"
@@ -107142,7 +107381,7 @@ def _fetch_day_db(FD, DF, P, NI):
         assert code == 1 and said.startswith("NOT ASKED"), (code, said[:200])
 
         # It reaches the database through probe_db only.
-        tree_ = ast.parse(_paths.locate("fetch_day_db.py").read_text(encoding="utf-8"))
+        tree_ = ast.parse(_source(_paths.locate("fetch_day_db.py")))
         imported = {a.name for n in ast.walk(tree_) if isinstance(n, ast.Import) for a in n.names} \
             | {n.module for n in ast.walk(tree_) if isinstance(n, ast.ImportFrom) and n.module}
         assert imported <= {"argparse", "json", "shutil", "sys", "time", "datetime", "pathlib",
@@ -108433,7 +108672,7 @@ def _nightly_falls_back(NI, DF, PD, SG):
         # and the wait is reached only when it installed nothing and what it
         # gave did not look wrong, and then for TRIES_AFTER_DB more tries on
         # any night but a New term run's.
-        src = Path(NI.__file__).read_text(encoding="utf-8")
+        src = _source(NI.__file__)
         loop = re.search(r"\n( +)for tries in range\(1, EMPTY_TRIES \+ 1\):\n(.+?)\n\1if night:\s+"
                          r"night\.v\[\"fetch_tries\"\] = tries\n", src, re.S)
         assert loop and src.count("= from_database(") == 1 and \
@@ -108475,7 +108714,7 @@ def _nightly_falls_back(NI, DF, PD, SG):
              "run, a refusal on file and no installed files")
         # ... and the script it starts says the same of when it is started:
         # its docstring said "on its last try" for a day after the order changed.
-        said = _paths.locate("fetch_day_db.py").read_text(encoding="utf-8")
+        said = _source(_paths.locate("fetch_day_db.py"))
         assert "(nightly.DB_AFTER_TRIES)" in said and "empty on its last try" not in said, \
             "fetch_day_db.py's docstring does not say which try of the export sends the night to it"
         # THE LONGEST RUN FITS THE JOB AND THE WINDOW. Nothing tied the two
@@ -109436,7 +109675,7 @@ def _stand_down(R, NI, FA):
     assert set(FA.GITHUB_VIEWS) == set(NI.STUDY_NIGHTLY) | set(NI.STUDY_WEEKLY) | set(NI.STATUTE_VIEWS), (
         "fetch_archive_db.GITHUB_VIEWS and nightly.py's database views disagree about which "
         "views GitHub owns")
-    bat = Path("publish.bat").read_text(encoding="utf-8", errors="replace")
+    bat = _source("publish.bat", errors="replace")
     guard = bat.find('if exist "' + str(R.STANDDOWN).replace("/", "\\") + '"')
     assert guard != -1, "publish.bat does not look for the stand-down file"
     assert guard < bat.find("python3 build_all.py") and guard < bat.find("call npx wrangler"), \
@@ -109625,7 +109864,7 @@ def _past_select_only(FP):
             pass
 
     # The script itself: nothing reaches the database but through probe_db.
-    src = _paths.locate("fetch_past_db.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("fetch_past_db.py"))
     tree = ast.parse(src)
     imported = {a.name.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.Import)
                 for a in n.names} | {n.module.split(".")[0] for n in ast.walk(tree)
@@ -110213,7 +110452,7 @@ def _night_window(R, PD):
         shutil.rmtree(tmp, ignore_errors=True)
 
     # The lane asks before every step, in run_daily and in main's queue loop.
-    tree = ast.parse(_paths.locate("watchers/gc_lane.py").read_text(encoding="utf-8"))
+    tree = ast.parse(_source(_paths.locate("watchers/gc_lane.py")))
     fns = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
     for name in ("run_daily", "main"):
         body = ast.unparse(fns[name])
@@ -110507,7 +110746,7 @@ def _workflows_patch_notes():
     f = Path(".github/workflows/nightly.yml")
     if not f.is_file():
         return "skip", "no nightly.yml here"
-    text = f.read_text(encoding="utf-8")
+    text = _source(f)
     lines = text.splitlines()
     code = _wf_code(lines)
     uses = [ln.strip() for ln in code if "inputs.notes" in ln]
@@ -110691,7 +110930,7 @@ def _workflows_production(NI):
                     f"{f.name}: job {j} runs a night outside the gc-night group, or cancels one"
     assert prod, "no job deploys production, which cannot be right for the nightly"
     assert len(nights) >= 2, f"the night and the weekly job are not both found: {nights}"
-    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("nightly.py"))
     body = src[src.find("def runner_deploy("):src.find("def upload_and_check(")]
     assert body.find("if branch != REPO_BRANCH:") != -1 and \
         body.find("if branch != REPO_BRANCH:") < body.find("upload_and_check("), \
@@ -111129,11 +111368,11 @@ def _workflows_new_term(NI):
     assert "nightly.yml" in boxed and "weekly.yml" in boxed, \
         f"the New term box is on {boxed or 'no workflow'}; the nightly and the weekly both need it"
     assert reviewed, "no workflow with the New term box deploys production, so its note was never read"
-    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("nightly.py"))
     assert re.search(r'ap\.add_argument\("--new-term", action="store_true"', src), \
         "nightly.py takes no --new-term for the box to pass"
     assert re.search(r'ap\.add_argument\("--hold", metavar="RUN"',
-                     _paths.locate("cloud.py").read_text(encoding="utf-8")), \
+                     _source(_paths.locate("cloud.py"))), \
         "cloud.py takes no --hold for the night's kit-up to pass"
     return "ok", (f"on {', '.join(boxed)}: off unless ticked, read only on a run by hand, passed "
                   f"only to the night or the week; {', '.join(reviewed)} holds what the run "
@@ -111830,7 +112069,7 @@ def _workflows_dry_run(NI, CL):
     finally:
         for k, val in saved.items():
             os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
-    src = _paths.locate("nightly.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("nightly.py"))
     main = src[src.find("def main("):src.find("def current_branch(")]
     # ... for the night and, since the weekly is a dry run off main too, the week.
     at = main.find("if not a.dry_run and dry_by_workflow():")
@@ -112049,7 +112288,7 @@ def _workflows_publish_pings():
     assert f"'{quiet}'" in bad, (
         f"{names[pings[1]]!r} does not read nightly.PUBLISH_QUIET ({quiet}), so a deploy refused "
         "on purpose would be told to Healthchecks as a failed publish")
-    fn = next(n for n in _ast.walk(_ast.parse(Path(NI.__file__).read_text(encoding="utf-8")))
+    fn = next(n for n in _ast.walk(_ast.parse(_source(NI.__file__)))
               if isinstance(n, _ast.FunctionDef) and n.name == "runner_deploy")
 
     def writes(node):
@@ -115624,7 +115863,7 @@ def _report_no_reasons_says_what():
                    "This report records the recommendation, and gives no reasoning.",
                    "This report records the vote, and gives no reasoning.",
                    "This report gives no reasoning."], got
-    src = Path("src/pages/app.js").read_text(encoding="utf-8")
+    src = _source("src/pages/app.js")
     assert "reportNoReasons(!!rec,!!committeeTally(e))" in src, (
         "renderReports no longer asks reportNoReasons with the report's recommendation and tally")
     assert "records the\n             recommendation and the vote" not in src, (
@@ -116087,7 +116326,7 @@ def _ballot_conflict(rollcall_parser):
     assert got["5"] == got[" 5 "] == {"vote": RP.NO_VOTE, "conflict": True}, got
     assert got["7"] == {"vote": RP.NO_VOTE} and got[""] == {"vote": ""} \
         and got["Yea"] == {"vote": "Yea"}, f"only code 5 is a conflict: {got}"
-    src = _paths.locate("build_data.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_data.py"))
     assert "**RP.ballot(r[6])" in src, (
         "build_data.py no longer puts rollcall_parser.ballot's fields on each member vote "
         "row, so no conflict reaches attendance")
@@ -116242,7 +116481,7 @@ def _reports_keep_terms(fetch_reports_db, senate_hearing_reports):
         "a term that lost most of its bills is no longer refused"
     assert FR.merge_terms(prev, {"2025-2026": {"SB1": []}})[0] == {"2025-2026": {"SB1": []}}, \
         "a term this run read must replace its own slice"
-    src = _paths.locate("fetch_reports_db.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("fetch_reports_db.py"))
     assert "merged, kept = merge_terms(prev, out)" in src and "shrunk(prev, out)" in src, \
         "fetch_reports_db no longer writes through merge_terms and shrunk"
     saved = SH.parse_all
@@ -116257,10 +116496,10 @@ def _reports_keep_terms(fetch_reports_db, senate_hearing_reports):
         SH.parse_all = saved
     assert out == {"2027-2028": {"SB1": ["current"]}, "2025-2026": {"SB9": ["frozen"]}}, out
     assert said == [(Path("db/term/2025-2026/x"), {"2025-2026": 1})], said
-    src = _paths.locate("senate_hearing_reports.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("senate_hearing_reports.py"))
     assert "with_frozen(out, frozen_sources())" in src, \
         "senate_hearing_reports no longer reads the frozen terms"
-    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    kit = json.loads(_source("cloud_kit.json"))
     assert any("db/term/*/*" in e.get("globs", []) and e.get("owner") == "laptop"
                for e in kit["kit"]), "the kit does not carry db/term/, so GitHub's build would not"
     return "ok", ("a 2027 run keeps 2025-2026 and is judged against 2027 alone; a frozen term "
@@ -116329,7 +116568,7 @@ def _bill_versions_early(BV, BB):
             early = pickle.load(f)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    src = _paths.locate("build_bill_versions.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_bill_versions.py"))
     assert "early.pop((bill, year, i), None)" in src and "were not met by the" in src, \
         "main() no longer takes the early pairs where it meets them, or no longer refuses a left one"
     if (os.cpu_count() or 1) < 2:
@@ -116792,7 +117031,7 @@ def _search_phrase_asks(SI):
         and "protection gender" in said["SB5"] \
         and not any("identity protection y" in v for v in said.values()), \
         ("the fixture no longer has a bill each way", said)
-    src = _paths.locate("build_search_index.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_search_index.py"))
     assert "phrase_asks(plan, {bid: tok[bid][:2] for bid in docs})" in src \
         and "in asks[bid]:" in src, \
         "build_term no longer reads its phrases through phrase_asks"
@@ -117091,7 +117330,7 @@ def _calendar_meetings_kept(CM):
                                 "finish saved over the other's")
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    src = _paths.locate("narrative.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("narrative.py"))
     assert "cache=True" in src, "narrative.py no longer asks for the calendars' cache"
     return "ok", ("a second process parses no calendar and gets the first one's rows; a changed "
                   "calendar is parsed again and its old answer dropped; no cache unless asked")
@@ -117122,7 +117361,7 @@ def _request_became_bill(build_lsrs):
                    "LSR 2027-0003": ("Filed", False, "SB 7")}, got
     rows, _ = L.rows_from(lsrs[2:], {}, {})
     assert rows[0]["status"] == "Requested" and "introduced" not in rows[0], rows[0]
-    src = _paths.locate("build_lsrs.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_lsrs.py"))
     assert "rows_from(lsrs, roster(site), became, year, winners," in src, \
         "build_lsrs no longer gives rows_from the bills"
     return "ok", "a request a bill carries reads as that bill; one that only left the list is withdrawn"
@@ -117283,7 +117522,7 @@ def _request_cards_like_bills(build_lsrs):
         assert [b["word"] for b in got[L.title_key("relative to tides")]] == ["Died"] \
             and got[L.title_key("relative to tides")][0]["cls"] == "s-done", got
         # THE PAGE: tabs, chips, the abbreviation.
-        (site / "bills.html").write_text(Path("src/pages/bills.html").read_text(encoding="utf-8"),
+        (site / "bills.html").write_text(_source("src/pages/bills.html"),
                                          encoding="utf-8")
         (site / "legislators.json").write_text(json.dumps([
             {"slug": "ann-lee-rock-1", "party": "D", "display_full": "Rep. Ann Lee (D - Rock 1)"}]),
@@ -117404,8 +117643,8 @@ def _requests_year_their_own(build_lsrs):
     assert {(x["n"], x["year"], x["term"]) for x in rows} == {
         ("LSR 2028-0001", 2028, "2028-requests"), ("LSR 2028-0002", 2028, "2028-requests")}, rows
     assert "1 request(s) of an earlier session left out" in r.stdout, r.stdout
-    app = _paths.locate("app.js").read_text(encoding="utf-8")
-    plan = _paths.locate("build_all.py").read_text(encoding="utf-8")
+    app = _source(_paths.locate("app.js"))
+    plan = _source(_paths.locate("build_all.py"))
     stuck = [s for s in ('"for 2027"', "the 2027 bills", '"2027-requests"') if s in app] + \
             [s for s in ("2027-requests.json", '"the 2027 bill requests"') if s in plan]
     assert not stuck, f"a requests' year written in by hand: {stuck}"
@@ -119339,14 +119578,14 @@ def _numbers_charts(LN):
     assert dots.count('class="ch-h"') == 2 and dots.count('class="ch-s"') == 1, "a dot a chamber, none where there is none"
     src = inspect.getsource(LN.scatter_chart) + inspect.getsource(LN.dot_chart) + \
         inspect.getsource(LN.chamber_marker) + inspect.getsource(LN.lines_chart)
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     chamber_css = "".join(re.findall(r"[^{}]*(?:\.ch-h|\.ch-s|\.c-h|\.c-s)\b[^{}]*\{[^}]*\}", css))
     assert chamber_css, "app.css does not draw the chamber marks"
     for bad in ("--rep", "--dem", "--ind"):
         assert bad not in src and bad not in chamber_css, f"a chamber is drawn in a party colour ({bad})"
     for need in (".ch .ch-h{", ".ch .ch-s{", ".l-sw.is-diamond"):
         assert need in css, f"app.css lacks {need}"
-    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"]
     for k in ("nums.ch_ends_said", "nums.ch_cmte_said", "nums.ch_cmte_tip", "nums.ch_att_said", "nums.pos_said", "nums.yes_said"):
         assert k in es, f"es.json lacks {k}"
     assert 'viewBox="0 0 100 10"' in LN.yes_bar(70.0) and 'x1="66.7"' in LN.yes_bar(70.0), (
@@ -119474,7 +119713,7 @@ def _numbers_fit(LN):
     # (c) tied committees come out in name order whatever order they arrive in
     assert LN.scatter_chart(pts, "t", "said", "x", "y") == LN.scatter_chart(pts[::-1], "t", "said", "x", "y"), (
         "the scatter chart draws tied committees in the order they arrived (a set's, so the hash seed's)")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     assert not re.search(r"\.l-secb\s*>\s*\.l-numwrap\s*\{[^}]*max-width:\s*var\(--l-meas\)", css), (
         "app.css holds the number tables to the prose measure again (.l-secb > .l-numwrap)")
     sk = re.search(r"\.l-skwrap\s*>\s*svg\s*\{([^}]*)\}", css)
@@ -119699,12 +119938,12 @@ def _county_cards_built(CV):
     for c, rec in CV.COUNTY_SITES.items():
         if c not in CV.COUNTY_RULES or len(rec) != 3 or not all(rec) or not str(rec[0]).startswith("https://"):
             bad.append(f"COUNTY_SITES[{c!r}] is not (an https address, its source, the day read)")
-    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"]
     many = [k for k in es if re.match(r"learn\.county-government\.(the-law|state-representatives|"
                                       r"the-countys-state-representatives)", k)]
     if many:
         bad.append(f"the catalog holds per-county copies of the cards' words: {many[:3]}")
-    bc = Path("src/pages/build_civics.py").read_text(encoding="utf-8")
+    bc = _source("src/pages/build_civics.py")
     if "co not in civics.COUNTY_RULES" not in bc:
         bad.append("a House district in no known county would leave a card short, silently")
     assert not bad, "; ".join(bad[:6])
@@ -119892,7 +120131,7 @@ def _probate_after_the_vote():
     vote = _dt.date(2026, 11, 3)
     backstop = _dt.date(2026, 12, 2)
     on = f"{vote.day} {vote:%B %Y}"
-    src = _paths.locate("civics.py").read_text(encoding="utf-8").splitlines()
+    src = _source(_paths.locate("civics.py")).splitlines()
 
     def at(text):
         n = next((i for i, s in enumerate(src, 1) if text in s), None)
@@ -120821,7 +121060,7 @@ def _town_mailto(B):
         "address, and a note published as a mailto is a link to nowhere")
 
     # Nothing on these pages may write a mailto except through maillink().
-    src = _paths.locate("build_town_pages.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_town_pages.py"))
     sites = src.count('href="mailto:')
     assert sites == 1, (
         f"build_town_pages.py writes a mailto href in {sites} places. Every "
@@ -121608,7 +121847,7 @@ def _town_sources_dated(TS, B, T):
         if not B.NHDOT.endswith(want):
             bad.append(f"build_town_pages.NHDOT reads {B.NHDOT!r}, and the directory in "
                        f"collected/town_officials.json is {want}")
-        src = Path(B.__file__).read_text(encoding="utf-8")
+        src = _source(B.__file__)
         years = set(re.findall(r"before the (\d{4}) town elections", src, re.I))
         first = meeting_after(d).year
         if years != {str(first)}:
@@ -123021,7 +123260,7 @@ def _town_tabs(B, BP):
             'tabindex="-1">Officials</button>' not in concord:
         bad.append("a city's Officials tab is not named Officials")
 
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     strip = re.search(r"\.twntabs\{[^}]*\}", css)
     grid = re.search(r"\.twngrid\{[^}]*\}", css)
     if not strip or "overflow-x:auto" not in strip.group(0):
@@ -123132,7 +123371,7 @@ const keyed = k => { let held = false;
 document.activeElement = tabEls[0]; out.end = keyed("End"); out.home = keyed("Home");
 process.stdout.write(JSON.stringify(out));
 """ % (tabs, script)
-        stub = Path("tests/dom_stub.js").read_text(encoding="utf-8")
+        stub = _source("tests/dom_stub.js")
         for hsh, first, mode in (("#vote", "vote", ""), ("", "representatives", ""),
                                  ("#results", "representatives", ""),
                                  ("#vote-where", "vote", ""),
@@ -123237,7 +123476,7 @@ def _seat_totals_at_top():
     import html as _h
     shared, _base, _ran, _days = _fixture_site_shared()
     bad = []
-    src = Path("src/pages/build_pages.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_pages.py")
     panel = re.search(r'\("legislators", say\(lang, "of\.tab\.legislators", "Legislators"\), len\(legs\),'
                       r'(.*?)\n\s*\("federal",', src, re.S)
     order = [panel.group(1).find(x) if panel else -1
@@ -123287,7 +123526,7 @@ def _seat_totals_at_top():
             if [n for _c, n in vac] != gone or len(counts) != len(seen) or (
                     vac and not re.fullmatch(r"\d+ " + words[2] + r"s?", counts[-1])):
                 bad.append(f"{rel}: the {ch} line's counts are {counts}, its bar's {seen}")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     phone = re.search(r"@media \(max-width:38\.75em\)\{(\s*:where\(body\.pg\) \.comp-top \.comp[^@]*?)\n\}", css)
     rules = phone.group(1) if phone else ""
 
@@ -123342,7 +123581,7 @@ def _presiding_chips_alone(OT):
                        "two chips, and nothing under them")
         if re.search(r"\bpresides?\b", re.sub(r"<[^>]+>", "", html), re.I):
             bad.append(f"in {lang}, a sentence about who presides is back beside the chips")
-    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    cat = json.loads(_source("src/pages/lang/es.json"))["strings"]
     if "off.presiding_why" in cat:
         bad.append("es.json still carries off.presiding_why, the sentence that went")
     assert not bad, "\n  ".join(bad)
@@ -123379,7 +123618,7 @@ def _officials_tabs_fit_and_retire(B):
     bad = []
     full = {"federal": "Federal Delegation", "executive": "Executive Branch",
             "judicial": "Judicial Branch", "counties": "County Officials"}
-    cat = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    cat = json.loads(_source("src/pages/lang/es.json"))["strings"]
     short = {"en": {"federal": "Federal", "executive": "Executive", "judicial": "Judicial",
                     "counties": "County"},
              "es": {"federal": "Federal", "executive": "Ejecutivo", "judicial": "Judicial",
@@ -123476,7 +123715,7 @@ out.change = shown(); out.wrote2 = wrote.slice();
 day = "2026-12-02"; document.activeElement = tabEls[2]; out.midnight = key("ArrowLeft");
 process.stdout.write(JSON.stringify(out));
 """ % script
-    stub = Path("tests/dom_stub.js").read_text(encoding="utf-8")
+    stub = _source("tests/dom_stub.js")
     after = ["/officials#legislators"]
     cases = [
         # (day, hash, built hidden, data-retired) -> shown, written, End, ArrowLeft, hashchange
@@ -124600,7 +124839,7 @@ def _member_elections_tab(BP):
     # The tab's address, in the lists that serve it, and the label in Spanish.
     assert "elections" in BP.MEMBER_TAB_SLUGS and "/legislator/:who/elections /legislator/:who 200" in BP.REDIRECTS_DYNAMIC, (
         "/legislator/<who>/elections is not served by the member's page")
-    es = json.loads(Path("src/pages/lang/es.json").read_text(encoding="utf-8"))["strings"]
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"]
     assert es["race.tab"]["es"] == "Elecciones" and es["race.tab"]["en"] == "Elections", "no Spanish label"
     return "ok", "three rows linked, the words the elections page uses, no tab without a race, the address served, Elecciones"
 
@@ -124609,10 +124848,10 @@ def _member_elections_tab(BP):
        needs=("compile_reports",))
 def _member_elections_report_tab(CR):
     js = Path("functions/api/report.js")
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
     if not js.exists():
         return "skip", "no functions/api/report.js here"
-    fn = re.search(r"const TABS = new Set\(\[(.*?)\]\)", js.read_text(encoding="utf-8"), re.S).group(1)
+    fn = re.search(r"const TABS = new Set\(\[(.*?)\]\)", _source(js), re.S).group(1)
     assert '"Elections"' in fn and "Elections" in CR.TABS and '"Elections"' in app, (
         "report.js, compile_reports.py and app.js do not all accept an Elections tab")
     return "ok", "Elections is in the three tab lists"
@@ -124897,7 +125136,7 @@ def _elect_own_seat(BME):
         and html.count("elown") == 1, f"the block marks {html!r}: only Foote's item is elown"
     assert "elown" not in C.elect_race({"seats": 1, "elected": [dict(foote, s="")]}), (
         "an item with no link is marked elown")
-    fj = Path("src/pages/find.js").read_text(encoding="utf-8")
+    fj = _source("src/pages/find.js")
     mark = re.search(r"function ytMark\(p\)\{(.*?)\n\}", fj, re.S)
     off = '".ellist > li:not(.elown) a::after{content:none !important}"'
     # The Members-Elect tab's lists by name and by county (the owner's walk
@@ -125150,7 +125389,7 @@ def _elect_tab_like_legislators(OT):
     # The chips' parts wrap inside the chip in these lists; the word beside
     # it is drawn as a chip's role is; and a strip written hidden stays
     # hidden until its script shows it (app.css).
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     if ":where(body.pg) .elroll .mchip{flex-wrap:wrap" not in css \
             or ":where(body.pg) .rtabs[hidden]{display:none}" not in css \
             or not re.search(r":where\(body\.pg\) \.elkind\{[^}]*text-transform:uppercase", css) \
@@ -127139,7 +127378,7 @@ def _until_by_the_reader():
     a, b = js.find("// BEHAVIOUR:START"), js.find("// BEHAVIOUR:END")
     assert 0 < a < b and "[data-until]" in js[a:b] and "untilAttrs(" in js[a:b], (
         "components.js's behaviour no longer judges [data-until] by untilAttrs")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     assert re.search(
         r"(?m)^\[data-until\]\[hidden\]\s*\{\s*display\s*:\s*none\s*!important\s*;?\s*\}",
         css), (
@@ -127309,10 +127548,10 @@ def _elect_card(with_places, without_places):
         return None
     root = Path(tempfile.mkdtemp(prefix="gr-elect-card-"))
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
                                       encoding="utf-8")
         (root / "find.js").write_text(_with_components(
-            Path("src/pages/find.js").read_text(encoding="utf-8")), encoding="utf-8")
+            _source("src/pages/find.js")), encoding="utf-8")
         (root / "with.json").write_bytes(with_places.read_bytes())
         (root / "without.json").write_bytes(without_places.read_bytes())
         (root / "go.js").write_text(_ELECT_CARD_JS, encoding="utf-8")
@@ -127718,10 +127957,10 @@ def _elect_map_panels(with_map, without_map):
         return None
     root = Path(tempfile.mkdtemp(prefix="gr-elect-map-"))
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
                                       encoding="utf-8")
         (root / "map.js").write_text(_with_components(
-            Path("src/pages/map.js").read_text(encoding="utf-8")), encoding="utf-8")
+            _source("src/pages/map.js")), encoding="utf-8")
         (root / "with.json").write_bytes(with_map.read_bytes())
         (root / "without.json").write_bytes(without_map.read_bytes())
         (root / "go.js").write_text(_ELECT_MAP_JS, encoding="utf-8")
@@ -128090,7 +128329,7 @@ def _map_legend_words():
     the legend's frame and the floterial sentence; on State Senate, nothing
     under the legend again. And map.css lays the four kinds of district out
     two by two below 600px, not three and one."""
-    css = Path("src/pages/map.css").read_text(encoding="utf-8")
+    css = _source("src/pages/map.css")
     phone = re.search(r"@media \(max-width:37\.5em\)\{(.*?)\n\}", css, re.S)
     assert phone and re.search(r"\.gm \.gmseg:has\(> label:nth-child\(4\):last-child\)"
                                r"\{grid-template-columns:repeat\(2,1fr\)\}", phone.group(1)), (
@@ -128102,10 +128341,10 @@ def _map_legend_words():
         return "skip", "the geometry, the district files or the officials file is not here"
     root = Path(tempfile.mkdtemp(prefix="gr-maplegend-"))
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
                                       encoding="utf-8")
         (root / "map.js").write_text(_with_components(
-            Path("src/pages/map.js").read_text(encoding="utf-8")), encoding="utf-8")
+            _source("src/pages/map.js")), encoding="utf-8")
         (root / "data.json").write_text(json.dumps(data), encoding="utf-8")
         (root / "go.js").write_text(_MAP_LEGEND_JS, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8",
@@ -128195,12 +128434,12 @@ def _map_totals_run(maps):
     if not node:
         assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
         return None
-    js = Path("src/pages/map.js").read_text(encoding="utf-8")
+    js = _source("src/pages/map.js")
     # the Spanish a Spanish page carries for map.js's words (i18n.words_js)
     words = {k: i18n.lookup("es", k, en) for k, en in i18n.tr_calls(js)}
     root = Path(tempfile.mkdtemp(prefix="gr-maptotals-"))
     try:
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
                                       encoding="utf-8")
         (root / "map.js").write_text(_with_components(js), encoding="utf-8")
         (root / "words.json").write_text(json.dumps({k: v for k, v in words.items() if v is not None}),
@@ -128283,7 +128522,7 @@ def _map_party_totals():
     and not at all for a mount that asks for no totals. And map.css draws
     an empty line not at all and keeps each count whole."""
     import i18n
-    css = Path("src/pages/map.css").read_text(encoding="utf-8")
+    css = _source("src/pages/map.css")
     assert re.search(r"\.gm \.gmtot:empty\{display:none\}", css), \
         "map.css draws the empty totals line (.gmtot:empty) on the Council and US House"
     assert re.search(r"\.gm \.gmtot \.gmti\{white-space:nowrap\}", css), \
@@ -128645,7 +128884,7 @@ def _map_geometry_fresh(BDG):
     if not p.exists():
         return "skip", "generated/district_geometry.json is not here"
     g = json.loads(p.read_text(encoding="utf-8"))
-    src = _paths.locate("build_district_geometry.py").read_text(encoding="utf-8")
+    src = _source(_paths.locate("build_district_geometry.py"))
     stamp = re.search(r"GRANITE_VERSION:\s*(\S+)", src).group(1)
     assert g.get("_builder") == stamp, (
         f"the geometry was written by build_district_geometry.py {g.get('_builder')}, and the "
@@ -131395,7 +131634,7 @@ def _past_docket_histories(N, NA, CL):
             "HB460", [])] == ["2021-700"]
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    src = Path(NA.__file__).read_text(encoding="utf-8")
+    src = _source(NA.__file__)
     assert '"--past-docket"' in src and '"--chapters"' in src and "IS NOT HERE" in src, (
         "narrate_archive.py no longer hands narrative.py the past docket view and the "
         "settled chapters, or no longer says when the view is missing")
@@ -133167,7 +133406,7 @@ def _built_checks_night(NI):
              capture_output=True, text=True, timeout=300)
     assert r.returncode == 2 and "selection of its own" in (r.stderr or ""), (
         "--built with --code ran", r.returncode)
-    src = Path(NI.__file__).read_text(encoding="utf-8")
+    src = _source(NI.__file__)
     site_at = src.find('run(["check_site.py"')
     run_at = src.find('night.v["built_checks"] = built_checks()')
     judge_at = src.find("night.judge(site, before, after")
@@ -134014,7 +134253,7 @@ def _rehearsal_runs_built_checks():
     assert held == {"a hold-tier failure": False, "checks that did not run": False,
                     "no record of the checks": False, "warnings alone": True}, (
         f"built_checks_held passes these, by kind of verdict: {held}")
-    src = path.read_text(encoding="utf-8")
+    src = _source(path)
     i = src.find('if name == "preflight.py":')
     assert i != -1, "rehearse_turn no longer answers the night's preflight.py"
     branch = src[i:src.find("elif name ==", i)]
@@ -134064,12 +134303,12 @@ def _night_term_data(NI):
     import io
     import types
     import probe_db
-    kit = json.loads(Path("cloud_kit.json").read_text(encoding="utf-8"))
+    kit = json.loads(_source("cloud_kit.json"))
     owner = {p: e.get("owner") for e in kit["kit"] for p in (e.get("paths") or [])}
     wanted = [f"db/{v}.psv" for v in NI.TERM_VIEWS] + [p for _l, _s, p in NI.TERM_FILES]
     assert all(owner.get(p) == "night" for p in wanted), \
         {p: owner.get(p) for p in wanted if owner.get(p) != "night"}
-    src = Path(NI.__file__).read_text(encoding="utf-8")
+    src = _source(NI.__file__)
     study_at = src.find('night.v["study_meetings"] = take_views(')
     term_at = src.find('night.v["term_data"] = take_term_data(')
     assert -1 < study_at < term_at, "nightly.py does not take the term's data after the study views"
@@ -134634,10 +134873,10 @@ def _coverage_sponsor_body(BE):
         encoding="utf-8")
     row = BE.coverage(out, none_on_record=set(), by_chamber={("2021-2022", "HR7")})[0]
     assert row["sponsor"] == 1 and row["sponsor_body"] == 1, row
-    page = Path("src/pages/build_exports.py").read_text(encoding="utf-8")
+    page = _source("src/pages/build_exports.py")
     assert 'c["sponsor"] + c.get("sponsor_body", 0)' in page, (
         "the data page's Sponsor figure does not add the resolutions the chamber offered")
-    rs = Path("src/parse/resolution_sponsors.py").read_text(encoding="utf-8")
+    rs = _source("src/parse/resolution_sponsors.py")
     assert 'BODY.match(b["who"]' in rs and "resolution_bodies.json" in rs, (
         "resolution_sponsors.py no longer writes the resolutions the chamber offered")
     return "ok", "HR7, offered by the House, counts as covered; HR8, naming nobody, does not"
@@ -134696,7 +134935,7 @@ def _visual_fixes_of_11_november():
         right = re.search(r'<section class="hside hright".*?</section>', body, re.S)
         assert right and 'id="upcoming"' in right.group(0) and 'id="recent"' in right.group(0), (
             f"the {lang} home page's right column no longer holds #upcoming and #recent")
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     laid = [(tuple(re.sub(r"\s+", "", a) for a in at), {" ".join(x.split()) for x in sel.split(",")},
              {k: " ".join(v.split()) for k, v in _css_decls(body)}) for at, sel, body, _n in _css_rules(css)]
     wide = ("@media(min-width:73.75em)",)
@@ -134724,7 +134963,7 @@ def _visual_fixes_of_11_november():
         f"the Committees tab's drawing is {nav.get('committees.html')!r}, not the gavel")
     assert C.icon("gavel").startswith('<svg class="icon" viewBox="0 0 24 24"') and C.ICON_PAINT in C.icon("gavel"), (
         "the gavel is not drawn as the other icons are")
-    assert "gavel:" in Path("src/pages/components.js").read_text(encoding="utf-8"), (
+    assert "gavel:" in _source("src/pages/components.js"), (
         "components.js has no gavel, so a page drawn in the browser would lack the Committees drawing")
     read = {}
     for at, sels, decls in laid:
@@ -134892,7 +135131,7 @@ def _votes_files(BV):
         assert list(BV.stream_array(p, chunk=7)) == ballots and list(BV.stream_array(p)) == ballots
         p.write_text("[]", encoding="utf-8")
         assert list(BV.stream_array(p)) == []
-    src = Path("src/pages/build_votes.py").read_text(encoding="utf-8")
+    src = _source("src/pages/build_votes.py")
     for rx in _BANNED_VOTES:
         assert not rx.search(src), f"build_votes.py carries {rx.pattern}"
     return "ok", "files by term, tallies tied, stated tallies carried, procedural named, no party's position"
@@ -134907,7 +135146,7 @@ def _votes_page():
     if not (js.exists() and Path("tests/dom_stub.js").exists() and node
             and Path("src/pages/build_votes_page.py").exists()):
         return "skip", "app.js, dom_stub.js, node or build_votes_page.py is not here"
-    src = js.read_text(encoding="utf-8")
+    src = _source(js)
     block = src[src.index("THE VOTES PAGE ====="):]
     # THE OWNER'S DECISION OF 12 NOVEMBER 2026: no label of how the parties divided, no mark on a member
     # who voted against theirs, and nothing of a party's counts (pc) is read by the page.
@@ -134928,8 +135167,8 @@ def _votes_page():
         assert not rx.search(said), f"the votes page says {rx.pattern}"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
         (root / "go.js").write_text("""
 require("./stub.js");
 const fs = require("fs");
@@ -135141,8 +135380,8 @@ def _votes_page_reads():
         f"the votes page's lead is {VPG.LEAD!r}: one sentence, the filters left to speak for themselves")
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(Path("tests/dom_stub.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
         (root / "go.js").write_text(_VOTES_READER_JS, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=90)
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
@@ -135322,8 +135561,8 @@ def _votes_numbers(BP):
     none of the 19 it has."""
     if not shutil.which("node"):
         return "skip", "node is not installed"
-    app = Path("src/pages/app.js").read_text(encoding="utf-8")
-    find = Path("src/pages/find.js").read_text(encoding="utf-8")
+    app = _source("src/pages/app.js")
+    find = _source("src/pages/find.js")
     kinds = re.search(r"const BILL_KINDS=new Set\(\[([^\]]*)\]\)", app)
     fkinds = re.search(r"const FBILLKIND=new Set\(\[([^\]]*)\]\)", find)
     assert kinds and fkinds, "app.js has no BILL_KINDS, or find.js no FBILLKIND"
@@ -135332,7 +135571,7 @@ def _votes_numbers(BP):
     ids = set()
     cases = Path("tests/search_cases.json")
     if cases.exists():
-        ids |= set(json.loads(cases.read_text(encoding="utf-8")).get("bills") or {})
+        ids |= set(json.loads(_source(cases)).get("bills") or {})
     real = sorted(Path("site/idx").glob("*.json")) if Path("site/idx").is_dir() else []
     for f in real:
         ids |= {str(b.get("id") or "").upper() for b in json.loads(f.read_text(encoding="utf-8"))}
@@ -136656,7 +136895,7 @@ def _laws_rows_link_chapters(B, RSA, S, CS, BBP):
             "a bill page links RSA 404 at " + repr(BBP.law_href("RSA 404")))
     finally:
         BBP._LAWS[:] = saved
-    css = Path("src/pages/app.css").read_text(encoding="utf-8")
+    css = _source("src/pages/app.css")
     assert re.search(r"\.lw-ch\{[^}]*position:relative", css) and \
         re.search(r"\.lw-go\{[^}]*position:absolute", css), (
             "app.css does not set the chapter's link at its row's right")
@@ -136698,9 +136937,9 @@ def _chapter_addresses_one_rule(BR, BSV, G, BP, RSA):
         f"a bill record links RSA 404 at {got}")
     assert (G.law_href("RSA 404:1, I"), G.law_href("RSA 91-A:4")) == ("/laws/404/#s1", "/laws/91-a#s4"), (
         f"a guide links RSA 404:1 at {G.law_href('RSA 404:1, I')}")
-    js = Path("src/pages/app.js").read_text(encoding="utf-8")
+    js = _source("src/pages/app.js")
     # And the site search's Law row (find.js, findLawRow; 25 October 2026).
-    fjs = Path("src/pages/find.js").read_text(encoding="utf-8")
+    fjs = _source("src/pages/find.js")
     for where, text, pat in (("app.js", js, r"const LAW_FOLDERS=(\[[^\]]*\]);"),
                              ("find.js", fjs, r"const FLAW_FOLDERS=(\[[^\]]*\]);"),
                              ("build_pages.NOT_FOUND", BP.NOT_FOUND, r"var FOLDERS=(\[[^\]]*\]);")):
@@ -138422,7 +138661,7 @@ def _bug_hunt_terms_and_dates():
         assert got == want and got == P.term_on(f"{y}-{m:02d}-{d:02d}"), (
             f"unh_extract.term_of({y}, {m}, {d}) is {got}, Organization Day's rule says {want}")
     assert U.term_of(2008, 12) == "2009-2010", "a sitting known only to its month still rolls in December"
-    src = Path("src/fetch/gc_db/fetch_reports_db.py").read_text(encoding="utf-8")
+    src = _source("src/fetch/gc_db/fetch_reports_db.py")
     assert "P.term_on(rec[" in src and "P.term_of(rec[" not in src, (
         "fetch_reports_db files a report by its year alone, not by the day it is dated")
     for text, want in (("Decision 3, 2021", None), ("Mayor 4, 2020", None), ("Marginal 12, 2019", None),
@@ -138468,7 +138707,7 @@ def _bug_hunt_clock_and_today():
     if got is not None:
         assert got == ["1:30 PM", "1:05 PM", "12:30 AM", "1:30 p. m."], (
             f"components.js clock reads a time differently from components.py: {got}")
-    src = Path("src/lib/build_date.py").read_text(encoding="utf-8")
+    src = _source("src/lib/build_date.py")
     import state_settings
     assert "America/New_York" in src or ("ZoneInfo(TIMEZONE)" in src
                                          and state_settings.TIMEZONE == "America/New_York"), (
@@ -138736,7 +138975,7 @@ def _bug_hunt_nightly_timeout_and_lock():
     finally:
         NI.STEP_TIMEOUT, NI._paths.script = saved[0], saved[1]
         shutil.rmtree(root, ignore_errors=True)
-    text = Path("nightly.py").read_text(encoding="utf-8")
+    text = _source("nightly.py")
     assert "lock.write_text" not in text, "a nightly lock is written without O_EXCL again"
     return "ok", "a step is killed at its timeout and the night names it; two starts cannot both take the lock"
 
@@ -138757,7 +138996,7 @@ def _tag_engine(TR, TC, RV):
     two PYTHONHASHSEEDs; a bill over five tags is counted; and the bench's tag kind draws,
     shows and reports without writing a judgment of its own."""
     import inspect
-    fx = json.loads(Path("tests/tags_fixture.json").read_text(encoding="utf-8"))
+    fx = json.loads(_source("tests/tags_fixture.json"))
     reg = fx["registry"]
     bad = TR.validate(reg)
     assert not bad, "the fixture registry is not well formed: " + "; ".join(bad)
