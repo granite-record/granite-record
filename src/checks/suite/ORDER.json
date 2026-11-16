@@ -389,6 +389,7 @@
 "_build_term_decided",
 "_sitting_term_agrees",
 "_sitting_term_on_record",
+"_build_io_recorded",
 "_addresses_clean",
 "_links_resolve",
 "_surname_links_serving_members",

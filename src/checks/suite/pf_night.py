@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -784,6 +784,255 @@ def _sitting_term_on_record(T, P, BA, AR, BCV, CL, SR, BD):
                      f"the day ({today})" + (f" and {len(rules)} index rules on site/" if built else "")
                      + " agree")
                   + ("" if built else " (no site/ built here)"))
+
+
+# The probe steps _build_io_recorded drives build_all with. Each starts as a step's script
+# does, by importing _paths, from the repository whose recorder is being held.
+_IO_PROBE_A = r'''
+import hashlib, json, os, sqlite3, subprocess, sys
+from pathlib import Path
+import build_date
+import child
+data = json.loads(Path("in.json").read_text(encoding="utf-8"))
+os.listdir("journals")
+answers = [Path("maybe.txt").exists(), os.path.isfile("never.txt"), os.path.isdir("journals"),
+           os.stat("in.json").st_size, sorted(os.listdir("journals")),
+           os.environ.get("GRANITE_TERM"), os.environ.get("GRANITE_NOT_SET"),
+           os.environ.get("OTHER_SETTING"), os.environ.get("GITHUB_TOKEN"),
+           build_date.today().isoformat(), build_date.today().isoformat(), str(build_date.now())]
+try:
+    open("absent.txt", encoding="utf-8").read()
+except OSError:
+    answers.append("absent")
+con = sqlite3.connect("file:db.sqlite?mode=ro", uri=True)
+answers.append(con.execute("select count(*) from t").fetchone()[0])
+con.close()
+Path("own.txt").write_text("mine", encoding="utf-8")
+answers.append(Path("own.txt").read_text(encoding="utf-8"))
+part = Path("site/out.json.part")
+part.write_text(json.dumps({"n": len(data)}), encoding="utf-8")
+os.replace(part, "site/out.json")
+Path("site/shared.txt").write_text("a", encoding="utf-8")
+Path("merge.json").write_text(Path("merge.json").read_text(encoding="utf-8") + " a", encoding="utf-8")
+subprocess.run([sys.executable, str(Path(__file__).with_name("io_child.py"))], check=True)
+child.run([sys.executable, "-c", "pass"], capture_output=True)
+Path("scratch.tmp").write_text("x", encoding="utf-8")
+os.remove("scratch.tmp")
+os.remove("old.json")
+Path("site/answers.json").write_text(json.dumps(answers), encoding="utf-8")
+'''
+_IO_PROBE_CHILD = r'''
+from pathlib import Path
+Path("child-in.txt").read_text(encoding="utf-8")
+Path("site/child-out.txt").write_text("c", encoding="utf-8")
+'''
+_IO_PROBE_B = r'''
+from pathlib import Path
+Path("site/out.json").read_text(encoding="utf-8")
+Path("late.json").read_text(encoding="utf-8")
+Path("site/shared.txt").write_text("b", encoding="utf-8")
+'''
+_IO_PROBE_C = r'''
+from pathlib import Path
+Path("late.json").write_text('{"made": "late"}', encoding="utf-8")
+'''
+
+
+@check("pipeline", "build_all records what each step reads and writes -- opens, listings, existence "
+       "checks, databases, children, the day and the GRANITE_ and GITHUB_ settings -- into "
+       "logs/build-io.json.gz with a digest in build.json, says where it parts from the plan, and "
+       "changes nothing a step makes", needs=("build_all", "build_io", "build_date"))
+def _build_io_recorded(BA, BIO, BD):
+    """WHAT EACH STEP READ AND WROTE (build_io.py; the refactor's build design, step S2).
+    build_all.py's main(), driven in a sealed child on a temporary folder with its plan replaced
+    by three probe steps -- the first reads, lists, asks after paths, opens one that is not
+    there, connects to a database read-only, asks the day three times and five settings, writes
+    one file through a rename, makes and removes another, merges into a third, starts a script
+    that reads and writes, hands child.run the environment, and removes a file it never made;
+    the second reads the first's output and a file the third, later, writes; both the first and
+    the second write one file -- and:
+
+      - each step's record is exactly what it did, the child's reads and writes the step's, a
+        file the step wrote and read back not among its reads, the environment handed to a child
+        not a read, a secret's value kept only as a sha256 of it;
+      - build.json's "io" names the log by its sha256 and carries the counts and the four
+        findings: a need not read, an output not written, a read of a later step's file, a file
+        two steps write; each step's line its own counts;
+      - --no-record writes no log and no digest, and what the probe made is the same with the
+        record and without it; and build_site_v2.py over the fixture makes the same files, byte
+        for byte, recorded and not;
+      - _paths.py starts the recorder by build_io's own variable and through importlib, and no
+        script but build_all.py imports build_io, so it is in no step's signature;
+        build_date.py announces each reading of the day."""
+    import gzip
+    import hashlib
+    tmp = Path(tempfile.mkdtemp(prefix="gr-build-io-"))
+    code = tmp / "code"
+    code.mkdir()
+    boot = f"import sys\nsys.path.insert(0, {str(_paths.ROOT)!r})\nimport _paths\n"
+    for name, src in (("io_a.py", _IO_PROBE_A), ("io_child.py", _IO_PROBE_CHILD),
+                      ("io_b.py", _IO_PROBE_B), ("io_c.py", _IO_PROBE_C)):
+        (code / name).write_text(boot + src, encoding="utf-8")
+    drive = tmp / "drive.py"
+    drive.write_text(
+        "import sys, types\nfrom pathlib import Path\n"
+        f"sys.path.insert(0, {str(_paths.ROOT)!r})\nimport _paths\nimport build_all as BA\n"
+        "BA.plan = lambda a: [\n"
+        "    BA.Step('probe a', ['io_a.py'], needs=['in.json', 'unread.json'],\n"
+        "            produces=['site/out.json', 'site/never.json']),\n"
+        "    BA.Step('probe b', ['io_b.py'], produces=['site/shared.txt']),\n"
+        "    BA.Step('probe c', ['io_c.py'], produces=['late.json'])]\n"
+        f"BA._paths = types.SimpleNamespace(script=lambda name, root=None: str(Path({str(code)!r}) / name))\n"
+        "sys.argv = ['build_all.py'] + sys.argv[1:]\nBA.main()\n", encoding="utf-8")
+    token = "planted-token-of-the-check"
+
+    def plant():
+        for p, _, _ in BA.CARRIED:
+            (tmp / p).write_text('{"recordings": {}}' if p == "caption_spans.json" else "{}",
+                                 encoding="utf-8")
+        for name, text in (("in.json", "[1, 2]"), ("unread.json", "{}"), ("merge.json", "m"),
+                           ("child-in.txt", "c"), ("late.json", "{}"), ("old.json", "{}"),
+                           ("maybe.txt", "here"), ("site/never.json", '{"an": "earlier build"}'),
+                           ("journals/2026.txt", "j"),
+                           ("Docket.txt", "2025|0001|1/5/2025 10:00:00 AM|HB1|H|Introduced|x\n")):
+            (tmp / name).parent.mkdir(parents=True, exist_ok=True)
+            (tmp / name).write_text(text, encoding="utf-8")
+        for f in ("site/out.json", "site/shared.txt", "site/child-out.txt", "site/answers.json",
+                  "own.txt", str(BIO.LOG), "site/build.json"):
+            (tmp / f).unlink(missing_ok=True)
+
+    def run(*args):
+        plant()
+        r = _sealed_run([sys.executable, str(drive), "--local", *args], cwd=tmp,
+                        capture_output=True, text=True, timeout=180,
+                        env={"GITHUB_ACTIONS": "true", BD.ENV: "2026-11-16", "PYTHONHASHSEED": "0",
+                             "GRANITE_TERM": "", "GITHUB_TOKEN": token, "OTHER_SETTING": "x",
+                             BIO.ENV: ""})
+        rec = json.loads((tmp / "site/build.json").read_text(encoding="utf-8")) \
+            if (tmp / "site/build.json").exists() else None
+        return r, rec
+    try:
+        import sqlite3
+        con = sqlite3.connect(str(tmp / "db.sqlite"))
+        con.execute("create table t(x)")
+        con.execute("insert into t values (1)")
+        con.commit()
+        con.close()
+        r, built = run()
+        assert r.returncode == 0 and built and built.get("ok"), (r.stdout + r.stderr)[-600:]
+        log = (tmp / BIO.LOG).read_bytes()
+        doc = json.loads(gzip.decompress(log).decode("utf-8"))
+        io_ = built["io"]
+        assert io_["file"] == BIO.LOG.as_posix() == "logs/build-io.json.gz" and \
+            io_["sha256"] == hashlib.sha256(log).hexdigest() and io_["bytes"] == len(log) and \
+            io_["steps"] == 3 and io_["processes"] == 4, io_
+        steps = {s["step"]: s["record"] for s in doc["steps"]}
+        a, b, c = steps["probe a"], steps["probe b"], steps["probe c"]
+        secret = "sha256:" + hashlib.sha256(token.encode("utf-8")).hexdigest()
+        # (The probes' own folder may be listed too, by the import system, which the record
+        # leaves out only for this project's code folders.)
+        assert a["processes"] == 2 and a["read"] == ["child-in.txt", "in.json", "merge.json"] and \
+            a["wrote"] == ["merge.json", "own.txt", "site/answers.json", "site/child-out.txt",
+                           "site/out.json", "site/shared.txt"] and \
+            a["removed"] == ["old.json"] and a["temporary"] == 2 and "journals" in a["listed"] \
+            and set(a["listed"]) <= {"journals", "code", "."} and \
+            a["looked"] == ["absent.txt", "maybe.txt", "never.txt"] and \
+            a["sqlite"] == {"db.sqlite": "ro"} and a["day"] == {"today": 2, "now": 1}, a
+        assert a["env"] == {BD.ENV: "2026-11-16", "GITHUB_TOKEN": secret, "GRANITE_NOT_SET": None,
+                            "GRANITE_TERM": "2025-2026"}, (
+            "the step's settings were not recorded as it read them (one handed to child.run is no "
+            f"read; a secret keeps a sha256): {a['env']}")
+        assert token.encode("utf-8") not in gzip.decompress(log) and \
+            token not in json.dumps(built), "the planted secret's value is in the record"
+        assert any("io_child.py" in str(x) for x in a["ran"]) and \
+            any("-c" in str(x) for x in a["ran"]), a["ran"]
+        assert b["read"] == ["late.json", "site/out.json"] and b["wrote"] == ["site/shared.txt"] \
+            and c["wrote"] == ["late.json"] and not c["read"], (b, c)
+        want = [
+            "'probe a' declares it needs unread.json and read nothing of it",
+            "'probe a' declares it makes site/never.json and wrote none of it",
+            "'probe b' read 1 file(s) that 'probe c', later in the build, writes (late.json): "
+            "it read the last build's copy",
+            "1 file(s) are written by 2 steps, 'probe a', 'probe b' (site/shared.txt)"]
+        said = io_["warnings"]
+        assert len(said) == io_["warned"] == 4 and all(any(s.startswith(w) for s in said)
+                                                         for w in want), said
+        assert doc["warnings"] == said and doc["writers"] == {"site/shared.txt": ["probe a", "probe b"]}
+        counts = {s["step"]: s.get("io") for s in built["steps"]}
+        assert counts["probe a"] == {"processes": 2, "read": 3, "wrote": 6, "removed": 1, "day": 3,
+                                     "env": sorted([BD.ENV, "GITHUB_TOKEN", "GRANITE_NOT_SET",
+                                                    "GRANITE_TERM"])}, counts
+        assert "the record: 'probe a' declares it needs unread.json" in r.stdout, r.stdout[-800:]
+        answers = (tmp / "site/answers.json").read_text(encoding="utf-8")
+
+        r, plain = run("--no-record")
+        assert r.returncode == 0 and "io" not in plain and not (tmp / BIO.LOG).exists() and \
+            all("io" not in s for s in plain["steps"]), "--no-record still recorded"
+        assert (tmp / "site/answers.json").read_text(encoding="utf-8") == answers, (
+            "the probe's answers differ with the record on and off: "
+            f"{answers} against {(tmp / 'site/answers.json').read_text(encoding='utf-8')}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    # A builder's whole output, recorded and not: build_site_v2.py over the fixture.
+    from pf_fixture import _site_fixture
+    trees = []
+    for recorded in (False, True):
+        root = Path(tempfile.mkdtemp(prefix="gr-build-io-v2-"))
+        folder = Path(tempfile.mkdtemp(prefix="gr-build-io-rec-"))
+        try:
+            _site_fixture(root)
+            env = {BD.ENV: "2026-11-14", "PYTHONHASHSEED": "0", BIO.ENV: str(folder) if recorded else ""}
+            r = _run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data", "--out",
+                      "site", "--segments", "work"], cwd=root, capture_output=True, text=True,
+                     timeout=300, env=env)
+            assert r.returncode == 0, (r.stderr or r.stdout)[-400:]
+            trees.append({p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                          for p in sorted((root / "site").rglob("*")) if p.is_file()})
+            if recorded:
+                rec = BIO.merge(folder, root)
+                assert rec["processes"] >= 1 and "data/bills.json" in rec["read"] and \
+                    "site/meta.json" in rec["wrote"] and rec["day"], (
+                        "build_site_v2.py's record does not say it read data/bills.json, wrote "
+                        f"site/meta.json and asked the day: {BIO.counts(rec)}")
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+            shutil.rmtree(folder, ignore_errors=True)
+    moved = sorted(k for k in set(trees[0]) | set(trees[1]) if trees[0].get(k) != trees[1].get(k))
+    assert trees[0] and not moved, (f"build_site_v2.py over the fixture wrote {len(moved)} file(s) "
+                                    "differently with the record on: " + ", ".join(moved[:6]))
+
+    src = _source(_paths.ROOT / "_paths.py")
+    assert BIO.ENV == "GRANITE_BUILD_IO" and f'os.environ.get("{BIO.ENV}")' in src and \
+        'importlib.import_module("build_io").start(' in src, (
+            "_paths.py does not start the recorder by build_io.ENV through importlib")
+    importers = []
+    for f in _paths.code_files("*.py"):
+        if _in_suite(f) or f.name == "build_io.py":
+            continue
+        for n in ast.walk(_parsed(f)):
+            names = ([x.name for x in n.names] if isinstance(n, ast.Import) else
+                     [n.module or ""] if isinstance(n, ast.ImportFrom) else [])
+            if any(x.split(".")[0] == "build_io" for x in names):
+                importers.append(f.name)
+    assert sorted(set(importers)) == ["build_all.py"], (
+        "build_io is imported by a statement in " + ", ".join(sorted(set(importers)))
+        + ": in a step's code it would join the step's signature, which it changes nothing of")
+    r = _run([sys.executable, "-c",
+              f"import sys\nsys.path.insert(0, {str(_paths.ROOT)!r})\nimport _paths, build_date\n"
+              "seen = []\nsys.addaudithook(lambda e, a: e.startswith('build_date.') and seen.append(e))\n"
+              "build_date.today(); build_date.now(); build_date.utcnow()\nprint(seen)"],
+             capture_output=True, text=True, timeout=60)
+    assert r.stdout.strip() == "['build_date.today', 'build_date.now', 'build_date.utcnow']", (
+        f"build_date.py does not announce each reading of the day: {(r.stdout + r.stderr)[-300:]}")
+    return "ok", (f"three probe steps' records were what each did ({counts['probe a']['read']} reads, "
+                  f"{counts['probe a']['wrote']} writes, a removal, two temporaries, the child's, a "
+                  "read-only database, the day three times, four settings and a secret's sha256), "
+                  "build.json's digest named the log by its sha256 with the four findings, "
+                  f"--no-record recorded nothing and changed nothing; build_site_v2 wrote "
+                  f"{len(trees[0])} files the same recorded and not; _paths starts it by its "
+                  "variable through importlib, only build_all.py imports it, and build_date "
+                  "announces the day")
 
 
 @check("build", "the night takes the statutes on the first three nights of January and July, "
@@ -14846,6 +15095,9 @@ NOT_INPUT_NAMERS = {
     "livestreams.py": "logs/youtube-<day>.log, yt-dlp's warnings, which its asks write "
                       "(--since-state, before the build) and nothing reads; nothing a page "
                       "is made of",
+    "build_io.py": "logs/build-io.json.gz, the record of what each step read and wrote, which "
+                   "build_all.py writes once the steps are done and only build_io.py's own "
+                   "command reads; nothing a page is made of",
 }
 
 
