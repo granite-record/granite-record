@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
