@@ -603,10 +603,11 @@ jobs:
       # waiting while that job runs (nightly.CHECKS_WAIT), and handed to the
       # verdict below, which folds it in: only "success" is a pass, so a step
       # that could not read it, or ran out of time, is not one. It never
-      # fails the night itself; the verdict does that.
+      # fails the night itself; the verdict does that. Not on a run cancelled,
+      # where it could wait its whole limit for nothing.
       - name: The code checks' result, from their own job
         id: checks
-        if: always()
+        if: ${{ !cancelled() }}
         timeout-minutes: 55
         env:
           GH_TOKEN: ${{ github.token }}

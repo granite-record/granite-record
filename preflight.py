@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.943
+# GRANITE_VERSION: 2026-09-04.944
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -112018,7 +112018,7 @@ def _workflows_code_checks_beside(NI):
     machine: on the runner it records PREFLIGHT_BESIDE and goes on. The publish job needs both,
     and its if, as GitHub evaluates it for a main night fit for production, runs it when the
     checks succeeded and for no other result -- failure, cancelled, skipped, none. And the night
-    hands the result on: its step `checks`, under always(), runs nightly.py --checks-result with
+    hands the result on: its step `checks`, under !cancelled(), runs nightly.py --checks-result with
     the run's token as its own env and a limit past CHECKS_WAIT, the job holding contents: read
     and actions: read and nothing more, and the verdict step passes that step's output as
     --checks. Run on nightly.yml as it stood before, this fails on the missing job."""
@@ -112098,12 +112098,13 @@ def _workflows_code_checks_beside(NI):
         "the night has no step checks before its verdict")
     st = "\n".join(steps[at[0]])
     lim = re.search(r"^        timeout-minutes:\s*(\d+)\s*$", st, re.M)
-    assert re.search(r"^        if: always\(\)\s*$", st, re.M) and \
+    assert re.search(r"^        if: \$\{\{ !cancelled\(\) \}\}\s*$", st, re.M) and \
         "          GH_TOKEN: ${{ github.token }}" in steps[at[0]] and \
         "python nightly.py --runner --checks-result" in st and \
         lim and int(lim.group(1)) * 60 > NI.CHECKS_WAIT, (
-            "the night's step checks does not run nightly.py --checks-result under always(), with "
-            "the run's token as its own env and a limit past nightly.CHECKS_WAIT")
+            "the night's step checks does not run nightly.py --checks-result under !cancelled() -- "
+            "after a failed step too, never waiting out a cancelled run -- with the run's token as "
+            "its own env and a limit past nightly.CHECKS_WAIT")
     assert '--checks "${{ steps.checks.outputs.result }}"' in "\n".join(steps[close[0]]), (
         "the night's verdict is not told what the code checks came to (--checks)")
     return "ok", (f"job checks ({NI.CHECKS_JOB}) runs preflight --code alone, from the run's commit, no "
@@ -113446,7 +113447,8 @@ def _weekly_cold_build_wired(NI, CL):
     cid = re.search(r"^        id:\s*(\S+)\s*$", steps[cold[0]], re.M)
     cond = re.search(r"^        if:\s*(.+?)\s*$", steps[cold[0]], re.M)
     assert sid and cid and cond and f"steps.{sid.group(1)}.outcome == 'success'" in cond.group(1) \
-        and "always()" in cond.group(1), "the cold build runs where its folder was not set aside"
+        and "!cancelled()" in cond.group(1) and "always()" not in cond.group(1), (
+            "the cold build runs where its folder was not set aside, or on a cancelled run")
     assert f'--cold "${{{{ steps.{cid.group(1)}.outcome }}}}"' in steps[close[0]] and \
         f"=${{{{ steps.{cid.group(1)}.outcome }}}}" not in steps[close[0]], (
             "the week's verdict is not told the cold build's outcome, or is told it as a step of "

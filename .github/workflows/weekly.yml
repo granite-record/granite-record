@@ -212,9 +212,10 @@ jobs:
       # The cold build (above): the folder set aside, built and compared, after
       # the week's own files have gone back. Its outcome goes to the verdict
       # apart from the week's own steps (--cold), so it never fails the week.
+      # Not on a run cancelled: a build of half an hour nobody wants.
       - name: The cold build, compared with the night's
         id: cold
-        if: always() && steps.aside.outcome == 'success'
+        if: ${{ !cancelled() && steps.aside.outcome == 'success' }}
         continue-on-error: true
         timeout-minutes: 75
         run: |
