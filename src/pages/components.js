@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.36
+// GRANITE_VERSION: 2026-10-09.37
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -458,6 +458,18 @@ function recordHead(h){
     +(facts?`<dl class="rfacts">${facts}</dl>`:"")
     +(h.rail?`<div class="rrail">${h.rail}</div>`:"")
     +`<div class="racts">${h.actions||""}</div></header>`;
+}
+
+// THE RECORD'S TAB STRIP: components.record_tabs.
+function recordTabs(rid,tabs,on,base){
+  return `<div class="tabs${base?" sstabs":""}" role="tablist"${base?` data-base="${esc(base)}"`:""}>`
+    +tabs.map(([k,word,n])=>`<button class="tab" role="tab" id="tab_${esc(rid)}_${esc(k)}" `
+      +`aria-controls="pane_${esc(rid)}_${esc(k)}" `
+      +`aria-selected="${String(k)===String(on)?"true":"false"}" data-t="${esc(k)}"`
+      +(base?' data-sstab=""':"")+`>${esc(word)}`
+      +(n?`<span class="tn"><span class="tnp"> (</span>${esc(n)}<span class="tnp">)</span></span>`:"")
+      +"</button>").join("")
+    +"</div>";
 }
 
 // A document of the record: components.doc_row.

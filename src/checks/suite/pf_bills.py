@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1671,6 +1671,59 @@ def _request_tabs_switch(build_lsrs):
     return "ok", ("a request page's three panes have their own ids, unique on the page, each tab pointing at "
                   "its pane; a Summary alone has no strip on the page or the card; the Summary does not "
                   "repeat the chip or the byline")
+
+
+@check("frontend", "a bill's page and card and a request's card draw their tabs with the record's one "
+                   "strip, components.record_tabs and recordTabs, byte for byte as Python draws it")
+def _one_record_tab_strip():
+    """16 November 2026: a request's page is to show its Summary tab as a
+    bill's page does, drawn by the same component and not a copy. The strip
+    a bill's page and card hang from the head (app.js renderDetail) and a
+    request's card's (lsrBody) were each written out by hand; they are
+    components.recordTabs now, which components.record_tabs draws the same
+    in Python (held to it by _components_agree). Held: neither function
+    writes a tab of its own, and drawn in node on a bill with a roll call, a
+    bill with a text and an open request card with co-sponsors and a
+    History, each strip is record_tabs' answer in Python for those tabs,
+    byte for byte -- Summary chosen and first, Bill Text second where there
+    is a text, the badge only where there is a count."""
+    import components as C
+    src = _source("src/pages/app.js")
+    for fn in ("renderDetail", "lsrBody"):
+        m = re.search(r"\nfunction " + fn + r"\(.*?\n\}\n", src, re.S)
+        assert m and "recordTabs(" in m.group(0) and 'role="tab"' not in m.group(0), (
+            f"app.js's {fn} writes a tab strip of its own, not components.js's recordTabs")
+    rc = {"question": "Ought to Pass", "date": "2026-03-05", "body": "H", "vote_kind": "VV", "passed": True}
+    row = {"id": "HB1", "n": "HB 1", "term": "2025-2026", "year": 2026}
+    req = {"id": "LSR20279999", "n": "LSR 2027-9999", "year": 2027, "title": "relative to tides.",
+           "sponsor": "Ann Lee", "sponsor_label": "Ann Lee (D)", "sponsor_slug": "", "body": "HB",
+           "body_label": "House bill request", "status": "Requested", "lsr": True,
+           "term": "2027-requests", "address": "request/2027-9999",
+           "cosponsors": [{"label": "Bob Roe (R)", "slug": ""}, {"label": "Cy Doe", "slug": ""}],
+           "history": [{"id": "HB7", "n": "HB 7", "year": 2024, "word": "Died", "cls": "s-done"}],
+           "rail": [{"stop": "Requested", "mark": "p", "say": "made"}]}
+    js = ("(() => { scope.setMeta({requests: {term: '2027-requests', year: 2027}}); const r = "
+          + json.dumps(req) + "; scope.openCards.add(r.id); scope.openTab[r.id] = '7'; return {"
+          "bill: scope.renderDetail(" + json.dumps(row) + ", {rollcalls: [" + json.dumps(rc) + "]}), "
+          "texted: scope.renderDetail(" + json.dumps(row) + ", {billtext: {body: 'AN ACT relative to tides.'}}), "
+          "card: scope.lsrCardHtml(r)}; })()")
+    got = _app_js(js, names=("renderDetail", "lsrCardHtml", "openCards", "openTab",
+                             "setMeta: x => (META = x)"))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    rest = [["2", "Hearings", 0], ["3", "Reports", 0], ["4", "Sponsors", 0], ["5", "Documents", 0],
+            ["7", "History", 0]]
+    want = {"bill": C.record_tabs("HB1", [["0", "Summary", 0], ["1", "Votes", 1]] + rest, "0"),
+            "texted": C.record_tabs("HB1", [["0", "Summary", 0], ["6", "Bill Text", 0], ["1", "Votes", 0]]
+                                    + rest, "0"),
+            "card": C.record_tabs("LSR20279999", [["0", "Summary", 0], ["4", "Sponsors", 3],
+                                                  ["7", "History", 1]], "7")}
+    for k, w in want.items():
+        assert w in got[k], f"the {k} strip is not record_tabs' answer: {got[k][:500]!r}, not {w!r}"
+    assert got["bill"].startswith(want["bill"]) and got["texted"].startswith(want["texted"]), (
+        "a bill's tabs no longer open its detail")
+    return "ok", ("a bill's page and card (with and without a text) and a request's open card draw "
+                  "components.record_tabs' strip, byte for byte, and app.js writes none of its own")
 
 
 @check("build", "a request's sponsor the roster misses is matched to a winner of the election only where certain: "

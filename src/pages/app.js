@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.333
+// GRANITE_VERSION: 2026-09-07.334
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7318,10 +7318,6 @@ function renderDetail(b,d){
   // version count still shown only when there is more than one to count.
   const btHas=(d.nver||0)>1||(d.namd||0)||!!(((d.billtext||{}).body||"").trim())
     ||!!(d.amendments||[]).length;
-  const btTab=btHas
-    ? `<button class="tab" role="tab" id="tab_${b.id}_6" aria-controls="pane_${b.id}_6"
-        aria-selected="false" data-t="6">Bill Text${d.nver>1?tabN(d.nver):""}</button>`
-    : "";
   const btPane=btHas
     ? `<div class="pane" role="tabpanel" id="pane_${b.id}_6" aria-labelledby="tab_${b.id}_6"
         tabindex="0" data-t="6" hidden>${hasVersionIndex(d)?renderVersions(b,d):billTextSection(b,d,makeRsa(d))}</div>`
@@ -7335,43 +7331,37 @@ function renderDetail(b,d){
   const rel=relatedMerge(Array.isArray(d.related)?d.related:[]);
   // EVERY BILL HAS A HISTORY TAB (the owner's walk of dry run 9, 8 November
   // 2026): with no related rows it says so and lists the laws it would change.
-  const relTab=true
-    ? `<button class="tab" role="tab" id="tab_${b.id}_7" aria-controls="pane_${b.id}_7" aria-selected="false" data-t="7">History${rel.length?tabN(rel.length):""}</button>`
-    : "";
   const relPane=true
     ? `<div class="pane" role="tabpanel" id="pane_${b.id}_7" aria-labelledby="tab_${b.id}_7"
         tabindex="0" data-t="7" hidden>${renderRelated(b,rel,d)}</div>`
     : "";
 
-  return `<div class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab_${b.id}_0" aria-controls="pane_${b.id}_0" aria-selected="true" data-t="0">Summary</button>
-    ${btTab}
-    <button class="tab" role="tab" id="tab_${b.id}_1" aria-controls="pane_${b.id}_1" aria-selected="false" data-t="1">Votes${
-        // What the pane draws, not the index row's count. b.nrc is the roll
-        // calls that are not procedural; the pane draws d.rollcalls, which
-        // adds the docket's voice and division votes. The two disagreed on
-        // 2,011 of the current term's 2,234 bills -- mostly bills whose only
-        // votes were voice votes, which showed "Votes" with nothing beside
-        // it and 3 sections beneath.
-        // And the voters' vote on an amendment they were sent, once cast.
-        votesDrawn(d)?tabN(votesDrawn(d)):""}</button>
-    <!-- HEARINGS, NOT VIDEOS. The tab lists a bill's sittings -- the date, the
-         time and the room -- and a recording where one exists. Recordings
-         begin on 14 May 2020, so for fifteen of the nineteen terms the tab was
-         headed "Videos" and every entry under it read "No recording exists".
-         The sittings are the content and the video is the bonus, so the label
-         now says what is always there rather than what usually is not. The
-         count stays the count of recordings, which is why it is absent on the
-         terms that have none. data-t stays "2": renumbering would repoint
-         every saved link. -->
-    <button class="tab" role="tab" id="tab_${b.id}_2" aria-controls="pane_${b.id}_2" aria-selected="false" data-t="2">Hearings${videoCount(d)?tabN(videoCount(d)):""}</button>
-    <button class="tab" role="tab" id="tab_${b.id}_3" aria-controls="pane_${b.id}_3" aria-selected="false" data-t="3">Reports${
-      reportCount(d)?tabN(reportCount(d)):""}</button>
-    <button class="tab" role="tab" id="tab_${b.id}_4" aria-controls="pane_${b.id}_4" aria-selected="false" data-t="4">Sponsors${(d.sponsors||[]).length?tabN((d.sponsors||[]).length):""}</button>
-
-    <button class="tab" role="tab" id="tab_${b.id}_5" aria-controls="pane_${b.id}_5"
-      aria-selected="false" data-t="5">Documents${
-        (d.documents||[]).length?tabN(d.documents.length):""}</button>${relTab}</div>
+  // THE STRIP IS THE RECORD'S (components.recordTabs, 16 November 2026), the
+  // one a request's card and its own page draw too: [key, word, count], in
+  // the DOM's order, a count of none drawing no badge.
+  return recordTabs(b.id,[["0","Summary",0]].concat(btHas?[["6","Bill Text",d.nver>1?d.nver:0]]:[],[
+    // What the pane draws, not the index row's count. b.nrc is the roll
+    // calls that are not procedural; the pane draws d.rollcalls, which adds
+    // the docket's voice and division votes. The two disagreed on 2,011 of
+    // the current term's 2,234 bills -- mostly bills whose only votes were
+    // voice votes, which showed "Votes" with nothing beside it and 3
+    // sections beneath. And the voters' vote on an amendment they were
+    // sent, once cast.
+    ["1","Votes",votesDrawn(d)],
+    // HEARINGS, NOT VIDEOS. The tab lists a bill's sittings -- the date, the
+    // time and the room -- and a recording where one exists. Recordings
+    // begin on 14 May 2020, so for fifteen of the nineteen terms the tab was
+    // headed "Videos" and every entry under it read "No recording exists".
+    // The sittings are the content and the video is the bonus, so the label
+    // now says what is always there rather than what usually is not. The
+    // count stays the count of recordings, which is why it is absent on the
+    // terms that have none. data-t stays "2": renumbering would repoint
+    // every saved link.
+    ["2","Hearings",videoCount(d)],
+    ["3","Reports",reportCount(d)],
+    ["4","Sponsors",(d.sponsors||[]).length],
+    ["5","Documents",(d.documents||[]).length],
+    ["7","History",rel.length]]),"0")+`
     <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d,rsa)}</div>
     ${/* ONLY WHERE THERE IS SOMETHING TO SHOW. 1,149 of 2,234 bills have a
           second version; a tab on the other 1,085 would say "there is one
@@ -8360,9 +8350,8 @@ function lsrBody(b){
   const pane=([k])=>`<div class="pane" role="tabpanel" id="pane_${esc(b.id)}_${k}" aria-labelledby="tab_${esc(b.id)}_${k}" tabindex="0" data-t="${k}"${k===t?"":" hidden"}>${lsrPane(b,k)}</div>`;
   // Summary alone is no choice to make: no strip, and a pane with no tab to answer to.
   if(tabs.length<2)return `<div class="pane" data-t="0">${lsrPane(b,"0")}</div>`;
-  return `<div class="tabs" role="tablist">${tabs.map(([k,w,n])=>
-      `<button class="tab" role="tab" id="tab_${esc(b.id)}_${k}" aria-controls="pane_${esc(b.id)}_${k}" aria-selected="${k===t}" data-t="${k}">${w}${n?tabN(n):""}</button>`).join("")}</div>`
-    +tabs.map(pane).join("");
+  // The bill's strip (components.recordTabs).
+  return recordTabs(b.id,tabs,t)+tabs.map(pane).join("");
 }
 // `cls`: a class beside "card lsr" (a paged list's "unshown").
 //

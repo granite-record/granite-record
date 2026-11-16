@@ -303,6 +303,10 @@
     {"args": [{"title": "Housing"}]},
     {"args": [{"facts": [["Room", "GP 231", ""]]}]}
   ],
+  "record_tabs": [
+    {"args": ["HB1094", [["0", "Summary", 0], ["6", "Bill Text", 3], ["1", "Votes", 2], ["2", "Hearings", 0], ["7", "History", 1]], "0", ""], "want": "<div class=\"tabs\" role=\"tablist\"><button class=\"tab\" role=\"tab\" id=\"tab_HB1094_0\" aria-controls=\"pane_HB1094_0\" aria-selected=\"true\" data-t=\"0\">Summary</button><button class=\"tab\" role=\"tab\" id=\"tab_HB1094_6\" aria-controls=\"pane_HB1094_6\" aria-selected=\"false\" data-t=\"6\">Bill Text<span class=\"tn\"><span class=\"tnp\"> (</span>3<span class=\"tnp\">)</span></span></button><button class=\"tab\" role=\"tab\" id=\"tab_HB1094_1\" aria-controls=\"pane_HB1094_1\" aria-selected=\"false\" data-t=\"1\">Votes<span class=\"tn\"><span class=\"tnp\"> (</span>2<span class=\"tnp\">)</span></span></button><button class=\"tab\" role=\"tab\" id=\"tab_HB1094_2\" aria-controls=\"pane_HB1094_2\" aria-selected=\"false\" data-t=\"2\">Hearings</button><button class=\"tab\" role=\"tab\" id=\"tab_HB1094_7\" aria-controls=\"pane_HB1094_7\" aria-selected=\"false\" data-t=\"7\">History<span class=\"tn\"><span class=\"tnp\"> (</span>1<span class=\"tnp\">)</span></span></button></div>"},
+    {"args": ["LSR20270010", [["0", "Summary", 0]], "0", "/request/2027-0010"], "want": "<div class=\"tabs sstabs\" role=\"tablist\" data-base=\"/request/2027-0010\"><button class=\"tab\" role=\"tab\" id=\"tab_LSR20270010_0\" aria-controls=\"pane_LSR20270010_0\" aria-selected=\"true\" data-t=\"0\" data-sstab=\"\">Summary</button></div>"}
+  ],
   "doc_row": [
     {"args": [{"kind": "record", "label": "HJ 5, page 23", "url": "https://gc.nh.gov/x.pdf", "of": "House Journal · Feb 19, 2026", "what": "<span class=\"docacts\">a</span>"}]},
     {"args": [{"kind": "status", "label": "Bill status", "url": "https://gc.nh.gov/s"}]}
