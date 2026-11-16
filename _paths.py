@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-06.7
+# GRANITE_VERSION: 2026-10-06.8
 """
 Where the code lives, so that every script and module is found by its bare name.
 
@@ -71,7 +71,18 @@ inventory and preflight name them as they did at the root; a
 name with a folder in it is taken as written, because site/bills.html is the
 built copy and not the source.
 
-Nothing here reads data, asks the network or writes anything.
+WHAT A BUILD STEP READS AND WRITES (16 November 2026, the refactor's build
+design, step S2). build_all.py names a folder in GRANITE_BUILD_IO for each
+step it runs, and a process that has one starts src/lib/build_io.py's
+recorder here, as its first import of this project: every open, listing,
+existence check, database, child process and read of the day and of the
+GRANITE_ and GITHUB_ settings the process makes is written to that folder as
+it exits. build_io.py says what it records and why it changes nothing. It is
+imported through importlib, by its name, so that it is in no step's
+signature (build_cache.signature follows a module's import statements): it
+observes, and works nothing out.
+
+Nothing else here reads data, asks the network or writes anything.
 """
 
 import os
@@ -208,3 +219,9 @@ def _on_path():
 
 
 _on_path()
+
+# The recorder of a build step's reads and writes, where build_all.py asked
+# for one (build_io.ENV, which preflight holds this name to).
+if os.environ.get("GRANITE_BUILD_IO"):
+    import importlib
+    importlib.import_module("build_io").start(os.environ["GRANITE_BUILD_IO"])

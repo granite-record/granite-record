@@ -337,6 +337,9 @@ Five tools for the time between those proofs, none of which replaces one.
   A change to a step that keeps answers in `.build_cache/` is proven cold and
   warm: `python3 build_all.py --local --cold` reads no cache (and still keeps
   what it works out), and the build after it reads that; both compare the same.
+  A change to the record of what each step reads and writes
+  (`src/lib/build_io.py`) is proven the same way with
+  `python3 build_all.py --local --no-record`, which records nothing.
 
 ## Where new code goes
 

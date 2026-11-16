@@ -23,6 +23,15 @@ Shared by every stage:
   `.build_cache/` under a sha256 of their inputs and their code, and carried
   to the night by the kit -- used by `parse/build_bill_versions.py` and
   `parse/officers.py` (which `pages/` reads twice a build);
+- `build_io`: what each step of a build reads and writes, recorded while it
+  runs -- started by `_paths.py` in every process of a step `build_all.py`
+  names a folder for, and joined by `build_all.py` into
+  `logs/build-io.json.gz` and the "io" of `site/build.json`;
+- `shadow_keys`: what a cache would have done, with nothing taken from one --
+  after each step the build design names as cacheable, the key a cache would
+  give each finished term's part of it and the step whole, which
+  `build_all.py` compares with the last real night's (kept by `nightly.py`
+  as `archive/shadow-keys.json.gz`);
 - `people`: one entry a person, joining every number the General Court uses
   for them (an employee number, a PersonID in each chamber) under one
   person number, by the rule it states; the public people file and the

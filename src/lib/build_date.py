@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-02.6
+# GRANITE_VERSION: 2026-10-02.7
 """
 The day a build says it was made, asked for in one place.
 
@@ -40,6 +40,13 @@ IT IS FOR COMPARING BUILDS, NOT FOR PUBLISHING ONE. A page built this way
 cites a day that is not the day it was built. build_all.py says so when the
 date is stated and records it in site/build.json.
 
+EACH READING IS ANNOUNCED (16 November 2026, the refactor's build design, step
+S2). today(), now() and utcnow() each raise an audit event of their own
+(sys.audit, "build_date.today" and the rest), which costs nothing where no
+hook listens: build_io.py's recorder counts them, so the build's record says
+which steps read the day, and a key of a step's output holds the day only
+for a step that did.
+
 WHAT STILL READS THE CLOCK, on purpose: build_all.py's own record of the run
 in site/build.json -- when it finished, how long each step took -- which is
 about the run and is left out of any comparison; the fetchers' "asked on"
@@ -51,6 +58,7 @@ reader's own date in a citation where it can.
 import datetime
 import functools
 import os
+import sys
 
 from state_settings import TIMEZONE
 
@@ -105,6 +113,7 @@ def today():
     Windows, whose clock is Concord's already) the machine's own day stands.
     The zone is looked up once a process (_zone), not on every call.
     """
+    sys.audit("build_date.today")
     when = stated()
     if when:
         return when.date()
@@ -120,12 +129,14 @@ def today():
 def now():
     """The build's moment on the local clock: datetime.datetime.now(), unless
     one is stated."""
+    sys.audit("build_date.now")
     return stated() or datetime.datetime.now()
 
 
 def utcnow():
     """The build's moment in UTC, zone attached:
     datetime.datetime.now(datetime.timezone.utc), unless one is stated."""
+    sys.audit("build_date.utcnow")
     when = stated()
     return (when.replace(tzinfo=datetime.timezone.utc) if when
             else datetime.datetime.now(datetime.timezone.utc))

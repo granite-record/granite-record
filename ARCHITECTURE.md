@@ -1871,6 +1871,46 @@ of the key's shape) moves onto `terms.py` after the switch to 2027-2028.
 `build_all.py --cold` is a build that reads no cache (`build_cache.cold`):
 `nightly.py --new-term` builds so, and what it works out is still kept.
 
+**What each step reads and writes** (16 November 2026). A step's `needs=`
+and `produces=` are written by hand; what it really reads and writes is
+recorded while it runs (`src/lib/build_io.py`). `build_all.py` hands each
+step a folder in `GRANITE_BUILD_IO`, and `_paths.py`, every script's first
+import, starts a recorder in each process that has one -- the script, every
+script of ours it starts, a pool's workers -- through Python's audit hook
+(opens, listings, renames, removals, databases, processes started), wrapped
+existence checks (`os.stat`, `os.path.exists` and the rest, which
+`Path.exists` calls), `os.environ`'s reads of `GRANITE_` and `GITHUB_`
+settings, and an audit event `build_date.py` raises for each reading of the
+day. Each process writes its record as it exits; `build_all.py` joins a
+step's after it runs, writes the whole build's to `logs/build-io.json.gz`,
+and puts its counts, the log's sha256 and what it says against the plan in
+`site/build.json`'s `"io"`: a declared need not read, a declared output not
+written (the copy there is an earlier build's), a file read before a later
+step writes it, and a file two steps write. It observes only -- it is in no
+step's signature, and `--no-record` builds without it, which is how the site
+is shown the same with it and without.
+
+**What a cache would have done** (16 November 2026). No step's output is
+taken from a cache until a week of real nights shows the keys hold (the
+owner's yes to the build design's question 5). After each step the design
+names as cacheable (`src/lib/shadow_keys.py`, `STEPS`: the frozen-term pass,
+the archived histories, the Journal motions, the report check, the chapters,
+the roll calls, the search index, and the site data, bill pages and session
+days as the page bundles), `build_all.py` works out from its record the key a
+cache would give each finished term's part of it and the step whole -- its
+code (`build_cache.signature` of its script and of the scripts it ran, with
+`requirements.txt`), the settings file, the term and the sitting term, the
+term's frozen manifests, every input it read (a `{term: ...}` file by its
+term's part), the day where it read it, the settings it read -- and a hash of
+what it made. A path's term is read off its shape (`term_of`), which is a
+guess the week tests. They go to `logs/shadow-keys.json.gz`; the night keeps
+a real night's as `archive/shadow-keys.json.gz`, a state file a dry run never
+sends; and every build compares its own with the night's, saying in its
+output and `site/build.json`'s `"shadow_keys"` which units would have been
+taken from a cache, which rebuilt and why, and any key that repeated with
+another output -- which the night's verdict names too (`"shadow_keys"`), as a
+note and not a warning, since the site is as built.
+
 **What a build was built from** (9 October 2026). A build that ends well
 records, in `logs/last-build.json` (`src/lib/build_inputs.py`), its commit,
 every file git sees with a sha256 of its bytes, every other file under the

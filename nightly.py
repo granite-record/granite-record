@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.97
+# GRANITE_VERSION: 2026-09-04.98
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -5599,6 +5599,50 @@ def keep_night_site(rows, out, v, day):
     return len(files)
 
 
+# THE SHADOW KEYS, KEPT FOR THE NEXT NIGHT (16 November 2026, the refactor's build
+# design, step S3; the owner's yes to its question 5). After each step the design names
+# as cacheable, the build works out the key a cache would give each finished term's part
+# of it and the step whole, and compares them with the last real night's
+# (src/lib/shadow_keys.py, its THIS and KEPT, which preflight holds these to). A real
+# night that built keeps its build's as SHADOW_KEYS, a state file (cloud_kit.json), never
+# a dry run's or a New term run's, as NIGHT_SITE is kept; and the verdict carries what the
+# build said of them ("shadow_keys", not the gate's shadow) on every night -- a key that
+# repeated with another output is named there and in the log, and is not a warning: nothing
+# was taken from a cache, so the site is as built, and a new kind of warning would hold the
+# night for the gate.
+SHADOW_KEYS = Path("archive/shadow-keys.json.gz")
+SHADOW_BUILT = Path("logs/shadow-keys.json.gz")
+
+
+def keep_shadow_keys(built=SHADOW_BUILT, kept=SHADOW_KEYS):
+    """The build's shadow keys kept as the night's, whole and renamed into
+    place: a sentence for the log."""
+    built, kept = Path(built), Path(kept)
+    try:
+        data = built.read_bytes()
+        kept.parent.mkdir(parents=True, exist_ok=True)
+        tmp = kept.with_name(kept.name + ".part")
+        tmp.write_bytes(data)
+        os.replace(tmp, kept)
+    except FileNotFoundError:
+        return (f"{kept.as_posix()} is left as it was: the build worked out no shadow keys "
+                f"({built.as_posix()} is not here)")
+    except OSError as e:
+        return f"{kept.as_posix()} could not be written: {type(e).__name__}: {e}"
+    return f"{kept.as_posix()} keeps tonight's shadow keys for the next night's build to compare with"
+
+
+def shadow_said(site):
+    """What site/build.json says of the shadow keys, for the verdict: the
+    night they were compared with, the counts and the mismatches; {} for a
+    build that worked out none."""
+    rec = load_json(Path(site) / BUILD_RECORD)
+    s = rec.get("shadow_keys") if isinstance(rec, dict) else None
+    if not isinstance(s, dict):
+        return {}
+    return {k: s.get(k) for k in ("compared_with", "units", "taken", "rebuilt", "new", "mismatched")}
+
+
 # ... and the changes files the email sender reads (follow_changes.py), which
 # are written against the first-seen ledger: the night moves the ledger on
 # itself once its build is accepted (keep_first_seen), so a build after it
@@ -6761,6 +6805,14 @@ class Night:
             except (OSError, ValueError) as e:
                 say(f"  {NIGHT_SITE.as_posix()} could not be written, so the weekly's cold build "
                     f"has no night to compare with: {type(e).__name__}: {e}")
+        # ... and the build's shadow keys (SHADOW_KEYS), for the next night's build: a real
+        # night's alone, as above. What the build said of them is the verdict's on every night.
+        v["shadow_keys"] = shadow_said(site)
+        if v["shadow_keys"].get("mismatched"):
+            say("  SHADOW MISMATCH, nothing taken from any cache: a key repeated last night's with "
+                "another output in " + "; ".join(v["shadow_keys"]["mismatched"]))
+        if not a.dry_run and not a.new_term:
+            say("  " + keep_shadow_keys())
 
         v["blocking"] = blocking
         # THE GATE'S REASONS from the build and from production, in order:

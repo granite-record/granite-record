@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.99
+# GRANITE_VERSION: 2026-09-05.101
 """
 Run the whole pipeline in the right order.
 
@@ -10,6 +10,9 @@ Run the whole pipeline in the right order.
     python3 build_all.py --local --cold     # read no cache: every step works out
                                             #   everything afresh (the New term
                                             #   run's build; build_cache.py)
+    python3 build_all.py --local --no-record  # record nothing of what each step
+                                            #   reads and writes (build_io.py), to
+                                            #   show the record changes nothing
     python3 build_all.py --front-end        # a change to app.css, components.js,
                                             #   app.js or find.js alone, into the site
                                             #   the last full build made, in seconds
@@ -42,6 +45,30 @@ term the environment states and the files contradict stops the build before
 its first step; the three readings parting is said, as the turn where it is
 the turn, and never stops one.
 
+WHAT EACH STEP READ AND WROTE (16 November 2026, the refactor's build design,
+step S2). Every step is handed a folder of its own in GRANITE_BUILD_IO, and
+each of its processes records there what it read, wrote, removed, listed,
+looked for, connected to and started, and whether it asked the day and which
+GRANITE_ and GITHUB_ settings it read (build_io.py). After the step the
+records are joined; after the build the whole of it goes to
+logs/build-io.json.gz, and site/build.json's "io" carries the counts, the
+log's sha256 and what the record says against the plan: a declared need not
+read, a declared output not written, a file read before a later step writes
+it, and a file two steps write -- each a line of the log, none a stop.
+--no-record records nothing, for the build that shows the record changes
+nothing.
+
+THE SHADOW KEYS (16 November 2026, the refactor's build design, step S3).
+After each step the design names as cacheable (shadow_keys.STEPS), the key a
+cache would give each finished term's part of it, and the step whole, is
+worked out from the step's record with a hash of what it made
+(shadow_keys.py says of what). This build's go to logs/shadow-keys.json.gz;
+the last real night's, which the night keeps (archive/shadow-keys.json.gz),
+are compared with them, and the output and site/build.json's "shadow_keys"
+say which units would have been taken from a cache, which rebuilt and why,
+and any key that repeated with another output. Nothing is taken from any
+cache; --no-record works out no key.
+
 Transcription is excluded by default: it is per-video and slow even with
 captions. Run transcribe_and_align.py separately, then rebuild.
 """
@@ -55,12 +82,16 @@ import _paths  # noqa: E402,F401
 import argparse
 import json
 import os
+import shutil
 import subprocess
+import tempfile
 import threading
 import time
 import build_cache
 import build_date
 import build_inputs
+import build_io
+import shadow_keys
 import proceedings
 import terms
 import child
@@ -333,6 +364,23 @@ def index_terms(site="site"):
     return sorted({t for t in named or [] if terms.is_key(t)})
 
 
+def frozen_manifests(root="."):
+    """{term: a sha256 of the session freeze's manifest and the views', together}
+    of every frozen term: term_record's "frozen", and a shadow key's
+    (shadow_keys.py) for its own term."""
+    import freeze_term as FT
+    root = Path(root)
+    frozen = {}
+    views = root / FT.VIEWS_DIR
+    named = set(FT.frozen_terms(root)) | {
+        p.name for p in (views.iterdir() if views.is_dir() else [])
+        if terms.is_key(p.name) and (p / FT.MANIFEST).is_file()}
+    for t in sorted(named):
+        frozen[t] = build_cache.files_digest([root / FT.FROZEN / t / FT.MANIFEST,
+                                              views / t / FT.MANIFEST])
+    return frozen
+
+
 def term_record(sitting, site="site", root="."):
     """What site/build.json says of the term (terms.py, THE SITTING TERM):
     the one this build handed every step (sitting); the term the build's day
@@ -342,19 +390,10 @@ def term_record(sitting, site="site", root="."):
     each frozen term's manifests, by a sha256 of the session freeze's and the
     views' together (frozen). Where the three readings part, "said" puts it
     in words (terms.differences), and nothing stops."""
-    import freeze_term as FT
-    root = Path(root)
     by_date = terms.key_on(build_date.today().isoformat())
     index = index_terms(site)
     newest = index[-1] if index else ""
-    frozen = {}
-    views = root / FT.VIEWS_DIR
-    named = set(FT.frozen_terms(root)) | {
-        p.name for p in (views.iterdir() if views.is_dir() else [])
-        if terms.is_key(p.name) and (p / FT.MANIFEST).is_file()}
-    for t in sorted(named):
-        frozen[t] = build_cache.files_digest([root / FT.FROZEN / t / FT.MANIFEST,
-                                              views / t / FT.MANIFEST])
+    frozen = frozen_manifests(root)
     rec = {"sitting": sitting, "by_date": by_date, "index_newest": newest,
            "finished": sum(1 for t in index if t < sitting) if sitting else None,
            "frozen": frozen}
@@ -1363,6 +1402,9 @@ def main():
                          "New term run's build")
     ap.add_argument("--keep-going", action="store_true",
                     help="carry on past a failed required step")
+    ap.add_argument("--no-record", action="store_true",
+                    help="record nothing of what each step reads and writes (build_io.py): the "
+                         "build that shows the record changes nothing it builds")
     ap.add_argument("--front-end", action="store_true",
                     help="put a change to app.css, components.js, app.js or find.js into the site the "
                          "last full build made, in seconds; refuses, and says why, when "
@@ -1593,6 +1635,63 @@ def output_problems(step, before):
     return bad, warn
 
 
+# WHAT EACH STEP READ AND WROTE, KEPT AND SAID (build_io.py). The log carries
+# every step's whole record; site/build.json, which every deployment serves
+# and the night reads a megabyte of at most, carries the counts, the log's
+# sha256 and up to IO_KEPT of the warnings; the build's output prints IO_SAID.
+IO_KEPT = 20
+IO_SAID = 12
+
+
+def io_record(steps, results, records, a, io_secs=0.0):
+    """The build's record of reads and writes: build_io.LOG written, each
+    result given its step's counts, and the digest for site/build.json."""
+    t = time.time()
+    by_name = {s.name: s for s in steps}
+    status = {r["step"]: r["status"] for r in results}
+    ran = [(name, [str(n).replace("\\", "/") for n in by_name[name].needs],
+            [str(p).replace("\\", "/") for p in by_name[name].produces],
+            {p.replace("\\", "/") for p in by_name[name].sometimes}, rec)
+           for name, rec in records.items() if status.get(name) == "ok"]
+    said = build_io.findings(ran, carried=[p for p, _, _ in CARRIED])
+    for r in results:
+        if r["step"] in records:
+            r["io"] = build_io.counts(records[r["step"]])
+    doc = {"format": build_io.FORMAT, "day": build_date.today().isoformat(),
+           "term": getattr(a, "term", "") or "",
+           "steps": [{"step": name, "status": status.get(name), "script": by_name[name].args[0],
+                      "args": by_name[name].args[1:],
+                      "needs": [str(n).replace("\\", "/") for n in by_name[name].needs],
+                      "produces": [str(p).replace("\\", "/") for p in by_name[name].produces],
+                      "record": rec} for name, rec in records.items()],
+           "writers": build_io.shared_writers([(n, rec) for n, _ne, _pr, _so, rec in ran]),
+           "warnings": said}
+    sha, size = build_io.write_log(doc)
+    return {"file": build_io.LOG.as_posix(), "sha256": sha, "bytes": size,
+            "steps": len(records), "processes": sum(rec["processes"] for rec in records.values()),
+            "seconds": round(io_secs + time.time() - t, 1), "warned": len(said),
+            "warnings": said[:IO_KEPT]}
+
+
+def shadow_record(shadow, results, failed=()):
+    """This build's shadow keys, of the named steps that ran well, written to
+    shadow_keys.THIS and compared with the last real night's (shadow_keys.KEPT):
+    (the digest for site/build.json, the lines the build prints)."""
+    t = time.time()
+    ok = {r["step"] for r in results if r["status"] == "ok"}
+    for name in [n for n in shadow.steps if n not in ok]:
+        del shadow.steps[name]
+    doc = shadow.document(run=os.environ.get("GITHUB_RUN_ID", ""),
+                          commit=os.environ.get("GITHUB_SHA", ""))
+    size = shadow_keys.write(doc)
+    cmp = shadow_keys.compare(doc, shadow_keys.read())
+    said = shadow_keys.said(cmp) + [f"shadow keys: not worked out for {f}" for f in failed]
+    digest = shadow_keys.digest(cmp, size, shadow.seconds + time.time() - t)
+    if failed:
+        digest["failed"] = list(failed)[:5]
+    return digest, said
+
+
 def _run_steps(steps, a):
     # A STATED DAY IS SAID, AND RECORDED. build_date.py lets a build be given
     # the day to say it was made on, so that two builds can be compared file
@@ -1604,6 +1703,18 @@ def _run_steps(steps, a):
               "two builds, not for publishing one.\n")
     results, failed = [], None
     started = set()         # the steps that were run, by their place in the plan
+    # WHAT EACH STEP READ AND WROTE (build_io.py): a folder a step, outside the
+    # working folder, that its processes write their records to, joined into
+    # `records` once the step is done; --no-record makes none.
+    io_root = (None if getattr(a, "no_record", False)
+               else Path(tempfile.mkdtemp(prefix="gr-build-io-")))
+    records, io_secs = {}, 0.0
+    # THE SHADOW KEYS (shadow_keys.py): each step the design names as cacheable,
+    # keyed from its record as it finishes. Nothing is taken from any cache.
+    shadow = (shadow_keys.Keys(getattr(a, "term", "") or "", frozen_manifests(),
+                               build_date.today().isoformat())
+              if io_root is not None else None)
+    shadow_failed = []
     t0 = time.time()
     for i, s in enumerate(steps, 1):
         miss = s.missing()
@@ -1634,13 +1745,44 @@ def _run_steps(steps, a):
         # whichever code folder holds it, so the plan's names -- and the
         # dry-run's -- stay the same when a file moves under src/. One that
         # cannot be found, or is found twice, fails its step in those words.
+        io_dir = None
+        if io_root is not None:
+            io_dir = io_root / f"{i:02d}"
+            io_dir.mkdir()
+            # A keyed step's processes keep the bytes of what they read and then changed,
+            # but of what an earlier keyed step wrote and the shadow knows already.
+            if shadow is not None and shadow_keys.kind(s.args):
+                (io_dir / build_io.KEYED).write_text(json.dumps(shadow.known_paths()),
+                                                     encoding="utf-8")
         try:
             cmd = [sys.executable, _paths.script(s.args[0])] + s.args[1:]
         except LookupError as e:
             r = subprocess.CompletedProcess(s.args, 1, "", str(e))
         else:
-            r = child.run(cmd, capture_output=True, text=True)
+            r = child.run(cmd, capture_output=True, text=True,
+                          **({"env": {build_io.ENV: str(io_dir)}} if io_dir else {}))
         secs = round(time.time() - st, 1)
+        if io_dir is not None:
+            # The record observes: one that cannot be joined is said, and stops nothing.
+            t_io = time.time()
+            try:
+                records[s.name] = build_io.merge(io_dir, ".")
+            except Exception as e:                              # noqa: BLE001
+                print(f"      the record of what it read and wrote could not be joined: "
+                      f"{type(e).__name__}: {e}")
+            shutil.rmtree(io_dir, ignore_errors=True)
+            io_secs += time.time() - t_io
+            # ... and its shadow keys, now, before a later step changes what it read; or,
+            # for a step that is not keyed, what it wrote over what a keyed one made.
+            if shadow is not None and s.name in records:
+                try:
+                    if r.returncode == 0 and shadow_keys.kind(s.args):
+                        shadow.step(s.name, s.args, records[s.name])
+                    else:
+                        shadow.saw(records[s.name])
+                except Exception as e:                          # noqa: BLE001
+                    shadow_failed.append(f"'{s.name}': {type(e).__name__}: {e}")
+                    shadow.saw(records[s.name])
         bad, warn = output_problems(s, outputs_before) if r.returncode == 0 else ([], [])
         if bad:
             why = "exited 0 but " + "; ".join(bad)
@@ -1677,12 +1819,34 @@ def _run_steps(steps, a):
     # THE TERM THE BUILD WAS OF, beside what its day and its bill index say
     # (term_record): read after the steps, from what they made.
     term = term_record(getattr(a, "term", "") or "", site)
+    # ... and what each step read and wrote, against what the plan says, which
+    # stops nothing: a record that cannot be kept is said in build.json.
+    io = None
+    if io_root is not None:
+        try:
+            io = io_record(steps, results, records, a, io_secs)
+        except Exception as e:                                  # noqa: BLE001
+            io = {"file": None, "failed": f"{type(e).__name__}: {e}", "warned": 0,
+                  "warnings": [], "steps": len(records), "processes": 0, "seconds": 0}
+        shutil.rmtree(io_root, ignore_errors=True)
+    # ... and what a cache would have done with tonight's keys, which stops nothing either.
+    shade, shade_said = None, []
+    if shadow is not None:
+        try:
+            shade, shade_said = shadow_record(shadow, results, shadow_failed)
+        except Exception as e:                                  # noqa: BLE001
+            shade = {"file": None, "failed": f"{type(e).__name__}: {e}"}
+            shade_said = [f"shadow keys: none kept: {shade['failed']}"]
     if site.exists():
         site.mkdir(exist_ok=True)
         (site / "build.json").write_text(json.dumps({
             "finished": datetime.now().isoformat(timespec="seconds"),
             "session": a.session, "seconds": total,
             "ok": failed is None, "steps": results, "term": term,
+            # What the steps read and wrote (io_record); none with --no-record.
+            **({"io": io} if io is not None else {}),
+            # What a cache would have done (shadow_record); none with --no-record.
+            **({"shadow_keys": shade} if shade is not None else {}),
             # Only for a build that read no cache, as below.
             **({"cold": True} if build_cache.cold() else {}),
             # Only where the day was stated, so an ordinary build's record is
@@ -1698,6 +1862,18 @@ def _run_steps(steps, a):
     print(f"{ok} ran, {sk} skipped, {fl} failed, {total}s total")
     for line in term.get("said") or []:
         print(f"the term: {line}")
+    if io is not None and io.get("failed"):
+        print(f"the record of what each step read and wrote was not kept: {io['failed']}")
+    elif io is not None:
+        print(f"the record of what each step read and wrote: {io['file']}, {io['steps']} steps, "
+              f"{io['processes']} processes, {io['seconds']}s"
+              + (f"; {io['warned']} thing(s) it says against the plan:" if io["warned"] else ""))
+        for w in io["warnings"][:IO_SAID]:
+            print(f"  the record: {w}")
+        if io["warned"] > IO_SAID:
+            print(f"  and {io['warned'] - IO_SAID} more: python3 src/lib/build_io.py lists them")
+    for line in shade_said:
+        print(line)
     warned = [r for r in results if r.get("warnings")]
     if warned:
         print(f"{len(warned)} step(s) finished with a warning about their output: "
