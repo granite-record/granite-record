@@ -24,6 +24,9 @@ export const ITEM_KINDS = new Set(["action", "hearing", "scheduled", "exec", "vo
 const BASES = new Set(["first-seen", "record-date"]);
 const CHAMBERS = new Set(["House", "Senate"]);
 const FORMS = new Set(["H", "S"]);
+// The kind of key an ending's `becomes` may name, by the kind that ends
+// (follow_changes.py BECOMES): nothing else moves.
+const BECOMES = { lsr: "bill", member: "member" };
 // An amendment's number as the Bill Text tab opens it (app.js AMENDMENT_HASH).
 export const AMENDMENT_NUM = /^(?:\d{4}-)?\d{3,4}[a-z]{1,2}$/i;
 
@@ -262,10 +265,13 @@ export function checkNight(obj, expectDate) {
           guid: typeof e.guid === "string" ? e.guid.slice(0, 300) : "",
         };
         // A bill request drafted into a bill: the bill its follow moves to.
+        // A member who sits on under another number (a representative
+        // elected to the Senate is given a new one): their new key.
         if (e.becomes !== undefined && e.becomes !== null) {
           const b = parseKey(e.becomes);
-          if (key.kind === "lsr" && b && b.kind === "bill") out.ended.becomes = keyOf(b.kind, b.ref);
-          else notes.push(`${w}: becomes is not a bill's key`);
+          if (b && BECOMES[key.kind] === b.kind && keyOf(b.kind, b.ref) !== keyOf(key.kind, key.ref))
+            out.ended.becomes = keyOf(b.kind, b.ref);
+          else notes.push(`${w}: becomes is not ${key.kind === "member" ? "a member" : "a bill"}'s key`);
         }
         if (!DAY.test(e.date ?? "")) notes.push(`${w}: date is not YYYY-MM-DD`);
       }

@@ -80,7 +80,10 @@ dropped by the sender and refused at sign-up.
 - `followable` lists every record a reader may follow tonight, and only those:
   - **bills** of the sitting term that are still moving, or referred for
     interim study -- `shell.still_moving`, the test the bill feeds use;
-  - **members** that `shell.member_followable` passes;
+  - **members** that `shell.member_followable` passes; and, for email, any
+    member listed the night before who still sits, and the new key a moved
+    member's follow goes to (`ended`, below), though neither has a vote or a
+    bill on record yet;
   - **committees** that `shell.committee_followable` passes;
   - **topics** of the sitting term only. A topic is listed only if a bill of
     the sitting term carries it, and its items (below) are the sitting term's
@@ -297,15 +300,29 @@ night. Each value may have:
   then **ends every follow of that record**. A member or committee carries
   one the same way when it leaves -- a member who no longer sits, a committee
   that no longer sits, most of them at the turn of a term -- with `how` a word
-  of the build's (`left`, `term-ended`) and a `summary` that names them.
+  of the build's (`left`, `term-ended`, and `moved` below) and a `summary`
+  that names them.
 
   **A bill request** (`lsr`) is followable while it is filed and not
   withdrawn, and once introduced until its bill is followable itself. The
   night it leaves, its `ended` has `how` `drafted` and **`becomes`**, the
   bill's key (`bill:2027/HB45`): the sender tells the follower once and
   **moves the follow onto that bill** rather than ending it. Withdrawn, its
-  `how` is `withdrawn` and the follow ends as any other's. `becomes` is
-  allowed on an `lsr`'s `ended` alone, and only as a bill's key.
+  `how` is `withdrawn` and the follow ends as any other's.
+
+  **A member who sits on under another number** (16 November 2026): the
+  General Court gives a member a new number when they move between the House
+  and the Senate, so the night its roster turns to a new term a
+  representative elected to the Senate leaves under one key and sits under
+  another. Their `ended` has `how` `moved`, a `summary` saying where they sit
+  now ("Jim Creighton now sits in the Senate for District 8."), and
+  **`becomes`**, their new key (`member:12001`), which `current.json` lists
+  that night: the sender tells the follower once and **moves the follow
+  there**, as for a request. The build says how it knows it is the same
+  person (build_feeds.py, A MEMBER WHO SITS ON UNDER ANOTHER NUMBER).
+
+  `becomes` is allowed on an `lsr`'s `ended`, only as a bill's key, and on a
+  `member`'s, only as another member's key; on nothing else.
 
   **A bill, member or committee key that `current.json` listed the night
   before and does not list tonight must carry an `ended` tonight.** The

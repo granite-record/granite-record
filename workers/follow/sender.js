@@ -488,10 +488,13 @@ export async function run(env, now = new Date()) {
       }
       // A BILL REQUEST DRAFTED INTO A BILL is not an ending: its follow moves
       // onto the bill (build_feeds, BILL REQUESTS), so it neither ends the
-      // follow nor counts toward the address going.
+      // follow nor counts toward the address going. Nor is A LEGISLATOR WHO
+      // SITS ON UNDER ANOTHER NUMBER, whose follow moves to their new key
+      // (build_feeds, A MEMBER WHO SITS ON UNDER ANOTHER NUMBER): the same
+      // move, to whichever key changes.js lets the ending name.
       ending = sections.filter(x => x.ended && !x.ended.becomes);
       moved = sections.filter(x => x.ended && x.ended.becomes)
-        .map(x => ({ fh: x.fh, to: x.ended.becomes,
+        .map(x => ({ fh: x.fh, to: x.ended.becomes, kind: x.kind,
                      had: follows.some(f => keyOf(f.kind, f.ref) === x.ended.becomes) }));
       // Every follow ends in this email: the address goes with them, and the
       // email says so rather than carrying links that will not work.
@@ -561,15 +564,18 @@ export async function run(env, now = new Date()) {
             writes.push(db.prepare("DELETE FROM follows WHERE subscriber_id = ?1 AND follow_hmac IN (" +
               part.map((_, k) => `?${k + 2}`).join(", ") + ")").bind(s.id, ...part.map(x => x.fh)));
           }
-          // The request's row now holds its bill, sealed as any follow is;
-          // one already followed has the request's row dropped instead.
+          // The request's row now holds its bill, and the legislator's their
+          // new key, sealed as any follow is; one already followed has the
+          // old row dropped instead.
           for (const m of moved) {
             writes.push(m.had
               ? db.prepare("DELETE FROM follows WHERE subscriber_id = ?1 AND follow_hmac = ?2").bind(s.id, m.fh)
               : db.prepare("UPDATE follows SET follow_enc = ?1 WHERE subscriber_id = ?2 AND follow_hmac = ?3")
                   .bind(await sealFollow(env, m.to, s.email_hmac), s.id, m.fh));
           }
-          if (moved.length) note("sender.requests-moved-to-bills", moved.length);
+          const bills = moved.filter(m => m.kind !== "member").length;
+          if (bills) note("sender.requests-moved-to-bills", bills);
+          if (moved.length - bills) note("sender.members-moved", moved.length - bills);
           if (writes.length) await db.batch(writes);
         }
         break;

@@ -790,6 +790,12 @@ const ENDED_TAIL = "There will be no more updates on it, so it has been taken of
 // ... and a bill request drafted into a bill (22 October 2026), whose follow
 // moves onto the bill rather than ending.
 const MOVED_TAIL = "You now follow the bill in its place, and will hear of it as it moves.";
+// ... and a legislator who sits on under another number (16 November 2026):
+// a representative elected to the Senate is given a new one, and their
+// follow moves there. The build's sentence says where they sit now
+// (follow_changes.ending); this says what became of the follow.
+const MEMBER_MOVED_TAIL = "Your follow has moved with them, so you will keep hearing of their " +
+  "votes and bills.";
 
 function weekLine(w) {
   if (!w) return "";
@@ -1161,8 +1167,10 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
       // thing in its section; it is the news, so it leads.
       if (s.ended) {
         const how = s.ended.summary || `${s.label} has concluded.`;
-        // A request drafted into a bill: the follow has moved, not ended.
-        const tail = s.ended.becomes ? MOVED_TAIL : ENDED_TAIL;
+        // A request drafted into a bill, or a legislator under a new number:
+        // the follow has moved, not ended.
+        const tail = !s.ended.becomes ? ENDED_TAIL
+          : s.kind === "member" ? MEMBER_MOVED_TAIL : MOVED_TAIL;
         text.push(`  ${how} ${tail}`);
         html += `<p style="margin:0 0 8px"><b>${link(how)}</b> ${esc(tail)}</p>`;
       }

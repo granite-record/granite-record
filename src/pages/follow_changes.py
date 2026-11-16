@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.11
+# GRANITE_VERSION: 2026-10-07.12
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -115,6 +115,10 @@ FIRST_SEEN, RECORD_DATE = "first-seen", "record-date"
 ITEM_KINDS = ("action", "hearing", "scheduled", "exec", "vote", "report", "sponsor",
               "sitting", "study")
 ENDS = ("bill", "member", "committee", "lsr")   # the kinds an ending is owed for
+# The kind of key an ending's "becomes" may name, by the kind that ends: a
+# request drafted into a bill, and a member who sits on under another number.
+# Nothing else moves; workers/follow/changes.js holds the same.
+BECOMES = {"lsr": "bill", "member": "member"}
 
 # The five kinds of key, as workers/follow/common.js's REF has them. A law is
 # a chapter of the statutes as its /laws page names it, in capitals: 91-A,
@@ -438,6 +442,12 @@ def wanted(led, tonight):
         if d in keep:
             out |= set((n.get("ended") or {}))
     return out
+
+
+def becomes_ok(key, to):
+    """Whether an ending of `key` may name `to` as the record its follow
+    moves to (BECOMES): a bill for a request, another member for a member."""
+    return key_ok(to) and BECOMES.get(kind_of_key(key)) == kind_of_key(to) and to != key
 
 
 def ending(key, label, *, term_turned, old_term, hints):
@@ -1145,10 +1155,10 @@ def check_files(files):
                                   required=False)
                             if not DAY.match(str(e.get("date") or "")):
                                 p.append(f"refs {k} ended: date is not YYYY-MM-DD")
-                            if e.get("becomes") is not None and not (
-                                    kind_of_key(k) == "lsr" and key_ok(e["becomes"])
-                                    and kind_of_key(e["becomes"]) == "bill"):
-                                p.append(f"refs {k} ended: becomes is not a bill's key")
+                            if e.get("becomes") is not None and not becomes_ok(k, e["becomes"]):
+                                p.append(f"refs {k} ended: becomes is not "
+                                         + ("a member's key" if kind_of_key(k) == "member"
+                                            else "a bill's key"))
                 nights.append(obj)
         else:
             p.append("not a changes file's name")
