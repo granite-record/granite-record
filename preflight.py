@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.941
+# GRANITE_VERSION: 2026-09-04.942
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -31141,6 +31141,56 @@ def _clip(build_feeds):
     return "ok", out[-38:]
 
 
+@check("pipeline", "a feed is dated by its newest item, not by the build, so a feed whose items did "
+                   "not change is the same file from night to night", needs=("build_feeds", "build_date"))
+def _feeds_dated_by_their_items(build_feeds, build_date):
+    """FEEDS' DATE = THEIR NEWEST ITEM'S (16 November 2026, the owner's word; the refactor's
+    stage 0, B11). lastBuildDate was the build's moment to the second, so every one of the
+    site's feeds changed every night and between two builds of one day. build_feeds.feed() on
+    made-up items, written under three stated moments a day and an hour apart: the same bytes
+    each time; lastBuildDate the newest item's date in whatever order they come, a meeting
+    still to come included, as its own pubDate is; an item with no date read neither moves it
+    nor stops it; and a feed with no dated item carries none."""
+    BF = build_feeds
+    items = [("HB 1 — a", "https://x/b/1", "d", "2026-11-10", "g1"),
+             ("HB 1 — b", "https://x/b/1", "d", "2026-11-14T10:00:00", "g2"),
+             ("HB 1 — c", "https://x/b/1", "d", "2026-10-01", "g3"),
+             ("HB 1 — d", "https://x/b/1", "d", "", "g4")]
+    ahead = items[:3] + [("HB 1 — hearing", "https://x/b/1", "d", "2026-12-02", "g5")]
+    saved = os.environ.get(build_date.ENV)
+    got = {}
+    try:
+        for when in ("2026-11-16T03:20:00", "2026-11-17T03:20:00", "2026-11-17T04:20:00"):
+            os.environ[build_date.ENV] = when
+            got[when] = [BF.feed("t", "d", "https://x", "https://x/f.xml", its, "https://x")
+                         for its in (items[:3], list(reversed(items[:3])), ahead, items[3:], [])]
+    finally:
+        if saved is None:
+            os.environ.pop(build_date.ENV, None)
+        else:
+            os.environ[build_date.ENV] = saved
+    one, *rest = got.values()
+    assert all(r[:3] == one[:3] for r in rest), (
+        "a feed whose items did not change differs between two builds: its date is the build's")
+
+    def dated(xml):
+        return re.findall(r"<lastBuildDate>([^<]*)</lastBuildDate>", xml)
+    plain, backwards, coming, undated, empty = one
+    assert dated(plain) == dated(backwards) == [BF.rfc822("2026-11-14")], (
+        "a feed's date is not its newest item's", dated(plain), dated(backwards))
+    assert dated(coming) == [BF.rfc822("2026-12-02")], (
+        "a feed whose newest item is a meeting still to come is not dated by it", dated(coming))
+    assert dated(undated) == [] and dated(empty) == [] and "<channel>" in empty, (
+        "a feed with no dated item carries a date", dated(undated), dated(empty))
+    mixed = BF.feed("t", "d", "https://x", "https://x/f.xml", items, "https://x")
+    assert dated(mixed) == [BF.rfc822("2026-11-14")], (
+        "an item with no date moved the feed's date, or stopped it", dated(mixed))
+    assert BF.newest_day(items) == "2026-11-14" and BF.newest_day([]) == "", BF.newest_day(items)
+    return "ok", (f"lastBuildDate {BF.rfc822('2026-11-14')} for items of 10 Oct to 14 Nov in either "
+                  "order, a meeting ahead's own date, none for undated or empty feeds; the same bytes "
+                  "under three stated moments")
+
+
 @check("files", "a check marked as expected to fail is reported as one, and once it passes it "
                 "fails and says to take the mark off")
 def _expected_failures_settle():
@@ -41315,8 +41365,9 @@ def _build_date_stated(build_all, build_date, shell):
     AND THE STATED DAY IS WHAT IS WRITTEN. The fixture site is built with the
     day before yesterday stated: every page's citation falls back on that day
     and none on today, home.json and the downloads' manifest are dated it, no
-    sitemap date is later and the standing pages carry it, every feed's
-    lastBuildDate is it, and the week it falls in is the calendar's current
+    sitemap date is later and the standing pages carry it, the all-activity
+    feed holds nothing after it and is dated by its newest item (feeds are,
+    since 16 November 2026), and the week it falls in is the calendar's current
     one. A date that is not one stops a builder. And without the variable the
     day is the clock's, which is what the fixture every other check reads was
     built by.
@@ -41489,10 +41540,15 @@ def _build_date_stated(build_all, build_date, shell):
             f"the sitemap's latest date is {max(mods) if mods else None}, not the stated {day}")
         import build_calendar as BC
         import build_feeds as BF
+        from email.utils import parsedate_to_datetime
+        # A FEED IS DATED BY ITS NEWEST ITEM (16 November 2026, build_feeds.feed),
+        # not by the build: all.xml's items are those dated by the stated day.
         feed = (site / "feed" / "all.xml").read_text(encoding="utf-8")
-        assert f"<lastBuildDate>{BF.rfc822(day.isoformat())}</lastBuildDate>" in feed, (
-            "feed/all.xml's lastBuildDate is not the stated day: "
-            + "".join(re.findall(r"<lastBuildDate>[^<]*</lastBuildDate>", feed)[:1]))
+        pubs = [parsedate_to_datetime(x).date() for x in re.findall(r"<pubDate>([^<]*)</pubDate>", feed)]
+        last = re.findall(r"<lastBuildDate>([^<]*)</lastBuildDate>", feed)
+        assert pubs and max(pubs) <= day and last == [BF.rfc822(max(pubs).isoformat())], (
+            f"feed/all.xml's lastBuildDate is {last}, not its newest item's date "
+            f"({max(pubs) if pubs else None}), or an item is dated past the stated {day}")
         assert (site / "calendar" / f"{BC.week_key(day)}.html").exists(), (
             f"the calendar's current week is not the stated day's, {BC.week_key(day)}")
         # A date that is not one stops the builder, and it says which variable.
@@ -41517,8 +41573,9 @@ def _build_date_stated(build_all, build_date, shell):
     return "ok", (f"{len(seen)} scripts on the build's path, none asking the clock for "
                   f"itself but the {sum(1 for f in CLOCK_OF_THEIR_OWN if own.get(f))} named; "
                   f"built with {day} stated, {said} pages cite it and none cites today, "
-                  "and the index, the manifest, the sitemap, the feeds and the calendar's "
-                  "week are that day's; a date that is not one stops the builder"
+                  "and the index, the manifest, the sitemap and the calendar's week are that "
+                  "day's, the all-activity feed its newest item's; a date that is not one stops "
+                  "the builder"
                   + (f"; built in two weeks, {weekly} calendar week pages differ by the week "
                      "/calendar serves and nothing else" if weekly else ""))
 
