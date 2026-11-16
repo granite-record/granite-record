@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of data checks with no module under test, for a person to sort.
 
@@ -1507,6 +1507,72 @@ def _sponsors_on_record():
                   f"on their bills and none of the {outside} of members who did not, nobody listed "
                   f"twice, and every sponsor the database knows has a chamber"
                   + ("" if people else " (db/Legislators.psv not here, so ids not joined)"))
+
+
+@check("data", "every sponsor row of the session's term whose member sits in its chamber carries the "
+       "district and county the term's roster gives them")
+def _sponsor_seats_data():
+    """The data side of _sitting_sponsors_take_the_roster_seat. data/sponsors.json's rows of
+    2025-2026 carried, for fifteen senators who had sat in the House, the House seat of their
+    record in past_members.json, matched by name: 2,471 rows on 1,049 bills, Sen. Tim McGough's
+    district "12" (Hills 12, his House seat) where the roster, the database's active record,
+    the status page and the owner say District 11. The labels beside them were right.
+
+    For the newest term: every row whose member sits in the row's chamber -- by the roster's
+    id, or on a row carrying another id (the status page's) by first and last name among that
+    chamber's members where one alone answers, as build_data seats them -- has the roster's
+    district, as a number, and its county, in full or abbreviated. The roster is the term's
+    own: data/frozen/<term>/legislators.json while the installed one is the next House's."""
+    sp, lg = Path("data/sponsors.json"), Path("data/legislators.json")
+    if not (sp.exists() and lg.exists()):
+        return "skip", "data/sponsors.json or data/legislators.json not here"
+    sponsors = json.loads(sp.read_text(encoding="utf-8"))
+    if not sponsors or not all(re.match(r"^\d{4}-\d{4}$", k) for k in sponsors):
+        return "skip", "data/sponsors.json is not keyed on the term yet"
+    newest = max(sponsors)
+    own = Path("data/frozen") / newest / "legislators.json"
+    roster = {str(m.get("id")): m for m in json.loads((own if own.exists() else lg).read_text(
+        encoding="utf-8"))}
+
+    def first_last(name):
+        # build_data's _first_last: "McGough, Tim" and "Tim McGough" are both ("tim", "mcgough").
+        n = (name or "").strip()
+        if "," in n:
+            last, first = [x.strip() for x in n.split(",", 1)]
+            n = f"{first} {last}"
+        w = re.sub(r"[^A-Za-z ]", " ", n).lower().split()
+        return (w[0], w[-1]) if len(w) >= 2 else None
+    by_name = {}
+    for m in roster.values():
+        by_name.setdefault((first_last(m.get("name")), m.get("chamber")), []).append(m)
+    rows = members = 0
+    seen, wrong = set(), Counter()
+    for bill, people in (sponsors.get(newest) or {}).items():
+        for x in people or []:
+            ch = (x.get("chamber") or "")[:1]
+            m = roster.get(str(x.get("member_id") or ""))
+            if not (m and m.get("chamber") == ch):
+                got = by_name.get((first_last(x.get("name")), ch)) or []
+                m = got[0] if len(got) == 1 else None
+            if m is None or not str(x.get("district") or ""):
+                continue
+            rows += 1
+            if m["id"] not in seen:
+                seen.add(m["id"])
+                members += 1
+            same = (str(x.get("district")).lstrip("0") == str(m.get("district") or "").lstrip("0")
+                    and (x.get("county") or "") in (m.get("county"), m.get("county_abbr"), ""))
+            if not same:
+                seat = (f"SD{m.get('district')}" if m.get("chamber") == "S"
+                        else f"{m.get('county_abbr')} {m.get('district')}")
+                wrong[f"{m.get('name')} ({seat}) as {x.get('county')} {x.get('district')}"] += 1
+    assert rows, f"no sponsor row of {newest} is a sitting member's"
+    assert not wrong, (f"{sum(wrong.values()):,} sponsor row(s) of {newest} give {len(wrong)} sitting "
+                       "member(s) another seat than the roster's: "
+                       + "; ".join(f"{k} on {n:,} row(s)" for k, n in wrong.most_common(6))
+                       + ". Rebuild with python3 src/parse/build_data.py --dir . --out data")
+    return "ok", (f"{newest}: {rows:,} sponsor rows of {members} sitting members, each with the "
+                  "district and county the term's roster gives them")
 
 
 @check("data", "every voter in the record is one person, with a party")
