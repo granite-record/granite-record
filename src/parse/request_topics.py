@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.3
+# GRANITE_VERSION: 2026-11-12.4
 """
 An initial topic for a bill request, from its title.
 
@@ -60,6 +60,20 @@ ones the title does not place under Miscellaneous, and a card or a request's
 page prints no topic for those, as a bill's prints none for the topic model's
 Miscellaneous (app.js cardTopic). Until that day a request below the threshold
 had no topic at all, and the filter could not find it.
+
+WHAT COULD PLACE THEM, MEASURED (16 November 2026, the matcher polish the
+owner queued). 178 of the 492 requests of 15 November are Miscellaneous, and
+nothing their titles give places any of them as well as the 314 are placed
+(77.1% and 81.6% right on the two sets above). --score prints, beneath the
+threshold: margin 5 to 6, 62.5% and 68.1% right; 4 to 5, 46.3% and 55.7%;
+the official topic of the newest earlier bill of the identical title, 55.0%
+of 20 and 58.8% of 51. By the model's first choice, no topic held on both
+sets and on three more terms scored the same way (2017-2018 to 2021-2022,
+each trained without itself): Energy and Utilities, right on 20 of 24 on the
+two, was right on 1 of 9 on the three; Employment, the nearest (38 of 46 at a
+margin of 2 or more over the five), would have placed 3 requests and was found
+by looking at the sets it would be scored on. So they stay Miscellaneous, and
+--score says why each time it is run.
 
 TWO TITLE RULES FIRST, the site's own and exact: a study (topic_model.is_study)
 is Study Committees and Commissions, and a housing title (is_housing) is
@@ -203,11 +217,46 @@ def _scored(model, test, site):
     return out
 
 
+def below(got, threshold=THRESHOLD, bands=((5, 6), (4, 5), (2, 4), (0, 2))):
+    """[(lo, hi, right, n)]: the held-out answers beneath the threshold by margin band,
+    what lowering it would place and how many of those would be right. `got` is
+    _scored's [(margin, right)]; a title with nothing the model knows is in no band."""
+    out = []
+    for lo, hi in bands:
+        hi = min(hi, threshold)
+        band = [ok for m, ok in got if lo <= m < hi]
+        out.append((lo, hi, sum(band), len(band)))
+    return out
+
+
+def same_title(rows, test, got, site, threshold=THRESHOLD):
+    """(right, n): beneath the threshold, how often the official topic of the newest
+    training bill of the identical title (build_lsrs.title_key) is the held-out bill's
+    own. `rows` are the training (bill, record) pairs, oldest term first, so the newest
+    of a title is the one kept; `test` and `got` are _scored's input and answer, in step."""
+    import build_lsrs
+    newest = {}
+    for _b, r in rows:
+        k = build_lsrs.title_key(r.get("title"))
+        if k:
+            newest[k] = r["subject"]
+    right = n = 0
+    for (bid, r), (m, _ok) in zip(test, got):
+        k = build_lsrs.title_key(r.get("title"))
+        if m < threshold and k in newest:
+            rec = {"title": r.get("title") or "", "subject": "", "bill": bid}
+            gold = site(r["subject"], {**rec, "subject": r["subject"]})
+            n += 1
+            right += bool(gold) and site(newest[k], rec) == gold
+    return right, n
+
+
 def score():
     """Held-out accuracy of the title-only model on two sets it never saw (the
     docstring's table): 2025-2026's held-out half (the half topics.split_half marks 1)
     and 2023-2024's bills; each against the model as it was, the current term's labels
-    alone."""
+    alone. Then, for the model build_lsrs trains, what the bills beneath the threshold
+    would give (below, same_title: the docstring's WHAT COULD PLACE THEM)."""
     bills = topics.load()
     site = _vocabulary_of()
     lab = [(b, titles_only(r)) for b, r in topics.labelled(bills)]
@@ -224,11 +273,11 @@ def score():
     test2 = [(b, r) for b, r in held["2023-2024"].items() if r.get("subject_source") == "general court"]
     sets = [(f"2025-2026's held-out half, {len(test1):,} bills", test1,
              [("the current term's other half alone", half),
-              (f"that half x{CURRENT_WEIGHT} and every archived term", half * CURRENT_WEIGHT + past)]),
+              (f"that half x{CURRENT_WEIGHT} and every archived term", half * CURRENT_WEIGHT + past)], past + half),
             (f"2023-2024, {len(test2):,} bills, trained without them", test2,
              [("2025-2026 alone", lab),
-              (f"2025-2026 x{CURRENT_WEIGHT} and every other term", lab * CURRENT_WEIGHT + other)])]
-    for name, test, models in sets:
+              (f"2025-2026 x{CURRENT_WEIGHT} and every other term", lab * CURRENT_WEIGHT + other)], other + lab)]
+    for name, test, models, oldest_first in sets:
         if not test:
             continue
         print(f"\n{name}, titles only, right in the site's categories:")
@@ -240,6 +289,12 @@ def score():
                 mark = "  <- THRESHOLD" if thr == THRESHOLD else ""
                 print(f"  {label:48}{thr:>7}{100 * len(keep) / len(got):>9.0f}%"
                       f"{100 * sum(keep) / max(1, len(keep)):>7.1f}%{mark}")
+        print(f"  beneath the threshold, {models[-1][0]}:")
+        for lo, hi, right, n in below(got):
+            print(f"    margin {lo:g} to {hi:g}: {n:>5} bills, {100 * right / max(1, n):5.1f}% right")
+        right, n = same_title(oldest_first, test, got, site)
+        print(f"    the official topic of an identical earlier title: {n:>5} bills, "
+              f"{100 * right / max(1, n):5.1f}% right")
     return 0
 
 

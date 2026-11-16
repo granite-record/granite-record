@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -9000,6 +9000,39 @@ def _requests_party_and_topic():
                   "from an LSR filed under another bill or a nameless code; the same under two hash seeds")
 
 
+@check("build", "the request topic score says what the bills beneath its threshold would give: their accuracy by "
+                "margin band and the official topic of an identical earlier title, counted as the docstring says")
+def _request_topics_below_threshold():
+    """The matcher polish of 16 November 2026 measured whether anything the title gives could place the 178
+    Miscellaneous requests as well as the 314 are placed; nothing could, and request_topics.score() now prints
+    the evidence beside its table (below, same_title), so the claim in its docstring is a command's output.
+    Held on a fixture: a band counts only the answers inside it and under the threshold, a title the model
+    does not know is in none; the identical-title rule keeps the newest training bill of a title, compares in
+    the site's categories, and counts only bills beneath the threshold; and score() prints both."""
+    import inspect
+    import request_topics as RT
+    got = [(6.5, True), (5.5, True), (5.2, False), (4.1, False), (3.0, True), (0.5, False), (-1.0, True), (6.0, False)]
+    assert RT.below(got) == [(5, 6, 1, 2), (4, 5, 0, 1), (2, 4, 1, 1), (0, 2, 0, 1)], RT.below(got)
+    assert RT.below(got, threshold=5.0)[0] == (5, 5.0, 0, 0), "a band reached above the threshold"
+    rows = [("HB1", {"title": "relative to x.", "subject": "Elections"}),
+            ("HB2", {"title": "Relative to  X", "subject": "Taxes - State"}),
+            ("HB3", {"title": "relative to y", "subject": "Insurance"})]
+    test = [("HB9", {"title": "relative to x", "subject": "Taxes - State"}),
+            ("HB8", {"title": "relative to y.", "subject": "Insurance"}),
+            ("HB7", {"title": "relative to z", "subject": "Elections"})]
+    site = lambda s, rec: {"Taxes - State": "Taxes - State", "Insurance": "Insurance", "Elections": "Elections"}.get(s)
+    assert RT.same_title(rows, test, [(2.0, False), (7.0, True), (1.0, False)], site) == (1, 1), (
+        "the identical-title rule: the newest of a title, only beneath the threshold, in the site's categories")
+    assert RT.same_title(list(reversed(rows)), test, [(2.0, False), (7.0, True), (1.0, False)], site) == (0, 1), (
+        "the identical-title rule did not keep the last (newest) bill of a title")
+    src = inspect.getsource(RT.score)
+    assert "below(" in src and "same_title(" in src, "score() no longer prints what beneath the threshold would give"
+    assert "WHAT COULD PLACE THEM" in (RT.__doc__ or ""), "the docstring no longer records the measurement"
+    return "ok", ("margin bands beneath the threshold counted, an unknown title in none; the identical-title "
+                  "rule keeps the newest, counts only beneath the threshold, in the site's categories; score() "
+                  "prints both")
+
+
 @check("build", "the bug hunt of 11 November 2026: the sitting term rolls on Organization Day in the browser "
        "and in unh_extract, a report is filed by the day it is dated, and a month word is a whole month")
 def _bug_hunt_terms_and_dates():
@@ -9375,3 +9408,109 @@ def _tag_engine(TR, TC, RV):
     assert "mental-health" in out.getvalue() and "title 10/10" in out.getvalue(), out.getvalue()
     return "ok", (f"{len(fx['expect'])} bills, {len(reg)} tags, {pairs} pair bills; two hash seeds agree; "
                   f"the bench draws, shows and reports")
+
+
+@check("code", "a bench judgment no phrase can reach is honoured by hand: a hand list attaches its bills as tier H "
+               "with the reason and takes others off and says so, the topic drop still holds, a malformed list is "
+               "refused, and the bench never draws a hand bill to ask again",
+       needs=("tag_rules", "tag_counts"))
+def _tag_hand_lists(TR, TC):
+    """The owner's bench of 15 November 2026 judged three possible misses of the mental-health tag
+    "partly"; two of them (2019-2020 SB290, 2021-2022 SB140) name the subject only in their text,
+    which never attaches a tag, so tag_rules.py takes an entry's "hand" list: {"attach": {bill: why},
+    "detach": {bill: why}}. Held on tests/tags_fixture.json, a copy given hand lists: a bill no
+    phrase reaches attaches as H with "H:" and the reason; a bill a phrase reaches keeps the phrase's
+    tier first and lists H after it; a bill taken off loses the tag whatever fires, and dropped says
+    so; a hand attach on a bill whose topic is the tag's own is still dropped for the topic; no other
+    tag's answer moves; validate() refuses a key that is no bill, a reason left empty, a bill on both
+    lists and a list of another shape; the counts carry an H column; and the bench's draw leaves the
+    hand bill out of the sample it asks about."""
+    fx = json.loads(_source("tests/tags_fixture.json"))
+    reg = json.loads(json.dumps(fx["registry"]))
+    bills = {f"{b['term']}/{b['bill']}": b for b in fx["bills"]}
+    plain = TR.compile_registry(reg)
+    before = {k: TR.tag_bill(plain, b) for k, b in bills.items()}
+    assert "mental-health" not in before["2001-2002/HB13"]["tags"], "the fixture's HB13 already carries the tag"
+    reg["mental-health"]["hand"] = {"attach": {"2001-2002/HB13": "the bench: partly", "2001-2002/HB11": "the bench: yes"},
+                                    "detach": {"2001-2002/HB12": "the bench: no"}}
+    reg["medicaid-assistance"]["hand"] = {"attach": {"2013-2014/HB22": "the bench: yes"}}
+    assert not TR.validate(reg), "a well-formed hand list was refused: " + "; ".join(TR.validate(reg))
+    rules = TR.compile_registry(reg)
+    after = {k: TR.tag_bill(rules, b) for k, b in bills.items()}
+    got = after["2001-2002/HB13"]["tags"].get("mental-health")
+    assert got == {"tier": "H", "why": "H:the bench: partly", "fired": ["H"]}, f"a hand bill no phrase reaches: {got}"
+    got = after["2001-2002/HB11"]["tags"]["mental-health"]
+    assert got["tier"] == "T" and got["fired"] == ["T", "H"], f"a phrase's tier did not come first: {got}"
+    assert "mental-health" not in after["2001-2002/HB12"]["tags"] and \
+        after["2001-2002/HB12"]["dropped"].get("mental-health") == "taken off by hand: the bench: no", (
+        f"a bill taken off by hand: {after['2001-2002/HB12']}")
+    assert "medicaid-assistance" not in after["2013-2014/HB22"]["tags"] and \
+        "medicaid-assistance" in after["2013-2014/HB22"]["dropped"], "a hand attach escaped the topic drop"
+    for k in bills:
+        for tid in reg:
+            if tid in ("mental-health", "medicaid-assistance") and k in ("2001-2002/HB11", "2001-2002/HB12",
+                                                                         "2001-2002/HB13", "2013-2014/HB22"):
+                continue
+            assert after[k]["tags"].get(tid) == before[k]["tags"].get(tid), f"{k} {tid} moved without a hand list"
+    found = " | ".join(TR.validate({"x": {**reg["mental-health"], "hand": {
+        "attach": {"HB13": "why", "2001-2002/HB14": " ", "2001-2002/HB15": "why"},
+        "detach": {"2001-2002/HB15": "why"}}}, "y": {**reg["mental-health"], "hand": ["2001-2002/HB13"]}}))
+    assert "no bill key" in found and "says no reason" in found and "both attaches and takes off" in found \
+        and "y: hand is" in found, found
+    results, c = TC.count(rules, list(bills.values()), reg)
+    assert c["by_tag"]["mental-health"]["best"]["H"] == 1 and "| H |" in TC.markdown(c, "fixture"), (
+        "the counts have no hand column")
+    samples, _n = TC.draw(reg, rules, list(bills.values()), results, {})
+    asked = {x["bill"] for s in ("title", "other") for x in samples["mental-health"][s]}
+    assert "HB13" not in asked and "HB11" in asked, f"the bench would ask again about a hand bill: {sorted(asked)}"
+    return "ok", ("a hand bill attaches as H with its reason and a phrase's tier comes first; a bill taken off "
+                  "loses the tag and is said to be; the topic drop holds; no other answer moves; four malformed "
+                  "lists refused; the counts' H column; the bench never draws a hand bill")
+
+
+@check("code", "a tag phrase's last word ending in a consonant and y matches its -ies plural, one ending so in -ies its "
+               "-y singular, and every form it matched before; a vowel's y, the words series and species, the other "
+               "words of a phrase, an open end and a regular expression are as they were",
+       needs=("tag_rules",))
+def _tag_plural_y(TR):
+    """tag_rules.compile_phrase gave a phrase's last word "-s" or "-es" and never turned "y" into "ies", so
+    "jury" missed "juries" and "public utility" "public utilities" (the polish of 15 November 2026 found it;
+    the owner queued the fix for this release). Held: each pair matches as it should, each non-pair does not,
+    and on a list of words every text a phrase matched under the old rule (rebuilt here as it was) it matches
+    still, so the change only adds."""
+    cp = TR.compile_phrase
+    hits = [("public utility", "regulating public utilities"), ("jury", "juries"), ("juries", "jury"),
+            ("pharmacies", "the pharmacy"), ("brain injury", "brain-injuries"), ("=AGENCY", "AGENCIES"),
+            ("university", "universities"), ("water supply", "water supplies"), ("public body", "public bodies"),
+            ("sky", "skies"), ("delinquency", "delinquencies"), ("county", "counties"), ("day", "days"),
+            ("attorney", "attorneys"), ("public utility", "public utilitys")]
+    misses = [("day", "daies"), ("attorney", "attornies"), ("alien species", "alien specy"), ("series", "sery"),
+              ("=AGENCY", "agencies"), ("county commission", "counties commission"), ("by", "bies"),
+              ("lies", "ly"), ("mental health", "environmental health"), ("money", "monies")]
+    wrong = [f"{p!r} should find {t!r}" for p, t in hits if not cp(p).search(t)]
+    wrong += [f"{p!r} should not find {t!r}" for p, t in misses if cp(p).search(t)]
+    assert not wrong, "; ".join(wrong)
+    assert cp("re:juries").search("juries") and not cp("re:jury").search("juries"), "a regular expression was changed"
+
+    def old(p):
+        """The phrase as the engine compiled it until 16 November 2026."""
+        flags = re.I
+        if p.startswith("="):
+            p, flags = p[1:], 0
+        open_end = p.endswith("*")
+        p = p[:-1] if open_end else p
+        body = (TR._HY + "+").join((TR._AP + "?").join(re.escape(x) for x in tok.split("'"))
+                                   for tok in re.split(r"[\s\-]+", p.strip()))
+        return re.compile(TR._LEFT + body + ("" if open_end else "(?:s|es)?" + TR._RIGHT), flags)
+    phrases = ["public utility", "jury", "juries", "day", "series", "species", "vaccin*", "=AGENCY", "workers' compensation",
+               "county", "mental health", "e-verify", "ies", "y"]
+    texts = ["public utility", "public utilitys", "public utilityes", "jury", "jurys", "juries", "juriess", "day", "days",
+             "dayes", "series", "species", "vaccine", "vaccination", "AGENCY", "AGENCYS", "agency", "workers compensation",
+             "workers' compensations", "county", "countys", "mental health", "mental-health", "e-verify", "everify",
+             "e verify", "ies", "iess", "y", "ys", "yes"]
+    lost = [f"{p!r} no longer finds {t!r}" for p in phrases for t in texts if old(p).search(t) and not cp(p).search(t)]
+    assert not lost, "; ".join(lost)
+    for p in ("utilit*", "nursing facilit*", "county commission", "=TANF", "ballot access", "adult day"):
+        assert cp(p).pattern == old(p).pattern, f"{p!r} changed, but its last word is open, no -y word or none"
+    return "ok", (f"{len(hits)} plural pairs found, {len(misses)} non-pairs not; a regular expression as written; "
+                  f"{len(phrases)} phrases over {len(texts)} texts find everything they found before")

@@ -1298,6 +1298,7 @@
 "_topic_filter_search_box",
 "_requests_search_by_name",
 "_requests_party_and_topic",
+"_request_topics_below_threshold",
 "_bug_hunt_terms_and_dates",
 "_bug_hunt_clock_and_today",
 "_build_date_zone_once",
@@ -1308,5 +1309,7 @@
 "_state_settings_one_place",
 "_bug_hunt_nightly_timeout_and_lock",
 "_tag_engine",
+"_tag_hand_lists",
+"_tag_plural_y",
 "_no_watch_left"
 ]
