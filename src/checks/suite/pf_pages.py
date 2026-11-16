@@ -1,0 +1,15688 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-11-16.1
+"""
+preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
+
+Moved out of preflight.py as they stood, with the comments above each (the
+refactor's stage 1, step 5); a run takes them in ORDER.json's order. This module
+uses pf_core, pf_fixture, pf_harness, pf_runner, pf_shared and itself, and
+another area's module only for a check of it that one of these reads.
+"""
+
+import argparse
+import csv
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from collections import Counter
+from pathlib import Path
+
+import _paths
+
+from pf_core import (CHECKS, _OUTCOMES, _SWITCHED, _check_outcome, _run, _source, check)
+from pf_fixture import (CHAIN_NEEDS, LICENSED_STAND_IN, _built_nobrand, _fixture_brand,
+                        _fixture_site_shared, _fixture_site_whole, _site_fixture)
+from pf_harness import (_app_js, _components_js, _node_app, _node_file, _with_components)
+from pf_shared import (BASE_HREF, INLINE_BODY, OFFSITE, _HEARD_PRELUDE, _LEFT_OUT,
+                       _ballot_mixed_rows, _bill_index_write, _built_sites, _cite_plain,
+                       _css_can_reach, _css_decls, _css_hex, _css_palette, _css_ratio,
+                       _css_rules, _css_screen_rules, _css_selectors, _css_specificity,
+                       _css_token_colour, _css_won, _fixture_drawn, _html_walk, _mk,
+                       _narratives, _officials_now, _plant, _published_harnesses, _site_bills,
+                       _site_gen, _site_records, page_source)
+
+
+# =========================================================== code: the files ==
+
+# A DATA CHECK since 2 October 2026, and filed as one: it reads every page of
+# the built site and nothing else, so it could never run where the code
+# checks gate anything -- the night runs them before it builds -- and on the
+# laptop it added that walk to every run of them.
+@check("data", "an archived page says what its own term actually has")
+def _archived_coverage():
+    """One paragraph described 1989 and 2023 identically, on 31,449 pages.
+
+    It was gated on a single boolean, and it was wrong in both directions: it
+    understated the terms that now have full dockets, and it asserted for
+    fifteen terms that "the recorded votes come from the General Court's
+    database" when named roll calls exist for two.
+
+    d.archived is the term's coverage object now, and it stays truthy so that
+    nothing merely testing it had to change -- which is why this check exists.
+    A build that reverted it to `True` would render the old single paragraph on
+    every archived page and pass every other check here, because a bare True is
+    a perfectly good truthy value.
+
+    Checked on the built site rather than on a fixture: the fixture has one
+    term and this is a claim about eighteen.
+    """
+    site = Path("site")
+    if not (site / "bill").is_dir():
+        return "skip", "no built site here"
+    try:
+        import site_read as SR                                # noqa: F401
+    except ImportError:
+        return "skip", "site_read.py will not import"
+    KEYS = {"docket", "sponsors", "reports", "votes", "video", "committee",
+            "hearings"}
+    bare, objects, terms = 0, 0, {}
+    seen = 0
+    for year, bid, rec in _site_records():
+        a = rec.get("archived")
+        if a is None:
+            continue
+        seen += 1
+        if a is True:
+            bare += 1
+        elif isinstance(a, dict):
+            objects += 1
+            terms.setdefault(year, {k for k in a if a.get(k)})
+            assert set(a) <= KEYS, (
+                f"/bill/{year}/{bid} has an archived key this does not know: "
+                + ", ".join(sorted(set(a) - KEYS)))
+    if not seen:
+        return "skip", "no archived pages in the built site"
+    assert not bare, (
+        f"{bare:,} archived pages of {seen:,} carry `archived: true` rather "
+        "than their term's coverage. A bare true is truthy, so the page "
+        "renders the old one-size paragraph and nothing else complains. "
+        "Rebuild with the current build_site_v2.")
+    # Coverage only ever grows as fetches land, so a term that has a docket
+    # and no committee is a sign the flags were computed from the wrong slice.
+    odd = [y for y, ks in terms.items() if "docket" in ks and "committee" not in ks]
+    assert not odd, ("these years claim a docket but no committee, which no "
+                     "real term does: " + ", ".join(sorted(odd)))
+    return "ok", (f"{objects:,} archived pages across {len(terms)} years, each "
+                  "carrying its own term's coverage")
+
+
+@check("frontend", "a citation's address breaks after a slash, keeps its last part whole with its full "
+       "stop, and copies as the address it is")
+def _cite_url_breaks():
+    """The cohesion audit's P-4: in the Cite panel on a phone the address
+    wrapped and left its full stop alone on the last line -- Chicago at 385
+    to 388px on HB 1123, BibTeX's comma at 445 to 451, measured in a browser.
+    An address is one word to a browser and overflow-wrap broke it wherever
+    the box ran out, the last character before the stop included; no CSS
+    holds the stop to it in Chrome. shell.cite_url offers a break after each
+    slash with <wbr>, and puts the last part and what follows it -- the stop,
+    or BibTeX's "}," -- in one inline-block, .citetail. The review of 6
+    November 2026 found why both are needed: with the breaks alone, a last
+    part with hyphens ("abigail-rooney-straf-1", "2026-05-21", "2026-W12")
+    broke at its last hyphen and left "1." alone, on every member's page,
+    session day and calendar week.
+
+    Fails if a form's address loses its span, its breaks or its whole last
+    part, if a break is offered right before the stop, if the stop is left
+    outside the last part, or if the text a reader copies -- the form
+    without its tags -- is not the address and its punctuation as they were.
+    """
+    import html as _html
+    try:
+        import shell as S
+    except ImportError:
+        return "skip", "shell.py will not import"
+    css = Path(_paths.locate("app.css")).read_text(encoding="utf-8")
+    assert ".citeforms .citetail{display:inline-block}" in css, (
+        "an address's last part is not one box, so it breaks at its own hyphens and leaves its stop alone")
+    base = "https://graniterecord.org"
+    cases = {"/bill/2026/hb1123.html": ("hb1123", f"{base}/bill/2026/hb1123"),
+             "/legislator/abigail-rooney-straf-1.html": ("abigail-rooney-straf-1",
+                                                         f"{base}/legislator/abigail-rooney-straf-1"),
+             "/session/H/2026-05-21.html": ("2026-05-21", f"{base}/session/H/2026-05-21"),
+             "/laws/404/index.html": ("404/", f"{base}/laws/404/"),
+             "/index.html": (None, f"{base}/")}
+    after = {"mla": ".", "apa": "", "chicago": ".", "bibtex": "},"}
+    bad = []
+    for path, (last, url) in cases.items():
+        assert S.address(base, path) == url, f"{path} is at {S.address(base, path)}, not {url}"
+        block = S.cite_block(path, "A Page | Granite Record", base, "1 January 2026")
+        forms = dict(re.findall(r'<dd id="cite-([a-z]+)">(.*?)</dd>', block, re.S))
+        if sorted(forms) != sorted(after):
+            bad.append(f"{path}: the forms are {sorted(forms)}")
+            continue
+        for name, dd in forms.items():
+            drawn = S.cite_url(url, after[name])
+            if dd.count('<span class="citeurl">') != 1 or drawn not in dd:
+                bad.append(f"{path}: {name}'s address is not shell.cite_url's with {after[name]!r} after it")
+                continue
+            if _html.unescape(re.sub(r"<[^>]+>", "", drawn)) != url + after[name]:
+                bad.append(f"{path}: {name}'s address copies as {drawn}")
+            want = url.count("/") - 2 - url.endswith("/")
+            if drawn.count("<wbr>") != want:
+                bad.append(f"{path}: {name} offers {drawn.count('<wbr>')} breaks, not one after each of its {want} slashes")
+            tail = f'<span class="citetail">{last}{after[name]}</span></span>'
+            if last is not None and not drawn.endswith(tail):
+                bad.append(f"{path}: {name}'s last part and its stop are not one box: {drawn}")
+            if re.search(r"<wbr>(?:</span>|[.,}])", dd):
+                bad.append(f"{path}: {name} offers a break before its stop: {dd[-120:]}")
+            text = _html.unescape(re.sub(r"<[^>]+>", "", dd))
+            if url + after[name] not in text:
+                bad.append(f"{path}: {name} copies without its address: {text[-120:]!r}")
+    # An address with a character HTML must escape keeps it, escaped once;
+    # and one that is not this site's is still broken by its slashes.
+    odd = S.cite_url(f"{base}/a&b/c", ".")
+    if odd != f'<span class="citeurl">{base}/<wbr>a&amp;b/<wbr><span class="citetail">c.</span></span>':
+        bad.append(f"an address with & draws as {odd}")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", (f"{len(cases)} addresses in four forms each: hyphens in a last part, a closing slash "
+                  "and the home page among them")
+
+
+@check("frontend", "a citation closes a title with one full stop, whatever the title ended on")
+def _cite_one_stop():
+    """'...retirement benefits..”' and '...Circle.".”': 101 bills' citations.
+
+    shell.cite_block took ONE full stop off a name before MLA and Chicago
+    added their own, which is right for a title ending "insurance." and wrong
+    for every other ending the record has: a doubled stop in the source, a stop
+    inside a closing quotation mark, or both. Each case below is an ending
+    measured on the live index on 24 September, and the right-hand side is how
+    the quoted title must close -- one stop, inside any quotation mark, and an
+    ellipsis left looking like one.
+    """
+    import html as _html
+    try:
+        import shell as S
+    except ImportError:
+        return "skip", "shell.py will not import"
+    closes = {
+        "relative to insurance.": "relative to insurance.",
+        "for salary and retirement benefits..": "for salary and retirement benefits.",
+        'naming it "Oliveira Circle."': 'naming it "Oliveira Circle."',
+        "the Attorney's Independence Act..\"": "the Attorney's Independence Act.\"",
+        'the term "foal" and "colt.".': 'the term "foal" and "colt."',
+        'defining "critical habitat".': 'defining "critical habitat."',
+        "with “chartered public school”.": "with “chartered public school.”",
+        'as "Dictionary Week. "': 'as "Dictionary Week."',
+        "Rep. Adam Presa (R - Hills 12)": "Rep. Adam Presa (R - Hills 12).",
+        "expanding the commission'": "expanding the commission'.",
+        "state funds for new…": "state funds for new….",
+        "as it was...": "as it was...",
+    }
+    for name, want in closes.items():
+        stem, closed, bib = S.title_stops(name)
+        assert closed == want, f"{name!r} closes as {closed!r}, not {want!r}"
+        if "..." not in name:
+            assert not stem.rstrip('"”').endswith("."), (
+                f"{name!r}: APA's stem {stem!r} keeps a stop and APA adds one")
+    # And as drawn: no stop doubled across a quotation mark in any of the forms.
+    block = S.cite_block("/bill/2000/sb412.html",
+                         "SB 412 (2000): adopting the \"Court Integrity and "
+                         "Attorney's Independence Act..\"",
+                         "https://graniterecord.org", "1 January 2026")
+    text = _html.unescape(re.sub(r"<[^>]+>", "", block))
+    doubled = re.findall(r'\.["”\s]*\.(?!\.)', text.replace("n.d.", "nd"))
+    assert not doubled, f"the citation doubles a full stop: {doubled} in {text[-400:]!r}"
+    return "ok", f"{len(closes)} endings from the record close with one stop"
+
+
+# app.js on its own, in node: what it writes into a page's .citeday slots in a
+# browser whose language is not English, citeDay for each date shell.py is
+# asked about, and the Copy button with the clipboard working, refusing and
+# absent. Every value the page would read is a stand-in with only the parts
+# the code touches.
+_CITE_APP = r"""
+require("./stub.js");
+const fs = require("fs");
+const on = {};
+document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
+const SLOTS = [{textContent: "1 January 2000"}, {textContent: "1 January 2000"},
+  {textContent: "1 January 2000", classList: {contains: c => c === "citefull"}}];
+const BTNS = [{hidden: true}, {hidden: true}];
+const READ = [{textContent: "The date below is the day this page's record last changed."}];
+document.querySelectorAll = s => s === ".citeday" ? SLOTS : s === "[data-citecopy]" ? BTNS : s === ".citeread" ? READ : [];
+// A browser set to French. A citation that asks the locale says so.
+Date.prototype.toLocaleDateString = () => "24 septembre 2026";
+Date.prototype.toLocaleString = () => "24/09/2026";
+let s;
+try { s = (0, eval)(fs.readFileSync("./app.js", "utf8") + ";({citeDay, citeDayFull})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const out = {read: READ[0].textContent, slots: SLOTS.map(x => x.textContent), shown: BTNS.map(b => !b.hidden),
+  today: s.citeDay(new Date()), todayFull: s.citeDayFull(new Date()),
+  days: JSON.parse(fs.readFileSync("./dates.json", "utf8"))
+    .map(([y, m, d]) => s.citeDay(new Date(y, m - 1, d))),
+  full: JSON.parse(fs.readFileSync("./dates.json", "utf8"))
+    .map(([y, m, d]) => s.citeDayFull(new Date(y, m - 1, d)))};
+const form = {textContent: "@misc{bill-2026-hb1,\n  title = {A bill},\n}\n"};
+const st = {textContent: ""};
+document.getElementById = id => id === "cite-bibtex" ? form : id === "citestate" ? st : null;
+const btn = {textContent: "Copy",
+  getAttribute: a => ({"data-citecopy": "cite-bibtex", "data-citename": "BibTeX"})[a] || null};
+btn.closest = q => q === "[data-citecopy]" ? btn : null;
+const click = async () => {
+  st.textContent = "";
+  for (const f of on.click || []) { try { f({target: btn}); } catch (_) {} }
+  for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r));
+  return st.textContent;
+};
+let picked = null;
+window.getSelection = () => ({removeAllRanges() {}, addRange(r) { picked = r.node; }});
+document.createRange = () => ({selectNodeContents(n) { this.node = n; }});
+(async () => {
+  let wrote = null;
+  navigator.clipboard = {writeText: async t => { wrote = t; }};
+  out.copied = {said: await click(), wrote, picked: picked === form};
+  navigator.clipboard = {writeText: async () => { throw new Error("NotAllowedError"); }};
+  picked = null;
+  out.refused = {said: await click(), picked: picked === form};
+  delete navigator.clipboard;
+  picked = null;
+  out.absent = {said: await click(), picked: picked === form};
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "Cite this page sits above the heading, gives one form of date, and each form copies")
+def _cite_up_and_copied():
+    """The person, 24 September: move "Cite this page" up near the title and
+    add a Copy button; and one fixed date format in citations, "24 Sept.
+    2026", whatever the browser's language.
+
+    The block sat between the record and the footer, and a citation had to be
+    dragged across with the mouse. app.js filled its date with
+    toLocaleDateString, so one page cited "24 September 2026" in one browser,
+    "September 24, 2026" in another and "24 septembre 2026" in a third, and
+    the build's fallback date came from strftime in the build machine's
+    locale.
+
+    So: shell.page must write the block ABOVE the results slot and nowhere
+    below it, inside the row app.js puts Follow in, with a Copy button per
+    form, each naming a form that exists, hidden until app.js shows it;
+    BibTeX's line breaks must be real ones, since the form's text is what is
+    copied; shell.cite_day and app.js's citeDay must agree on every month in
+    a browser set to French; and the Copy click must hand the form's text to
+    the clipboard and say so, or select it and say that, when the clipboard
+    refuses or is not there.
+    """
+    import datetime as _dt
+    import html as _html
+    try:
+        import shell as S
+    except ImportError:
+        return "skip", "shell.py will not import"
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    page = S.page(S.template(), path="/bill/2026/hb1.html", base="https://graniterecord.org",
+                  title="HB 1 (2026): relative to the state budget. | Granite Record",
+                  description="A bill.")
+    row, slot = page.find('<div class="pageacts" id="pageacts">'), page.find('<div id="results">')
+    assert 0 <= row < slot, (
+        "Cite this page is not in the row above the results slot "
+        f"(row at {row}, slot at {slot})")
+    assert page.count('class="pcite"') == 1 and page.find('class="pcite"') < slot, (
+        "Cite this page is drawn below the record, or twice")
+    assert "citewrap" not in page, "the old block at the foot of the page is still written"
+    block = page[row:slot]
+    forms = re.findall(r'<dt>(\w+)<button type="button" class="citecopy" '
+                       r'data-citecopy="([\w-]+)" data-citename="\w+" '
+                       r'aria-label="Copy the \w+ citation" hidden>Copy</button></dt>'
+                       r'<dd id="([\w-]+)">', block)
+    assert [f[0] for f in forms] == ["MLA", "APA", "Chicago", "BibTeX"] and \
+        all(f[1] == f[2] for f in forms), (
+        f"each form needs a hidden Copy button naming its own text: {forms}")
+    assert 'id="citestate" role="status" aria-live="polite"' in block, (
+        "nothing announces a copy to a reader who cannot see the button change")
+    bib = re.search(r'<dd id="cite-bibtex"><code>(.*?)</code></dd>', block, re.S)
+    assert bib and "<br" not in bib.group(1) and "&nbsp;" not in bib.group(1) \
+        and bib.group(1).count("\n  ") == 4, (
+        "BibTeX's line breaks are markup, so a copy of its text is one line")
+    today = S.cite_day(_dt.date.today())
+    assert f'<span class="citeday">{today}</span>' in block, (
+        f"the fallback date is not the build day in the one form ({today})")
+    # A page that names the day its record last changed is dated by it, never
+    # by a day still to come, and the build day where it names none (the
+    # owner, 11 November 2026): the date a reader without JavaScript sees
+    # moves only when the record does.
+    assert S.cited("2026-03-04") == "4 Mar. 2026" and S.cited("2026-03-04T09:00:00") == "4 Mar. 2026", (
+        "shell.cited does not give the record's own day in cite_day's form")
+    assert S.cited("2025-01-02", "2026-03-04", "2024-05-06") == "4 Mar. 2026", (
+        "shell.cited does not take the latest of the days it is given")
+    late_day = (_dt.date.today() + _dt.timedelta(days=3)).isoformat()
+    assert S.cited(late_day) == today and S.cited("2026-03-04", late_day) == "4 Mar. 2026", (
+        "shell.cited gave a day later than the build's, or let one hide an earlier real day")
+    assert S.cited() == S.cited(None) == S.cited("", "not a day") == today, (
+        "shell.cited does not fall back on the build day where the record names none")
+    dated = S.page(S.template(), path="/bill/2026/hb1.html", base="https://graniterecord.org",
+                   title="HB 1 (2026): relative to the state budget. | Granite Record",
+                   description="A bill.", changed="2026-03-04")
+    assert '<span class="citeday">4 Mar. 2026</span>' in dated and         f'<span class="citeday">{today}</span>' not in dated, (
+        "shell.page(changed=...) does not date the citation by the record's day")
+    # The note says the no-JavaScript truth in a span app.js replaces; it must
+    # not claim the page was read on the date written in.
+    assert 'class="citenote"' in block and "day the page was read" not in block and         '<span class="citeread">The date below is the day this page&rsquo;s record last changed.</span>' in block, (
+        "the Cite note does not say, in a .citeread span, that the written date is the record's last change")
+    gblock = S.GUIDE_CITE
+    assert '<span class="citeread">The date below is the day this guide&rsquo;s sources were last read.</span>' in gblock         and "day the page was read" not in gblock, (
+        "the guide's Cite note does not say its written date is the day its sources were last read")
+    # APA and Chicago in their own form, "October 30, 2026" (the cohesion audit, B-5).
+    full = S.cite_day_full(today)
+    for k, lead in (("apa", "Retrieved "), ("chicago", "Accessed ")):
+        dd = re.search(rf'<dd id="cite-{k}">(.*?)</dd>', block, re.S)
+        assert dd and f'{lead}<span class="citeday citefull">{full}</span>' in dd.group(1) \
+            and re.fullmatch(r"[A-Z][a-z]+ \d{1,2}, \d{4}", full), (
+            f"the {k.upper()} citation does not date the page {full!r}: {dd.group(1)[:200] if dd else ''}")
+    for k in ("mla", "bibtex"):
+        dd = re.search(rf'<dd id="cite-{k}">(.*?)</dd>', block, re.S)
+        assert dd and "citefull" not in dd.group(1), f"the {k.upper()} citation lost MLA's date"
+
+    dates = [(2026, m, 24) for m in range(1, 13)] + [(2027, 1, 1), (2026, 9, 30)]
+    want = [S.cite_day(_dt.date(*d)) for d in dates]
+    assert want[8] == "24 Sept. 2026" and want[4] == "24 May 2026" \
+        and want[-2] == "1 Jan. 2027", f"shell.cite_day writes {want[8]!r}, {want[4]!r}, {want[-2]!r}"
+    want_full = [S.cite_day_full(w) for w in want]
+    assert want_full[8] == "September 24, 2026" and want_full[-2] == "January 1, 2027" \
+        and S.cite_day_full("") == "", f"shell.cite_day_full writes {want_full[8]!r}, {want_full[-2]!r}"
+    node = shutil.which("node")
+    if not node:
+        return "skip", "node is not installed"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "app.js").write_text(_with_components(_source("src/pages/app.js")),
+                                     encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
+                                      encoding="utf-8")
+        (root / "dates.json").write_text(json.dumps(dates), encoding="utf-8")
+        (root / "go.js").write_text(_CITE_APP, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        assert r.returncode == 0 and said, (said.splitlines() or ["no output"])[-1][:300]
+        got = json.loads(said.splitlines()[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["read"] == "The date below is the day you read this page.", (
+        f"app.js does not put the reader's own sentence in the note's .citeread: {got['read']!r}")
+    assert got["days"] == want, (
+        "app.js and shell.py write a citation's date differently: "
+        + "; ".join(f"{a} / {b}" for a, b in zip(got["days"], want) if a != b))
+    assert got["full"] == want_full, (
+        "app.js and shell.py write APA's and Chicago's date differently: "
+        + "; ".join(f"{a} / {b}" for a, b in zip(got["full"], want_full) if a != b))
+    today_js = got["today"]
+    assert got["slots"] == [today_js] * 2 + [got["todayFull"]] and "septembre" not in today_js \
+        and re.fullmatch(r"\d{1,2} (%s) \d{4}" % "|".join(
+            re.escape(m) for m in S.CITE_MONTHS), today_js), (
+        f"in a French browser the citation's date reads {got['slots']}")
+    assert got["shown"] == [True, True], "app.js does not show the Copy buttons"
+    c = got["copied"]
+    assert c["wrote"] == "@misc{bill-2026-hb1,\n  title = {A bill},\n}" \
+        and c["said"] == "The BibTeX citation is copied." and not c["picked"], (
+        f"Copy with a working clipboard: {c}")
+    for case in ("refused", "absent"):
+        c = got[case]
+        assert c["picked"] and c["said"].startswith("The BibTeX citation is selected"), (
+            f"Copy with the clipboard {case}: {c}")
+    return "ok", (f"above the heading with {len(forms)} Copy buttons; "
+                  f"dates read {want[8]!r} in shell.py and app.js alike, French browser "
+                  "or not; the clipboard copies, or the form is selected and it says so")
+
+
+# THE FIXTURE FOR _find_bills: a term of fifteen bills written so that each
+# sample search reaches the matcher a different way -- a synonym ("guns"), a
+# phrase ("school funding"), a trailing question mark, a sponsor's name, a
+# committee's, bill numbers padded and listed, a district that is shaped like
+# a number and is not one -- and one bill from another term filed in the same
+# index, which /bills leaves out and so must the panel.
+def _find_bills_fixture():
+    # The sponsor's member page, as the index carries it (sponsor_slug): what
+    # /search reads to link a member's bills where their name lists none.
+    slugs = {"Daryl Abbas": "daryl-abbas-sd-22", "Jodi Nelson": "jodi-nelson",
+             "Glenn Bailey": "glenn-bailey-straf-2"}
+
+    def bill(bid, year, title, sponsor, committee, topic="Other"):
+        kind = re.match(r"[A-Z]+", bid).group(0)
+        return {"id": bid, "n": f"{kind} {bid[len(kind):]}", "year": year,
+                "title": title, "sponsor": sponsor, "sponsor_slug": slugs.get(sponsor, ""),
+                "sponsor_label": f"Rep. {sponsor} (R)", "committee": committee,
+                "committees": [committee], "topic": topic, "kind": "active",
+                "status": "Introduced", "term": "2025-2026",
+                "last_action": f"{year}-01-15", "votedays": []}
+    term = [
+        bill("HB101", 2025, "relative to the carrying of firearms on school "
+             "property", "Jodi Nelson", "House Criminal Justice and Public Safety"),
+        bill("HB102", 2025, "relative to pistol permits", "Alan Smith",
+             "House Criminal Justice and Public Safety"),
+        bill("HR5", 2025, "urging congress to protect the rights of firearm "
+             "owners", "Alan Smith", "House State-Federal Relations"),
+        bill("CACR3", 2025, "relating to the right to keep and bear arms",
+             "Jodi Nelson", "House Judiciary"),
+        bill("SB5", 2025, "relative to the property tax abatement process",
+             "Daryl Abbas", "Senate Ways and Means"),
+        bill("HB210", 2025, "relative to school funding and the cost of an "
+             "adequate education", "Rick Ladd", "House Education Funding",
+             "Education"),
+        bill("HB211", 2025, "establishing a commission on teacher recruitment",
+             "Rick Ladd", "House Education", "Education"),
+        bill("HB300", 2026, "relative to the right to know law and "
+             "governmental records", "Alan Smith", "House Judiciary"),
+        bill("HB301", 2026, "relative to absentee ballots and voter "
+             "registration", "Jodi Nelson", "House Election Law"),
+        bill("SB40", 2026, "relative to the minimum hourly rate",
+             "Daryl Abbas", "Senate Commerce"),
+        bill("HB450", 2026, "relative to housing density and local zoning "
+             "ordinances", "Alan Smith", "House Municipal and County Government",
+             "Zoning"),
+        bill("HB451", 2026, "relative to landlord and tenant disputes",
+             "Alan Smith", "House Judiciary"),
+        bill("SB77", 2026, "relative to consumer protection", "Daryl Abbas",
+             "Senate Commerce"),
+        bill("HB1442", 2026, "relative to insurance coverage at concord "
+             "hospital", "Jodi Nelson", "House Commerce and Consumer Affairs"),
+        # Both words, but not in the order searched: "insurance coverage"
+        # must list HB 1442 first, as /bills does, though HB 100 is lower.
+        bill("HB100", 2026, "relative to coverage under the state employee "
+             "insurance plan", "Rick Ladd", "House Executive Departments"),
+        bill("HB29", 2026, "relative to the city charter of concord",
+             "Alan Smith", "House Municipal and County Government"),
+        # "bail" is a word of these titles and the start of a sitting
+        # member's name, Bailey, who sponsors the third.
+        bill("HB57", 2025, "relative to the standards applicable to bail in "
+             "criminal matters", "Alan Smith", "House Criminal Justice and Public Safety"),
+        bill("SB248", 2026, "relative to bail for a defendant", "Daryl Abbas",
+             "Senate Judiciary"),
+        bill("HB1441", 2026, "relative to snowmobile trail funding", "Glenn Bailey",
+             "House Resources, Recreation and Development"),
+        # A town that is also a sitting member's surname (17 October 2026):
+        # "nelson" lists this bill by its title and none of Rep. Jodi
+        # Nelson's by her name.
+        bill("HB470", 2026, "relative to a conservation easement in the town "
+             "of Nelson", "Rick Ladd", "House Municipal and County Government"),
+    ]
+    other = bill("HB103", 2023, "relative to firearms storage", "Alan Smith",
+                 "House Criminal Justice and Public Safety")
+    other["term"] = "2023-2024"
+    # The term before, in an index of its own, which only /search reads (and
+    # /bills on All terms). Numbers it shares with the current term -- HB 101,
+    # SB 5 -- are the case a bill number in /search is about.
+    older = [bill("HB101", 2023, "relative to firearms in state parks", "Alan Smith",
+                  "House Fish and Game"),
+             bill("SB5", 2023, "relative to consumer protection", "Daryl Abbas",
+                  "Senate Commerce"),
+             bill("HB388", 2024, "relative to bail commissioners", "Rick Ladd",
+                  "House Judiciary"),
+             bill("HB1575", 2024, "relative to fishing licenses", "Glenn Bailey",
+                  "House Fish and Game")]
+    for b in older:
+        b["term"] = "2023-2024"
+    find = [
+        ["legislator", "Sen. Daryl Abbas (R - SD22)",
+         "Senate · SD22 · Republican", "legislator/daryl-abbas-sd-22",
+         "Rockingham"],
+        ["legislator", "Rep. Jodi Nelson (R - Hills 29)",
+         "House · Hills 29 · Republican", "legislator/jodi-nelson",
+         "Hillsborough"],
+        ["legislator", "Rep. Glenn Bailey (R - Straf 2)",
+         "House · Straf 2 · Republican", "legislator/glenn-bailey-straf-2",
+         "Strafford"],
+        ["committee", "Education", "House committee", "committee/H05", ""],
+        ["topic", "Education", "Bills on this subject",
+         "bills?topic=Education", ""],
+        ["topic", "Zoning", "Bills on this subject", "bills?topic=Zoning", ""],
+        ["town", "Concord", "Merrimack County", "town/concord", "Merrimack"],
+        ["former", "Former Rep. Michael Gunski",
+         "House · Straf 3 · 2003–2004",
+         "legislator/michael-gunski", "Strafford", 2004],
+        ["page", "Bill search", "Every bill since 1989", "bills", ""],
+    ]
+    meta = {"terms": ["2025-2026", "2023-2024"],
+            "topics": ["Education", "Other", "Zoning"],
+            "committees": sorted({b["committee"] for b in term}),
+            "sponsors": [], "votedays": [], "years": [2025, 2026]}
+    # WHAT THE BILLS' OWN TEXT ADDS (sidx/<term>.json, build_search_index.py).
+    # No title here says "aquifer": HB 29's text is about one, and so is the
+    # earlier term's HB 388. A page that counts bills without fetching these
+    # counts neither -- and until 1 October's second review no check noticed,
+    # because this fixture served no search index at all.
+    ids = [b["id"] for b in term]
+    old_ids = [b["id"] for b in older]
+    sidx = {"v": 1, "term": "2025-2026", "n": len(ids), "ids": ids,
+            "w": {"aquifer": [ids.index("HB29") * 20 + 7]}, "p": {}}
+    old_sidx = {"v": 1, "term": "2023-2024", "n": len(old_ids), "ids": old_ids,
+                "w": {"aquifer": [old_ids.index("HB388") * 20 + 7]}, "p": {}}
+    # Every word the bills use (sidx/words.json). "pistil" is a word and no
+    # bill here is about one; "pistal" is not a word, and sounds like the
+    # "pistol" of HB 102's title.
+    words = sorted({w for b in term + older + [other]
+                    for w in re.findall(r"[a-z]{5,}", b["title"].lower())}
+                   | {"pistil", "aquifer"})
+    return {"/meta.json": meta, "/idx/2025-2026.json": term + [other],
+            "/idx/2023-2024.json": older, "/find.json": find,
+            "/sidx/2025-2026.json": sidx, "/sidx/2023-2024.json": old_sidx,
+            "/sidx/words.json": {"v": 1, "n": len(words), "words": " ".join(words)}}
+
+
+_FIND_BILLS_QUERIES = [
+    "firearms", "guns", "property tax", "school funding", "right to know?",
+    "voting", "minimum wage", "nelson", "commerce", "housing", "education",
+    "concord", "abbas", "insurance coverage", "HB 0101", "HB101, SB5",
+    "hills 29", "xyzzy", "bail", "bailey", "SB 5", "aquifer",
+    # A bill number as people write it out (the owner's test, 6 November 2026).
+    "H.B. 101", "H.B.101", "H. B. 101", "S.B. 5", "Senate Bill 5",
+    "House Resolution 5", "C.A.C.R. 3"]
+
+# Both sides answer fetch from the fixture, by path.
+_FIND_BILLS_FETCH = r"""
+const fs = require("fs");
+const FIX = JSON.parse(fs.readFileSync("./fixture.json", "utf8"));
+const Q = JSON.parse(fs.readFileSync("./queries.json", "utf8"));
+const ASKED = [];
+const MODE = process.argv[2] || "";
+const FAIL_IDX = MODE === "fail";
+// THE DAY IS HELD, BEFORE THE ELECTION (11 November 2026): /bills opens on the
+// bill requests from the day after the election (app.js requestsFirst), and
+// these checks are of the search as it opens on the current term, in any year
+// they run. The rule has its own check.
+{ const RealDate = Date, held = RealDate.UTC(2026, 5, 15, 16);
+  globalThis.Date = class extends RealDate {
+    constructor(...a) { super(...(a.length ? a : [held])); }
+    static now() { return held; } }; }
+globalThis.fetch = async (u) => {
+  const p = new URL(u).pathname; ASKED.push(p);
+  // The term before this one never arrives ("slowold") or is not there
+  // ("failold"): what /search says while it counts, and when it cannot.
+  if (MODE === "slowold" && p === "/idx/2023-2024.json") return new Promise(() => {});
+  if ((FAIL_IDX && p.startsWith("/idx/")) || !(p in FIX)
+      || (MODE === "failold" && (p === "/idx/2023-2024.json" || p === "/sidx/words.json")))
+    return {ok: false, status: 404, statusText: "Not Found",
+            json: async () => { throw new Error("404"); }};
+  return {ok: true, status: 200,
+          json: async () => JSON.parse(JSON.stringify(FIX[p]))};
+};
+const ticks = async (n) => { for (let i = 0; i < n; i++)
+  await new Promise(r => setImmediate(r)); };
+"""
+
+# /bills?q=: app.js, loaded the way bills.html loads it, and typed into. What
+# it shows is read off the page -- the count line and the cards in order.
+_FIND_BILLS_APP = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+// "all": opened as /search's every-term link opens it, /bills?term=all.
+if (MODE === "all") location.search = "?term=all";
+const box = document.querySelector("#q"); box.disabled = true;
+// The page's own click listeners, kept so that a check can click a link the
+// list drew (the stub's document drops them).
+const DOCON = {};
+document.addEventListener = (t, f) => { (DOCON[t] = DOCON[t] || []).push(f); };
+let scope;
+try { scope = (0, eval)(fs.readFileSync("./app.js", "utf8")
+                        + ";({getIDX: () => IDX, getTerm: () => term})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) {
+    console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const out = {term: scope.getTerm(), loaded: scope.getIDX().length, q: {}};
+  // The bills' own text is fetched on the first search in words and the list
+  // drawn again when it arrives: wait for that once, so that every count
+  // below is the one a reader ends up looking at.
+  // In ticks: the stub's setTimeout runs what it is given at once.
+  const settle = () => ticks(30);
+  box.value = "firearms"; box.fire("input"); await settle();
+  out.asked = ASKED.slice();
+  for (const s of Q) {
+    box.value = s; box.fire("input");
+    const count = document.querySelector("#count").textContent;
+    const html = document.querySelector("#results").innerHTML;
+    const ids = [...html.matchAll(/<article class="card[^"]*" data-id="([^"]+)"/g)]
+      .map(m => m[1]);
+    // With the year each card links to, since across terms an id is not a bill.
+    const dated = [...html.matchAll(
+      /<article class="card[^"]*" data-id="([^"]+)"[\s\S]*?bill\/(\d{4})\//g)]
+      .map(m => m[1] + "/" + m[2]);
+    const m = /^([\d,]+) (?:of|matching)/.exec(count);
+    out.q[s] = {count, n: m ? +m[1].replace(/,/g, "") : null, ids: ids.slice(0, 5),
+                dated: dated.slice(0, 5)};
+  }
+  // A word no bill has used, and a word one has: what the empty list says
+  // once the words every bill uses have arrived.
+  const empty = async (s) => { box.value = s; box.fire("input"); await settle();
+    return document.querySelector("#results").innerHTML; };
+  out.offer = {typo: await empty("pistal"), word: await empty("pistil")};
+  out.askedLast = ASKED.slice();
+  // A NAME TYPED (17 October 2026). It lists no bill by its sponsor; where
+  // it lists nothing at all the list offers the Sponsor filter, and the
+  // offer, clicked, ticks that person and empties the box.
+  out.names = {abbas: await empty("abbas"), nelson: await empty("nelson"),
+               jodi: await empty("jodi nelson")};
+  const link = /<a class="qsponsor" href="([^"]*)" data-sponsor="([^"]*)"/.exec(out.names.abbas);
+  out.names.link = link ? {href: link[1], name: link[2]} : null;
+  if (link) {
+    const target = {dataset: {sponsor: link[2].replace(/&amp;/g, "&")},
+                    closest: (sel) => sel === "[data-sponsor]" ? target : null};
+    for (const f of DOCON.click || [])
+      try { f({target, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}}); } catch (e) {}
+    await settle();
+    const html = document.querySelector("#results").innerHTML;
+    out.names.after = {q: box.value, ids: [...html.matchAll(
+      /<article class="card[^"]*" data-id="([^"]+)"/g)].map(m => m[1])};
+  }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+# The header panel and /search: find.js on a page WITHOUT app.js, so the
+# matcher has to arrive as billmatch.js through the script tag find.js adds.
+# Each file runs as a script of its own, as a browser runs it -- a const one
+# declares is then visible to the next, which /search's inline script relies
+# on and an eval would hide.
+_FIND_BILLS_PANEL = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+const vm = require("vm");
+const script = (f) => vm.runInThisContext(fs.readFileSync(f, "utf8"),
+                                          {filename: f});
+const SCRIPTS = [];
+document.head.appendChild = (s) => {
+  SCRIPTS.push(String(s.src));
+  if (/\/billmatch\.js$/.test(String(s.src))) {
+    try { script("./billmatch.js"); }
+    catch (e) { console.log("BILLMATCH " + e.message); process.exit(1); }
+    if (s.onload) s.onload();
+  } else if (s.onerror) s.onerror();
+};
+let ready = null;
+document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
+// The panel mounts itself where there is no search button yet. The stub
+// hands back an element for any id, so the first question is answered no.
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+let F;
+try { script("./find.js");
+      F = vm.runInThisContext("({FIND, FBILLS, FALL, findDraw, findBills, findBillsLoad," +
+                              " findBillsLoadAll})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+if (typeof queryGroups !== "undefined") {
+  console.log("the panel's side has app.js's matcher without loading it");
+  process.exit(1); }
+F.FIND.rows = FIX["/find.json"];
+const panel = document.getElementById("findout");
+const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
+(async () => {
+  // "cold": /search opened before any bill has arrived, so its first draw is
+  // made while the term's bills are on their way, as a reader's is.
+  if (MODE === "cold") {
+    script("./search.js");
+    location.search = "?q=firearms";
+    ready(); await ticks(40);
+    console.log(JSON.stringify({cold: {lead: document.getElementById("reslead").textContent,
+                                       say: document.getElementById("ressay").textContent}}));
+    return;
+  }
+  const res = {q: {}, panel: {}};
+  draw("");
+  res.askedIdle = ASKED.slice();
+  // A bill number asks for this term's index (the person, 12 October 2026):
+  // its own bill is offered first, as a name is.
+  draw("hb 115");
+  res.askedNumber = ASKED.slice();
+  res.loading = draw("firearms");
+  await F.findBillsLoad(); await ticks(5);
+  res.state = F.FBILLS.rows ? "ready" : F.FBILLS.failed ? "failed" : "none";
+  res.number = draw("hb 0101"); res.prefix = draw("HB 14");
+  res.asked = ASKED.slice(); res.scripts = SCRIPTS.slice();
+  for (const s of Q) {
+    const B = F.findBills(s, 5);
+    res.q[s] = B && B.state === "ready" ? {n: B.n, ids: B.top.map(b => b.id)} : B;
+    res.panel[s] = draw(s);
+  }
+  // A misspelt word: nothing is counted under another word, and the word
+  // it sounds like is offered once the words every bill uses have arrived.
+  draw("pistal"); await ticks(10);
+  res.offer = {typo: draw("pistal"), word: draw("pistil")};
+  // The offered word is chosen: the panel's own listener, handed a click on
+  // the button. It must stop the click there and draw that word's answer.
+  draw("pistal");
+  let stopped = 0;
+  const chose = byId("findpanel")._on.click || [];
+  chose.forEach(f => f({target: {closest: (sel) => sel === ".fdym" ? {dataset: {find: "pistol"}} : null},
+                        stopPropagation() { stopped++; }, preventDefault() {}}));
+  res.chosen = {listeners: chose.length, stopped, html: panel.innerHTML};
+  // The header panel never asks for another term's bills: they are /search's.
+  res.askedPanel = ASKED.slice();
+  if (MODE !== "fail") {
+    script("./search.js");
+    location.search = "?q=firearms";
+    ready(); await ticks(20);
+    const box = document.getElementById("resq");
+    const lead = document.getElementById("reslead");
+    const out = document.getElementById("resout");
+    res.search = {};
+    for (const s of ["firearms", "abbas", "voting", "xyzzy", "bail", "bailey", "SB 5", "pistal"]) {
+      if (s !== "firearms") { box.value = s; box.fire("input"); await ticks(20); }
+      res.search[s] = {lead: lead.textContent, html: out.innerHTML,
+                       say: document.getElementById("ressay").textContent};
+    }
+    // Every term's count, as /search makes it, for /bills?term=all to match.
+    res.all = {state: F.FALL.rows ? "ready" : F.FALL.failed ? "failed" : "loading", q: {}};
+    if (F.FALL.rows) for (const s of Q) {
+      const B = F.findBills(s, 5, true);
+      res.all.q[s] = B && B.state === "ready"
+        ? {n: B.n, dated: B.top.map(b => b.id + "/" + b.year)} : B;
+    }
+  }
+  console.log(JSON.stringify(res));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "the header search finds the bills /bills finds, and "
+                   "counts them alike; /search counts every term's as /bills "
+                   "on All terms does", needs=("build_pages",))
+def _find_bills(BP):
+    """The header's box said "No matching results." to "firearms".
+
+    It searched find.json alone -- people, committees, towns, subjects -- so
+    "firearms", "abortion", "property tax" and "housing" were told nothing
+    matched while the bill search held 12 to 119 bills of the current term for
+    each; "guns" and Return opened a former representative named Gunski; and
+    "voting" was offered "Did you mean zoning?". /search, where the panel's
+    last row led, opened with "No legislator, committee, town or subject on
+    this site matches that." above the one link to the bills.
+
+    The panel and /search now count the current term's bills with app.js's own
+    matcher, which build_pages cuts out of app.js as billmatch.js. So this runs
+    /bills (app.js in node, typed into) and the panel (find.js with
+    billmatch.js, on a page with no app.js) over one fixture term and holds
+    them to the same count and the same first three bills for every sample
+    search -- and holds the panel to what it says around them: the bills
+    first when no name starts with the search, never "No matching results."
+    over a bill that matches, no "Did you mean" over one either, nothing
+    fetched before a word is typed, and the bill search still offered, with
+    no count, when the term's index cannot be had.
+
+    TWO DECISIONS OF 24 SEPTEMBER are held here too. A name goes above the
+    bills only when what was typed is a whole word of it, so "bail" leads
+    with the bail bills and Rep. Bailey follows, where "bailey" leads with
+    him. And the panel stays the current term's while /search counts every
+    term's: the fixture's second term is an index of its own, which the panel
+    must never fetch, and /search's count and first three bills (with their
+    years) must match /bills opened on ?term=all, the address its "All N
+    bills" row leads to. With that term's index missing /search falls back to
+    the current term and says only that; while it is still arriving, /search
+    says it is counting.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    A, AA, P, X, FO, SO = _find_bills_run(
+        BP, ("app_side.js",), ("app_side.js", "all"), ("panel_side.js",), ("panel_side.js", "fail"),
+        ("panel_side.js", "failold"), ("panel_side.js", "slowold"))
+
+    # The two sides agree, search by search.
+    assert A["term"] == "2025-2026" and A["loaded"], (
+        f"app.js loaded {A['loaded']} bills of {A['term']!r} from the fixture")
+    assert P["state"] == "ready", "the panel never loaded the term's bills"
+    off = []
+    for q in _FIND_BILLS_QUERIES:
+        a, p = A["q"][q], P["q"][q]
+        if a["n"] is None:
+            off.append(f"{q!r}: /bills drew no count ({a['count']!r})")
+        elif not p or p.get("n") != a["n"]:
+            off.append(f"{q!r}: /bills {a['n']}, panel "
+                       f"{p.get('n') if isinstance(p, dict) else p}")
+        elif p["ids"][:3] != a["ids"][:3]:
+            off.append(f"{q!r}: /bills lists {a['ids'][:3]} first, the panel "
+                       f"{p['ids'][:3]}")
+    assert not off, ("the header search and /bills disagree about the bills: "
+                     + "; ".join(off[:4]))
+    # And agree about something: a check both sides pass by finding nothing
+    # proves nothing.
+    n = {q: A["q"][q]["n"] for q in _FIND_BILLS_QUERIES}
+    assert n["firearms"] >= 2 and n["guns"] >= 2 and n["xyzzy"] == 0 \
+        and n["HB 0101"] == 1 and n["hills 29"] == 0 \
+        and A["q"]["insurance coverage"]["ids"][:2] == ["HB1442", "HB100"], (
+        f"the fixture no longer exercises the matcher: {n}")
+    # A NUMBER AS PEOPLE WRITE IT (the owner's test, 6 November 2026): "H.B.
+    # 101", "H. B. 101", "S.B. 5", "Senate Bill 5", "House Resolution 5" and
+    # "C.A.C.R. 3" are that bill's number on both sides -- /bills lists it
+    # alone, and the panel opens with it as it does for "SB 5". "H.B. 101"
+    # and "S.B. 5" found nothing, and "Senate Bill 5" was read as its words,
+    # so that on the real index HR 11 and CACR 11, which say "senate", came
+    # above SB 11.
+    forms = {"H.B. 101": "HB101", "H.B.101": "HB101", "H. B. 101": "HB101",
+             "S.B. 5": "SB5", "Senate Bill 5": "SB5", "House Resolution 5": "HR5",
+             "C.A.C.R. 3": "CACR3"}
+    wrong = []
+    for q, bid in forms.items():
+        h = P["panel"].get(q) or ""
+        lead = re.search(r'<a\b[^>]*href="([^"]*)"', h)
+        if A["q"][q]["ids"] != [bid]:
+            wrong.append(f"{q!r}: /bills lists {A['q'][q]['ids']}, not {bid} alone")
+        elif not (lead and lead.group(1).endswith("/" + bid.lower())) \
+                or "open this bill number" not in h:
+            wrong.append(f"{q!r}: the panel leads with {lead and lead.group(1)!r}, not {bid} "
+                         "read as its number")
+    assert not wrong, "a bill number written out is not read as one: " + "; ".join(wrong[:4])
+
+    # Nothing is fetched for the bills until something is typed; a bill
+    # number asks for this term's index, and its own bill leads the list, so
+    # Return opens it (the person, 12 October 2026), with the numbers that
+    # start with what was typed after it.
+    assert not [a for a in P["askedIdle"] if "idx/" in a or "meta" in a], (
+        f"the panel fetched {P['askedIdle']} before anything was typed")
+    assert [a for a in P["askedNumber"] if "meta" in a], (
+        f"a bill number asked for {P['askedNumber']}, not this term's bills")
+    first = re.search(r'<a\b[^>]*href="([^"]*)"', P["number"] or "")
+    assert first and first.group(1).endswith("/hb101") and \
+        P["number"].index("hb101") < P["number"].index("open this bill number"), (
+        f"HB 0101 does not lead with its bill: {(P['number'] or '')[:300]}")
+    assert "/hb1442" in (P["prefix"] or ""), (
+        f"HB 14 does not offer HB 1442 as the numbers starting with it: {(P['prefix'] or '')[:300]}")
+    assert P["scripts"] == ["https://x/billmatch.js"] and \
+        P["asked"].count("/idx/2025-2026.json") == 1, (
+        f"the panel loaded {P['scripts']} and asked for {P['asked']}: the "
+        f"matcher and the term's index should each come once")
+
+    def first(html):
+        got = re.search(r'<a [^>]*href="([^"]+)"', html)
+        return got.group(1) if got else ""
+
+    pan = P["panel"]
+    bad = []
+    for q in ("firearms", "guns", "voting", "property tax"):
+        h = pan[q]
+        if first(h).split("&amp;term=")[0] != f"/bills?q={q.replace(' ', '%20')}" \
+                or "&amp;term=" not in first(h):
+            bad.append(f"{q!r} leads with {first(h)!r}, not the bills "
+                       f"(Return opens the first row)")
+        if not re.search(rf"{n[q]:,} bills? found for &ldquo;"
+                         rf"{re.escape(q)}&rdquo;", h):
+            bad.append(f"{q!r} does not say how many bills were found for it")
+        if "No matching results" in h or "Did you mean" in h:
+            bad.append(f"{q!r} says nothing matched, or guesses, over "
+                       f"{n[q]} bills")
+        if "/search?q=" not in h:
+            bad.append(f"{q!r} lost the row to /search")
+    g = pan["guns"]
+    if not 0 <= g.find("/bills?q=guns") < g.find("/legislator/michael-gunski"):
+        bad.append("'guns' puts former Rep. Gunski above the gun bills")
+    e = pan["education"]
+    if not 0 <= e.find('href="/committee/H05"') < e.find("/bills?q=education") \
+            < e.find("/search?q="):
+        bad.append("'education' does not lead with the committee its name "
+                   "starts, then the bills")
+    if "No matching results." not in pan["xyzzy"] or "/bills?q=" in pan["xyzzy"]:
+        bad.append("'xyzzy', which nothing matches, is not told so")
+    # A name goes above the bills only on a whole word (24 September): "bail"
+    # leads with the bail bills and Rep. Bailey follows; "bailey" leads with
+    # him.
+    if first(pan["bail"]).split("&amp;term=")[0] != "/bills?q=bail" or \
+            "/legislator/glenn-bailey-straf-2" not in pan["bail"]:
+        bad.append("'bail' does not lead with the bail bills, with Rep. Bailey "
+                   f"after them (it leads with {first(pan['bail'])!r})")
+    if first(pan["bailey"]) != "/legislator/glenn-bailey-straf-2":
+        bad.append(f"'bailey' leads with {first(pan['bailey'])!r}, not the "
+                   "member whose whole name it is")
+    # A bill number: this term's bill first, when the term has one (12
+    # October 2026), else the number in the bill search; that row always;
+    # and /search, which has it in every term, last.
+    sb = pan["SB 5"]
+    if not (first(sb).endswith("/sb5") or first(sb) == "/bills?q=SB%205") \
+            or "/bills?q=SB%205" not in sb or sb.rfind("/search?q=SB%205") <= 0:
+        bad.append("'SB 5' does not offer this term's bill first and every "
+                   "term's under it")
+    if "/bills?q=firearms" not in P["loading"] or "No matching" in P["loading"]:
+        bad.append("while the bills are fetched the panel does not offer them, "
+                   "or says nothing matched")
+    xf = X["panel"]["firearms"]
+    if X["state"] != "failed" or first(xf) != "/bills?q=firearms" \
+            or "found for" in xf or "No matching" in xf:
+        bad.append("with the term's index unreachable the panel does not "
+                   "fall back to an uncounted link to the bill search")
+    assert not bad, "the header search panel: " + "; ".join(bad[:3])
+
+    # THE BILLS' OWN TEXT REACHES EVERY PAGE THAT COUNTS BILLS (1 October).
+    # /bills, the header and /search each fetch sidx/<term>.json for
+    # themselves, and until the second review nothing here would have failed
+    # had any of them stopped: the fixture served no search index, so both
+    # sides agreed by reading titles. "aquifer" is in no title. One bill of
+    # the term has it in its text, and the count is 1 only where the index
+    # was fetched and handed to the matcher.
+    assert n["aquifer"] == 1 and A["q"]["aquifer"]["ids"] == ["HB29"], (
+        f"/bills lists {A['q']['aquifer']} for 'aquifer', which one bill's "
+        "text is about and no title says: /bills is not fetching the term's "
+        "search index (sidx), or not handing it to the matcher")
+    assert P["q"]["aquifer"] == {"n": 1, "ids": ["HB29"]}, (
+        f"the header lists {P['q']['aquifer']} for 'aquifer': the header is "
+        "not fetching the term's search index (sidx) before it counts")
+    assert "/sidx/2025-2026.json" in A["asked"] and \
+        "/sidx/2025-2026.json" in P["asked"], (
+        "the term's search index was not asked for by /bills "
+        f"({A['asked']}) or by the header ({P['asked']})")
+    assert not [a for a in P["askedIdle"] if "sidx/" in a], (
+        f"the panel fetched {P['askedIdle']} before a word was typed")
+    assert "/sidx/2023-2024.json" not in P["askedPanel"], (
+        "the header panel fetched an earlier term's search index: only "
+        "/search reads every term")
+
+    # A SEARCH THAT LISTS NOTHING IS OFFERED A WORD, NOT READ AS ONE. For a day
+    # the bills row counted another word's bills by itself ("All 2,052 bills
+    # found for houde ... showing house", above the former member) and said
+    # "no bill says" a word three bills say. Now: nothing is counted under
+    # another word; a word no bill has used is offered the word it sounds
+    # like; a word a bill has used is offered nothing; the words file is not
+    # fetched until a search has listed nothing; and without it nothing is
+    # offered at all.
+    assert "/sidx/words.json" not in P["asked"] and \
+        "/sidx/words.json" not in A["asked"], (
+        "sidx/words.json was fetched before any search had listed nothing: "
+        f"the header asked for {P['asked']}, /bills for {A['asked']}")
+    offers = [("the header", P["offer"], 'data-find="pistol"'),
+              ("/bills", A["offer"], 'data-q="pistol"')]
+    for where, o, mark in offers:
+        assert "Did you mean" in o["typo"] and mark in o["typo"], (
+            f"{where} does not offer 'pistol' for 'pistal', a word no bill "
+            f"has used: {o['typo'][-200:]!r}")
+        assert "found for" not in o["typo"] and "showing" not in o["typo"], (
+            f"{where} counts or shows another word's bills for 'pistal' "
+            "without being asked")
+        assert "Did you mean" not in o["word"], (
+            f"{where} offers another word for 'pistil', which is a word the "
+            f"bills use (sidx/words.json): {o['word'][-200:]!r}")
+    assert "No matching results." in P["offer"]["word"] and \
+        "No bills match" in A["offer"]["word"], (
+        "a real word no bill is about is not told that nothing matches")
+    assert "/sidx/words.json" in P["askedPanel"] and \
+        "/sidx/words.json" in A["askedLast"], (
+        "the offers above were made without sidx/words.json")
+    assert "Did you mean" not in FO["offer"]["typo"], (
+        "with sidx/words.json unreachable the header still offers a word: "
+        "nothing says the word typed is not a real one")
+    # CHOOSING THE OFFERED WORD KEEPS THE PANEL AND THE PAGE (2 October).
+    # The click went on to two listeners on the document. One no longer
+    # found the button inside the panel, because drawing the answer had
+    # taken it out, and shut the panel. The other is app.js's, which reads
+    # data-q anywhere as "search the bill list for this": on the Calendar, a
+    # Learn article, a session day and a town page it drew 44 bills over the
+    # page. So the click stops at the panel, and the button is not one
+    # app.js knows.
+    ch = P["chosen"]
+    assert ch["listeners"] >= 1 and ch["stopped"] == ch["listeners"], (
+        f"the panel's click on an offered word is heard by {ch['listeners']} "
+        f"listeners and stopped by {ch['stopped']}: it goes on to the "
+        "document, which shuts the panel and, on a page app.js draws, lists "
+        "bills over it")
+    assert "/bills?q=pistol" in ch["html"] and "Did you mean" not in ch["html"], (
+        "choosing the offered word does not draw that word's answer in the "
+        f"panel: {ch['html'][-200:]!r}")
+    assert "data-q=" not in P["offer"]["typo"], (
+        "the header's offer is a button with data-q, which app.js reads on "
+        "any page as a search to run in the bill list")
+
+    # A NAME IS NOT WHAT A BILL IS ABOUT (the person, 17 October 2026: a
+    # representative's name should not show the bills they sponsored on the
+    # bill search or the general search, "since there's a separate filter for
+    # searching by rep"). Sen. Abbas sponsors four bills of the term and Rep.
+    # Nelson four; their names list none of them, here or in the header, and
+    # "nelson" lists the one bill whose title names the town of Nelson.
+    nm = A["names"]
+    for q, want in (("abbas", []), ("nelson", ["HB470"]), ("bailey", [])):
+        for where, got in (("/bills", A["q"][q]), ("the header", P["q"][q])):
+            ids = (got or {}).get("ids") if isinstance(got, dict) else None
+            assert ids == want, (
+                f"{where} lists {ids} for {q!r}, not {want}: a legislator's name "
+                "lists the bills they sponsored, which is the Sponsor filter's job")
+    assert "data-sponsor" not in nm["nelson"] and "Looking for bills" not in nm["nelson"], (
+        "/bills offers the Sponsor filter for 'nelson', which lists a bill by its "
+        "title: the offer is only for a name that lists nothing")
+    for q, who in (("abbas", "Daryl Abbas"), ("jodi", "Jodi Nelson")):
+        assert f"Looking for bills sponsored by Rep. {who}?" in nm[q] \
+            and f'data-sponsor="{who}"' in nm[q] and "Did you mean" not in nm[q], (
+            f"/bills lists nothing for {q!r} and does not offer the Sponsor filter "
+            f"for {who} in one line, or offers another word for a name: {nm[q][-300:]!r}")
+    lk = nm["link"] or {}
+    assert lk.get("href") == "/bills?sponsor=Daryl+Abbas", (
+        f"the offer's link is {lk.get('href')!r}: it should open the bill search "
+        "on the Sponsor filter alone, without the name typed")
+    after = nm.get("after") or {}
+    assert after.get("q") == "" and sorted(after.get("ids") or []) == \
+        ["SB248", "SB40", "SB5", "SB77"], (
+        f"taking the offer leaves the box holding {after.get('q')!r} and lists "
+        f"{after.get('ids')}: it should empty the box and list Sen. Abbas's four "
+        "bills through the Sponsor filter")
+    # And where the name lists no bill, /search says no "no bill in any of the
+    # terms" under the member it found: the bills' place is one link to his
+    # bills, the Sponsor filter on All terms (the audit of 25 October 2026, M3).
+    ab, abl = P["search"]["abbas"]["html"], P["search"]["abbas"]["lead"]
+    assert "/legislator/daryl-abbas-sd-22" in ab and "None in any of" not in ab \
+        and "no bill" not in abl and ab.count("/bills?") == 1 \
+        and 'href="/bills?sponsor=Daryl%20Abbas&amp;term=all"' in ab \
+        and "Sen. Daryl Abbas&rsquo;s bills" in ab, (
+        "/search?q=abbas does not list the senator with one link to his bills in the bills' "
+        f"place, or lists bills he sponsored, or says no bill matched: {abl!r} {ab[-400:]!r}")
+
+    # The panel is this term's; the other term's index is /search's alone.
+    assert "/idx/2023-2024.json" not in P["askedPanel"], (
+        "the header panel fetched an earlier term's index: only /search "
+        "counts every term")
+
+    # /search counts every term (24 September), as /bills?term=all does,
+    # search by search, and lists them newest first.
+    assert AA["term"] == "all" and P["all"]["state"] == "ready", (
+        f"/bills?term=all opened on {AA['term']!r}, and /search's every-term "
+        f"count is {P['all']['state']!r}")
+    off = []
+    for q in _FIND_BILLS_QUERIES:
+        a, p = AA["q"][q], P["all"]["q"][q]
+        if a["n"] is None:
+            off.append(f"{q!r}: /bills?term=all drew no count ({a['count']!r})")
+        elif not p or p.get("n") != a["n"]:
+            off.append(f"{q!r}: /bills?term=all {a['n']}, /search "
+                       f"{p.get('n') if isinstance(p, dict) else p}")
+        elif p["dated"][:3] != a["dated"][:3]:
+            off.append(f"{q!r}: /bills?term=all lists {a['dated'][:3]} first, "
+                       f"/search {p['dated'][:3]}")
+    assert not off, ("/search and /bills on All terms disagree about the bills: "
+                     + "; ".join(off[:4]))
+    na = {q: AA["q"][q]["n"] for q in _FIND_BILLS_QUERIES}
+    assert na["aquifer"] == 2 and P["all"]["q"]["aquifer"]["n"] == 2, (
+        f"'aquifer' is what two bills' texts are about, one in each term, and "
+        f"/bills on All terms lists {na['aquifer']}, /search "
+        f"{P['all']['q']['aquifer']}: every term's search index is not fetched")
+    assert 'href="/search?q=pistol"' in P["search"]["pistal"]["html"] \
+        and "Did you mean" in P["search"]["pistal"]["html"], (
+        "/search does not offer 'pistol' for 'pistal', a word no bill has used")
+    assert na["firearms"] > n["firearms"] and na["bail"] > n["bail"] \
+        and AA["q"]["SB 5"]["dated"][:2] == ["SB5/2025", "SB5/2023"], (
+        f"the fixture's earlier term no longer adds to the count: {na}, "
+        f"SB 5 {AA['q']['SB 5']['dated']}")
+
+    s = P["search"]
+    lead, html = s["firearms"]["lead"], s["firearms"]["html"]
+    assert lead.startswith(f"{na['firearms']} bills across all 2 terms "
+                           f"match") and "matches that" not in lead, (
+        f"/search?q=firearms opens with {lead!r}")
+    assert html.find("<h2>Bills") == html.find("<h2>") >= 0 and \
+        f"All {na['firearms']} bills found for &ldquo;firearms&rdquo;" \
+        in html and 'href="/bills?q=firearms&amp;term=all"' in html, (
+        "/search?q=firearms does not lead with every term's bills, counted, "
+        "and a link to them on All terms")
+    assert re.search(rf"{n['firearms']} of them in\s+the 2025\u20132026 term", html), (
+        "/search?q=firearms does not say how many of them are this term's")
+    # Every term's bills, each with its year, a term at a time, newest first
+    # (Alice, 8 November 2026: /search's list is /bills on All Terms's); the
+    # number in every term is "SB 5" below.
+    years = [int(y) for y in re.findall(r'<span class="fname">[^<]*\((\d{4})\)</span>', html)]
+    starts = [y if y % 2 else y - 1 for y in years]
+    assert "HB 101 (2025)" in html and years and starts == sorted(starts, reverse=True), (
+        "/search lists bills of every term without the year that tells them apart, or not a "
+        f"term at a time: {years}")
+    ab = s["abbas"]["html"]
+    assert 0 <= ab.find("<h2>Senators") < ab.find("<h2>Bills"), (
+        "/search?q=abbas puts the bills above the senator it names")
+    assert 0 <= s["bail"]["html"].find("<h2>Bills") \
+        < s["bail"]["html"].find("<h2>Representatives"), (
+        "/search?q=bail puts Rep. Bailey above the bail bills")
+    assert 0 <= s["bailey"]["html"].find("<h2>Representatives") \
+        < s["bailey"]["html"].find("<h2>Bills"), (
+        "/search?q=bailey puts the bills above the member it names")
+    sb5 = s["SB 5"]["html"]
+    assert all(f"SB 5 ({y})" in sb5 for y in (2025, 2023)), (
+        "/search?q=SB 5 does not list the number in every term it is in")
+    assert s["xyzzy"]["lead"].startswith("Nothing on this site matches") \
+        and "any of the 2 terms" in s["xyzzy"]["lead"], (
+        f"/search?q=xyzzy opens with {s['xyzzy']['lead']!r}")
+    assert "Did you mean" not in s["voting"]["html"], (
+        "/search?q=voting guesses at another word over the bills that match")
+
+    # An earlier term that cannot be had: this term's count, and no claim
+    # about every term. One that has not arrived yet: this term's count, and
+    # the page says the rest are still being counted.
+    fl, fh = FO["search"]["firearms"]["lead"], FO["search"]["firearms"]["html"]
+    assert FO["all"]["state"] == "failed" and fl.startswith(
+        f"{n['firearms']} bills in the 2025–2026 term match") \
+        and "term=all" not in fh and "all 2 terms" not in fl + fh, (
+        f"with an earlier term's index missing, /search says {fl!r}")
+    sl, sh = SO["search"]["firearms"]["lead"], SO["search"]["firearms"]["html"]
+    assert SO["all"]["state"] == "loading" and sl.startswith(
+        f"{n['firearms']} bills in the 2025–2026 term match") \
+        and "Counting the earlier terms" in sl and "Counting the earlier terms" in sh \
+        and "Nothing on this site" not in SO["search"]["xyzzy"]["lead"], (
+        f"while an earlier term is on its way, /search says {sl!r}")
+    return "ok", (f"{len(_FIND_BILLS_QUERIES)} searches counted alike by "
+                  f"/bills and the header (firearms {n['firearms']}, guns "
+                  f"{n['guns']}), and by /bills on All terms and /search "
+                  f"(firearms {na['firearms']}); bills lead where no name is "
+                  "a whole word of what was typed; a name lists no bill by its "
+                  "sponsor, and /bills offers the Sponsor filter for it")
+
+
+def _find_bills_run(BP, *runs):
+    """_find_bills_fixture through _FIND_BILLS_APP (app_side.js) and
+    _FIND_BILLS_PANEL (panel_side.js, which runs /search's script too): each
+    of `runs` is the node arguments of one run, the file and its mode; their
+    JSON, in order."""
+    app = _source("src/pages/app.js")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of "
+                             f"app.js: {e}")
+    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
+    assert m, "build_pages.SEARCH_JS carries no <script>"
+    root = Path(tempfile.mkdtemp())
+    try:
+        files = {"stub.js": _source("tests/dom_stub.js"),
+                 "app.js": _with_components(app), "billmatch.js": matcher,
+                 # components.js first, as every page loads it: the header's
+                 # panel draws each row's kind with its chip() (step 3).
+                 "find.js": _with_components(_source("src/pages/find.js")),
+                 "search.js": m.group(1),
+                 "fixture.json": json.dumps(_find_bills_fixture()),
+                 "queries.json": json.dumps(_FIND_BILLS_QUERIES),
+                 "app_side.js": _FIND_BILLS_APP,
+                 "panel_side.js": _FIND_BILLS_PANEL}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        got = []
+        for args in runs:
+            r = _run(["node", *args], cwd=root, capture_output=True,
+                     text=True, timeout=90)
+            said = (r.stdout + r.stderr).strip()
+            # What a script threw, where node ends on its version line.
+            thrown = [x for x in said.splitlines() if re.match(r"\s*\w*Error\b|RUN |LOAD ", x)]
+            assert r.returncode == 0 and said, (
+                f"node {' '.join(args)}: "
+                + (thrown or said.splitlines() or ["no output"])[-1][:200])
+            got.append(json.loads(said.splitlines()[-1]))
+        return got
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "/search says what it found to a screen reader: one role=status line that counts "
+       "each group as the page lists it, or says nothing matched, once the bills are counted",
+       needs=("build_pages",))
+def _search_says_counts(BP):
+    """The accessibility sweep of the R1 preview (29 October 2026; WCAG
+    4.1.3, status messages): /search draws its results as the reader types,
+    and nothing told a screen reader that they had come, how many there
+    were, or that there were none. The header's panel has said so since 2
+    October (find.js, findSay); the page with the cap off said nothing.
+
+    So /search writes one line the eye does not see, <p class="sr"
+    id="ressay" role="status">, as the fixture's build writes the page, and
+    the page's script fills it each time it draws: each group it lists,
+    counted, in the page's own order, and the bills and next session's
+    requests where the page puts them -- "1 senator, 2 bills." -- or "No
+    matching results." It says nothing while the bills, the earlier terms,
+    the requests or the Laws pages' list (fetched once a statute's number is
+    typed: "RSA 659" was said "No matching results." and then "1 law.", the
+    review of 29 October 2026) are still on their way, so the answer is said
+    once, when it is whole, and not "1 senator" and then "1 senator, 2
+    bills". The page
+    is in English alone: there is no /es/search (build_pages writes
+    search.html once), so the words are not the catalog's."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "search.html").read_text(encoding="utf-8")
+    lines = []
+    _html_walk(page, element=lambda c: lines.append(c[0]) if "ressay" in c[0]["ids"] else None)
+    assert len(lines) == 1 and lines[0]["attrs"].get("role") == "status" \
+        and "sr" in lines[0]["classes"], (
+        f"the fixture's search.html does not carry one <p class=\"sr\" id=\"ressay\" "
+        f"role=\"status\">: {[e['attrs'] for e in lines]}")
+    P, SO, CO = _find_bills_run(BP, ("panel_side.js",), ("panel_side.js", "slowold"),
+                                ("panel_side.js", "cold"))
+    M, L404, L91 = _find_more_run(BP, ("panel", ""), ("panel", "slowlaw:RSA 404"),
+                                  ("panel", "slowlaw:RSA 91-A"))
+    s, m = P["search"], M["search"]
+    n = P["all"]["q"]["firearms"]["n"]
+    want = {"firearms": f"{n} bills.", "xyzzy": "No matching results.",
+            "pistal": "No matching results. Did you mean pistol?"}
+    bad = [f"/search?q={q} says {s[q]['say']!r}, not {w!r}" for q, w in want.items() if s[q]["say"] != w]
+    # A name and the bills: each group counted, in the order the page draws them.
+    for q, page_ in (("abbas", s["abbas"]), ("bail", s["bail"]), ("bailey", s["bailey"]),
+                     ("RSA 91-A", m["RSA 91-A"]), ("data centers", m["data centers"])):
+        heads = re.findall(r"<h2>([^<]*?)(?:\s*<span class=\"resn\">([\d,]+)</span>)?\s*</h2>",
+                           page_["html"])
+        said = page_["say"]
+        if not said.endswith(".") or said == "No matching results.":
+            bad.append(f"/search?q={q} says {said!r} over the groups {heads}")
+            continue
+        got = [x.strip() for x in said[:-1].split(",")]
+        drawn = [f"{c} {t}" for t, c in heads if c]
+        shown = [g.split(" ", 1) for g in got]
+        if [c for c, _w in shown if not c.isdigit()] or \
+                [c.replace(",", "") for c, _w in shown][:len(drawn)] != \
+                [c.replace(",", "") for t, c in heads if c][:len(got)]:
+            bad.append(f"/search?q={q} says {said!r} where the page lists {drawn}")
+    assert "bill request" in m["data centers"]["say"] and "law" in m["RSA 91-A"]["say"].split(", ")[0], (
+        f"/search does not count the Law and the requests it lists: {m['RSA 91-A']['say']!r}, "
+        f"{m['data centers']['say']!r}")
+    # Opened before the bills have come: the first draw does not throw, and
+    # once they are counted the line says so.
+    assert CO["cold"]["say"] == f"{n} bills.", (
+        f"/search opened before the bills have arrived says {CO['cold']['say']!r} once they are "
+        f"counted ({CO['cold']['lead']!r})")
+    # The earlier terms on their way: nothing is said yet.
+    assert SO["search"]["firearms"]["say"] == "" and SO["search"]["xyzzy"]["say"] == "", (
+        f"while the earlier terms are being counted /search says "
+        f"{SO['search']['firearms']['say']!r} and {SO['search']['xyzzy']['say']!r}: it says the answer "
+        f"before it is whole, and then again")
+    # THE LAWS PAGES' LIST ON ITS WAY (the review of 29 October 2026): it is
+    # fetched only once a statute's number is typed, and "RSA 659" was said
+    # "No matching results." and then "1 law."; "RSA 91-A" "242 bills." and
+    # then "1 law, 242 bills.". Typed with the list held back, the line says
+    # nothing; let go, it says the whole answer once.
+    for q, run, whole in (("RSA 404", L404, "1 law."), ("RSA 91-A", L91, m["RSA 91-A"]["say"])):
+        spoke = [x for x in run["heard"][1:] if x]
+        if not run["held"]["asked"]:
+            bad.append(f"/search?q={q} never asked for the Laws pages' list")
+        elif run["held"]["say"] != "" or spoke != [whole] or run["say"] != whole:
+            bad.append(f"/search typed {q!r} while the Laws pages' list is on its way says "
+                       f"{run['held']['say']!r}, and in turn {spoke}, where it should say nothing and "
+                       f"then {whole!r} once")
+    assert not bad, "/search does not say what it found: " + "; ".join(bad[:4])
+    return "ok", ("/search's status line, as the fixture builds the page: " + "; ".join(
+        f"{q!r} {x['say']!r}" for q, x in (("firearms", s["firearms"]), ("abbas", s["abbas"]),
+                                           ("RSA 91-A", m["RSA 91-A"]), ("xyzzy", s["xyzzy"])))
+        + "; nothing while the earlier terms are counted")
+
+
+# THE FIXTURE FOR _find_laws_and_requests: _find_bills_fixture's, with what a
+# statute's number and a request's are read against -- the Laws pages' list
+# of chapters, two bills that say they change RSA 91-A (one this term, one
+# the term before), and three of next session's requests, two on data
+# centers, in a list of their own that meta.json names.
+def _find_more_fixture():
+    fx = _find_bills_fixture()
+    for b in fx["/idx/2025-2026.json"]:
+        if b["id"] == "HB300":
+            b["rsa"] = ["91-A", "91-A:4"]
+    for b in fx["/idx/2023-2024.json"]:
+        if b["id"] == "SB5":
+            b["rsa"] = ["91-A", "91-A:2"]
+    fx["/laws/chapters.json"] = {
+        "91-A": ["Access to Governmental Records and Meetings", "VI", 9, False, [], [], 1],
+        "404": ["Dog Licensing", "XXX", 3, False, [], [], 0],
+        "540": ["Actions Against Tenants", "LV", 20, False, [], [], 0]}
+
+    def request(num, title):
+        return {"id": f"LSR2027{num}", "n": f"LSR 2027-{num}", "year": 2027, "title": title,
+                "sponsor": "Jodi Nelson", "sponsor_label": "Rep. Jodi Nelson (R)",
+                "sponsor_slug": "jodi-nelson", "body": "HB", "committee": "", "committees": [],
+                "topic": "", "kind": "", "status": "Filed as a request", "term": "2027-requests",
+                "lsr": True, "votedays": [], "last_action": ""}
+    fx["/idx/2027-requests.json"] = [
+        request("0002", "establishing a temporary moratorium on data centers."),
+        request("0003", "relative to school bus inspections."),
+        request("0091", "relative to the siting of data centers.")]
+    # n counts every request on the list, withdrawn too; the banner on the
+    # newest term counts the standing ones, n less withdrawn (_requests_banner).
+    fx["/meta.json"]["requests"] = {"term": "2027-requests", "label": "2027 Bill Requests",
+                                    "year": 2027, "n": 3, "withdrawn": 1}
+    # NAMES WITH AN APOSTROPHE, as the record spells them, with a straight one
+    # (_search_reads_typed): a member, a former senator, two places, and a
+    # bill each about the places, filed by the two of them.
+    for bid, title, sponsor, cmte in (
+            ("HB640", "relative to the unincorporated place of Hart's Location",
+             "Patrick O'Connor", "House Municipal and County Government"),
+            ("SB410", "relative to the Wentworth's Location road agent",
+             "Lou D'Allesandro", "Senate Transportation")):
+        fx["/idx/2025-2026.json"].append(
+            {"id": bid, "n": f"{bid[:2]} {bid[2:]}", "year": 2025, "title": title,
+             "sponsor": sponsor, "sponsor_slug": "", "sponsor_label": f"Rep. {sponsor} (R)",
+             "committee": cmte, "committees": [cmte], "topic": "Other", "kind": "active",
+             "status": "Introduced", "term": "2025-2026", "last_action": "2025-01-15",
+             "votedays": []})
+    fx["/find.json"] = fx["/find.json"] + [
+        ["legislator", "Rep. Patrick O'Connor (R - Straf 9)", "House · Straf 9 · Republican",
+         "legislator/patrick-oconnor", "Strafford"],
+        ["former", "Former Sen. Lou D'Allesandro", "Senate · SD20 · 1999–2024",
+         "legislator/lou-dallesandro", "Hillsborough", 2024],
+        ["town", "Hart's Location", "Carroll County", "town/hart-s-location", "Carroll"],
+        # As find.json names them, from the Secretary of State's returns: the
+        # record shortens a Location to "Loc." and a Purchase to "Pur.".
+        ["town", "Wentworth's Loc.", "Grafton County", "town/wentworth-s-location", "Grafton"],
+        ["town", "Chandler's Pur.", "Coos County", "town/chandler-s-pur", "Coos"],
+        ["former", "Former Rep. Candice O'Neil", "House · Rock 8 · 2015–2016",
+         "legislator/candice-oneil", "Rockingham", 2016]]
+    return fx
+
+
+_FIND_MORE_QUERIES = {
+    # The header's panel: each way a statute is asked for, a chapter in a
+    # folder, a bare number, a chapter the Laws pages do not have, a time.
+    "panel": ["RSA 91-A", "rsa 91-a:4", "91-A", "91-A:4", "chapter 91-a", "RSA 404:5",
+              "91", "RSA 999", "6:30",
+              # What people type (_search_reads_typed): an apostrophe curly or
+              # missing, a law cited to its paragraph, a request's number.
+              "O’Connor", "oconnor", "Lou D’Allesandro", "Hart’s Location",
+              "Wentworths Location", "Wentworth's Loc.", "Chandlers Purchase", "O Neil",
+              "Candice O Neil", "Hart s Location", "RSA 91-A:4 IV", "91-A:4, IV", "rsa 91-a:4(iv)",
+              "LSR 2027-0002", "2027-0002", "2026-0002",
+              # A request's number every way it is typed (11 November 2026),
+              # and a bare "0002", which is read on /bills' requests alone.
+              "LSR 27-0002", "27-0002", "LSR2027-0002", "lsr 2027 0002", "0002", "27-2",
+              # A chapter found by its title (the owner, 10 November 2026).
+              "governmental records", "dog licensing", "tenants"],
+    "search": ["RSA 91-A", "data centers", "LSR 2027-0002", "firearms", "xyzzy",
+               "O’Connor", "RSA 91-A:4 IV", "tenants", "2027-0002", "27-0002", "0002"],
+    # /bills: a request's number three ways, a year that is not the
+    # requests', a statute, nothing, and words a request has; and what people
+    # type (_search_reads_typed).
+    "app": ["LSR 2026-0002", "2026-0002", "RSA 91-A",
+            "xyzzy", "data centers", "RSA 91-A:4 IV", "RSA 91-A:4, IV", "oconnor",
+            "Hart’s Location", "0002"],
+    # A request's number typed on the current term (11 November 2026): /bills
+    # moves to the requests' list and lists the one request. In one page, so
+    # the first moves it and the rest are read there; "0002" bare, which is a
+    # request only on that list, last.
+    "lsr": ["LSR 2027-0002", "2027-0002", "LSR20270002", "LSR 27-0002", "27-0002",
+            "LSR2027-0002", "lsr 2027 0002", "LSR 0002", "2027-0091", "0002", "2", "91", "2027",
+            "2027-0099", "2027-2028", "2027-28"]}
+
+# The header's panel and /search, as _FIND_BILLS_PANEL runs them.
+_FIND_MORE_PANEL = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+const vm = require("vm");
+const script = (f) => vm.runInThisContext(fs.readFileSync(f, "utf8"), {filename: f});
+document.head.appendChild = (s) => {
+  if (/\/billmatch\.js$/.test(String(s.src))) { script("./billmatch.js"); if (s.onload) s.onload(); }
+  else if (s.onerror) s.onerror();
+};
+let ready = null;
+document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+let F;
+try { script("./find.js");
+      F = vm.runInThisContext("({FIND, findDraw, findMatch, findBills, findBillsLoad, findLawsLoad})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+F.FIND.rows = FIX["/find.json"];
+const panel = document.getElementById("findout");
+const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
+// "slowlaw:<q>": the Laws pages' list, which find.js fetches only once a
+// statute's number is typed, held back while /search is typed <q> into and
+// listened to, then let go: what its status line says, step by step.
+let freeLaws = null;
+if (MODE.startsWith("slowlaw:")) {
+  const f0 = globalThis.fetch;
+  globalThis.fetch = (u) => new URL(u).pathname === "/laws/chapters.json"
+    ? new Promise(r => { freeLaws = () => r(f0(u)); }) : f0(u);
+}
+(async () => {
+  if (MODE.startsWith("slowlaw:")) {
+    script("./search.js");
+    location.search = "?q=firearms";
+    ready(); await ticks(40);
+    const box = document.getElementById("resq"), line = document.getElementById("ressay");
+    const heard = [line.textContent];
+    const listen = async (n) => { for (let i = 0; i < n; i++) { await ticks(1);
+      if (heard[heard.length - 1] !== line.textContent) heard.push(line.textContent); } };
+    box.value = MODE.slice(8); box.fire("input"); await listen(60);
+    const held = {asked: !!freeLaws, say: line.textContent};
+    if (freeLaws) freeLaws();
+    await listen(60);
+    console.log(JSON.stringify({held, heard, say: line.textContent}));
+    return;
+  }
+  const res = {panel: {}, first: {}, search: {}, all: {}, req: {}};
+  draw("firearms"); await F.findBillsLoad(); await ticks(10);
+  res.idle = ASKED.filter(p => p.includes("requests"));
+  for (const s of Q.panel) {
+    draw(s); await F.findLawsLoad(); await ticks(10);
+    res.panel[s] = draw(s); res.first[s] = F.findMatch(s, 50)[0] || null;
+  }
+  res.askedPanel = ASKED.slice();
+  script("./search.js");
+  location.search = "?q=" + encodeURIComponent(Q.search[0]);
+  ready(); await ticks(40);
+  const box = document.getElementById("resq"), lead = document.getElementById("reslead"),
+        out = document.getElementById("resout");
+  for (const s of Q.search) {
+    if (s !== Q.search[0]) { box.value = s; box.fire("input"); await ticks(40); }
+    res.search[s] = {lead: lead.textContent, html: out.innerHTML,
+                     say: document.getElementById("ressay").textContent};
+  }
+  for (const s of Q.search) {
+    const A = F.findBills(s, 40, true), R = F.findBills(s, 0, "requests");
+    res.all[s] = A && A.state === "ready" ? A.n : A;
+    res.req[s] = R && R.state === "ready" ? R.n : R;
+  }
+  console.log(JSON.stringify(res));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+# /bills: app.js as bills.html loads it, typed into; "all" opens it on All
+# terms, "req" on the requests, as /search's links do.
+_FIND_MORE_APP = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+if (MODE === "all") location.search = "?term=all";
+if (MODE === "req") location.search = "?term=2027-requests";
+const APPQ = MODE === "lsr" ? Q.lsr : MODE === "req" ? Q.app.concat(["LSR 2027-0002"]) : Q.app;
+const box = document.querySelector("#q"); box.disabled = true;
+const DOCON = {};
+document.addEventListener = (t, f) => { (DOCON[t] = DOCON[t] || []).push(f); };
+let scope;
+try { scope = (0, eval)(fs.readFileSync("./app.js", "utf8") + ";({getTerm: () => term})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+const cards = (html) => [...html.matchAll(/<article class="card[^"]*" data-id="([^"]+)"/g)].map(m => m[1]);
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) { console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const settle = () => ticks(30);
+  const out = {term: scope.getTerm(), q: {},
+               summary: document.querySelector("#summary").innerHTML};
+  if (MODE === "banner") {
+    // The banner's own button, as the page draws it, clicked.
+    const m = /<button class="link" data-term="([^"]+)">/.exec(out.summary);
+    if (m) {
+      const target = {tagName: "BUTTON", dataset: {term: m[1]},
+                      closest: (sel) => sel.split(",").some(s => /^(?:button)?(?:\.link)?\[data-term\]$/.test(s.trim()))
+                        ? target : null};
+      for (const f of DOCON.click || [])
+        try { f({target, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}}); } catch (e) {}
+      await settle();
+      out.taken = {term: scope.getTerm(), summary: document.querySelector("#summary").innerHTML};
+    }
+    console.log(JSON.stringify(out));
+    return;
+  }
+  for (const s of APPQ) {
+    box.value = s; box.fire("input"); await settle();
+    const html = document.querySelector("#results").innerHTML;
+    out.q[s] = {count: document.querySelector("#count").textContent, html, ids: cards(html)};
+  }
+  // The offer taken: its button, clicked, opens the requests on the search typed.
+  const offer = /data-term="([^"]+)"/.exec(out.q[APPQ[0]].html);
+  if (offer && MODE === "") {
+    box.value = APPQ[0]; box.fire("input"); await settle();
+    // The button as requestOffer draws it, button.link[data-term]: closest()
+    // answers each selector such a button matches, and no other.
+    const target = {tagName: "BUTTON", dataset: {term: offer[1]},
+                    closest: (sel) => sel.split(",").some(s => /^(?:button)?(?:\.link)?\[data-term\]$/.test(s.trim()))
+                      ? target : null};
+    for (const f of DOCON.click || [])
+      try { f({target, detail: 1, button: 0, preventDefault() {}, stopPropagation() {}}); } catch (e) {}
+    await settle();
+    out.taken = {term: scope.getTerm(), q: box.value,
+                 ids: cards(document.querySelector("#results").innerHTML)};
+  }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "the search reads a statute's number as the law: one Law row first, from the "
+       "Laws pages' list, for RSA 91-A, 91-A:4, chapter 91-A and 91-A, and none for a bare "
+       "number; the bills that change it counted as /bills counts them", needs=("build_pages",))
+def _find_laws(BP):
+    """The audit of 25 October 2026, M3: "RSA 91-A" was answered "No
+    matching results.", and "91-A" offered HB 91 and SB 91 and not the
+    Right-to-Know Law. find.js reads a statute asked for by its number --
+    "RSA n", a section "n:m", "chapter n", a lettered chapter "n-A" -- and
+    only then fetches laws/chapters.json, the Laws pages' own list, which
+    find.json does not grow by; a chapter it holds is one Law row, first,
+    at build_rsa.chapter_path's address (RSA 404's with its slash). And a
+    statute after "RSA" is the bill search's statute filter, so the panel
+    and /search count the bills that say they change it, as /bills lists
+    them -- /search said "None" over the bills its own link then opened.
+    Run over _find_bills' fixture term and the term before, with two bills
+    that change RSA 91-A, through find.js and /search's script as a page
+    without app.js runs them, and app.js as /bills runs it on All terms."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    P, AA = _find_more_run(BP, ("panel", ""), ("app", "all"))
+    assert not P["idle"], f"a search that names no request fetched {P['idle']}"
+    bad = []
+    want = {"RSA 91-A": ("RSA 91-A", "/laws/91-a"), "rsa 91-a:4": ("RSA 91-A:4", "/laws/91-a#s4"),
+            "91-A": ("RSA 91-A", "/laws/91-a"), "91-A:4": ("RSA 91-A:4", "/laws/91-a#s4"),
+            "chapter 91-a": ("RSA 91-A", "/laws/91-a"), "RSA 404:5": ("RSA 404:5", "/laws/404/#s5")}
+    for q, (name, href) in want.items():
+        r = P["first"].get(q) or []
+        h = P["panel"].get(q, "")
+        if r[:2] != ["law", name] or r[3:4] != [href]:
+            bad.append(f"{q!r}: the first row is {r[:4]}, not the Law {name} at {href}")
+        elif r[2] != "Access to Governmental Records and Meetings" and "404" not in q:
+            bad.append(f"{q!r}: the Law row's line is {r[2]!r}, not the chapter's name")
+        got = re.search(r'<a [^>]*href="([^"]+)"', h)
+        if not got or got.group(1) != href or ">Law<" not in h:
+            bad.append(f"{q!r}: the panel does not lead with the Law row: {h[:200]!r}")
+    for q in ("91", "RSA 999", "6:30"):
+        if (P["first"].get(q) or [""])[0] == "law" or ">Law<" in P["panel"].get(q, ""):
+            bad.append(f"{q!r} is offered a Law: a bare number, or a chapter the Laws pages do "
+                       "not have, is none")
+    if P["askedPanel"].count("/laws/chapters.json") != 1:
+        bad.append(f"laws/chapters.json was asked for {P['askedPanel'].count('/laws/chapters.json')} "
+                   "times, not once")
+    # A chapter found by its title (the owner, 10 November 2026): a Law row,
+    # flagged "title", after everything else, and /search's "Law Chapters"
+    # group after the bills and the guides, never the "Laws" group a number leads.
+    for q, ch, name in (("governmental records", "91-A", "Access to Governmental Records and Meetings"),
+                        ("dog licensing", "404", "Dog Licensing"),
+                        ("tenants", "540", "Actions Against Tenants")):
+        row = [r for r in (P["first"].get(q) and [P["first"][q]] or []) if r][0:1]
+        r = row[0] if row else []
+        href = "/laws/" + ch.lower() + ("/" if ch == "404" else "")
+        if r[:5] != ["law", "RSA " + ch, name, href, "title"]:
+            bad.append(f"{q!r}: the first row is {r[:5]}, not the title row for RSA {ch}")
+        h = P["panel"].get(q, "")
+        if f'href="{href}"' not in h or ">Law<" not in h:
+            bad.append(f"{q!r}: the panel does not offer RSA {ch} by its title: {h[:200]!r}")
+    s = P["search"]["tenants"]["html"]
+    if "<h2>Law Chapters" not in s or "<h2>Laws" in s or 'href="/laws/540"' not in s:
+        bad.append(f"/search?q=tenants lacks a Law Chapters group with RSA 540: {s[:300]!r}")
+    assert not bad, "; ".join(bad[:4])
+    # The bills that change it: one this term, two in all; the panel's and
+    # /search's counts are /bills' (on All terms, /search's address).
+    h = P["panel"]["RSA 91-A"]
+    assert "1 bill found for &ldquo;RSA 91-A&rdquo;" in h and "/bill/2026/hb300" in h \
+        and h.find("/laws/91-a") < h.find("/bills?q=RSA"), (
+        f"the panel does not count this term's bill that changes RSA 91-A under the Law: {h[:500]!r}")
+    m = re.match(r"([\d,]+) matching|([\d,]+) of", AA["q"]["RSA 91-A"]["count"])
+    assert P["all"]["RSA 91-A"] == 2 and AA["q"]["RSA 91-A"]["ids"][:2] == ["HB300", "SB5"], (
+        f"/search counts {P['all']['RSA 91-A']} bills that change RSA 91-A in every term, and "
+        f"/bills on All terms lists {AA['q']['RSA 91-A']['ids']} ({AA['q']['RSA 91-A']['count']!r})")
+    s = P["search"]["RSA 91-A"]
+    assert 0 <= s["html"].find("<h2>Laws") < s["html"].find("<h2>Bills") \
+        and "All 2 bills found for &ldquo;RSA 91-A&rdquo;" in s["html"] \
+        and "None in" not in s["html"] and not s["lead"].startswith("No"), (
+        f"/search?q=RSA 91-A does not lead with the Law and count the bills that change it: "
+        f"{s['lead']!r} {s['html'][:400]!r}")
+    js = BP.SEARCH_JS
+    assert js.index('{t:"Laws",') < js.index('{t:"How-To Guides",'), "/search does not list the Law first"
+    return "ok", ("RSA 91-A, rsa 91-a:4, 91-A, 91-A:4, chapter 91-a and RSA 404:5 lead with their "
+                  "Law; 91, RSA 999 and 6:30 with none; the bills that change it counted alike "
+                  "by the panel, /search and /bills")
+
+
+def _find_more_run(BP, *runs):
+    """_find_more_fixture through _FIND_MORE_PANEL and _FIND_MORE_APP: each of
+    `runs` is (side, mode), side "panel" or "app"; their JSON, in order."""
+    app = _source("src/pages/app.js")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of app.js: {e}")
+    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
+    assert m, "build_pages.SEARCH_JS carries no <script>"
+    root = Path(tempfile.mkdtemp())
+    try:
+        files = {"stub.js": _source("tests/dom_stub.js"),
+                 "app.js": _with_components(app), "billmatch.js": matcher,
+                 "find.js": _with_components(_source("src/pages/find.js")),
+                 "search.js": m.group(1), "fixture.json": json.dumps(_find_more_fixture()),
+                 "queries.json": json.dumps(_FIND_MORE_QUERIES),
+                 "panel.js": _FIND_MORE_PANEL, "app_side.js": _FIND_MORE_APP}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        got = []
+        for side, mode in runs:
+            r = _run(["node", "panel.js" if side == "panel" else "app_side.js", mode], cwd=root,
+                     capture_output=True, text=True, timeout=90)
+            said = (r.stdout + r.stderr).strip()
+            assert r.returncode == 0 and said and said.splitlines()[-1].startswith("{"), (
+                f"node {side} {mode}: " + (said.splitlines() or ["no output"])[-1][:300])
+            got.append(json.loads(said.splitlines()[-1]))
+        return got
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "next session's bill requests are found from /search on one line of their "
+       "own, counted as /bills counts them on their list, and /bills offers that list for a "
+       "request's number", needs=("build_pages",))
+def _find_requests(BP):
+    """The audit of 25 October 2026, S5: "LSR 2027-0002" pasted into the
+    home page's box was answered that nothing matched, and the 2027 requests
+    -- three on data centers, which nothing the search said mentioned --
+    opened only after switching the bill search's term menu. Requests are
+    kept out of every term and every term's count on
+    purpose (app.js, inTermOf), so they get no group and no place in the
+    bills' count: /search says on one line, under the bills, how many of them
+    match, linked to /bills opened on their list with the search kept, and
+    /bills' empty answer, where what was typed reads as a request's number
+    -- "LSR ...", or the requests' own year and a number -- offers that list
+    by its name, and taking it lists the request. Not for the words of a
+    search that lists bills, nor a number of another year."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    P, A, R, L = _find_more_run(BP, ("panel", ""), ("app", ""), ("app", "req"), ("app", "lsr"))
+    s = P["search"]
+    line = ('<a class="fbills" href="/bills?q=data%20centers&amp;term=2027-requests">')
+    assert P["req"]["data centers"] == 2 and line in s["data centers"]["html"] \
+        and "2 bill requests for 2027" in s["data centers"]["html"] \
+        and "Nothing on this site matches" not in s["data centers"]["lead"], (
+        f"/search?q=data centers does not say that 2 requests for 2027 match, linked to their "
+        f"list: {P['req']['data centers']} {s['data centers']['lead']!r} "
+        f"{s['data centers']['html'][-500:]!r}")
+    assert P["req"]["LSR 2027-0002"] == 1, (
+        f"/search?q=LSR 2027-0002 counts {P['req']['LSR 2027-0002']} requests")
+    for q in ("firearms", "xyzzy"):
+        assert "bill request" not in s[q]["html"].lower() and P["req"][q] == 0, (
+            f"/search?q={q} says something about requests, which none match")
+    assert "<h2>Bill Requests" not in "".join(v["html"] for q, v in s.items()
+                                              if q not in ("LSR 2027-0002", "2027-0002", "27-0002")), (
+        "/search draws the requests as a group for a search that is no request's number")
+    # A REQUEST'S NUMBER LEADS /search with the request (11 November 2026):
+    # its own row to /request/<number>, with its title and sponsor, above
+    # everything, and never "nothing matches" over it.
+    for q in ("LSR 2027-0002", "2027-0002", "27-0002"):
+        h, lead = s[q]["html"], s[q]["lead"]
+        if not h.lstrip().startswith('<section class="resgrp"><h2>Bill Requests') \
+                or '<a href="/request/2027-0002">' not in h[:400] \
+                or "establishing a temporary moratorium on data centers" not in h[:900] \
+                or "Requested by Rep. Jodi Nelson (R)" not in h[:900] or "No " in lead \
+                or "Nothing" in lead or "1 bill request." not in s[q]["say"]:
+            raise AssertionError(f"/search?q={q} does not lead with the request: "
+                                 f"{lead!r} {s[q]['say']!r} {h[:500]!r}")
+    # /bills on the requests' list counts what /search said.
+    assert R["term"] == "2027-requests" \
+        and sorted(R["q"]["data centers"]["ids"]) == ["LSR20270002", "LSR20270091"] \
+        and R["q"]["LSR 2027-0002"]["ids"] == ["LSR20270002"], (
+        f"/bills on the 2027 requests lists {R['q']['data centers']['ids']} for 'data centers' and "
+        f"{R['q']['LSR 2027-0002']['ids']} for 'LSR 2027-0002'")
+    bad = []
+    # A request's number typed on the current term moves /bills to the
+    # requests' list and lists the request, whichever way it is written (11
+    # November 2026); a bare "0002" does so only once on that list; a number
+    # of another year, or no request's, is none and is not moved.
+    assert L["term"] == "2025-2026", f"the fixture's /bills opens on {L['term']!r}"
+    for q in ("LSR 2027-0002", "2027-0002", "LSR20270002", "LSR 27-0002", "27-0002",
+              "LSR2027-0002", "lsr 2027 0002", "LSR 0002"):
+        if L["q"][q]["ids"] != ["LSR20270002"]:
+            bad.append(f"/bills lists {L['q'][q]['ids']} for {q!r}, not LSR 2027-0002")
+    if L["q"]["2027-0091"]["ids"] != ["LSR20270091"]:
+        bad.append(f"/bills lists {L['q']['2027-0091']['ids']} for '2027-0091'")
+    if L["q"]["0002"]["ids"] != ["LSR20270002"]:
+        bad.append(f"/bills lists {L['q']['0002']['ids']} for a bare '0002' on the requests' list")
+    # A bare short number on that list is a request too, "2" and "91" (the
+    # owner, 11 November 2026); the year alone, "2027", is a word.
+    if L["q"]["2"]["ids"] != ["LSR20270002"] or L["q"]["91"]["ids"] != ["LSR20270091"]:
+        bad.append(f"/bills lists {L['q']['2']['ids']} for '2' and {L['q']['91']['ids']} for '91' "
+                   "on the requests' list")
+    if (L["q"]["2027"]["ids"] or [None])[0] == "LSR20272027":
+        bad.append("/bills reads the year '2027' as a request's number")
+    # A term's name is no request's number ("2027-2028" is LSR 2027-2028, "2027-28" request 28).
+    for q in ("2027-2028", "2027-28"):
+        if {"LSR20272028", "LSR20270028"} & set(L["q"][q]["ids"]) or 'data-term="2027-requests"' in L["q"][q]["html"]:
+            bad.append(f"/bills reads the term {q!r} as a bill request")
+    if L["q"]["2027-0099"]["ids"] or "No bills match" not in L["q"]["2027-0099"]["html"]:
+        bad.append("/bills does not say no request has the number 2027-0099")
+    # The current term: the offer for what is not read as a request's number,
+    # a year that is not the requests', and a bare number is none.
+    h = A["q"]["LSR 2026-0002"]["html"]
+    if A["q"]["LSR 2026-0002"]["ids"] or '<button class="link" data-term="2027-requests">2027 Bill Requests</button>' not in h:
+        bad.append(f"/bills does not offer the 2027 Bill Requests for 'LSR 2026-0002': {h[-300:]!r}")
+    for q in ("2026-0002", "xyzzy", "RSA 91-A", "0002"):
+        if 'data-term="2027-requests"' in A["q"][q]["html"] or "LSR20270002" in A["q"][q]["ids"]:
+            bad.append(f"/bills offers or lists the requests for {q!r}, which is no request's number here")
+    assert not bad, "; ".join(bad)
+    tk = A.get("taken") or {}
+    assert tk.get("term") == "2027-requests" and tk.get("q") == "LSR 2026-0002", (
+        f"taking the offer leaves /bills on {tk.get('term')!r} with {tk.get('q')!r}: "
+        "it should open the requests on the search typed")
+    return "ok", ("'data centers' counted on /search's one line as /bills lists them on the "
+                  "requests' list; a request's number (2027-0002, LSR 2027-0002, LSR 27-0002, "
+                  "27-0002) leads /search with its row and moves /bills to the requests' list, "
+                  "where a bare 0002 is read too; the offer stays for what is no request's number")
+
+
+@check("frontend", "the bill search opens on the newest term with a line counting next session's "
+       "standing bill requests that opens them, and nowhere else", needs=("build_pages",))
+def _requests_banner(BP):
+    """Alice, 7 November 2026: the bill search keeps opening on 2025-2026,
+    with "<n> bill requests filed for 2027 -- see them" on top, n being the
+    standing requests (meta's n less the withdrawn, B1), the year the
+    requests' own; taking it opens the requests. Not on the requests' list
+    itself, nor on All Terms; and it goes by itself when the requests'
+    session becomes the newest term (app.js, requestsAhead)."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    B, R, A = _find_more_run(BP, ("app", "banner"), ("app", "req"), ("app", "all"))
+    want = ('<b>2 bill requests filed for\n      2027</b> &mdash; '
+            '<button class="link" data-term="2027-requests">see them<span\n      '
+            'class="sr">: the bill requests for 2027</span></button>')
+    assert B["term"] == "2025-2026" and want in B["summary"], (
+        f"/bills opened on {B['term']!r} reads {B['summary']!r}: it should open on 2025-2026 "
+        f"with the 2 standing requests of 3 (1 withdrawn) offered")
+    tk = B.get("taken") or {}
+    assert tk.get("term") == "2027-requests" and "Requests, not bills yet." in tk.get("summary", ""), (
+        f"taking the banner leaves /bills on {tk.get('term')!r}: it should open the requests")
+    for name, run in (("the requests' list", R), ("All Terms", A)):
+        assert "bill requests filed for" not in run["summary"], (
+            f"/bills on {name} shows the requests banner: {run['summary'][:200]!r}")
+    src = _source("src/pages/app.js")
+    assert "+reqYear()>+String(terms[0]).slice(0,4)" in src, (
+        "app.js no longer holds the banner to a session ahead of the newest term: on "
+        "2027-2028 it would offer 2027's requests from the term they belong to")
+    return "ok", ("on 2025-2026, '2 bill requests filed for 2027' (3 less 1 withdrawn) opens the "
+                  "requests; not on the requests' list or All Terms")
+
+
+@check("frontend", "the search reads what people type: a curly apostrophe or none in a name, a law "
+       "cited to its paragraph, and a bill request's number in the header", needs=("build_pages",))
+def _search_reads_typed(BP):
+    """The owner, 6 November 2026: test the update the way real people search.
+    On the dry run, in the header and the bill search alike, "O’Connor", "Lou
+    D’Allesandro" and "Hart’s Location" -- a phone's curly apostrophe --
+    found nothing, nor did "Wentworths Location" with none, the record
+    naming the place "Wentworth's Loc."; "RSA 91-A:4 IV"
+    and "91-A:4, IV" found nothing where "91-A:2" found the law; and the
+    header offered no bill request for "2027-0001", which /search and /bills
+    both find. (A bill number written out, "H.B. 703" and "Senate Bill 11",
+    is _find_bills'.) Over _find_more_fixture, which carries the record's
+    straight-apostrophe spellings of a member, a former senator and two
+    places, through find.js as the header and /search run it, and app.js as
+    /bills does."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    P, A = _find_more_run(BP, ("panel", ""), ("app", ""))
+    first = lambda h: (re.search(r'<a [^>]*href="([^"]+)"', h or "") or [None, ""])[1]
+    bad = []
+    # A name, the apostrophe curly or left out: the row the record spells with
+    # a straight one, first.
+    for q, href in (("O’Connor", "/legislator/patrick-oconnor"),
+                    ("oconnor", "/legislator/patrick-oconnor"),
+                    ("Lou D’Allesandro", "/legislator/lou-dallesandro"),
+                    ("Hart’s Location", "/town/hart-s-location"),
+                    # The record's "Loc." and "Pur." read as the words.
+                    ("Wentworths Location", "/town/wentworth-s-location"),
+                    ("Wentworth's Loc.", "/town/wentworth-s-location"),
+                    ("Chandlers Purchase", "/town/chandler-s-pur"),
+                    # An apostrophe typed as a space (the review of 7 November
+                    # 2026): "neil" is under five letters, so it must start a
+                    # word, and a row read only as "oneil" lost it.
+                    ("O Neil", "/legislator/candice-oneil"),
+                    ("Candice O Neil", "/legislator/candice-oneil"),
+                    ("Hart s Location", "/town/hart-s-location")):
+        if first(P["panel"][q]) != href:
+            bad.append(f"the header's first row for {q!r} is {first(P['panel'][q])!r}, not {href}")
+    if P["search"]["O’Connor"]["say"] != "1 representative.":
+        bad.append(f"/search?q=O’Connor says {P['search']['O’Connor']['say']!r}")
+    # A law cited to its paragraph: the section's Law row, and its bills.
+    for q in ("RSA 91-A:4 IV", "91-A:4, IV", "rsa 91-a:4(iv)"):
+        r = P["first"].get(q) or []
+        if r[:2] != ["law", "RSA 91-A:4"] or first(P["panel"][q]) != "/laws/91-a#s4":
+            bad.append(f"the header's first row for {q!r} is {r[:2]}, not the Law RSA 91-A:4")
+    if "<h2>Laws" not in P["search"]["RSA 91-A:4 IV"]["html"]:
+        bad.append("/search?q=RSA 91-A:4 IV lists no Law")
+    for q in ("RSA 91-A:4 IV", "RSA 91-A:4, IV"):
+        if A["q"][q]["ids"] != ["HB300"]:
+            bad.append(f"/bills lists {A['q'][q]['ids']} for {q!r}, not HB 300, which changes 91-A:4")
+    # /bills: a name offers the Sponsor filter, apostrophe or none, and a
+    # place's bills list for a curly apostrophe.
+    if "Looking for bills sponsored by Rep. Patrick O'Connor?" not in A["q"]["oconnor"]["html"]:
+        bad.append("/bills does not offer Rep. O'Connor's bills for 'oconnor'")
+    if A["q"]["Hart’s Location"]["ids"] != ["HB640"]:
+        bad.append(f"/bills lists {A['q']['Hart’s Location']['ids']} for 'Hart’s Location'")
+    # A request's number: its row leads the header's list, opening the bill
+    # search on it among the requests; a number no request has is offered none.
+    # Its row opens the request's own page, /request/2027-0002 (11 November
+    # 2026), in every way the number is typed; a bare "0002", a year that is
+    # not the requests' and a number too short for a two-digit year are none.
+    row = '<a href="/request/2027-0002">'
+    for q in ("LSR 2027-0002", "2027-0002", "LSR 27-0002", "27-0002", "LSR2027-0002",
+              "lsr 2027 0002"):
+        h = P["panel"][q]
+        if not h.lstrip().startswith(row) or ">Bill Request<" not in h \
+                or "Requested by Rep. Jodi Nelson (R)" not in h \
+                or "data centers" not in h or "No matching" in h:
+            bad.append(f"the header does not lead with LSR 2027-0002 for {q!r}: {h[:200]!r}")
+    for q in ("2026-0002", "0002", "27-2"):
+        if "/request/" in P["panel"][q]:
+            bad.append(f"the header offers a request for {q!r}, which is no request's number")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", ("O’Connor, oconnor, O Neil, Lou D’Allesandro, Hart’s Location, Hart s Location, "
+                  "Wentworths Location and Chandlers Purchase find the record's names, its "
+                  "\"Loc.\" and \"Pur.\" among them; RSA 91-A:4 IV, 91-A:4, IV and "
+                  "(iv) the section; LSR 2027-0002 and 2027-0002 lead the header with the request")
+
+
+# THE FIXTURE FOR _best_match_words: thirty-seven real bills, their titles,
+# sponsors and committees as the index carries them, in four terms. Each
+# search below meets some of them by a word of the title -- the word itself,
+# with an ending ("taxes", "taxing", "posting", "post-arrest", "fishing"), or
+# a synonym ("firearm" and "pistols" for "gun") -- and some only by the start
+# of a longer word ("taxable", "taxpayer", "firearm" for "fire",
+# "postpartum", "Gunstock", "bailiffs", "municipalities", "fisheries");
+# "municipal" and "fish" some bills only through a committee's name; and
+# "post" and "fish" two bills only through a sponsor's name, Rep. Post's and
+# Rep. Fisher's, which must not list them (17 October 2026). The order before 25 September -- best score, then the newer term,
+# then the number -- put a longer word above the word itself in every one of
+# these searches, and the town of Hillsborough above Sugar Hill for "hill".
+# The nine that carry a chip are the tie-break's (_BEST_MATCH_TIES), each
+# with the chip, kind and status the index gave it on 16 October 2026.
+def _best_match_fixture():
+    def bill(key, sponsor, committees, title, term, chip=None):
+        bid, year = key.split("/")
+        kind = re.match(r"[A-Z]+", bid).group(0)
+        row = {"id": bid, "n": f"{kind} {bid[len(kind):]}", "year": int(year),
+               "title": title, "sponsor": sponsor,
+               "sponsor_label": f"Rep. {sponsor}", "committee": committees[0],
+               "committees": committees, "topic": "Other", "kind": "active",
+               "status": "Introduced", "term": term,
+               "last_action": f"{year}-01-15", "votedays": []}
+        if chip:
+            row["chip"], row["kind"], row["status"] = chip
+        return row
+    cj, mc = "House Criminal Justice and Public Safety", "House Municipal and County Government"
+    sm = "Senate Election Law and Municipal Affairs"
+    now = [
+        ("HB56/2025", "David Meuse", [cj], "requiring a background check and "
+         "mandatory waiting period during certain firearm transfers."),
+        ("HB57/2025", "David Meuse", [cj, "Senate Judiciary"], "relative to the "
+         "standards applicable to bail in criminal matters."),
+        ("HB84/2025", "Barry Faulkner", [mc], "allowing municipalities to collect "
+         "fees for certain recreational vehicles located on campground properties."),
+        ("HB87/2025", "David Love", [cj, "Senate Energy and Natural Resources"],
+         "prohibiting the posting of land not owned by the poster."),
+        ("HB91/2025", "Charlie St. Clair", [cj, sm], "relative to the presence of a "
+         "fire department at a fireworks display."),
+        ("HB99/2025", "Michael Moffett", [mc, sm], "relative to a waiver from "
+         "property taxes for disabled veterans."),
+        ("HB124/2025", "Arnold Davis", [mc, sm], "enabling a municipal forest "
+         "committee or conservation commission to offer surplus money to the "
+         "municipality for deposit in the municipal unreserved fund balance."),
+        ("HB194/2026", "Lisa Post", [cj, "Senate Children and Family Law"],
+         "relative to the crime of interference with custody and relative to the "
+         "practice of pharmacy and the dispensing of certain medications by "
+         "pharmacists."),
+        ("HB352/2025", "Timothy Horrigan", [cj], "prohibiting possession of a "
+         "firearm at a polling place."),
+        ("HB375/2025", "Dan McGuire", ["House Public Works and Highways"],
+         "allowing municipalities to designate sections of state and local "
+         "highways for all terrain vehicles."),
+        ("HB390/2025", "Stephen Pearson", ["House Transportation", "Senate Transportation"],
+         "relative to adding retired fire apparatus (fire trucks) to antique "
+         "vehicle exemptions."),
+        ("HB402/2025", "David Luneau", ["House Ways and Means"], "relative to "
+         "liability as taxable income of education freedom account payments."),
+        ("HB1227/2026", "James Gruber", [mc], "relative to the calculation of the "
+         "local tax cap."),
+        ("HB1250/2026", "Ross Berry", ["House Labor, Industrial and Rehabilitative "
+         "Services"], "relative to notice, documentation, and job reinstatement "
+         "requirements under leave of absence for childbirth, postpartum, and "
+         "pediatric medical appointments."),
+        ("HB1293/2026", "Bill Bolton", ["House Ways and Means"], "taxing certain "
+         "properties owned by charitable or non-profit organizations."),
+        ("HB1302/2026", "Daniel Popovici-Muller", [cj], "relative to post-arrest "
+         "photograph distribution by law enforcement officers."),
+        ("HB1746/2026", "Matt Sabourin dit Choinière", ["House Judiciary"],
+         "subjecting taxpayer funded investigations to the right-to-know law."),
+        ("HB1781/2026", "Wayne Burton", ["House Education Funding"], "relative to "
+         "child support obligations during postsecondary education."),
+        ("HB465/2026", "Alice Wade", ["House Housing"], "relative to the housing "
+         "opportunity zone program.", ("Died", "done", "Killed")),
+        ("HB628/2025", "Timothy Horrigan", ["House Housing"], "prohibiting landlords "
+         "from discriminating against prospective tenants holding certain vouchers "
+         "under the housing choice voucher program.", ("Died", "done", "Killed")),
+        ("HB1007/2026", "Len Turcotte", ["House Housing"], "relative to manufactured "
+         "housing.", ("Died", "done", "Killed")),
+        ("HB1017/2026", "David Preece", ["House Housing"], "relative to accessory "
+         "dwelling units and workforce housing.",
+         ("Died", "done", "Died when the session ended")),
+        ("HB1396/2026", "Joe Sweeney", ["House Election Law"], "relative to "
+         "vacancies in state offices.", ("Died", "done", "Died on the table")),
+        ("CACR13/2026", "Dennis Mannion", ["House Judiciary", "Senate Executive "
+         "Departments and Administration"], "relating to registers of probate. "
+         "Providing that the office of register of probate and all references to "
+         "such office be eliminated.",
+         ("Passed both chambers, goes to the voters in November 2026", "adopted",
+          "Passed both chambers, goes to the voters in November 2026")),
+        ("HB109/2026", "Dennis Mannion", ["House Criminal Justice and Public Safety",
+         "Senate Judiciary"], "relative to false reports to law enforcement.",
+         ("Became Law", "law", "Signed into law")),
+        ("HB1070/2026", "Dennis Mannion", ["House Health, Human Services and "
+         "Elderly Affairs"], "relative to the involuntary emergency admission "
+         "process.", ("Died", "done", "Killed")),
+    ]
+    before = [
+        ("HB1414/2024", "Barbara Comtois", [mc], "relative to the Gunstock Area "
+         "Commission and ski resort."),
+        ("HB1424/2024", "James Spillane", ["House Fish and Game and Marine "
+         "Resources", "Senate Energy and Natural Resources"], "relative to "
+         "pistols permitted for taking game."),
+        ("SB248/2024", "Daryl Abbas", [cj, "Senate Judiciary"], "relative to bail "
+         "for a defendant."),
+        ("SB306/2024", "Kevin Avard", ["House Executive Departments and "
+         "Administration", "Senate Executive Departments and Administration"],
+         "relative to manufactured housing rulemaking authority.",
+         ("Became Law", "law", "Signed into law")),
+    ]
+    fg = "House Fish and Game and Marine Resources"
+    earlier = [
+        ("HB126/2017", "Peter Bixby", [fg], "prohibiting hunting on Willand Pond "
+         "in Strafford county."),
+        ("HB190/2017", "Gene Chandler", [fg, "Senate Energy and Natural Resources"],
+         "relative to the wildlife habitat account and the fisheries habitat "
+         "account."),
+        ("HB224/2017", "David Bates", [fg], "repealing the provision for "
+         "nonresident student hunting and fishing licenses."),
+        ("HB467/2017", "Daniel Eaton", [fg], "relative to the duties of the fish "
+         "and game commission."),
+        ("HB515/2017", "Robert Fisher", ["House Science, Technology and Energy"],
+         "relative to options for customers who are in arrears in utility bill "
+         "payments."),
+    ]
+    long_ago = [
+        ("HB275/2009", "Christopher Ahlgren", ["House Judiciary"], "increasing the "
+         "state reimbursement amounts for payment of bailiffs."),
+        ("HB637/2009", "Jordan Ulery", [cj], "relative to bail agents and recovery "
+         "agents."),
+    ]
+    terms = {"2025-2026": now, "2023-2024": before, "2017-2018": earlier,
+             "2009-2010": long_ago}
+    idx = {f"/idx/{t}.json": [bill(*row[:4], t, *row[4:]) for row in rows]
+           for t, rows in terms.items()}
+    find = [
+        ["town", "Hill", "Merrimack County", "town/hill", "Merrimack"],
+        ["town", "Hillsborough", "Hillsborough County", "town/hillsborough",
+         "Hillsborough"],
+        ["town", "Sugar Hill", "Grafton County", "town/sugar-hill", "Grafton"],
+        ["legislator", "Rep. Bill Ohm (R - Hills 10)",
+         "House · Hills 10 · Republican", "legislator/bill-ohm-hills-10",
+         "Hillsborough"],
+        ["legislator", "Rep. Gregory Hill (R - Merr 2)",
+         "House · Merr 2 · Republican", "legislator/gregory-hill-merr-2",
+         "Merrimack"],
+        ["former", "Former Rep. Jonathan Hill", "House · Rock 29 · 2001–2002",
+         "legislator/jonathan-hill-rock-29", "R", 2002],
+        ["former", "Former Rep. Michael Gunski", "House · Hills 6 · 2019–2022",
+         "legislator/michael-gunski-hills-6", "Hills R", 2021],
+    ]
+    meta = {"terms": list(terms), "topics": ["Other"],
+            "committees": sorted({c for rows in terms.values() for r in rows for c in r[2]}),
+            "sponsors": [], "votedays": [], "years": [2026, 2025, 2024, 2018, 2017, 2009]}
+    return {"/meta.json": meta, **idx, "/find.json": find}
+
+
+# What each search meets each bill by, read off the titles above, in the
+# order best match must list them: a word of the title; only a longer word
+# of the title; only a committee's name. Every bill of one kind before any of
+# the next -- and every one of them listed, because a longer word is still a
+# match. And none besides (A NAME IS NOT WHAT A BILL IS ABOUT, 17 October
+# 2026): "post" meets Rep. Lisa Post's HB 194 and "fish" Rep. Fisher's HB 515
+# only by the sponsor's name, and a bill listed that the table does not name
+# fails as a stray. Until that day both were listed, Rep. Post's among the
+# words and Rep. Fisher's after the longer words.
+_BM_WORD = "a word of its title"
+_BM_LONGER = "only a longer word of its title"
+_BM_COMMITTEE = "only a committee's name"
+_BEST_MATCH_WORDS = {
+    "tax": [(_BM_WORD, {"HB99/2025", "HB1227/2026", "HB1293/2026"}),
+            (_BM_LONGER, {"HB402/2025", "HB1746/2026"})],
+    "fire": [(_BM_WORD, {"HB91/2025", "HB390/2025"}),
+             (_BM_LONGER, {"HB56/2025", "HB352/2025"})],
+    "post": [(_BM_WORD, {"HB87/2025", "HB1302/2026"}),
+             (_BM_LONGER, {"HB1250/2026", "HB1781/2026"})],
+    "municipal": [(_BM_WORD, {"HB124/2025"}),
+                  (_BM_LONGER, {"HB84/2025", "HB375/2025"}),
+                  (_BM_COMMITTEE, {"HB91/2025", "HB99/2025", "HB1227/2026",
+                                   "HB1414/2024"})],
+    "gun": [(_BM_WORD, {"HB56/2025", "HB352/2025", "HB1424/2024"}),
+            (_BM_LONGER, {"HB1414/2024"})],
+    "bail": [(_BM_WORD, {"HB57/2025", "SB248/2024", "HB637/2009"}),
+             (_BM_LONGER, {"HB275/2009"})],
+    "fish": [(_BM_WORD, {"HB224/2017", "HB467/2017"}),
+             (_BM_LONGER, {"HB190/2017"}),
+             (_BM_COMMITTEE, {"HB126/2017", "HB1424/2024"})],
+}
+# A legislator's name, first, last or whole, lists no bill anywhere: not the
+# three Rep. Mannion sponsored, nor HB 465, Rep. Alice Wade's (17 October
+# 2026). The person themselves is /search's and the header's to list, and
+# their bills the Sponsor filter's.
+_BEST_MATCH_NAMES_NO_BILL = ("mannion", "dennis mannion", "alice", "alice wade")
+# And the names /search and the header list: every word typed as a whole
+# word of the name first, a name it only begins after.
+_BEST_MATCH_NAMES = {
+    "hill": ({"Hill", "Sugar Hill", "Rep. Gregory Hill (R - Merr 2)",
+              "Former Rep. Jonathan Hill"},
+             {"Hillsborough", "Rep. Bill Ohm (R - Hills 10)"}),
+    "gun": (set(), {"Former Rep. Michael Gunski"}),
+    # A seat is read only when a number is typed: "hills 10" is Rep. Ohm's
+    # district, and "hills" alone is the start of a place's name (below).
+    "hills 10": ({"Rep. Bill Ohm (R - Hills 10)"}, set()),
+    "hills": (set(), {"Hillsborough", "Rep. Bill Ohm (R - Hills 10)"}),
+}
+
+# BETWEEN BILLS THAT MATCH EQUALLY WELL (16 October 2026, approved by the
+# person that day): a bill still moving first, where its title has the
+# search; then the newer term; then the most of the title that is the search
+# (app.js's titleShare); then the number. Each search lists these bills in
+# exactly this order, on /bills and in the header (this term's) and on /bills
+# on All terms and /search (every term's), each tied with the others on
+# looseness and matchScore:
+# - "housing": the titles that are most nearly the search first. Before
+#   this, HB 465 and HB 628 -- a landlord's vouchers, housing one word in
+#   fourteen -- led "relative to manufactured housing" by number, as on the
+#   site, where HB 465 opened the term's 138. SB 306 of 2024, a quarter
+#   housing, still follows every bill of this term: the newer term is the
+#   key before the share.
+# - "office": CACR 13, on the index of 16 October 2026 the one bill of
+#   33,717 still moving (it goes to the voters in November), before HB 1396,
+#   whose title is twice as much the search and whose number comes first.
+# "mannion" was the third, his bills in number order, until a name stopped
+# listing bills (17 October 2026; _BEST_MATCH_NAMES_NO_BILL).
+_BEST_MATCH_TIES = {
+    "housing": ["HB1007/2026", "HB1017/2026", "HB465/2026", "HB628/2025", "SB306/2024"],
+    "office": ["CACR13/2026", "HB1396/2026"],
+}
+
+# /bills, typed into: the cards in the order drawn, each with the year its
+# address carries. "all" opens it as /bills?term=all.
+_BEST_MATCH_APP = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+if (MODE === "all") location.search = "?term=all";
+const box = document.querySelector("#q"); box.disabled = true;
+try { (0, eval)(fs.readFileSync("./app.js", "utf8")); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) {
+    console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const out = {};
+  for (const s of Q) {
+    box.value = s; box.fire("input");
+    const html = document.querySelector("#results").innerHTML;
+    out[s] = [...html.matchAll(
+      /<article class="card[^"]*" data-id="([^"]+)"[\s\S]*?bill\/(\d{4})\//g)]
+      .map(m => m[1] + "/" + m[2]);
+  }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+# The header panel and /search: find.js with billmatch.js, on a page without
+# app.js. Every bill findBills lists for the current term and for every term,
+# and every name findMatch lists.
+_BEST_MATCH_PANEL = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+const vm = require("vm");
+const NAMES = JSON.parse(fs.readFileSync("./names.json", "utf8"));
+const script = (f) => vm.runInThisContext(fs.readFileSync(f, "utf8"), {filename: f});
+document.head.appendChild = (s) => {
+  if (/\/billmatch\.js$/.test(String(s.src))) {
+    try { script("./billmatch.js"); }
+    catch (e) { console.log("BILLMATCH " + e.message); process.exit(1); }
+    if (s.onload) s.onload();
+  } else if (s.onerror) s.onerror();
+};
+let F;
+try { script("./find.js");
+      F = vm.runInThisContext("({FIND, findBills, findBillsLoadAll, findMatch})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+F.FIND.rows = FIX["/find.json"];
+(async () => {
+  if (!(await F.findBillsLoadAll())) {
+    console.log("the fixture's terms did not load"); process.exit(1); }
+  const out = {panel: {}, search: {}, names: {}};
+  const keys = B => B && B.state === "ready" ? B.top.map(b => b.id + "/" + b.year)
+    : ["no answer: " + JSON.stringify(B)];
+  for (const s of Q) {
+    out.panel[s] = keys(F.findBills(s, Infinity));
+    out.search[s] = keys(F.findBills(s, Infinity, true));
+  }
+  for (const s of NAMES) out.names[s] = F.findMatch(s, Infinity).map(r => r[1]);
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "best match lists a bill with the word itself above one with only a "
+                   "longer word it begins, on /bills, the header and /search, and "
+                   "names the same way", needs=("build_pages",))
+def _best_match_words(BP):
+    """The person, 25 September: a word also finding the longer words it
+    begins is fine -- "bail" finds "bailiff", "gun" finds Gunski -- but
+    "have direct word matches be at the top of the best match sorting".
+
+    Best match sorted by where the words fall (title, then sponsor, then
+    committee) and then by term and number, so on /bills on All terms the
+    2009 bill about bailiffs came fortieth for "bail", above thirty-six bail
+    bills, and the Gunstock Area Commission's came forty-eighth for "gun",
+    above two hundred and forty-eight gun bills. app.js's looseness adds up
+    how far each part of a search falls short of a word of the bill's title,
+    and best match sorts by it first -- in /bills, and through billmatch.js
+    in the header panel and /search, which must list bills in /bills' order.
+
+    A committee's name stays below a longer word in the title, because "Best
+    match puts the title first" is a rule of its own (app.js, above
+    groupWeight): counted as a direct match, it listed 187 bills whose only
+    link to "municipal" was a committee's name above the 26 titled
+    "municipalities". And since 17 October 2026 a sponsor's name counts for
+    nothing: "post" no longer meets Rep. Lisa Post's bills, nor "fish" Rep.
+    Fisher's, and "mannion" or "alice wade" lists no bill at all.
+
+    The names in the header and on /search follow the same rule: "hill"
+    lists Hill, Sugar Hill and the members named Hill before Hillsborough and
+    a Hills district's member.
+
+    Every bill here is real, copied from the index, and every search here
+    put a longer word above the word itself in the order before this.
+
+    And since 16 October 2026 the order between bills that match equally
+    well, which the bill number alone decided (_BEST_MATCH_TIES): "housing"
+    and "office" list their bills in another order under the rule before
+    it.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("src/pages/app.js", "src/pages/find.js", "tests/dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    app = _source("src/pages/app.js")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of "
+                             f"app.js: {e}")
+    fx = _best_match_fixture()
+    root = Path(tempfile.mkdtemp())
+    try:
+        files = {"stub.js": _source("tests/dom_stub.js"),
+                 "app.js": _with_components(app), "billmatch.js": matcher,
+                 "find.js": _source("src/pages/find.js"),
+                 "fixture.json": json.dumps(fx),
+                 "queries.json": json.dumps(list(_BEST_MATCH_WORDS)
+                                            + list(_BEST_MATCH_TIES)
+                                            + list(_BEST_MATCH_NAMES_NO_BILL)),
+                 "names.json": json.dumps(list(_BEST_MATCH_NAMES)),
+                 "app_side.js": _BEST_MATCH_APP,
+                 "panel_side.js": _BEST_MATCH_PANEL}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+
+        def node(*args):
+            r = _run(["node", *args], cwd=root, capture_output=True,
+                     text=True, timeout=90)
+            said = (r.stdout + r.stderr).strip()
+            assert r.returncode == 0 and said, (
+                f"node {' '.join(args)}: "
+                + (said.splitlines() or ["no output"])[-1][:200])
+            return json.loads(said.splitlines()[-1])
+
+        now, every = node("app_side.js", "cur"), node("app_side.js", "all")
+        P = node("panel_side.js")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    current = {f"{b['id']}/{b['year']}" for b in fx["/idx/2025-2026.json"]}
+    lists = [("/bills", now, current), ("the header", P["panel"], current),
+             ("/bills on All terms", every, None), ("/search", P["search"], None)]
+    bad = []
+    for where, got, scope in lists:
+        for q, kinds in _BEST_MATCH_WORDS.items():
+            kinds = [(w, ks if scope is None else ks & scope) for w, ks in kinds]
+            order = got.get(q) or []
+            known = set().union(*(ks for _, ks in kinds))
+            lost = known - set(order)
+            if lost:
+                bad.append(f"{where} lost {sorted(lost)} for {q!r}: a longer word "
+                           "is still a match, lower down")
+                continue
+            stray = [k for k in order if k not in known]
+            if stray:
+                bad.append(f"{where} lists {stray} for {q!r}, which the fixture's "
+                           "table does not account for")
+                continue
+            tier = {k: i for i, (_, ks) in enumerate(kinds) for k in ks}
+            # EVERY TERM'S LIST RUNS A TERM AT A TIME, newest first (Alice, 8
+            # November 2026; _search_polish), so there the word is held above
+            # the longer word within each term, and the terms in their order.
+            if scope is None:
+                starts = [y if y % 2 else y - 1 for y in (int(k.rsplit("/", 1)[1]) for k in order)]
+                if starts != sorted(starts, reverse=True):
+                    bad.append(f"{where} does not run a term at a time, newest first, for {q!r}: {order}")
+            one = (lambda a, b: True) if scope is not None else (
+                lambda a, b: (lambda x, y: (x if x % 2 else x - 1) == (y if y % 2 else y - 1))(
+                    int(a.rsplit("/", 1)[1]), int(b.rsplit("/", 1)[1])))
+            up = [(a, b) for i, a in enumerate(order) for b in order[i + 1:]
+                  if tier[a] > tier[b] and one(a, b)]
+            if up:
+                a, b = up[0]
+                bad.append(f"{where} lists {a} ({kinds[tier[a]][0]}) above {b} "
+                           f"({kinds[tier[b]][0]}) for {q!r}, and {len(up) - 1} "
+                           "more pairs the same way round")
+    # Each search pits a word against a longer one, or the check passes by
+    # having nothing to order.
+    thin = [q for q, kinds in _BEST_MATCH_WORDS.items()
+            if not all(any(w == want and ks for w, ks in kinds)
+                       for want in (_BM_WORD, _BM_LONGER))]
+    assert not thin, f"the fixture no longer pits a word against a longer one for {thin}"
+    assert not bad, "best match: " + " | ".join(bad[:3])
+
+    # Between bills that match equally well: still moving, the newer term,
+    # the share of the title, the number (_BEST_MATCH_TIES).
+    tied = []
+    for where, got, scope in lists:
+        for q, want in _BEST_MATCH_TIES.items():
+            want = [k for k in want if scope is None or k in scope]
+            order = [k for k in got.get(q) or [] if k in want]
+            if order != want:
+                tied.append(f"{where} lists {order} for {q!r}, not {want}")
+    assert not tied, ("best match between bills that match equally well -- a bill "
+                      "still moving first where its title has the search, then the "
+                      "newer term, then the most of the title that is the search: "
+                      + " | ".join(tied[:3]))
+    named = [f"{where} lists {got.get(q)} for {q!r}"
+             for where, got, _ in lists for q in _BEST_MATCH_NAMES_NO_BILL if got.get(q)]
+    assert not named, ("a legislator's name lists the bills they sponsored, which "
+                       "is the Sponsor filter's job (17 October 2026): "
+                       + " | ".join(named[:3]))
+
+    wrong = []
+    for q, (whole, part) in _BEST_MATCH_NAMES.items():
+        order = P["names"].get(q) or []
+        lost = (whole | part) - set(order)
+        if lost:
+            wrong.append(f"{q!r} lost {sorted(lost)}")
+            continue
+        first_part = min((order.index(x) for x in part), default=len(order))
+        late = sorted(x for x in whole if order.index(x) > first_part)
+        if late:
+            wrong.append(f"{q!r} lists {order[first_part]!r}, which only begins "
+                         f"with it, above {late}")
+    # THE TOWN BEFORE THE DISTRICT'S MEMBERS, while a place's name is being
+    # typed. Read as a whole word of every "(R - Hills 10)", "hills" put forty
+    # members above Hillsborough, and "merr" forty above Merrimack, out of the
+    # header's eight rows (25 September).
+    hills = P["names"].get("hills") or []
+    if "Hillsborough" in hills and "Rep. Bill Ohm (R - Hills 10)" in hills and \
+            hills.index("Hillsborough") > hills.index("Rep. Bill Ohm (R - Hills 10)"):
+        wrong.append(f"'hills' lists a Hills district's member above Hillsborough: {hills}")
+    assert not wrong, "the names in the header and /search: " + "; ".join(wrong)
+    n = sum(len(v) for k, v in fx.items() if k.startswith("/idx/"))
+    return "ok", (f"{len(_BEST_MATCH_WORDS)} searches over {n} real bills: the word "
+                  "itself, then a longer word, then a committee's name, in /bills, "
+                  "the header, /bills on All terms and /search; 'hill' lists Hill "
+                  "and Sugar Hill before Hillsborough; between equals 'housing' "
+                  "opens on manufactured housing and 'office' on CACR 13, still "
+                  "moving; and a member's name lists none of their bills")
+
+
+# REAL SEARCHES, REAL BILLS (1 October 2026). The frontend check further down
+# holds how a search is READ, against one-line bills invented for the purpose:
+# "bail" is not Rep. Bailey, "alien" is not "alienation". None of it ran a
+# real search against real titles and named the bills that must come back --
+# so "lgbtq" returned nothing and "trans" returned 162 bills about transfers
+# and transportation, and every check here passed.
+#
+# tests/search_cases.json is that: searches a member of the public types,
+# each with bills of 2025-2026 it must list and bills it must not, every bill
+# carried with its title, sponsor and committees as the index has them. This
+# script runs them through the matcher build_pages cuts out of app.js (the
+# header's and /search's copy, which the checks above hold to /bills' own),
+# over the fixture's bills under --code and over the real index where the site
+# is built. It also reads the table itself: no word in two entries, no word of
+# the table read as the start of a longer one, no term with a hyphen in it.
+_SEARCH_CASES_JS = r"""
+// node go.js <billmatch.js> <search_cases.json> <search index: a file, or a folder of them> [idx.json ...]
+// The page's matcher, as build_pages cuts it for the header search, over real
+// titles and what real bills' own analyses and texts are about. With no index
+// named, the bills in the cases file are the fixture and the search index is
+// tests/search_index.json, cut from the real one for exactly those bills;
+// with indexes named, the cases run over the first of them (the cases' own
+// term) and the table and the pairs over all of them, each with its
+// site/sidx file.
+const fs = require("fs"), path = require("path");
+const [, , matcherFile, casesFile, textAt, ...idxFiles] = process.argv;
+const out = { fails: [], stale: [] };
+const done = () => { console.log(JSON.stringify(out)); };
+// A check that dies says only "Node.js v24": say what it could not do.
+process.on("uncaughtException", e => { out.fails.push("the check could not run: " + (e && e.message)); done(); process.exit(0); });
+const window = {};
+new Function("window", fs.readFileSync(matcherFile, "utf8"))(window);
+const A = window.GR_BILLMATCH;
+const C = JSON.parse(fs.readFileSync(casesFile, "utf8"));
+const need = ["queryGroups", "groupWeight", "looseness", "billKey", "indexAdd", "readShort", "spelling", "wordsAdd", "whyListed", "matchScore", "titleShare", "statusCat", "CONCEPTS", "SYN", "altRx", "wordKeys", "stem"];
+const lacking = need.filter(f => !A || A[f] == null);
+if (lacking.length) { out.fails.push("the matcher cut from app.js does not define " + lacking.join(", ")
+  + ": it is the search as it was before it read the bills' own words"); done(); process.exit(0); }
+// The haystacks as app.js's ensureTerm() and find.js's _fprep() build them,
+// and one more they no longer build: hayS, the prime sponsor's name. Since 17
+// October 2026 a name lists no bill, and the page stopped making it; it is
+// made here so that a matcher that read it again lists a sponsor's bills for
+// their name, and the name cases fail.
+const norm = s => String(s || "").toLowerCase().replace(/-/g, " ");
+const prep = b => { b.hayT = norm([b.id, b.n, b.title].join(" ")); b.hayS = norm(b.sponsor);
+  b.hayC = norm((b.committees || [b.committee || ""]).join(" | ")); return b; };
+const real = idxFiles.length > 0;
+const byTerm = real ? idxFiles.map(f => JSON.parse(fs.readFileSync(f, "utf8")).map(prep))
+  : [Object.entries(C.bills).map(([id, b]) => prep({ id, term: C.term, ...b }))];
+const own = real ? (byTerm.find(r => r.length && r[0].term === C.term) || []) : byTerm[0];
+const all = byTerm.flat(), whole = real && byTerm.length >= 15;
+// What each bill's analysis and text are about: the page fetches these.
+const SIDX = {};
+let read = 0;
+if (real) for (const r of byTerm) { const t = r.length && r[0].term, f = path.join(textAt, t + ".json");
+  if (t && fs.existsSync(f)) { SIDX[t] = JSON.parse(fs.readFileSync(f, "utf8")); if (A.indexAdd(t, SIDX[t])) read++; } }
+else { SIDX[C.term] = JSON.parse(fs.readFileSync(textAt, "utf8")); if (A.indexAdd(C.term, SIDX[C.term])) read++; }
+if (!read) out.fails.push("no search index could be handed to the matcher: every case would run on titles alone");
+// The words every bill uses (sidx/words.json), which is what tells a misspelt
+// word from a real one. Over the real index it is the built file. Over the
+// fixture it is the fixture's own bills' words and the cases' list of real
+// words that were once read as other words.
+let KNOWN = null;
+if (real) { const f = path.join(textAt, "words.json"); if (fs.existsSync(f)) KNOWN = JSON.parse(fs.readFileSync(f, "utf8")); }
+else { const ws = new Set(C.known || []);
+  for (const b of all) for (const w of (b.hayT + " " + b.hayS + " " + b.hayC).match(/[a-z]{5,}/g) || []) ws.add(w);
+  KNOWN = { v: 1, n: ws.size, words: [...ws].join(" ") }; }
+if (!KNOWN || !A.wordsAdd(KNOWN)) out.fails.push("sidx/words.json, the words every bill uses, is not there or was refused: a misspelt search is offered nothing");
+else for (const w of C.known || []) if (!(" " + KNOWN.words + " ").includes(" " + w + " "))
+  out.fails.push(`${JSON.stringify(w)} is a word bills use and is not in sidx/words.json: it would be offered as another word`);
+// What /bills?q= lists, in best-match order: find.js's findBills. Among
+// equals a bill still moving whose title has the search, then the newer
+// term, then the most of the title that is the search (16 October 2026),
+// as both of those break a tie.
+function search(rows, q) {
+  const gs = A.readShort(A.queryGroups(q), rows), hit = [];
+  for (const b of rows) {
+    const sc = A.matchScore(b, gs);
+    if (!sc) continue;
+    const share = A.titleShare(b, gs), live = share > 0 && A.statusCat(b) === "In Progress" ? 1 : 0;
+    hit.push([A.looseness(b, gs), -sc, A.billKey(b), b, A.whyListed(b, gs), gs.length, share, live]);
+  }
+  const newer = (x, y) => { const a = String(x[3].term || ""), b = String(y[3].term || ""); return a < b ? 1 : a > b ? -1 : 0; };
+  hit.sort((x, y) => x[0] - y[0] || x[1] - y[1] || y[7] - x[7] || newer(x, y) || y[6] - x[6] || x[2][0] - y[2][0] || x[2][1] - y[2][1]);
+  return hit;
+}
+const fails = out.fails, stale = out.stale, said = q => JSON.stringify(q);
+const have = new Map(own.map(b => [b.id, b]));
+let found = 0, kept = 0, byText = 0, offered = 0, nothing = 0;
+for (const c of C.cases) {
+  let hits = search(own, c.q);
+  // `nothing`: a real word no bill of the term is about. It lists nothing and
+  // is offered as no other word. `offer`: a misspelling. It lists nothing as
+  // typed -- nothing is read again by itself -- and the page offers that
+  // word, whose list the case's bills are then held to.
+  if (c.nothing || c.offer) {
+    if (hits.length) fails.push(`${said(c.q)} lists ${hits.length} bills as typed (${hits[0][3].id}): it is read as another word by itself`);
+    const sp = A.spelling(A.readShort(A.queryGroups(c.q), own), own);
+    if (c.nothing) { nothing++; if (sp) fails.push(`${said(c.q)} is offered as ${said(sp.q || "a word not yet known")}: it is a word the bills use`); continue; }
+    if (!sp || sp.q !== c.offer) { fails.push(`${said(c.q)} is not offered as ${said(c.offer)}: ${sp ? said(sp.q || "the words are not known") : "nothing is offered"}`); continue; }
+    offered++;
+    hits = search(own, sp.q);
+  }
+  const got = hits.map(h => h[3].id), at = new Map(got.map((id, i) => [id, i]));
+  const first = c.first || [], must = [...first, ...(c.must || [])], never = c.never || [];
+  for (const id of [...must, ...never]) {
+    const b = have.get(id);
+    if (!b) fails.push(`${said(c.q)} names ${id}, which is not a bill of ${C.term}`);
+    else if (real && C.bills[id] && b.title !== C.bills[id].title && !stale.includes(id)) stale.push(id);
+  }
+  const lost = must.filter(id => !at.has(id)), wrong = never.filter(id => at.has(id));
+  found += must.length - lost.length; kept += never.length - wrong.length;
+  // How many of them only the bill's own analysis or text could have found.
+  byText += hits.filter(h => must.includes(h[3].id) && /\b(analysis|text)\b/.test(h[4])).length;
+  if (lost.length) fails.push(`${said(c.q)} does not list ${lost.join(", ")} (${(C.bills[lost[0]] || {}).title || ""})`);
+  if (wrong.length) fails.push(`${said(c.q)} lists ${wrong.join(", ")} (${(C.bills[wrong[0]] || {}).title || ""})`);
+  if (!got.length && !c.empty_ok) fails.push(`${said(c.q)} returns nothing`);
+  // The reader's own word before a bill the table found.
+  const late = first.filter(id => at.has(id) && (c.must || []).some(m => at.has(m) && at.get(m) < at.get(id)));
+  if (late.length) fails.push(`${said(c.q)} lists ${late.join(", ")}, which has the word itself, below a bill the table found`);
+  if (real && c.at_most && got.length > c.at_most) fails.push(`${said(c.q)} lists ${got.length} bills, more than ${c.at_most}: a flood`);
+  // The bill titled in the reader's own words leads: among the first five.
+  for (const id of c.top || []) {
+    if (!have.has(id)) fails.push(`${said(c.q)} names ${id}, which is not a bill of ${C.term}`);
+    else if (!at.has(id) || (real && at.get(id) >= 5)) fails.push(`${said(c.q)} lists ${id} ${at.has(id) ? "at " + (at.get(id) + 1) : "nowhere"}, not among the first five`);
+  }
+  // A bill listed for a word its title does not have says which of its own words put it there.
+  const mute = hits.filter(h => h[5] === 1 && h[0] >= 1.2 && h[0] < 2 && !h[4]);
+  if (mute.length) fails.push(`${said(c.q)} lists ${mute[0][3].id} through the table and does not say which of the bill's words found it`);
+}
+// Searches over every term's bills, each bill named with the year it was
+// filed: a title only an earlier term has ("E-Z Pass"), and a wrong bill only
+// the whole record listed. Asked where most of the terms' indexes are here.
+let across = 0;
+if (whole) for (const c of C.across || []) {
+  const got = new Set(search(all, c.q).map(h => h[3].id + "/" + h[3].year));
+  across++;
+  const lost = (c.must || []).filter(([id, y]) => !got.has(id + "/" + y)), wrong = (c.never || []).filter(([id, y]) => got.has(id + "/" + y));
+  if (lost.length) fails.push(`across the terms ${said(c.q)} does not list ${lost.map(x => x.join(" of ")).join(", ")}`);
+  if (wrong.length) fails.push(`across the terms ${said(c.q)} lists ${wrong.map(x => x.join(" of ")).join(", ")}`);
+  if (!got.size && (c.must || []).length) fails.push(`across the terms ${said(c.q)} returns nothing`);
+}
+// Two sides' words for one subject return one list.
+for (const group of C.same) {
+  const lists = group.map(q => search(all, q).map(h => h[3].id + "/" + h[3].term).sort().join(" "));
+  if (!lists[0]) fails.push(`${said(group[0])} returns nothing, so the pair proves nothing`);
+  group.forEach((q, i) => { if (lists[i] !== lists[0]) fails.push(`${said(q)} and ${said(group[0])} return different bills: the table has taken a side`); });
+}
+// The table itself.
+const T = A.CONCEPTS, seen = new Map(), phrases = new Map();
+let asks = 0, terms = 0;
+const inText = t => Object.values(SIDX).some(X => t.includes(" ") ? !!(X.p || {})[t]
+  : [...A.wordKeys(t)].some(k => !!(X.w || {})[k]));
+const SYNWORDS = new Set(A.SYN.flat());
+T.forEach((c, i) => {
+  // An agency's short name ("dmv") has no terms and one `named`: wording that
+  // counts in a title or an analysis.
+  if (!Array.isArray(c.ask) || !Array.isArray(c.terms) || !c.ask.length || !(c.terms.length || (c.named || []).length)) {
+    fails.push(`entry ${i} has no ask or no term`); return; }
+  if (c.like != null && !SYNWORDS.has(c.like)) fails.push(`entry ${i} (${said(c.ask[0])}) is read like ${said(c.like)}, which is no word of SYN`);
+  if (c.once && !c.with) fails.push(`entry ${i} (${said(c.ask[0])}) counts a single mention without a second list the bill must also say`);
+  for (const a of c.ask) {
+    asks++;
+    if (seen.has(a)) fails.push(`${said(a)} is an ask of two entries (${seen.get(a)} and ${i})`);
+    seen.set(a, i);
+    // A phrase is the table's whatever its endings ("transgender athlete"
+    // is "transgender athletes"), so two entries may not differ only by one.
+    if (a.includes(" ")) { const k = a.split(" ").map(A.stem).join(" ");
+      if (phrases.has(k) && phrases.get(k) !== i) fails.push(`${said(a)} is an ask of entry ${i} and, but for an ending, of entry ${phrases.get(k)}`);
+      phrases.set(k, i); }
+    const gs = A.queryGroups(a);
+    if (gs.length !== 1) fails.push(`the ask ${said(a)} is read as ${gs.length} parts, not one`);
+    else if (!a.includes(" ") && !c.also && !gs[0].exact) fails.push(`the table's word ${said(a)} is still read as the start of a longer word`);
+  }
+  for (const t of [...c.terms, ...(c.named || []), ...(c.with || [])]) {
+    terms++;
+    if (/-/.test(t)) fails.push(`the term ${said(t)} has a hyphen, and a title is searched with hyphens as spaces`);
+    // Silence is not success: a term no bill has ever used looks fine and finds
+    // nothing. Asked only where most of the terms' indexes are here to be read.
+    if (whole && !all.some(b => A.altRx(t).test(b.hayT)) && !inText(t))
+      fails.push(`the term ${said(t)} (entry ${i}, ${said(c.ask[0])}) is in no title, analysis or text of any term`);
+  }
+});
+// The two SYN groups switched on as phrases are still read as phrases: a group
+// renamed in SYN would otherwise go back, silently, to searching "enforcement".
+for (const p of ["mental health", "law enforcement"]) {
+  const gs = A.queryGroups(p);
+  if (gs.length !== 1 || gs[0].word !== p || gs[0].alts.length < 2) fails.push(`${said(p)} is no longer read as one phrase with its group`);
+}
+// And every SYN entry of two words that no title of any term has ever used:
+// read as its two words it can only be found apart, which is nothing
+// ("forever chemical" listed no bill in any term, 2 October). It is the
+// table's, or it is read as a phrase with its group.
+let apart = 0;
+if (whole) for (const g of A.SYN) for (const p of g) {
+  if (!p.includes(" ") || all.some(b => A.altRx(p).test(b.hayT))) continue;
+  apart++;
+  const gs = A.queryGroups(p);
+  if (gs.length !== 1 || gs[0].word !== p) fails.push(`SYN's ${said(p)} is in no title of any term and is read as ${gs.length} words: typed, it can only be found apart. Add it to SYNPHRASES`);
+  else if (!search(all, p).length) fails.push(`SYN's ${said(p)}, typed, lists nothing in any term, and the group it is in lists ${all.filter(b => g.some(t => A.altRx(t).test(b.hayT))).length} by title`);
+}
+// A word somebody types is not a property of an object: these two stopped
+// the search with a TypeError (2 October).
+for (const w of ["constructor", "__proto__", "constructor permits", "tostring valueof"]) {
+  try { search(own, w); A.spelling(A.readShort(A.queryGroups(w), own), own); }
+  catch (e) { fails.push(`the search ${said(w)} stops with ${e && e.message}`); }
+}
+Object.assign(out, { cases: C.cases.length, found, kept, byText, offered, nothing, pairs: C.same.length, across, apart,
+  entries: T.length, asks, terms, bills: own.length, every: all.length, files: byTerm.length, whole, read });
+done();
+"""
+
+
+def _search_cases_node(BP, idx_files=(), text_at="tests/search_index.json"):
+    """tests/search_cases.json through the cut matcher: what the script found."""
+    app = _source("src/pages/app.js")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of "
+                             f"app.js: {e}")
+    # The header's copy hands back the functions it calls. The table and the
+    # pattern a term is matched with are read from the same script, by the
+    # same line.
+    hook = "return {queryGroups,"
+    assert matcher.count(hook) == 1, (
+        "billmatch.js no longer ends by returning queryGroups first, and this "
+        "check reads the table through that line")
+    # typeof, so that a matcher from before the table (or before the search
+    # index) is reported as that and not as a ReferenceError.
+    extra = ",".join(f'{n}:typeof {n}==="undefined"?null:{n}'
+                     for n in ("CONCEPTS", "SYN", "altRx", "wordKeys", "stem"))
+    matcher = matcher.replace(hook, "return {" + extra + ",queryGroups,")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "billmatch.js").write_text(matcher, encoding="utf-8")
+        (root / "go.js").write_text(_SEARCH_CASES_JS, encoding="utf-8")
+        r = _run(["node", "go.js", "billmatch.js",
+                  str(Path("tests/search_cases.json").resolve()),
+                  str(Path(text_at).resolve()),
+                  *[str(Path(f).resolve()) for f in idx_files]],
+                 cwd=root, capture_output=True, text=True, timeout=300)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        return json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _search_cases_said(fails):
+    return ("; ".join(f[:170] for f in fails[:4])
+            + (f" -- and {len(fails) - 4} more" if len(fails) > 4 else ""))
+
+
+@check("frontend", "a search in the public's words lists the real bills it must and "
+                   "none it must not, and two sides' words for a subject list the "
+                   "same bills", needs=("build_pages",))
+def _search_cases(BP):
+    """The person, 1 October: "typing lgbtq or trans doesn't show the several
+    bathroom ban bills put forward this past session, or the hormone therapy
+    ban".
+
+    The bill search read a title, a sponsor's name and a committee's name, in
+    the record's vocabulary. No title of the term says lgbtq, transgender,
+    bathroom or hormone therapy: they say "classification of individuals based
+    on biological sex" and "hormone treatments and puberty blockers". So
+    "lgbtq" found nothing, and "trans", read as the start of a word, found 54
+    titles with transfer, transparency or transportation and 108 bills heard
+    by a Transportation committee. Of 393 bills a reader would expect across
+    65 everyday searches, 110 were found.
+
+    app.js's CONCEPTS is a table of the words people type and the wording
+    titles use, and this holds it to real bills. Every bill in
+    tests/search_cases.json is a real one of 2025-2026 with its title copied
+    from the index; the searches are run as the header search and /search run
+    them. Four things, each of which the page got wrong before:
+
+    - a bill a search must list is listed, and one that is plainly about
+      something else is not: "trans" lists HB 148 and not the transfer of
+      state-owned real property; "ai" lists the artificial intelligence bills
+      and not school building aid; "adu" not "adults";
+    - a bill that has the reader's OWN word comes before one the table found:
+      "weed" still lists the aquatic weeds bill, first; "undocumented" the two
+      titles that say so;
+    - two sides' words for one subject return one list -- "gun control" and
+      "gun rights", "pro life" and "pro choice", "illegal immigrants" and
+      "undocumented immigrants". If a pair ever differs the table has taken a
+      side, which is the one thing a finding aid must not do;
+    - the table is well formed: no word in two entries, none read as the
+      start of a longer word, no term carrying a hyphen that a title, searched
+      with its hyphens as spaces, could never match ("gender-affirming" sat
+      in SYN for weeks and matched nothing).
+
+    Since the same day the search also reads what each bill's own analysis
+    and text are about (build_search_index.py), because a table covers only
+    what somebody thought of. tests/search_index.json is that index for the
+    bills in the cases file, cut from the real one, and the cases hold what
+    it adds and what it must not:
+
+    - a bill whose title does not say what it is about is found by its own
+      words: the four vetoed bills that say "lavatory" once, in the text;
+      HB 232, which names abortion only in its analysis; the two amendments
+      titled "the adoption of tax laws", for "income tax";
+    - a bill is never listed under a subject its own text does not mention.
+      SB 520, "relative to breast surgeries for minors", was listed under
+      "lgbtq" and "sex change" by its title; its text is about breast
+      reduction for pain. HB 712, with the same words in its title, says
+      "transgender" and "gender reassignment" in its text, and is listed;
+    - a passing mention is not a subject: "bathroom" does not list the rent
+      registry that counts bathrooms;
+    - a bill found through the table says which of its own words found it.
+
+    AND FROM THE SECOND REVIEW (2 October), thirty searches nobody had
+    tuned, of which thirteen put a wrong bill in the first ten and twelve
+    listed nothing or left the obvious bill out. Every case until then was a
+    table ask or a single word; none held a search of two ordinary words to
+    bills it must never list. Now:
+
+    - two words found apart are not a bill: "medical debt", "eminent domain"
+      and "college students voting" list nothing, "small claims" not the
+      tariff credit for small businesses, "data centers" not the Electronic
+      Registration Information Center;
+    - a repeat is not a second mention: "social media" does not list the
+      bills that say where a notice is posted, in one sentence printed twice;
+    - the word people use finds the bills that use another: "voting
+      machines", "telehealth", "expungement", "cops", "dmv", "forever
+      chemicals";
+    - a name is found as it is said: "senator carson", "tim lang" (until 17
+      October 2026, when the person asked that a name list no bill by its
+      sponsor: those cases, "alice" and "alice wade" now hold that none of
+      the member's bills is listed, and "post" that a title's word still is);
+    - the record's own slips are offered their word: "goverment", "libary";
+    - and a word that is a property of an object ("constructor") is a word.
+
+    AND FROM THE THIRD (2 October), forty searches written blind, of which
+    nine failed, five in ways the second pass had introduced:
+
+    - a longer word in a text is read only for a word of six letters:
+      "bail" does not list a bill on cloud-stored files for "bailment";
+    - the letters typed, written out, are the word: "dwi" opens on the bills
+      titled "driving while intoxicated" and not on an insurance bill whose
+      analysis mentions a DWI conviction; and a term that is the word with
+      another ending is the word: "eviction" lists "notice to evict" above
+      the bills on rent payments;
+    - a phrase is not answered with a bare word: "solar panels" does not
+      list solar radiation modification;
+    - two letters swapped are a slip of a word ten bills use: "flouride" is
+      offered fluoride;
+    - and the words the record never uses for bills it has: "dcyf", "ufo",
+      "ozempic", "e-bike", and "license plates" for the statutes' number
+      plates.
+    Two it found are NOT held here, because the rule that would fix them was
+    measured and cost seven bills these cases must list: SB 404 under
+    "minimum wage" and SB 217 under "social media" (build_search_index.py,
+    A PHRASE ONLY THE TEXT HAS).
+
+    The cases are machine-judged, by reading; they are a seed and not the
+    person's reference. A title is never typed into the file; it is copied
+    from the index.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    if not (Path("src/pages/app.js").exists() and Path("tests/search_cases.json").exists()):
+        return "skip", "app.js or tests/search_cases.json not in this directory"
+    # Not a skip: with the cases here and their index gone, the searches that
+    # only a bill's own text answers would stop being checked, quietly.
+    assert Path("tests/search_index.json").exists(), (
+        "tests/search_cases.json is here and tests/search_index.json is not: "
+        "the cases cannot be run. python3 src/pages/build_search_index.py --fixture "
+        "tests/search_cases.json writes it")
+    got = _search_cases_node(BP)
+    assert not got["fails"], "search: " + _search_cases_said(got["fails"])
+    # A check that passes by asking nothing proves nothing.
+    assert got["cases"] >= 130 and got["found"] >= 450 and got["kept"] >= 120 \
+        and got["pairs"] >= 15 and got["entries"] >= 60 and got["byText"] >= 25 \
+        and got["offered"] >= 9 and got["nothing"] >= 12, (
+        f"the cases no longer exercise the search: {got['cases']} searches, "
+        f"{got['found']} bills they must list ({got['byText']} of them found "
+        f"by the bill's own analysis or text), {got['kept']} they must not, "
+        f"{got['offered']} misspellings offered as their word, {got['nothing']} "
+        f"real words offered as none, {got['pairs']} pairs, {got['entries']} "
+        "entries in the table")
+    return "ok", (f"{got['cases']} real searches over {got['bills']} real bills of "
+                  f"2025-2026: {got['found']} listed that must be, "
+                  f"{got['byText']} of them by the bill's own analysis or text; "
+                  f"{got['kept']} not listed that must not be; "
+                  f"{got['offered']} misspellings offered as their word and "
+                  f"{got['nothing']} real words as none; {got['pairs']} "
+                  f"groups of sides' words return one list each; a table of "
+                  f"{got['entries']} entries, {got['asks']} words and "
+                  f"{got['terms']} terms, none read as the start of a longer word")
+
+
+@check("data", "the same searches over the real index: none floods, and every term "
+               "of the table is in some bill's title, analysis or text",
+       needs=("build_pages",))
+def _search_cases_real(BP):
+    """The fixture cannot show a flood: it holds only the bills the cases name.
+
+    "trans" returned 162 bills and "absentee ballot" 142, every election bill
+    of the term. Over the real index each case carries a ceiling, and a
+    search that lists more than it fails here. The pairs of sides' words are
+    held to one list across every term on disk, not one.
+
+    And silence is not success. A term of the table that no title uses looks
+    exactly like one that works: it lists nothing, and nothing fails. Every
+    term is looked for in every term's titles, and one found in none is
+    named. That is asked only when most of the terms' indexes are here, since
+    a term may be in a 1999 title and no later one.
+
+    A bill named by a case whose title has since changed is reported, not
+    failed: amendments retitle bills, and a stale case should be seen.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    cases = Path("tests/search_cases.json")
+    if not (Path("src/pages/app.js").exists() and cases.exists()):
+        return "skip", "app.js or tests/search_cases.json not in this directory"
+    term = json.loads(_source(cases))["term"]
+    own = Path("site/idx") / f"{term}.json"
+    if not own.exists():
+        return "skip", f"site/idx/{term}.json is not built"
+    if not (Path("site/sidx") / f"{term}.json").exists():
+        return "skip", (f"site/sidx/{term}.json is not built "
+                        "(build_search_index.py writes it)")
+    others = sorted(f for f in own.parent.glob("*.json")
+                    if re.fullmatch(r"\d{4}-\d{4}", f.stem) and f != own)
+    got = _search_cases_node(BP, [own, *others], "site/sidx")
+    assert not got["fails"], "search, on the real index: " + _search_cases_said(got["fails"])
+    assert not got["whole"] or (got["across"] >= 11 and got["apart"] >= 4), (
+        f"over every term, {got['across']} searches were held to bills of "
+        f"other terms and {got['apart']} SYN entries no title uses were "
+        "read: the checks of the whole record are no longer asking")
+    return "ok", (f"{got['cases']} searches over the {got['bills']:,} bills of {term} "
+                  f"and the pairs over {got['every']:,} bills of {got['files']} terms, "
+                  f"{got['read']} of them with their text read; {got['across']} "
+                  f"searches held to bills of other terms"
+                  + (f"; all {got['terms']} terms of the table are in a title, "
+                     "an analysis or a text"
+                     if got["whole"] else
+                     f"; the table's terms not checked, with {got['files']} "
+                     "indexes here")
+                  + (f"; retitled since its case was written: "
+                     f"{', '.join(got['stale'][:8])}" if got["stale"] else ""))
+
+# THE SEARCH INDEX (1 October 2026). build_search_index.py reduces every
+# bill's analysis and text to the words it is about; app.js asks the file it
+# writes. Two programs in two languages read the same words, so what they
+# share is held here: how a plural is read, which keys a word is looked up
+# under, which phrases the tables can ask for, and how a phrase is found.
+_SEARCH_INDEX_JS = r"""
+// node go.js <billmatch.js> <words.json>  -- app.js's side of what
+// build_search_index.py must agree with.
+const fs = require("fs");
+const window = {};
+new Function("window", fs.readFileSync(process.argv[2], "utf8"))(window);
+const A = window.GR_BILLMATCH, IN = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+const norm = s => String(s).toLowerCase().replace(/-/g, " ").replace(/,/g, " ").split(/\s+/).filter(Boolean).join(" ");
+const said = new Set(), typed = new Set();
+for (const g of A.SYN) for (const t of g) typed.add(norm(t));
+for (const c of A.CONCEPTS) {
+  for (const t of [...c.terms, ...(c.named || []), ...(c.with || [])]) said.add(norm(t));
+  for (const a of c.ask) typed.add(norm(a));
+}
+const out = {
+  wordsTaken: A.wordsAdd(IN.wordsFile),
+  codes: IN.pairs.map(p => A.pairCode(p[0], p[1])),
+  stop: A.STOP.map(norm).sort(),
+  stem: IN.words.map(w => A.stem(w)),
+  keys: IN.words.slice(0, 400).map(w => [...A.wordKeys(w)].sort()),
+  phrases: [...new Set([...said, ...typed])].filter(t => t.includes(" ")).sort(),
+  words: [...said].filter(t => t && !t.includes(" ")).sort(),
+  wording: [...said].filter(t => t.includes(" ")).sort(),
+  counts: {},
+};
+// A phrase, found in real text as app.js finds one in a title.
+for (const p of IN.phrases) {
+  const rx = new RegExp(A.altRx(p).source, "g");
+  const n = IN.texts.reduce((t, s) => t + (s.match(rx) || []).length, 0);
+  if (n) out.counts[p] = n;
+}
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the search index is built the way the page reads it, and "
+                   "says of real bills what their own text says",
+       needs=("build_pages", "build_search_index"))
+def _search_index_builds(BP, SI):
+    """The person, 1 October: "smart enough to find what a user is likely
+    looking for if they don't know the bill number, so that may also include
+    the bill text itself or the topic".
+
+    build_search_index.py writes, per term, what each bill's analysis and
+    text are about; app.js reads it. Each half was written against the other
+    and nothing stopped them drifting: a plural filed under one key and
+    looked up under another finds nothing, and nothing fails.
+
+    tests/search_texts.json is the General Court's own text of eight bills
+    of 2025-2026. An index is built from them here and held to what those
+    texts say:
+
+    - HB 1442 and SB 38 say "lavatory" once, in the text, and it is kept at
+      weight 0: found beside "biological sex", never on its own;
+    - HB 712's text says "gender reassignment" (round the brackets that mark
+      removed matter) and is filed under it; SB 520, with the same words in
+      its title, has no word about gender, and is filed under none;
+    - HB 232 names abortion in its analysis, and its title does not;
+    - CACR 10's analysis is read as one, though it opens "Be it Resolved"
+      where a bill opens "Be it Enacted";
+    - HB 550's fiscal note is not read: "fiscal" is no word of the bill;
+    - HB 1450 mentions a bathroom once and is not about one.
+
+    And the two programs agree: on the singular of every word in the
+    fixture's index, on the keys a word is looked up under, on the phrases
+    and words the tables name, and on how many times each phrase occurs in
+    those eight texts.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    texts_f = Path("tests/search_texts.json")
+    if not (Path("src/pages/app.js").exists() and Path("tests/search_cases.json").exists()):
+        return "skip", "app.js or tests/search_cases.json not in this directory"
+    # Not a skip, for the reason given in the check above.
+    lost = [f for f in ("tests/search_texts.json", "tests/search_index.json")
+            if not Path(f).exists()]
+    assert not lost, (
+        f"tests/search_cases.json is here and {', '.join(lost)} is not: "
+        "python3 src/pages/build_search_index.py --fixture tests/search_cases.json "
+        "writes them")
+    app = _source("src/pages/app.js")
+    fx = json.loads(_source(texts_f))
+    term, bills = fx["term"], fx["bills"]
+    table = SI.table_terms(app)
+    rows = [{"id": b, "title": r["title"], "term": term} for b, r in bills.items()]
+    data, tally = SI.build_term(term, rows, bills, table)
+    assert tally["with_text"] == len(bills) >= 8, (
+        f"tests/search_texts.json holds {len(bills)} bills and "
+        f"{tally['with_text']} had a text to read")
+    got = SI.unpack(data)
+
+    def has(part, key, bill):
+        return [(a, w) for b, a, w in got[part].get(key, []) if b == bill]
+
+    wrong = []
+    for bill in ("HB1442", "SB38"):
+        if has("w", "lavatory", bill) != [(False, 0)]:
+            wrong.append(f"{bill}'s one 'lavatory', in its text, is filed as "
+                         f"{has('w', 'lavatory', bill)}, not as a single "
+                         "mention (weight 0, not in the analysis)")
+    if not any(w > 0 for _a, w in has("p", "gender reassignment", "HB712")):
+        wrong.append("HB712 is not filed under 'gender reassignment', which "
+                     "its text says round the brackets of removed matter")
+    gendered = sorted(k for part in ("w", "p") for k in got[part]
+                      if re.search(r"gender|transgender|sex\b", k)
+                      and has(part, k, "SB520"))
+    if gendered:
+        wrong.append(f"SB520 is filed under {gendered}: its text never "
+                     "mentions gender")
+    if not any(a and w >= 5 for a, w in has("w", "abortion", "HB232")):
+        wrong.append("HB232's analysis names abortion and the index does not "
+                     f"say so: {has('w', 'abortion', 'HB232')}")
+    if not any(a for a, _w in has("p", "tax on personal income", "CACR10")):
+        wrong.append("CACR10's analysis ('any tax on personal income') is not "
+                     "read as an analysis: the resolving clause is not known")
+    # The fiscal note. This asked whether HB 550 was filed under "fiscal",
+    # "methodology" or "lba", and could not fail: none of the three would be
+    # filed for it with the note read either. These are words the note
+    # leans on and the bill does not -- "FY" 29 times -- and the same build
+    # with the note's heading taken off, so that it is read as text, must
+    # file the bill under one of them, or this is asking nothing again.
+    note_words = ("fy", "indeterminable", "efa", "million")
+    filed = [w for w in note_words if has("w", w, "HB550")]
+    if filed:
+        wrong.append(f"HB550 is filed under {filed}: its fiscal note was read")
+    unmarked = dict(bills)
+    unmarked["HB550"] = dict(bills["HB550"],
+                             text=SI.FISCAL_NOTE.sub("", bills["HB550"]["text"]))
+    with_note = SI.unpack(SI.build_term(term, rows, unmarked, table)[0])
+    assert any(b == "HB550" for w in note_words
+               for b, _a, _w in with_note["w"].get(w, [])), (
+        "HB550 with its fiscal note read as text is filed under none of "
+        f"{note_words}: the check that the note is not read can no longer fail")
+    if any(w > 0 for _a, w in has("w", "bathroom", "HB1450")):
+        wrong.append("HB1450 mentions a bathroom once and is filed as about one")
+    # THE SPONSORS' NAMES ARE NOT THE BILL'S WORDS (17 October 2026). HB 232
+    # given the front matter thirteen archived texts open with, in both of
+    # its spellings: the names in it are filed under nothing, and the
+    # analysis after it is still read as the analysis.
+    fronted = SI.unpack(SI.build_term(term, rows, dict(bills, HB232=dict(
+        bills["HB232"], text="INTRODUCED BY: Rep. Lefebvre of Hills 31; Rep.\n\n"
+        "Packard of Rock 3\n\nREFERRED TO: Judiciary\n\nSPONSORS: Rep. Wade, "
+        "Straf 15\n\nCOMMITTEE: Judiciary\n\n" + bills["HB232"]["text"])), table)[0])
+    named = [k for k in ("lefebvre", "packard", "wade")
+             if any(b == "HB232" for b, _a, _w in fronted["w"].get(k, []))]
+    if named or not any(a and b == "HB232" for b, a, _w in fronted["w"].get("abortion", [])):
+        wrong.append(f"HB232, with a list of sponsors before its analysis, is filed "
+                     f"under {named or 'their names'} or no longer under its "
+                     "analysis's abortion: a name lists the bills its member filed")
+    assert not wrong, "the search index, on eight real texts: " + "; ".join(wrong[:3])
+    # only() cuts a file down and must not change what it says of a bill.
+    part = SI.unpack(SI.only(data, {"HB712", "HB232"}))
+    for p in ("w", "p"):
+        for k, posts in got[p].items():
+            keep = [x for x in posts if x[0] in ("HB712", "HB232")]
+            assert part[p].get(k, []) == keep, (
+                f"only() changed what the index says of {k!r}")
+    assert part["b"] == {b: got["b"][b] for b in ("HB712", "HB232")}, (
+        "only() changed the pairs the index holds for a bill")
+
+    # WORDS THAT STAND TOGETHER (2 October). A search of two ordinary words
+    # listed any bill with each of them somewhere. The index holds, per bill,
+    # the pairs of words that stand next to each other in its analysis or
+    # twice in its text; the page counts a word found outside a title only
+    # beside another word of the search.
+    def pair(bill, a, b):
+        return SI.pair_code(a, b) in got["b"].get(bill, set())
+    assert isinstance(data["b"], list) and len(data["b"]) == len(data["ids"]) \
+        and all(isinstance(x, str) and len(x) % 5 == 0 for x in data["b"]), (
+        "the pairs are not one string of five-letter codes for each bill of ids")
+    wrong = []
+    if not (pair("HB232", "abortion", "service") and pair("HB232", "health", "care")):
+        wrong.append("HB232's analysis says 'abortion services' and 'health "
+                     "care institutions' and the index holds neither pair")
+    if pair("HB232", "service", "abortion") or pair("HB232", "abortion", "care"):
+        wrong.append("HB232 is filed under a pair its analysis does not have "
+                     "in that order, or with a word between")
+    if not pair("HB712", "limit", "breast"):
+        wrong.append("HB712's analysis 'limits breast surgeries' is not a "
+                     "pair: a word of the title beside one of the analysis")
+    assert not wrong, "the pairs, on eight real texts: " + "; ".join(wrong)
+
+    # A REPEAT IS NOT A SECOND MENTION. A constitutional amendment printed
+    # as the amendment and again as the ballot question; one sentence in two
+    # sections; a word twice in one sentence. A heading counts each time.
+    def count(text, word):
+        keys, sent, _clause, _at, heads = SI.read(SI.norm(text))
+        return SI.distinct([i for i, k in enumerate(keys) if k == word],
+                           keys, sent, heads)
+    twice = ("Nothing herein shall be construed to modify any provision of law "
+             "relating to eminent domain, trespass, or property rights.\n")
+    said = {
+        "the same sentence printed twice": (count(
+            "I. " + twice + "The ballot shall ask whether the voter approves.\n"
+            "II. " + twice, "eminent"), 1),
+        "one sentence, changed by a word, in two sections": (count(
+            "Such notice shall be by public notice on the main website or any "
+            "social media accounts utilized by the municipality.\nThe town "
+            "shall hold a hearing.\nSuch notice shall be by public notice on "
+            "the main website and any social media accounts utilized by the "
+            "municipality.", "media"), 1),
+        "a word twice in one sentence": (count(
+            "Kits for covid 19 (covid 19 tests or test kits) may be sold.",
+            "covid"), 1),
+        "a word in two sentences that say different things": (count(
+            "The landlord shall return the deposit within 30 days.\nNo "
+            "landlord shall charge an application fee to a prospective "
+            "tenant.", "landlord"), 2),
+        "a heading two sections share": (count(
+            "1 New Paragraph; Protection of Persons from Domestic Violence; "
+            "Temporary Relief. Amend RSA 173-B:4 by inserting the following:\n"
+            "III. The clerk shall transmit any orders.\n"
+            "2 New Paragraph; Protection of Persons from Domestic Violence; "
+            "Relief. Amend RSA 173-B:5 by inserting the following:\n"
+            "XI. The clerk shall transmit any orders.", "violence"), 2),
+    }
+    off = [f"{k}: counted {a}, not {b}" for k, (a, b) in said.items() if a != b]
+    assert not off, "a repeat is counted as a second mention, or the reverse: " \
+        + "; ".join(off)
+
+    # THE RECORD'S OWN SLIPS are not words (sidx/words.json): one bill says
+    # "goverment", and a reader who typed it was offered nothing. Never a
+    # changed letter, which is how "incest" was read as "invest".
+    from collections import Counter
+    seen = Counter({"government": 3500, "goverment": 1, "hospital": 1400,
+                    "hopsital": 1, "harassment": 140, "harrassment": 1,
+                    "invest": 300, "incest": 1, "plants": 500, "planted": 1,
+                    "lender": 150, "blender": 1, "allen": 1, "alien": 400,
+                    "recieve": 4, "receive": 5000})
+    slipped = SI.slips(seen, {"allen"})
+    assert slipped == {"goverment": "government", "hopsital": "hospital",
+                       "harrassment": "harassment"}, (
+        "slips() no longer takes exactly a letter dropped, added or swapped "
+        "inside a word one bill uses: it found " + str(slipped))
+
+    # EVERY WORD THE BILLS USE (sidx/words.json). The page offers a misspelt
+    # word as the word it sounds like only when this file says no bill has
+    # used it; for a day there was no such file, and "incest", "white" and a
+    # former senator's surname were each read as another word. It holds a
+    # word a bill says once, since the question is whether any bill has said
+    # it; only words of five letters or more, since the page offers nothing
+    # for a shorter one; and the names of members and towns.
+    known = set()
+    for b in bills.values():
+        known |= SI.known_words(b["title"]) | SI.known_words(b["text"])
+    for w in ("lavatory", "biological", "reassignment", "abortion", "fiscal"):
+        assert w in known, (
+            f"{w!r} is in the eight texts and not among the words read from "
+            "them for sidx/words.json")
+    odd = sorted(w for w in known if len(w) < 5 or not re.fullmatch(r"[a-z]+", w))
+    assert not odd, f"words.json would carry {odd[:5]}: not words as the page reads one"
+    names, _said = SI.name_words(["generated/careers.json", "generated/places.json"])
+    if Path("generated/careers.json").exists() and Path("generated/places.json").exists():
+        lost = [w for w in ("concord", "londonderry", "allen", "moore") if w not in names]
+        assert not lost, (
+            f"{lost} are names of towns or members in careers.json and "
+            "places.json and were not read from them: a name is not a "
+            "misspelling")
+    words_file = SI.words_file(known | names)
+    assert words_file["v"] == 1 and words_file["n"] == len(known | names) \
+        == len(words_file["words"].split(" ")), "words_file() miscounts its words"
+
+    # The same words, read by the page.
+    fixture = json.loads(_source("tests/search_index.json"))
+    words = sorted(set(fixture["w"]) | {w + e for w in list(fixture["w"])[:300]
+                                       for e in ("s", "es", "ies")}
+                   | {"news", "arms", "dues", "glass", "bus", "taxes", "cars",
+                      "trans", "pfas", "classes", "ai"})
+    norm_texts = [SI.norm(t) for b in bills.values() for t in SI.split(b["text"])]
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of app.js: {e}")
+    hook = "return {queryGroups,"
+    assert matcher.count(hook) == 1, "billmatch.js no longer returns queryGroups first"
+    matcher = matcher.replace(hook, "return {SYN,CONCEPTS,STOP,pairCode,altRx,wordKeys,stem,queryGroups,")
+    # Pairs of words to code both ways: real ones, and ones with a digit and
+    # an apostrophe's remains in them.
+    pairs = [[a, b] for a, b in zip(words, words[1:])][:300] + [
+        ["data", "center"], ["child", "custody"], ["91", "a"], ["rsa", "540"],
+        ["driver", "license"], ["e", "z"]]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "billmatch.js").write_text(matcher, encoding="utf-8")
+        (root / "go.js").write_text(_SEARCH_INDEX_JS, encoding="utf-8")
+        (root / "words.json").write_text(json.dumps(
+            {"words": words, "phrases": table[0], "texts": norm_texts,
+             "wordsFile": words_file, "pairs": pairs}),
+            encoding="utf-8")
+        r = _run(["node", "go.js", "billmatch.js", "words.json"], cwd=root,
+                 capture_output=True, text=True, timeout=120)
+        said = (r.stdout + r.stderr).strip()
+        assert r.returncode == 0 and said, (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        js = json.loads(said.splitlines()[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert js["wordsTaken"] is True, (
+        "the page refuses the words file the build writes (sidx/words.json): "
+        "a misspelt search would be offered nothing")
+    differ = [(w, SI.stem(w), s) for w, s in zip(words, js["stem"]) if SI.stem(w) != s]
+    assert not differ, (
+        f"build_search_index.stem and app.js's stem() read {len(differ)} words "
+        f"differently, so the index files a word where the page does not look: "
+        f"{differ[:3]}")
+    keys = [(w, sorted(SI.word_keys(w)), k) for w, k in zip(words[:400], js["keys"])
+            if sorted(SI.word_keys(w)) != k]
+    assert not keys, (f"word_keys and app.js's wordKeys() differ on {len(keys)} "
+                      f"words: {keys[:2]}")
+    codes = [(p, SI.pair_code(*p), c) for p, c in zip(pairs, js["codes"])
+             if SI.pair_code(*p) != c]
+    assert not codes and len(js["codes"]) == len(pairs) >= 200, (
+        f"pair_code and app.js's pairCode() differ on {len(codes)} of "
+        f"{len(pairs)} pairs, so the page asks for a pair under a code the "
+        f"build never wrote: {codes[:2]}")
+    assert len({SI.pair_code(*p) for p in pairs}) == len({tuple(p) for p in pairs}), (
+        "two of a few hundred pairs share a code: thirty bits are not being used")
+    assert js["stop"] == sorted(table[3]) and len(table[3]) >= 30, (
+        "the words a search is read without (STOP), read out of app.js by "
+        "build_search_index and by app.js itself, differ: two words stand "
+        "together across them in the index and not on the page, or the other "
+        f"way round. Only the build has {sorted(set(table[3]) - set(js['stop']))[:3]}, "
+        f"only the page has {sorted(set(js['stop']) - set(table[3]))[:3]}")
+    for name, mine in (("phrases", table[0]), ("words", table[1]),
+                       ("wording", table[2])):
+        only_py = sorted(set(mine) - set(js[name]))[:3]
+        only_js = sorted(set(js[name]) - set(mine))[:3]
+        assert not only_py and not only_js, (
+            f"the tables' {name}, read out of app.js by build_search_index and "
+            f"by app.js itself, differ: only the build has {only_py}, only the "
+            f"page has {only_js}")
+    counts = {}
+    for p in table[0]:
+        rx = SI.phrase_rx(p)
+        n = sum(len(rx.findall(t)) for t in norm_texts)
+        if n:
+            counts[p] = n
+    off = sorted(p for p in set(counts) | set(js["counts"])
+                 if counts.get(p) != js["counts"].get(p))
+    assert not off, (
+        f"a phrase is found differently by the build and by the page in the "
+        f"same text: {[(p, counts.get(p), js['counts'].get(p)) for p in off[:3]]}")
+    assert len(counts) >= 15, (
+        f"only {len(counts)} of the tables' phrases occur in the eight texts: "
+        "the comparison proves little")
+    return "ok", (f"an index built from {len(bills)} real texts says what they "
+                  f"say, and not what a fiscal note says; it holds the pairs "
+                  f"of words that stand together in them, coded alike by the "
+                  f"build and the page; a repeat is not a second mention; "
+                  f"{len(known):,} words "
+                  f"of theirs and {len(names):,} of members' and towns' names "
+                  f"make a words file the page takes; the build and the page "
+                  f"agree on {len(words):,} words' "
+                  f"singulars, on {len(table[0])} phrases and {len(table[1])} "
+                  f"words the tables name, and on {len(counts)} phrases found "
+                  "in those texts")
+
+
+# The header's box (find.js) on its own: the three things the third review
+# found in it, 2 October.
+_FIND_COMMITTEE_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+// components.js's chip, which every page loads ahead of find.js; its words are
+// not what this test is about.
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findMatch, findName, findWhat, findKind})");
+const rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+F.FIND.rows = rows;
+const panel = document.getElementById("findout");
+F.findDraw("housing");
+console.log(JSON.stringify({
+  names: rows.map(r => F.findName(r)), whats: rows.map(r => F.findWhat(r)),
+  kinds: rows.map(r => F.findKind(r)), housing: F.findMatch("housing", 50).map(r => r[1]),
+  formerly: ["housing", "criminal", "state institutions"].map(q => F.findWhat(rows[6], q)),
+  senate: F.findMatch("senate", 50).map(r => r[1]), html: panel.innerHTML,
+}));
+"""
+
+
+# _search_polish's two runs. The first is app.js as /bills runs it, with
+# find.js beside it as bills.html loads it, so /search's bill list
+# (findBills) is asked with the bill search's own matcher; the second is
+# find.js and /search's script on a page without app.js.
+_SEARCH_POLISH_APP = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const replaced = [];
+history.replaceState = (st, t, u) => { replaced.push(String(u)); };
+// A media query that keeps what listens to it, as a browser's does.
+globalThis.matchMedia = (q) => ({ media: q, matches: false, heard: [],
+  addEventListener(t, f) { this.heard.push([t, f]); } });
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({render, sortRows, matches, filtersFromAddress, addressList, fitPickers, sel, PHONE_ROW,"
+  + " setIdx:(a)=>{IDX=a;}, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;}, setQuery:(q)=>{query=q;},"
+  + " setSort:(x)=>{sortBy=x;sortChosen=true;}, unsort:()=>{sortChosen=false;sortBy='num';},"
+  + " getSort:()=>[sortBy,sortChosen], setShown:(n)=>{SHOWN=n;}})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+const norm = x => String(x || "").toLowerCase().replace(/-/g, " ");
+const rows = go.bills.map(b => Object.assign(b, {hayT: norm([b.id, b.n, b.title].join(" ")),
+  hayC: norm((b.committees || []).join(" | "))}));
+s.setIdx(rows);
+s.setMeta(go.meta);
+const out = {};
+const html = () => document.querySelector("#results").innerHTML;
+const cards = h => [...h.matchAll(/<article class="card[^"]*" data-id="([^"]+)"[\s\S]*?bill\/(\d{4})\//g)].map(m => m[2] + "/" + m[1]);
+const heads = h => [...h.matchAll(/<h2 class="grp">([\s\S]*?)<\/h2>/g)].map(m => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+try {
+  // Every term's bills by best match, and each term alone.
+  s.unsort(); s.setTerm("all"); s.setQuery(go.q); s.render();
+  out.all = {sort: s.getSort(), cards: cards(html()), heads: heads(html())};
+  out.alone = {};
+  for (const t of go.meta.terms) { s.unsort(); s.setTerm(t); s.render(); out.alone[t] = cards(html()); }
+  // No term's heading in one term, nor on All Terms by any other order.
+  s.unsort(); s.setTerm(go.meta.terms[0]); s.render(); out.oneTermHeads = heads(html());
+  s.setSort("num"); s.setTerm("all"); s.render(); out.numHeads = heads(html());
+  // One card drawn of the first term's two: its heading still counts both.
+  s.unsort(); s.setTerm("all"); s.setShown(1); s.render(true);
+  out.one = {cards: cards(html()), heads: heads(html())};
+  s.setShown(25);
+  // A chosen sponsor's headings, and no term's.
+  s.sel.sponsor.add(go.sponsor); s.unsort(); s.render();
+  out.sponsor = heads(html()); s.sel.sponsor.clear();
+  // The order each list starts in, and one the reader chose.
+  const deflt = (t, q) => { s.unsort(); s.setTerm(t); s.setQuery(q); s.render(); return s.getSort(); };
+  out.defaults = {all_none: deflt("all", ""), all_words: deflt("all", go.q), all_number: deflt("all", "HB 1"),
+                  term_none: deflt(go.meta.terms[0], ""), term_words: deflt(go.meta.terms[0], go.q)};
+  s.setSort("status"); s.setTerm("all"); s.setQuery(""); s.render(); out.defaults.chosen = s.getSort();
+  // The two ways in time, over the dated bills and over all of them.
+  const ids = (x, list) => { s.setSort(x); return s.sortRows(list).map(b => b.term + "/" + b.id); };
+  const once = rows.filter(b => b.last_action && rows.filter(x => x.last_action === b.last_action).length === 1);
+  out.recent = ids("recent", once); out.oldest = ids("oldest", once);
+  out.recentAll = ids("recent", rows); out.oldestAll = ids("oldest", rows);
+  // The two ways by number (the owner, 16 November 2026).
+  out.num = ids("num", rows); out.numdesc = ids("numdesc", rows);
+  // ?sort=oldest read from an address, and written into one.
+  s.unsort(); s.setTerm("all"); s.setQuery("");
+  s.filtersFromAddress(new URLSearchParams("sort=oldest&term=all"));
+  out.read = s.getSort(); replaced.length = 0; s.addressList(); out.written = replaced.slice(-1)[0] || "";
+  // ...and ?sort=numdesc.
+  s.unsort(); s.setTerm("all"); s.setQuery("");
+  s.filtersFromAddress(new URLSearchParams("sort=numdesc&term=all"));
+  out.readDesc = s.getSort(); replaced.length = 0; s.addressList(); out.writtenDesc = replaced.slice(-1)[0] || "";
+  // The requests' note.
+  s.unsort(); s.setMeta(Object.assign({}, go.meta, {requests: go.requests})); s.setTerm(go.requests.term);
+  s.setQuery(""); s.render(); out.note = document.querySelector("#summary").innerHTML;
+  s.setMeta(go.meta);
+  // /search's list of every term's bills, asked of find.js beside app.js.
+  vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+  const F = vm.runInThisContext("({FBILLS, FALL, findBills, _fbillApi})");
+  F.FBILLS.api = F._fbillApi(); F.FALL.rows = rows; F.FALL.terms = go.meta.terms.slice();
+  const A = F.findBills(go.q, 40, true);
+  out.search = A && A.state === "ready" ? A.top.map(b => b.term + "/" + b.id) : A;
+  s.unsort(); s.setTerm("all"); s.setQuery(go.q); s.render();
+  out.listed = s.sortRows(rows.filter(b => s.matches(b))).map(b => b.term + "/" + b.id);
+  // The pickers' words on a phone: each option with data-short swapped for a
+  // new option with those words, the value kept, and back on a wide screen.
+  const opt = (value, text, short) => {
+    const o = {value, textContent: text, attrs: short ? {"data-short": short} : {},
+      getAttribute(k) { return Object.prototype.hasOwnProperty.call(this.attrs, k) ? this.attrs[k] : null; },
+      setAttribute(k, v) { this.attrs[k] = String(v); },
+      cloneNode() { const n = opt(this.value, this.textContent); n.attrs = Object.assign({}, this.attrs); return n; }};
+    return o;
+  };
+  const year = document.querySelector("#year"), sort = document.querySelector("#sort");
+  year.options = [opt("all", "All Terms"), opt("2027-requests", "2027 Bill Requests", "2027 Requests"),
+                  opt("2025-2026", "2025–2026 Term", "2025–2026")];
+  sort.options = [opt("best", "Best match"), opt("recent", "Newest action"),
+                  opt("oldest", "Oldest action")];
+  // Replaced, the chosen option takes the choice with it, as in Chrome.
+  for (const x of [year, sort]) x.replaceChild = function (n, o) {
+    if (o.value === this.value) this.value = this.options[0].value;
+    this.options[this.options.indexOf(o)] = n; };
+  year.value = "2025-2026"; sort.value = "recent";
+  // The row as bills.html writes it: the picker and its label, then the
+  // box's label and the box.
+  const row = {kids: []}, part = (name, tag) => {
+    const e = name === "year" ? year : name === "qbox" ? document.querySelector(".searchrow .qbox") : {};
+    e.name = name; if (tag) e.tagName = tag; e._parent = row;
+    Object.defineProperty(e, "previousElementSibling", {configurable: true,
+      get() { const i = row.kids.indexOf(e); return i > 0 ? row.kids[i - 1] : null; }});
+    Object.defineProperty(e, "nextSibling", {configurable: true,
+      get() { return row.kids[row.kids.indexOf(e) + 1] || null; }});
+    e.compareDocumentPosition = (o) => row.kids.indexOf(o) > row.kids.indexOf(e) ? 4 : 2;
+    return e; };
+  row.kids = [part("yearLabel", "LABEL"), part("year", "SELECT"), part("qLabel", "LABEL"), part("qbox", "DIV")];
+  row.insertBefore = (n, ref) => { row.kids.splice(row.kids.indexOf(n), 1);
+    row.kids.splice(ref ? row.kids.indexOf(ref) : row.kids.length, 0, n); };
+  for (const k of row.kids) if (k.name !== "year" && k.name !== "qbox") k.parentNode = row;
+  const before = year.options[2];
+  s.PHONE_ROW.matches = true; s.fitPickers();
+  out.phone = {year: year.options.map(o => o.textContent), sort: sort.options.map(o => o.textContent),
+               replaced: year.options[2] !== before, values: [year.value, sort.value],
+               order: row.kids.map(k => k.name)};
+  s.PHONE_ROW.matches = false; s.fitPickers();
+  out.wide = {year: year.options.map(o => o.textContent), sort: sort.options.map(o => o.textContent),
+              values: [year.value, sort.value], order: row.kids.map(k => k.name)};
+  out.listens = s.PHONE_ROW.heard.some(([t, f]) => t === "change" && f === s.fitPickers);
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + String(e.stack).split("\n")[1]; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+_SEARCH_POLISH_FIND = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+// components.js's, which every page loads ahead of find.js.
+globalThis.termWords = (t) => String(t || "").replace(/^(\d{4})-(\d{4})$/, "$1–$2");
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+// The panel's box, kept: find.js asks the panel for it once and listens on it.
+const made = [], ce = document.createElement.bind(document);
+document.createElement = (t) => { const e = ce(t), kept = {};
+  e.querySelector = (q) => (kept[q] ||= ce("input")); made.push(e); return e; };
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+let ready = null;
+document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw})");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+F.FIND.rows = go.rows;
+const order = (h) => (h.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+  a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+(async () => {
+  const out = { panel: {}, enter: {}, search: {} };
+  const panelOut = document.getElementById("findout");
+  for (const q of go.queries) { F.findDraw(q); out.panel[q] = order(panelOut.innerHTML); }
+  // Return in the header's box.
+  const panel = made.find(e => e.id === "findpanel");
+  const box = panel && panel.querySelector("#findq");
+  for (const q of go.enter) {
+    location.href = "(unchanged)"; box.value = q; let stopped = false;
+    for (const f of (box._on.keydown || []))
+      f({ key: "Enter", target: box, preventDefault() { stopped = true; }, stopPropagation() {} });
+    out.enter[q] = [location.href, stopped];
+  }
+  // /search's groups, in the order the page draws them.
+  vm.runInThisContext(fs.readFileSync("./search.js", "utf8"), { filename: "search.js" });
+  location.search = "?q=" + encodeURIComponent(go.queries[0]);
+  ready(); await ticks(30);
+  const rbox = document.getElementById("resq"), resout = document.getElementById("resout");
+  for (const q of go.queries) {
+    rbox.value = q; rbox.fire("input"); await ticks(30);
+    out.search[q] = [...resout.innerHTML.matchAll(/<h2>([^<]*)/g)].map(m => m[1].trim());
+  }
+  // Where no bill matches, counted: a matcher that finds none, over every term.
+  const G = vm.runInThisContext("({FBILLS, FALL})");
+  G.FBILLS.api = {billNumbers: () => null, queryGroups: (q) => [{word: q}], readShort: (g) => g,
+    matchScore: () => 0, looseness: () => 0, titleShare: () => 0, statusCat: () => "",
+    billKey: () => [0, 0], whyListed: () => null};
+  G.FBILLS.rows = []; G.FBILLS.file = []; G.FBILLS.term = go.term;
+  // This term counted at none while the rest are still being counted...
+  G.FALL.rows = null; G.FALL.failed = false; G.FALL.terms = [go.term]; G.FALL.loading = new Promise(() => {});
+  rbox.value = go.none; rbox.fire("input"); await ticks(30);
+  out.counting = [...resout.innerHTML.matchAll(/<h2>([^<]*)/g)].map(m => m[1].trim());
+  // ...and every term counted at none.
+  G.FALL.rows = [];
+  F.findDraw(go.none); out.panelNone = order(panelOut.innerHTML);
+  rbox.value = go.none; rbox.fire("input"); await ticks(30);
+  out.none = [...resout.innerHTML.matchAll(/<h2>([^<]*)/g)].map(m => m[1].trim());
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+def _css_media_blocks(css):
+    """[(condition, body)] of every @media block in a stylesheet without its
+    comments, the body brace-matched; and the text outside them all."""
+    blocks, outside, i = [], [], 0
+    for m in re.finditer(r"@media([^{]*)\{", css):
+        if m.start() < i:
+            continue
+        depth, j = 1, m.end()
+        while depth and j < len(css):
+            depth += {"{": 1, "}": -1}.get(css[j], 0)
+            j += 1
+        outside.append(css[i:m.start()])
+        blocks.append((m.group(1).strip(), css[m.end():j - 1]))
+        i = j
+    outside.append(css[i:])
+    return blocks, "".join(outside)
+
+
+@check("frontend", "the bill search on All Terms runs a term at a time under the term's heading by "
+       "best match, and opens on the newest action with no words; Oldest action is Most recent "
+       "action reversed; the guides follow the bills in the header's panel and on /search; "
+       "Return opens /search; the requests' note is Alice's; and a phone puts the box first",
+       needs=("build_pages",))
+def _search_polish(BP):
+    """Alice's answers of 8 November 2026, five changes and one more:
+
+    1. With words and All Terms on Best match, a heading per term, newest
+       first, each counted over the whole result as a Status heading is; inside
+       a term, the best match's order (sortRows). With no words on All Terms,
+       the newest action first; a bill number keeps number order; an order
+       the reader chose is kept. /search's list of every term's bills
+       (find.js, findBills) is the same list, in the same order.
+    2. The guides and the Learn pages after the bills in the header's panel,
+       and the How-To Guides straight after the Bills on /search: "minimum
+       wage" led with the guide to rights at work above its seven bills.
+    3. Return in the header's box opens /search on what was typed, a bill's
+       number too, and not the panel's first row.
+    4. On a phone the box first, then the term picker and the Sort in equal
+       halves, the count on one line and what the search read under it; the
+       pickers' shorter words there (fitPickers); a desktop unchanged.
+    5. The requests' note shorter, in Alice's words, with its Spanish a draft.
+    And "Oldest action" beside "Most recent action" (the same date, reversed,
+    the same tie by number), read from and written into the address.
+
+    Run in node over three terms of bills in which an older term's bill
+    matches better than a newer one's, so that a best match by the old
+    tie-break would run the terms together; and over a subject, a guide, a
+    Learn page and a member found only by the start of a word."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not installed"
+    terms = ["2025-2026", "2023-2024", "2021-2022"]
+
+    def bill(bid, term, title, last, sponsor="Ann Lee", status="Killed", chip="Died"):
+        return {"id": bid, "n": re.sub(r"^([A-Z]+)", r"\1 ", bid), "title": title, "kind": "done",
+                "status": status, "chip": chip, "committees": [], "committee": "", "topic": "",
+                "sponsor": sponsor, "term": term, "year": int(term[:4]), "passage": "",
+                "votedays": [], "nrc": 0, "last_action": last}
+    bills = [bill("HB1", terms[0], "relative to flying a kite at the beach", "2026-03-04"),
+             bill("SB3", terms[0], "relative to kite flying", "2025-05-06", sponsor="Bo Ray"),
+             bill("HB2", terms[0], "relative to licensing barbers", "2026-01-20"),
+             bill("HB4", terms[1], "kite flying", "2024-04-02"),
+             bill("HB5", terms[1], "relative to the wage board", "2023-03-08"),
+             bill("HB6", terms[2], "kite flying", "2022-01-14"),
+             bill("HB7", terms[2], "relative to fishing", "2021-06-09"),
+             bill("HB8", terms[2], "relative to dams", ""),
+             # Two of one day, which both orders list by number.
+             bill("HB10", terms[1], "relative to tunnels", "2023-05-05"),
+             bill("HB9", terms[1], "relative to bridges", "2023-05-05")]
+    app_fx = {"bills": bills, "q": "kite flying", "sponsor": "Ann Lee",
+              "meta": {"terms": terms, "committee_codes": {}, "topics": []},
+              "requests": {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "n": 1}}
+    rows = [["topic", "Minimum Wage", "Bills on this subject", "/bills?topic=Minimum+Wage", ""],
+            ["guide", "Your Rights at Work: Getting Paid", "Pay, breaks and overtime.",
+             "/guides/rights-at-work", "Get paid · minimum wage · overtime"],
+            ["learn", "The Minimum Wage, Explained", "How the state sets it.", "/learn/minimum-wage", ""],
+            ["legislator", "Rep. Ann Overtimer (D - Straf 1)", "House · Straf 1 · D",
+             "/legislator/ann-overtimer", "Strafford"],
+            # Found by its line alone, not its name, as the County Officials
+            # page is for "register my car".
+            ["page", "County Officials", "Officials who get paid by the county", "/officials#county", ""]]
+    find_fx = {"rows": rows, "queries": ["minimum wage", "overtime"],
+               "enter": ["minimum wage", "HB 1034", "   "], "none": "get paid", "term": terms[0]}
+    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
+    assert m, "build_pages.SEARCH_JS carries no <script>"
+    root = Path(tempfile.mkdtemp(prefix="gr-polish-"))
+    try:
+        files = {"stub.js": _source("tests/dom_stub.js"),
+                 "page.js": _with_components(_source("src/pages/app.js")),
+                 "find.js": _source("src/pages/find.js"),
+                 "search.js": m.group(1), "app.js": _SEARCH_POLISH_APP,
+                 "panel.js": _SEARCH_POLISH_FIND}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        (root / "go.json").write_text(json.dumps(app_fx), encoding="utf-8")
+        r = _run([node, "app.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+        (root / "go.json").write_text(json.dumps(find_fx), encoding="utf-8")
+        r = _run([node, "panel.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node panel.js: " + said[-300:]
+        fnd = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert "threw" not in got, f"the bill search threw {got['threw']}"
+    bad = []
+    # 1. A term at a time, newest first, each in its own order, headed and counted.
+    a = got["all"]
+    seen = [c.split("/")[0] for c in a["cards"]]
+    years = [t[:4] for t in terms]
+    runs = [y for i, y in enumerate(seen) if not i or seen[i - 1] != y]
+    if a["sort"] != ["best", False] or runs != years or len(runs) != len(set(runs)):
+        bad.append(f"All Terms by best match does not run a term at a time, newest first: "
+                   f"{a['sort']} {a['cards']}")
+    for t in terms:
+        mine = [c for c in a["cards"] if c.startswith(t[:4] + "/") or c.startswith(str(int(t[:4]) + 1) + "/")]
+        if mine != got["alone"][t]:
+            bad.append(f"inside {t} All Terms lists {mine}, where the term alone lists {got['alone'][t]}")
+    want = ["2025–2026 Term 2 bills", "2023–2024 Term 1 bill", "2021–2022 Term 1 bill"]
+    if a["heads"] != want:
+        bad.append(f"All Terms by best match is headed {a['heads']}, not {want}")
+    if got["one"]["heads"] != want[:1] or len(got["one"]["cards"]) != 1:
+        bad.append(f"with one card drawn, the term's heading is {got['one']['heads']}: it is "
+                   "counted over what is drawn, not the whole result")
+    if any("Term" in h for h in got["sponsor"]) or not any("Prime sponsored" in h for h in got["sponsor"]):
+        bad.append(f"under a chosen sponsor the headings are {got['sponsor']}")
+    if got["search"] != got["listed"]:
+        bad.append(f"/search's list of every term's bills runs {got['search']}, where /bills on "
+                   f"All Terms runs {got['listed']}")
+    d = got["defaults"]
+    if d != {"all_none": ["recent", False], "all_words": ["best", False], "all_number": ["num", False],
+             "term_none": ["num", False], "term_words": ["best", False], "chosen": ["status", True]}:
+        bad.append(f"the order a list opens in: {d}")
+    # And Oldest action.
+    if got["oldest"] != got["recent"][::-1] or len(got["recent"]) < 7:
+        bad.append(f"Oldest action is not Most recent action reversed: {got['recent']} / {got['oldest']}")
+    if got["recentAll"][-1] != "2021-2022/HB8" or got["oldestAll"][-1] != "2021-2022/HB8":
+        bad.append("a bill with no action recorded is not last in both orders: "
+                   f"{got['recentAll'][-1]} / {got['oldestAll'][-1]}")
+    tie = ["2023-2024/HB9", "2023-2024/HB10"]
+    if any([k for k in got[o] if k in tie] != tie for o in ("recentAll", "oldestAll")):
+        bad.append(f"two bills of one day are not listed by number in both orders: "
+                   f"{got['recentAll']} / {got['oldestAll']}")
+    if got["oneTermHeads"] or got["numHeads"]:
+        bad.append(f"a term's heading stands in one term ({got['oneTermHeads']}) or on All Terms "
+                   f"by number ({got['numHeads']})")
+    if got["read"] != ["oldest", True] or "sort=oldest" not in got["written"]:
+        bad.append(f"?sort=oldest is read as {got['read']} and written as {got['written']!r}")
+    # BILL NUMBER, HIGH TO LOW (the owner, 16 November 2026): the kinds in low
+    # to high's order, each kind's numbers the other way, and within a number
+    # the newer term first in both.
+    def kinds_runs(keys):
+        out_, last = [], None
+        for k in keys:
+            kind = re.match(r"[A-Z]+", k.split("/")[1]).group(0)
+            if kind != last:
+                out_.append((kind, []))
+                last = kind
+            out_[-1][1].append(k)
+        return out_
+    up, down = kinds_runs(got["num"]), kinds_runs(got["numdesc"])
+    nums = lambda run: [int(re.search(r"\d+", k.split("/")[1]).group(0)) for k in run]
+    if [k for k, _ in up] != [k for k, _ in down] or len(up) < 2:
+        bad.append(f"high to low does not keep the kinds in low to high's order: {got['numdesc']}")
+    for (kind, ru), (_, rd) in zip(up, down):
+        if sorted(ru) != sorted(rd) or nums(rd) != sorted(nums(rd), reverse=True) \
+                or nums(ru) != sorted(nums(ru)):
+            bad.append(f"{kind} runs {ru} low to high and {rd} high to low")
+    if got["readDesc"] != ["numdesc", True] or "sort=numdesc" not in got["writtenDesc"]:
+        bad.append(f"?sort=numdesc is read as {got['readDesc']} and written as {got['writtenDesc']!r}")
+    html_ = _source("src/pages/bills.html")
+    opts = re.findall(r'<option value="(\w+)"[^>]*>([^<]*)</option>',
+                      html_[html_.index('<select id="sort">'):html_.index("</select>", html_.index('<select id="sort">'))])
+    if opts != [("best", "Best match"), ("num", "Bill number, low to high"),
+                ("numdesc", "Bill number, high to low"), ("recent", "Newest action"),
+                ("oldest", "Oldest action"), ("status", "Status")]:
+        bad.append(f"the Sort offers {opts}")
+    # 2 and 3. The panel, /search and Return.
+    p = fnd["panel"]["minimum wage"]
+    at = {k: (p.index(k) if k in p else -1) for k in
+          ("/bills?topic=Minimum+Wage", "BILLS", "/guides/rights-at-work", "/learn/minimum-wage")}
+    if not 0 <= at["/bills?topic=Minimum+Wage"] < at["BILLS"] < at["/guides/rights-at-work"] < at["/learn/minimum-wage"]:
+        bad.append(f"the panel for 'minimum wage' runs {p}: the subject, the bills, the guide, the Learn page")
+    p = fnd["panel"]["overtime"]
+    if not (p and p[0] == "BILLS" and p.index("/guides/rights-at-work") < p.index("/legislator/ann-overtimer")):
+        bad.append(f"the panel for 'overtime' runs {p}: the bills, then the guide, then a member found "
+                   "by the start of a word")
+    sg = fnd["search"]
+    if not (sg["minimum wage"][:3] == ["Subjects", "Bills", "How-To Guides"] and "Learn" in sg["minimum wage"]):
+        bad.append(f"/search for 'minimum wage' runs {sg['minimum wage']}")
+    if sg["overtime"][:3] != ["Bills", "How-To Guides", "Representatives"]:
+        bad.append(f"/search for 'overtime' runs {sg['overtime']}: the bills first, the guides "
+                   "straight after them")
+    if fnd["panelNone"] != ["/guides/rights-at-work", "/officials#county"] \
+            or fnd["none"] != ["How-To Guides", "Officials", "Bills"] \
+            or fnd["counting"] != ["How-To Guides", "Officials", "Bills"]:
+        bad.append(f"where no bill matches 'get paid', the panel runs {fnd['panelNone']} and /search "
+                   f"{fnd['none']}, and {fnd['counting']} while the earlier terms are counted: the "
+                   "guide is to lead, and the box saying there is no bill to follow what matches")
+    twice = {q: [h for h in p if p.count(h) > 1] for q, p in
+             list(fnd["panel"].items()) + [("get paid", fnd["panelNone"])]}
+    if any(twice.values()):
+        bad.append(f"the panel draws a row twice: {twice}")
+    # /search's draw() hides none of the page's own names: a const "box" in
+    # it hid the search box, and the redraw each load makes, draw(box.value),
+    # drew the page empty once the bills had come (8 November 2026). The
+    # loads here never come, so it is read off the script.
+    sj = m.group(1)
+    top = set(re.findall(r"^(?:const|let) (\w+)=", sj, re.M))
+    body = sj[sj.index("function draw(q){"):sj.index("\nfunction tell(")]
+    hid = sorted(n for n in top if re.search(rf"\b(?:const|let) {n}=", body))
+    if not {"box", "out", "lead"} <= top or hid:
+        bad.append(f"/search's draw() declares a name of the page's own again: {hid}")
+    e = fnd["enter"]
+    if e != {"minimum wage": ["/search?q=minimum%20wage", True], "HB 1034": ["/search?q=HB%201034", True],
+             "   ": ["(unchanged)", False]}:
+        bad.append(f"Return in the header's box: {e}")
+    # 5. The note, and its Spanish a draft.
+    note = ("<b>Requests, not bills yet.</b> Each one, called an LSR (Legislative Service Request), is a member&rsquo;s request to have a bill drafted: "
+            "a title and a sponsor, nothing more, until it is filed as a numbered 2027 bill. Some "
+            "are withdrawn first.")
+    if got["note"] != note:
+        bad.append(f"the requests' note reads {got['note']!r}")
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"].get(
+        "bills.requests_note") or {}
+    if es.get("state") != "draft" or "{year}" not in es.get("es", ""):
+        bad.append(f"the note's Spanish is not a draft with its year: {es}")
+    # 4. A phone: the pickers' words, then the row itself.
+    ph, wd = got["phone"], got["wide"]
+    if ph["year"] != ["All Terms", "2027 Requests", "2025–2026"] \
+            or ph["sort"] != ["Best match", "Newest action", "Oldest action"] \
+            or not ph["replaced"] or ph["values"] != ["2025-2026", "recent"]:
+        bad.append(f"a phone's pickers read {ph}: their shorter words, each a new option, the value kept")
+    if wd["year"][1:] != ["2027 Bill Requests", "2025–2026 Term"] or wd["sort"][1] != "Newest action" \
+            or wd["values"] != ["2025-2026", "recent"]:
+        bad.append(f"a wide screen's pickers read {wd}")
+    if ph["order"] != ["qLabel", "qbox", "yearLabel", "year"] \
+            or wd["order"] != ["yearLabel", "year", "qLabel", "qbox"]:
+        bad.append(f"the term picker is met in the page as {ph['order']} on a phone and "
+                   f"{wd['order']} on a wide screen: after the box there, before it here")
+    if not got["listens"]:
+        bad.append("the pickers are not fitted again when the screen changes width (a phone turned)")
+    app = _source("src/pages/app.js")
+    if 'data-short="${termDash(t)}">${termDash(t)} Term</option>' not in app \
+            or ' data-short="${esc(reqYear())} Requests"' not in app or ".join(\"\");\n   fitPickers();" not in app:
+        bad.append("the term picker's options carry no shorter words, or are not fitted when drawn")
+    if '<option value="recent">Newest action</option>' not in html_:
+        bad.append("the Sort does not offer Newest action (Alice, 9 November 2026: beside Oldest action)")
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
+    blocks, outside = _css_media_blocks(css)
+    phone = "".join(b for c, b in blocks if re.fullmatch(r"\(\s*max-width:\s*45em\s*\)", c))
+    rules = {sel_.strip(): body.replace(" ", "") for sel_, body in re.findall(r"([^{}]+)\{([^{}]*)\}", phone)}
+    need = {".searchrow .in": ["display:flex", "flex-wrap:wrap", "padding-left:var(--sp-5)",
+                               "padding-right:var(--sp-5)"],
+            ".searchrow #year": ["padding:0var(--sp-2)"],
+            ".searchrow .qline,.searchrow .qhint": ["display:contents"],
+            ".searchrow .qbox": ["order:1", "flex:10100%"],
+            ".searchrow #year,.searchrow #sort": ["order:2", "flex:11calc(50%-var(--sp-4)/2)"],
+            ".searchrow #count": ["order:3", "flex:10100%", "max-width:none"],
+            ".searchrow #synhint": ["order:4", "flex:10100%"]}
+    for sel_, decls in need.items():
+        body = rules.get(sel_)
+        if body is None or not all(d in body for d in decls):
+            bad.append(f"a phone's search row has no {sel_}{{{';'.join(decls)}}}: {body}")
+    if re.search(r"\.searchrow\s+(?:\.qline|\.qhint|\.qbox|#year|#sort|#count|#synhint)\b", outside):
+        bad.append("a rule of the phone's search row reaches a desktop")
+    assert not bad, "; ".join(bad)
+    return "ok", ("All Terms by best match a term at a time under counted headings, the same list "
+                  "as /search's; no words on All Terms opens on the newest action; Oldest action "
+                  "reversed; guides after the bills in the panel and on /search; Return opens "
+                  "/search; the note in Alice's words; a phone's row box-first with fitted pickers")
+
+
+# The site search over find.json as build_indexes writes it (25 October 2026):
+# find.js's findMatch, _fwhole and findKind over the rows, for each case.
+_FIND_PAGES_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findMatch, findKind, _fwhole})");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+F.FIND.rows = go.rows;
+const out = {};
+for (const q of go.cases)
+  out[q] = F.findMatch(q, Infinity).map(r => ({name: r[1], href: r[3], kind: F.findKind(r),
+                                               whole: F._fwhole(r, q)}));
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the site search finds the Officials page by a reader's words for their own "
+       "member, each tab of officials by its people's names, the Laws and the Calendar, and a "
+       "city once, above its wards", needs=("build_indexes", "guides", "civics", "build_civics"))
+def _find_pages_officials(BI, G, civics, BC):
+    """The audit of 25 October 2026, M3 and M4. The header's search presents
+    itself as searching everything, and "laws" and "calendar" did not offer
+    those sections; the Governor, the US Senators and the councilors were
+    not found; "my senator" and "who is my state rep" found nothing and "my
+    rep" offered representatives whose names begin "My"; and "Concord"
+    listed ten rows each called a Town, Concord, Ward 1 to Concord, Ward 10.
+
+    So find_index writes, without growing find.json by more than these: the
+    Laws and the Calendar among the pages; the Officials page with the words
+    a reader asks for their member by; a row for each tab of officials, its
+    words the offices it draws and the names of the people on it, read from
+    corrections/officials.json through its one reader as the page reads
+    them; and for a city with no page of its own one row, "Concord", "10
+    wards", opening the Officials page's town finder on it, with each ward a
+    Ward. find.js reads a page's words as part of its name, and a title in
+    them as a reader's title is read ("my senator" is "my sen."), so each of
+    these leads the bills. Here: find_index over a small site, and find.js
+    over what it writes, with the guide to finding your representatives
+    beside it, whose words "my senator" also found nothing."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    from build_members_elect import read_officials
+    try:
+        off = read_officials()
+    except (OSError, ValueError):
+        return "skip", "corrections/officials.json is not here"
+    site = Path(tempfile.mkdtemp())
+    try:
+        (site / "town").mkdir()
+        for stem in ("concord-ward-1", "concord-ward-2", "concord-ward-3", "andover", "hill"):
+            (site / "town" / f"{stem}.html").write_text("<p>", encoding="utf-8")
+        towns = {"Concord": [{"county": "Merrimack", "ward": str(w)} for w in (1, 2, 3)],
+                 "Andover": [{"county": "Merrimack", "ward": ""}],
+                 "Hill": [{"county": "Merrimack", "ward": ""}]}
+        legs = [{"display_full": "Rep. Myles England (D - Straf 12)", "chamber": "H",
+                 "district_label": "Straf 12", "party": "Democrat", "slug": "myles-england-straf-12",
+                 "last": "England", "first": "Myles", "county": "Strafford"},
+                {"display_full": "Sen. Sharon Carson (R - SD14)", "chamber": "S",
+                 "district_label": "SD14", "party": "Republican", "slug": "sharon-carson-sd-14",
+                 "last": "Carson", "first": "Sharon", "county": "Rockingham"}]
+        rows = BI.find_index(site, legs, towns)
+    finally:
+        shutil.rmtree(site, ignore_errors=True)
+    t = next(t for t in civics.TOPICS if t["slug"] == "your-representatives")
+    rows.append(["guide", t["title"], t["blurb"], "/" + BC.article_href(t["slug"])[:-5],
+                 G.search_words(t["slug"])])
+    # What find.json now holds: the city once, its wards each a Ward.
+    town = [(r[0], r[1], r[2], r[3]) for r in rows if r[0] in ("town", "ward")]
+    at = [i for i, r in enumerate(town) if r[1] == "Concord"]
+    assert at and town[at[0]:at[0] + 2] == [
+            ("town", "Concord", "3 wards · Merrimack County", "officials?town=Concord"),
+            ("ward", "Concord, Ward 1", "Merrimack County", "town/concord-ward-1")] \
+        and ("town", "Andover", "Merrimack County", "town/andover") in town \
+        and not [r for r in town if r[0] == "town" and ", Ward " in r[1]], (
+        f"find.json's towns and wards are {town}: a city with no page of its own is one Town row "
+        "opening the Officials page's finder on it, above its wards, each a Ward")
+    pages = {r[1]: r for r in rows if r[0] == "page"}
+    tabs = {"Federal Delegation": "officials#federal", "Executive Branch": "officials#executive",
+            "Judicial Branch": "officials#judicial", "County Officials": "officials#counties"}
+    assert {n: pages.get(n, [None] * 4)[3] for n in tabs} == tabs \
+        and pages.get("Laws", [None] * 4)[3] == "laws" \
+        and pages.get("Calendar", [None] * 4)[3] == "calendar", (
+        "find.json does not carry the Laws, the Calendar and the Officials page's four tabs of "
+        f"officials: {sorted(pages)}")
+    # A name each tab draws, read from the hand file, not typed here.
+    def last(rec):
+        return str((rec or {}).get("name") or "").split()[-1].lower()
+    gov = last(off.get("governor"))
+    senator = last(((off.get("us_senate") or {}).get("seats") or [{}])[0])
+    councilor = last(next(iter(((off.get("council") or {}).get("districts") or {}).values()), {}))
+    justice = last((((off.get("judicial") or {}).get("supreme_court") or {}).get("justices") or [{}])[0])
+    assert gov and senator and councilor and justice, (
+        "corrections/officials.json names no Governor, US Senator, councilor or justice to search for")
+    want = {"my rep": "Officials", "my senator": "Officials", "who is my state rep": "Officials",
+            "who is my rep": "Officials", "who is my senator": "Officials",
+            "my representative": "Officials", gov: "Executive Branch",
+            "governor": "Executive Branch", "executive council": "Executive Branch",
+            councilor: "Executive Branch", senator: "Federal Delegation",
+            "us senator": "Federal Delegation", justice: "Judicial Branch",
+            "supreme court": "Judicial Branch", "sheriff": "County Officials",
+            "laws": "Laws", "calendar": "Calendar", "concord": "Concord"}
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_source("src/pages/find.js"), encoding="utf-8")
+        (root / "go.json").write_text(json.dumps({"rows": rows, "cases": list(want)}), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_PAGES_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last_line = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last_line.startswith("{"), "node go.js: " + last_line[:300]
+        got = json.loads(last_line)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    for q, name in want.items():
+        found = got.get(q) or []
+        hit = next((i for i, x in enumerate(found) if x["name"] == name), None)
+        if hit is None:
+            bad.append(f"{q!r} does not find {name}")
+        elif not found[hit]["whole"]:
+            bad.append(f"{q!r} finds {name} only by part of a word, so the bills go above it")
+        elif [x for x in found[:hit] if not x["whole"] or x["kind"] in ("Legislator", "Former Member")]:
+            bad.append(f"{q!r} lists {[x['name'] for x in found[:hit]]} above {name}")
+    my = [x["name"] for x in got["my rep"]]
+    if "Rep. Myles England (D - Straf 12)" in my[:my.index("Officials") if "Officials" in my else None]:
+        bad.append(f"'my rep' prefers a member whose name begins My: {my}")
+    # "who is my state rep" lost the guide (the preview check of 25 October
+    # 2026): every word typed must start a word of the row, and none of its
+    # words began "is" until WORDS took the question as a reader asks it.
+    for q in ("my senator", "my representative", "who is my state rep", "who is my rep",
+              "who is my senator"):
+        if "Finding Your Representatives" not in [x["name"] for x in got[q] if x["whole"]]:
+            bad.append(f"{q!r} does not find the guide to finding your representatives by its words")
+    con = got["concord"]
+    if con[0]["href"] != "officials?town=Concord" or con[0]["kind"] != "Town" \
+            or [x["kind"] for x in con[1:4]] != ["Ward"] * 3:
+        bad.append(f"'concord' lists {[(x['name'], x['kind']) for x in con[:4]]}: the city, then "
+                   "its wards, each a Ward")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", (f"{len(want)} searches: the Officials page by 'my rep' and 'who is my state rep', "
+                  f"its tabs by '{gov}', '{senator}', '{councilor}' and '{justice}', the Laws, the "
+                  "Calendar, and Concord once above its wards, each a Ward")
+
+
+# The header's panel and /search's list over find.json as build_indexes writes
+# it (26 October 2026): findDraw's addresses in order, the bills as BILLS, and
+# findMatch's with the cap off, which is what /search reads.
+_FIND_WARDS_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findMatch})");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+F.FIND.rows = go.rows;
+const panel = document.getElementById("findout");
+const out = {panel: {}, search: {}};
+for (const q of go.cases) {
+  F.findDraw(q);
+  out.panel[q] = (panel.innerHTML.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+    a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+  out.search[q] = F.findMatch(q, Infinity).map(r => r[3]);
+}
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the header's search shows a city with wards once, its bills under it, and its "
+       "wards only where a ward is asked for; /search still lists every ward",
+       needs=("build_indexes", "build_pages"))
+def _find_city_without_wards(BI, BP):
+    """The owner, 26 October 2026 (C): typing "Concord" into the header's
+    search filled the dropdown with the city and seven of its ten wards,
+    pushing its bills out of sight. find.js's findDraw now leaves a ward out
+    of the panel where its city's row is among the answers (_ffold), unless
+    what was typed asks for a ward -- "ward", or a number -- and the same for
+    every city with wards. The city's row opens the Officials page's town
+    view, which lists the wards, and /search, which reads findMatch with the
+    cap off, still lists each one. Here: find_index over two cities with
+    wards and a town without, and find.js in node, as the header draws it.
+
+    The fold comes before the panel's cap of eight (the review of 26 October
+    2026): folded after it, "Concord" filled the eight with the city and
+    seven wards, folded those to the city, and lost the guide that mentions
+    Concord and ranks after the wards -- the State House tour, here as on
+    the site. And a number is a ward asked for even where it matches the
+    city's own row: "concord 1" matches "10 wards", and without the number's
+    exemption Ward 1 was folded away under it."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    site = Path(tempfile.mkdtemp(prefix="gr-wards-"))
+    try:
+        (site / "town").mkdir()
+        towns = {"Concord": [{"county": "Merrimack", "ward": str(w)} for w in range(1, 11)],
+                 "Manchester": [{"county": "Hillsborough", "ward": str(w)} for w in (1, 2, 3)],
+                 "Andover": [{"county": "Merrimack", "ward": ""}]}
+        for t, seats in towns.items():
+            for s in seats:
+                stem = t.lower() + (f"-ward-{s['ward']}" if s["ward"] else "")
+                (site / "town" / f"{stem}.html").write_text("<p>", encoding="utf-8")
+        # A guide that mentions Concord in its line, not its name: it ranks
+        # after the city's ten wards, as the published guide does.
+        (site / "guides").mkdir()
+        (site / "guides" / "tour-the-state-house.html").write_text(
+            '<meta property="og:title" content="How to Tour the New Hampshire State House | '
+            'Granite Record"><meta name="description" content="Arranging a tour of the State '
+            'House in Concord through its Visitor Center.">', encoding="utf-8")
+        rows = BI.find_index(site, [], towns)
+    finally:
+        shutil.rmtree(site, ignore_errors=True)
+    tour = "/guides/tour-the-state-house"
+    cases = ["concord", "Concord", "manchester", "andover", "concord ward", "concord 3",
+             "concord 1", "ward 2"]
+    root = Path(tempfile.mkdtemp(prefix="gr-wards-js-"))
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
+                                      encoding="utf-8")
+        (root / "find.js").write_text(_source("src/pages/find.js"),
+                                      encoding="utf-8")
+        (root / "go.json").write_text(json.dumps({"rows": rows, "cases": cases}), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_WARDS_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + said[-300:]
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    panel, search = got["panel"], got["search"]
+    bad = []
+    for q, city in (("concord", "Concord"), ("Concord", "Concord"), ("manchester", "Manchester")):
+        drawn = panel[q]
+        if drawn[:2] != [f"/officials?town={city}", "BILLS"] or any("-ward-" in h for h in drawn):
+            bad.append(f"{q!r}: the panel draws {drawn[:6]}, not the city alone with its bills "
+                       "under it")
+        wards = [h for h in search[q] if h.startswith(f"town/{city.lower()}-ward-")]
+        if search[q][:1] != [f"officials?town={city}"] or len(wards) != len(towns[city]):
+            bad.append(f"{q!r}: /search lists {search[q][:4]} and {len(wards)} wards, not the city "
+                       f"over all {len(towns[city])}")
+    # Folded before the cap: the room the wards left goes to the guide that
+    # ranks after them, under the bills.
+    for q in ("concord", "Concord"):
+        if panel[q] != ["/officials?town=Concord", "BILLS", tour]:
+            bad.append(f"{q!r}: the panel draws {panel[q][:6]}, not the city, the bills and then "
+                       f"the guide that ranks after the wards ({tour}): its wards folded after "
+                       "the panel's eight were taken")
+    if panel["andover"][:1] != ["/town/andover"]:
+        bad.append(f"'andover', a town without wards, draws {panel['andover'][:3]}")
+    for q, want in (("concord ward", "/town/concord-ward-1"), ("concord 3", "/town/concord-ward-3"),
+                    ("concord 1", "/town/concord-ward-1"), ("ward 2", "/town/manchester-ward-2")):
+        if want not in panel[q]:
+            bad.append(f"{q!r} asks for a ward and the panel draws {panel[q][:6]}, without {want}")
+    # The panel's cap of eight, which findDraw now applies itself after the
+    # fold (findMatch reads uncapped there): "concord ward" has the city and
+    # its ten wards to show, and the panel draws eight of them.
+    shown = [h for h in panel["concord ward"] if h != "BILLS"]
+    if len(shown) != 8:
+        bad.append(f"'concord ward' has eleven answers and the panel draws {len(shown)}, not the "
+                   "eight it keeps to")
+    assert not bad, "; ".join(bad[:4])
+    assert "_ffold" not in BP.SEARCH_JS and "findMatch(s,Infinity)" in BP.SEARCH_JS, (
+        "/search no longer reads every answer, its wards with them")
+    return "ok", ("'Concord' and 'Manchester' draw the city alone and the bills under it, and "
+                  "'Concord' the guide that ranks after its wards; 'concord ward', 'concord 3', "
+                  "'concord 1' and 'ward 2' still draw wards; /search lists every ward under "
+                  "its city")
+
+
+@check("frontend", "the search names a committee with its chamber, House Housing Committee, so "
+       "it is not taken for the subject of the same name; it is still found by its own name",
+       needs=("build_pages",))
+def _find_committee_names(BP):
+    """The person, 16 October 2026: "Committees in the search should show as
+    House Housing Committee or Senate Judiciary Committee rather than just
+    Housing so they aren't confused with a topic." find.js's findName draws
+    the row (the header's panel, the home page's box) and the search page's
+    script draws its own rows with it too; find.json keeps the committee's
+    own name, which the matcher reads, so "house" does not find every House
+    committee. Here: each shape of name, the line no longer repeating "House
+    committee", a drawn panel, the matcher, and the search page using it."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    rows = [
+        ["committee", "Housing", "House committee", "committee/H64", ""],
+        ["topic", "Housing", "Bills on this subject", "bills?topic=Housing", ""],
+        # No longer sitting: the year it last sat and its years (build_indexes).
+        ["committee", "Special Committee on Housing", "House committee", "committee/H58", "",
+         2024, "2023 to 2024"],
+        ["committee", "Judiciary", "Senate committee", "committee/S09", ""],
+        ["committee", "Senate Special Committee on Redistricting", "Senate committee",
+         "committee/s100", ""],
+        ["town", "Housing Town", "Somewhere County", "town/x", ""],
+        # Found by an earlier name (r[7]): once State Institutions and Housing.
+        ["committee", "Criminal Justice and Public Safety", "House committee", "committee/H26",
+         "Terry Roy State Institutions and Housing", None, None, ["State Institutions and Housing"]],
+    ]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
+                                      encoding="utf-8")
+        (root / "find.js").write_text(_source("src/pages/find.js"),
+                                      encoding="utf-8")
+        (root / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_COMMITTEE_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["names"] == ["House Housing Committee", "Housing", "House Special Committee on Housing",
+                            "Senate Judiciary Committee", "Senate Special Committee on Redistricting",
+                            "Housing Town", "House Criminal Justice and Public Safety Committee"], got["names"]
+    assert got["whats"] == ["", "Bills on this subject", "No longer meets · 2023 to 2024", "", "",
+                            "Somewhere County", ""], got["whats"]
+    # FORMERLY, only where an old name is what matched (16 October 2026).
+    assert got["formerly"] == ["Formerly State Institutions and Housing", "",
+                               "Formerly State Institutions and Housing"], got["formerly"]
+    assert "Formerly State Institutions and Housing" in got["html"], (
+        "the drawn panel does not say which old name matched")
+    assert "House Housing Committee" in re.sub(r"<[^>]+>", "", got["html"]) and \
+        "House committee" not in got["html"], "the drawn panel still names the committee bare"
+    # A COMMITTEE THAT NO LONGER SITS (the person, 16 October 2026): called a
+    # Former Committee, found after the one that sits, and drawn after it.
+    assert got["kinds"][0] == "Committee" and got["kinds"][2] == "Former Committee", got["kinds"]
+    h = got["housing"]
+    assert "Housing" in h and "Special Committee on Housing" in h and \
+        h.index("Special Committee on Housing") > max(i for i, n in enumerate(h) if n == "Housing"), (
+            "a committee that no longer sits is found ahead of the one that does", h)
+    text = re.sub(r"<[^>]+>", "", got["html"])
+    assert text.index("House Special Committee on Housing") > text.index("House Housing Committee"), (
+        "the drawn panel puts the former committee first")
+    assert '{t:"Former Committees",' in _source("src/pages/build_pages.py") \
+        and 'k:r=>r[0]==="committee"&&!r[5]}' in _source("src/pages/build_pages.py"), "the search page lists former committees among the ones that sit"
+    bi = _source("src/pages/build_indexes.py")
+    assert '.get("archived")' in bi and "row += [max(last), years]" in bi, (
+        "build_indexes no longer marks a committee that no longer sits")
+    # The matcher is find.json's, untouched by the label: a committee is found
+    # by its own name and its line as before ("senate" finds the Senate's).
+    assert "Judiciary" in got["senate"], ("the label changed what the matcher finds", got["senate"])
+    js = BP.SEARCH_JS if hasattr(BP, "SEARCH_JS") else _source("src/pages/build_pages.py")
+    assert "_fmark(findName(r),q)" in js and "_fmark(r[1],q)" not in js, (
+        "the search page draws its committee rows by the bare name")
+    return "ok", ("House Housing Committee, House Special Committee on Housing, Senate Judiciary "
+                  "Committee, the Senate's own name kept; no repeated line; matched as before; a "
+                  "committee that no longer sits called a Former Committee and found after")
+
+
+# The header's box over tests/search_cases.json's finder rows: each case's
+# panel as drawn, as the addresses in it in order.
+_FIND_STUDY_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+globalThis.chip = (t, cls) => `<span class="${cls}">${t}</span>`;
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findKind})");
+const fx = JSON.parse(fs.readFileSync("./finder.json", "utf8"));
+F.FIND.rows = fx.rows;
+const panel = document.getElementById("findout");
+const out = {kinds: fx.rows.map(r => F.findKind(r)), cases: {}};
+for (const c of fx.cases) {
+  F.findDraw(c.q);
+  const html = panel.innerHTML;
+  out.cases[c.q] = (html.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+    a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+}
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the search ranks a statutory or study committee after the standing committees and "
+       "below the bills, in its own group on /search, as tests/search_cases.json's finder cases say",
+       needs=("build_pages",))
+def _find_study_committees_rank(BP):
+    """The person, 17 October 2026: statutory and study committees "should be
+    included on the committee page and in search results, but not as
+    prominently as standing committees and other results". find.json gives
+    each its class as its kind (build_indexes); find.js waits them as it does
+    a former committee, below the bills and after a standing committee found
+    as well, though before a committee that no longer sits; /search lists
+    them in a group of their own after the bills. The cases are real names
+    (tests/search_cases.json, "finder"); "veterans" put the statutory State
+    Veterans Advisory Committee first while name length decided it."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    fx = json.loads(_source("tests/search_cases.json"))["finder"]
+    root = Path(tempfile.mkdtemp(prefix="gr-findstudy-"))
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"),
+                                      encoding="utf-8")
+        (root / "find.js").write_text(_source("src/pages/find.js"),
+                                      encoding="utf-8")
+        (root / "finder.json").write_text(json.dumps(fx), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_STUDY_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + said[-300:]
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    href = {row[1]: "/" + row[3] for row in fx["rows"]}
+    kinds = dict(zip((row[1] for row in fx["rows"]), got["kinds"]))
+    assert kinds["State Veterans Advisory Committee"] == "Statutory Committee", kinds
+    for c in fx["cases"]:
+        order = got["cases"][c["q"]]
+        a, b = href[c["above"]], href[c["below"]]
+        assert a in order and b in order and order.index(a) < order.index(b), (
+            f"{c['q']!r}: {c['above']} does not come before {c['below']} in the panel: {order}")
+        study = [i for i, h in enumerate(order) if "/committee/ss" in h]
+        if "BILLS" in order:
+            assert all(i > order.index("BILLS") for i in study), (
+                f"{c['q']!r}: a statutory or study committee is drawn above the bills: {order}")
+    js = BP.SEARCH_JS
+    # The group's own words for the line a screen reader hears (w:, 29
+    # October 2026) may stand between its title and its test.
+    m = re.search(r'\{t:"Statutory and Study Committees",(?:h:tr\([^)]*\),)?(?:w:\[[^\]]*\],)?'
+                  r'k:r=>r\[0\]==="statutory"\|\|r\[0\]==="study"\}', js)
+    assert m, "/search has no group of statutory and study committees"
+    g = m.start()
+    assert js.index('{t:"Subjects"') < g < js.index('{t:"Former Senators"') and re.search(
+        r'const AFTER=new Set\(\["Statutory and Study Committees",', js), (
+        "/search does not list the statutory and study committees as their own group after the bills")
+    # And the built find.json carries the fixture's, each its class.
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if not absent:
+        shared, _base, _ran, _days = _fixture_site_shared()
+        rows = json.loads((shared / "site" / "find.json").read_text(encoding="utf-8"))
+        mine = sorted((r[0], r[3]) for r in rows if r[0] in ("statutory", "study"))
+        assert mine == [("statutory", "committee/ss1451"), ("statutory", "committee/ss69"),
+                        ("study", "committee/ss1740")], (
+            f"find.json's statutory and study committees are {mine}")
+    return "ok", (f"{len(fx['cases'])} cases: each standing committee before the statutory one, "
+                  "the statutory before the former, none above the bills; their own group on /search")
+
+
+_FIND_DETAILS_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findMatch, findSuggest, _fenc: typeof _fenc === 'undefined' ? null : _fenc})");
+F.FIND.rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const out = { match: {}, suggest: {}, draw: {} };
+for (const q of ["dwi", "wich", "bald", "sand", "field", "edwin", "win"]) out.match[q] = F.findMatch(q, 50).map(r => r[1]);
+for (const q of ["ebike", "comittee", "litchfeild", "sandwhich", "baldwni"]) out.suggest[q] = F.findSuggest(q);
+const panel = document.getElementById("findout");
+for (const [name, q] of [["half an emoji", "\ud83d tax"], ["the other half", "tax \ude00"], ["a whole one", "😀 tax"]]) {
+  try { F.findDraw(q); out.draw[name] = { html: panel.innerHTML }; }
+  catch (e) { out.draw[name] = { threw: String(e && e.message) }; }
+}
+out.enc = F._fenc ? [F._fenc("\ud83d tax"), F._fenc("😀")] : null;
+console.log(JSON.stringify(out));
+"""
+
+
+@check("frontend", "the header's box reads a short word as the start of a "
+                   "word, offers no name two letters off a short one, and "
+                   "does not stop on half an emoji", needs=("build_pages",))
+def _find_details(BP):
+    """Three things the third review found in the header's search, 2 October.
+
+    "dwi" listed, under the bills, the town of Sandwich and six members
+    named Baldwin, Edwin, Hardwick and Goodwin: what was typed was looked
+    for anywhere in a row. Under five letters it must now begin a word of
+    the row; from five it may stand anywhere, as "field" is Litchfield.
+
+    "ebike" was offered "Did you mean mike?": two letters apart, in a word
+    of five. Two are allowed from seven letters ("comittee") and one below.
+
+    And a search holding half an emoji -- a surrogate with no partner, which
+    is what the box holds for a moment on some keyboards -- threw "URI
+    malformed" from encodeURIComponent and the panel was not drawn for that
+    keystroke; /search did the same. Every address a typed search goes into
+    is written through find.js's _fenc, here, on /search and on the home
+    page.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    if not (Path("src/pages/find.js").exists() and Path("tests/dom_stub.js").exists()):
+        return "skip", "find.js or dom_stub.js not in this directory"
+    rows = [
+        ["town", "Sandwich", "Carroll County", "town/sandwich", "Carroll"],
+        ["town", "Litchfield", "Hillsborough County", "town/litchfield", "Hillsborough"],
+        ["legislator", "Rep. Heather Baldwin (D - Graf 4)", "House", "legislator/heather-baldwin", "Grafton"],
+        ["former", "Former Rep. Edwin Smith", "House · Ches 11 · 2015–2018", "legislator/edwin-smith", "Cheshire", 2018],
+        ["former", "Former Rep. Richard Dwinell", "House · Merr 12 · 1999–2002", "legislator/richard-dwinell", "Merrimack", 2002],
+        ["former", "Former Rep. Mike Smith", "House · Rock 1 · 2001–2002", "legislator/mike-smith", "Rockingham", 2002],
+        ["committee", "House Finance", "House committee", "committee/H01", ""],
+        ["page", "Committees", "Every committee", "committees", ""],
+    ]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_source("src/pages/find.js"), encoding="utf-8")
+        (root / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_DETAILS_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), (
+            "node go.js: " + " / ".join(said.splitlines()[-3:])[:300])
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    m = got["match"]
+    assert m["dwi"] == ["Former Rep. Richard Dwinell"], (
+        f"'dwi' finds {m['dwi']}: a word of three letters is found in the "
+        "middle of Sandwich and Baldwin again, not only at the start of Dwinell")
+    assert not m["wich"] and not m["win"] and m["bald"] == ["Rep. Heather Baldwin (D - Graf 4)"] \
+        and m["sand"] == ["Sandwich"], (
+        f"a short word is not read as the start of a word: {m}")
+    assert m["field"] == ["Litchfield"] and m["edwin"] == ["Former Rep. Edwin Smith"], (
+        f"a word of five letters no longer finds the name it is inside of: {m}")
+    s = got["suggest"]
+    assert s["ebike"] == "" and s["comittee"] == "committees" and s["litchfeild"] == "litchfield", (
+        f"the names offered for a misspelt word are {s}: none for 'ebike' "
+        "(it was 'mike'), 'committees' for 'comittee', 'litchfield' for "
+        "'litchfeild'")
+    for name, x in got["draw"].items():
+        assert "threw" not in x, (
+            f"the header's box stops on {name}: {x.get('threw')}")
+        assert "/search?q=" in x["html"], f"the panel drew nothing for {name}"
+    assert got["enc"] == ["%EF%BF%BD%20tax", "%F0%9F%98%80"], (
+        f"find.js's _fenc writes {got['enc']}: a stray half is the "
+        "replacement character, and a whole emoji is itself")
+    js = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S).group(1)
+    assert "encodeURIComponent(" not in js, (
+        "/search's script puts what was typed into an address with "
+        "encodeURIComponent, which throws on half an emoji: use find.js's _fenc")
+    home = getattr(BP, "HOME_JS", "")
+    assert "goBills" not in home or "uD800" in home, (
+        "the home page's search box puts what was typed into an address "
+        "without reading a stray surrogate as the replacement character")
+    return "ok", ("'dwi' finds Dwinell and not Sandwich or Baldwin; 'field' "
+                  "still finds Litchfield; 'ebike' is offered nothing and "
+                  "'comittee' committees; half an emoji is drawn, and goes "
+                  "into an address as the replacement character")
+
+
+@check("build", "the search index builder stops, and writes nothing, when a "
+               "term's texts are gone; and check_site refuses a site without "
+               "its search index or with a file over the host's cap",
+       needs=("build_search_index", "check_site"))
+def _search_index_main(SI, CS):
+    """The second review, 2 October: build_search_index.py did not fail when
+    some terms' texts were missing. With archive_text.json gone it wrote
+    empty indexes for eighteen of nineteen terms and a words.json short by
+    14,600 words, and exited 0; the only check that would have noticed an
+    empty term was one the nightly does not run; and the checks that ran
+    its functions on the fixture never ran its main().
+
+    So main() is run here, as build_all runs it, on two terms made of the
+    eight real texts tests/search_texts.json holds:
+
+    - whole, it writes both terms' files, words.json and the manifest;
+    - with the earlier term's texts withheld it exits non-zero and --out is
+      byte for byte what it was (NOTHING IS WRITTEN BY A RUN THAT FAILS);
+    - with no text at all, the same; and with the newest term's texts gone
+      where the manifest on disk says it had them;
+    - with the newest term's texts not there and no such record, it says so
+      and goes on: in the first days of a session the bills are numbered
+      before their text is fetched;
+    - with the vocabulary under its floor (the real WORDS_FEWEST, which
+      eight bills cannot reach), the same;
+    - with --terms it writes that term's file, leaves words.json as it was
+      and keeps the other term's entry in the manifest.
+
+    And check_site, which the nightly does run, reads what was written:
+    it passes the whole index, refuses a site with bill indexes and no
+    search index, refuses one whose earlier term has no text, and takes a
+    build made with --allow-no-text (preflight's fixture site) as said.
+    A file within a tenth of Cloudflare Pages' 25 MiB is warned of and one
+    over it refused: index.json stood at 22.6 MiB with nothing measuring it.
+    """
+    import contextlib
+    import hashlib
+    import io
+    texts_at, cases_at = Path("tests/search_texts.json"), Path("tests/search_cases.json")
+    if not (texts_at.exists() and cases_at.exists() and Path("src/pages/app.js").exists()):
+        return "skip", "tests/search_texts.json, the cases or app.js not here"
+    held = json.loads(_source(texts_at))
+    bills = json.loads(_source(cases_at))["bills"]
+    new, old = held["term"], "2023-2024"
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "idx").mkdir()
+        for term in (new, old):
+            (root / "idx" / f"{term}.json").write_text(json.dumps([
+                {"id": bid, "term": term, "title": rec["title"],
+                 "sponsor": (bills.get(bid) or {}).get("sponsor", ""),
+                 "committees": (bills.get(bid) or {}).get("committees", []),
+                 "topic": (bills.get(bid) or {}).get("topic", "")}
+                for bid, rec in held["bills"].items()]), encoding="utf-8")
+        both = {bid: {"text": rec["text"]} for bid, rec in held["bills"].items()}
+        (root / "bill_text.json").write_text(json.dumps({new: both}), encoding="utf-8")
+        (root / "archive_text.json").write_text(json.dumps({old: both}), encoding="utf-8")
+        (root / "no_archive.json").write_text("{}", encoding="utf-8")
+        out = root / "sidx"
+
+        def build(*args, fewest=50, to=None):
+            # main() itself, in a process of its own, with the floor on the
+            # vocabulary lowered to what eight bills can reach. _paths first,
+            # for every code folder on the path: the root is the -c's own.
+            code = ("import sys, _paths, build_search_index as SI\n"
+                    f"SI.WORDS_FEWEST = {fewest}\n"
+                    "sys.argv = ['build_search_index.py'] + sys.argv[1:]\n"
+                    "SI.main()\n")
+            return _run([sys.executable, "-c", code, "--idx", str(root / "idx"),
+                         "--out", str(to or out), "--app", str(here / "src/pages/app.js"),
+                         "--names", *args],
+                        cwd=here, capture_output=True, text=True, timeout=300)
+
+        def state():
+            return {f.name: hashlib.sha256(f.read_bytes()).hexdigest()
+                    for f in sorted(out.glob("*"))} if out.exists() else {}
+
+        text = ["--bill-text", str(root / "bill_text.json")]
+        arch = ["--archive-text", str(root / "archive_text.json")]
+        gone = ["--archive-text", str(root / "no_archive.json")]
+        r = build(*text, *arch)
+        assert r.returncode == 0, (
+            "build_search_index.py fails on two terms with their texts: "
+            + (r.stderr or r.stdout)[-300:])
+        whole = state()
+        assert set(whole) == {f"{new}.json", f"{old}.json", "words.json", "manifest.json"}, (
+            f"a whole run wrote {sorted(whole)}")
+        man = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+        assert all(man["terms"][t]["with_text"] == len(both) for t in (new, old)) \
+            and not man.get("no_text_expected"), f"the manifest says {man['terms']}"
+        said = []
+        for what, args, kw in (
+                ("the earlier term's texts are gone", [*text, *gone], {}),
+                ("no text can be read at all",
+                 ["--bill-text", str(root / "no_archive.json"), *gone], {}),
+                ("the newest term's texts are gone where it had them",
+                 ["--bill-text", str(root / "no_archive.json"), *arch], {}),
+                ("the vocabulary is under its floor", [*text, *arch],
+                 {"fewest": SI.WORDS_FEWEST})):
+            r = build(*args, **kw)
+            assert r.returncode != 0, (
+                f"build_search_index.py exits 0 when {what}: a build that "
+                "lost its texts would publish a search that reads titles only")
+            assert "NOTHING WAS WRITTEN" in (r.stderr + r.stdout), (
+                f"when {what} the run does not say that nothing was written: "
+                + (r.stderr or r.stdout)[-200:])
+            assert state() == whole, (
+                f"when {what} the run fails and has already replaced "
+                f"{sorted(k for k, v in state().items() if whole.get(k) != v)} "
+                "in --out")
+            said.append(what)
+        # The newest term with no text and no record of having had any: the
+        # first days of a session, said out loud and allowed.
+        r = build("--bill-text", str(root / "no_archive.json"), *arch,
+                  to=root / "fresh")
+        assert r.returncode == 0 and "NO TEXT for this term" in r.stdout, (
+            "a newest term with bills and no text yet stops the build, or is "
+            "not said out loud: in January that would stop the night: "
+            + (r.stderr or r.stdout)[-200:])
+        assert SI.WORDS_FEWEST >= 20_000, (
+            f"WORDS_FEWEST is {SI.WORDS_FEWEST:,}: the titles and names alone "
+            "come to 11,900 words and a record that has lost eighteen terms' "
+            "texts to 18,900, so a floor under those lets both through")
+        # --terms: that term's file, and nothing of the rest.
+        (root / "bill_text.json").write_text(json.dumps(
+            {new: dict(list(both.items())[:5])}), encoding="utf-8")
+        r = build(*text, *arch, "--terms", new)
+        assert r.returncode == 0, "--terms fails: " + (r.stderr or r.stdout)[-300:]
+        after = state()
+        man2 = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+        assert after[f"{new}.json"] != whole[f"{new}.json"] \
+            and after[f"{old}.json"] == whole[f"{old}.json"] \
+            and after["words.json"] == whole["words.json"], (
+            "--terms did not write only the term it was given: changed "
+            f"{sorted(k for k in after if after[k] != whole.get(k))}")
+        assert man2["terms"][old] == man["terms"][old] \
+            and man2["terms"][new]["with_text"] == 5, (
+            "--terms lost the other term's entry in the manifest, or kept "
+            f"its own stale: {man2['terms']}")
+        # check_site, on what a site would hold.
+        site = root / "site"
+        (site / "sidx").mkdir(parents=True)
+        shutil.copytree(root / "idx", site / "idx")
+
+        def verdict():
+            errors, warnings = [], []
+            with contextlib.redirect_stdout(io.StringIO()):
+                CS.search_index(site, errors, warnings)
+            return errors, warnings
+
+        errors, _w = verdict()
+        assert errors and "search index is not in the site" in errors[0], (
+            f"check_site passes a site with bill indexes and no search index: {errors}")
+        build(*text, *arch)
+        for f in out.glob("*"):
+            shutil.copy(f, site / "sidx" / f.name)
+        errors, warnings = verdict()
+        assert not errors and not warnings, (
+            f"check_site refuses a whole search index: {errors} {warnings}")
+        m3 = json.loads((site / "sidx" / "manifest.json").read_text(encoding="utf-8"))
+        m3["terms"][old]["with_text"] = 0
+        (site / "sidx" / "manifest.json").write_text(json.dumps(m3), encoding="utf-8")
+        errors, _w = verdict()
+        assert any(old in e and "text" in e for e in errors), (
+            f"check_site passes a search index with no text for {old}: {errors}")
+        m3["no_text_expected"] = True
+        (site / "sidx" / "manifest.json").write_text(json.dumps(m3), encoding="utf-8")
+        errors, warnings = verdict()
+        assert not errors and any(old in w for w in warnings), (
+            "a build told that no text was expected is refused, or says "
+            f"nothing: {errors} {warnings}")
+        (site / "sidx" / "words.json").unlink()
+        errors, _w = verdict()
+        assert any("words.json" in e for e in errors), (
+            f"check_site passes a search index without words.json: {errors}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    errors, warnings = [], []
+    cap = CS.FILE_CAP
+    CS.near_the_cap([(cap + 1, "data/big.csv"), (int(cap * 0.905), "index.json"),
+                     (int(cap * 0.5), "ok.json")], errors, warnings)
+    assert len(errors) == 1 and "data/big.csv" in errors[0] \
+        and len(warnings) == 1 and "index.json" in warnings[0], (
+        f"a file over Cloudflare Pages' cap is not refused, or one within a "
+        f"tenth of it not warned of: {errors} {warnings}")
+    return "ok", ("main() on two terms of eight real texts: whole, it writes "
+                  "both and the words; it stops with nothing written when "
+                  + ", when ".join(said) + "; --terms writes its own term "
+                  "only; check_site refuses a site with no search index, or "
+                  "an earlier term without text, or a file over 25 MiB")
+
+
+@check("build", "check_live reads meta.json and the newest term's index, and a "
+       "file too large to read is a problem, not a pass")
+def _check_live_reads_what_it_checks():
+    """check_live.py is what the nightly runs once a deploy is up (--gate).
+    It asked for /index.json, every bill of every term in one file, and reads
+    at most 12 MB of JSON: the file was 23.7 MB, so from 25 September to 2
+    October it printed "larger than this reads; not checked" and recorded no
+    problem -- a gate that passed a file it never read.
+
+    Driven here against a served site held in memory, with no network: it
+    asks for /meta.json and the term meta.json names newest, and never for
+    /index.json; a site serving what was built passes the gate; and one whose
+    newest index is past the limit fails it, said as not checked rather than
+    as a deploy that did not land, with an exit of its own that the nightly
+    says as not checked and does not look again on.
+
+    And a bill index it read and found wrong fails the gate as a deploy that
+    did not land. Until the review of 5 October each of these passed it as
+    "dashboard settings": the newest index empty, not JSON, or the home page
+    in its place; meta.json naming no term, or the home page in its place;
+    and meta.json naming other terms than the build's.
+
+    AND IT IS THIS BUILD (15 October 2026). All of the above passed
+    yesterday's build: the same template, terms and feed. The served
+    /build.json must name the build site/'s does -- the moment it finished,
+    and the commit where both name one -- or the deploy did not land.
+    """
+    import contextlib
+    import io
+    import check_live as CL_
+    import nightly as NI
+    root = Path(tempfile.mkdtemp(prefix="gr-live-"))
+    page = b"<!doctype html><html><!-- GRANITE_VERSION: 2026-09-05.1 -->bills</html>"
+    (root / "bills.html").write_bytes(page)
+    (root / "meta.json").write_text(json.dumps({"terms": ["2025-2026", "2023-2024"]}),
+                                    encoding="utf-8")
+    served = {
+        "/": (200, "text/html", b"<!doctype html><html>home</html>"),
+        "/bills": (200, "text/html", page),
+        "/app.css": (200, "text/css", b"body{}"),
+        "/meta.json": (200, "application/json",
+                       json.dumps({"terms": ["2025-2026", "2023-2024"]}).encode()),
+        "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
+        "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
+        "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+        # Asked for since 16 October 2026 (_check_live_sitemap holds what is
+        # made of them); served here as a sound deploy serves them.
+        "/sitemap.xml": (200, "application/xml",
+                         b'<?xml version="1.0"?><urlset><url><loc>http://site.invalid/</loc></url></urlset>'),
+        "/robots.txt": (200, "text/plain", b"User-agent: *\nSitemap: http://site.invalid/sitemap.xml\n"),
+    }
+    asked = []
+
+    def fake_get(url, limit=400_000):
+        path = url[len("http://site.invalid"):]
+        asked.append(path)
+        st, ct, body = served.get(path, (404, "text/html", b"not found"))
+        return st, ct, body[:limit], None
+
+    def gate():
+        saved = (CL_.get, sys.argv)
+        CL_.get = fake_get
+        sys.argv = ["check_live.py", "--gate", "--base", "http://site.invalid",
+                    "--site", str(root)]
+        try:
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = CL_.main()
+        finally:
+            CL_.get, sys.argv = saved
+        return code, out.getvalue()
+
+    good = dict(served)
+
+    def serve():
+        # What was built, served again, before one answer is changed.
+        served.clear()
+        served.update(good)
+        asked.clear()
+
+    try:
+        code, out = gate()
+        assert code == 0, f"check_live --gate fails a site serving what was built:\n{out[-600:]}"
+        assert "/index.json" not in asked, f"check_live still asks for /index.json: {asked}"
+        assert "/meta.json" in asked and "/idx/2025-2026.json" in asked, (
+            f"check_live does not ask for meta.json and the newest term's index: {asked}")
+        assert "/build.json" not in asked, (
+            f"check_live asked for build.json with none in site/ to compare it with: {asked}")
+        home = good["/"]
+        wrong = []
+        for why, path, answer in (
+                ("the newest index is empty", "/idx/2025-2026.json",
+                 (200, "application/json", b"[]")),
+                ("the newest index is not JSON", "/idx/2025-2026.json",
+                 (200, "application/json", b"[{")),
+                ("the newest index is the home page", "/idx/2025-2026.json", home),
+                ("meta.json names no term", "/meta.json",
+                 (200, "application/json", b'{"terms": []}')),
+                ("meta.json is the home page", "/meta.json", home),
+                ("meta.json names an older newest term than the build", "/meta.json",
+                 (200, "application/json", json.dumps({"terms": ["2023-2024"]}).encode()))):
+            serve()
+            served[path] = answer
+            # The older term's own index is served whole, so it is the
+            # comparison with the build that fails the gate and not a 404.
+            served["/idx/2023-2024.json"] = (200, "application/json", b'[{"id":"HB2"}]')
+            code, out = gate()
+            assert code == 1 and "DID NOT LAND" in out, (
+                f"check_live --gate passes a deploy when {why} ({code}):\n{out[-600:]}")
+            if answer is home:
+                assert "being served as a web page" in out, (
+                    f"when {why}, the page in its place is not said:\n{out[-400:]}")
+            if why == "meta.json names no term":
+                assert "names no term" in out and not any(p.startswith("/idx/") for p in asked), (
+                    f"a meta.json naming no term was not said, or an index was guessed at: {asked}")
+            wrong.append(why)
+        serve()
+        served["/idx/2025-2026.json"] = (200, "application/json", b"[" + b" " * 12_000_000 + b"]")
+        code, out = gate()
+        assert code == CL_.NOT_CHECKED and "not checked" in out and "NOT CHECKED" in out, (
+            "a term index larger than check_live reads passed its gate, or was not said "
+            f"as unchecked with its own exit ({code}):\n{out[-600:]}")
+        assert "DID NOT LAND" not in out, (
+            "a file too large to read is reported as a deploy that did not land")
+
+        # WHICH BUILD (15 October 2026): with a build.json in site/, the
+        # served one must name the same build. Yesterday's, one naming none,
+        # or none at all is a deploy that did not land; a laptop's build,
+        # which names no commit, is told by the moment it finished alone.
+        built = {"finished": "2026-10-15T05:53:06", "commit": "a" * 40, "ok": True}
+        (root / "build.json").write_text(json.dumps(built), encoding="utf-8")
+        good["/build.json"] = (200, "application/json", json.dumps(built).encode())
+        serve()
+        code, out = gate()
+        assert code == 0 and "/build.json" in asked and "match" in out, (
+            f"check_live --gate fails, or does not compare, a site serving the build it was "
+            f"given ({code}):\n{out[-600:]}")
+        for why, answer in (
+                ("build.json is yesterday's build", (200, "application/json", json.dumps(
+                    {"finished": "2026-10-14T05:41:00", "commit": "b" * 40}).encode())),
+                ("build.json names no build", (200, "application/json", b'{"ok": true}')),
+                ("build.json is not there", (404, "text/html", b"not found"))):
+            serve()
+            served["/build.json"] = answer
+            code, out = gate()
+            assert code == 1 and "DID NOT LAND" in out, (
+                f"check_live --gate passes a deploy when {why} ({code}):\n{out[-600:]}")
+            wrong.append(why)
+        (root / "build.json").write_text(json.dumps({"finished": built["finished"]}),
+                                         encoding="utf-8")
+        serve()
+        code, out = gate()
+        assert code == 0, f"a laptop's build, naming no commit, failed the gate:\n{out[-600:]}"
+        (root / "build.json").unlink()
+        del good["/build.json"]
+
+        # The nightly, given that exit: said as not checked, and not looked at
+        # again; given a deploy that did not land, it looks every time and
+        # says so.
+        def upload(live_code):
+            looks, saved_ = [], (NI.child.run, NI.time.sleep, NI.run, NI.LOG[:])
+            NI.child.run = lambda *a_, **k_: subprocess.CompletedProcess(a_, 0, "", "")
+            NI.time.sleep = lambda s: None
+            NI.run = lambda args, label, cwd=None: looks.append(label) or live_code
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    landed = NI.upload_and_check(argparse.Namespace(project="p"), root,
+                                                 "main", "http://site.invalid")
+                said = "\n".join(NI.LOG[len(saved_[3]):])
+            finally:
+                NI.child.run, NI.time.sleep, NI.run = saved_[:3]
+                NI.LOG[:] = saved_[3]
+            return landed, looks, said
+        landed, looks, said = upload(CL_.NOT_CHECKED)
+        assert not landed and len(looks) == 1 and "NOT CHECKED" in said \
+            and "NOT SERVING" not in said, (
+                f"the nightly, told the live check could not read a file, looked {len(looks)} "
+                f"time(s) and said: {said[-300:]}")
+        landed, looks, said = upload(1)
+        assert not landed and len(looks) == len(NI.LIVE_WAITS) and "NOT SERVING" in said, (
+            f"the nightly, told the deploy did not land, looked {len(looks)} time(s) "
+            f"and said: {said[-300:]}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("asks for meta.json and the newest term's index, never index.json; "
+                  "passes a site serving what was built; fails it as not landed when "
+                  + ", when ".join(wrong) + "; an index past 12 MB is said as not "
+                  "checked, with its own exit, which the nightly says and does not "
+                  "look at again")
+
+
+@check("build", "check_live asks for _redirects' last rule and its first plain rewrite as real "
+                "addresses, and a deploy that does not serve them has not landed")
+def _check_live_reads_the_last_rule():
+    """THE LAST RULE IS THE FIRST ONE LOST (check_live.rule_probes, 5
+    November 2026). The dry run of 4613f04 served a _redirects Cloudflare had
+    stopped reading after its 102nd rule, and check_live, asking only
+    /legislators, said nothing of the tab addresses gone. It now asks for the
+    file's last rule, made an address with a page of the build, and for its
+    first rewrite with no placeholder."""
+    import contextlib
+    import io
+    import check_live as CL_
+    root = Path(tempfile.mkdtemp(prefix="gr-live-rules-"))
+    try:
+        assert CL_.rule_probes(root) == [], "a site with no _redirects was given addresses to ask"
+        for d in ("bill/2026", "legislator", "committee"):
+            (root / d).mkdir(parents=True)
+        (root / "bill/2026/hb1442.html").write_text("x", encoding="utf-8")
+        (root / "legislator/ann-ames-hills-1.html").write_text("x", encoding="utf-8")
+        (root / "committee/ss57.html").write_text("x", encoding="utf-8")
+        (root / "committee/H43.html").write_text("x", encoding="utf-8")
+        rules = ["# head", "/legislators /officials 301", "/session/house/videos /session/house 200",
+                 "/bill/:year/:bill/votes /bill/:year/:bill 200",
+                 "/legislator/:who/votes /legislator/:who 200",
+                 "/committee/:code/videos /committee/:code 200"]
+        for last, want in ((rules, "/committee/H43/videos"),
+                           (rules[:-1], "/legislator/ann-ames-hills-1/votes"),
+                           (rules[:-2], "/bill/2026/hb1442/votes")):
+            (root / "_redirects").write_text("\n".join(last) + "\n", encoding="utf-8")
+            got = CL_.rule_probes(root)
+            assert got == [want, "/session/house/videos"], f"the probes for {last[-1]!r} are {got}"
+        (root / "_redirects").write_text("\n".join(rules) + "\n", encoding="utf-8")
+        page = b"<!doctype html><html><!-- GRANITE_VERSION: 2026-09-05.1 -->bills</html>"
+        (root / "bills.html").write_bytes(page)
+        (root / "meta.json").write_text(json.dumps({"terms": ["2025-2026"]}), encoding="utf-8")
+        served = {
+            "/": (200, "text/html", b"<!doctype html><html>home</html>"),
+            "/bills": (200, "text/html", page),
+            "/app.css": (200, "text/css", b"body{}"),
+            "/meta.json": (200, "application/json", json.dumps({"terms": ["2025-2026"]}).encode()),
+            "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
+            "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
+            "/committee/H43/videos": (200, "text/html", b"<!doctype html><html>H43</html>"),
+            "/session/house/videos": (200, "text/html", b"<!doctype html><html>house</html>"),
+            "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+            "/sitemap.xml": (200, "application/xml",
+                             b'<?xml version="1.0"?><urlset><url><loc>http://site.invalid/</loc>'
+                             b'</url></urlset>'),
+            "/robots.txt": (200, "text/plain",
+                            b"User-agent: *\nSitemap: http://site.invalid/sitemap.xml\n"),
+        }
+        asked = []
+
+        def fake_get(url, limit=400_000):
+            path = url[len("http://site.invalid"):]
+            asked.append(path)
+            st, ct, body = served.get(path, (404, "text/html", b"not found"))
+            return st, ct, body[:limit], None
+
+        def gate():
+            saved = (CL_.get, sys.argv)
+            CL_.get = fake_get
+            sys.argv = ["check_live.py", "--gate", "--base", "http://site.invalid", "--site", str(root)]
+            try:
+                with contextlib.redirect_stdout(io.StringIO()) as out:
+                    code = CL_.main()
+            finally:
+                CL_.get, sys.argv = saved
+            return code, out.getvalue()
+        code, out = gate()
+        assert code == 0 and "/committee/H43/videos" in asked and "/session/house/videos" in asked, (
+            f"a deploy serving the whole file did not pass, or the probes were not asked: {asked}\n"
+            f"{out[-400:]}")
+        del served["/committee/H43/videos"]
+        code, out = gate()
+        assert code != 0 and "/committee/H43/videos returned HTTP 404" in out and \
+            "THE DEPLOY DID NOT LAND" in out, f"a deploy that lost the last rule passed:\n{out[-400:]}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the last rule asked as a bill's, a member's or a committee's real address, and "
+                  "the first plain rewrite; a deploy that does not serve the last rule has not landed")
+
+
+@check("build", "the bill index is read one way: no site, a broken one and a whole one kept apart")
+def _bill_index_three_answers():
+    """site_read.bill_index is the build's one reader of every bill's row,
+    from site/idx/<term>.json as site/meta.json names them. It replaced
+    readers of site/index.json, the same rows in one file that no page
+    fetched and that stood at 23.7 MB of the 25 MiB a file may be.
+
+    Three answers, because the callers need them apart: no meta.json is no
+    site built yet (None) -- GitHub's machine starts with an empty site/,
+    and handoff and the census say so rather than stop; a broken index
+    raises, naming the file; a whole one is every row, newest term first,
+    each term's rows in its file's order, and not the bill requests.
+    Broken is each of: meta.json unreadable, or naming no term; a term
+    named with no file, or an empty or unreadable one; a row in another
+    term's file; a term file meta.json does not name, or term files and no
+    meta.json at all.
+    """
+    import site_read as SR_
+    root = Path(tempfile.mkdtemp(prefix="gr-billindex-"))
+    try:
+        site = root / "site"
+        site.mkdir()
+        assert SR_.bill_index(site) is None, "a site with no meta.json is not 'none built'"
+        rows = [{"term": "2023-2024", "id": "HB2"}, {"term": "2025-2026", "id": "HB9"},
+                {"term": "2025-2026", "id": "HB1"}, {"term": "1989-1990", "id": "HB5"}]
+        _bill_index_write(site, rows)
+        (site / "idx" / "2027-requests.json").write_text('[{"id": "LSR1"}]', encoding="utf-8")
+        meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+        meta["requests"] = {"term": "2027-requests", "n": 1}
+        (site / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        got = [(r["term"], r["id"]) for r in SR_.bill_index(site)]
+        assert got == [("2025-2026", "HB9"), ("2025-2026", "HB1"), ("2023-2024", "HB2"),
+                       ("1989-1990", "HB5")], f"the whole index reads {got}"
+        assert SR_.bill_index_files(meta) == [
+            "idx/2025-2026.json", "idx/2023-2024.json", "idx/1989-1990.json",
+            "idx/2027-requests.json"], SR_.bill_index_files(meta)
+
+        def broken(why, change, undo):
+            change()
+            try:
+                SR_.bill_index(site)
+            except SR_.Broken as e:
+                said = str(e)
+            else:
+                said = None
+            finally:
+                undo()
+            assert said, f"{why}: the index was read as whole"
+            return said
+
+        mp = site / "meta.json"
+        good_meta = mp.read_text(encoding="utf-8")
+        f23 = site / "idx" / "2023-2024.json"
+        good23 = f23.read_text(encoding="utf-8")
+        said = [
+            broken("meta.json unreadable", lambda: mp.write_text("{", encoding="utf-8"),
+                   lambda: mp.write_text(good_meta, encoding="utf-8")),
+            broken("no terms", lambda: mp.write_text('{"terms": []}', encoding="utf-8"),
+                   lambda: mp.write_text(good_meta, encoding="utf-8")),
+            broken("a term's file missing", lambda: f23.unlink(),
+                   lambda: f23.write_text(good23, encoding="utf-8")),
+            broken("a term's file empty", lambda: f23.write_text("[]", encoding="utf-8"),
+                   lambda: f23.write_text(good23, encoding="utf-8")),
+            broken("a term's file unreadable", lambda: f23.write_text("[{", encoding="utf-8"),
+                   lambda: f23.write_text(good23, encoding="utf-8")),
+            broken("a row of another term",
+                   lambda: f23.write_text('[{"term": "2021-2022", "id": "HB2"}]',
+                                          encoding="utf-8"),
+                   lambda: f23.write_text(good23, encoding="utf-8")),
+            broken("a term meta.json does not name",
+                   lambda: (site / "idx" / "2001-2002.json").write_text(
+                       '[{"term": "2001-2002", "id": "HB3"}]', encoding="utf-8"),
+                   lambda: (site / "idx" / "2001-2002.json").unlink()),
+            broken("term files and no meta.json", lambda: mp.unlink(),
+                   lambda: mp.write_text(good_meta, encoding="utf-8")),
+        ]
+        assert "2023-2024" in said[2] and "2001-2002" in said[6] and "2021-2022" in said[5], (
+            "a broken index does not name the file and the term: " + " | ".join(said))
+        assert len(SR_.bill_index(site)) == 4, "the index did not read whole again"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("no meta.json is no site; eight ways of being broken each raise "
+                  "and name the file; whole is every row newest term first, "
+                  "without the bill requests")
+
+
+@check("build", "no index.json: a build writes none and deletes one left over, every "
+       "bill still reaches the downloads, the Learn pages and the census, and "
+       "check_site refuses a leftover")
+def _index_json_retired():
+    """index.json, every bill's row in one file, was retired on 5 October
+    2026: no page read it, six build steps did, and it stood at 23.7 MB of
+    the 25 MiB a file may be. The term files the pages read are the record
+    now (site_read.bill_index).
+
+    A RETIREMENT IS PROVED BY WHAT STILL WORKS, NOT BY A SEARCH FOR THE NAME.
+    Four of its readers read a missing file as no bills and went on -- the
+    downloads, the Learn pages' figures, their page of numbers and handoff --
+    so a reader missed by the change would not fail; it would publish a
+    bills.csv of nothing and a Learn page counting nothing, and exit 0. And a
+    search for "index.json" matches the nh-archive's and the livestreams'
+    files of that name, which are other files. So: the fixture built whole
+    has no index.json, and its bills are all in bills.csv, in the manifest's
+    list of term files, in the Learn page's count and in the nightly's census.
+
+    And the copy a laptop keeps: site/ is never emptied, so the last
+    index.json would stay and publish would go on deploying a frozen list of
+    every bill. build_site_v2 deletes one it finds, and check_site refuses one,
+    and refuses an index that does not hold together. The same laptop keeps a
+    term's file a later build no longer writes, which the loader refuses, so
+    build_site_v2 deletes that too.
+    """
+    import contextlib
+    import io
+    import check_site as CS
+    import nightly as NI
+    import site_read as SR_
+
+    def refused(where):
+        errors = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.bill_index(where, errors)
+        return errors
+
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    assert not (site / "index.json").exists(), "the fixture's build wrote an index.json"
+    rows = SR_.bill_index(site)
+    assert rows, "the fixture built no bill index"
+    terms = Counter(r["term"] for r in rows)
+    with (site / "data" / "bills.csv").open(encoding="utf-8", newline="") as fh:
+        in_csv = Counter(r["term"] for r in csv.DictReader(fh))
+    assert in_csv == terms, f"bills.csv holds {dict(in_csv)}; the bill index {dict(terms)}"
+    man = json.loads((site / "data" / "manifest.json").read_text(encoding="utf-8"))
+    listed = {t["term"]: t["bills"] for t in (man.get("bill_indexes") or {}).get("terms", [])}
+    assert listed == dict(terms), (
+        f"data/manifest.json lists the term files as {listed}; the index holds {dict(terms)}")
+    assert all(t["url"].endswith(f"/idx/{t['term']}.json")
+               for t in man["bill_indexes"]["terms"]), man["bill_indexes"]
+    page = (site / "learn" / "how-a-bill-becomes-law.html").read_text(encoding="utf-8")
+    # The count is said once, under How a Chamber Votes, since the polish
+    # plan's cut E6 took its second saying out of In the Record.
+    assert f"Across the {len(rows):,} bills in this record" in page, (
+        f"the Learn page does not count the index's {len(rows):,} bills")
+    assert NI.census(site)["bills"] == len(rows), (
+        f"the census counts {NI.census(site)['bills']} bills of {len(rows)}")
+
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp(prefix="gr-noindex-"))
+    try:
+        _site_fixture(root)
+        (root / "site").mkdir(exist_ok=True)
+        (root / "site" / "index.json").write_text("[]", encoding="utf-8")
+        # And a term an earlier build wrote and this one has no bills for:
+        # the loader refuses a term file meta.json does not name, so left
+        # there it would stop every step after the site data, check_site and
+        # the census, and building again would not clear it.
+        (root / "site" / "idx").mkdir(exist_ok=True)
+        stale = root / "site" / "idx" / "1987-1988.json"
+        stale.write_text('[{"term": "1987-1988", "id": "HB1"}]', encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data",
+                  "--out", "site", "--segments", "work"],
+                 cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+        assert not (root / "site" / "index.json").exists(), (
+            "build_site_v2 left the index.json an earlier build wrote, which would deploy")
+        assert not stale.exists(), (
+            "build_site_v2 left a term file an earlier build wrote and it did not, which "
+            "the bill index refuses")
+        errors = refused(root / "site")
+        assert not errors, f"check_site refuses the bill index a build just wrote: {errors}"
+        (root / "site" / "index.json").write_text("[]", encoding="utf-8")
+        errors = refused(root / "site")
+        assert any("index.json" in e for e in errors), (
+            f"check_site passes a leftover index.json: {errors}")
+        (root / "site" / "index.json").unlink()
+        newest = json.loads((root / "site" / "meta.json").read_text(encoding="utf-8"))["terms"][0]
+        (root / "site" / "idx" / f"{newest}.json").unlink()
+        errors = refused(root / "site")
+        assert any(newest in e for e in errors), (
+            f"check_site passes a bill index missing {newest}'s file: {errors}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"the fixture's {len(rows):,} bills reach bills.csv, the manifest, the Learn "
+                  "page and the census with no index.json; a leftover is deleted by the "
+                  "build and refused by check_site, as is a term's missing file; a term "
+                  "file the build did not write is deleted by it")
+
+
+@check("frontend", "the rendered sweep's browser reaches only the loopback address and Google "
+                   "Fonts, its server answers as the host does, and its report counts what its "
+                   "runs found", needs=("rendered_sweep",))
+def _sweep_sealed(RS):
+    """src/checks/rendered_sweep.py is run by a person before a front-end
+    release, never here: preflight has no browser. What can be held without
+    one is held here.
+
+    SEALED. sweep_browser.js starts Chrome with every host name resolving to
+    nothing but the loopback address and Google Fonts (HOST_RULES). A rule
+    added there -- the General Court's host, YouTube, the live site -- is a
+    request nobody expects from a check, so the rules are read and held to
+    those four names, and the launch must pass them. The driver must parse.
+
+    THE SERVER answers as Cloudflare Pages does, on 127.0.0.1 and nowhere
+    else: a page by its name with or without .html, 404.html with a 404 for
+    a path that is not there, and a script as JavaScript whatever the
+    Windows registry says .js is.
+
+    THE REPORT is what a person reads first, so its sums are held to runs
+    made up here: the share of text under 16px, the smallest size, the
+    contrast failures, the views that scroll sideways, whether the 24px runs
+    grew, and the 404 page's own answer kept out of the site's failures.
+    And a record page whose bill has changed kind is replaced by another of
+    its kind, and the report says so, rather than measuring the wrong page."""
+    import http.client
+    js = _paths.locate("sweep_browser.js")
+    assert js.is_file(), "src/checks/sweep_browser.js is not there"
+    src = _source(js)
+    m = re.search(r"const HOST_RULES = ((?:'[^']*'\s*\+?\s*)+);", src)
+    assert m, "sweep_browser.js no longer states HOST_RULES as a string this can read"
+    rules = [r.strip() for r in "".join(re.findall(r"'([^']*)'", m.group(1))).split(",")]
+    allowed = {"127.0.0.1", "localhost", "fonts.googleapis.com", "fonts.gstatic.com"}
+    assert rules[0] == "MAP * ~NOTFOUND", (
+        f"the sweep's browser resolves names by {rules[0]!r}, not MAP * ~NOTFOUND first")
+    extra = [r for r in rules[1:] if not (r.startswith("EXCLUDE ") and r[8:] in allowed)]
+    assert not extra, f"the sweep's browser may also reach {extra}"
+    assert "'--host-resolver-rules=' + HOST_RULES" in src, \
+        "sweep_browser.js no longer starts Chrome with HOST_RULES"
+    if shutil.which("node"):
+        r = _run(["node", "--check", str(js)], capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, f"sweep_browser.js does not parse: {(r.stderr or '')[-300:]}"
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-sweep-"))
+    srv = None
+    try:
+        _plant(tmp, {"index.html": "home", "a.html": "page a", "404.html": "not here",
+                     "x.js": "1", "idx/2025-2026.json": json.dumps([
+                         {"id": "HB1", "year": 2026, "n": "HB 1", "kind": "done", "status": "Killed",
+                          "nrc": 0},
+                         {"id": "HB2", "year": 2026, "n": "HB 2", "kind": "done", "status": "Killed",
+                          "nrc": 3}]),
+                     "bill/2026/hb1.html": "", "bill/2026/hb2.html": ""})
+        srv, base = RS.serve(tmp)
+        assert srv.server_address[0] == "127.0.0.1", f"the sweep serves on {srv.server_address[0]}"
+        port = srv.server_address[1]
+
+        def get(path):
+            c = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+            c.request("GET", path)
+            resp = c.getresponse()
+            out = (resp.status, resp.getheader("Content-Type") or "", resp.read().decode())
+            c.close()
+            return out
+        assert get("/a")[::2] == (200, "page a"), get("/a")
+        assert get("/a.html")[::2] == (200, "page a"), get("/a.html")
+        assert get("/nothing-here.html")[::2] == (404, "not here"), get("/nothing-here.html")
+        assert "javascript" in get("/x.js")[1], get("/x.js")
+        pages = {p["name"]: p for p in RS.resolve_pages(tmp)}
+        killed = pages["bill-killed"]
+        assert killed.get("path") == "bill/2026/hb2.html" and "HB1083" in killed.get("note", ""), \
+            f"a killed bill with roll calls was not found in its place: {killed}"
+        assert pages["bill-law"].get("missing_why") and pages["home"].get("path") == "index.html", \
+            (pages["bill-law"], pages["home"])
+    finally:
+        if srv:
+            srv.shutdown()
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    def run(page, width, mode, sizes, fails=0, sideways=False, path="p.html"):
+        return {"id": f"{page}_{width}_{mode}", "page": page, "width": width, "mode": mode,
+                "path": path, "failed": [f"404 /{path}"] if page == "404" else [],
+                "m": {"text": {"sizes": sizes, "min": min(map(float, sizes)), "minAt": {
+                    "px": min(map(float, sizes)) * RS.MODES[mode] / 16, "sig": "p"},
+                    "mixedCase13": []},
+                    "contrast": {"measured": 10, "failures": fails, "fails": [], "lowest": {
+                        "ratio": 5.0, "need": 4.5}},
+                    "overflow": {"sideways": sideways, "poking": [], "clipped": [],
+                                 "placeholders": [], "scrollers": []},
+                    "headings": {"h1": [{"px": 30}], "rank": []},
+                    "lines": {"widest": [], "over80": 0}, "fontsFailed": []}}
+    s = RS.summarise([run("home", 1366, "light", {"11": 10, "16": 30}),
+                      run("home", 1366, "dark", {"12": 10, "16": 30}, fails=2),
+                      run("home", 375, "light", {"14": 20}, sideways=True),
+                      run("home", 1366, "text24", {"7.33": 10, "10.67": 30}),
+                      run("404", 1366, "light", {"16": 5}, path="no.html"),
+                      {"id": "x_375_dark", "page": "x", "width": 375, "mode": "dark",
+                       "error": "the browser never reported this view"}])
+    assert s["text"]["share_under_16px"] == 38.1 and s["text"]["smallest_px"] == 11.0, s["text"]
+    assert s["contrast"]["failures"] == 2 and s["overflow"]["sideways"] == ["home_375_light"], s
+    assert s["text_size_24px"]["views"] == 1 and s["text_size_24px"]["text_grew"] == 0, \
+        s["text_size_24px"]
+    assert s["errors"] == ["x_375_dark: the browser never reported this view"], s["errors"]
+    assert s["network"]["failed_on_the_site"] == [], s["network"]
+    return "ok", (f"Chrome resolves only {', '.join(sorted(allowed))}; the server is on the "
+                  f"loopback address and answers as the host does; the report's sums hold on "
+                  f"made-up runs; {len(RS.PAGES)} page types")
+
+
+def _em(px):
+    """A width in px as app.css writes it in a media query: em at the
+    browser's default of 16px, with no trailing zeros (720 -> "45em")."""
+    s = f"{px / 16:.6f}".rstrip("0").rstrip(".")
+    return (s[1:] if s.startswith("0.") else s) + "em"
+
+
+@check("frontend", "the published app.css is the source without its comments, and nothing else")
+def _app_css_published():
+    """app.css is the site's documentation of its own look -- 526 KB, most of
+    it comments saying why each rule is as it is -- and every page loads it
+    since 23 October 2026, the home page among them, which had loaded a 61 KB
+    cut. So build_pages.front_end publishes it without its comments
+    (strip_css): 266 KB, 46 KB over the wire.
+
+    A comment stripper that is wrong does not error. It eats a rule, or joins
+    two words into one, and a page somewhere is drawn wrong. So: strip_css on
+    cases that would catch each way it could go wrong -- a /* inside a string
+    or an unquoted url(), a comment between two halves of a word, an unclosed
+    one; and on app.css itself, the stripped file holds no comment, and with
+    every space taken out it is the source with every comment taken out by a
+    second, plainer reading -- so nothing but comments and blank lines went.
+    And the site the fixture's builders wrote, and site/ where it is built,
+    carries exactly that: with the header mark's block where the build has
+    the drawing, without it where it does not.
+    """
+    import build_pages as BP
+    strip = BP.strip_css
+    cases = {
+        "a{b:c}/* x */\nd{e:f}\n": "a{b:c}\nd{e:f}\n",
+        'a{content:"/* kept */"}\n': 'a{content:"/* kept */"}\n',
+        "a{content:'it''s /*'}/* gone */\n": "a{content:'it''s /*'}\n",
+        "a{background:url(x/*y*/z.png)}\n": "a{background:url(x/*y*/z.png)}\n",
+        'a{background:url("x/*y*/z.png")}/* gone */\n': 'a{background:url("x/*y*/z.png")}\n',
+        "a{margin:1px/**/2px}\n": "a{margin:1px 2px}\n",
+        ".a/**/.b{c:d}\n": ".a.b{c:d}\n",
+        "/* one\n   two */\n\n  a{b:c}  \n": "  a{b:c}\n",
+        'a{content:"\\"/*"}\n': 'a{content:"\\"/*"}\n',
+    }
+    wrong = {k: strip(k) for k, v in cases.items() if strip(k) != v}
+    assert not wrong, "strip_css: " + "; ".join(f"{k!r} -> {v!r}" for k, v in wrong.items())
+    try:
+        strip("a{b:c}/* never closed\n")
+        raise AssertionError("strip_css passed an unclosed comment, which ends a stylesheet")
+    except ValueError:
+        pass
+    src = _source("src/pages/app.css")
+    out = strip(src)
+    unquoted = re.sub(r'"(?:[^"\\\n]|\\.)*"|\'(?:[^\'\\\n]|\\.)*\'', "", out)
+    assert "/*" not in unquoted and "*/" not in unquoted, (
+        "the published app.css still carries a comment")
+    plain = re.sub(r"/\*.*?\*/", "", src, flags=re.S)
+    assert re.sub(r"\s+", "", out) == re.sub(r"\s+", "", plain), (
+        "strip_css took out more than comments and blank lines: with every space removed, "
+        "app.css stripped is not app.css with its comments taken out")
+    assert strip(out) == out, "strip_css changes a file that has no comments"
+    said = [f"{len(src.encode()) // 1024} KB of source publishes as {len(out.encode()) // 1024} KB"]
+    for what, site in _built_sites():
+        built = (site / "app.css").read_text(encoding="utf-8")
+        drawn = (site / BP.HEADER_MARK).is_file()
+        want = strip((src.encode() if drawn else BP.without_mark(src.encode())).decode("utf-8"))
+        assert built == want, (
+            f"{what}'s app.css is not app.css stripped of its comments"
+            + ("" if drawn else ", without the header mark's block") + ": "
+            "build_pages.front_end publishes it, and the fast path calls the same")
+        said.append(f"{what}'s is that" + ("" if drawn else ", less the mark"))
+    return "ok", "; ".join(said)
+
+
+# strip_js.strip on each of these returns the second, or refuses (None). Each
+# is a way a comment stripper for JavaScript goes wrong without an error: a
+# // or /* inside a string, a template literal or a regular expression; a
+# regular expression told from a division by what stands before it; a
+# comment that held a line end, which automatic semicolon insertion reads; a
+# comment between two names or two signs; and the places where only the
+# grammar knows whether a / divides, which it refuses rather than guesses.
+_STRIP_JS_CASES = [
+    ("a=1; // note\nb=2;\n", "a=1;\nb=2;\n"),
+    ("/* head */\nconst x=1;\n", "const x=1;\n"),
+    ("a/**/b", "a b\n"),
+    ("a+/**/+b", "a+ +b\n"),
+    ("return/*\n*/x", "return\nx\n"),
+    ("s='// not a comment'; t=\"/* nor this */\";", "s='// not a comment'; t=\"/* nor this */\";\n"),
+    ("r=/\\/\\/x/g; q=/[/]\"'/; // c", "r=/\\/\\/x/g; q=/[/]\"'/;\n"),
+    ("x=a/b/c; // c", "x=a/b/c;\n"),
+    ("if(a)/re/.test(s)&&f(); // c", "if(a)/re/.test(s)&&f();\n"),
+    ("x=f(a)/2;", "x=f(a)/2;\n"),
+    ("return /'//.test(s)", "return /'//.test(s)\n"),
+    ("t=`a // b ${c /* d */ + `e /* f */ ${g}`} h`;", "t=`a // b ${c  + `e /* f */ ${g}`} h`;\n"),
+    ("t=`\n  <!-- kept -->\n\n  x  \n`; // c\n", "t=`\n  <!-- kept -->\n\n  x  \n`;\n"),
+    ("  a();   \n\n\n    b(); // c\n  /* d */\n  c();", "a();\n    b();\n  c();\n"),
+    ("x=a\r\n// c\r\n  y\r\n", "x=a\r\n  y\r\n"),
+    ("o={a:1}.a/2", "o={a:1}.a/2\n"),
+    ("a.return/2", "a.return/2\n"),
+    ("x=y?.z/2", "x=y?.z/2\n"),
+    ("x=c?.5:1", "x=c?.5:1\n"),
+    ("x=[1]/2", "x=[1]/2\n"),
+    ("class A{#p=1;m(){return this.#p/2}}", "class A{#p=1;m(){return this.#p/2}}\n"),
+    ("// only a comment\n", ""),
+    ("o={a:1}/2", None),
+    ("{}\n/re/.test(s)", None),
+    ("i++/2", None),
+    ("for(const x of /a/.exec(s))f()", None),
+    ("a<!--b", None),
+    ("/* never closed", None),
+    ("s='never closed\n", None),
+    ("f(", None),
+    ("x=/[[a]--[b]]/v", None),
+    ("#!/usr/bin/env node\n", None),
+]
+
+
+def _published_script_sources():
+    """{name: the text build_pages.published_js, or strip_js.published for
+    map.js, is handed} for every script the site publishes without its
+    comments (strip_js.SCRIPTS), from src/pages/; None where it is not here."""
+    import build_pages as BP
+    import strip_js
+    out = {}
+    for name in strip_js.SCRIPTS:
+        src = Path("src/pages") / ("app.js" if name == "billmatch.js" else name)
+        if not src.exists():
+            return None
+        text = src.read_bytes().decode("utf-8")
+        if name == "billmatch.js":
+            text = BP.bill_matcher_js(src.read_text(encoding="utf-8"))
+        elif name == "components.js":
+            text = BP.with_words(text)
+        out[name] = text
+    return out
+
+
+@check("frontend", "every published script is its source without its comments, reads as "
+                   "the same tokens and compiles, and the site carries exactly that",
+       needs=("build_pages", "strip_js"))
+def _published_scripts_stripped(BP, SJ):
+    """THE SCRIPTS WENT OUT WITH THEIR COMMENTS until 23 October 2026: app.js
+    was 543 KB and 189 KB over the wire to a phone, of which the code was
+    255 KB and 82; find.js 31 KB over the wire and 15, components.js 19 and
+    14. Since then build_pages.front_end publishes each without them
+    (strip_js.py), and build_district_map.py map.js.
+
+    A JavaScript comment stripper that is wrong rarely errors: it takes a //
+    inside a regular expression for a comment and cuts the line, or joins two
+    signs into one. So strip_js.strip on _STRIP_JS_CASES, each a way to go
+    wrong, and the places it must refuse rather than guess; and on every
+    script the site publishes: none refused (a refused script is published
+    with its comments, which costs a phone the bytes this exists to save),
+    no comment left, its tokens the source's (strip() reads its own result
+    again), stripping twice the same as once, and node compiles each. And
+    the site the fixture's builders wrote, and site/ where it is built,
+    carries exactly that. That the published copy does what the source does
+    is _published_scripts_run_the_same's."""
+    wrong = []
+    for src, want in _STRIP_JS_CASES:
+        try:
+            got = SJ.strip(src)
+        except SJ.Refused:
+            got = None
+        if got != want:
+            wrong.append(f"{src!r} -> {got!r}, not {want!r}")
+    assert not wrong, "strip_js.strip: " + "; ".join(wrong)
+    sources = _published_script_sources()
+    if sources is None:
+        return "skip", "the browser's scripts are not all in src/pages/ here"
+    out, said = {}, []
+    for name, text in sources.items():
+        try:
+            out[name] = SJ.strip(text)
+        except SJ.Refused as e:
+            raise AssertionError(f"strip_js refuses {name} ({e}), so the site publishes it with "
+                                 "its comments: write that line so that it reads one way, or "
+                                 "teach strip_js.tokens what it is, with a case here")
+        left = [t for k, t in SJ.tokens(out[name]) if k == "com"]
+        assert not left, f"{name} published still carries a comment: {left[0][:60]!r}"
+        assert SJ.strip(out[name]) == out[name], f"strip_js changes {name} a second time"
+        said.append(f"{name} {len(text.encode()) // 1024} KB to {len(out[name].encode()) // 1024}")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node:
+        root = Path(tempfile.mkdtemp(prefix="gr-stripjs-"))
+        try:
+            for name, text in out.items():
+                (root / name).write_text(text, encoding="utf-8", newline="")
+            prog = ('const vm=require("vm"),fs=require("fs");for(const f of '
+                    + json.dumps(sorted(out)) + '){try{new vm.Script(fs.readFileSync(f,"utf8"),'
+                    '{filename:f});}catch(e){console.log(f+": "+e.message);}}')
+            (root / "go.js").write_text(prog, encoding="utf-8")
+            r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0 and not r.stdout.strip(), (
+                "node will not compile the published copy: " + (r.stdout + r.stderr)[:400])
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+    for what, site in _built_sites():
+        for name in SJ.SCRIPTS:
+            f = site / name
+            if not f.exists():
+                continue
+            built = f.read_bytes().decode("utf-8").replace("\r\n", "\n")
+            want = (BP.published_js(name, Path("src/pages/" + name).read_text(encoding="utf-8"))
+                    if name in BP.COPIED else out[name].replace("\r\n", "\n"))
+            assert built == want.replace("\r\n", "\n"), (
+                f"{what}'s {name} is not its source as published_js makes it, without its "
+                "comments: build_pages.front_end and build_district_map.py publish them, "
+                "and python3 build_all.py --front-end puts a change into a built site")
+        said.append(f"{what}'s are those")
+    return "ok", "; ".join(said) + ("" if node else "; node is not here to compile them")
+
+
+@check("frontend", "the Learn pages' term figures stay on a term with a story until the next "
+       "has one: not the newest term while most of its bills are still moving",
+       needs=("site_read", "build_civics", "learn_numbers"))
+def _learn_figures_term(SR, build_civics, learn_numbers):
+    """The language sweep of 17 October 2026: the Learn pages took the newest
+    term in the index for "The ... term filed ... bills ... were killed ...
+    were signed into law", the closest votes and each committee's record, and
+    the day the first bill of 2027 is introduced that term is a few dozen
+    bills with nothing decided. site_read.figures_term keeps them on the
+    newest term at most half of whose bills are still moving.
+
+    Fails if either page goes back to the newest term, or the rule does."""
+    old, new = "2025-2026", "2027-2028"
+    done = [{"term": old, "id": f"HB{i}", "kind": "done"} for i in range(10)]
+    early = [{"term": new, "id": f"HB{i}", "kind": "active"} for i in range(6)]
+    assert SR.figures_term(done + early) == old, SR.figures_term(done + early)
+    half = early[:3] + [dict(r, kind="law") for r in early[3:]]
+    assert SR.figures_term(done + half) == new, SR.figures_term(done + half)
+    # One term, as the fixture site is: that term, however far along.
+    assert SR.figures_term(early) == new, SR.figures_term(early)
+    # Nor a term of one bill, decided (the review of 17 October 2026).
+    one = [{"term": new, "id": "HB1", "kind": "done"}]
+    assert SR.figures_term(done + one) == old, SR.figures_term(done + one)
+    import inspect
+    for mod, fn in ((build_civics, "record_figures"), (learn_numbers, "body")):
+        src = inspect.getsource(getattr(mod, fn))
+        assert "figures_term(" in src, f"{mod.__name__}.{fn} no longer asks figures_term"
+    return "ok", ("a 2027 term of six moving bills leaves the figures on 2025-2026; half "
+                  "decided, they move to it")
+
+
+@check("frontend", "the Learn pages tell the term still sitting from the term they describe: a young "
+       "new term is passed over for filmed hearings, and only its vetoes can still be waiting",
+       needs=("site_read", "build_civics", "learn_numbers"))
+def _learn_sitting_term(SR, build_civics, learn_numbers):
+    """Found rehearsing the turn on preflight's fixture (18 October 2026):
+    since figures_term (17 October) build_civics.record_figures' `term` is
+    the term the pages describe, which is 2025-2026 from the first 2027 bill
+    until most of 2027's are decided, and two rules that mean the term still
+    sitting read it. The filmed-hearing run passes over the sitting term while
+    it is under nine bills in ten filmed; reading 2025-2026 for it, it held
+    2027-2028 to the bar as a finished term, found no year, and stopped the
+    build (SystemExit) -- the New term run and every night after it until the
+    summer. And a veto of 2025-2026 with no override recorded would have read
+    as still awaiting its vote after the term had ended.
+
+    Held here on the real shape of the turn -- 2025-2026's 2,193 of 2,243
+    filmed, 2023-2024's 1,961 of 1,996, a 2027-2028 of 400 with 10 filmed:
+    sitting_term is 2027-2028 though figures_term is 2025-2026, filmed_from
+    names 2023-2024, and 2027-2028 filmed past the bar would join the run;
+    and record_figures asks sitting_term and reads it for the run and the
+    vetoes. And learn_numbers' last era of passages runs to the newest term,
+    which it counts, rather than ending its label at the described term's
+    year."""
+    import inspect
+    BC = build_civics
+    idx = ([{"term": "2027-2028", "id": f"HB{i}", "kind": "active"} for i in range(400)]
+           + [{"term": "2025-2026", "id": f"HB{i}", "kind": "done"} for i in range(2243)]
+           + [{"term": "2023-2024", "id": f"HB{i}", "kind": "done"} for i in range(1996)])
+    assert SR.figures_term(idx) == "2025-2026", SR.figures_term(idx)
+    assert BC.sitting_term(idx) == "2027-2028", BC.sitting_term(idx)
+    assert BC.sitting_term([{"term": "2027-requests"}] + idx) == "2027-2028", \
+        "the requests' list is taken for a term"
+    per = {"2027-2028": 400, "2025-2026": 2243, "2023-2024": 1996, "2021-2022": 1753,
+           "2019-2020": 1983}
+    filmed = {"2027-2028": 10, "2025-2026": 2193, "2023-2024": 1961, "2021-2022": 1716,
+              "2019-2020": 34}
+    got = BC.filmed_from(per, filmed, BC.sitting_term(idx))
+    assert got == "2021-2022", f"the run from the sitting 2027-2028 names {got!r}, not 2021-2022"
+    assert BC.filmed_from(per, filmed, "2025-2026") == "", \
+        "filmed_from passes over a term that is not the one sitting"
+    assert BC.filmed_from(per, dict(filmed, **{"2027-2028": 390}), "2027-2028") == "2021-2022"
+    src = inspect.getsource(BC.record_figures)
+    for said in ("still_sitting = sitting_term(idx)", "filmed_from(per_term, filmed_term, still_sitting)",
+                 'r.get("status") == "Vetoed" and r.get("term") == still_sitting',
+                 'r.get("status") == "Vetoed" and r.get("term") != still_sitting'):
+        assert said in src, f"record_figures no longer reads the sitting term: {said!r}"
+    return "ok", ("2027-2028 sits while 2025-2026 is described; the filmed run passes over it and "
+                  "names 2021-2022; the vetoes waiting are the sitting term's")
+
+
+# Cloudflare Pages' rules for a _redirects file, from its documentation
+# (developers.cloudflare.com/pages/configuration/redirects/, read 5 November
+# 2026): "limited to 2,000 static redirects and 100 dynamic redirects", "a
+# 1,000-character limit" a declaration, and "Static redirects should appear
+# before dynamic redirects".
+CF_STATIC_MOST, CF_DYNAMIC_MOST, CF_LINE_MOST = 2000, 100, 1000
+
+
+def _cf_rules(text):
+    """[(parts, dynamic, length)] of a _redirects text's rules: a rule is
+    dynamic where its source or destination holds a splat (*) or a
+    placeholder (:name), which is how Cloudflare's own examples tell them."""
+    out = []
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#"):
+            continue
+        parts = s.split()
+        dyn = any("*" in p or re.search(r"(?:^|/):[A-Za-z]", p) for p in parts[:2])
+        out.append((parts, dyn, len(ln)))
+    return out
+
+
+@check("build", "the _redirects file is as Cloudflare Pages keeps it: every static rule before "
+                "the first dynamic one, at most 2,000 static and 100 dynamic, none over 1,000 "
+                "characters, no source twice -- the fixture's, and one written for forty moved "
+                "members", needs=("build_pages",))
+def _redirects_cloudflare(BP):
+    """THE RULES CLOUDFLARE KEEPS (5 November 2026). The dry run of 4613f04,
+    with the owner's thirty confirmed pairs, wrote 34 moved members' rules
+    first -- three a member, one of them a dynamic old/* -- and Cloudflare
+    served none of the 52 rules after them: every tab address, /legislators,
+    /learn, the cities, all 404, where the same file with 4 members had
+    worked. build_pages now writes every member's rules static, a tab by
+    name, and every static rule before the dynamic tab rewrites. This holds
+    the writer to that for more members than the record has, and the
+    fixture's built file to the writer."""
+    def judge(text, what):
+        rules = _cf_rules(text)
+        bad = [p for p, _d, _w in rules if len(p) not in (2, 3)]
+        assert not bad, f"{what}: a rule that is not 'source destination [code]': {bad[:2]}"
+        first = next((i for i, r in enumerate(rules) if r[1]), len(rules))
+        late = [p[0] for p, d, _w in rules[first:] if not d]
+        assert not late, f"{what}: static rules after the first dynamic one: {late[:3]}"
+        dyn = sum(1 for _p, d, _w in rules if d)
+        sta = len(rules) - dyn
+        assert sta <= CF_STATIC_MOST and dyn <= CF_DYNAMIC_MOST, (
+            f"{what}: {sta} static and {dyn} dynamic rules, over Cloudflare's "
+            f"{CF_STATIC_MOST:,} and {CF_DYNAMIC_MOST}")
+        long_ = [p[0] for p, _d, w in rules if w > CF_LINE_MOST]
+        assert not long_, f"{what}: a rule over {CF_LINE_MOST} characters: {long_[:2]}"
+        srcs = [p[0] for p, _d, _w in rules]
+        twice = sorted({s for s in srcs if srcs.count(s) > 1})
+        assert not twice, f"{what}: a source twice, of which only the first is served: {twice[:3]}"
+        return sta, dyn
+
+    tabs = len(BP.BILL_TAB_SLUGS) + len(BP.MEMBER_TAB_SLUGS) + len(BP.COMMITTEE_TAB_SLUGS)
+    root = Path(tempfile.mkdtemp(prefix="gr-redirects-"))
+    try:
+        movers = [{"id": str(9000 + i), "slug": f"member-{i}-sd-{i % 24 + 1}",
+                   "moved_from": [f"/legislator/member-{i}-hills-{i}"]} for i in range(40)]
+        (root / "former.json").write_text(json.dumps(movers), encoding="utf-8")
+        text = BP.redirects_file(root)
+        sta, dyn = judge(text, "forty movers")
+        assert dyn == tabs, f"forty movers: {dyn} dynamic rules, not the {tabs} tab rewrites"
+        for m in movers:
+            old, new = m["moved_from"][0], "/legislator/" + m["slug"]
+            for src, dst in [(old, new), (old + ".html", new), (old + "/", new)] + [
+                    (f"{old}/{s}", f"{new}/{s}") for s in BP.MEMBER_TAB_SLUGS]:
+                assert f"\n{src} {dst} 301\n" in text, f"{src} does not 301 to {dst}"
+        first = movers[0]["moved_from"][0]
+        assert text.index(f"\n{first}/votes ") < text.index("\n/legislator/:who/votes "), (
+            "a moved member's /votes comes after the tab rewrite, which would serve it first")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = (shared / "site" / "_redirects").read_text(encoding="utf-8")
+    assert built == BP.redirects_file(shared / "site"), (
+        "the fixture's _redirects is not the one redirects_file writes")
+    fs, fd = judge(built, "the fixture's")
+    return "ok", (f"forty movers: {sta} static rules, then the {dyn} tab rewrites; the fixture's "
+                  f"{fs} static and {fd} dynamic, in that order, under Cloudflare's "
+                  f"{CF_STATIC_MOST:,} and {CF_DYNAMIC_MOST}")
+
+
+@check("pipeline", "feed titles cut at a word boundary", needs=("build_feeds",))
+def _clip(build_feeds):
+    s = ("Enacted in accordance with Article 44 PartII of the N.H. Constitution "
+         "without the signature of the governor. Chapter 343")
+    out = build_feeds.clip(s)
+    assert out.endswith("\u2026"), out
+    assert not out[:-1].rstrip().endswith(("signatur", "governo")), out
+    assert build_feeds.clip("short one") == "short one"
+    return "ok", out[-38:]
+
+
+@check("pipeline", "a feed is dated by its newest item, not by the build, so a feed whose items did "
+                   "not change is the same file from night to night", needs=("build_feeds", "build_date"))
+def _feeds_dated_by_their_items(build_feeds, build_date):
+    """FEEDS' DATE = THEIR NEWEST ITEM'S (16 November 2026, the owner's word; the refactor's
+    stage 0, B11). lastBuildDate was the build's moment to the second, so every one of the
+    site's feeds changed every night and between two builds of one day. build_feeds.feed() on
+    made-up items, written under three stated moments a day and an hour apart: the same bytes
+    each time; lastBuildDate the newest item's date in whatever order they come, a meeting
+    still to come included, as its own pubDate is; an item with no date read neither moves it
+    nor stops it; and a feed with no dated item carries none."""
+    BF = build_feeds
+    items = [("HB 1 — a", "https://x/b/1", "d", "2026-11-10", "g1"),
+             ("HB 1 — b", "https://x/b/1", "d", "2026-11-14T10:00:00", "g2"),
+             ("HB 1 — c", "https://x/b/1", "d", "2026-10-01", "g3"),
+             ("HB 1 — d", "https://x/b/1", "d", "", "g4")]
+    ahead = items[:3] + [("HB 1 — hearing", "https://x/b/1", "d", "2026-12-02", "g5")]
+    saved = os.environ.get(build_date.ENV)
+    got = {}
+    try:
+        for when in ("2026-11-16T03:20:00", "2026-11-17T03:20:00", "2026-11-17T04:20:00"):
+            os.environ[build_date.ENV] = when
+            got[when] = [BF.feed("t", "d", "https://x", "https://x/f.xml", its, "https://x")
+                         for its in (items[:3], list(reversed(items[:3])), ahead, items[3:], [])]
+    finally:
+        if saved is None:
+            os.environ.pop(build_date.ENV, None)
+        else:
+            os.environ[build_date.ENV] = saved
+    one, *rest = got.values()
+    assert all(r[:3] == one[:3] for r in rest), (
+        "a feed whose items did not change differs between two builds: its date is the build's")
+
+    def dated(xml):
+        return re.findall(r"<lastBuildDate>([^<]*)</lastBuildDate>", xml)
+    plain, backwards, coming, undated, empty = one
+    assert dated(plain) == dated(backwards) == [BF.rfc822("2026-11-14")], (
+        "a feed's date is not its newest item's", dated(plain), dated(backwards))
+    assert dated(coming) == [BF.rfc822("2026-12-02")], (
+        "a feed whose newest item is a meeting still to come is not dated by it", dated(coming))
+    assert dated(undated) == [] and dated(empty) == [] and "<channel>" in empty, (
+        "a feed with no dated item carries a date", dated(undated), dated(empty))
+    mixed = BF.feed("t", "d", "https://x", "https://x/f.xml", items, "https://x")
+    assert dated(mixed) == [BF.rfc822("2026-11-14")], (
+        "an item with no date moved the feed's date, or stopped it", dated(mixed))
+    assert BF.newest_day(items) == "2026-11-14" and BF.newest_day([]) == "", BF.newest_day(items)
+    return "ok", (f"lastBuildDate {BF.rfc822('2026-11-14')} for items of 10 Oct to 14 Nov in either "
+                  "order, a meeting ahead's own date, none for undated or empty feeds; the same bytes "
+                  "under three stated moments")
+
+
+@check("files", "two issued people who prove to be one are merged in the register: the one kept "
+                "holds both numbers, the other stays with replaced_by, people.json gives one "
+                "person and the line for the other, and the API page counts the people")
+def _person_merge():
+    """THE OWNER'S THIRTY PAIRS (2 November 2026). Each member who sat in
+    both chambers was issued twice on 30 October, one person a chamber,
+    before the owner confirmed the pairs (member_corrections.json,
+    same_person). The site joined each pair's pages; people.json, which
+    takes the register's word, kept them two people, the second with no
+    name and no page (the deep walk of 6 November 2026).
+
+    A merge is the register's own way (person_numbers.py, the API page's
+    "When two entries prove to be one person"): the one kept takes the
+    other's numbers, and the other keeps an entry with replaced_by and no
+    numbers. check_register refused every such merge where the one that
+    goes is numbered by an employee number, as all thirty are: its number,
+    now the kept person's, read as "a person number and also someone else's
+    number". It is allowed for the person it is replaced by, and for nobody
+    else. Held here on a record made up for it."""
+    import tempfile
+    sys.path.insert(0, str(_paths.locate("people.py").parent))
+    import people as PE
+    import api_page
+    # The register's shape: a merge passes; a number held by anybody but the
+    # person it went to, a replacement nobody holds, a chain or a person
+    # replaced by themself do not.
+    merged = {"format": 1, "people": [
+        {"person": "44", "numbers": ["209092", "376682"]},
+        {"person": "376682", "replaced_by": "44"}]}
+    assert not PE.check_register(merged), PE.check_register(merged)
+    for bad, why in (
+            ({"people": [{"person": "44", "numbers": ["209092"]}, {"person": "45", "numbers": ["376682"]},
+                         {"person": "376682", "replaced_by": "44"}]}, "its number held by another"),
+            ({"people": [{"person": "44", "numbers": ["209092", "376682"]},
+                         {"person": "376682", "replaced_by": "45"}]}, "replaced by nobody it holds"),
+            ({"people": [{"person": "44", "numbers": ["209092", "376682"]},
+                         {"person": "376682", "replaced_by": "376682"}]}, "replaced by itself"),
+            ({"people": [{"person": "44", "replaced_by": "45"}, {"person": "45", "replaced_by": "46"},
+                         {"person": "46", "numbers": ["209092"]}]}, "a chain"),
+            ({"people": [{"person": "44", "numbers": ["209092"]},
+                         {"person": "376682", "replaced_by": "44", "numbers": ["376682"]}]},
+             "replaced and still holding numbers")):
+        assert PE.check_register(bad), f"check_register passed a merge {why}: {bad}"
+    # Built: one person with both numbers, and the line for the other.
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        for sub in ("db", "site/legislators", "data", "out"):
+            (d / sub).mkdir(parents=True, exist_ok=True)
+        (d / "db" / "_columns.json").write_text(json.dumps(
+            {"Legislators": ["PersonID", "LastName", "FirstName", "Employeeno"]}))
+        (d / "db" / "Legislators.psv").write_text("44|Pierce|David|209092\n")
+        (d / "site" / "legislators.json").write_text("[]")
+        (d / "site" / "former.json").write_text(json.dumps(
+            [{"id": "44", "name": "Pierce, David", "slug": "david-pierce-sd-5"}]))
+        # The joined page's own file, as build_site_v2 writes it for a mover
+        # who left (former_movers): tonight's join holds the pair together too.
+        (d / "site" / "legislators" / "44.json").write_text(json.dumps(
+            {"id": "44", "member_ids": ["44", "376682"]}))
+        (d / "data" / "sponsors.json").write_text("{}")
+        (d / "data" / "member_votes.json").write_text(json.dumps(
+            [{"member_id": "44"}, {"member_id": "376682"}]))
+        careers = {e: {"by_term": {t: {"chambers": [ch], "employee_nos": [e]}},
+                       "employee_nos": [e], "first": "David", "last": "Pierce"}
+                   for e, ch, t in (("376682", "H", "2007-2008"), ("209092", "S", "2013-2014"))}
+        people, rep = PE.build(d / "site", d / "data", d / "db", careers, merged)
+        rows = PE.write(people, d / "out")
+        csv_text = (d / "out" / "people.csv").read_text(encoding="utf-8")
+    by = {p["person"]: p for p in people}
+    assert set(by) == {"44", "376682"} and by["376682"] == {"person": "376682", "replaced_by": "44"}, people
+    p = by["44"]
+    assert p["employee_numbers"] == ["376682", "209092"] and p["name"] == "David Pierce" and \
+        p["page"] == "/legislator/david-pierce-sd-5", p
+    assert not PE.check_unique(people), PE.check_unique(people)
+    assert not rep["register_disagrees"] and not rep["missing_issued"], rep
+    assert rows[0]["rows"] == 2 and rows[0]["people"] == 1, rows[0]
+    assert "376682,replaced_by,44" in csv_text, csv_text
+    # The API page counts the people, and says what the other line is.
+    page = api_page.body({"files": [dict(rows[0]), dict(rows[1])]})
+    assert "One entry for each of the 1 people" in page and \
+        "and 1 for a number that proved to be one of theirs" in page, \
+        re.findall(r"One entry for each[^<]*", page)
+    page = api_page.body({"files": [{"path": "/data/people.json", "rows": 5, "bytes": 1}]})
+    assert "One entry for each of the 5 people with a recorded vote since 1999, with every " \
+           "number the General Court has used for them.</p>" in page, \
+        re.findall(r"One entry for each[^<]*", page)
+    return "ok", ("a merge passes the register's check and nothing else like it does; built, the "
+                  "kept person holds both numbers with the page and the name, the other is one "
+                  "replaced_by line, and the API page counts one person")
+
+
+@check("build", "every count on /api says what it counts, at every width: files, tables, people, "
+                "bills or rows, under a head that says Count, and the table is a list up to 58em",
+       needs=("api_page",))
+def _api_counts_say_units(AP):
+    """THE DEEP WALK OF 6 NOVEMBER 2026, on dry run 181's preview. /api's
+    downloads table is the data page's, whose counts are all rows: its head
+    says Rows, and its " rows" (class dpu) is drawn only on a phone, where
+    the head is not. /api's counts are of files, tables, people, bills and
+    rows, under the same hidden unit, so at a desktop's width the head said
+    Rows above a bare "43" for the files under /data/ and a bare "14" for
+    the database's tables. Each count carries its unit in the text itself,
+    and the head says Count.
+
+    And that branch's review: with its units the Count column is wider, and
+    the table was already wider than a tablet held upright, so the page
+    scrolled sideways from 721 to 842 pixels (dev: 803), and with the
+    database's fold open the table ran past its box to 926. Up to 58em
+    /api's table (class dpapi) is laid out as on a phone; the data page's is
+    not."""
+    def f(path, kind, **k):
+        return dict({"path": f"data/{path}", "kind": kind, "rows": 0, "bytes": 1_000_000}, **k)
+    manifest = {"files": [
+        f("schema.json", "schema"),
+        f("granite-record.sqlite.xz", "database", counts={"bills": 9, "votes": 8, "people": 7},
+          opened_bytes=5_000_000),
+        f("people.json", "people", rows=2192),
+        f("bills-2025-2026.jsonl.gz", "bills", rows=2000, term="2025-2026"),
+        f("bills-2023-2024.jsonl.gz", "bills", rows=1999, term="2023-2024"),
+        f("bills.csv", "table", rows=33683, file="bills.csv"),
+        f("votes-2025-2026.csv", "table", rows=100, file="votes-2025-2026.csv")]}
+    page = AP.body(manifest)
+    cells = re.findall(r'<td role="cell" class="n dpr">(.*?)</td>', page)
+    want = ["8 files", "&mdash;", "3 tables", "2,192 people", "3,999 bills", "33,783 rows"]
+    assert cells == want, f"/api's counts read {cells}, not {want}"
+    assert 'class="dpu"' not in page, (
+        "/api hands a unit to class dpu, which app.css draws only below 45em: a desktop reads "
+        "the bare number")
+    heads = re.findall(r'<th scope="col" role="columnheader" class="n">([^<]*)</th>', page)
+    assert heads == ["Count", "Size"], f"/api's number columns are headed {heads}"
+    # THE LIST UP TO 58EM. /api's table carries dpapi; app.css has, at the
+    # top level and not commented out, one @media (max-width:58em) block whose
+    # every rule is a .dpdl rule of the phone block (max-width:45em) with
+    # .dpapi added, declaration for declaration, and nothing else: a selector
+    # without .dpapi would change the data page, which is live, and a phone
+    # rule changed without its twin would part /api's phones from /data's.
+    # The data page's table carries no dpapi. (The review of 6 November: a
+    # text search passed with the block nested, commented out or missing a
+    # brace, and with a selector that had lost .dpapi.)
+    assert '<table class="dpdl dpapi" role="table">' in page, (
+        "/api's table no longer carries dpapi: from 45em to 58em it is a table wider than a "
+        "tablet held upright")
+    css = re.sub(r"/\*.*?\*/", "", _source(_paths.locate("app.css")), flags=re.S)
+
+    def blocks(text):
+        """[(prelude, body)]: text's top-level blocks, by balanced braces."""
+        out, i = [], 0
+        while (j := text.find("{", i)) >= 0:
+            depth, k = 1, j + 1
+            while k < len(text) and depth:
+                depth += {"{": 1, "}": -1}.get(text[k], 0)
+                k += 1
+            assert not depth, "app.css's braces do not balance"
+            out.append((re.sub(r"\s+", "", text[i:j]), text[j + 1:k - 1]))
+            i = k
+        return out
+
+    def rules(body):
+        got = blocks(body)
+        assert all("{" not in b for _, b in got), "a rule nested inside a rule"
+        return [(re.sub(r"\s+", " ", s0).strip(), re.sub(r"\s+", " ", b).strip()) for s0, b in
+                [(body[m.start():m.end()].split("{")[0], m.group(1))
+                 for m in re.finditer(r"[^{}]*\{([^{}]*)\}", body)]]
+
+    top = blocks(css)
+    phone = [b for p, b in top if p == "@media(max-width:45em)" and re.search(r"\.dpdl thead\s*\{", b)]
+    lists = [b for p, b in top if p == "@media(max-width:58em)"]
+    assert len(phone) == 1, f"app.css has {len(phone)} top-level phone blocks for .dpdl, not 1"
+    assert len(lists) == 1, (f"app.css has {len(lists)} top-level @media (max-width:58em) blocks, "
+                             "not 1: /api's list up to 58em is gone, nested or doubled")
+    twin = rules(lists[0])
+    stray = [s for s, _ in twin if not s.startswith(".dpdl.dpapi ")]
+    assert not stray, f"the 58em block has rules without .dpdl.dpapi, which reach the data page: {stray}"
+    want = sorted((".dpdl.dpapi" + s[len(".dpdl"):], d) for s, d in rules(phone[0])
+                  if s.startswith(".dpdl "))
+    assert len(want) >= 11 and sorted(twin) == want, (
+        "the 58em block is not the phone block's .dpdl rules with .dpapi added: "
+        f"missing {sorted(set(want) - set(twin))}, extra {sorted(set(twin) - set(want))}")
+    printed = [b for p, b in top if p == "@mediaprint" and ".dpdl.dpapi tbody tr" in b]
+    assert printed and "break-inside:avoid" in printed[0], (
+        "a printed /api may break a file's row across two pages")
+    exports = _source(_paths.locate("build_exports.py"))
+    assert "dpapi" not in exports, "the data page's table carries dpapi: it would change below 58em"
+    return "ok", ("the manifest's 8 files, the database's 3 tables, 2,192 people, 3,999 bills and "
+                  "33,783 rows each say their unit, under Count; /api's table is a list up to 58em, "
+                  f"its {len(twin)} rules the phone block's twins, and the data page's is not")
+
+
+# EVERY TESTIFY BUTTON A CHECK DRAWS IS ALSO THE EMAIL'S CASE (the review of 26
+# October 2026). follow_changes has app.js's Testify rules in Python, for the
+# emails, and a check that compared the two on a dozen records of its own let
+# six of those rules be taken out of the Python with nothing failing: the
+# records that exercise them were the JS checks' alone. So while
+# _testify_email_in_sync runs the checks that draw a Testify button, this
+# wraps testifyButton -- mountTestify's and focusActions' calls go through it
+# too -- and keeps each record, row and day it was asked about, what it drew,
+# and what app.js's own testifyHearings and testifyMoving said, for the email's
+# copy to be put to (_testify_email_agrees). A shape added to any of those
+# checks is held for the email with nothing more to do.
+# (The log is _SWITCHED.testify_log: the suite's switches are beside _suite_files.)
+# A check draws a Testify button in node where it calls one of these through
+# _app_js's scope.
+_TESTIFY_DRAWN_BY = re.compile(r"\bscope\.(?:testifyButton|mountTestify|focusActions)\(")
+
+
+@check("frontend", "the data page says whose the voters' counts are from ballot_results.json's "
+                   "own rows", needs=("build_exports",))
+def _ballot_words(build_exports):
+    """The data page's sentence on ballot_results.json said "from
+    Ballotpedia's list of New Hampshire ballot measures" in words of its own
+    until 7 October 2026, when the person made the Secretary of State every
+    decided row's source; since then build_exports.ballot_words writes it
+    from the rows (ballot_source.py), and no check read it (the review of
+    that day). Fails on the sentence naming anyone the rows do not: the
+    Secretary of State for the decided rows of the real file, with
+    Ballotpedia's figures as the cross-check and Ballotpedia's listing for
+    the one to come; both, counted, where the decided rows have two sources;
+    Ballotpedia alone where a row is Ballotpedia's alone; Ballotpedia's
+    figures said to be beside each row where some rows have none; and
+    anything at all where the file is not there."""
+    X = build_exports
+    sos, bp, _uncited, pending = _ballot_mixed_rows()
+    sos2 = {**sos, "bill": "CACR5", "term": "2005-2006"}
+    cases = (
+        ([sos, sos2, pending],
+         "the Secretary of State's count of the statewide Yes and No votes on each of the 2 the "
+         "voters have decided, with where it is printed and the day it was read, and "
+         "Ballotpedia's figures beside each as a cross-check; for the one still to go to the "
+         "voters, Ballotpedia's listing of the question"),
+        ([sos, bp, sos2],
+         "the statewide Yes and No votes on each of the 3 the voters have decided, with where "
+         "each count is printed and the day it was read: the Secretary of State's for 2, "
+         "Ballotpedia's for 1, and Ballotpedia's figures beside 2 of them as a cross-check"),
+        # A row decided after 7 October 2026 carries no cross-check, and the
+        # sentence does not say every row has one.
+        ([sos, {k: v for k, v in sos2.items() if k != "ballotpedia"}],
+         "the Secretary of State's count of the statewide Yes and No votes on each of the 2 the "
+         "voters have decided, with where it is printed and the day it was read, and "
+         "Ballotpedia's figures beside 1 of them as a cross-check"),
+        ([bp], "Ballotpedia's count of the statewide Yes and No votes on the one the voters have "
+               "decided, with where it is printed and the day it was read"))
+    bad = []
+    with tempfile.TemporaryDirectory() as tmp:
+        f = Path(tmp) / "ballot_results.json"
+        for rows, want in cases:
+            f.write_text(json.dumps({"rows": rows}), encoding="utf-8")
+            got = X.ballot_words(f)
+            if got != want:
+                bad.append(f"{len(rows)} rows: wanted {want!a}, got {got!a}")
+        got = X.ballot_words(Path(tmp) / "absent.json")
+        if got is not None:
+            bad.append(f"no file: wanted None, got {got!a}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the Secretary of State's where the decided rows are, with Ballotpedia's "
+                  "figures beside as many as carry them and its listing for the one to come; "
+                  "both, counted, where the rows have both; Ballotpedia alone where it is the "
+                  "only source")
+
+
+@check("build", "a city's own address goes to the Officials page's town box, and /guides to the "
+       "Resources hub: each town the House map divides into wards, in both spellings, and no town "
+       "with a page of its own", needs=("build_pages", "parse_districts", "build_town_pages"))
+def _city_addresses(BP, PD, BT):
+    """The audit of 25 October 2026, M4 and S6: /town/concord, /town/manchester
+    and the other cities' own addresses answered 404, because a city's pages
+    are its wards' (/town/concord-ward-3); and /guides, the folder every guide
+    is in, did the same. build_pages.WARDED_CITIES is held here to
+    records/districts/house.txt, so a map that divides another town into
+    wards, or makes one whole, fails here rather than leaving an address dead
+    or a town's own page behind a redirect -- Berlin, a city in one district,
+    has one at /town/berlin."""
+    src = Path("records/districts/house.txt")
+    if not src.exists():
+        return "skip", "no records/districts/house.txt here"
+    towns = [p for d in PD.parse_house(src).values() for p in d["towns"]]
+    warded = sorted({t for t, w in towns if w != "0"})
+    whole = {BT.slug(t, "0") for t, w in towns if w == "0"}
+    assert warded and list(BP.WARDED_CITIES) == warded, (
+        f"build_pages.WARDED_CITIES is {list(BP.WARDED_CITIES)}; the House map divides "
+        f"{warded} into wards")
+    red = BP.REDIRECTS
+    for c in warded:
+        for x in ("", ".html"):
+            assert f"\n/town/{BT.slug(c, '0')}{x} /officials?town={c} 301\n" in red, (
+                f"/town/{BT.slug(c, '0')}{x} does not 301 to /officials?town={c}")
+    over = sorted(s for s in (ln.split()[0] for ln in red.splitlines() if ln.startswith("/town/"))
+                  if s[len("/town/"):].removesuffix(".html") in whole)
+    assert not over, f"a redirect stands over a town's own page: {over}"
+    for x in ("", ".html"):
+        assert f"\n/guides{x} /resources 301\n" in red, f"/guides{x} does not 301 to /resources"
+    return "ok", (f"{len(warded)} cities' own addresses, both spellings, to the Officials page's "
+                  "town box; /guides to the Resources hub; no town's own page redirected")
+
+
+@check("frontend", "a member's structured data names their party as the party names itself, and an independent none")
+def _ld_party():
+    """The SEO review of 12 October 2026: 1,962 Person blocks said "D Party",
+    "R Party" or "Democrat Party", because the record gives a party as a code
+    as often as a word and structured.person appended " Party" to either."""
+    import structured as LD
+    got = {}
+    for p in ("D", "Democrat", "Democratic", "R", "Republican", "L", "I", "Independent", ""):
+        blocks = LD.person({"id": "1", "name": "Doe, Jo", "display_plain": "Rep. Jo Doe",
+                            "party": p, "chamber": "H"}, "https://graniterecord.org",
+                           "/legislator/jo-doe")
+        aff = (blocks[0] if isinstance(blocks, list) else blocks).get("affiliation")
+        got[p] = aff and aff["name"]
+    want = {"D": "Democratic Party", "Democrat": "Democratic Party",
+            "Democratic": "Democratic Party", "R": "Republican Party",
+            "Republican": "Republican Party", "L": "Libertarian Party",
+            "I": None, "Independent": None, "": None}
+    assert got == want, f"structured.person names the parties {got}"
+    return "ok", "D, Democrat and Democratic are the Democratic Party; R the Republican, L the Libertarian; an independent names none"
+
+
+def _shell_canon(path):
+    """shell.canon, for a check that compares a built page's link with the
+    file it names."""
+    import shell as S
+    return S.canon(path)
+
+
+@check("frontend", "a page links every other page at the address the host serves, not its .html file")
+def _links_clean():
+    """The SEO review of 12 October 2026: about 670,000 links on the site
+    named a page by its file -- "bills.html", "legislator/x.html" -- and
+    Cloudflare answers each with a 308 to the address without it. Every
+    builder writes its pages through shell.clean_links now; this reads the
+    whole fixture build, outside its scripts, for a link that still names a
+    page here by its file, so a writer that forgets is named."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import shell as S
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    bad, pages, links = {}, 0, 0
+    for f in sorted(site.rglob("*.html")):
+        text = f.read_text(encoding="utf-8")
+        pages += 1
+        for part in S._SCRIPT.split(text):
+            if part[:7].lower() == "<script":
+                continue
+            links += part.count('href="')
+            hit = S._PAGE_HREF.findall(part)
+            if hit:
+                bad[f.relative_to(site).as_posix()] = [h[1] for h in hit[:3]]
+    assert pages, "the fixture build wrote no pages"
+    assert not bad, (f"{len(bad)} pages link a page by its .html file, e.g. "
+                     + "; ".join(f"{k}: {v}" for k, v in list(bad.items())[:6]))
+    return "ok", f"{links:,} links on {pages} fixture pages, none naming a page here by its file"
+
+
+@check("frontend", "the signposts agree on the built site: the header lights the section a page's "
+       "trail begins at, a session day's Committees among them; About's What You Can Do Here links "
+       "pages and sections the build writes; a member's towns link their pages; no redirect stands "
+       "over a page")
+def _signposts_agree():
+    """The audit of 25 October 2026, S6 ("one place for each thing"), read
+    off the fixture's built site. A session day lit Calendar in the header
+    while its trail said Committees (the person chose Committees on 10
+    October); About's five lines of what a reader can do here named no page
+    to do it on; a member's towns were words beside a page for each; and a
+    rule of build_pages.MOVED over a page the build writes would hide one or
+    the other, as /town/berlin would."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import build_pages as BP
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+
+    def norm(href):
+        return re.sub(r"\.html$", "", re.split(r"[?#]", href)[0].lstrip("/"))
+    trails, bad = 0, []
+    for f in sorted(site.rglob("*.html")):
+        page = INLINE_BODY.sub(r"\1", f.read_text(encoding="utf-8", errors="replace"))
+        first = re.search(r'<nav class="rtrail"[^>]*><ol><li><a href="([^"]*)"', page)
+        if not first:
+            continue
+        trails += 1
+        lit = re.search(r'<a href="([^"]*)" aria-current="page"', page)
+        if not lit or norm(lit.group(1)) != norm(first.group(1)):
+            bad.append(f"{f.relative_to(site).as_posix()}: the trail begins at {first.group(1)} and "
+                       f"the header lights {lit.group(1) if lit else 'nothing'}")
+    assert trails and any(p.parts[-3] == "session" for p in site.glob("session/*/*.html")), (
+        "the fixture has no page with a trail, or no session day")
+    assert not bad, f"{len(bad)} pages: " + "; ".join(bad[:4])
+
+    about = (site / "about.html").read_text(encoding="utf-8")
+    at = about.index("<h2>What You Can Do Here</h2>")
+    can = about[at:about.index("</ul>", at)]
+    lines = re.findall(r"<li>(.*?)</li>", can, re.S)
+    assert len(lines) == 5 and all(re.match(r'<a href="[^"]+">', x) for x in lines), (
+        f"About's What You Can Do Here is not five lines that each open on a link: {lines}")
+    rules = _redirect_rules(site)
+    for href in re.findall(r'<a href="([^"]+)"', can):
+        path, _, frag = href.partition("#")
+        path = "/" + path.split("?")[0].lstrip("/")
+        assert _served(site, path, rules), f"About links {href}, and nothing is served at {path}"
+        if frag:
+            assert f'id="{frag}"' in (site / (path.lstrip("/") + ".html")).read_text(encoding="utf-8"), (
+                f"About links {href}, and {path} has no section #{frag}")
+
+    towns, linked = {p.stem for p in (site / "town").glob("*.html")}, 0
+    for f in sorted((site / "legislator").glob("*.html")):
+        page = f.read_text(encoding="utf-8")
+        said = re.search(r"<b>Represents:</b> (.*?)</li>", page)
+        if not said or "window.GR_FORMER" in page:
+            continue
+        plain = [t.strip() for t in re.sub(r"<a [^>]*>[^<]*</a>", "", said.group(1)).split(",")]
+        assert not [t for t in plain if re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-") in towns], (
+            f"{f.name}: a town with a page is not linked: {said.group(1)}")
+        for href, name in re.findall(r'<a href="([^"]+)">([^<]+)</a>', said.group(1)):
+            assert norm(href).removeprefix("town/") in towns and f'"{name}": "{href}"' in page, (
+                f"{f.name}: {name} links {href}, which is no town page or not the page's GR_TOWNS")
+            linked += 1
+    assert linked, "no member's page on the fixture links a town"
+
+    over = []
+    for old, _new in BP.MOVED:
+        p = old.lstrip("/")
+        if (site / p).is_file() or (site / (p + ".html")).is_file() or (site / p / "index.html").is_file():
+            over.append(old)
+    assert not over, f"a redirect stands over a page the build writes: {over}"
+    return "ok", (f"{trails} pages' trails begin where the header is lit; About's five lines link "
+                  f"what they describe; {linked} towns linked on the members' pages; none of "
+                  f"{len(BP.MOVED)} redirects over a page")
+
+
+@check("frontend", "the home page's cards are Bills, Officials, Laws and Resources, its Common Questions "
+                   "offer the guides most people come for, each with a line on what it teaches, and its "
+                   "columns carry one of the drawn "
+                   "treatments, none of which tints a band or moves a column",
+       needs=("build_pages", "build_civics", "guides"))
+def _home_cards(BP, BC, G):
+    """The person, 17 October 2026: "Switch out the committees card on the
+    home page for the officials page"; "a card or some other way to link to
+    laws on the homepage other than the nav"; the how-to guides shown on the
+    home page in a way the public finds intuitive; and "It would be good if
+    the columns on the homepage could be a bit more differentiated". Read off
+    the fixture's built home page and the code: the four cards in order, no
+    Committees card; Common Questions (18 October) with every pick the build
+    published, each its title over its line, and All guides; the columns' class one of HOME_COLUMN_OPTIONS, each of
+    which app.css styles, inside the three columns only -- no rule of theirs
+    reaches the header or the page's ground (the person's "no pale pine
+    band", 8 October), and none changes the grid's columns (the three-column
+    layout is settled)."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    home = (site / "index.html").read_text(encoding="utf-8")
+    # To the guides' slot, which follows the cards: the Laws card is a box of
+    # its own (.ecard), so the block holds a </div> before its own.
+    entry = re.search(r'<div class="entry">(.*?)<!-- guides -->', home, re.S)
+    assert entry, "the home page has no cards"
+    cards = re.findall(r'<a (?:class="ecmain" )?href="([^"]+)">.*?<b>([^<]+)</b>', entry.group(1), re.S)
+    names = [n for _h, n in cards]
+    assert names == ["Browse Bills", "Officials", "Laws", "Resources"], f"the home page's cards are {names}"
+    hrefs = [h for h, _n in cards]
+    assert not any("committees" in h for h in hrefs), "the Committees card is back on the home page"
+    assert any(h.rstrip("/").split("/")[-1] in ("laws", "laws.html") for h in hrefs), \
+        "the Laws card does not lead to /laws"
+    # THE LAWS CARD IS ONE LINK (the person, 22 October 2026: "Remove the
+    # constitution hyperlink on the homepage laws card"); it named the
+    # Constitution and linked its tab from 18 October.
+    assert 'class="ecalso"' not in entry.group(1) and "The Constitution</a>" not in entry.group(1), \
+        "the Laws card still links the Constitution"
+    # COMMON QUESTIONS, NOT ONE-WORD BUTTONS (the person, 18 October 2026, of
+    # the "How do I...?" row: "the phrasing is too vague to understand what's
+    # useful about it. Maybe we could have a sort of top 3-5 guides for the
+    # most common inquiries like how to vote, how to run for office, and new
+    # to New Hampshire"). The block is what the person asked for, so this
+    # fails while build_civics.HOME_GUIDES is off rather than accepting an
+    # empty slot. Then, from the code: three to five picks, the person's three
+    # among them, each with a title and a line long enough to say what a
+    # reader will learn -- a line of a word or two is the vague button come
+    # back. And from the fixture's built page: under its heading, each pick
+    # the build published drawn as its title over its line and linked to its
+    # guide, no pick it held back, and All guides to the How-To Guides tab.
+    assert BC.HOME_GUIDES, "the home page's Common Questions are off (build_civics.HOME_GUIDES)"
+    picks = G.HOME
+    assert 3 <= len(picks) <= 5, f"the home page offers {len(picks)} common questions, not three to five"
+    named = {"how-to-vote", "run-for-office", "new-to-new-hampshire"}
+    assert named <= {t["slug"] for t in picks}, \
+        f"the person's own picks are not all there: {sorted(named - {t['slug'] for t in picks})}"
+    for t in picks:
+        words = re.sub(r"<[^>]+>|&\w+;", " ", t["line"]).split()
+        assert t["does"] and len(words) >= 6, \
+            f"{t['slug']}: a common question needs a title and a line saying what the guide teaches"
+    row = re.search(r"<!-- guides -->(.*?)<!-- /guides -->", home, re.S).group(1)
+    assert '<h2 id="hguides-h">Common Questions</h2>' in row and "How do I" not in row, \
+        "the home page's guides block is not headed Common Questions"
+    assert re.search(r'<a class="hgall" href="/resources#guides">All guides</a>', row), \
+        "the home page's Common Questions do not end with All guides to the How-To Guides tab"
+    import civics as _civ
+    published = {p.stem for p in (site / "guides").glob("*.html")
+                 if 'class="g-draft"' not in p.read_text(encoding="utf-8")}
+    shown_n = 0
+    for t in picks:
+        drawn = (f'<li><a href="/guides/{t["slug"]}"><b>{t["does"]}</b>'
+                 f'<span>{BC.dashes(t["line"])}</span></a></li>')
+        shown = drawn in row
+        shown_n += shown
+        held = t["slug"] not in published and t["slug"] not in _civ.HOW_TO
+        assert shown != held, (f"{t['slug']} is {'on' if shown else 'off'} the home page's Common "
+                               f"Questions and {'held back' if held else 'published'}"
+                               + ("" if shown or held else ", or not drawn as its title over its line"))
+    assert row.count("<li>") == shown_n, "the home page's Common Questions list a guide guides.HOME does not"
+    # The columns: one treatment, drawn by app.css, inside the columns.
+    cls = BP.HOME_COLUMN_OPTIONS[BP.HOME_COLUMNS]
+    assert f'<div class="hcols {cls}">' in home, f"the home page's columns do not carry {cls}"
+    css = _source("src/pages/app.css")
+    style = (site / "app.css").read_text(encoding="utf-8")
+    for opt, c in BP.HOME_COLUMN_OPTIONS.items():
+        rules = re.findall(r"([^{}]*\." + re.escape(c) + r"\b[^{}]*)\{([^{}]*)\}", css)
+        assert rules, f"app.css draws nothing for the {opt} treatment ({c})"
+        assert f".{c}" in style, f"the published app.css, which the home page loads, lacks the {opt} treatment"
+        for sel, body in rules:
+            assert not re.search(r"\b(?:nav|header|body)\b|\.top\b|\.wrap\b", sel.replace("body.pg", "")), \
+                f"the {opt} treatment reaches beyond the columns: {sel.strip()[:80]}"
+            assert "grid-template" not in body and not re.search(r"(?<![\w-])order\s*:", body), \
+                f"the {opt} treatment moves the columns: {sel.strip()[:80]}"
+    return "ok", (f"Bills, Officials, Laws (with the Constitution), Resources; Common Questions with "
+                  f"{shown_n} of {len(picks)} guides and All guides"
+                  f"; columns {BP.HOME_COLUMNS} ({cls}) of {len(BP.HOME_COLUMN_OPTIONS)} drawn")
+
+
+# An address as it is written in a page, and the page furniture that is not one.
+# Script and style BODIES go before anything is read out of a page:
+# legislators.html builds its rows in the browser, and
+# `legislator/${esc(m.slug)}.html` inside a template literal is not an address
+# anybody ever requests. The opening tag is kept, because `<script src>` is.
+LINK_ATTR = re.compile(r'(?:href|src)\s*=\s*"([^"]*)"', re.I)
+
+
+def _redirect_rules(site):
+    """_redirects as patterns to match a path against.
+
+    Pages serves the left-hand side of a rule, so a link to one is not a dead
+    link even though no file sits there: /bill/2026/hb1442/votes is the bill
+    page with a tab open. `:name` is one segment, `*` is the rest.
+    """
+    p = site / "_redirects"
+    if not p.exists():
+        return []
+    out = []
+    for line in p.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            out.append([s for s in line.split()[0].strip("/").split("/") if s])
+    return out
+
+
+def _served(site, path, rules):
+    """Has the CDN anything to serve at this path?
+
+    Cloudflare Pages serves site/x.html at /x and 308s /x.html to /x, so all
+    three spellings resolve to the same file and all three are links that work.
+    """
+    from urllib.parse import unquote
+    p = unquote(path).lstrip("/")
+    if p == "" or p.endswith("/"):
+        return (site / p / "index.html").is_file()
+    f = site / p
+    if (f.is_file() or f.with_name(f.name + ".html").is_file()
+            or (f / "index.html").is_file()):
+        return True
+    segs = p.split("/")
+    for rule in rules:
+        if rule and rule[-1] == "*":
+            head = rule[:-1]
+            if len(segs) >= len(head) and all(
+                    r.startswith(":") or r == s for r, s in zip(head, segs)):
+                return True
+        elif len(rule) == len(segs) and all(
+                r.startswith(":") or r == s for r, s in zip(rule, segs)):
+            return True
+    return False
+
+
+@check("build", "every internal link the builders write resolves to a file")
+def _links_resolve():
+    """462 ward links went out dead, because a relative href is not relative.
+
+    Every page is built from bills.html and bills.html carries <base href="/">,
+    so `href="wards/derry-1"` written on /town/derry.html is a request for
+    /wards/derry-1 and not for anything beside the page. Nothing here noticed
+    for weeks, and the reason is worth naming: every check read the href as it
+    was written, and not one of them resolved it the way a browser would.
+
+    So this builds the fixture site and resolves each one the way a browser
+    does -- against <base href> where the page has one, against the page's own
+    address where it does not -- and then asks whether Cloudflare Pages has
+    anything to serve there: site/<p>, site/<p>.html, site/<p>/index.html, or a
+    rule in _redirects, which is how the tab addresses are served.
+
+    WHAT A FIXTURE CANNOT JUDGE, said out loud rather than passed over: the
+    Learn section cites real bills by number in hand-written prose -- HB 1002
+    of 2024 among them -- and this fixture holds four invented ones. A link to
+    a bill the fixture does not carry is counted and skipped, and the count is
+    in the result line so that it going up is visible. A chapter of the Laws
+    pages is the same case (26 October 2026): the state symbols page cites
+    RSA 3 section by section, and the fixture's statute table holds 91-A
+    alone, so a link to a chapter the fixture does not carry is counted and
+    skipped in the same way, and its count is in the result line beside the
+    bills'.
+
+    AND IT IS BUILT AS A CLONE BUILDS IT: WITH NO LOGO (1 October 2026). The
+    logo and the icons are not in the repository, so this is the site every
+    fork builds first, and the fixture is the only place that path runs. What
+    must be true of it: the build finishes and says so in one plain message;
+    the only addresses with nothing behind them are the icons every head
+    links; the home page's heading is the site's name as text and not an
+    empty masked band; neither stylesheet draws a header mark that is not
+    there; and check_site refuses the site with one error that says why. Then
+    the stand-ins go in and build_pages runs again, which is the other half:
+    the heading is the lockup, the artist's file wins over the clipart of the
+    same name, and both stylesheets draw the mark.
+    """
+    from urllib.parse import urldefrag, urljoin
+    here = Path(".").resolve()
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp())
+    try:
+        base = _built_nobrand(here, root)
+        import build_pages as BP
+        site = root / "site"
+        rules = _redirect_rules(site)
+        have_bill = {p.relative_to(site / "bill").with_suffix("").as_posix()
+                     for p in (site / "bill").rglob("*.html")}
+        have_law = {re.sub(r"(/index)?\.html$", "", p.relative_to(site / "laws").as_posix())
+                    for p in (site / "laws").rglob("*.html")} if (site / "laws").is_dir() else set()
+        pages = sorted(site.rglob("*.html"))
+        assert pages, "the fixture chain wrote no pages to check"
+        broken, offsite_bill, offsite_law, n = Counter(), 0, 0, 0
+        where = {}
+        for page in pages:
+            rel = page.relative_to(site).as_posix()
+            text = INLINE_BODY.sub(r"\1", page.read_text(encoding="utf-8",
+                                                         errors="replace"))
+            m = BASE_HREF.search(text)
+            # the browser's base: <base href> if the page carries one, else the
+            # page's own address
+            at = urljoin("https://x/" + rel, m.group(1) if m else "")
+            for raw in LINK_ATTR.findall(text):
+                raw = raw.strip()
+                if not raw or OFFSITE.match(raw):
+                    continue
+                target = urldefrag(urljoin(at, raw))[0].split("?")[0]
+                if not target.startswith("https://x/"):
+                    continue
+                path = target[len("https://x"):]
+                bill = re.fullmatch(r"/bill/(.+?)(?:\.html)?", path)
+                if bill and bill.group(1) not in have_bill:
+                    offsite_bill += 1
+                    continue
+                law = re.fullmatch(r"/laws/([^/]+?)/?(?:\.html)?", path)
+                if law and law.group(1) not in have_law:
+                    offsite_law += 1
+                    continue
+                n += 1
+                if not _served(site, path, rules):
+                    broken[f"{path} (as written {raw!r})"] += 1
+                    where.setdefault(path, rel)
+        # The icons a clone does not have, set apart: they are the one kind of
+        # dead link this fixture is built to have. Anything else is a defect.
+        brand_at = {"/" + f for f in BP.BRAND_FILES}
+        no_logo = Counter({k: v for k, v in broken.items()
+                           if k.split(" (")[0] in brand_at})
+        for k in no_logo:
+            del broken[k]
+        assert not broken, (
+            f"{sum(broken.values())} links to {len(broken)} paths with nothing "
+            "behind them: " + "; ".join(
+                f"{k} on {where[k.split(' (')[0]]}" for k, _ in broken.most_common(6)))
+        icons = sorted({k.split(" (")[0] for k in no_logo})
+        assert icons, ("the fixture was built with no logo, and every icon link "
+                       "still resolved: something put logo files in it")
+
+        # ---- the site a clone builds ------------------------------------
+        home = (site / "index.html").read_text(encoding="utf-8", errors="replace")
+        assert ('<h1 class="wordmark">Granite Record</h1>' in home
+                and 'class="lockup"' not in home), (
+            "built with no lockup.png, the home page's heading is not the "
+            "site's name as text: a mask whose file is missing is drawn as "
+            "nothing, so the heading would be an empty band")
+        cut = BP.without_mark((here / "src/pages/app.css").read_bytes())
+        assert (site / "app.css").read_bytes() == BP.strip_css(cut.decode("utf-8")).encode("utf-8"), (
+            "built with no header mark, site/app.css is not app.css less its "
+            "MARK region and its comments")
+        for css in ("app.css",):
+            text = (site / css).read_text(encoding="utf-8")
+            assert BP.HEADER_MARK not in text and "/* MARK:START" not in text, (
+                f"built with no header mark, {css} still carries the rule that "
+                "draws it: an empty 33x56 box before the site's name, on every "
+                "page")
+
+        def pages_again():
+            r = _run([sys.executable, _paths.script("build_pages.py"), "--out", "site"],
+                     cwd=root, capture_output=True, text=True, timeout=180)
+            assert r.returncode == 0, (
+                "build_pages.py: " + ((r.stderr or r.stdout).strip().splitlines()
+                                      or ["?"])[-1][:160])
+            lines = [l.strip() for l in r.stdout.splitlines() if l.strip()]
+            return [l for l in lines if l.startswith("brand:")], lines[-3:]
+        said, shown = pages_again()
+        assert len(said) == 1, (
+            f"with no logo the build said {len(said)} things about it, not one")
+        # build_all.py prints a step's last three lines and no others, so a
+        # message said any earlier is one a person running the pipeline never
+        # sees -- which is where this one was first put.
+        assert said[0] in shown, (
+            "the build's message about a missing logo is not among its last "
+            "three lines, which are all build_all.py shows of a step")
+        for want in ("not part of the open-source release", "DATA.md",
+                     "build_brand.py", "assets/", "heading is set as text",
+                     "header is the wordmark alone"):
+            assert want in said[0], (
+                f"the build's one message about a missing logo does not say "
+                f"{want!r}: {said[0][:200]}")
+        r = _run([sys.executable, _paths.script("check_site.py"),
+                  "--site", "site", "--base", base],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
+        assert r.returncode != 0 and len(bad) == 1 and bad[0].startswith(
+            "x the logo and icons are not in the site"), (
+            "check_site on a site with no logo should refuse it with one "
+            "plain error; it said: " + ("; ".join(bad)[:200] or "nothing"))
+        assert "DATA.md" in bad[0] and "broken link" not in r.stdout, (
+            "check_site's error about the logo does not say why, or it still "
+            "lists the icons as broken links")
+
+        # ---- and the same site once the files are there ---------------------
+        _fixture_brand(here, root, brand=True)
+        said, _shown = pages_again()
+        assert len(said) == 1 and "not here" not in said[0], (
+            "with every logo file placed the build still says: " + "; ".join(said)[:200])
+        home = (site / "index.html").read_text(encoding="utf-8", errors="replace")
+        assert '<h1 class="lockup"><span>Granite Record</span></h1>' in home, (
+            "with lockup.png placed, the home page's heading is not the lockup")
+        assert (site / "lockup.png").read_bytes().endswith(LICENSED_STAND_IN), (
+            "assets/licensed/lockup.png did not replace the clipart of the "
+            "same name in the site")
+        assert (site / BP.HEADER_MARK).is_file(), (
+            f"assets/licensed/{BP.HEADER_MARK} was not put in the site")
+        # The emails' copy, made from it (build_brand.mail_mark, 22 October
+        # 2026): every email's header shows it, at the size mail.js gives it.
+        mm = (site / "mail-mark.png").read_bytes() if (site / "mail-mark.png").is_file() else b""
+        assert mm[:8] == b"\x89PNG\r\n\x1a\n", (
+            "with the header mark placed, the build made no mail-mark.png, the "
+            "emails' copy of it: every email would open on a broken image")
+        import struct as _st
+        assert _st.unpack(">II", mm[16:24]) == (123, 192), (
+            "mail-mark.png is not 41x64 at three times, the size mail.js draws it at")
+        assert (site / "app.css").read_text(encoding="utf-8") == BP.strip_css(
+                (here / "src/pages/app.css").read_text(encoding="utf-8")), (
+            "with the header mark placed, site/app.css is not app.css less its comments")
+        for css in ("app.css",):
+            assert f"url(/{BP.HEADER_MARK})" in (site / css).read_text(encoding="utf-8"), (
+                f"with the header mark placed, {css} does not draw it")
+        r = _run([sys.executable, _paths.script("check_site.py"),
+                  "--site", "site", "--base", base],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
+        assert not bad, "check_site, once the logo is there: " + "; ".join(bad)[:160]
+        return "ok", (f"{n} internal links on {len(pages)} fixture pages, each "
+                      f"resolved through <base href> and served by a file or a "
+                      f"_redirects rule; {offsite_bill} more name a bill and "
+                      f"{offsite_law} a chapter of the laws this fixture does not "
+                      "carry. Built as a clone, with no logo: "
+                      f"the only dead addresses are {len(icons)} icons "
+                      f"({sum(no_logo.values())} links), the heading is text, "
+                      "the header has no mark and check_site says why once; "
+                      "with the files placed, the lockup and the mark are drawn")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a bill request is followed until it is a bill: drafted, its ending names the bill "
+       "its follow moves to; withdrawn, it ends", needs=("follow_changes",))
+def _follow_lsr_endings(FC):
+    """The person, 22 October 2026: "email following for LSRs should ping when
+    the legislation has been drafted and then convert that into following the
+    bill version". build_feeds lists a request as lsr:<number> and, the night
+    it leaves, hints what became of it; FC.ending says so in the night's file,
+    and the sender (tests/follow/lsr.test.js) moves the follow."""
+    assert FC.key_ok("lsr:2027-0001") and not FC.key_ok("lsr:27-1") and "lsr" in FC.ENDS
+    e = FC.ending("lsr:2027-0001", "LSR 2027-0001", term_turned=False, old_term="2025-2026",
+                  hints={"lsr:2027-0001": {"becomes": "bill:2027/HB45", "bill": "HB 45"}})
+    assert e["how"] == "drafted" and e["becomes"] == "bill:2027/HB45" \
+        and "introduced as HB 45" in e["summary"], e
+    w = FC.ending("lsr:2027-0002", "LSR 2027-0002", term_turned=True, old_term="2025-2026",
+                  hints={"lsr:2027-0002": {"withdrawn": True}})
+    assert w["how"] == "withdrawn" and "becomes" not in w, w
+    led = {"followable": {"lsr:2027-0001": "LSR 2027-0001"}, "nights": {}, "carried": {}}
+    out, _new_by, counts = FC.decide(led, tonight="2026-12-10", built="2026-12-10T09:00:00Z",
+                                     sitting_term="2027-2028", followable={}, lists={},
+                                     hints={"lsr:2027-0001": {"becomes": "bill:2027/HB45",
+                                                              "bill": "HB 45"}})
+    told = out["nights"]["2026-12-10"]["ended"]["lsr:2027-0001"]
+    assert told["becomes"] == "bill:2027/HB45" and counts["ended"] == 1, told
+    return "ok", "drafted names its bill, withdrawn ends, and the night's file carries becomes"
+
+
+@check("frontend", "an email takes the site's colours, testimony forms, study words and mark from "
+       "site.gen.js, and so does the manage page its colours; and site.gen.js is what "
+       "follow_site.py writes from the site's files now", needs=("follow_site",))
+def _follow_site_current(FS):
+    """The person, 22 October 2026: bill emails should have "similar elements to
+    what's on the bill pages with ... color coded indicators", and testimony
+    "with a similar button ... just like it shows on the bill page version";
+    and on 23 October, code "easily adjustable for future development so we
+    don't have to keep going back and redo work done in a previous session".
+
+    mail.js held its own copy of each value it shares with the site -- the
+    two chambers' forms (app.js TESTIFY_FORMS), the word each status chip is
+    coloured by (chips.json "chip"), the light theme's status, ring and text
+    inks (app.css), the study report's words, the mark's file and size -- and
+    a check for each held the copy to its source, so a change to the site
+    meant a second edit by hand. Now follow_site.py reads every one where the
+    site keeps it and writes workers/follow/site.gen.js, which mail.js
+    imports. This fails while the committed file is not what it would write,
+    naming the one command that makes it so; and where mail.js types a
+    colour of the site's or a form's address again, which would be a copy
+    nothing holds.
+
+    The manage, confirm and unsubscribe pages (workers/follow/page.js) were
+    drawn from a palette typed by hand with no check, and it drifted: its dark
+    brick was #F0938C where app.css's is #E4877E. Since 23 October 2026 they
+    take site.gen.js's PAGE_PALETTE, and this fails where page.js types a
+    colour again."""
+    # What it is written from, each by its path here as well as in
+    # follow_site.py, so that a change to any of them reaches this check
+    # under preflight --changed (check_select.py reads this file's strings).
+    sources = ("src/pages/app.css", "src/pages/app.js", "src/pages/words/chips.json",
+               "src/pages/words/study_report.json", "src/pages/words/follow_beta.json",
+               "src/pages/words/meeting_kinds.json", "src/pages/build_brand.py")
+    assert sorted(sources) == sorted(p.as_posix() for p in FS.SOURCES), (
+        f"follow_site.py reads {sorted(p.as_posix() for p in FS.SOURCES)}, and this check names "
+        f"{sorted(sources)}: name each here, so preflight --changed runs this when one moves")
+    try:
+        want = FS.render()
+    except FS.SourceError as e:
+        raise AssertionError(f"follow_site.py cannot read the site's files: {e}") from None
+    ok, why = FS.current()
+    if not ok:
+        try:
+            got = _site_gen()
+        except (OSError, ValueError):
+            got = {}
+        fresh = {n: v for n, (_, v) in FS.values().items()}
+        moved = [n for n in fresh if got.get(n) != fresh[n]] + [n for n in got if n not in fresh]
+        raise AssertionError(f"{why} ({', '.join(moved) or 'its words around them'}): run "
+                             f"`{FS.COMMAND}` and commit {FS.OUT.as_posix()} with the change")
+    mail = _source("workers/follow/mail.js")
+    code = re.sub(r"/\*.*?\*/", "", mail, flags=re.S)
+    code = re.sub(r"(^|[^:])//.*$", r"\1", code, flags=re.M)
+    assert re.search(r'^import \{[^}]*\} from "\./site\.gen\.js";', code, re.M), \
+        "mail.js does not import from ./site.gen.js"
+    inks = sorted({h.upper() for h in re.findall(r"#[0-9A-Fa-f]{6}\b", code)} - {"#FFFFFF"})
+    assert not inks, (f"mail.js types the colours {inks} itself; every colour but the emails' "
+                      f"white is site.gen.js's, from app.css")
+    assert "gc.nh.gov" not in code, \
+        "mail.js types a General Court address; the testimony forms are site.gen.js's, from app.js"
+    page = _source("workers/follow/page.js")
+    code = re.sub(r"/\*.*?\*/", "", page, flags=re.S)
+    code = re.sub(r"(^|[^:])//.*$", r"\1", code, flags=re.M)
+    assert re.search(r'^import \{[^}]*\bPAGE_PALETTE\b[^}]*\} from "\./site\.gen\.js";', code, re.M), \
+        "page.js does not import PAGE_PALETTE from ./site.gen.js"
+    typed = sorted({h.upper() for h in re.findall(r"#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?\b", code)})
+    assert not typed, (f"page.js types the colours {typed} itself; the manage page's colours are "
+                       f"site.gen.js's PAGE_PALETTE, from app.css (run `{FS.COMMAND}`)")
+    # THE WORDMARK'S FACE IS THE SITE'S (the walk of 31 October 2026): the
+    # follow pages drew "Granite Record" in Source Serif 4, the header in
+    # app.css's --brand-face, Playfair Display 600 at 22px.
+    face = re.search(r"--brand-face:([^;]+);", _source("src/pages/app.css"))
+    brand = re.search(r"\.brand\{[^}]*\}", code)
+    assert face and f"--brand-face:{face.group(1)}" in code and brand \
+        and "var(--brand-face)" in brand.group(0) and "600 22px" in brand.group(0) \
+        and "family=Playfair+Display:wght@600" in code, (
+            "the follow pages' wordmark is not in app.css's --brand-face, Playfair Display 600 at "
+            "22px, loaded with the page's fonts")
+    names = {n: v for n, (_, v) in FS.values().items()}
+    return "ok", (f"{FS.OUT.as_posix()} is current: {len(names['STATUS_INK'])} status inks, "
+                  f"{len(names['SITE_PALETTE'])} text inks and the ring's two from app.css, "
+                  f"{len(names['STATUS_CLASS'])} chip words, {len(names['TESTIFY_FORMS'])} forms, "
+                  f"the study words and the mark, and the manage page's "
+                  f"{len(names['PAGE_PALETTE']['light'])} colours a theme; "
+                  f"{len(want.splitlines())} lines")
+
+
+@check("build", "a bill's floor roll call reaches the email as its count, found by its day and its "
+       "count, with no member named", needs=("follow_changes",))
+def _follow_rollcall_counts(FC):
+    """The person, 22 October 2026: bill emails should have "similar elements
+    to what's on the bill pages with the vote diagrams". build_feeds finds a
+    docket line's roll call in the bill's record by FC.FLOOR_COUNT and the
+    day, and FC.rollcall_detail keeps what the email's bar draws."""
+    m = FC.FLOOR_COUNT.search("Ought to Pass with Amendment 2026-0123h: MA RC 201-163 03/06/2026 HJ 7")
+    assert m and m.groups() == ("201", "163"), m
+    assert not FC.FLOOR_COUNT.search("Ought to Pass: MA VV 03/06/2026")
+    rc = {"date": "2026-03-06", "yeas": 201, "nays": 163, "passed": True, "threshold_needed": 183,
+          "threshold_rule": "", "tally": {"D": {"Yea": 11, "Nay": 150}, "R": {"Yea": 190, "Nay": 13},
+                                          "I": {"Yea": 0, "Nay": 0}},
+          "members": [{"n": "Rep. Someone", "p": "R", "v": "Yea"}]}
+    got = FC.rollcall_detail(rc)
+    assert got == {"yeas": 201, "nays": 163, "passed": True, "need": 183,
+                   "parties": [["R", 190, 13], ["D", 11, 150]]}, got
+    assert "Someone" not in json.dumps(got), "a member's name reached the changes file"
+    assert FC.rollcall_ok(got) and not FC.rollcall_ok({**got, "members": []})
+    assert FC.rollcall_detail({**rc, "threshold_unknown": True}).get("need") is None, (
+        "a threshold the record does not know is drawn as a need")
+    for bad in ({**rc, "yeas": None}, {**rc, "passed": None}, {**rc, "yeas": 0, "nays": 0}):
+        assert FC.rollcall_detail(bad) is None, bad
+    it = FC.item("g", "2026-03-06", "vote", "HB 1 \u2014 MA RC 201-163", rollcall=got)
+    assert it["rollcall"] == got
+    assert "rollcall" not in FC.item("g", "2026-03-06", "vote", "x", rollcall={"yeas": "201"})
+    src = _source("src/pages/build_feeds.py")
+    assert "rollcall=(rollcall_for(" in src and "FC.FLOOR_COUNT.search" in src and \
+        "all(h == hits[0] for h in hits)" in src, (
+        "build_feeds no longer hands a bill's vote item its roll call's count, or draws one of two "
+        "roll calls that disagree")
+    return "ok", "found by day and count, counts only, a guess left out"
+
+
+@check("build", "the changes files mark milestones, set a ballot beside its roll call, and let a "
+       "law be followed by its chapter", needs=("follow_changes",))
+def _follow_manager_contract(FC):
+    """The person, 11 October 2026: milestones only; "how they voted vs the
+    overall outcome of the vote, and the bill title with links"; following a
+    law. What the build writes for each, held to what the sender reads
+    (CHANGES_FORMAT.md)."""
+    assert FC.milestone("vote") and FC.milestone("scheduled") and FC.milestone("exec")
+    assert FC.milestone("action", "Ought to Pass: MA VV 03/06/2026")
+    assert FC.milestone("action", "Signed by Governor 06/01/2026; Chapter 0101")
+    assert not FC.milestone("action", "Introduced 01/03/2026 and referred to Education")
+    assert not FC.milestone("sponsor") and not FC.milestone("sitting")
+    v = FC.vote_detail("yes", result="passed", tally="214-119", motion="pass the bill",
+                       bill="HB 1442", title="relative to x")
+    assert v == {"ballot": "yes", "result": "passed", "tally": "214-119", "motion": "pass the bill",
+                 "bill": "HB 1442", "title": "relative to x"}, v
+    assert FC.vote_detail("") is None and "result" not in FC.vote_detail("no", result="maybe")
+    it = FC.item("g", "2026-03-06", "vote", "HB 1442 \u2014 yes on pass the bill", "/bill/2026/hb1442",
+                 "2025-2026", milestone=True, vote=v)
+    out = []
+    FC._item(dict(it, seen="2026-03-07T09:00:00Z"), "x", True, False, out)
+    assert not out, out
+    FC._item(dict(it, seen="2026-03-07T09:00:00Z", vote={"result": "won"}), "x", True, False, out)
+    assert out, "a ballot with no ballot passed the check"
+    assert FC.key_ok("law:91-A") and FC.key_ok("law:674") and not FC.key_ok("law:91-a")
+    js = _source("workers/follow/common.js")
+    assert "law: /^\\d{1,3}(?:-[A-Z]{1,2})?$/" in js and FC.REF["law"].pattern == r"^\d{1,3}(?:-[A-Z]{1,2})?$", \
+        "the build and the sender read a law's key differently"
+    return "ok", "milestones by kind and by what a docket line decides; a ballot with its roll call; law:91-A"
+
+
+@check("build", "the update emails are told what is new and in the site's words: a law's months-old item "
+       "is not new and this week's is, a bill's ending is its status, a committee's day its "
+       "kind of meeting, a ballot, a motion and a room as the site says them",
+       needs=("follow_changes", "build_feeds", "plain_action"))
+def _follow_email_words(FC, BF, PA):
+    """The person's notes of 17 October 2026 on a daily, a weekly and the
+    welcome email, and the language sweep of the same day. The weekly's Laws
+    section listed "a bunch of entries from months ago as new": a law's items
+    are its bills' own, its newest sixty across them, and an item that
+    entered a law's list -- a bill newly citing the chapter, another leaving
+    room, laws first becoming followable -- was first seen under the law
+    that night though its bill had carried it for months. But one dated within
+    the eight nights is still news to a reader who follows only the law (the
+    review of 17 October 2026): the bill's hearing first seen on night 1, when
+    the bill comes to cite the chapter on night 3. The rest is what the build
+    hands the email in words: tests/follow/ holds how it prints them."""
+    old = {"guid": "2025-2026:HB1:2026-05-01:otp", "date": "2026-05-01"}
+    heard = {"guid": "2025-2026:HB1:2026-10-14:hearing", "date": "2026-10-14"}
+    fresh = {"guid": "2025-2026:HB1:2026-10-16:report", "date": "2026-10-16"}
+    led = {"format": FC.LEDGER_FORMAT, "date": "2026-10-14", "built": "2026-10-14T09:00:00Z",
+           "sitting_term": "2025-2026", "new_by": FC.FIRST_SEEN,
+           "followable": {"bill:2026/HB1": "HB 1", "topic:housing": "Housing"}, "nights": {},
+           "carried": {"2026-10-14": {"bill:2026/HB1": [old["guid"]]}}}
+    bill_only = {"bill:2026/HB1": {"label": "HB 1"}, "topic:housing": {"label": "Housing"}}
+    cites = dict(bill_only, **{"law:91-A": {"label": "RSA 91-A"}})
+    nights = (("2026-10-15", bill_only, {"bill:2026/HB1": [old, heard]}),             # night 1
+              ("2026-10-16", bill_only, {"bill:2026/HB1": [old, heard]}),             # night 2
+              ("2026-10-17", cites, {"bill:2026/HB1": [old, heard, fresh],            # night 3: cites 91-A
+                                     "law:91-A": [old, heard, fresh], "topic:housing": [old, heard]}))
+    for tonight, followable, lists in nights:
+        led, _, _ = FC.decide(led, tonight=tonight, built=f"{tonight}T09:00:00Z",
+                              sitting_term="2025-2026", followable=followable, lists=lists, hints={})
+
+    def filed(night):
+        return {(k, g) for by in led["nights"][night]["first_seen"].values()
+                for k, gs in by.items() for g in gs}
+    assert ("bill:2026/HB1", heard["guid"]) in filed("2026-10-15"), "night 1 did not tell the bill's hearing"
+    assert ("law:91-A", old["guid"]) not in filed("2026-10-17"), \
+        "an item months old was new to the law the night it entered the law's list"
+    assert ("law:91-A", heard["guid"]) in filed("2026-10-17"), \
+        "a reader who follows only the law never heard of this week's hearing, which its bill had on night 1"
+    assert {("law:91-A", fresh["guid"]), ("bill:2026/HB1", fresh["guid"])} <= filed("2026-10-17"), \
+        "an item new to the record was not new to its law"
+    assert ("bill:2026/HB1", heard["guid"]) not in filed("2026-10-17"), "the bill was told its hearing twice"
+    assert ("topic:housing", heard["guid"]) in filed("2026-10-17"), "a meeting this week was not its topic's news"
+    assert ("topic:housing", old["guid"]) not in filed("2026-10-17"), \
+        "a bill under a new subject brought its old items as new"
+    known = {(k, g) for by in led["carried"].values() for k, gs in by.items() for g in gs}
+    assert ("law:91-A", old["guid"]) in known, "the law's list is not remembered, so it would be new tomorrow"
+
+    for row, want in (({"n": "HB 1", "kind": "law", "status": "Became law unsigned"}, "HB 1 — Became law unsigned."),
+                      ({"n": "HB 2", "kind": "law", "status": "Veto overridden, became law"},
+                       "HB 2 — Veto overridden, became law."),
+                      ({"n": "HB 3", "kind": "done", "status": "Killed"}, "HB 3 — Killed."),
+                      ({"n": "HB 4", "kind": "law"}, "HB 4 — Became law."),
+                      ({"n": "HB 5", "kind": "done", "status": ""}, "HB 5 — Concluded.")):
+        assert BF.ending_words(row) == want, (BF.ending_words(row), want)
+    src = _source(BF.__file__)
+    assert '"law": "was signed into law"' not in src and '"done": "has finished its course"' not in src, \
+        "an ending is put back into the kind's sentence, which a law unsigned or overridden is not"
+    assert "_end = ending_words(b)" in src and '"said": ending_words(b)' in src
+
+    s = {"items": [{"n": "HB 303-FN", "kind": "executive session"},
+                   {"n": "HB 1767-FN", "kind": "full committee work session"},
+                   {"n": "HB 303-FN", "kind": "full committee work session"},
+                   {"n": "SB 416", "kind": "full committee work session"}]}
+    assert BF.sitting_words(s) == ("Executive session on HB 303-FN; full committee work session on "
+                                   "HB 1767-FN, HB 303-FN and SB 416"), BF.sitting_words(s)
+    assert BF.sitting_words({"items": [{"n": "HB 1", "kind": "hearing"}]}) == "Public hearing on HB 1"
+    assert BF.sitting_words({"items": []}) == "The committee met"
+    assert "plain=sitting_words(s)" in src, "a committee's day goes to the email as its date alone"
+
+    assert [BF.ballot_word(v) for v in ("Yea", "Nay", "Not Voting/Excused", "Not Voting/Not Excused",
+                                        "Presiding")] == ["yes", "no", "excused", "not voting", "presiding"]
+    assert FC.vote_detail(BF.ballot_word("Not Voting/Not Excused"))["ballot"] == "not voting", \
+        "a ballot is cut to the contract's twenty characters"
+    assert "ballot_word(v.get(\"v\"))" in src and "PA.motion_words(asked" in src
+    assert PA.motion_words("OTPA") == "Ought to Pass with Amendment (OTPA, Pass the bill with changes)"
+    assert PA.motion_words("Lay on the Table") == "Lay on the Table (Set the bill aside)"
+    assert PA.motion_words("Affirm The Report") == "", "a motion the words do not name keeps the record's"
+    # The rooms as 2025-2026's committee days and upcoming rows spell them,
+    # the run-together and misspelt ones too (the review of 17 October 2026).
+    hall = "Representatives' Hall, State House"
+    for raw, want in (("GP 231", "Granite Place 231"), ("LOB 305", "Legislative Office Building 305"),
+                      ("Room 100, SH", "Room 100, State House"), ("SH 122-123", "State House 122-123"),
+                      ("GP231", "Granite Place 231"), ("GP153", "Granite Place 153"),
+                      ("GP159", "Granite Place 159"), ("GP228", "Granite Place 228"),
+                      ("GP232", "Granite Place 232"), ("LOBO 202-204", "Legislative Office Building 202-204"),
+                      ("LOB", "Legislative Office Building"), ("SH Reps Hall", hall),
+                      ("SH Representatives Hall", hall), ("Reps Hall", hall),
+                      ("Representatives' Hall, SH", hall), ("SL Map Room", "State Library Map Room"),
+                      ("302-304", "302-304"), ("", "")):
+        assert PA.place(raw) == want, (raw, PA.place(raw))
+    # Since 26 October 2026 a bill's rows are its record's (follow_changes.bill_upcoming,
+    # handed place()), and the calendar's only for a bill with no page.
+    assert "FC.committee_label(name, word)" in src and "PA.place(u.get(\"venue\")" in src \
+        and "today=TODAY, place=PA.place)" in src, \
+        "the week ahead's committee or room is back in the clerk's form"
+    # A MEETING SET, AS FACTS THE EMAIL WORDS (17 October 2026: "emails can use
+    # plain words for hearing entries"). tests/follow/meeting_cases.json is the
+    # one table: this holds plain_action.meeting to each case's meeting, and
+    # tests/follow/mail.test.js holds the email to its words. The fixtures'
+    # meetings are what the build would write for their lines, and the feed
+    # item keeps the clerk's line, which is the record.
+    cases = json.loads(_source("tests/follow/meeting_cases.json"))["cases"]
+    for c in cases:
+        assert PA.meeting(c["line"]) == c["meeting"], (c["form"], PA.meeting(c["line"]), c["meeting"])
+        if c["meeting"]:
+            out = []
+            it = FC.item("g", c["date"], "scheduled", f"HB 1 — {c['line']}", meeting=PA.meeting(c["line"]))
+            assert it.get("meeting") == c["meeting"] and it["summary"].endswith(c["line"]), (c["form"], it)
+            FC._item(it, "x", False, False, out)
+            assert not out, (c["form"], out)
+    out = []
+    FC._item({"guid": "g", "date": "2026-10-06", "kind": "exec", "summary": "x",
+              "meeting": {"what": "executive session", "date": "10/13/2026"}}, "x", False, False, out)
+    assert out, "a meeting with the clerk's date passed the check"
+    seen = 0
+    for night in sorted(Path("tests/follow/fixtures/changes").glob("2026-*.json")):
+        for r in json.loads(night.read_text(encoding="utf-8"))["refs"].values():
+            for i in r.get("items") or []:
+                said = i["summary"].split(" — ", 1)[-1]
+                assert PA.meeting(said) == i.get("meeting"), (night.name, said, i.get("meeting"))
+                seen += bool(i.get("meeting"))
+    assert seen >= 3, "the fixtures carry no meeting for the email to word"
+    assert "meeting=PA.meeting(e.get(\"text\"))" in src and "f\"{b['n']} \\u2014 {clip(e.get('text',''))}\"" in src, \
+        "the email is not handed the meeting, or the feed lost the clerk's line"
+    return "ok", ("a law's months-old item not new, this week's hearing new on night 3; a topic's meeting new; endings "
+                  "by status; a committee's day by kind; ballots, motions and rooms in words; "
+                  f"{sum(bool(c['meeting']) for c in cases)} meetings set, as the email words them")
+
+
+@check("build", "About and the Data page describe email updates only once production binds the "
+       "follow database, in the person's approved words", needs=("shell", "build_pages", "build_exports"))
+def _follow_privacy_gated(S, BP, BE):
+    """The person, 11 October 2026: "Approved the language for the privacy
+    info". Until the go-live binds FOLLOW_DB for production, neither page may
+    describe a sign-up the live site does not show, and the 9 October text
+    stands; after it, both say what is kept and how it is deleted."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-live-"))
+    try:
+        # "Off" is today's file without production's binding, whether or not
+        # it carries one (22 October 2026): read as it stood, the go-live's
+        # own file was "off" and live at once, and this check failed it.
+        base = re.sub(r'\n\[\[env\.production\.d1_databases\]\]\s*\nbinding\s*=\s*"FOLLOW_DB"[^\[]*',
+                      "\n", _source("wrangler.toml"))
+        (tmp / "off.toml").write_text(base, encoding="utf-8")
+        (tmp / "on.toml").write_text(base + '\n[[env.production.d1_databases]]\nbinding = "FOLLOW_DB"\n'
+                                     'database_name = "graniterecord-follow"\ndatabase_id = "x"\n', encoding="utf-8")
+        assert not S.follow_live(tmp / "off.toml"), "a preview binding was read as the live site's"
+        assert S.follow_live(tmp / "on.toml"), "the production binding was not read"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    for live in (False, True):
+        a, d = BP.about_text(live), BE.privacy_text(live)
+        assert "__" not in a.replace("__LOGO__", "").replace("__REPO__", "") and "__" not in d, "a placeholder was left"
+        if live:
+            assert "stored encrypted, never shared or" in " ".join(a.split()) \
+                and "it's deleted after two days" in d and "Resend" in d, "the live text is not the approved one"
+        else:
+            assert "email" not in a.lower().split("<h2>your privacy</h2>")[-1].split("<h2>")[0] \
+                and "no email addresses" in d, "email is described before it is live"
+    return "ok", "9 October's words until production binds FOLLOW_DB, the approved ones after"
+
+
+@check("build", "what can be followed: a bill still moving or sent to study, and a committee not archived",
+       needs=("shell",))
+def _followable(shell):
+    """The follow rules: only a bill still moving can be followed, and a bill
+    referred for interim study is still moving; a committee that will never sit
+    again has nothing to follow."""
+    S, t = shell, "2025-2026"
+    assert S.still_moving({"term": t, "kind": "active"}, t), "an active bill cannot be followed"
+    assert S.still_moving({"term": t, "kind": "study"}, t), "a bill sent to interim study cannot be followed"
+    assert not S.still_moving({"term": t, "kind": "law"}, t), "a law can be followed"
+    assert not S.still_moving({"term": "2023-2024", "kind": "active"}, t), "a closed term's bill can be followed"
+    assert S.committee_followable({"code": "H05", "sessions": [{"date": "2026-02-03"}]}), (
+        "a sitting committee cannot be followed")
+    assert S.committee_followable({"code": "S10", "bills": {"2025-2026": [{"id": "SB1"}]}}), (
+        "a committee with bills and no sitting day on record cannot be followed")
+    assert not S.committee_followable({"code": "H99", "sessions": [{"date": "2010-02-03"}],
+                                       "archived": {"years": "1995-2012"}}), (
+        "an archived committee can be followed")
+    assert not S.committee_followable({"code": "C01", "sessions": [], "bills": {}}), (
+        "a committee with nothing on record can be followed")
+    return "ok", ("active and study bills of the sitting term; committees not archived "
+                  "and with a record")
+
+
+# ---- the changes files the email sender reads ----------------------------------
+#
+# follow_changes.py (7 October 2026). The contract is the email-follow branch's
+# workers/follow/CHANGES_FORMAT.md, and the sender's own reader of it is that
+# branch's workers/follow/changes.js, which tests/follow/check_changes.js puts
+# a folder through. Where both are in the tree and node is here, every folder
+# below goes through it as well as through follow_changes.check(), the same
+# rules in Python; where they are not -- on a branch without the sender -- the
+# Python half holds alone, and the check says so.
+
+CHANGES_JS = ("tests/follow/check_changes.js", "workers/follow/changes.js")
+
+
+def _changes_node(folder):
+    """None where the sender's checker is not here to run; else its problems
+    with `folder`, as it prints them ([] for a folder it passes)."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node or not all(Path(p).is_file() for p in CHANGES_JS):
+        return None
+    r = _run([node, CHANGES_JS[0], str(folder)], capture_output=True, text=True, timeout=60)
+    said = (r.stdout or "") + (r.stderr or "")
+    return [] if r.returncode == 0 else [ln.strip() for ln in said.splitlines() if ln.strip()]
+
+
+@check("build", "the way back to the manage page and its lists to add from: a committee named "
+       "as the search names it, a chamber that is the House or the Senate in both readers of "
+       "current.json, and tests/follow/'s cases for the email a confirmation sends and the "
+       "lists, run by name", needs=("follow_changes",))
+def _follow_manage_lists(FC):
+    """16 October 2026, from the person's test of email following: once the
+    confirmation link was spent there was no way back to the manage page, and
+    its legislators were a drop-down by first name, one pick a Save.
+
+    current.json now names a committee as the search does ("House Housing
+    Committee", follow_changes.committee_label, find.js findName) and carries
+    a member's roster sort name and a member's or committee's chamber, which
+    the manage page orders and groups its lists by. A chamber other than the
+    House or the Senate is refused by follow_changes.check and by the
+    sender's own reader (check_changes.js) alike. What the endpoints do with
+    it -- the "You're following" email a confirmation sends, the spent link
+    pointing to it, the lists by last name with the chambers apart, several
+    added in one Save, the page without script -- is tests/follow/'s, whose
+    cases are run here by name so that one taken out is missed. build_feeds
+    writing the fields is _changes_on_fixture's."""
+    named = {("Housing", "House"): "House Housing Committee",
+             ("Special Committee on Housing", "House"): "House Special Committee on Housing",
+             ("Senate Special Committee on Redistricting", "Senate"):
+                 "Senate Special Committee on Redistricting",
+             ("Education", "Senate"): "Senate Education Committee",
+             ("Education", ""): "Education Committee"}
+    got = {k: FC.committee_label(*k) for k in named}
+    assert got == named, f"follow_changes.committee_label no longer names as the search does: {got}"
+
+    fixtures = Path("tests/follow/fixtures/changes")
+    if not fixtures.is_dir():
+        return "skip", "no tests/follow/fixtures/changes here"
+    root = Path(tempfile.mkdtemp(prefix="gr-follow-lists-"))
+    try:
+        bad = root / "changes"
+        shutil.copytree(fixtures, bad)
+        cur = json.loads((bad / "current.json").read_text(encoding="utf-8"))
+        member = next(k for k in cur["followable"] if k.startswith("member:"))
+        assert cur["followable"][member].get("sort") and cur["followable"][member].get("chamber"), \
+            "the fixtures' member carries no sort name or chamber for the lists to be tested by"
+        cur["followable"][member]["chamber"] = "Joint"
+        (bad / "current.json").write_text(json.dumps(cur), encoding="utf-8")
+        said = {"follow_changes.check": FC.check(bad), "check_changes.js": _changes_node(bad)}
+        missed = [who for who, p in said.items()
+                  if p is not None and not any("chamber is neither House nor Senate" in x for x in p)]
+        assert not missed, f"a chamber of Joint passed {', '.join(missed)}: {said}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (node and Path("tests/follow/index.js").is_file()):
+        return "skip", "node or tests/follow/ is not here; committee_label and the chamber hold"
+    cases = ("a confirmation sends one email, You're following",
+             "a subscriber adding a record is told it",
+             "a pause is told through its last day, and not once that day has gone by",
+             "a confirmation that adds nothing sends nothing",
+             "a confirmation still confirms when its email cannot be sent",
+             "a spent link says every email we send has the way back",
+             "the House and the Senate apart, by last name",
+             "a list without sort names or chambers is one group",
+             "a committee of neither chamber comes last, under a heading of its own",
+             "without script the whole list shows",
+             "the find box narrows the list as the reader types",
+             "every legislator and committee ticked is added on one Save",
+             "a Save that ticks more than the room left")
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              "--test-name-pattern=" + "|".join(cases), "tests/follow/index.js"],
+             capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    passed = [c for c in cases
+              if re.search(rf"^ok \d+ - [^\n]*{re.escape(c)}(?![^\n]*# SKIP)", out, re.M)]
+    assert r.returncode == 0 and len(passed) == len(cases), (
+        "tests/follow/ no longer passes the manage page's cases "
+        + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
+    return "ok", (f"committees named as the search names them; a chamber of Joint refused by "
+                  f"{' and '.join(k for k, v in said.items() if v is not None)}; "
+                  f"{len(cases)} cases pass")
+
+
+def _changes_scenario(FC):
+    """Sixteen nights of a followable world, as build_feeds hands it over: a
+    bill, a second bill that concludes, a member who leaves, a committee, a
+    topic; a late docket row, a hearing scheduled ahead, a same-day rebuild,
+    a build that lost its lists, and the turn of a term. Every record is
+    invented. Returns [{built, term, followable, lists, upcoming, hints}]."""
+    def it(guid, day, kind, said, url="/bill/2026/hb9901", term="2025-2026", **kw):
+        return FC.item(guid, day, kind, said, url, term, **kw)
+    HB = "bill:2026/HB9901"
+    a = it("2025-2026:HB9901:2026-09-25:introduced", "2026-09-25", "action", "HB 9901 — Introduced")
+    b = it("2025-2026:HB9901:2026-09-30:otp", "2026-09-30", "vote",
+           "HB 9901 — Ought to Pass: MA RC 200-150 09/30/2026")
+    c = it("2025-2026:HB9901:2026-10-01:hearing", "2026-10-01", "hearing",
+           "HB 9901 — Public Hearing: 10/01/2026 10:00 am LOB 205")
+    d = it("2025-2026:HB9901:2026-10-05:exec", "2026-10-05", "scheduled",
+           "HB 9901 — Executive Session: 10/05/2026 10:00 am LOB 205")
+    late = it("2025-2026:HB9901:2026-09-27:report", "2026-09-27", "report",
+              "HB 9901 — Committee Report: Ought to Pass 09/27/2026 (Vote 11-9; RC)")
+    e = it("2025-2026:HB9901:2026-10-02:study", "2026-10-02", "study",
+           "HB 9901 — Interim Study Report: Recommended for Future Legislation 10/02/2026",
+           study=True, recommends=True)
+    v = it("vote:990001:2026-H-9001", "2026-09-30", "vote", "HB 9901 — yes on Ought to Pass")
+    s = it("committee:H90:2026-09-29", "2026-09-29", "sitting",
+           "House Example — 29 September 2026", url="/committee/H90")
+    n1 = it("2027-2028:HB9901:2026-12-03:introduced", "2026-12-03", "action",
+            "HB 9901 — Introduced", url="/bill/2027/hb9901", term="2027-2028")
+    # A hearing announced ahead: its bill's feed carries it from the night it
+    # is scheduled, the topic's (what has happened) from the day it sits.
+    n2 = "2027-2028:HB9901:2026-10-08:public-hearing"
+    n2s = it(n2, "2026-10-08", "scheduled", "HB 9901 — Public Hearing: 10/08/2026 10:00 am LOB 205",
+             url="/bill/2027/hb9901", term="2027-2028")
+    n2h = dict(n2s, kind="hearing")
+    row = FC.upcoming_row("2026-10-03", "public hearing", "10:00", "House Example", "LOB 205")
+    old = FC.upcoming_row("2026-09-30", "public hearing", "10:00", "House Example", "LOB 205")
+    whole = {HB: {"label": "HB 9901", "title": "relative to an invented question",
+                  "url": "/bill/2026/hb9901"},
+             "bill:2026/HB9902": {"label": "HB 9902"},
+             "member:990001": {"label": "Rep. Pat Example (Merrimack 99)"},
+             "committee:H90": {"label": "House Example", "url": "/committee/H90"},
+             "topic:housing": {"label": "Housing", "url": "/bills?topic=Housing"}}
+    after = {k: whole[k] for k in (HB, "committee:H90")}
+    turned = {"bill:2027/HB9901": {"label": "HB 9901"}, "committee:H90": whole["committee:H90"],
+              "topic:housing": whole["topic:housing"]}
+    closing = {"bill:2026/HB9902": {"closing": {
+        "how": "law", "summary": "HB 9902 was signed into law.", "date": "2026-10-02",
+        "guid": "2025-2026:HB9902:closed:law"}}}
+
+    def night(built, followable, lists, term="2025-2026", **kw):
+        return dict(built=built, term=term, followable=followable, lists=lists,
+                    upcoming=kw.get("upcoming", {}), hints=kw.get("hints", {}))
+    out = [
+        night("2026-10-01T08:20:00Z", whole,
+              {HB: [d, c, b, a], "member:990001": [v], "committee:H90": [s],
+               "topic:housing": [b, a]},
+              upcoming={"committee:H90": [row, row, old], "bill:2026/HB9901": [row]}),
+        # The topic's list carries the hearing twice, as a feed does where two
+        # items share a guid (build_feeds' COLLIDED): one item to the sender.
+        night("2026-10-02T08:20:00Z", whole,
+              {HB: [d, c, b, late, a], "member:990001": [v], "committee:H90": [s],
+               "topic:housing": [c, c, b, late, a]}),
+        night("2026-10-02T15:00:00Z", whole,
+              {HB: [e, d, c, b, late, a], "member:990001": [v], "committee:H90": [s],
+               "topic:housing": [e, c, b, late, a]}),
+        night("2026-10-03T08:20:00Z", after,
+              {HB: [e, d, c, b, late, a], "committee:H90": [s], "bill:2026/HB9902": []},
+              hints=closing),
+        night("2026-10-04T08:20:00Z", {"committee:H90": whole["committee:H90"]},
+              {"committee:H90": []}),
+        night("2026-10-05T08:20:00Z", after, {HB: [e, d, c, b, late, a], "committee:H90": [s]}),
+        night("2026-10-06T08:20:00Z", turned,
+              {"bill:2027/HB9901": [n1], "committee:H90": [s], "topic:housing": [n1],
+               HB: [e, d, c, b, late, a]}, term="2027-2028"),
+    ]
+    out.append(night("2026-10-07T08:20:00Z", turned,
+                     {"bill:2027/HB9901": [n2s, n1], "committee:H90": [s], "topic:housing": [n1]},
+                     term="2027-2028"))
+    out += [night(f"2026-10-{dd:02d}T08:20:00Z", turned,
+                  {"bill:2027/HB9901": [n2h, n1], "committee:H90": [s],
+                   "topic:housing": [n2h, n1]},
+                  term="2027-2028") for dd in range(8, 17)]
+    return out
+
+
+def _changes_run(FC, root, n):
+    """One night of the scenario through follow_changes.write, the ledger it
+    leaves kept as nightly.py keeps an accepted night's. (said, {file: JSON})."""
+    led, why = FC.load(root / "archive" / "first-seen.json", n["built"][:10])
+    said = FC.write(root / "site", built=n["built"], sitting_term=n["term"],
+                    followable=json.loads(json.dumps(n["followable"])), lists=n["lists"],
+                    upcoming=n["upcoming"], hints=n["hints"], led=led, why=why,
+                    ledger_out=root / "archive" / "first-seen.next.json")
+    os.replace(root / "archive" / "first-seen.next.json", root / "archive" / "first-seen.json")
+    return said, {p.name: json.loads(p.read_text(encoding="utf-8"))
+                  for p in sorted((root / "site" / "changes").glob("*.json"))}
+
+
+# The scenario replayed in a child of its own, for the bytes under another
+# PYTHONHASHSEED: argv is the folder holding follow_changes.py and the run's.
+CHANGES_REPLAY = """
+import json, os, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import follow_changes as FC
+root = Path(sys.argv[2])
+for n in json.loads((root / "nights.json").read_text(encoding="utf-8")):
+    led, why = FC.load(root / "archive" / "first-seen.json", n["built"][:10])
+    FC.write(root / "site", built=n["built"], sitting_term=n["term"], followable=n["followable"],
+             lists=n["lists"], upcoming=n["upcoming"], hints=n["hints"], led=led, why=why,
+             ledger_out=root / "archive" / "first-seen.next.json")
+    os.replace(root / "archive" / "first-seen.next.json", root / "archive" / "first-seen.json")
+"""
+
+
+def _changes_bytes(root):
+    return {p.relative_to(root).as_posix(): p.read_bytes()
+            for d in ("site/changes", "archive") for p in sorted((root / d).glob("*.json"))}
+
+
+@check("pipeline", "the changes files the email sender reads keep to their contract night after "
+       "night: first-seen with a ledger, the record's own dates and a warning without one, a "
+       "late row the next morning, endings told once and taken back, the turn of a term, a "
+       "bounded ledger, and the same bytes under any hash seed", needs=("follow_changes",))
+def _changes_nights(FC):
+    """The person's decision of 7 October 2026: "new" is the night an item
+    first appears, kept in a first-seen ledger carried between nights, and
+    the files rewrite the last eight nights every night. Sixteen invented
+    nights, through follow_changes.write as build_feeds calls it:
+
+      1  no ledger: every file by record-date, each night exactly the items
+         dated the day before it, a WARNING, and the ledger seeded with
+         nothing dated tonight or later -- so nothing floods, and nothing is
+         lost: the hearing dated tonight and the session scheduled ahead are
+         tomorrow's news. current.json's upcoming keeps one row a sitting,
+         from tonight on
+      2  first-seen in every file: the docket row entered late, the hearing
+         and the scheduled session are tonight's, carrying tonight's "seen",
+         and the earlier nights keep the build that first published them; an
+         item a list carries twice under one guid is one item
+      2b the same day again: one more item, a later "seen", and the earlier
+         ones as they were; the study report is the bill's "study"
+      3  a bill concludes (its feed's closing item is its ending), a member
+         leaves ("left"), a topic leaves with no ending owed; every record
+         last night listed and tonight does not carries an ending tonight
+      4,5 a build that lost its lists and its bill, then a good one: nothing
+         is new, and the ending the bad night told is taken back
+      6  the turn of a term: the old bill ends "term-ended", the topic carries
+         the new term's item alone, nothing of the old term is new
+      7,8 a hearing announced ahead: its bill's news the night it is
+         scheduled, its topic's the night it sits and the topic's feed takes
+         it (the ledger knows an item by record, not by guid alone)
+      9-16 quiet nights: each written with empty refs, and the ledger lets go
+         of what no feed carries and no kept night files
+    Every folder passes follow_changes.check() and, where the sender's code
+    is in the tree, its own check_changes.js; and the whole run, replayed in
+    two children under different PYTHONHASHSEED, gives the same bytes.
+    """
+    nights = _changes_scenario(FC)
+    root = Path(tempfile.mkdtemp(prefix="gr-changes-"))
+    node_ran = 0
+    try:
+        (root / "archive").mkdir()
+        seen = []
+        for i, n in enumerate(nights):
+            said, f = _changes_run(FC, root, n)
+            probs = FC.check(root / "site" / "changes")
+            assert not probs, (f"night {n['built']}: the files break the contract", probs[:4])
+            js = _changes_node(root / "site" / "changes")
+            if js is not None:
+                node_ran += 1
+                assert not js, (f"night {n['built']}: check_changes.js refuses them", js[:4])
+            assert len(f) == 9 and "current.json" in f, sorted(f)
+            seen.append((said, f))
+        HB = "bill:2026/HB9901"
+
+        def guids(f, day, key):
+            return [x["guid"] for x in ((f[f"{day}.json"]["refs"].get(key) or {}).get("items") or [])]
+
+        # 1: no ledger, so the record's own dates, and said.
+        said, f = seen[0]
+        assert {o["new_by"] for o in f.values()} == {"record-date"}, "night 1 not by record-date"
+        assert any("WARNING" in s and "record's dates" in s for s in said), said
+        assert guids(f, "2026-10-01", HB) == ["2025-2026:HB9901:2026-09-30:otp"] and \
+            guids(f, "2026-09-26", HB) == ["2025-2026:HB9901:2026-09-25:introduced"] and \
+            guids(f, "2026-09-30", "committee:H90") == ["committee:H90:2026-09-29"], \
+            "under record-date a night holds other than the items dated the day before it"
+        led = json.loads((root / "archive" / "first-seen.json").read_text(encoding="utf-8"))
+        known = {g for by in led["carried"].values() for gs in by.values() for g in gs}
+        assert "2025-2026:HB9901:2026-10-01:hearing" not in known and \
+            "2025-2026:HB9901:2026-10-05:exec" not in known, \
+            "the ledger was seeded with an item record-date had not placed: it would never be sent"
+        up = f["current.json"]["upcoming"]
+        assert up["committee:H90"] == [{"date": "2026-10-03", "what": "public hearing",
+                                        "time": "10:00", "committee": "House Example",
+                                        "venue": "LOB 205"}], \
+            ("upcoming is not one row a sitting from tonight on", up)
+        # 2: first-seen, the late row and tonight's, and what earlier nights keep.
+        said, f = seen[1]
+        assert {o["new_by"] for o in f.values()} == {"first-seen"}, "night 2 not first-seen throughout"
+        items = {x["guid"]: x for x in f["2026-10-02.json"]["refs"][HB]["items"]}
+        assert set(items) == {"2025-2026:HB9901:2026-10-05:exec", "2025-2026:HB9901:2026-10-01:hearing",
+                              "2025-2026:HB9901:2026-09-27:report"} and \
+            {x["seen"] for x in items.values()} == {"2026-10-02T08:20:00Z"}, (
+                "the late docket row, tonight's hearing and the session scheduled ahead are not "
+                "night 2's, or something else is", sorted(items))
+        assert items["2025-2026:HB9901:2026-10-05:exec"]["kind"] == "scheduled"
+        n1 = f["2026-10-01.json"]
+        assert n1["built"] == "2026-10-01T08:20:00Z" and \
+            n1["refs"][HB]["items"][0]["seen"] == "2026-10-01T08:20:00Z", \
+            "night 1 lost the build that first published it"
+        # 2b: the same day again.
+        said, f = seen[2]
+        n2 = f["2026-10-02.json"]
+        assert n2["built"] == "2026-10-02T15:00:00Z" and \
+            n2["refs"][HB].get("study") == {"recommends": True, "summary": "HB 9901 — Interim Study "
+                                        "Report: Recommended for Future Legislation 10/02/2026",
+                                        "date": "2026-10-02",
+                                        "guid": "2025-2026:HB9901:2026-10-02:study",
+                                        "seen": "2026-10-02T15:00:00Z"} and \
+            {x["seen"] for x in n2["refs"][HB]["items"]} == {"2026-10-02T08:20:00Z"}, \
+            ("a rebuild of the same night did not add its one item with a later seen", n2["refs"][HB])
+        assert [x["kind"] for x in n2["refs"]["topic:housing"]["items"]][0] == "study"
+        # 3: endings, owed and told once.
+        last = f["current.json"]
+        said, f = seen[3]
+        refs = f["2026-10-03.json"]["refs"]
+        assert refs.get("bill:2026/HB9902") == {"ended": closing_of(nights)} and \
+            (refs.get("member:990001") or {}).get("ended", {}).get("how") == "left" and \
+            "topic:housing" not in refs, ("a record that left tonight was not told its ending", refs)
+        assert FC.ended_owed(last, f["current.json"], f["2026-10-03.json"]) == [], \
+            "a record last night listed left without an ending"
+        # 4, 5: a bad night and a good one.
+        assert (seen[4][1]["2026-10-04.json"]["refs"].get(HB) or {}).get("ended", {}).get("how") \
+            == "done", "the bill the bad night lost was not told an ending that night"
+        said, f = seen[5]
+        assert f["2026-10-05.json"]["refs"] == {} and f["2026-10-04.json"]["refs"] == {}, (
+            "a good night after a bad one sent something again, or kept an ending the bad night "
+            "told", f["2026-10-05.json"]["refs"], f["2026-10-04.json"]["refs"])
+        assert any("taken back" in s for s in said), said
+        # 6: the turn of a term.
+        said, f = seen[6]
+        refs = f["2026-10-06.json"]["refs"]
+        assert refs[HB] == {"ended": {"how": "term-ended",
+                                      "summary": "HB 9901 ended with the 2025-2026 term.",
+                                      "date": "2026-10-06",
+                                      "guid": "2025-2026:HB9901:closed:term-ended"}}, refs.get(HB)
+        assert [x["term"] for x in refs["topic:housing"]["items"]] == ["2027-2028"] and \
+            not [g for k, r in refs.items() for g in (x["guid"] for x in r.get("items", []))
+                 if g.startswith("2025-2026")], ("the turn of the term sent the old term's items "
+                                                 "as new", refs)
+        assert f["2026-10-06.json"]["sitting_term"] == "2027-2028" and \
+            f["2026-10-05.json"]["sitting_term"] == "2025-2026"
+        # 7, 8: a hearing announced ahead is its bill's news the night it is
+        # scheduled, and its topic's the night the topic's feed takes it --
+        # not never, as when the ledger knew a guid once for every record.
+        n2 = "2027-2028:HB9901:2026-10-08:public-hearing"
+        f = seen[7][1]
+        assert guids(f, "2026-10-07", "bill:2027/HB9901") == [n2] and \
+            "topic:housing" not in f["2026-10-07.json"]["refs"], f["2026-10-07.json"]["refs"]
+        f = seen[8][1]
+        assert f["2026-10-08.json"]["refs"] == {"topic:housing": {"items": [{
+            "guid": n2, "date": "2026-10-08", "kind": "hearing",
+            "summary": "HB 9901 — Public Hearing: 10/08/2026 10:00 am LOB 205",
+            "url": "/bill/2027/hb9901", "term": "2027-2028", "seen": "2026-10-08T08:20:00Z"}]}} \
+            and guids(f, "2026-10-07", "bill:2027/HB9901") == [n2], (
+                "a hearing its bill's feed carried ahead was not its topic's news when the "
+                "topic's feed took it, or was its bill's twice", f["2026-10-08.json"]["refs"])
+        # 9-16: quiet, written, and bounded.
+        said, f = seen[-1]
+        assert all(o["refs"] == {} for k, o in f.items() if k != "current.json"), \
+            "a quiet night was not written with empty refs"
+        led = json.loads((root / "archive" / "first-seen.json").read_text(encoding="utf-8"))
+        assert led["carried"] == {"2026-10-16": {
+            "bill:2027/HB9901": [n2, "2027-2028:HB9901:2026-12-03:introduced"],
+            "committee:H90": ["committee:H90:2026-09-29"],
+            "topic:housing": [n2, "2027-2028:HB9901:2026-12-03:introduced"]}} and \
+            sorted(led["nights"]) == [f"2026-10-{d:02d}" for d in range(9, 17)], \
+            ("the ledger keeps what no feed carries and no kept night files", led["carried"])
+        # A ledger dated after tonight is not read as one, nor one of the
+        # first shape, which knew a guid once for every record.
+        assert FC.load(root / "archive" / "first-seen.json", "2026-10-15")[0] is None
+        (root / "old.json").write_text(json.dumps(dict(led, format=1)), encoding="utf-8")
+        assert FC.load(root / "old.json", "2026-10-17")[0] is None and \
+            FC.load(root / "archive" / "first-seen.json", "2026-10-17")[0] is not None, \
+            "a ledger of format 1 was read as this one, or this one was not"
+
+        # The same bytes, under two hash seeds, as here.
+        mine = _changes_bytes(root)
+        (root / "replay.py").write_text(CHANGES_REPLAY, encoding="utf-8")
+        here = _paths.locate("follow_changes.py").resolve().parent
+        for seed in ("1", "2"):
+            run = root / f"seed{seed}"
+            (run / "archive").mkdir(parents=True)
+            (run / "nights.json").write_text(json.dumps(nights), encoding="utf-8")
+            r = _run([sys.executable, str(root / "replay.py"), str(here), str(run)],
+                     capture_output=True, text=True, timeout=120,
+                     env={"PYTHONHASHSEED": seed})
+            assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+            assert _changes_bytes(run) == mine, (
+                f"under PYTHONHASHSEED={seed} the changes files or the ledger came out different")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"{len(nights)} nights, every folder to the contract by follow_changes.check"
+                  + (f" and by check_changes.js ({node_ran} folders)" if node_ran else
+                     "; the sender's check_changes.js is not on this branch, so the Python "
+                     "rules held alone")
+                  + ", the same bytes under two hash seeds")
+
+
+def closing_of(nights):
+    """The ending the scenario's concluding bill is owed: its closing item."""
+    return next(n["hints"]["bill:2026/HB9902"]["closing"] for n in nights
+                if "bill:2026/HB9902" in n["hints"])
+
+
+@check("build", "build_feeds writes the changes files on the fixture: eight nights and "
+       "current.json to their contract, by the record's dates with no ledger and by first-seen "
+       "with the one it left, a night with nothing new written empty, and the same feeds, files "
+       "and ledger under two hash seeds", needs=("follow_changes",))
+def _changes_on_fixture(FC):
+    """The fixture site as the chain built it, and build_feeds alone over a
+    copy of it for three more nights, each at a stated moment: 7 March 2026,
+    the day after the fixture's roll call, with no ledger; the 8th with the
+    ledger the 7th left, kept as nightly.py keeps an accepted night's; the
+    9th, with nothing new, twice, under PYTHONHASHSEED 1 and 2; and the 10th,
+    after the bill is signed, the member leaves and the topic's other bill
+    becomes an older term's. Every folder goes through follow_changes.check()
+    and, where it is here, check_changes.js; last night's keys that tonight
+    lacks carry an ending, a hearing is filed under the committee that will
+    sit, and a topic carries its sitting term's items alone."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-changes-fx-"))
+    try:
+        _fixture_site_whole(root)
+        ch = root / "site" / "changes"
+        names = sorted(p.name for p in ch.glob("*.json"))
+        cur = json.loads((ch / "current.json").read_text(encoding="utf-8"))
+        assert len(names) == 9 and cur["new_by"] == "record-date" and \
+            (root / "archive" / "first-seen.next.json").is_file(), (
+                "the chain's build_feeds did not write eight nights and current.json by the "
+                "record's dates, with a ledger beside them", names)
+        assert {"bill:2026/HB1442", "member:377204", "committee:H43", "topic:insurance"} <= \
+            set(cur["followable"]), sorted(cur["followable"])
+        # What the manage page's lists to add from are ordered and grouped by
+        # (the person's test of 16 October 2026: legislators "sorted ... by
+        # first name instead of last name"): a member carries the roster's own
+        # sort name and chamber, and a committee its chamber and the name the
+        # search gives it.
+        nelson, commerce = cur["followable"]["member:377204"], cur["followable"]["committee:H43"]
+        assert (nelson.get("sort"), nelson.get("chamber")) == ("nelson, jodi", "House"), (
+            "build_feeds no longer hands the manage page a legislator's sort name and chamber",
+            nelson)
+        assert (commerce.get("label"), commerce.get("chamber")) == \
+            ("House Commerce Committee", "House"), (
+                "build_feeds no longer names a committee as the search does, with its chamber",
+                commerce)
+        probs = FC.check(ch) + (_changes_node(ch) or [])
+        assert not probs, probs[:4]
+
+        def feeds(when, seed="0", keep=True):
+            r = _run([sys.executable, _paths.script("build_feeds.py"), "--site", "site"],
+                     cwd=root, capture_output=True, text=True, timeout=180,
+                     env={"GRANITE_BUILD_DATE": when, "PYTHONHASHSEED": seed})
+            assert r.returncode == 0, (r.stderr or r.stdout).strip()[-300:]
+            out = {p.relative_to(root).as_posix(): p.read_bytes()
+                   for d in ("site/changes", "site/feed") for p in sorted((root / d).rglob("*"))
+                   if p.is_file()}
+            nxt = root / "archive" / "first-seen.next.json"
+            out["archive/first-seen.next.json"] = nxt.read_bytes()
+            files = {p.name: json.loads(p.read_text(encoding="utf-8")) for p in ch.glob("*.json")}
+            probs = FC.check(ch) + (_changes_node(ch) or [])
+            assert not probs, (when, probs[:4])
+            if keep:
+                os.replace(nxt, root / "archive" / "first-seen.json")
+            return r.stdout, out, files
+
+        said, _, f7 = feeds("2026-03-07T09:00:00")
+        assert {o["new_by"] for o in f7.values()} == {"record-date"} and "WARNING" in said and \
+            "vote:377204:2026-H-310" in [x["guid"] for x in f7["2026-03-07.json"]["refs"]
+                                          ["member:377204"]["items"]], \
+            "the 7th did not hold the roll call of the 6th by the record's dates"
+        said, _, f8 = feeds("2026-03-08T09:00:00")
+        assert {o["new_by"] for o in f8.values()} == {"first-seen"} and "WARNING" not in said, said
+        _, one, f9 = feeds("2026-03-09T09:00:00", "1", keep=False)
+        _, two, _ = feeds("2026-03-09T09:00:00", "2", keep=False)
+        assert f9["2026-03-09.json"]["refs"] == {}, \
+            ("a night with nothing new did not get its file with empty refs",
+             f9["2026-03-09.json"]["refs"])
+        assert FC.ended_owed(f8["current.json"], f9["current.json"], f9["2026-03-09.json"]) == []
+        differ = sorted(k for k in set(one) | set(two) if one.get(k) != two.get(k))
+        assert not differ, f"under PYTHONHASHSEED 1 and 2 these came out different: {differ[:5]}"
+        # What build_feeds hands over, read off the files (the review of 7
+        # October 2026: every check above held with these three broken). The
+        # hearing of the committee that will sit is filed under it, by
+        # chamber and name, on the day the fixture's manifest gives it --
+        # three days from the clock when the fixture was built (_site_fixture),
+        # which is why it is read here rather than written down: written as
+        # 2026-10-10 on 7 October, this failed every day after.
+        with open(root / "verification_manifest.csv", newline="", encoding="utf-8") as fh:
+            ahead = [r["sched_date"] for r in csv.DictReader(fh) if r.get("bill") == "HB1443"]
+        assert len(ahead) == 1, ("the fixture's hearing still to come is not one row", ahead)
+        # The committee by its follow label and the room in words (17 October
+        # 2026), so the email names it as the reader's heading does and links it.
+        assert f7["current.json"]["upcoming"] == {"committee:H43": [{
+            "date": ahead[0], "what": "subcommittee work session", "time": "09:30",
+            "committee": "House Commerce Committee", "venue": "Legislative Office Building 302"}]}, \
+            ("a hearing was not filed under the committee that will sit",
+             f7["current.json"]["upcoming"])
+        # ... and on the 10th the record moves on: the bill is signed, the
+        # member leaves, and one bill is an older term's, under a topic no
+        # bill of the sitting term carries. Each record that left is told in
+        # its record's own words that night, and a topic is followable, with
+        # its sitting term's items alone, only where a bill of that term
+        # carries it.
+        sd = root / "site"
+        meta = json.loads((sd / "meta.json").read_text(encoding="utf-8"))
+        rows = json.loads((sd / "idx" / "2025-2026.json").read_text(encoding="utf-8"))
+        # Signed, as a real row says it: the kind and the status together. The
+        # ending is told in the status's words since 17 October 2026
+        # (build_feeds.ending_words), which a kind alone does not give.
+        for r in rows:
+            if r["id"] == "HB1442":
+                r["kind"], r["status"] = "law", "Signed into law"
+        older = [dict(r, term="2023-2024", topic="Taxation") for r in rows if r["id"] == "SB900"]
+        assert older and "Taxation" not in {r.get("topic") for r in rows}, older
+        (sd / "idx" / "2025-2026.json").write_text(
+            json.dumps([r for r in rows if r["id"] != "SB900"]), encoding="utf-8")
+        (sd / "idx" / "2023-2024.json").write_text(json.dumps(older), encoding="utf-8")
+        (sd / "meta.json").write_text(json.dumps(dict(meta, terms=meta["terms"] + ["2023-2024"])),
+                                      encoding="utf-8")
+        roster = json.loads((sd / "legislators.json").read_text(encoding="utf-8"))
+        (sd / "legislators.json").write_text(json.dumps(
+            [dict(m, former=True) if str(m.get("id")) == "377204" else m for m in roster]),
+            encoding="utf-8")
+        _, _, f10 = feeds("2026-03-10T09:00:00")
+        refs = f10["2026-03-10.json"]["refs"]
+        # The topic's one item tonight is the bill's report dated the 10th,
+        # its bill's news on the 8th and the topic's once its day has come.
+        assert {k: r for k, r in refs.items() if k != "topic:insurance"} == {
+            "bill:2026/HB1442": {"ended": {
+                "how": "law", "summary": "HB 1442 — Signed into law.", "date": "2026-03-10",
+                "guid": "2025-2026:HB1442:closed:law"}},
+            "member:377204": {"ended": {
+                "how": "left", "date": "2026-03-10", "guid": "member:377204:ended:left",
+                "summary": "Rep. Jodi Nelson (R - Rock 13) is no longer among the sitting "
+                           "legislators."}}} and \
+            [x["date"] for x in refs.get("topic:insurance", {}).get("items", [])] == ["2026-03-10"], \
+            ("the 10th did not tell the signed bill and the member who left in their own "
+             "words, or told something else", refs)
+        assert FC.ended_owed(f9["current.json"], f10["current.json"], f10["2026-03-10.json"]) == []
+        led = json.loads((root / "archive" / "first-seen.json").read_text(encoding="utf-8"))
+        misc = led["carried"]["2026-03-10"].get("topic:miscellaneous") or []
+        assert "topic:miscellaneous" in f10["current.json"]["followable"] and misc and \
+            all(g.startswith("2025-2026:") for g in misc) and \
+            "topic:taxation" not in f10["current.json"]["followable"], \
+            ("a topic carried an older term's items, or one only an older term's bill carries "
+             "was offered", misc, sorted(f10["current.json"]["followable"]))
+        js = "" if _changes_node(ch) is not None else \
+            "; check_changes.js is not on this branch, so the Python rules held alone"
+        return "ok", (f"9 files on the fixture by record-date, then first-seen; the 9th empty; "
+                      f"{len(one):,} feeds, files and ledger the same under two seeds; a hearing "
+                      "under the committee that sits; a signed bill and a member who left told "
+                      "so on the 10th; a topic of its own term's items" + js)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a page's structured data says what it is, stays inside its script, and names no contact details",
+       needs=("structured", "shell"))
+def _structured_data(LD, S):
+    """schema.org data on bill, legislator, committee and list pages, added 13
+    September. Until then shell.page()'s jsonld parameter interpolated a name,
+    NL, that was never defined -- no caller passed it, so nothing had raised and
+    no page had any. A title is a stranger's input as far as a script element is
+    concerned, so "</script>" in one must not end it; and a legislator's email
+    and telephone stay out, because the person running the site wants the
+    addresses kept from scrapers and structured data is where a scraper reads."""
+    b = {"id": "HB100", "n": "HB 100-FN", "year": 2026, "term": "2025-2026",
+         "title": "a bill </script><script>alert(1)</script>"}
+    s = S.ld_script(LD.bill(b, {"sponsors": [{"label": "Rep. A (R - Straf 1)"}]},
+                            "https://x.test", "/bill/2026/hb100"))
+    inner = s[s.index(">") + 1:-len("</script>")]
+    assert "</" not in inner, "structured data can end its own script element"
+    g = json.loads(inner)
+    assert [x["@type"] for x in g["@graph"]] == ["WebPage", "Legislation", "BreadcrumbList"], g
+    assert g["@graph"][1]["legislationJurisdiction"] == "US-NH"
+    # The page is Granite Record's; the bill is the General Court's. A single
+    # Legislation node at the page's address with the General Court as its
+    # publisher credited the site to the legislature.
+    assert g["@graph"][0]["publisher"]["name"] == "Granite Record", g["@graph"][0]
+    assert g["@graph"][1]["@id"] != g["@graph"][0]["@id"], (
+        "the bill and the page about it share an @id")
+    # THE BILL'S OWN DAYS (23 October 2026): introduced and last moved, the
+    # sitemap's day, never the build's; none where the record gives none.
+    assert "dateModified" not in g["@graph"][0] and "datePublished" not in g["@graph"][0], (
+        "a bill with no dated record carries a date")
+    dated = LD.bill(b, {"events": [{"type": "introduced", "date": "2025-01-08"},
+                                   {"type": "floor", "date": "2025-03-06"}]},
+                    "https://x.test", "/bill/2026/hb100", modified="2025-06-12")[0]
+    assert (dated.get("datePublished"), dated.get("dateModified")) == ("2025-01-08", "2025-06-12"), dated
+    late = LD.bill(b, {"events": [{"type": "introduced", "date": "2025-07-01"}]},
+                   "https://x.test", "/bill/2026/hb100", modified="2025-06-12")[0]
+    assert "datePublished" not in late, "a bill is said introduced after it last moved"
+    m = {"name": "Doe, Jane", "display_plain": "Rep. Jane Doe", "chamber": "H",
+         "county": "Hillsborough", "district": "12", "party": "Democratic",
+         "email": "jane.doe@leg.state.nh.us", "phone": "603-555-0100", "address": "1 Main St"}
+    p = json.dumps(LD.person(m, "https://x.test", "/legislator/jane-doe-hills-12"))
+    for private in ("jane.doe@", "555-0100", "1 Main St"):
+        assert private not in p, f"a legislator's contact detail reached structured data: {private}"
+    assert json.loads(p)[0]["jobTitle"] == "State Representative"
+    assert S.ld_script(None) == ""
+    assert S.still_moving({"term": "2025-2026", "kind": "active"}, "2025-2026")
+    assert not S.still_moving({"term": "2025-2026", "kind": "law"}, "2025-2026"), \
+        "a concluded bill is offered as followable"
+    assert not S.still_moving({"term": "2023-2024", "kind": "active"}, "2025-2026")
+    return "ok", "Legislation, Person, GovernmentOrganization; no breakout; no contact details; only moving bills followable"
+
+
+@check("frontend", "the logo's artist is credited where her licence says, and no logo or icon file is in git")
+def _logo_licence():
+    """The licence for Debra Caplan's logo (24 September 2026) asks for her name
+    and a link to linescapesnh.com in the site footer and on the About page,
+    and the person asked that her files never be in this public repository.
+
+    The footer was written twice -- bills.html for the record pages,
+    build_pages.shell() for the rest -- so a credit dropped from one copy would
+    have left thousands of pages without it. It is chrome.FOOTER's alone since
+    23 October 2026 (_frame_written_once), and held here.
+    And brand/licensed/ and assets/licensed/ are gitignored, which stops a
+    `git add .` but not a `git add -f`, so this asks git what it tracks.
+
+    THE CLIPART TOO, since 1 October 2026. The bought Old Man of the
+    Mountain and every icon drawn from it are used on the terms they were
+    bought on, which are no more the project's to pass on than the artist's,
+    and the person decided on 30 September that they leave the repository as
+    well, which the commit of 1 October did: the originals in
+    brand/, their arrival copies at the root, and the images in assets/. So
+    the question to git is now the whole of brand/ and assets/ and those three
+    names, and the one answer allowed is assets/site.webmanifest, which is
+    text and MIT like the code."""
+    import subprocess
+    import chrome as CH
+    for f, src in (("chrome.FOOTER", CH.FOOTER),):
+        assert src.count('class="logocredit"') == 1, f"{f}: the footer's logo credit is missing or doubled"
+        assert "Debra Caplan" in src and "https://www.linescapesnh.com/" in src, \
+            f"{f}: the footer credit no longer names Debra Caplan and links linescapesnh.com"
+    about = _source(_paths.locate("build_pages.py"))
+    about = about[about.index('ABOUT = """'):]
+    about = about[:about.index('"""', 12)]
+    # "The Logo", in the Title Case of the About page the person approved on
+    # 9 October 2026; the section itself is word for word as it was.
+    assert "<h2>The Logo</h2>" in about and "Debra Caplan" in about \
+        and "https://www.linescapesnh.com/" in about, \
+        "the About page lost the logo section, its credit or its link"
+    ignored = _source(".gitignore").splitlines()
+    for d in ("brand/licensed/", "assets/licensed/", "/Icon.png", "/Logo Black.png",
+              "/Logo White.png", "/brand/*", "/assets/*.png", "/assets/*.svg",
+              "/assets/*.ico"):
+        assert d in ignored, f".gitignore no longer keeps {d} out of the repository"
+    try:
+        r = subprocess.run(["git", "ls-files", "-z", "--", "brand", "assets", "Icon.png",
+                            "Logo Black.png", "Logo White.png"],
+                           capture_output=True, text=True, encoding="utf-8", timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return "skip", "git is not here to ask what it tracks"
+    if r.returncode != 0:
+        return "skip", "not a git checkout"
+    tracked = [f for f in r.stdout.split("\0") if f and f != "assets/site.webmanifest"]
+    assert not tracked, ("logo or icon files are tracked by git and would be published "
+                         "with the code, which they are not licensed for: "
+                         + ", ".join(tracked[:5]))
+    return "ok", ("credit in the footer (chrome.FOOTER) and on About; nothing of brand/ or assets/ "
+                  "is tracked but the manifest, and .gitignore keeps it so")
+
+
+@check("frontend", "the logo and icon files are one list: what the pages name, the build places and the kit carries")
+def _brand_files():
+    """A new icon reference should fail here, on the laptop, and not as a 404
+    after a night.
+
+    None of the logo and icon files is in the repository (since 1 October 2026),
+    so nothing about a checkout says which ones a complete site needs. That is
+    build_pages.BRAND_FILES, and it is only worth having if it is true -- so
+    it is held to the four places a page can ask for one of them:
+
+      - the icon and manifest <link>s in every page's head, which
+        chrome.head writes for both kinds of page
+      - the link card every builder names (og.png and og-<kind>.png)
+      - the stylesheet's url(/...)
+      - the icons site.webmanifest lists
+
+    They must name exactly BRAND_FILES and the header's mark, no more and no
+    fewer: a file on the list that nothing asks for is carried to GitHub's
+    machine every night for nothing, and one asked for and not listed is a
+    file the kit does not bring.
+
+    And the kit: one laptop-owned entry in cloud_kit.json names the clipart by
+    literal path -- exactly BRAND_FILES less the manifest, which git holds --
+    because a literal path that is missing stops seed-kit and kit-down, where
+    a glob is satisfied by any one file. The header's mark is the artist's and
+    travels with assets/licensed/* -- and is named there by its own path as
+    well, for the same reason: it is the one file a page asks for that has no
+    clipart twin, so with the glob alone a kit sent before build_brand.py
+    drew it was a whole kit to seed-kit, and the first thing to say otherwise
+    was GitHub's machine, a night later.
+    """
+    import build_pages as BP
+    want = set(BP.BRAND_FILES)
+    assert len(want) == len(BP.BRAND_FILES), "build_pages.BRAND_FILES names a file twice"
+    assert BP.HEADER_MARK not in want, (
+        "the header's mark is on BRAND_FILES: a site is complete without it, "
+        "and check_site would refuse every fork's")
+    named = {}
+
+    def code(path):
+        # A script's own words about a file are not a page asking for it.
+        text = _paths.locate(path).read_text(encoding="utf-8")
+        if path.endswith(".py"):
+            text = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
+            text = re.sub(r"BRAND_FILES = \(.*?\)\n", "", text, flags=re.S)
+        return text
+
+    head = re.compile(r'<link rel="(?:icon|apple-touch-icon|manifest)" href="/([^"]+)"')
+    # ONE HEAD-WRITER SINCE 23 OCTOBER 2026: chrome.head, for every page.
+    heads = {f: set(head.findall(code(f))) for f in ("chrome.py",)}
+    for f, got in heads.items():
+        assert got, f"{f} links no icon in its head; has the markup changed?"
+        for g in got:
+            named.setdefault(g, f)
+    card = re.compile(r"\bog(?:-[a-z]+)?\.png")
+    for f in [x.name for x in _paths.code_files("build_*.py")] + ["shell.py", "bills.html", "chrome.py"]:
+        if f == "build_brand.py" or not _paths.locate(f).exists():
+            continue        # it draws them; it does not ask for them
+        for g in set(card.findall(code(f))):
+            named.setdefault(g, f)
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
+    for g in set(re.findall(r"url\(/([^)\s\"']+)\)", css)):
+        named.setdefault(g, "app.css")
+    manifest = Path("assets/site.webmanifest")
+    assert manifest.exists(), "assets/site.webmanifest is not here, and it is tracked"
+    for icon in json.loads(_source(manifest))["icons"]:
+        named.setdefault(icon["src"].lstrip("/"), "site.webmanifest")
+
+    unlisted = sorted(set(named) - want - {BP.HEADER_MARK})
+    assert not unlisted, (
+        "asked for by a page, the stylesheet or the manifest and not on "
+        "build_pages.BRAND_FILES, so neither the kit nor a check brings it: "
+        + ", ".join(f"{g} ({named[g]})" for g in unlisted))
+    unasked = sorted(want - set(named))
+    assert not unasked, (
+        "on build_pages.BRAND_FILES and asked for by nothing: " + ", ".join(unasked))
+    assert named.get(BP.HEADER_MARK) == "app.css", (
+        f"app.css no longer draws the header's mark from /{BP.HEADER_MARK}")
+
+    kit = json.loads(_source("cloud_kit.json"))["kit"]
+    clip = {f"assets/{f}" for f in want if f != manifest.name}
+    mine = [e for e in kit if any(x.startswith("assets/") and not x.startswith("assets/licensed/")
+                                  for x in e.get("paths", []) + e.get("globs", []))]
+    assert len(mine) == 1, (
+        f"{len(mine)} kit entries carry files of assets/ itself; the clipart is one entry")
+    e = mine[0]
+    assert e["owner"] == "laptop" and not e.get("optional") and not e.get("globs"), (
+        "the kit's clipart entry must be the laptop's, required, and literal "
+        "paths only: a glob is satisfied by one file and an optional entry by none")
+    assert len(e["paths"]) == len(set(e["paths"])) and set(e["paths"]) == clip, (
+        "the kit's clipart entry and build_pages.BRAND_FILES disagree: the kit "
+        f"lacks {sorted(clip - set(e['paths']))} and has {sorted(set(e['paths']) - clip)} "
+        "too many")
+    licensed = [x for x in kit if "assets/licensed/*" in x.get("globs", [])]
+    assert len(licensed) == 1 and licensed[0]["owner"] == "laptop" \
+        and not licensed[0].get("optional"), (
+        "the kit no longer carries assets/licensed/* as the laptop's, required "
+        "-- which is how the header's mark and the artist's lockup reach the night")
+    mark = f"assets/licensed/{BP.HEADER_MARK}"
+    assert mark in licensed[0].get("paths", []), (
+        f"the kit's licensed entry must name {mark} by its literal path: the "
+        "glob beside it is satisfied by the lockup alone, so without the path "
+        "seed-kit sends a kit that builds a header with no mark and says "
+        "nothing, and the night is the first to find out")
+    return "ok", (f"{len(want)} files named by {len(set(named.values()))} sources and "
+                  f"nothing else, plus the header's {BP.HEADER_MARK}; the kit's "
+                  f"clipart entry names the {len(clip)} git does not hold and its "
+                  f"licensed entry names the mark")
+
+
+@check("frontend", "the header draws the artist's mark where the build has it, and the wordmark alone where it does not")
+def _header_mark():
+    """The header's mark is a file a fork does not have.
+
+    Since 1 October 2026 the mark beside the site's name is Debra Caplan's
+    drawing, in a 33x56 box. It is licensed, never in the repository, and a
+    CSS mask whose file is missing is drawn as nothing -- but its box stays:
+    an empty gap before the name and a bar 14px taller, on every page of
+    every fork. So the rule that draws it lives in its own region of app.css,
+    MARK:START to MARK:END, and build_pages.py keeps that region only where
+    the build placed the file. What has to hold for that to work:
+
+      - the region exists once, outside the palette, so cutting it changes
+        nothing else
+      - the rule is in it, names build_pages.HEADER_MARK, and nothing outside
+        it names the file or draws .brand::before
+      - the box it draws is the box build_brand.py cuts the mask for, and the
+        mask is at least twice that, so it is sharp on a 2x screen
+      - below the width where the tab strip leaves the flow, the brand gives
+        up its side padding: the drawing is 18px wider than the clipart was,
+        and without that the phone's row wraps on a 360px screen whenever the
+        serif is late, which was measured with the fonts blocked
+      - without_mark() takes the region out of app.css's bytes and nothing
+        else, and what the site publishes of either is without its comments
+        (build_pages.strip_css), the rule among the rules
+
+    And the guard for the project's own builds, which a fixture cannot give:
+    where assets/licensed/ is here, the mark is in it. A kit sent before
+    build_brand.py drew it would build a header with no mark and pass every
+    other check, because that is exactly what a fork's correct build looks
+    like. The kit names the mark by its path, so seed-kit refuses that kit
+    on the laptop (_brand_files holds the path there); this is what stops
+    the night if one is in the bucket anyway. _links_resolve runs both
+    builds end to end on the fixture.
+    """
+    import struct
+    import build_pages as BP
+    import build_brand as BB
+    css = _source("src/pages/app.css")
+    for m in ("/* MARK:START", "/* MARK:END"):
+        assert css.count(m) == 1, f"app.css has {css.count(m)} of {m!r}, not one"
+    a, b = css.index("/* MARK:START"), css.index("/* MARK:END")
+    end = css.index("*/", b) + 2
+    assert a < b, "app.css's MARK:END is above its MARK:START"
+    assert a > css.index("/* PALETTE END"), "the MARK region is inside the palette"
+    region = css[a:end]
+    rule = re.sub(r"/\*.*?\*/", "", region, flags=re.S)
+    assert "nav.top .brand::before{" in rule and f"url(/{BP.HEADER_MARK})" in rule, (
+        f"the MARK region does not draw nav.top .brand::before from /{BP.HEADER_MARK}")
+    outside = css[:a] + css[end:]
+    assert BP.HEADER_MARK not in outside, (
+        f"app.css names {BP.HEADER_MARK} outside the MARK region, so a build "
+        "without the file still asks for it")
+    assert ".brand::before" not in re.sub(r"/\*.*?\*/", "", outside, flags=re.S), (
+        "a rule outside the MARK region draws .brand::before: a build without "
+        "the mark would keep an empty box before the site's name")
+    box = re.search(r"width:(\d+)px;height:(\d+)px", rule)
+    assert box and (int(box.group(1)), int(box.group(2))) == tuple(BB.MARK_BOX), (
+        f"app.css draws the mark in {box.groups() if box else 'no'} box and "
+        f"build_brand.py cuts the mask for {BB.MARK_BOX}")
+    assert BB.HEADER_MARK == BP.HEADER_MARK and BB.MARK_SCALE >= 2, (
+        "build_brand.py writes the mark under another name than build_pages.py "
+        "places, or at less than twice its box")
+    # THE EMAILS' MARK (22 October 2026): the emails name the file and its
+    # size, build_brand.py draws it; the two agree, or every email's header
+    # is a broken or stretched image. Since 23 October the emails' are
+    # site.gen.js's MARK_FILE, which follow_site.py writes from build_brand.py
+    # (_follow_site_current holds it current), with mail.js's empty alt.
+    mail = _source("workers/follow/mail.js")
+    gen = _site_gen()
+    side = (BB.MARK_BOX[0] + 2 * BB.MAIL_PAD, BB.MARK_BOX[1] + 2 * BB.MAIL_PAD)
+    assert gen.get("MARK_FILE") == {"path": f"/{BB.MAIL_MARK}", "width": side[0], "height": side[1]} \
+        and 'export const MARK = { ...MARK_FILE, alt: "" };' in mail, (
+        f"the emails' MARK is not /{BB.MAIL_MARK} at {side[0]}x{side[1]} with an empty alt, "
+        f"which is what build_brand.mail_mark draws: site.gen.js has {gen.get('MARK_FILE')}")
+    drawn, ink = "#%02X%02X%02X" % BB.MAIL_INK, (gen.get("SITE_PALETTE") or {}).get("ink")
+    assert drawn == ink, (
+        f"the emails' mark is drawn in {drawn} (build_brand.py's MAIL_INK), not the emails' ink "
+        f"{ink}, app.css's --ink as site.gen.js has it")
+    strip = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*nav\.top \.in\{position:relative\}",
+                      css)
+    assert strip, "app.css no longer takes the tab strip out of the flow at a min-width"
+    at_px = float(strip.group(1)) * 16
+    assert (f"@media (max-width:{_em(at_px - 0.02)})"
+            "{nav.top .brand{padding-left:0;padding-right:0}}") in rule, (
+        "with the mark drawn, the brand must give up its side padding below "
+        f"{at_px:g}px, where the strip is in the flow: the mark is 18px "
+        "wider than the row had, and a 360px phone wraps its menu button "
+        "without them")
+
+    raw = Path("src/pages/app.css").read_bytes()
+    cut = BP.without_mark(raw)
+    i = raw.find(b"/* MARK:START")
+    assert cut != raw and cut[:i] == raw[:i] and raw.endswith(cut[i:]), (
+        "without_mark() did not take one block out of app.css and leave the rest")
+    assert b"/* MARK:" not in cut and BP.HEADER_MARK.encode() not in cut, (
+        "without_mark() left part of the MARK region behind")
+    assert BP.without_mark(cut) == cut, "without_mark() changes a file that has no region"
+    drawn = BP.strip_css(raw.decode("utf-8"))
+    plain = BP.strip_css(cut.decode("utf-8"))
+    assert BP.strip_css(rule) in drawn and BP.HEADER_MARK not in plain, (
+        "app.css as published does not carry the mark's rule where the build has the "
+        "drawing, or still names the file where it does not")
+
+    said = f"one region of {len(region):,} bytes, cut cleanly; box {BB.MARK_BOX[0]}x{BB.MARK_BOX[1]}"
+    licensed = Path("assets/licensed")
+    if licensed.is_dir() and any(licensed.iterdir()):
+        f = licensed / BP.HEADER_MARK
+        assert f.is_file(), (
+            f"assets/licensed/ is here without {BP.HEADER_MARK}, so this machine "
+            "would build the header with no mark and nothing else would say so. "
+            "On the laptop: python3 src/pages/build_brand.py draws it from "
+            "brand/licensed/drawing.png, and cloud.py seed-kit sends it. On "
+            "GitHub's machine: the kit was sent before it was drawn")
+        data = f.read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n", f"{f.as_posix()} is not a PNG"
+        w, h = struct.unpack(">II", data[16:24])
+        scale = max(w / BB.MARK_BOX[0], h / BB.MARK_BOX[1])
+        assert scale >= 1.98, (
+            f"{f.as_posix()} is {w}x{h}, {scale:.2f} times its {BB.MARK_BOX[0]}x"
+            f"{BB.MARK_BOX[1]} box: soft on a 2x screen. Run python3 src/pages/build_brand.py")
+        said += f"; assets/licensed/{BP.HEADER_MARK} is {w}x{h}, {scale:.1f}x the box"
+    else:
+        said += "; no assets/licensed/ here, so this machine builds the wordmark alone"
+    site = Path("site")
+    if (site / "app.css").exists():
+        for name in ("app.css",):
+            draws = f"url(/{BP.HEADER_MARK})" in (site / name).read_text(encoding="utf-8")
+            assert not draws or (site / BP.HEADER_MARK).is_file(), (
+                f"site/{name} draws the header's mark and site/{BP.HEADER_MARK} "
+                "is not there: an empty box before the site's name")
+    return "ok", said
+
+
+@check("frontend", "the home status box says no 'Summary Updated' line, keeps the summary's date "
+                   "for the stale warning, and leads to the NH Legislative Schedule",
+       needs=("build_pages",))
+def _state_box_trimmed(B):
+    """The person, 25 October 2026: "The homepage status can be trimmed down
+    and the summary updated line can also be removed", and "NH Legislature
+    Schedule should be NH Legislative Schedule". A fresh summary's box carries
+    its date only hidden, for the reader's clock; a summary 45 days old still
+    says so, in the server's copy and the script's."""
+    fresh = {"phase": "out of session", "note": "A note.", "updated": "2026-10-25",
+             "stale_days": 0, "last_session": "2026-08-19", "milestones": []}
+    old = dict(fresh, stale_days=60)
+    box = B.state_box(fresh)
+    assert "Summary Updated" not in box, f"the fresh box still says its date: {box[-400:]!a}"
+    assert re.search(r'<p class="statemeta upd" hidden data-updated="2026-10-25"></p>', box), (
+        f"the fresh box lost the hidden date the stale warning is worked out from: {box[-400:]!a}")
+    stale = B.state_box(old)
+    assert "may be out of date" in stale and 'data-updated="2026-10-25"' in stale, (
+        f"a summary 60 days old no longer says it may be out of date: {stale[-400:]!a}")
+    js = B.home_js()
+    assert "Summary Updated" not in js, "HOME_JS still writes 'Summary Updated'"
+    clock = js[js.find("const up=document.querySelector"):][:900]
+    assert "up.hidden=false" in clock and "up.hidden=true" in clock and "state.stale" in clock, (
+        f"the reader's clock no longer shows the warning and hides the fresh line: {clock!a}")
+    for words in (box, js):
+        assert ">NH Legislative Schedule</a>" in words and "Legislature Schedule" not in words, (
+            "the way to the schedule is not called the NH Legislative Schedule")
+    return "ok", ("no 'Summary Updated' in either copy; the date kept hidden; a 60-day-old "
+                  "summary warned; the link reads NH Legislative Schedule")
+
+
+@check("frontend", "the Spanish home's status box shows status.txt's note_es (and milestone_es) in "
+                   "Spanish, unmarked, and falls back to the English note marked lang=en",
+       needs=("build_pages", "build_site_v2"))
+def _status_note_in_spanish(BP, B):
+    """The owner, 9 November 2026: the Spanish pages stop showing English where
+    a hand-kept note is concerned. status.txt may carry `note_es:` beside
+    `note:` and `milestone_es: DATE | LABEL | NOTE` beside a milestone of the
+    same DATE; the Spanish box (and the script's copy) says them with no
+    lang="en", and a line with no twin is the English, marked, as before. The
+    real file is read by build_status, not by a copy of its parser."""
+    import types
+    root = Path(tempfile.mkdtemp(prefix="gr-note-es-"))
+    try:
+        f = root / "status.txt"
+        f.write_text("updated: 2099-01-01\nphase: out of session\n"
+                     "note: The English note.\nnote_es: La nota en espa\u00f1ol,\n  en dos l\u00edneas.\n"
+                     "milestone: 2099-02-01 | The label | The words.\n"
+                     "milestone_es: 2099-02-01 | La etiqueta | Las palabras.\n"
+                     "milestone: 2099-03-01 | Another | More words.\n", encoding="utf-8")
+        S = B.build_status(types.SimpleNamespace(status=str(f)), [], {}, {}, "2000-01-01", {}, [])
+        assert S.get("note_es") == "La nota en espa\u00f1ol, en dos l\u00edneas.", S.get("note_es")
+        ms = S["milestones"]
+        assert ms[0]["label_es"] == "La etiqueta" and ms[0]["note_es"] == "Las palabras." \
+            and "label_es" not in ms[1], ms
+        es = BP.state_box(S, "es")
+        assert '<p class="statenote">La nota en espa\u00f1ol, en dos l\u00edneas.</p>' in es \
+            and "The English note." not in es and "La etiqueta" in es and "Las palabras." in es, es[:900]
+        en = BP.state_box(S, "en")
+        assert "The English note." in en and "La nota" not in en and "La etiqueta" not in en, en[:900]
+        plain = dict(S, note_es="")
+        plain["milestones"] = [{"date": "2099-02-01", "label": "The label", "note": "The words."}]
+        fb = BP.state_box(plain, "es")
+        assert '<span lang="en">The English note.</span>' in fb and \
+            '<span lang="en">The label</span>' in fb, fb[:900]
+        for need in ("S.note_es", "ms.label_es", "ms.note_es"):
+            assert need in BP.HOME_JS, f"HOME_JS no longer reads {need}"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    nf = BP.not_found_body_lang("/bill/2025/hb1", "es")
+    assert "Nothing is published" not in nf and "<h1>Aqu\u00ed no hay nada publicado</h1>" in nf \
+        and 'href="/es/officials.html"' in nf and 'href="/es/"' in nf and "<script" not in nf, nf
+    assert "/bill/2025/hb1" in nf and "{example}" not in nf, nf
+    assert "{example}" not in BP.not_found_body_lang("", "es")
+    # A note with no Spanish twin is not a failure (the manager's review, 9
+    # November 2026): status.txt is the owner's, written in a hurry when the
+    # Court's state changes, and the English note marked lang="en" is the
+    # fallback. Only a twin that is there must be the one shown.
+    return "ok", ("note_es and milestone_es are read, shown in Spanish unmarked on /es/, and the "
+                  "English stays marked where there is no twin; the Spanish 404 body is Spanish, "
+                  "links Spanish pages and carries no script")
+
+
+@check("frontend", "the Spanish home page's way to the legislature's year opens it in Spanish")
+def _year_link_in_lang():
+    """The Spanish home page carries <base href="/">, so the box's bare
+    "learn/legislative-year.html" opened the English page although a Spanish
+    one is built (the audit of 25 October 2026, C4). A language that has the
+    page links its own; one that does not links the English page."""
+    import build_pages as BP
+    import i18n
+    import legislative_year as LY
+    checked = []
+    for lang in i18n.LANGS:
+        if lang == i18n.DEFAULT:
+            continue
+        want = __import__("shell").canon(i18n.href(lang, LY.HREF))
+        assert f'href="{want}"' in BP.year_link(lang), (
+            f"the {lang} status box does not link {want}: {BP.year_link(lang)!a}")
+        assert want.startswith(f"/{lang}/") == i18n.has(lang, LY.HREF), want
+        checked.append(f"{lang} {want}")
+    assert checked, "no language but English to check"
+    return "ok", "the status box links " + ", ".join(checked)
+
+
+@check("frontend", "what the review of the audit's fixes found stays found: focus after Show more, "
+                   "Play and a long analysis, the seat map's one stop, a box that scrolls, the "
+                   "line above a sitting, the header below 1100px and the rules a look had added",
+       needs=("build_pages",))
+def _review_of_audit_fixes(BP):
+    """Two reviews of the audit's fixes, 2 October 2026, and the gaps they
+    found in the checks: eleven of the fixes could be taken out, one at a
+    time, with every check still passing. What each of these holds was read
+    out of a browser first; what can be run here is run, and a fix is never
+    passed for carrying the right words.
+
+    Show more. The list's and a member's votes' redraw everything, so focus
+    fell to <body> and the next Tab press went to the top of the page. The
+    handlers put it on the first card, or the first vote, they brought.
+
+    Play, and a long analysis. Each is a click that moves focus: to the
+    player that replaces Play where Play had it, on a bill (the home page's
+    own, Recent Session Days, is run in _home_says_each_once); to the start of the text
+    "Show more" opened. Clicked here.
+
+    The seat map. Its focus listeners sat on the <svg>, which made the chart
+    itself a Tab stop, and leaving a seat emptied the note under the chart
+    while focus was on its way to the link in it. Run: nothing on the svg
+    listens for focus, the name's callout above the seat (the note's link
+    until 29 October 2026; _seat_callout) keeps its link while focus goes
+    into it, and the arrow keys still walk the seats.
+
+    A box that scrolls sideways is a Tab stop while it scrolls: the exports
+    page marks its coverage table's box and app.js gives it the stop only
+    where the table is wider than the box.
+
+    And read, because they are a stylesheet's: the line above a sitting's
+    heading has the space above it that keeps it out from under "Cite this
+    page"; that line's link, on a phone, is the size of its words with what
+    can be pressed laid over it, not padding that runs into the heading; the
+    tab strip is taken out of the header's flow only from the width where it
+    clears the wordmark, and the brand's padding changes at that same width;
+    a phone's footer links are 44px; the menu's rows draw their ring inside
+    the panel that clips them; the home page's activity is a list with no
+    bullets; and the roster says what its finder found.
+    """
+    css = _source("src/pages/app.css")
+    bare = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bad = []
+
+    # ---- read: the stylesheet ------------------------------------------
+    m = re.search(r"\.sesspage \.crumb\{[^}]*margin:([^;}]+)", bare)
+    if not m or m.group(1).split()[0] in ("0", "0px"):
+        bad.append("the line above a sitting's heading has no space above it, so its "
+                   "letters lie under the row of \"Cite this page\"")
+    phone = re.search(r"ON A PHONE, A CONTROL IS A 44px TARGET.*?@media \(max-width:45em\)\{(.*?)\n\}\n",
+                      css, re.S)
+    crumb = re.sub(r"/\*.*?\*/", "", phone.group(1), flags=re.S) if phone else ""
+    link = re.search(r":is\(\.civics,\.civhead,\.sesspage\) \.crumb a\{([^}]*)\}", crumb)
+    # ::before since 8 October 2026: ::after is the outside-link mark's.
+    over = re.search(r":is\(\.civics,\.civhead,\.sesspage\) \.crumb a::before\{([^}]*)\}", crumb)
+    if not (link and over):
+        bad.append("on a phone the line above a heading is no bigger a target than its words")
+    else:
+        if "padding" in link.group(1) or "position:relative" not in link.group(1):
+            bad.append("the link above a heading is padded out on a phone: its box and its "
+                       "focus ring run into the heading under it")
+        box = dict(re.findall(r"(top|bottom|left|right):(-?\d+)", over.group(1)))
+        if "position:absolute" not in over.group(1) or int(box.get("bottom", 0)) > -14 \
+                or int(box.get("top", 0)) < -2:
+            bad.append("what can be pressed on the line above a heading must reach 14px below "
+                       "its words and no higher than the row above it, which is drawn over it: "
+                       + over.group(1))
+    out_of_flow = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*nav\.top \.in\{position:relative\}\s*"
+                            r"\.navtabs\{position:absolute", bare)
+    padded = re.search(r"@media \(max-width:([\d.]+)em\)\{nav\.top \.brand\{padding-left:0;padding-right:0\}\}",
+                       bare)
+    if not (out_of_flow and padded):
+        bad.append("the header's two width rules are not where this check reads them")
+    else:
+        # In em since 8 October 2026: at the browser's default of 16px, which
+        # is the width the numbers below were measured at.
+        at = round(float(out_of_flow.group(1)) * 16)
+        if abs(float(padded.group(1)) * 16 - (at - 0.02)) > 1e-6:
+            bad.append(f"the tab strip leaves the header's flow at {at}px and the brand's "
+                       f"padding changes at {float(padded.group(1)) * 16:g}px: the two are one width")
+        if at < 1100:
+            bad.append(f"the tab strip is centred on the bar from {at}px: with five tabs and the "
+                       "drawing beside the name it lies under the brand below 1034px, and at "
+                       "980 it wraps")
+    if not re.search(r"@media \(max-width:45em\)\{[^@]*?\.flinks a\{[^}]*min-height:44px", bare, re.S):
+        bad.append("a phone's footer links are not held to 44px")
+    if ".navdrop .navtabs a:focus-visible,.navdrop .themer:focus-visible{outline-offset:-2px}" not in bare:
+        bad.append("the menu's rows draw their focus ring outside the panel, which clips it")
+    if not re.search(r":where\(body\.pg\) \.actlist\{list-style:none;margin:0;padding:0", bare):
+        bad.append("the home page's activity list has its bullets and indent again below 1180px")
+
+    # ---- read: the pages' own markup -----------------------------------
+    pages = _source(_paths.locate("build_pages.py"))
+    if '<p class="sr" id="lsay" role="status"></p>' not in pages \
+            or 'document.getElementById("lsay")' not in BP.LEGFIND_JS \
+            or "say.textContent=text" not in BP.LEGFIND_JS:
+        bad.append("the roster's finder no longer says what it found: #lsay, role=\"status\", "
+                   "and the script that writes the count into it")
+    exports = _source(_paths.locate("build_exports.py"))
+    cov = re.search(r'<div class="covwrap"([^>]*)>', exports)
+    if not cov or 'data-scrollstop="1"' not in cov.group(1) or 'role="region"' not in cov.group(1) \
+            or "aria-label=" not in cov.group(1) or "tabindex" in cov.group(1):
+        bad.append("the exports page's coverage box must be a named region marked "
+                   "data-scrollstop, with no tabindex of its own: app.js gives it the stop "
+                   "only where it scrolls")
+    if not re.search(r"cov_rows = .{0,80}?<tr><th scope=\"row\">", exports, re.S) \
+            or exports.count('<th scope="col">') < 6:
+        bad.append("the coverage table's terms are not row headers, or its columns not "
+                   "column headers")
+
+    # ---- run: app.js ---------------------------------------------------
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
+        (root / "seat.js").write_text(_seat_script(BP), encoding="utf-8")
+        (root / "go.js").write_text(_HEARD_PRELUDE + _REVIEW_HARNESS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-400:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    size = re.search(r"^const PAGE_SIZE = (\d+);", _source(js), re.M)
+    size = int(size.group(1)) if size else None
+    if got["more"] != {"card": size, "others": 0}:
+        bad.append(f"\"show {size} more\" on the list leaves focus on {got['more']}, not on the "
+                   f"header of the first card it brought, card {size} counted from 0")
+    if got["observer"] != {"card": None, "others": 0}:
+        bad.append("the list growing as it is scrolled moves the keyboard, which nobody asked "
+                   f"for: {got['observer']}")
+    if got["vmore"] != {"row": 200, "tabIndex": -1, "others": 0}:
+        bad.append(f"\"Show 200 more\" on a member's votes leaves focus on {got['vmore']}, "
+                   "not on the first vote it brought")
+    if got["analysis"] != {"opened": 1, "tabIndex": -1, "shut": 1, "intoView": 1}:
+        bad.append("\"Show more\" on an analysis must put focus at the start of the text it "
+                   f"opened, and \"Show less\" bring its button back into view: {got['analysis']}")
+    if got["play"] != {"hadFocus": 1, "elsewhere": 0, "title": True}:
+        bad.append(f"the player that replaces Play on a bill takes focus only where Play had "
+                   f"it, and is named for its sitting: {got['play']}")
+    if got["stops"] != {"wide": "0", "fits": None, "after": [None, "0"], "resize": True}:
+        bad.append("a box marked data-scrollstop is a Tab stop exactly while its content is "
+                   f"wider than it is: {got['stops']}")
+    seat = got["seat"]
+    if seat.get("svgHears"):
+        bad.append("the seat map's <svg> listens for " + ", ".join(seat["svgHears"])
+                   + ": Chrome makes an svg that does a Tab stop, round all 400 seats")
+    if not (seat.get("named") and seat.get("keptGoingIn") and seat.get("clearedOnLeaving")
+            and seat.get("namedGoingBack")):
+        bad.append("focus on a seat names its member in the callout above it, and that link has "
+                   f"to be there when Tab reaches it and gone when focus has left both: {seat}")
+    if seat.get("arrow") != {"focused": 1, "stops": [1]} or seat.get("end") != {"focused": 3, "stops": [3]}:
+        bad.append(f"the arrow keys no longer walk the seats with one Tab stop among them: {seat}")
+    # THE CHART OPENS ZOOMED TO FIT, ON A PHONE AS EVERYWHERE (the owner, 29
+    # October 2026, board item 7). It opened zoomed in, 315% at 390px, and a
+    # chart in a tab not yet open waited for its box's width to do it (the
+    # review of 7 October 2026); now the script writes no zoom until the
+    # reader asks, in a hidden tab or once it is shown, and watches nothing.
+    wh = got.get("seatWheel") or {}
+    zoomed = str(wh.get("zoomed") or "")
+    if wh.get("down") != 0 or wh.get("fitted") is not None or wh.get("up") != 1 \
+            or not zoomed.endswith("%") or float(zoomed[:-1] or 0) <= 100:
+        bad.append("a wheel turned down over the fitted chart keeps the page from scrolling, or turned up "
+                   f"does not zoom the chart in: {wh}")
+    hid = got.get("seatHidden") or {}
+    if hid != {"zoom": None, "watching": 0, "shown": None, "letGo": True}:
+        bad.append("the seat map does not open zoomed to fit: it writes a zoom of its own on "
+                   f"opening, or watches its box for one: {hid}")
+    # THE SPEAKER'S CHAIR LIGHTS (the review of 7 October 2026): his number
+    # is on the group round the circle, and choosing him named him and lit his
+    # row but never the chair.
+    if got.get("speakerLit") != {"chair": True, "floor": False, "after": [False, True]}:
+        bad.append("choosing the Speaker does not light his chair, or choosing another seat "
+                   f"leaves it lit: {got.get('speakerLit')}")
+    assert not bad, "; ".join(bad[:5])
+    return "ok", ("Show more leaves the keyboard on the first row it brought, on the list and "
+                  "on a member's votes; Play and a long analysis move focus when clicked; the "
+                  "seat map's svg hears no focus, its callout keeps its link, it opens zoomed to "
+                  "fit, in a hidden tab too, and the Speaker's chair lights; a marked box is a "
+                  "stop only while it scrolls; the header's two widths are one, 1100px; and 7 "
+                  "rules of the stylesheet and the pages stand")
+
+
+def _seat_script(BP):
+    """The seat map's own function out of build_pages.SEATING_JS: from its
+    opening to the block that follows it, which is the tabs'."""
+    sj = BP.SEATING_JS
+    a = sj.index('(function(){\n  var list=document.getElementById("seatlist");')
+    b = sj.index("})();", a) + len("})();")
+    return sj[a:b]
+
+
+# The harness of _review_of_audit_fixes, after _HEARD_PRELUDE. A raw string.
+_REVIEW_HARNESS = r"""
+load("render, renderPage, IDX, addressed, scrollStops, VOTES_SHOWN, getFocused:()=>focused,"
+  + " setPage:(p)=>{PAGE=p;}, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;}");
+const out = {};
+s.setMeta({terms: ["2025-2026"], committee_codes: {}, topics: []});
+s.setTerm("2025-2026");
+s.IDX.length = 0;
+for (let i = 0; i < 250; i++) s.IDX.push({id: "HB" + (i + 1), n: "HB " + (i + 1), title: "a bill",
+  status: "Passed", kind: "active", committees: [], topic: "", sponsor: "", term: "2025-2026",
+  year: "2025", hay: "hb" + (i + 1), hayT: "hb" + (i + 1), hayS: "", hayC: ""});
+place("/bills", null, false);
+const results = document.querySelector("#results");
+// What focus() was called on, by kind and place in its list.
+let took = [];
+const thing = (kind, i) => ({kind, i, tabIndex: 0, focus() { took.push(this); },
+  querySelector(q) { return q === ".ctitle" ? this.head : null; }});
+const cards = Array.from({length: 250}, (_, i) => {
+  const c = thing("card", i); c.head = thing("head", i); return c; });
+const rows = Array.from({length: 450}, (_, i) => thing("row", i));
+results.querySelectorAll = q => q === ".card" ? cards : q === "table.vfull tbody tr" ? rows : [];
+const only = q => sel => sel === q ? {dataset: {}} : null;
+
+// SHOW MORE, on the list: the button, and then the observer, which is a
+// render(true) nobody pressed anything for.
+s.render(); took = [];
+click(only("[data-more]"));
+out.more = {card: (took.find(t => t.kind === "head") || {}).i ?? null,
+            others: took.filter(t => t.kind !== "head").length};
+took = []; s.render(true);
+out.observer = {card: (took.find(t => t.kind === "head") || {}).i ?? null, others: took.length};
+
+// ...AND ON A MEMBER'S VOTES. The handler asks only that a page is open.
+s.setPage({kind: "committee", data: {code: "H34", name: "Finance", chamber: "H", bills: [],
+  sessions: [], members: []}, terms: ["2025-2026"], term: "2025-2026", status: ""});
+took = [];
+click(only("[data-vmore]"));
+const row = took.find(t => t.kind === "row");
+out.vmore = {row: row ? row.i : null, tabIndex: row ? row.tabIndex : null,
+             others: took.filter(t => t.kind !== "row").length};
+s.setPage(null);
+
+// A LONG ANALYSIS, opened and shut.
+const text = {focused: 0, tabIndex: 0, focus() { this.focused++; }};
+const an = {dataset: {an: "HB1#0"}, intoView: 0, scrollIntoView() { this.intoView++; },
+  closest: q => q === ".anbox" ? {querySelector: q2 => q2 === ".antext" ? text : null} : null};
+click(q => q === ".anmore" ? an : null);
+out.analysis = {opened: text.focused, tabIndex: text.tabIndex};
+click(q => q === ".anmore" ? an : null);
+out.analysis.shut = text.focused; out.analysis.intoView = an.intoView;
+
+// PLAY, on a bill: with focus on it, and pressed through a time under it.
+const frame = document.getElementById("yt_p1");
+let framed = 0; frame.focus = () => { framed++; };
+const play = () => ({dataset: {embed: "vid|10|p1", title: "Recording of HB 1 - House Finance"}});
+let st = play(); document.activeElement = st;
+click(q => q === "[data-embed]" ? st : null);
+out.play = {hadFocus: framed, title: /title="Recording of HB 1 - House Finance"/.test(st.outerHTML || "")};
+st = play(); document.activeElement = document.body; framed = 0;
+click(q => q === "[data-embed]" ? st : null);
+out.play.elsewhere = framed;
+
+// A BOX THAT SCROLLS SIDEWAYS.
+const box = (sw, cw) => ({scrollWidth: sw, clientWidth: cw, a: {tabindex: "x"},
+  setAttribute(k, v) { this.a[k] = v; }, removeAttribute(k) { delete this.a[k]; }});
+const wide = box(420, 336), fits = box(900, 900);
+const all = document.querySelectorAll;
+document.querySelectorAll = q => q === "[data-scrollstop]" ? [wide, fits] : [];
+const before = (heard.window.resize || []).length;
+s.scrollStops();
+out.stops = {wide: wide.a.tabindex ?? null, fits: fits.a.tabindex ?? null};
+wide.clientWidth = 900; fits.clientWidth = 336;
+(heard.window.resize || []).slice(before).forEach(f => f());
+out.stops.after = [wide.a.tabindex ?? null, fits.a.tabindex ?? null];
+out.stops.resize = (heard.window.resize || []).length === before + 1;
+document.querySelectorAll = all;
+
+// THE SEAT MAP, in a page of four seats.
+(() => {
+  const node = (tag, attrs) => { const n = {tag, attrs: Object.assign({}, attrs), on: {}, kids: [],
+    hidden: false, style: {}, dataset: {}, focused: 0, clientWidth: 1000, scrollLeft: 0, scrollTop: 0,
+    classList: {toggle() {}, add() {}, remove() {}},
+    addEventListener(t, f) { (this.on[t] = this.on[t] || []).push(f); },
+    fire(t, e) { (this.on[t] || []).forEach(f => f(Object.assign({target: this, preventDefault() {}}, e))); },
+    setAttribute(k, v) { this.attrs[k] = String(v); },
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+    appendChild(c) { this.kids.push(c); return c; },
+    contains(x) { return this.kids.includes(x); },
+    closest(q) { return q === "[data-slug]" && "data-slug" in this.attrs ? this : null; },
+    querySelectorAll() { return []; }, querySelector() { return null; },
+    getBoundingClientRect() { return {left: 0, top: 0, width: 10, height: 10}; },
+    setPointerCapture() {}, focus() { this.focused++; }};
+    Object.defineProperty(n, "textContent", {get() { return this._t || ""; },
+      set(v) { this._t = String(v); this.kids = []; }});
+    return n; };
+  const seats = [1, 2, 3, 4].map(i => node("circle", {"data-slug": "m" + i, "data-seat": "100" + i,
+    "data-name": "Rep. " + i, tabindex: "-1"}));
+  const svg = node("svg"), wrap = node("div"), note = node("p"), list = node("div"), stage = node("div");
+  svg.querySelectorAll = q => q === "[data-slug]" || q === ".seat" ? seats : [];
+  svg.parentNode = wrap; svg.kids = seats.slice();
+  const doc = {createElement: t => node(t), createTextNode: t => ({text: t}),
+    getElementById: id => ({seatlist: list, seatnote: note})[id] || null,
+    querySelector: q => ({".seatmap": svg, ".seatwrap": wrap, ".seatstage": stage})[q] || null};
+  new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc, f => "/" + f);
+  const stops = () => seats.map((c, i) => c.attrs.tabindex === "0" ? i : -1).filter(i => i >= 0);
+  const hears = n => ["focus", "blur", "focusin", "focusout"].filter(t => (n.on[t] || []).length);
+  const seat = {svgHears: hears(svg), first: stops()};
+  // THE NAME IS IN THE CALLOUT ABOVE THE SEAT (29 October 2026), where it
+  // was the note's under the chart.
+  const pop = stage.kids.find(k => k.id === "seatpop");
+  const link = () => pop && !pop.hidden ? pop.kids[0] : null;
+  // Tab reaches the one stop: the callout names its member, as a link.
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
+  const named = link();
+  seat.named = !!(named && named.tag === "a" && /m1/.test(named.href || ""));
+  // Tab again: focus leaves the seat for that link.
+  [svg, wrap].forEach(n => n.fire("focusout", {target: seats[0], relatedTarget: named}));
+  seat.keptGoingIn = link() === named;
+  // Shift+Tab from the link back to the seat: the seat's focus names it again.
+  if (pop) pop.fire("focusout", {target: named, relatedTarget: seats[0]});
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
+  seat.namedGoingBack = !!(link() && link().tag === "a");
+  // And on from the link to the list under the chart, whose rows carry a
+  // member's slug as a seat does: the callout is let go.
+  if (pop) pop.fire("focusout", {target: link(), relatedTarget: node("a", {"data-slug": "m9"})});
+  seat.clearedOnLeaving = !!pop && pop.hidden;
+  // The arrow keys, from the seat that has focus.
+  const key = (k, from) => svg.fire("keydown", {key: k, target: seats[from]});
+  key("ArrowRight", 0);
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[1]}));
+  seat.arrow = {focused: seats.findIndex(c => c.focused), stops: stops()};
+  seats.forEach(c => { c.focused = 0; });
+  key("End", 1);
+  [svg, wrap].forEach(n => n.fire("focusin", {target: seats[3]}));
+  seat.end = {focused: seats.findIndex(c => c.focused), stops: stops()};
+  out.seat = seat;
+
+  // IN A TAB NOT YET OPEN the box is 0px wide when the script runs, as on the
+  // legislators page, which opens on Towns. The chart opens zoomed to fit
+  // (the owner, 29 October 2026): no zoom written, there or once it is shown,
+  // and nothing watched for a width.
+  const watched = [];
+  globalThis.ResizeObserver = class { constructor(f) { this.f = f; this.off = false; watched.push(this); }
+    observe(n) { this.n = n; } disconnect() { this.off = true; } };
+  const svg2 = node("svg"), wrap2 = node("div");
+  wrap2.clientWidth = 0;
+  const doc2 = Object.assign({}, doc, {
+    getElementById: id => ({seatlist: node("div"), seatnote: node("p")})[id] || null,
+    querySelector: q => ({".seatmap": svg2, ".seatwrap": wrap2})[q] || null});
+  new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc2, f => "/" + f);
+  const hidden = {zoom: svg2.style.width || null, watching: watched.filter(o => o.n === wrap2).length};
+  wrap2.clientWidth = 349;
+  watched.forEach(o => { if (!o.off) o.f([]); });
+  hidden.shown = svg2.style.width || null;
+  hidden.letGo = watched.every(o => o.off);
+  delete globalThis.ResizeObserver;
+  out.seatHidden = hidden;
+  // THE WHEEL AT THE FITTED OPENING (the review of 29 October 2026): turned
+  // down over a chart that cannot zoom out further, it is the page's; turned
+  // up, it zooms the chart and the page stays.
+  let down = 0, up = 0;
+  wrap2.fire("wheel", {deltaY: 100, clientX: 5, clientY: 5, preventDefault() { down++; }});
+  const fitted = svg2.style.width || null;
+  wrap2.fire("wheel", {deltaY: -100, clientX: 5, clientY: 5, preventDefault() { up++; }});
+  out.seatWheel = {down, up, fitted, zoomed: svg2.style.width || null};
+
+  // THE SPEAKER'S CHAIR, whose number is on the group round it and the word
+  // "Speaker", not on the circle: choosing him lights the circle.
+  const lit = c => { c.classList = {on: {}, toggle(k, v) { this.on[k] = !!v; }, add() {}, remove() {}};
+    return c; };
+  const grp = node("g", {"data-seat": "6002", "data-slug": "sp", "data-name": "Rep. Speaker"});
+  const chair = lit(node("circle", {})), floor1 = lit(node("circle",
+    {"data-seat": "1001", "data-slug": "m1", "data-name": "Rep. 1"}));
+  chair.parentNode = grp;
+  const svg3 = node("svg"), wrap3 = node("div");
+  svg3.querySelectorAll = q => q === ".seat" ? [floor1, chair] : q === "[data-slug]" ? [floor1, grp] : [];
+  const doc3 = Object.assign({}, doc, {
+    getElementById: id => ({seatlist: node("div"), seatnote: node("p")})[id] || null,
+    querySelector: q => ({".seatmap": svg3, ".seatwrap": wrap3})[q] || null});
+  new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc3, f => "/" + f);
+  svg3.fire("click", {target: grp});
+  const speaker = {chair: !!chair.classList.on.on, floor: !!floor1.classList.on.on};
+  svg3.fire("click", {target: floor1});
+  speaker.after = [!!chair.classList.on.on, !!floor1.classList.on.on];
+  out.speakerLit = speaker;
+})();
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+# The harness of _seat_callout: the seat map's own function (_seat_script) in
+# node, in a stub whose boxes have places, so where the callout is drawn can
+# be read. The chart's box is 366px wide, a 390px phone's column.
+_SEAT_CALLOUT_HARNESS = r"""
+const fs = require("fs");
+globalThis.tr = (k, en, v) => String(en).replace(/\{(\w+)\}/g, (m, x) => v && x in v ? v[x] : m);
+const node = (tag, attrs, box) => { const n = {tag, attrs: Object.assign({}, attrs), on: {}, kids: [],
+  hidden: false, style: {}, dataset: {}, focused: 0, clientWidth: 366, scrollLeft: 0, scrollTop: 0,
+  box: box || {left: 0, top: 0, width: 10, height: 10}, offsetWidth: 0, offsetHeight: 0,
+  classList: null, parentNode: null,
+  addEventListener(t, f) { (this.on[t] = this.on[t] || []).push(f); },
+  fire(t, e) { (this.on[t] || []).forEach(f => f(Object.assign({target: this, preventDefault() {}}, e))); },
+  setAttribute(k, v) { this.attrs[k] = String(v); },
+  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+  appendChild(c) { if (this._t === "") this._t = undefined; this.kids.push(c); c.parentNode = this; return c; },
+  insertBefore(c, ref) { const i = this.kids.indexOf(ref); this.kids.splice(i < 0 ? this.kids.length : i, 0, c);
+    c.parentNode = this; return c; },
+  contains(x) { return x === this || this.kids.some(k => k === x || (k.contains && k.contains(x))); },
+  closest(q) { return q === "[data-slug]" && "data-slug" in this.attrs ? this : null; },
+  querySelectorAll() { return []; }, querySelector() { return null; },
+  getBoundingClientRect() { const b = this.box; return {left: b.left, top: b.top, width: b.width,
+    height: b.height, right: b.left + b.width, bottom: b.top + b.height}; },
+  setPointerCapture() {}, focus() { this.focused++; doc.activeElement = this; }};
+  const cls = new Set(); n.classList = {toggle(k, on) { (on === undefined ? !cls.has(k) : on) ? cls.add(k) : cls.delete(k); },
+    add(k) { cls.add(k); }, remove(k) { cls.delete(k); }, contains(k) { return cls.has(k); }};
+  Object.defineProperty(n, "className", {get() { return [...cls].join(" "); },
+    set(v) { cls.clear(); String(v).split(/\s+/).filter(Boolean).forEach(k => cls.add(k)); }});
+  Object.defineProperty(n, "textContent", {get() { return this._t !== undefined ? this._t
+      : this.kids.map(k => k.textContent !== undefined ? k.textContent : k.text || "").join(""); },
+    set(v) { this._t = String(v); this.kids = []; }});
+  return n; };
+// The stage: the chart's box (600px tall) and the note under it, at 1000px
+// down the page, 12px in. Seats where a test puts them.
+const stage = node("div", {}, {left: 12, top: 1000, width: 366, height: 640});
+const wrap = node("div", {}, {left: 12, top: 1000, width: 366, height: 600});
+const note = node("p"), list = node("div"), svg = node("svg");
+stage.appendChild(wrap); stage.appendChild(note); wrap.appendChild(svg);
+const seat = (n, slug, box, extra) => node("circle", Object.assign({"data-slug": slug, "data-seat": String(n),
+  "data-name": "Rep. " + slug, tabindex: "-1"}, extra || {}), box);
+const seats = [
+  seat(2096, "mid", {left: 180, top: 1300, width: 17, height: 17}, {"data-party": "Republican", "data-dist": "Hillsborough 14"}),
+  seat(1034, "top", {left: 150, top: 1020, width: 17, height: 17}, {"data-party": "Democrat", "data-dist": "Grafton 12"}),
+  seat(1001, "left", {left: 14, top: 1300, width: 17, height: 17}),
+  seat(5041, "right", {left: 360, top: 1300, width: 17, height: 17})];
+seats.forEach(c => svg.appendChild(c));
+svg.querySelectorAll = q => q === "[data-slug]" || q === ".seat" ? seats : [];
+const doc = {activeElement: null, createElement: t => node(t), createTextNode: t => ({text: t, textContent: t}),
+  getElementById: id => ({seatlist: list, seatnote: note})[id] || null,
+  querySelector: q => ({".seatmap": svg, ".seatwrap": wrap, ".seatstage": stage})[q] || null};
+new Function("document", "DATA", fs.readFileSync("./seat.js", "utf8"))(doc, f => "/" + f);
+const pop = stage.kids.find(k => k.id === "seatpop");
+if (pop) { pop.offsetWidth = 200; pop.offsetHeight = 64; }
+const out = {pop: !!pop, cls: pop ? pop.className : null,
+  order: stage.kids.map(k => k === wrap ? "chart" : k === note ? "note" : k === pop ? "callout" : "?")};
+const at = () => pop ? {hidden: pop.hidden, left: pop.style.left, top: pop.style.top,
+  arrow: pop.style.arrow || null, below: pop.classList.contains("below"), gone: pop.classList.contains("gone"),
+  name: pop.kids[0] && pop.kids[0].textContent, href: pop.kids[0] && pop.kids[0].href,
+  what: pop.kids[1] && pop.kids[1].textContent, seat: pop.kids[2] && pop.kids[2].textContent,
+  note: note.textContent, noteCls: note.className,
+  noteKids: note.kids.map(k => k.className || k.tag || "text")} : null;
+if (pop) pop.style.setProperty = (k, v) => { if (k === "--arrow") pop.style.arrow = v; };
+// A seat chosen by a tap, one near the top, one at each side.
+for (const [k, c] of [["tap", seats[0]], ["top", seats[1]], ["left", seats[2]], ["right", seats[3]]]) {
+  svg.fire("click", {target: c}); out[k] = at(); svg.fire("click", {target: c});
+}
+out.letGo = at();
+// THE KEYBOARD: Tab to a seat, and Tab again to the name in its callout.
+[svg, wrap].forEach(n => n.fire("focusin", {target: seats[0]}));
+doc.activeElement = seats[0];
+const link = pop && pop.kids[0];
+out.focusSeat = at();
+[svg, wrap].forEach(n => n.fire("focusout", {target: seats[0], relatedTarget: link}));
+doc.activeElement = link;
+// What took it away on 29 October 2026: the page scrolls as focus goes to the
+// name, the chart passes from under a resting pointer, and its mouseout says
+// again; the pointer then crosses another seat; the chart is scrolled, and
+// the seat with it out of the chart's box.
+svg.fire("mouseout", {relatedTarget: null});
+svg.fire("mouseover", {target: seats[3]});
+seats[0].box.top = 5000; wrap.fire("scroll", {});
+out.focusName = Object.assign(at(), {same: !!pop && pop.kids[0] === link, linkIn: !!pop && pop.contains(link),
+  noteLink: note.kids.some(k => k.tag === "a")});
+seats[0].box.top = 1300;
+// Escape lets it go, and puts the keyboard back on the seat.
+const before = seats[0].focused;
+if (pop) pop.fire("keydown", {key: "Escape"});
+out.escape = Object.assign(at(), {seatFocused: seats[0].focused - before, active: doc.activeElement === seats[0]});
+// The pointer: over a seat, then onto its callout, which stays; then off.
+svg.fire("mouseover", {target: seats[1]});
+const over = at();
+svg.fire("mouseout", {relatedTarget: pop});
+out.hover = {over, ontoIt: at()};
+if (pop) pop.fire("mouseleave", {relatedTarget: null});
+out.hover.off = at();
+// A TAP ON THE TRIANGLE (the walk of 30 October 2026): on a phone the
+// callout opens under the finger before the tap lands, and the tap landed on
+// the triangle over the top of the seat. What is under it, the callout out of
+// the way, is chosen; a click in the box itself, or on its name, is no seat's.
+// The callout of the seat at 180..197 x 1300..1317: 200 by 64, its foot 10px
+// above the seat, its triangle 16px down from there, over the seat's top.
+const looked = [];
+doc.elementFromPoint = (x, y) => { looked.push([x, y, pop.style.pointerEvents]);
+  return pop.style.pointerEvents === "none" ? seats[0] : pop; };
+svg.fire("mouseover", {target: seats[0]});
+if (pop) {
+  pop.box = {left: 88.5, top: 1226, width: 200, height: 64};
+  pop.fire("click", {target: pop, clientX: 188.5, clientY: 1260});
+  pop.fire("click", {target: pop.kids[0], clientX: 188.5, clientY: 1240});
+}
+svg.fire("mouseout", {relatedTarget: null});
+out.tri = {box: Object.assign(at(), {looked: looked.length})};
+svg.fire("mouseover", {target: seats[0]});
+if (pop) pop.fire("click", {target: pop, clientX: 188.5, clientY: 1303});
+const tapped = looked.slice();
+svg.fire("mouseout", {relatedTarget: null});
+out.tri.tap = Object.assign(at(), {looked: tapped, restored: pop ? pop.style.pointerEvents : null});
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the seating chart names a seat in a callout above it that the keyboard keeps: it "
+       "points at the seat, flips below it at the top, stays inside a phone's width, and Tab from a seat "
+       "reaches its link and is not dropped", needs=("build_pages", "seating"))
+def _seat_callout(BP, SEAT):
+    """The owner, 29 October 2026 (relayed): "a name callout ABOVE the
+    selected seat, not at the bottom of the screen", a small box with the
+    member's name and their party and district and a triangle pointing at
+    the seat, flipping below the seat near the top edge, inside the screen
+    at 390, following a seat chosen by the keyboard as well as by a tap, in
+    the site's popover style; #seatnote still announcing; and the roster
+    under the chart names only. And the accessibility sweep of the same day
+    (WCAG 2.4.3): Tab from a seat dropped focus to the page, because the
+    scroll that brought the name under the chart into view moved the chart
+    from under a resting pointer, and its mouseout wrote the note again,
+    taking out the link focus was on.
+
+    Run: the seat map's own function (_seat_script) in node, its boxes at
+    places (_SEAT_CALLOUT_HARNESS: the chart's box 366px wide). A seat tapped
+    has a callout -- the term popovers' box, .termpop -- whose link is the
+    member's page, the party and district under it and then the seat, the
+    callout above the seat with its arrow at the seat's middle, below a seat
+    at the top of the box, inside the box at either side; between the chart
+    and the note, so it is the next Tab stop from a seat. The note says it
+    all in words a screen reader hears and holds no link. Focus on a seat
+    shows it; with focus on its link, a mouseout, a pointer over another
+    seat and a scroll that takes the seat out of the box leave the same link
+    where it was, shown; Escape lets it go and puts focus on the seat. The
+    pointer can move onto it and it stays. Read: every seat the page's chart
+    writes carries data-party and data-dist (seating.svg), and under the
+    chart, on the fixture's legislators page, a row's tag is written
+    "(R<span class="mdist"> - Belk 6)</span><span aria-hidden="true">)</span>"
+    (build_pages.seat_row_tag) and
+    app.css hides the district from the eye alone and not the party's letter
+    (the review of 29 October 2026, WCAG 1.4.1: hidden too, the party was the
+    chip's colour alone, and nothing at all in forced colours)."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "seat.js").write_text(_seat_script(BP), encoding="utf-8")
+        (root / "go.js").write_text(_SEAT_CALLOUT_HARNESS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "the seat script did not run under node: " + (r.stderr or r.stdout or "")[-500:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    px = lambda v: float(str(v or "nan").rstrip("px"))
+    W, H, GAP = 200, 64, 10
+    if not got["pop"] or "termpop" not in (got["cls"] or "").split() or got["order"] != ["chart", "callout", "note"]:
+        bad.append(f"the seat map writes no callout in the popovers' box between the chart and the note: {got}")
+    else:
+        t = got["tap"]
+        # The seat at 180..197 x 1300..1317 in a stage at 12, 1000: its middle is 176.5 in.
+        if t["hidden"] or t["below"] or px(t["top"]) != 1300 - GAP - H - 1000 \
+                or abs(px(t["left"]) - (188.5 - 12 - W / 2)) > .5 or px(t["arrow"]) != 100:
+            bad.append(f"a tapped seat's callout is not above it with its arrow at the seat's middle: {t}")
+        if t["name"] != "Rep. mid" or t["href"] != "/legislator/mid" \
+                or t["what"] != "Republican · Hillsborough 14" or t["seat"] != "Seat 2-096":
+            bad.append(f"the callout does not say the member, the party and district, and the seat: {t}")
+        if t["note"] != "Rep. mid, Republican, Hillsborough 14, seat 2-096":
+            bad.append(f"the note does not say the seat's member, party, district and seat: {t['note']!r}")
+        # Words for a screen reader alone: the strip is drawn as an empty one
+        # (the review of 29 October 2026), and is not once the seat is let go.
+        if t["noteKids"] != ["sr"] or "sronly" not in t["noteCls"].split() \
+                or "sronly" in got["letGo"]["noteCls"].split():
+            bad.append(f"the note holding a seat's words for a screen reader alone is not marked .sronly, or "
+                       f"stays marked once the seat is let go: {t['noteKids']} {t['noteCls']!r}, then "
+                       f"{got['letGo']['noteCls']!r}")
+        if "sronly" in got["escape"]["noteCls"].split():
+            bad.append("Escape empties the note and leaves it marked .sronly")
+        tp = got["top"]
+        if not tp["below"] or px(tp["top"]) != 1020 + 17 + GAP - 1000:
+            bad.append(f"a seat at the top of the chart's box does not have its callout under it: {tp}")
+        for side in ("left", "right"):
+            x = got[side]
+            if not (8 <= px(x["left"]) and px(x["left"]) + W <= 366 - 8) or not (14 <= px(x["arrow"]) <= W - 14):
+                bad.append(f"the callout of a seat at the {side} of the chart runs past the box: {x}")
+        if not got["letGo"]["hidden"]:
+            bad.append("a seat tapped again keeps its callout")
+        fs_, fn = got["focusSeat"], got["focusName"]
+        if fs_["hidden"] or fs_["name"] != "Rep. mid":
+            bad.append(f"focus on a seat does not show its callout: {fs_}")
+        if fn["hidden"] or not fn["same"] or not fn["linkIn"] or fn["gone"] or fn["name"] != "Rep. mid":
+            bad.append("with focus on the callout's link, a mouseout, the pointer over another seat or a "
+                       f"scroll took it away or moved it -- focus would drop to the page: {fn}")
+        if fn["noteLink"]:
+            bad.append("the note under the chart still holds a link, a second stop for the same name")
+        e = got["escape"]
+        if not e["hidden"] or e["seatFocused"] != 1 or not e["active"]:
+            bad.append(f"Escape on the callout's link does not let it go and put focus on the seat: {e}")
+        h = got["hover"]
+        if h["over"]["hidden"] or h["ontoIt"]["hidden"] or h["ontoIt"]["name"] != "Rep. top" or not h["off"]["hidden"]:
+            bad.append(f"the pointer cannot move from a seat onto its callout, or it stays after: {h}")
+        # A tap on the triangle is the seat's under it (the walk of 30
+        # October 2026: on a phone none of 21 seats tried could be chosen).
+        tri = got["tri"]
+        if not tri["box"]["hidden"] or tri["box"]["looked"]:
+            bad.append(f"a click in the callout's box, or on its name, chose a seat: {tri['box']}")
+        tt = tri["tap"]
+        if tt["hidden"] or tt["name"] != "Rep. mid" or tt["looked"] != [[188.5, 1303, "none"]] or tt["restored"] != "":
+            bad.append("a tap on the callout's triangle does not choose the seat under it, found with the callout "
+                       f"out of the way -- on a phone a tap on a seat lands there and chose nothing: {tt}")
+    # Read: the seats carry the callout's words, and the rows under the chart
+    # their names only, for the eye.
+    drawn = SEAT.svg({1001: {"name": "Rep. A", "slug": "a", "party_code": "R", "party": "Republican",
+                             "dist": "Belknap 6"}, 6002: {"name": "Rep. S", "slug": "s", "party_code": "D",
+                                                         "party": "Democrat", "dist": "Coös 1"}})
+    for slug in ("a", "s"):
+        m = re.search(rf'data-slug="{slug}"[^>]*>', drawn)
+        if not m or "data-party=" not in m.group(0) or "data-dist=" not in m.group(0):
+            bad.append(f"seating.svg does not write a seat's party and district: {m.group(0) if m else slug}")
+    src = _source("src/pages/build_pages.py")
+    if '"party": party_word(' not in src or '"dist": " ".join(' not in src:
+        bad.append("the roster does not hand seating.svg each member's party and district")
+    # THE ROWS UNDER THE CHART: the district for a screen reader alone, the
+    # party's letter to the eye (the review of 29 October 2026, WCAG 1.4.1:
+    # hidden with the district, the party was the chip's bar's colour alone,
+    # and nothing in forced colours). Read off the fixture's legislators page,
+    # each row's chip as the page writes it, through app.css's cascade.
+    rules = _css_screen_rules(_source("src/pages/app.css"))
+    one = BP.seat_row_tag('<span class="mchip p-R"><a href="x">Rep. A <span class="mtag">(R - Belk 6)</span>'
+                          '</a></span>')
+    if '<span class="mtag">(R<span class="mdist"> - Belk 6)</span><span aria-hidden="true">)</span></span>' not in one:
+        bad.append(f"build_pages.seat_row_tag does not set a row's district apart from its party: {one}")
+    # NAMES WITHOUT "REP." TO THE EYE (the owner, 29 October 2026): the title
+    # set apart, for a screen reader alone, and the name kept whole.
+    if '<a href="x"><span class="mhon">Rep. </span>A' not in one:
+        bad.append(f"build_pages.seat_row_tag does not set a row's \"Rep.\" apart from its name: {one}")
+    # THE LETTER WITH THE SURNAME (the manager's polish, 29 October 2026): no
+    # line may end between a name and its "(R)".
+    if 'A&#160;<span class="mtag">' not in one:
+        bad.append(f"build_pages.seat_row_tag leaves a breakable space between a name and its party's letter: {one}")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    tags, dists, texts, hons = [], [], [], []
+
+    def under_chart(c):
+        return any(e and "seatlist" in e["ids"] for e in c)
+    _html_walk(page, element=lambda c: (tags if "mtag" in c[0]["classes"] else dists if "mdist" in c[0]["classes"]
+                                        else hons if "mhon" in c[0]["classes"]
+                                        else []).append(c) if under_chart(c) else None,
+               text=lambda d, c: texts.append((d, c)) if c and under_chart(c)
+               and any(e and "mtag" in e["classes"] for e in c) and not any(e and "mdist" in e["classes"] for e in c)
+               else None)
+    if not tags or len(dists) != len(tags):
+        bad.append(f"the fixture's rows under the chart have {len(tags)} tags and {len(dists)} districts set "
+                   f"apart: a row's tag is not written (R<span class=\"mdist\"> - Belk 6)</span>"
+                   f"<span aria-hidden=\"true\">)</span>")
+    # What the eye reads of a tag: its text, less the district clipped for a
+    # screen reader, with the ")" that is the eye's alone.
+    shown = sorted({"".join(d for d, c in texts if next(e for e in c if e and "mtag" in e["classes"]) is t[0])
+                    for t in tags[:400]})
+    def clipped(c):
+        won = _css_won(rules, c)
+        hide = {k: won.get(k, ("",))[0] for k in ("position", "clip", "width", "height", "display", "visibility")}
+        return hide["position"] == "absolute" and hide["clip"].startswith("rect(0") and hide["width"] == "1px" \
+            and hide["display"] != "none" and hide["visibility"] != "hidden", hide
+    if len(hons) != len(tags):
+        bad.append(f"the fixture's rows under the chart have {len(tags)} names and {len(hons)} \"Rep.\" set apart: "
+                   "a row still shows the eye its title (the owner, 29 October 2026)")
+    for c in hons[:1]:
+        if not clipped(c)[0]:
+            bad.append(f"a row under the chart still shows the eye its \"Rep.\": {clipped(c)[1]}")
+    for c in dists[:1]:
+        # Clipped itself, or inside something clipped short of the list.
+        own = [clipped(c[j:]) for j in range(len(c)) if not (c[j] and "seatlist" in c[j]["ids"])][:4]
+        if not any(x for x, _h in own):
+            bad.append(f"a row under the chart still shows its district to the eye, or hides it from a screen "
+                       f"reader: {own[0][1]}")
+    for c in tags[:1]:
+        won = _css_won(rules, c)
+        if won.get("position", ("",))[0] == "absolute" or won.get("clip", ("",))[0].startswith("rect(0") \
+                or won.get("display", ("",))[0] == "none" or won.get("visibility", ("",))[0] == "hidden":
+            bad.append(f"a row under the chart hides its party's letter from the eye (from "
+                       f"{won.get('clip', won.get('position', ('', '?')))[1]}): the party is its bar's colour "
+                       f"alone, and nothing in forced colours (WCAG 1.4.1)")
+    if any(not re.fullmatch(r"\([A-Z]\)", x) for x in shown):
+        bad.append(f"a row's tag shows the eye {[x for x in shown if not re.fullmatch(r'[(][A-Z][)]', x)][:3]}, "
+                   f"not its party's letter alone")
+    # THE STRIP UNDER THE CHART, EMPTY TO THE EYE (the review of 29 October
+    # 2026): empty, or .sronly, it is the box's foot with no rule -- its top
+    # border's width 0 and its pixel the padding's, so it keeps its height --
+    # and it has its rule while it shows what a search has left.
+    def note(classes, states=()):
+        return _css_won(rules, [{"tag": "p", "ids": {"seatnote"}, "classes": set(classes), "attrs": {},
+                                 "states": set(states)},
+                                {"tag": "div", "ids": set(), "classes": {"seatstage"}, "attrs": {}, "states": set()},
+                                {"tag": "body", "ids": set(), "classes": {"pg"}, "attrs": {}, "states": set()}])
+    for what, won in (("empty", note({"seatnote"}, {"empty"})),
+                      ("saying a seat to a screen reader alone", note({"seatnote", "sronly"}))):
+        top = {k: "".join(won.get(k, ("",))[0].split()) for k in ("border-top-width", "padding-top")}
+        if top["border-top-width"] not in ("0", "0px") or top["padding-top"] != "calc(var(--sp-3)+1px)":
+            bad.append(f"the note under the chart, {what}, draws a ruled strip, or changes its height: {top}")
+    won = note({"seatnote"})
+    if "".join(won.get("border-top-width", ("",))[0].split()) in ("0", "0px"):
+        bad.append("the note under the chart has no rule while it shows what a search has left")
+    assert not bad, "the seating chart's callout: " + "; ".join(bad[:5])
+    return "ok", ("a seat tapped, focused or under the pointer has the popovers' box above it, its arrow at "
+                  "the seat, below it at the top, inside 366px at either side; Tab from a seat reaches its "
+                  "link and a mouseout, another seat and a scroll leave it there; Escape puts focus on the "
+                  f"seat; a tap on its triangle chooses the seat under it; the note says it in words, an unruled strip to the eye; the fixture's {len(tags)} row(s) under the chart are names and "
+                  f"{', '.join(shown)} to the eye, the district a screen reader's")
+
+
+@check("frontend", "under the seating chart each card carries its seat's number, \"001\", for the eye alone, and "
+       "the Speaker's none; a screen reader hears \"1-001\" and the member's name whole", needs=("build_pages", "seating"))
+def _seat_number_in_card(BP, SEAT):
+    """The owner's choice of 29 October 2026, a blend of the two mock-ups put
+    to them: no gutter; each card under the chart carries its seat inside it
+    at the right, small and muted, "001" without the division its column is
+    headed with, on the name's first line when the name wraps; no "Rep."; the
+    Speaker's card on the rostrum no number, and as wide as a division's
+    cards. The number is the eye's alone (aria-hidden), the row's own "1-001"
+    a screen reader's (clipped), and the link's name what it was: "Rep. A B
+    (R - Belk 6)", with no space before its ")" (Chrome spaces a clipped
+    part, so the ")" is clipped with the district and the eye's own is
+    aria-hidden). Held on build_pages.seat_row_tag, on the fixture's
+    legislators page, and through app.css's cascade."""
+    import html as H
+    bad = []
+
+    def row(seat):
+        return (f'<li class="seatrow" data-seat="{seat}"><span class="sseat">{SEAT.plate(seat)}</span>'
+                '<span class="mchip p-R" translate="no"><a href="legislator/a.html">Rep. A B '
+                '<span class="mtag">(R - Belk 6)</span></a></span></li>')
+    one, spk = BP.seat_row_tag(row(1001)), BP.seat_row_tag(row(SEAT.SPEAKER_SEAT))
+    if not one.endswith('</a><span class="mseat" aria-hidden="true">001</span></span></li>') \
+            or '<span class="sseat">1-001</span>' not in one:
+        bad.append(f"a row's number is not in its chip after the name, aria-hidden, \"001\", beside its "
+                   f"\"1-001\": {one}")
+    if "mseat" in spk:
+        bad.append(f"the Speaker's card on the rostrum carries a number: {spk}")
+    link = re.search(r"<a [^>]*>(.*?)</a>", one).group(1)
+    # Heard as Chrome names a link: a part clipped for a screen reader is laid
+    # out as a block, and a block has a space either side of it.
+    heard = " ".join(H.unescape(re.sub(r"<[^>]+>", "", re.sub(r'<span aria-hidden="true">[^<]*</span>', "",
+                     re.sub(r'<span class="m(?:hon|dist)">([^<]*)</span>', r" \1 ", link)))).split())
+    seen = " ".join(H.unescape(re.sub(r"<[^>]+>", "", re.sub(r'<span class="m(?:hon|dist)">[^<]*</span>', "",
+                                                                link))).split())
+    if heard != "Rep. A B (R - Belk 6)":
+        bad.append(f"a screen reader is given the name {heard!r}, not \"Rep. A B (R - Belk 6)\"")
+    if seen != "A B (R)":
+        bad.append(f"the eye reads the name {seen!r}, not \"A B (R)\"")
+    # The columns as seat_columns draws them, of rows as the roster writes
+    # them (the fixture's House has one member, with no seat on file, so it
+    # is read for that alone below): every card on the floor numbered as its
+    # seat says, none on the rostrum, and the numbers the eye's alone.
+    house = [{"seat": str(n), "display_full": f"Rep. {w} (R - Belk 6)", "party": "R", "slug": f"m{n}"}
+             for n, w in ((SEAT.SPEAKER_SEAT, "S Speaker"), (1001, "A B"), (3045, "Katherine Prudhomme-O'Brien"))]
+    block = BP.seat_columns(house, lambda m: BP.seat_row_tag(
+        f'<li class="seatrow" data-seat="{m["seat"]}"><span class="sseat">{SEAT.plate(int(m["seat"]))}</span>'
+        f'{BP.pchip(m)}</li>'))
+    page = f'<html><body class="pg"><div class="seatcols" id="seatlist">{block}</div></body></html>'
+    lis = re.findall(r'<li class="seatrow" data-seat="(\d*)"[^>]*>(.*?)</li>', block, re.S)
+    floor = [(s_, body) for s_, body in lis if s_ and int(s_) // 1000 != SEAT.SPEAKER_SEAT // 1000]
+    rostrum = [(s_, body) for s_, body in lis if s_ and int(s_) // 1000 == SEAT.SPEAKER_SEAT // 1000]
+    if len(floor) != 2 or len(rostrum) != 1:
+        bad.append(f"seat_columns drew {len(floor)} card(s) on the floor and {len(rostrum)} on the rostrum, not 2 and 1")
+    # The page's own rows, as roster_section's li() and seat_row_tag write
+    # them on the fixture's legislators page: its House member sits in seat
+    # 2-007, and her card ends in "007" for the eye.
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    a, b = built.find('id="seatlist"'), built.find('<ol class="seatlist senate">')
+    own = re.findall(r'<li class="seatrow" data-seat="(\d*)"[^>]*>(.*?)</li>', built[a:b] if 0 <= a < b else "", re.S)
+    if not own or any(not s_ or not body.endswith(f'<span class="mseat" aria-hidden="true">{s_[-3:]}</span></span>')
+                      or f'<span class="sseat">{SEAT.plate(int(s_))}</span>' not in body
+                      or 'class="mhon"' not in body for s_, body in own):
+        bad.append(f"the fixture's own rows under the chart are not cards ending in their seat's number: "
+                   f"{[(s_, body[-140:]) for s_, body in own][:2]}")
+    unseated = [x for x in own if not x[0]]
+    for s_, body in floor:
+        m = re.search(r'<span class="mseat"( aria-hidden="true")?>([^<]*)</span></span>$', body)
+        if not m or not m.group(1) or m.group(2) != s_[-3:]:
+            bad.append(f"seat {s_}'s card does not end in its number {s_[-3:]!r}, aria-hidden: {body[-160:]}")
+            break
+    if any("mseat" in body for _s, body in rostrum):
+        bad.append("the Speaker's card on the fixture's rostrum carries a number")
+    # Through the cascade: the full number clipped, the chip a row on its
+    # baseline that its name gives way in, the number at its right on one line.
+    rules = _css_screen_rules(_source("src/pages/app.css"))
+    found = {}
+
+    def keep(c):
+        if any(e and "seatlist" in e["ids"] for e in c):
+            for k in ("sseat", "mchip", "mseat"):
+                if k in c[0]["classes"] and k not in found and not any(e and "srost" in e["classes"] for e in c):
+                    found[k] = c
+            if c[0]["tag"] == "a" and "mchip" in c[1]["classes"] and "a" not in found:
+                found["a"] = c
+    _html_walk(page, element=keep)
+    won = {k: {p: v[0] for p, v in _css_won(rules, c).items()} for k, c in found.items()}
+    want = {"sseat": {"position": "absolute", "width": "1px", "height": "1px", "overflow": "hidden",
+                      "clip": "rect(0 0 0 0)"},
+            "mchip": {"display": "flex", "align-items": "baseline", "flex": "1 1 auto"},
+            "a": {"min-width": "0"},
+            "mseat": {"margin-left": "auto", "white-space": "nowrap", "flex": "0 0 auto"}}
+    for k, props in want.items():
+        got = {p: won.get(k, {}).get(p) for p in props}
+        if got != props:
+            bad.append(f"under the chart, {k} is drawn {got}, not {props}")
+    if won.get("mseat", {}).get("display") in ("none",) or won.get("mseat", {}).get("clip"):
+        bad.append("the number in the card is hidden from the eye")
+    # The rostrum's card a division's width: in a division's columns below five
+    # abreast, and five abreast one of the five wide, by the grid's own gap.
+    css = _source("src/pages/app.css")
+    g = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*:where\(body\.pg\) \.seatdivs\{display:grid;"
+                  r"gap:var\(--sp-(\d+)\);", css)
+    tail = css[g.end():g.end() + 1200] if g else ""
+    if not g or (f":where(body.pg) .seatcols .srost .seatlist{{max-width:calc((100% - 4 * var(--sp-{g.group(2)}))"
+                 " / 5)}") not in tail:
+        bad.append("five abreast, the rostrum's card is not one of the five columns wide")
+    if ".srost .seatlist{columns:auto}" in css:
+        bad.append("below five abreast, the rostrum's list is one column the page's width, so its card is too")
+    # THE WHOLE CARD IS THE LINK, its focus ring round the card; a lit card is
+    # lit itself; the eye's own ")" and number are not copied (the review of
+    # 29 October 2026).
+    flat = re.sub(r"\s+", " ", re.sub(r"/\*.*?\*/", "", css, flags=re.S))
+    for rule, what in (
+            (":where(body.pg) #seatlist .seatrow .mchip > a::before{content:\"\";position:absolute;inset:0;",
+             "the link is not laid over the whole card, so its number and the space after the name do nothing"),
+            (":where(body.pg) #seatlist .seatrow .mchip > a:focus-visible::before{outline:2px solid var(--pine);",
+             "the focus ring is not drawn round the card"),
+            (":where(body.pg) #seatlist .seatrow.on .mchip{background:var(--pine-soft)}",
+             "a lit card is not lit itself, and the card covers its row's colour"),
+            (":where(body.pg) #seatlist .seatrow.on .mchip > a::before{outline:2px solid var(--pine);",
+             "a lit card has no ring, which is all forced colours keep of it"),
+            (":where(body.pg) #seatlist .mtag > [aria-hidden],:where(body.pg) #seatlist .mseat{-webkit-user-select:none;",
+             "the eye's own \")\" and number are copied with the name")):
+        if rule not in flat:
+            bad.append(what)
+    if "position:relative" not in (re.search(r":where\(body\.pg\) #seatlist \.seatrow \.mchip\{([^}]*)\}", flat)
+                                   or [None, ""])[1]:
+        bad.append("the card is not the box its link's ::before is laid over")
+    assert not bad, "the seat number in the card: " + "; ".join(bad[:5])
+    return "ok", ("each card on the floor ends in its seat's number, aria-hidden, the Speaker's in none, and so "
+                  f"do the fixture page's own {len(own) - len(unseated)} seated row(s); a screen reader hears "
+                  f"\"1-001\" and \"{heard}\", the eye \"{seen}\" and \"001\" at the card's right, on its first "
+                  "line; the whole card is the link, a lit card lit, and the eye's own marks not copied")
+
+
+@check("frontend", "the district map's Zoom to fit is the seating chart's four corners' icon, in the "
+       "box of - and +, named by its title alone, \"Zoom to fit\", in English and in Spanish")
+def _map_zoom_fit_icon():
+    """The owner, 29 October 2026: the map's "Fit" is the same zoom-to-fit
+    icon as the seating chart's, in the button size and box of - and +. Its
+    title is its name and its tooltip, with no aria-label beside it, which made
+    a screen reader hear "Zoom to fit" twice (the review of the seating chart,
+    29 October 2026, and of the map, 30 October). Read in map.js, map.css and
+    lang/es.json: the button is drawn by the script."""
+    import build_pages as BP
+    js = _source("src/pages/map.js")
+    css = _source("src/pages/map.css")
+    bad = []
+    m = re.search(r'<button type="button" class="zf"([^>]*)>(.*?)</button>', js, re.S)
+    assert m, "map.js draws no Zoom to fit button (class zf)"
+    attrs, body = m.groups()
+    if body != BP.ZOOM_FIT_ICON:
+        bad.append(f"the icon is not the seating chart's: {body[:120]}")
+    if "aria-label=" in attrs or 'title="${tr("map.zoom_fit","Zoom to fit")}"' not in attrs:
+        bad.append(f"it is not named by its title alone, map.zoom_fit: {attrs}")
+    if re.search(r'\.gm \.gmzoom \.zf\s*\{|\.gmzoom button:(?:last-child|nth-child)[^{]*\{', css):
+        bad.append("Zoom to fit has a box of its own, not - and +'s")
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"]
+    e = es.get("map.zoom_fit") or {}
+    if e.get("en") != "Zoom to fit" or not e.get("es") or e.get("es") == "Zoom to fit":
+        bad.append(f"map.zoom_fit has no Spanish of its own: {e}")
+    for k in ("map.fit", "map.fit_all"):
+        if k in es or f'"{k}"' in js:
+            bad.append(f"the retired {k} is still asked for or kept")
+    assert not bad, "; ".join(bad)
+    return "ok", "the four corners, titled Zoom to fit alone, in the box of - and +, in English and in Spanish"
+
+
+@check("frontend", "the seating chart's Zoom to fit is the four corners' icon in the box of - and +, "
+       "named by its title \"Zoom to fit\", in English and in Spanish")
+def _seat_zoom_fit_icon():
+    """The owner, 29 October 2026: the chart's "Fit", a word beside - and +,
+    is a zoom-to-fit icon, the map's four corners, in the same button size
+    and box as - and +, its accessible name and tooltip "Zoom to fit"; drawn
+    in currentColor, so forced colours draw it in the button's own colour.
+    Read on the fixture's built pages, English and Spanish, and app.css."""
+    import build_pages as BP
+    shared, _base, _ran, _days = _fixture_site_shared()
+    bad = []
+    icon = ('<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path '
+            'd="M1 5.5V1h4.5M10.5 1H15v4.5M15 10.5V15h-4.5M5.5 15H1v-4.5" fill="none" stroke="currentColor" '
+            'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>')
+    if BP.ZOOM_FIT_ICON != icon:
+        bad.append(f"the icon is not the four corners asked for: {BP.ZOOM_FIT_ICON}")
+    for page, name in (("officials.html", "Zoom to fit"), ("es/officials.html", None)):
+        f = shared / "site" / page
+        if not f.exists():
+            bad.append(f"the fixture has no {page}")
+            continue
+        html = f.read_text(encoding="utf-8")
+        m = re.search(r'<div class="seatzoom">(.*?)</div>', html, re.S)
+        btns = re.findall(r"<button ([^>]*)>(.*?)</button>", m.group(1), re.S) if m else []
+        if len(btns) != 3 or [re.search(r'id="(\w+)"', a).group(1) for a, _b in btns] != ["szout", "szin", "szfit"]:
+            bad.append(f"{page}: the zoom buttons are not -, + and Zoom to fit: {btns}")
+            continue
+        attrs, body = btns[2]
+        title = re.search(r'title="([^"]*)"', attrs)
+        # Its title is its name and its tooltip; an aria-label as well made a
+        # screen reader hear "Zoom to fit" twice (the review of 29 October 2026).
+        if body != icon or not title or "aria-label=" in attrs \
+                or (name and title.group(1) != name) or (not name and title.group(1) in ("", "Zoom to fit")):
+            bad.append(f"{page}: Zoom to fit is not the icon named by its title alone, in the page's "
+                       f"language: {attrs} {body[:80]}")
+        if "Fit<" in m.group(1) or ">Ajustar<" in m.group(1):
+            bad.append(f"{page}: the word Fit is still on the button")
+    css = _source("src/pages/app.css")
+    box = re.search(r":where\(body\.pg\) \.seatzoom button\{([^}]*)\}", css)
+    if not box or "min-width:40px" not in box.group(1) or "min-height:40px" not in box.group(1):
+        bad.append("the zoom buttons are not one 40px box")
+    if re.search(r"#szfit\s*\{|\.seatzoom button:(?:last-child|nth-child)[^{]*\{", css):
+        bad.append("Zoom to fit has a box of its own, not - and +'s")
+    if ":where(body.pg) .seatzoom svg{display:block;margin:0 auto}" not in css:
+        bad.append("the icon is not centred in its box")
+    assert not bad, "the seating chart's Zoom to fit: " + "; ".join(bad[:4])
+    return "ok", "Zoom to fit is the four corners in - and +'s 40px box, named by its title in English and Spanish"
+
+
+def _camel(name):
+    """A Python helper's name in components.js: date_words is dateWords."""
+    return re.sub(r"_([a-z])", lambda m: m.group(1).upper(), name)
+
+
+def _case_arg(a, lang):
+    """A case's argument as each language is handed it. {"$date": ...} is a
+    datetime.date in Python and its ISO string in the browser, which is handed
+    nothing else; {"$datetime": ...} the same for a moment."""
+    import datetime as _dt
+    if isinstance(a, dict) and len(a) == 1 and ("$date" in a or "$datetime" in a):
+        if lang == "js":
+            return next(iter(a.values()))
+        return (_dt.date.fromisoformat(a["$date"]) if "$date" in a
+                else _dt.datetime.fromisoformat(a["$datetime"]))
+    return a
+
+
+def _py_coverage(module, run):
+    """run() with sys.monitoring watching every function `module` defines,
+    and the code objects inside them. Returns (what run returned, every line
+    and every branch direction none of it reached, as "components.py line N:
+    source"). A function's own def line is not an instruction that runs, and
+    an except clause's other way out re-raises what no case can raise, so
+    neither is asked for."""
+    import inspect
+    import linecache
+    import types
+    mon = sys.monitoring
+    E = mon.events
+    tool = next((t for t in range(6) if mon.get_tool(t) is None), None)
+    assert tool is not None, "every sys.monitoring tool id is taken"
+    codes = []
+    for fn in vars(module).values():
+        if inspect.isfunction(fn) and fn.__module__ == module.__name__:
+            todo = [fn.__code__]
+            while todo:
+                c = todo.pop()
+                codes.append(c)
+                todo += [k for k in c.co_consts if isinstance(k, types.CodeType)]
+    lines, branches = set(), set()
+    mon.use_tool_id(tool, "preflight: the components")
+    try:
+        mon.register_callback(tool, E.LINE, lambda code, ln: lines.add((code, ln)))
+        mon.register_callback(tool, E.BRANCH_LEFT, lambda code, s, d: branches.add((code, s, d)))
+        mon.register_callback(tool, E.BRANCH_RIGHT, lambda code, s, d: branches.add((code, s, d)))
+        for c in codes:
+            mon.set_local_events(tool, c, E.LINE | E.BRANCH_LEFT | E.BRANCH_RIGHT)
+        got = run()
+    finally:
+        for c in codes:
+            mon.set_local_events(tool, c, 0)
+        for ev in (E.LINE, E.BRANCH_LEFT, E.BRANCH_RIGHT):
+            mon.register_callback(tool, ev, None)
+        mon.free_tool_id(tool)
+    missed = set()
+    name = Path(module.__file__).name
+    for c in codes:
+        def src(ln):
+            return linecache.getline(c.co_filename, ln).strip()
+        want = {ln for _s, _e, ln in c.co_lines() if ln is not None} - {c.co_firstlineno}
+        for ln in want - {ln for code, ln in lines if code is c}:
+            missed.add((ln, f"{name} line {ln}: {src(ln)[:70]}"))
+        for at, left, right in c.co_branches():
+            ln = next((ln for s, e, ln in c.co_lines() if s <= at < e), None)
+            if ln is None or src(ln).startswith("except"):
+                continue
+            for to in (left, right):
+                if (c, at, to) not in branches:
+                    missed.add((ln, f"{name} line {ln}, a way through it: {src(ln)[:70]}"))
+    return got, [m for _ln, m in sorted(missed)]
+
+
+def _js_coverage(cov_dir, file):
+    """Every block of `file` V8 counted no run of in the coverage node wrote
+    to `cov_dir` (NODE_V8_COVERAGE), as "components.js line N: source". V8's
+    block coverage counts each branch of an if, a ?: and a || on its own, and
+    a function never called as a whole."""
+    text = file.read_text(encoding="utf-8")
+    units = text.encode("utf-16-le")
+
+    def at(offset):
+        return len(units[:2 * offset].decode("utf-16-le"))
+    missed = set()
+    for f in sorted(Path(cov_dir).glob("*.json")):
+        for script in json.loads(f.read_text(encoding="utf-8")).get("result", []):
+            if not str(script.get("url", "")).replace("\\", "/").endswith("/" + file.name):
+                continue
+            for fn in script.get("functions", []):
+                for r in fn.get("ranges", []):
+                    if r.get("count") == 0:
+                        a = at(r["startOffset"])
+                        ln = text.count("\n", 0, a) + 1
+                        what = " ".join(text[a:at(r["endOffset"])].split())[:70]
+                        missed.add((ln, f"{file.name} line {ln}: {what}"))
+    return [m for _ln, m in sorted(missed)]
+
+
+_COMPONENTS_NODE = r"""
+// components.js as a page loads it -- a script, so its const and function
+// names are the page's -- then every helper on every case. The answers go to
+// stdout after "@@"; V8 writes its coverage to NODE_V8_COVERAGE on exit.
+const fs = require("fs"), vm = require("vm"), path = require("path");
+const file = path.resolve(process.argv[2]);
+vm.runInThisContext(fs.readFileSync(file, "utf8"), {filename: file});
+const job = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+const out = {kinds: {}, answers: {}};
+for (const n of job.names) out.kinds[n] = vm.runInThisContext("typeof " + n);
+for (const [name, cases] of Object.entries(job.cases)) {
+  const fn = out.kinds[name] === "function" ? vm.runInThisContext(name) : null;
+  out.answers[name] = cases.map(args => {
+    if (!fn) return {missing: true};
+    try { return {value: fn(...args)}; }
+    catch (e) { return {threw: e.constructor.name + ": " + e.message}; }
+  });
+}
+// The words the build wrote between the markers, as the browser holds them.
+out.words = vm.runInThisContext('typeof WORDBOOK === "undefined" ? null : JSON.stringify(WORDBOOK)');
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "every component gives the same answer in Python and in the browser, on "
+                   "every case, every part of each is run, and the words are the same in both")
+def _components_agree():
+    """components.py and components.js, held to one answer and one set of words.
+
+    The helpers each file defines (a function in components.py whose name
+    does not start with "_"; a name components.js declares at its top level
+    that is a function) must be the same set, a Python name being the
+    browser's in snake case. Every helper must have a case in
+    tests/components_cases.json, and every key there must be a helper. Each
+    case runs in Python and, with components.js loaded as a page loads it, in
+    node; the two answers must be the same string, byte for byte, and the one
+    a case states where it states one. And every part of every helper must
+    be reached by some case: each line and each way through a branch of
+    components.py (sys.monitoring), each block of components.js (V8's block
+    coverage, which counts the two sides of a ?: or an || apart). So a helper
+    cannot be added to one file alone, nor a branch to either without the
+    case that runs it.
+
+    THE WORDS (the component plan's C3, step 2, 9 October 2026). components.js
+    runs here as the site gets it, with the words of src/pages/words/ written
+    between its markers (_components_js, build_pages.with_words), and the
+    WORDBOOK it then holds must be components.py's WORDBOOK byte for byte, as
+    compact JSON in the files' own order: every table, every word and every
+    class, and the order of the six chip words, which is the bill search's.
+    _words_written_once holds the rest -- the markers, the copies gone.
+
+    It replaced three checks, each holding one pair together: the person
+    chip (_pchip_agrees), the clock (part of _calendar_clock) and the dates
+    (part of _one_date_formatter). Their cases are in the cases file, with
+    the answers they asserted. Without node it fails on the nightly, which
+    has node, and is skipped elsewhere, saying so.
+    """
+    import inspect
+    py_f, js_f, cases_f = (Path("src/pages/components.py"), Path("src/pages/components.js"),
+                           Path("tests/components_cases.json"))
+    gone = [p.as_posix() for p in (py_f, js_f, cases_f) if not p.exists()]
+    assert not gone, "not here: " + ", ".join(gone)
+    import components as C
+    cases = {k: v for k, v in json.loads(_source(cases_f)).items()
+             if not k.startswith("_")}
+    py = {n: f for n, f in vars(C).items()
+          if inspect.isfunction(f) and f.__module__ == C.__name__ and not n.startswith("_")}
+    js_text = _components_js()
+    declared = [a or b for a, b in re.findall(
+        r"^(?:function\s+(\w+)\s*\(|(?:const|let|var)\s+(\w+)\s*=)", js_text, re.M)]
+    bad = []
+    no_case = sorted(n for n in py if not cases.get(n))
+    if no_case:
+        bad.append(f"no case in {cases_f.as_posix()} runs {', '.join(no_case)}")
+    stale = sorted(k for k in cases if k not in py)
+    if stale:
+        bad.append(f"{cases_f.as_posix()} has cases for {', '.join(stale)}, which components.py does "
+                   "not define")
+
+    def run_py():
+        out = {}
+        for n, f in py.items():
+            out[n] = []
+            for case in cases.get(n, []):
+                try:
+                    out[n].append({"value": f(*[_case_arg(a, "py") for a in case["args"]])})
+                except Exception as e:                                  # noqa: BLE001
+                    out[n].append({"threw": f"{type(e).__name__}: {e}"})
+        return out
+    got_py, py_missed = _py_coverage(C, run_py)
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), (
+            "node is not on PATH on the nightly, which installs it, so components.js "
+            "was not run against components.py")
+        return "skip", "node is not on PATH, so components.js could not be run against components.py"
+    root = Path(tempfile.mkdtemp(prefix="gr-components-"))
+    try:
+        job = {"names": declared,
+               "cases": {_camel(n): [[_case_arg(a, "js") for a in c["args"]]
+                                     for c in cases.get(n, [])] for n in py}}
+        (root / "job.json").write_text(json.dumps(job), encoding="utf-8")
+        (root / "go.js").write_text(_COMPONENTS_NODE, encoding="utf-8")
+        # The file as the site gets it, under its own name, which the
+        # coverage is read back by.
+        site_js = root / "site" / js_f.name
+        site_js.parent.mkdir()
+        site_js.write_text(js_text, encoding="utf-8", newline="\n")
+        cov = root / "cov"
+        r = _run([node, "go.js", str(site_js), "job.json"], cwd=root, capture_output=True,
+                 text=True, encoding="utf-8", timeout=60,
+                 env=dict(os.environ, NODE_V8_COVERAGE=str(cov)))
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "components.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got_js = json.loads(r.stdout.rsplit("@@", 1)[1])
+        js_missed = _js_coverage(cov, site_js)
+        # THE BEHAVIOUR IS NOT A HELPER (the component plan: "anything that
+        # responds ... lives only in components.js, attached by data
+        # attributes"). Between its markers is code a page runs, not a string
+        # a case can ask for -- the term popovers, which declare no name of
+        # their own -- and _term_popovers holds it instead.
+        lines = js_text.split("\n")
+        b0 = next((i + 1 for i, ln in enumerate(lines) if ln.startswith("// BEHAVIOUR:START")), None)
+        b1 = next((i + 1 for i, ln in enumerate(lines) if ln.startswith("// BEHAVIOUR:END")), None)
+        if b0 and b1:
+            js_missed = [m for m in js_missed
+                         if not b0 < int(re.search(r" line (\d+):", m).group(1)) < b1]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    js_funcs = {n for n, k in got_js["kinds"].items() if k == "function"}
+    only_py = sorted(n for n in py if _camel(n) not in js_funcs)
+    only_js = sorted(n for n in js_funcs if n not in {_camel(p) for p in py})
+    if only_py:
+        bad.append("components.py defines " + ", ".join(only_py) + " and components.js has no "
+                   + ", ".join(_camel(n) for n in only_py))
+    if only_js:
+        bad.append("components.js defines " + ", ".join(only_js) + " and components.py has no "
+                   "helper of that name in snake case")
+    differ, unwanted = [], []
+    for n in sorted(py):
+        for i, (case, a, b) in enumerate(zip(cases.get(n, []), got_py[n],
+                                             got_js["answers"].get(_camel(n), []))):
+            if a.get("missing") or b.get("missing"):
+                continue
+            if a != b or not isinstance(a.get("value"), str):
+                differ.append(f"{n}{tuple(case['args'])}: Python {a.get('value', a)!r}, "
+                              f"the browser {b.get('value', b)!r}")
+            elif "want" in case and a["value"] != case["want"]:
+                unwanted.append(f"{n}{tuple(case['args'])} is {a['value']!r}, not "
+                                f"{case['want']!r}")
+    if differ:
+        bad.append(f"{len(differ)} cases answered differently in Python and the browser: "
+                   + "; ".join(differ[:4]))
+    if unwanted:
+        bad.append(f"{len(unwanted)} cases did not give the answer they state: "
+                   + "; ".join(unwanted[:4]))
+    if py_missed or js_missed:
+        bad.append(f"{len(py_missed) + len(js_missed)} parts of the components no case "
+                   "reaches: " + "; ".join((py_missed + js_missed)[:6]))
+    words_py = json.dumps(C.WORDBOOK, ensure_ascii=False, separators=(",", ":"))
+    words_js = got_js.get("words")
+    if words_js is None:
+        bad.append("components.js, as the site gets it, defines no WORDBOOK")
+    elif words_js != words_py:
+        at = next((i for i, (x, y) in enumerate(zip(words_py, words_js)) if x != y),
+                  min(len(words_py), len(words_js)))
+        bad.append(f"the words differ from character {at:,}: Python "
+                   f"...{words_py[max(0, at - 40):at + 40]!r}, the browser "
+                   f"...{words_js[max(0, at - 40):at + 40]!r}")
+    if not C.WORDBOOK:
+        bad.append("components.py read no words from src/pages/words/")
+    assert not bad, " | ".join(bad)
+    n_cases = sum(len(v) for v in cases.values())
+    return "ok", (f"{len(py)} helpers ({', '.join(sorted(py))}), {n_cases} cases, the same "
+                  "answer byte for byte in Python and in node; every line and branch of "
+                  "components.py and every block of components.js run; the words "
+                  f"({', '.join(C.WORDBOOK)}, {len(words_py):,} characters) the same in both")
+
+
+# ---- POLISH 2: THE RECORD PAGES (ws/records, 10 October 2026) -------------------------
+#
+# The component plan's steps 4 to 8, approved 9 October 2026: the bill as a card, a row and
+# a mention; the person in a sentence and as a chip; the vote words and the term popovers;
+# the record head and the W4 sections. Each check below holds a rule that could otherwise
+# break without anything saying so.
+
+def _unescape(s):
+    import html
+    return html.unescape(s)
+
+
+def _headings_of_sections():
+    """Every W4 section heading this code writes, with where it is written: the literal
+    headings app.js and build_session_pages.py hand components.section, the story's
+    headings narrative.py and build_site_v2.py make (C8), and every .w4h the fixture's
+    built and drawn pages carry."""
+    import narrative as N
+    out = []
+    for f, rx in ((Path("src/pages/app.js"), r'\bsection\(\s*"([^"]+)"'),
+                  (Path("src/pages/build_session_pages.py"), r'\bC\.section\(\s*"([^"]+)"')):
+        out += [(h, f.name) for h in re.findall(rx, f.read_text(encoding="utf-8"))]
+    out += [(h, "narrative.STAGE_LABEL") for h in N.STAGE_LABEL.values()]
+    out += [(N.stage_label(("H", "committee", "Health, Human Services and Elderly Affairs")),
+             "narrative.stage_label")]
+    v2 = _source("src/pages/build_site_v2.py")
+    out += [(h, "build_site_v2.py") for h in re.findall(r'"label": "([A-Z][^"]+)"', v2)
+            if not h.startswith(("Ought", "Inexpedient"))]
+    shared, _base, _ran, _days = _fixture_site_shared()
+    for p in sorted((shared / "site" / "session").rglob("*.html")):
+        out += [(_unescape(h), p.name)
+                for h in re.findall(r'<h2 class="w4h">([^<]+)', p.read_text(encoding="utf-8"))]
+    for k, drew in _fixture_drawn().items():
+        text = json.dumps(drew, ensure_ascii=False)
+        out += [(_unescape(h), k)
+                for h in re.findall(r'<h2 class=\\"w4h\\">([^<]+)', text)]
+    return out
+
+
+def _title_case_faults(heading, small):
+    """The words of `heading` that break the case rule: a word starts with a capital, a
+    figure or a mark, but for the small words after the first (meeting_kinds.json's)."""
+    words = re.findall(r"[A-Za-z][\w'’.-]*", heading)
+    return [w for i, w in enumerate(words)
+            if w[0].islower() and not (i and w.lower() in small)]
+
+
+@check("frontend", "every section heading is in Title Case where it is made: the story's, the "
+                   "summary's, a member's, a committee's and a session day's (C8)")
+def _section_headings_title_case():
+    """THE HEADINGS ARE WRITTEN IN THEIR CASE WHERE THEY ARE MADE (the component plan's
+    C8, approved 9 October 2026; the person's round 3 of 8 October: "Official Legislative
+    Analysis", "On the House Floor", "House Committee (Housing)"). Recasing them on display
+    would mangle what is not a plain word -- "RSA", "HB 1681" -- so nothing does, and this
+    holds every heading the record pages draw to the rule: each word begins with a capital,
+    a figure or a mark, but the small words after the first (meeting_kinds.json's "small",
+    the same a chip's title keeps). The story's old forms ("In House committee --
+    Housing", "On the House floor") fail it, which is what it is for."""
+    import components as C
+    small = set(C.WORDBOOK["meeting_kinds"]["small"])
+    got = _headings_of_sections()
+    bad = sorted({f"{h!r} ({where}): {', '.join(w)}" for h, where in got
+                  for w in [_title_case_faults(h, small)] if w})
+    assert len(got) >= 20, f"only {len(got)} section headings were found to hold"
+    assert not bad, f"{len(bad)} headings not in Title Case: " + "; ".join(bad[:8])
+    assert not _title_case_faults("House Committee (Housing)", small)
+    assert _title_case_faults("In House committee \u2014 Housing", small) == ["committee"], \
+        "the rule no longer finds a lower-case word"
+    return "ok", (f"{len(got):,} section headings in Title Case, among them "
+                  f"{len({h for h, w in got if w.endswith('.html')}):,} drawn on the fixture's "
+                  "session days")
+
+
+@check("frontend", "a card's chip says a stage in one of the person's short words (D18), and the "
+                   "bill's own page keeps the full wording")
+def _card_words_short():
+    """D18 (the person, 10 October 2026): a CARD's chip says "In Committee", "Retained",
+    "Re-referred", "Passed House" or "Passed Senate", "To the Governor", "Nonconcurred",
+    "In Conference", "Adopted", "Adopted by House" or "Adopted by Senate", "To the Voters",
+    "Ratified", "Not Ratified", "Not Introduced" or "Special Session", or one of the six;
+    the bill's own page keeps the full wording. Every stage word app.js's search knows of
+    (CAT_OF_CHIP), every chip a fixture bill carries and every one the built site's
+    indexes carry, where they are here, must come out of components.card_word as one of
+    those, or as a stage's own word in Title Case of three words or fewer -- so a stage the
+    General Court names tomorrow is caught rather than drawn at length on a card. And the
+    head of a bill's own page draws the chip whole (billHead)."""
+    import components as C
+    six = set(C.WORDBOOK["chips"]["chip"])
+    d18 = {"In Committee", "Retained", "Re-referred", "Passed House", "Passed Senate",
+           "To the Governor", "Nonconcurred", "In Conference", "Adopted", "Adopted by House",
+           "Adopted by Senate", "To the Voters", "Ratified", "Not Ratified", "Not Introduced",
+           "Special Session"}
+    app = _source("src/pages/app.js")
+    words = set(re.findall(r'"([A-Z][a-z][^"]{2,80})":"(?:Passed|Died|In Progress|Interim Study|'
+                           r'Tabled|Vetoed|Withdrawn)"', app))
+    words |= set(re.findall(r'"((?:In|Retained|Re-referred|Committee|Passed|One|Conference)[^"]{2,80})"',
+                            app[app.index("CAT_OF_CHIP"):app.index("CAT_OF_KIND")]))
+    shared, _base, _ran, _days = _fixture_site_shared()
+    for f in list((shared / "site" / "idx").glob("*.json")) + list(Path("site/idx").glob("*.json")):
+        try:
+            rows = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        words |= {r.get("chip") for r in rows if r.get("chip")}
+    # And the words no index carries until an election has passed: CACR 13's
+    # from the night of 4 November 2026 (the release review of 16 October
+    # 2026), which this check on the night's built site would have failed
+    # every night from then (_cacr_went_to_the_voters).
+    words |= {"Passed both chambers, went to the voters in November 2026",
+              "Passed both chambers, went to the voters"}
+    bad = []
+    for w in sorted(words):
+        for passage in ("Hp---", "Hpp--", "S----", ""):
+            got = C.card_word(w, passage)
+            if got in six or got in d18:
+                continue
+            if len(got.split()) > 3 or got != C.title_words(w):
+                bad.append(f"{w!r} -> {got!r}")
+    assert not bad, f"{len(bad)} chips a card would say at length: " + "; ".join(sorted(set(bad))[:6])
+    assert C.card_word("Passed one chamber", "Hp---") == "Passed House"
+    assert C.card_word("Passed both chambers, goes to the voters in November 2028", "") == "To the Voters"
+    assert C.card_word("Passed both chambers, went to the voters in November 2026", "Hpp--") == \
+        "To the Voters", "an amendment whose election has passed is not To the Voters on its card"
+    head = app[app.index("function billHead("):app.index("function billHead(") + 3000]
+    assert 'chip(chipOf(b),`cstat ${chipCls(b)}`,"m")' in head, (
+        "the bill's own head no longer draws its chip's full word")
+    card = app[app.index("function cardHtml("):app.index("function cardHtml(") + 2000]
+    assert "cardWord(chipOf(b),b.passage)" in card, "a card no longer says its short word"
+    assert "ccarry" not in card and "carried over" not in card, (
+        'a card says "carried over" again: the year beside the number says it (8 October 2026)')
+    return "ok", (f"{len(words):,} chip words, each a card's short word or its own of three words "
+                  "or fewer; the bill's head keeps the full wording; no card says carried over")
+
+
+@check("frontend", "the term popovers are behaviour of components.js's own: the first of each term "
+                   "a button that opens on a tap, a held hover or focus, stays while hovered and "
+                   "shuts on Escape (C9, WCAG 1.4.13)")
+def _term_popovers():
+    """C9, approved 9 October 2026 with the person's refinement: "for the tooltips they
+    would show up on a tap or on a mouse hover after a short time" -- a tap, a hover held
+    about half a second, or keyboard focus opens one; it stays while the pointer moves
+    onto it, and closes on Escape (WCAG 1.4.13: dismissible, hoverable, persistent). The
+    behaviour lives in components.js between its markers, as an IIFE that declares no
+    name (so _components_agree holds the helpers and this the behaviour); every key a
+    writer marks (the vote words' abbreviations, a recommendation's code) is a glossary
+    entry; and the shared stylesheet draws the popover, so it shows on any page."""
+    import components as C
+    js = _source("src/pages/components.js")
+    a, b = js.find("// BEHAVIOUR:START"), js.find("// BEHAVIOUR:END")
+    assert 0 < a < b, "components.js has no behaviour between its markers"
+    beh = js[a:b]
+    assert not re.search(r"^(?:function|const|let|var)\s", beh, re.M), (
+        "the behaviour declares a name at the top level, which _components_agree would take "
+        "for a helper with no twin")
+    for need, why in (("(function(){", "it is not one IIFE"),
+                      ('setAttribute("role","tooltip")', "the popover is no tooltip"),
+                      ('"aria-expanded"', "its button says nothing of being open"),
+                      ('e.key==="Escape"', "Escape does not close it"),
+                      ('e.pointerType!=="mouse"', "a touch would open it twice, by hover and by tap"),
+                      ('"focusin"', "keyboard focus does not open it"),
+                      ("HOLD=500", "a hover is not held about half a second"),
+                      ('closest("[hidden]")', "the first of a term may be one in a hidden tab"),
+                      ("MutationObserver", "a page drawn again keeps no popover"),
+                      ('setProperty("--arrow"', "its pointer is not set at its word (10 November 2026)"),
+                      ("point(b,p);", "it is not pointed after it is moved onto the screen")):
+        assert need in beh, f"the term popovers: {why} ({need} is not in the behaviour)"
+    glossary = set(C.WORDBOOK["glossary"])
+    keys = {m["abbr"] for m in C.WORDBOOK["votes"]["motions"].values() if m.get("abbr")}
+    keys |= {"OTP", "OTPA", "ITL", "IS"}
+    missing = sorted(keys - glossary)
+    assert not missing, f"terms marked with no glossary entry: {missing}"
+    css = _source("src/pages/app.css")
+    for rule in (".termbtn{", ".termpop{", ".termpop[hidden]{display:none}"):
+        assert rule in css, f"app.css does not draw {rule}"
+    return "ok", (f"the behaviour is one IIFE between its markers; {len(keys)} marked terms, "
+                  "each a glossary entry; the popover drawn in app.css")
+
+
+MOTION_CASES = [
+    ("Ought to Pass", "HB1", "H", "otp"), ("Inexpedient to Legislate", "HB1", "H", "itl"),
+    ("Ought to Pass with Amendment 2026-0998h", "HB1", "H", "otpa"),
+    ("Ought to Pass with Amendments 2026-1 and 2026-2", "HB1", "H", "otpa"),
+    ("Adopt Conference Committee Report", "HB1", "H", "conference_report"),
+    ("House Concurs with Senate Amendment 2026-1709s", "HB1681", "H", "concur"),
+    ("Refer to Interim Study", "HB1", "H", "is"), ("Refer for Interim Study", "HB1", "H", "is"),
+    ("Laid on Table", "HB1", "S", "table"), ("Lay HB1046 on Table", "HB1046", "H", "table"),
+    ("Concur with the House Amendment", "SB1", "S", "concur"),
+    ("Accedes to House Request for Committee of Conference", "HB1", "S", "accede"),
+    ("Rereferred to Committee", "HB1", "H", "rerefer"),
+    ("Adopt Committee Amendment", "HB1", "H", "committee_amendment"),
+    ("Adopt Floor Amendment", "HB1", "H", "floor_amendment"),
+    ("House Non-Concurs with Senate Amendment 2026-1 and Requests CofC", "HB1", "H",
+     "nonconcur_conference"),
+    ("Nonconcur with the House Amendment; Requests C of C", "SB1", "S", "nonconcur_conference"),
+    ("Nonconcur with the House Amendment", "SB1", "S", "nonconcur"),
+    ("Veto Override", "HB1", "H", "override_first"), ("Veto Override", "HB1", "S", "override_second"),
+    ("Adopt Amendment", "HB1", "H", "amendment"), ("Remove From Table", "HB1", "H", "untable"),
+    ("Special Order to the next order of business", "HB1681", "H", "special_order"),
+    ("Indefinitely Postpone", "HB1", "H", "postpone"), ("Recommit", "HB1", "H", "recommit"),
+    ("Refused to Accede to House Request for Committee of Conference", "HB1", "S", "refuse_accede"),
+    ("Reconsider OTP", "HB1", "H", "reconsider"), ("Withdraw", "HB431", "H", "withdraw"),
+    ("suspend all rules necessary to permit the consideration of HB 1091; 2/3 necessary",
+     "HB1091", "H", "suspend_rules"),
+    ("Refer to Finance", "HB1", "H", "refer"), ("Adopt", "HR38", "H", "adopt"),
+    ("Shall the Decision of the President Stand", "SB119", "S", "uphold_ruling"),
+    ("Divide Section 2 from 3 and 4", "HB724", "H", "divide"), ("RFS", "HB1186", "H", "is"),
+    ("Vacated from Municipal and County Government", "HB1242", "H", "vacate_referral"),
+    ("", "HB1", "H", "unnamed"), ("03/11/2026", "HB1", "H", "unnamed"),
+    # Votes on no bill (filed as "_procedural", or "" on a session day), as the
+    # roll-call file words them: the clerk's "Rules Suspension" and "Shall
+    # Member Continue" are the rows' motions; a motion tabled is a motion; a
+    # request for the justices' opinion is no referral; and a row whose words
+    # speak of the bill gives way to the record's own words.
+    ("Rules Suspension", "_procedural", "H", "suspend_rules"),
+    ("Rules Suspension", "HB1", "H", "suspend_rules"),
+    ("Shall Member Continue", "_procedural", "H", "member_continue"),
+    ("Shall Member Continue", "HB1", "H", "member_continue"),
+    ("Table Burns Reprimand", "_procedural", "H", "table_motion"),
+    ("Burns Reprimand", "_procedural", "H", "reprimand"),
+    ("Laid on Table", "_procedural", "H", ""), ("Remove From Table", "", "H", ""),
+    ("Refer to Justices 1", "_procedural", "H", ""), ("Refer to Justices", "HB1", "H", ""),
+    ("Adopt Floor Amendment", "HRULE64", "H", ""),
+    ("Uphold Ruling of Chair", "_procedural", "H", "uphold_ruling"),
+    ("Reconsider", "_procedural", "H", "reconsider"),
+]
+
+
+@check("frontend", "a vote's motion is read once, in Python, into the key of the approved vote "
+                   "words, and the record's own words go under the head where they differ")
+def _motion_keys():
+    """THE VOTE WORDS (the person, 8 October 2026; votes.json): a vote card's head is the
+    motion's own name with only OTP, OTPA, ITL and IS abbreviated and a plain gloss, and
+    its chip says what the vote did. Which motion a record's words name is decided once,
+    in Python (motions.classify, the component plan's C4), for the bill's Votes tab (the
+    record's rollcalls carry it as mk) and for a session day; this holds the reading to
+    every form the 2025-2026 record uses and a sample of the older clerks'. "Ought to Pass
+    with Amendment 2026-0998h" carries no record line (an amendment's number is not a
+    difference); "House Concurs with Senate Amendment 2026-1709s" does; and every key it
+    gives is a row of the words."""
+    import components as C
+    import motions as MO
+    words = C.WORDBOOK["votes"]["motions"]
+    bad = []
+    for text, bill, body, want in MOTION_CASES:
+        got = MO.classify(text, bill, body, words)
+        if got["mk"] != want:
+            bad.append(f"{text!r} on {bill} in {body} is {got['mk']!r}, not {want!r}")
+        if got["mk"] and got["mk"] not in words:
+            bad.append(f"{got['mk']!r} is no row of votes.json")
+    assert not bad, f"{len(bad)} motions read wrongly: " + "; ".join(bad[:5])
+    assert "mrec" not in MO.classify("Ought to Pass with Amendment 2026-0998h", "HB1", "H", words)
+    assert MO.classify("House Concurs with Senate Amendment 2026-1709s", "HB1", "H", words)["mrec"]
+    assert MO.classify("Refer to Finance", "HB1", "H", words)["mf"] == {"Committee": "Finance"}
+    v2 = _source("src/pages/build_site_v2.py")
+    assert "MO.classify(" in v2, "the bills' Votes tabs no longer carry the motion's key"
+    sd = _source("src/pages/build_session_pages.py")
+    assert "MO.classify(" in sd, "a session day no longer reads the motion's key"
+    return "ok", f"{len(MOTION_CASES)} forms of the record's questions, each the approved words' key"
+
+
+@check("frontend", "every fixture record and tab, and every page that draws part of itself, is "
+                   "drawn by its own scripts in node without an error")
+def _drawn_pages():
+    """src/checks/drawn_pages.py, over the run's one build of the fixture.
+
+    The tool runs each page's scripts as a browser runs them -- components.js
+    in the head, app.js, the page's own, find.js deferred -- and writes down
+    what they draw, so that a change meant to move nothing is proved by what
+    a reader is shown and not only by the HTML (the component plan's proof,
+    9 October 2026). This holds the tool itself to working: every bill,
+    legislator and committee page, at its own address and at each tab's, and
+    the bill search, the home page, the Calendar, the search page and the
+    legislators page are drawn; no script meets an error, so a page that lost
+    a script it draws with, or a page script that declares a name
+    components.js already has, fails here; and every record page draws its
+    record rather than the message a failed load leaves."""
+    import contextlib
+    import io
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), (
+            "node is not on PATH on the nightly, which installs it")
+        return "skip", "node is not on PATH"
+    import drawn_pages as DP
+    shared, _base, _ran, days = _fixture_site_shared()
+    root = Path(tempfile.mkdtemp(prefix="gr-drawn-"))
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            drawn = DP.draw(shared / "site", root / "drawn", days[0])
+        assert (root / "drawn" / "manifest.json").exists(), "drawn_pages wrote no manifest"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    slugs = DP.tab_slugs(shared / "site")
+    records = {k for k in drawn if "#" not in k and "/" in k}
+    kinds = {r.split("/")[0] for r in records}
+    assert kinds == {"bill", "legislator", "committee"}, (
+        f"the fixture's record pages drawn are {sorted(kinds)}, not a bill, a legislator and a committee")
+    short = [r for r in records
+             if sum(1 for k in drawn if k.split("#")[0] == r) != 1 + len(slugs[r.split("/")[0]])]
+    assert not short, f"not every tab drawn: {short[:3]}"
+    lists = [p for p in DP.LISTS if p not in drawn]
+    assert not lists, f"not drawn: {lists}"
+    errs = [f"{k}: {d['errors'][0]}" for k, d in drawn.items() if d["errors"]]
+    assert not errs, f"{len(errs)} pages met an error in their scripts: " + "; ".join(errs[:4])
+    def results(k):
+        return next((h for name, h, *_ in drawn[k]["elements"] if name == "results"), "")
+    failed = [k for k in drawn if k.split("#")[0] in records
+              and (not results(k) or "Could not load the data" in results(k)
+                   or "did not load" in results(k)
+                   or "Detail unavailable" in results(k))]
+    assert not failed, f"{len(failed)} record pages drew no record: {failed[:4]}"
+    return "ok", (f"{len(drawn)} pages and tabs drawn without an error: {len(records)} records "
+                  f"at their own address and each tab's, and {len(DP.LISTS)} pages that draw "
+                  "part of themselves")
+
+
+@check("frontend", "a committee page carrying Live Now's hook is drawn to its end on a Saturday "
+                   "and on a Sunday, when the hook asks nothing, as on a weekday")
+def _drawn_on_a_weekend():
+    """THE WEEKEND (5 November 2026). live.js's hook on a committee page
+    looks at the clock once a minute until it learns there is no stream to
+    show. On a weekday, inside its hours, it asks /api/live/streams, meets the
+    fixture's 404 and stops; on a weekend it asks nothing and keeps looking,
+    which in a browser costs one look a minute. The stub runs every timer at
+    once, so in drawn_pages that look re-armed itself without end: every
+    committee page drawn on a Saturday or a Sunday hung until the drawing's
+    half-hour limit, and _drawn_pages, run by the clock, would have failed
+    every weekend night once the hook was on main. drawn_pages now lets no
+    timer ten seconds or more away fire (LATER_MS). This draws the fixture's
+    hooked committee pages on the Saturday and the Sunday after the build
+    day, with a three-minute limit, so the hang is found on any day of the
+    week, and fast."""
+    import contextlib
+    import datetime
+    import io
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), (
+            "node is not on PATH on the nightly, which installs it")
+        return "skip", "node is not on PATH"
+    import drawn_pages as DP
+    shared, _base, _ran, days = _fixture_site_shared()
+    site = shared / "site"
+    # The hook's section and the script that runs it, /live.js, drawn against
+    # tests/dom_stub.js: naming both here is also what makes check_select
+    # choose this check when either file changes.
+    def is_hooked(p):
+        html = p.read_text(encoding="utf-8")
+        return 'id="live-now"' in html and '<script src="/live.js"' in html
+    hooked = sorted(p.relative_to(site).as_posix() for p in (site / "committee").glob("*.html")
+                    if not p.stem.startswith("ss") and is_hooked(p))
+    assert hooked, ("no fixture committee page carries Live Now's hook (live_hook.place) with "
+                    "/live.js, so this would draw nothing that waits on the clock")
+    sat = days[-1] + datetime.timedelta(days=(5 - days[-1].weekday()) % 7)
+    tabs = len(DP.tab_slugs(site)["committee"])
+    root = Path(tempfile.mkdtemp(prefix="gr-weekend-"))
+    said = []
+    try:
+        for day in (sat, sat + datetime.timedelta(days=1)):
+            with contextlib.redirect_stdout(io.StringIO()):
+                drawn = DP.draw(site, root / day.isoformat(), day, only=hooked, timeout=180)
+            assert len(drawn) == len(hooked) * (1 + tabs), (
+                f"{day:%A %d %B}: {len(drawn)} committee pages and tabs drawn, not "
+                f"{len(hooked) * (1 + tabs)}")
+            errs = [f"{k}: {d['errors'][0]}" for k, d in drawn.items() if d["errors"]]
+            assert not errs, (f"drawn on {day:%A %d %B %Y} against tests/dom_stub.js, "
+                              f"{len(errs)} met an error: " + "; ".join(errs[:3]))
+            said.append(f"{day:%a %d %b}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"{len(hooked)} committee page(s) with the hook, and each tab, drawn to the end "
+                  f"on {' and '.join(said)}")
+
+
+# The harness of _committee_term_to_come: app.js as committee H43's own page,
+# its record rec.json and meta.json the files beside it, every index the site
+# publishes answered and any other refused; then the Term control changed to
+# the term to come, and ensureTerm handed it. Every path asked, what the page
+# drew and every unhandled rejection, as JSON.
+_TERM_TO_COME_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+window.GR_COMMITTEE = "H43"; window.GR_STANDALONE = true;
+location.pathname = "/committee/H43"; location.href = "https://x/committee/H43";
+const docOn = {}; document.addEventListener = (t, f) => (docOn[t] = docOn[t] || []).push(f);
+const meta = JSON.parse(fs.readFileSync("./meta.json", "utf8"));
+const files = {"/meta.json": meta, "/committee/H43.json": JSON.parse(fs.readFileSync("./rec.json", "utf8"))};
+const indexed = new Set([...(meta.terms || []), meta.requests && meta.requests.term].filter(Boolean));
+const asked = [], errs = [];
+process.on("unhandledRejection", e => errs.push(String((e && e.message) || e)));
+const ok = v => ({ok: true, status: 200, json: async () => v, text: async () => JSON.stringify(v)});
+globalThis.fetch = async u => { const p = new URL(u, "https://x").pathname; asked.push(p);
+  if (p in files) return ok(files[p]);
+  const m = /^\/idx\/(.+)\.json$/.exec(p);
+  if (m && indexed.has(decodeURIComponent(m[1]))) return ok([]);
+  return {ok: false, status: 404, statusText: "Not Found",
+          json: async () => { throw new Error(p + " returned 404"); }, text: async () => ""}; };
+const ticks = async n => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+const coming = process.argv[2];
+(async () => {
+  (0, eval)(fs.readFileSync("./page.js", "utf8"));
+  await ticks(60);
+  const opened = {asked: asked.slice(), html: document.querySelector("#results").innerHTML};
+  (docOn.change || []).forEach(f => f({target: {dataset: {pf: "term"}, value: coming}}));
+  await ticks(60);
+  const picked = {asked: asked.slice(), html: document.querySelector("#results").innerHTML};
+  await ensureTerm(coming); await ticks(10);
+  const direct = asked.slice();
+  // The bill requests' index is published too, though it is no term.
+  await ensureTerm(process.argv[3]); await ticks(10);
+  process.stdout.write("\n@@" + JSON.stringify({opened, picked, direct, requests: asked.slice(), errs}));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "a committee page whose record names a term the site has not built yet opens on "
+                   "the newest term the site publishes, offers the other, and asks for no index "
+                   "of it")
+def _committee_term_to_come():
+    """THE TERM STILL TO COME (6 November 2026, Fix B). A committee's record
+    can name a term the site has not built: a meeting the General Court posts
+    for after Organization Day (2 December 2026), filed under 2027-2028,
+    before the new term's first night. The page opened on the newest term the
+    record named, so it read "No bills were referred to this committee in the
+    2027–2028 term" over the term it has a record of, and asked for
+    idx/2027-2028.json, which answered 404, unhandled, on the page and every
+    tab. The fixture showed it only when built from 29 November, three days
+    before the turn, since it dates its one meeting to come three days ahead
+    by the real clock; so this puts such a meeting into a copy of the
+    fixture's committee record on any day, draws the page and each tab, and
+    holds it to opening on the site's newest term, the term to come still in
+    its Term control, with no error met."""
+    import contextlib
+    import io
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), (
+            "node is not on PATH on the nightly, which installs it")
+        return "skip", "node is not on PATH"
+    import drawn_pages as DP
+    shared, _base, _ran, days = _fixture_site_shared()
+    built = shared / "site"
+    terms = json.loads((built / "meta.json").read_text(encoding="utf-8")).get("terms") or []
+    assert terms, "the fixture's meta.json names no term"
+    newest = terms[0]
+    y = int(newest[:4]) + 2
+    coming = f"{y}-{y + 1}"
+    recs = [p for p in sorted((built / "committee").glob("*.json"))
+            if not p.stem.startswith("ss") and (p.with_suffix(".html")).exists()]
+    code, d = next(((p.stem, json.loads(p.read_text(encoding="utf-8"))) for p in recs
+                    if json.loads(p.read_text(encoding="utf-8")).get("sessions")), (None, None))
+    assert code, "no fixture committee record has a meeting to put in the term to come"
+    meeting = dict(d["sessions"][0], term=coming, date=f"{y - 1}-12-02", ahead=True)
+    d["sessions"] = [meeting] + [s for s in d["sessions"] if s.get("term") != coming]
+
+    # app.js alone, in node: the page opens on the newest term the site
+    # publishes, and neither the Term control nor ensureTerm asks for the
+    # index of the term to come -- a reader can still choose it, for its
+    # meeting -- and nothing is left unhandled.
+    meta = json.loads((built / "meta.json").read_text(encoding="utf-8"))
+    reqs = f"{y - 1}-requests"
+    meta["requests"] = dict(meta.get("requests") or {}, term=reqs, year=y - 1)
+    run = _node_app(_TERM_TO_COME_HARNESS, args=(coming, reqs), files={
+        "rec.json": json.dumps(d), "meta.json": json.dumps(meta)})
+    if run is not None:
+        want = f"/idx/{coming}.json"
+        for when, got in (("opening", run["opened"]["asked"]), ("choosing it",
+                          run["picked"]["asked"]), ("ensureTerm", run["direct"])):
+            assert want not in got, (f"committee {code}'s page asked for {want}, an index the "
+                                     f"site does not publish, on {when}: {got}")
+        assert f"/idx/{newest}.json" in run["opened"]["asked"], (
+            f"committee {code}'s page did not ask for /idx/{newest}.json, the index of the term "
+            f"it opened on: {run['opened']['asked']}")
+        assert f"/idx/{reqs}.json" in run["requests"], (
+            f"ensureTerm did not ask for /idx/{reqs}.json, the bill requests' index, which "
+            "meta.json names as published")
+        assert f'<option value="{newest}" selected>' in run["opened"]["html"], (
+            f"committee {code}'s page, in node, opened on another term than {newest}: "
+            + (re.search(r'<select data-pf="term">.*?</select>', run["opened"]["html"], re.S)
+               or [run["opened"]["html"][:200]])[0])
+        assert f'<option value="{coming}" selected>' in run["picked"]["html"], (
+            f"choosing {coming} in committee {code}'s Term control did not show it")
+        assert not run["errs"], f"committee {code}'s page left unhandled: {run['errs'][:3]}"
+
+    root = Path(tempfile.mkdtemp(prefix="gr-term-to-come-"))
+    try:
+        site = root / "site"
+        shutil.copytree(built, site)
+        (site / "committee" / f"{code}.json").write_text(json.dumps(d), encoding="utf-8")
+        assert coming not in terms and not (site / "idx" / f"{coming}.json").exists(), (
+            f"the fixture already publishes {coming}: this would test nothing")
+        with contextlib.redirect_stdout(io.StringIO()):
+            drawn = DP.draw(site, root / "drawn", days[-1], only=f"committee/{code}.html",
+                            timeout=180)
+        tabs = len(DP.tab_slugs(site)["committee"])
+        assert len(drawn) == 1 + tabs, f"{len(drawn)} of committee {code}'s page and tabs drawn"
+        errs = [f"{k}: {v['errors'][0]}" for k, v in drawn.items() if v["errors"]]
+        assert not errs, (f"committee {code}, its record naming {coming}, which the site does not "
+                          f"publish, met {len(errs)} error(s): " + "; ".join(errs[:3]))
+        page = (root / "drawn" / "committee" / f"{code}.html" / "_.txt").read_text(encoding="utf-8")
+        ctl = re.search(r'<select data-pf="term">(.*?)</select>', page, re.S)
+        assert ctl, f"committee {code}'s page drew no Term control"
+        assert f'<option value="{newest}" selected>' in ctl.group(1), (
+            f"committee {code} opened on another term than {newest}, the newest the site "
+            f"publishes: {ctl.group(1)[:200]}")
+        assert f'<option value="{coming}">' in ctl.group(1), (
+            f"committee {code}'s Term control no longer offers {coming}, where its meeting is")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"committee {code}, with a meeting put in {coming}, opens on {newest} and offers "
+                  f"{coming}; its page and {tabs} tabs drawn with no error"
+                  + ("; in node, no index of it asked for, on opening, on choosing it or by "
+                     "ensureTerm, and the requests' still asked for" if run is not None
+                     else " (node or app.js absent: the request half not run)"))
+
+
+# The harness of _no_index_off_the_list: app.js loaded as one kind of page,
+# process.argv[2] -- "static" (a town, a law, a session day), "member",
+# "bill", or "bills" (the bill search) -- with every request refused, so a
+# record's page meets the failure its catch is for. What the page had done
+# when it made its first request, and when it was done, as JSON.
+_NO_INDEX_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+const kind = process.argv[2];
+if (kind === "static") window.GR_STATIC = true;
+if (kind === "member") { window.GR_MEMBER = "smith-1"; window.GR_STANDALONE = true; }
+if (kind === "bill") { window.GR_BILL = "2026/HB1"; window.GR_STANDALONE = true; }
+const classes = el => { const c = new Set(); el.classList = {add: x => c.add(x), remove: x => c.delete(x),
+  contains: x => c.has(x), toggle: (x, on) => { const v = on === undefined ? !c.has(x) : !!on;
+    v ? c.add(x) : c.delete(x); return v; }, list: () => [...c].sort()}; return el; };
+const row = classes(document.querySelector(".searchrow")), shell = classes(document.querySelector(".shell"));
+const rec = classes(document.getElementById("static-rec"));
+rec.innerHTML = "<h1>The record</h1>";
+const state = () => ({row: !!row.hidden, year: !!document.querySelector("#year").hidden,
+  shell: shell.classList.list(), rec: rec.classList.list(), recHtml: rec.innerHTML,
+  results: document.querySelector("#results").innerHTML});
+const asked = [];
+let first = null;
+globalThis.fetch = async u => { asked.push(new URL(u, "https://x").pathname); if (!first) first = state();
+  return {ok: false, status: 404, statusText: "Not Found", json: async () => { throw new Error("404"); },
+          text: async () => ""}; };
+const ticks = async n => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+(async () => {
+  try { (0, eval)(fs.readFileSync("./page.js", "utf8")); }
+  catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+  const loaded = state();
+  await ticks(40);
+  process.stdout.write("\n@@" + JSON.stringify({asked, first, loaded, end: state()}));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "a page that is not a list of bills asks for no bill index it does not read, "
+                   "takes the search's controls down before asking for anything, and shows its "
+                   "own record if what it asked for does not come")
+def _no_index_off_the_list():
+    """The phone audit of 25 October 2026 (M7). About 3,800 pages carry
+    their record in their HTML and are built with GR_STATIC -- the towns,
+    the laws, the guides, the Calendar, the session days -- and each
+    downloaded the 2 MB bill index it never reads, with the bill search's
+    controls ("Loading...", and on a phone "Filter by topic...") on screen
+    until it came, then taken down, so the page jumped. A bill's, a
+    member's and a committee's own page took the list's controls down only
+    once the index came, and if it did not come put a developer's error
+    ("run build_site_v2.py") where the record had been.
+
+    Run in node as each kind of page, with every request refused: a static
+    page asks for nothing at all and has the row and the filter column down
+    the moment the script has run; a member's page has them down before its
+    first request and, refused, shows the record its HTML carries under one
+    plain line, with no error where it was; a bill's page keeps its search
+    box, has the list's pickers and filter column down before its first
+    request, and shows its record the same way; and the bill search itself
+    keeps all of it. And the HTML: shell.page writes the row hidden and the
+    shell without its filter column on a page built with GR_STATIC and on a
+    member's page, the column alone on a bill's, so a phone that paints
+    before the script has run never shows them; on a bill's, the term
+    picker, the Sort and the count beside the box down as app.js leaves
+    them, so the page does not jump when it runs (the preview check of 25
+    October 2026), and on the bill search none of it; and app.css shows the
+    record when app.js marks it shown."""
+    runs = {k: _node_app(_NO_INDEX_HARNESS, args=(k,)) for k in ("static", "member", "bill", "bills")}
+    if any(v is None for v in runs.values()):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bad = []
+    st = runs["static"]
+    if st["asked"]:
+        bad.append(f"a static page asked for {st['asked']}")
+    if not st["loaded"]["row"] or "nofacets" not in st["loaded"]["shell"]:
+        bad.append(f"a static page's search row and filter column are up once its script has run: "
+                   f"{st['loaded']}")
+    for k in ("member", "bill"):
+        g = runs[k]
+        f, end = g["first"] or {}, g["end"]
+        if not g["asked"] or not f:
+            bad.append(f"a {k}'s page asked for nothing")
+            continue
+        if f["row"] is not (k == "member") or not f["year"] or "nofacets" not in f["shell"]:
+            bad.append(f"a {k}'s page made its first request with the search's controls as {f}")
+        if "shown" not in end["rec"] or not end["recHtml"].startswith('<p class="src">') \
+                or "The record" not in end["recHtml"]:
+            bad.append(f"a {k}'s page that could not load does not show its record under one "
+                       f"line: {end['rec']} {end['recHtml'][:120]!r}")
+        if re.search(r"build_site_v2|http\.server|<code>|Could not load", end["results"] + end["recHtml"]):
+            bad.append(f"a {k}'s page that could not load shows a developer's error: "
+                       f"{end['results'][:120]!r}")
+    b = runs["bills"]
+    if b["first"]["row"] or b["first"]["year"] or "nofacets" in b["end"]["shell"]:
+        bad.append(f"the bill search took its own controls down: {b['first']} {b['end']['shell']}")
+    if "/meta.json" not in b["asked"]:
+        bad.append(f"the bill search asked for {b['asked']}, not meta.json")
+    # The bill search has no record to fall back on: one plain line and the
+    # way round it, the developer's detail in the console only.
+    if re.search(r"build_site_v2|http\.server|<code>|Could not load", b["end"]["results"]) \
+            or "did not load" not in b["end"]["results"] or 'href="/directory"' not in b["end"]["results"]:
+        bad.append(f"the bill search that could not load says: {b['end']['results'][:160]!r}")
+    try:
+        import shell as S
+    except ImportError:
+        S = None
+    if S and Path("src/pages/bills.html").exists():
+        tpl = S.template()
+        kw = dict(path="/x.html", base="https://graniterecord.org", title="X", description="X.")
+        pages = {"static": S.page(tpl, globals={"GR_STATIC": True}, **kw),
+                 "member": S.page(tpl, globals={"GR_MEMBER": "x", "GR_STANDALONE": True}, **kw),
+                 "bill": S.page(tpl, globals={"GR_BILL": "2026/HB1", "GR_STANDALONE": True}, **kw),
+                 "no globals": S.page(tpl, **kw)}
+        for k, html in pages.items():
+            hid = re.search(r'<div class="searchrow" role="search" aria-label="[^"]+" hidden>', html)
+            nof = '<div class="shell nofacets">' in html
+            want = (k in ("static", "member"), k != "no globals")
+            if (bool(hid), nof) != want:
+                bad.append(f"shell.page writes a {k} page's search row hidden={bool(hid)} and its "
+                           f"filter column away={nof}, not {want}")
+        # A BILL'S OWN PAGE, WRITTEN AS app.js LEAVES IT (the preview check of
+        # 25 October 2026): it keeps the box, and its term picker, Sort and
+        # "Loading..." stood on a phone's first paint until app.js took them
+        # down, and the page jumped 94px. Written down: the pickers and their
+        # labels hidden, the count empty -- not only .qhint hidden, which
+        # app.css's display:flex overrides -- and the box in hideListControls'
+        # own words. The bill search, with no globals, keeps every one as
+        # bills.html has it.
+        def controls(html):
+            def down(start):
+                m = re.search(re.escape(start) + r"[^>]*>", html)
+                return bool(m and re.search(r"\shidden(?=[\s>=])", m.group(0)))
+            n = re.search(r'<span id="count"[^>]*>(.*?)</span>', html, re.S)
+            q = re.search(r'<input id="q"[^>]*?\splaceholder="([^"]*)"', html)
+            return {"term label": down('<label for="year"'), "term": down('<select id="year"'),
+                    "hint row": down('<div class="qhint"'), "sort label": down('<label for="sort"'),
+                    "sort": down('<select id="sort"'), "count": n and n.group(1),
+                    "box": q and q.group(1)}
+        js = Path("src/pages/app.js")
+        words = re.search(r'function hideListControls\(\)\{.*?q\.placeholder="([^"]+)"',
+                          _source(js) if js.exists() else "", re.S)
+        wants = {"term label": True, "term": True, "hint row": True, "sort label": True,
+                 "sort": True, "count": "", "box": words and words.group(1)}
+        bill = controls(pages["bill"])
+        if not words:
+            bad.append("app.js's hideListControls no longer gives the box a record page's words")
+        elif bill != wants:
+            bad.append("shell.page writes a bill's own page with the list's controls up, which "
+                       "app.js then takes down and the page jumps: "
+                       + ", ".join(f"{k} {bill[k]!r} not {v!r}" for k, v in wants.items()
+                                   if bill[k] != v))
+        if controls(pages["no globals"]) != controls(tpl):
+            bad.append(f"shell.page changed the bill search's own controls: "
+                       f"{controls(pages['no globals'])}, where bills.html has {controls(tpl)}")
+    css = _source("src/pages/app.css")
+    if "html.js .static-rec:not(.shown){display:none}" not in css:
+        bad.append("app.css does not show a record's plain HTML when app.js marks it shown")
+    assert not bad, "; ".join(bad)
+    return "ok", ("a static page asks for nothing and has the search down at once; a member's "
+                  "and a bill's page take the list's controls down before asking, and show their "
+                  "own record under one line when refused; the bill search keeps its controls; "
+                  "shell.page writes them down in the HTML, a bill's pickers and count with them")
+
+
+# ---- the icons (Polish 1, the person, 9 October 2026) ------------------------------
+#
+# "Is there any way you can get the icons for the nav and homepage items among
+# other icons not currently live on the site as part of the polish 1 batch?"
+# components.icon (and components.js's icon) draws the prototype kit's
+# drawings, and every drawing on the site comes from it: the five sections in
+# the header (bills.html's nav, written out, and build_pages.shell's, from
+# NAV_TABS), the home page's three cards and its Search, Cite this page,
+# Follow, Report a problem, Share and Play. A drawing is decoration beside a
+# word: hidden from a screen reader, and never a control's only name.
+
+# A label is a control's visible name, its words beside the drawing: the
+# footer's "Language · Idioma" over its list (24 October 2026).
+_ICON_CONTROLS = ("a", "button", "summary", "label")
+_VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta",
+              "param", "source", "track", "wbr"}
+
+
+def _icons_in(html):
+    """Every drawing marked class="icon" in `html`, as (its attributes, whether
+    anything inside it is text, and the nearest a, button or summary holding
+    it as (tag, attributes, its words) or None)."""
+    from html.parser import HTMLParser
+
+    class P(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.stack, self.found, self.svg = [], [], None
+
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            if self.svg is not None:
+                self.svg["depth"] += tag == "svg"
+                return
+            if tag == "svg" and "icon" in (a.get("class") or "").split():
+                ctl = next((e for e in reversed(self.stack) if e["tag"] in _ICON_CONTROLS), None)
+                self.svg = {"attrs": a, "depth": 0, "text": False, "ctl": ctl}
+            elif tag not in _VOID_TAGS:
+                self.stack.append({"tag": tag, "attrs": a, "words": []})
+
+        def handle_endtag(self, tag):
+            if self.svg is not None:
+                if tag == "svg" and not self.svg["depth"]:
+                    self.found.append(self.svg)
+                    self.svg = None
+                elif tag == "svg":
+                    self.svg["depth"] -= 1
+                return
+            for i in range(len(self.stack) - 1, -1, -1):
+                if self.stack[i]["tag"] == tag:
+                    del self.stack[i:]
+                    break
+
+        def handle_data(self, data):
+            if self.svg is not None:
+                self.svg["text"] = self.svg["text"] or bool(data.strip())
+                return
+            for e in self.stack:
+                if e["tag"] in _ICON_CONTROLS:
+                    e["words"].append(data)
+
+    p = P()
+    p.feed(html)
+    p.close()
+    return [(s["attrs"], s["text"],
+             (s["ctl"]["tag"], s["ctl"]["attrs"], " ".join("".join(s["ctl"]["words"]).split()))
+             if s["ctl"] else None) for s in p.found]
+
+
+@check("frontend", "every icon is the icon component's, hidden from a screen reader, in a link or "
+                   "button that names itself in words, and both headers draw the same five")
+def _icons_named():
+    """The person asked for the prototype kit's icons on the five sections,
+    the home page's cards and the page's actions (9 October 2026). Read off
+    the fixture's built pages and off what their scripts draw (drawn_pages):
+
+    every drawing marked class="icon" is exactly one of components.icon's,
+    byte for byte, so a drawing copied into a page by hand (bills.html's nav
+    is written out) cannot drift from the component; each carries
+    aria-hidden="true" and focusable="false" and holds no text, so a screen
+    reader reads the control and never "image"; each sits in a link, a button
+    or a summary whose own words -- or, where the drawing stands alone, whose
+    aria-label -- name it; every header on the site, the record pages' and
+    build_pages.shell's alike, gives the five sections in chrome.NAV_TABS's order,
+    each with its drawing before its word; and the drawings the person asked
+    for are on the fixture's pages: the five sections, the home page's cards
+    and Search, and Cite this page. Follow, Report a problem and Share are
+    mounted where the drawing does not record, and _share_beside_report
+    holds their markup to the same rules."""
+    import components as C
+    import build_pages as BP
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
+        return "skip", "node is not on PATH, so the drawn half of the pages could not be read"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    sources = {f.relative_to(site).as_posix(): f.read_text(encoding="utf-8", errors="replace")
+               for f in sorted(site.rglob("*.html"))}
+    for key, d in _fixture_drawn().items():
+        sources[f"drawn {key}"] = "\n".join(h for _k, h, *_ in d["elements"] if h)
+    drawings = {n: C.icon(n) for n in C.ICONS}
+    seen, bad, n_icons, navs = Counter(), [], 0, 0
+    import chrome as CH
+    want_nav = [(href, drawings[g], label) for href, label, g in CH.NAV_TABS]
+    # A page in another language gives them in its words, each to the page in
+    # that language where there is one (i18n.py).
+    import i18n
+    nav_in = {lang: [(i18n.href(lang, href).lstrip("/"), drawings[g], CH.tab_words(lang)[href])
+                     for href, _label, g in CH.NAV_TABS]
+              for lang in i18n.LANGS if lang != i18n.DEFAULT}
+    for where, html in sources.items():
+        # Wherever <html> stands: the Calendar's pages are the record pages' frame, which
+        # opens with a comment before it (9 November 2026).
+        lang_m = re.search(r'<html lang="([a-z]+)"', html[:600])
+        lang = lang_m.group(1) if lang_m else i18n.DEFAULT
+        if 'class="icon"' not in html:
+            continue
+        found = _icons_in(html)
+        n_icons += len(found)
+        exact = 0
+        for n, svg in drawings.items():
+            k = html.count(svg)
+            seen[n] += k
+            exact += k
+        if exact != len(found):
+            bad.append(f"{where}: {len(found) - exact} drawings marked icon that are not "
+                       "components.icon's own")
+        for attrs, text, ctl in found:
+            if attrs.get("aria-hidden") != "true" or attrs.get("focusable") != "false" or text:
+                bad.append(f"{where}: a drawing a screen reader would read ({attrs})")
+            elif ctl is None:
+                bad.append(f"{where}: a drawing in no link, button or summary")
+            elif not re.search(r"\w", ctl[2]) and not (ctl[1].get("aria-label") or "").strip():
+                bad.append(f"{where}: a <{ctl[0]}> whose only name is its drawing")
+        for nav in re.findall(r'<div class="navtabs">(.*?)</div>', html, re.S):
+            navs += 1
+            got = re.findall(r'<a href="([^"]+)"(?: aria-current="page")?>(<svg class="icon".*?</svg>)'
+                             r'([^<]*)</a>', nav, re.S)
+            # 404.html names them from the root, since it answers at any depth
+            # and every page names them at the address the host serves
+            # (shell.clean_links, 12 October 2026): "bills", not "bills.html".
+            if [(h.lstrip("/"), s, w.strip()) for h, s, w in got] != (
+                    [(_shell_canon(h), s, w) for h, s, w in want_nav] if lang == i18n.DEFAULT
+                    else [(_shell_canon(h), s, w) for h, s, w in nav_in[lang]]):
+                bad.append(f"{where}: the header's sections are not NAV_TABS's, each with its "
+                           f"drawing: {[(h, w.strip()) for h, _s, w in got]}")
+    # Follow, Report a problem and Share are mounted outside anything the
+    # drawing records; _share_beside_report holds those three the same way.
+    wanted = {"bill", "person", "gavel", "book", "calendar", "cite", "search"}
+    missing = sorted(n for n in wanted if not seen[n])
+    if missing:
+        bad.append("no fixture page draws " + ", ".join(missing))
+    assert navs, "no header on the fixture's pages has its sections"
+    assert not bad, f"{len(bad)} faults: " + "; ".join(bad[:5])
+    return "ok", (f"{n_icons} drawings on {len(sources)} built and drawn pages, every one the "
+                  f"component's, hidden, and named by its control's words; {navs} headers with "
+                  "the five sections; " + ", ".join(f"{n} {seen[n]}" for n in sorted(seen) if seen[n]))
+
+
+# ---- a bill's print sheet (9 October 2026) --------------------------------------
+#
+# print.js composes a reference sheet of one bill's record in the reader's
+# browser, beside a short menu of settings, and prints it with the browser's
+# own dialog (the person's decisions of 6 October 2026; the second-round
+# prototype approved on 9 October, less the rail's table and the hearings and
+# session days). The component plan asks that it be "composed in the browser
+# by the same helpers ... Nothing in it formats a bill, person, vote or date
+# of its own. Proven in node with every section present and absent." These
+# hold that, on seven real records (tests/print_cases.json), and its
+# stylesheet to the rules app.css is held to.
+
+# The sheet's sections, in the order they print. Nothing else is a section:
+# the rail's table and the hearings and session days were taken out by the
+# person on 9 October 2026.
+_PRINT_SECTIONS = ["At a Glance", "Official Legislative Analysis", "How It Got Here", "Summary",
+                   "Votes", "Committee Reports", "The Bill’s Text"]
+_PRINT_OPTION = {"summary": ["Official Legislative Analysis", "Summary"], "votes": ["Votes"],
+                 "reports": ["Committee Reports"], "text": ["The Bill’s Text"]}
+
+_PRINT_GO = r"""
+require("./stub.js");
+const fs = require("fs");
+const scope = (0, eval)(fs.readFileSync("./page.js", "utf8") + "\n;({GRPrint, WORDBOOK})");
+const G = scope.GRPrint;
+const C = JSON.parse(fs.readFileSync("./cases.json", "utf8"));
+const clone = x => JSON.parse(JSON.stringify(x));
+const urlOf = d => "https://graniterecord.org/bill/" + d.year + "/" + d.id.toLowerCase();
+const ctxOf = (c, files) => ({url: urlOf(c.d), asOf: "2026-10-09", today: "2026-10-09",
+  versions: c.ix ? {ix: c.ix, files: files === undefined ? c.files : files} : {ix: null, files: {}}});
+const all = () => { const s = G.defaults(); s.names = 1; s.sec.text = 1; return s; };
+const words = ts => ts.filter(t => t.w !== "¶").map(t => t.w).join(" ");
+const out = {cases: {}, variants: {}, blame: {}, needs: {}};
+for (const [name, c] of Object.entries(C.cases)) {
+  const ctx = ctxOf(c);
+  const r = out.cases[name] = {full: G.sheet(c.d, c.b, ctx, all()), dflt: G.sheet(c.d, c.b, ctx, G.defaults()),
+    menu: G.menu(c.d, c.b, ctx, G.defaults()), has: G.has(c.d, ctx), off: {}, choice: {},
+    sponsors: (c.d.sponsors || []).length,
+    members: (c.d.rollcalls || []).reduce((n, rc) => n + (rc.members || []).length, 0)};
+  for (const k of ["summary", "votes", "reports", "text"]) {
+    const s = all(); s.sec[k] = 0; r.off[k] = G.sheet(c.d, c.b, ctx, s); }
+  { const s = all(); s.qr = 0; r.noqr = G.sheet(c.d, c.b, ctx, s); }
+  { const s = all(); s.names = 0; r.nonames = G.sheet(c.d, c.b, ctx, s); }
+  for (const t of ["marked", "clean", "amendments", "introduced"]) {
+    const s = all(); s.text = t; r.choice[t] = G.sheet(c.d, c.b, ctx, s); }
+  if (c.ix && (c.ix.versions || []).length > 1) {
+    const toks = c.ix.versions.map(v => G.text.tokens(c.files[v.blocks_url || v.text_url]));
+    const steps = G.text.joinSteps(c.d, c.ix);
+    const B = G.text.blame(toks, steps.map(s => s.tag));
+    out.blame[name] = {now: words(B.doc.filter(t => t.st !== "del")) === words(toks[toks.length - 1]),
+      was: words(B.doc.filter(t => t.st !== "add")) === words(toks[0]),
+      steps: steps.map(s => [s.kind, s.tag, s.a ? s.a.num : null]),
+      changed: B.doc.filter(t => t.st !== "eq" && t.w !== "¶").length};
+    const st = t => { const s = G.defaults(); s.sec.text = 1; s.text = t; return s; };
+    out.needs[name] = {versions: c.ix.versions.length, marked: G.needs(c.d, ctxOf(c, {}), st("marked")).length,
+      clean: G.needs(c.d, ctxOf(c, {}), st("clean")).length, loaded: G.needs(c.d, ctx, st("marked")).length,
+      loading: G.sheet(c.d, c.b, ctxOf(c, {}), all())};
+  }
+}
+// Absence by the record: the law's record, less one part at a time.
+const law = C.cases.law;
+const strip = {
+  votes: d => { d.rollcalls = []; delete d.ballot; },
+  reports: d => { d.reports = []; d.docket_reports = []; },
+  summary: d => { d.billtext.analysis = ""; d.stages = []; d.narrative = ""; d.notes = []; d.veto_message = null; },
+  how: d => { d.journey.steps = []; },
+  text: d => { d.nver = 1; d.namd = 0; d.amendments = []; d.billtext.body = ""; },
+  names: d => { d.rollcalls.forEach(r => { r.members = []; }); },
+};
+for (const [k, f] of Object.entries(strip)) {
+  const d = clone(law.d); f(d);
+  const c2 = Object.assign({}, law, k === "text" ? {d, ix: null, files: {}} : {d});
+  out.variants[k] = {sheet: G.sheet(d, law.b, ctxOf(c2), all()), menu: G.menu(d, law.b, ctxOf(c2), all())};
+}
+// The text: off by default, its tick never remembered, and ticked, whole
+// however long (the person, 10 October 2026); what the menu says of the pages.
+{ const store = {};
+  globalThis.localStorage = {getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }};
+  const s = G.defaults(); s.sec.text = 1; s.text = "clean"; G.settings.save(s);
+  const back = G.settings.load();
+  // and a choice stored any other way, the tick in it, is not taken either
+  store["gr-print"] = JSON.stringify({sec: {summary: 1, votes: 1, reports: 1, text: 1, docs: 1}, names: 0, qr: 1, text: "clean"});
+  const raw = G.settings.load();
+  delete globalThis.localStorage;
+  const c2 = clone(law); c2.ix.versions[c2.ix.versions.length - 1].words = 10000000;
+  const ticked = all(); ticked.text = "clean";
+  const last = law.ix.versions[law.ix.versions.length - 1];
+  out.text = {dflt: G.defaults().sec.text, remembered: back.sec.text + raw.sec.text, choice: back.text,
+    huge: G.sheet(c2.d, c2.b, ctxOf(c2), ticked),
+    final: words(G.text.tokens(law.files[last.blocks_url || last.text_url])).split(" ").length,
+    said: [G.pages.said(9), G.pages.said(1)]}; }
+// The QR code: each symbol against the second encoder's, read back, and a
+// damaged one refused.
+{ const rows = m => m.map(r => r.map(v => v ? "1" : "0").join(""));
+  const m = G.qr.encode(C.qr[0].text);
+  out.qr = {symbols: C.qr.map(q => { const s = G.qr.encode(q.text);
+      return {text: q.text, same: rows(s).join("/") === q.rows.join("/"), read: G.qr.read(s).text === q.text}; }),
+    every: Object.values(C.cases).map(c => G.qr.read(G.qr.encode(urlOf(c.d))).text === urlOf(c.d)),
+    svg: G.qr.svg(m, "x")};
+  const bad = m.map(r => r.slice()); [[10, 10], [12, 14], [14, 11], [20, 9]].forEach(([y, x]) => { bad[y][x] = !bad[y][x]; });
+  try { out.qr.damaged = "read as " + G.qr.read(bad).text; } catch (e) { out.qr.damaged = "refused"; } }
+// Mounted as the Print button will mount it, under the stub, and taken down.
+try { const l = G.open(law.d, law.b); G.close(); out.open = {ok: !!l}; }
+catch (e) { out.open = {ok: false, err: String(e && e.stack || e).slice(0, 400)}; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+def _print_text(html):
+    """What a reader sees of some of the sheet's HTML."""
+    import html as _h
+    return _h.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))).strip()
+
+
+def _print_heads(html):
+    import html as _h
+    return [_h.unescape(h) for h in re.findall(r'<h3 class="ps-h3">(.*?)</h3>', html)]
+
+
+@check("frontend", "a bill's print sheet is composed from its record by the components, with every "
+                   "section present and absent, nothing said by colour alone, each change numbered "
+                   "by the amendment that made it, and a QR code that reads back")
+def _print_sheet():
+    """print.js on the seven records of tests/print_cases.json (a law with
+    three amendments and a chaptered step, a bill killed on a roll call, an
+    interim study bill, a CACR going to the voters, a bill with one version
+    and no amendment, an archived bill of 1995 and a vetoed bill), loaded in
+    node after components.js and app.js, as a bill's page loads them.
+
+    SECTIONS. The law prints every one, in order; no case prints anything
+    else -- not the rail's table, not the hearings and session days (the
+    person, 9 October 2026). A part taken out of the record takes its section
+    and its line in the menu with it; a setting turned off takes its section.
+
+    THE TEXT (the person, 10 October 2026): "Include the bill's text" is
+    unticked by default and its tick is never remembered, so no case prints
+    a text unasked; ticked, the text prints whole, a version said to be ten
+    million words long included, word for word the version's own; and the
+    menu has its line for how many pages the sheet prints, one number with
+    no paper named ("Prints 9 pages": the person, 10 October 2026).
+
+    THE COMPONENTS. Every sponsor is pchip's chip with its party letter; no
+    date is printed in figures; every outcome is a word; the vote words are
+    WORDBOOK's.
+
+    THE TEXT. Read without its struck words the marked text is the current
+    version and without its inserted words the introduced one, on every
+    versioned case; each change carries the number its list gives the
+    amendment that made it, HB 1681's in the docket's order; a struck run is
+    in brackets.
+
+    THE QR CODE matches the symbols a second encoder made (the prototype's
+    qr.py) module for module -- the seven cases' addresses and three where
+    two masks tie on their penalty, so the mask chosen is the standard's --
+    reads back to every case's address, and a damaged symbol is refused
+    rather than read as another address.
+
+    MOUNTED: GRPrint.open and close run on a bill's record under the DOM stub,
+    and the run's fixture build publishes print.js and print.css as they are,
+    with _headers giving both the freshness every script has."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    need = [Path(f) for f in ("src/pages/print.js", "src/pages/app.js", "tests/dom_stub.js",
+                              "tests/print_cases.json")]
+    if not all(p.exists() for p in need):
+        return "skip", "print.js, app.js, the DOM stub or the print cases are not here"
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly, which installs it"
+        return "skip", "node is not on PATH"
+    cases = json.loads(_source("tests/print_cases.json"))
+    root = Path(tempfile.mkdtemp(prefix="gr-print-"))
+    try:
+        js = _source("src/pages/app.js") + "\n;\n" + \
+            _source("src/pages/print.js")
+        (root / "page.js").write_text(_with_components(js), encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "cases.json").write_text(json.dumps({"cases": cases["cases"], "qr": cases["qr"]}),
+                                         encoding="utf-8")
+        (root / "go.js").write_text(_PRINT_GO, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "print.js did not compose the sheets under node: " + (r.stderr or r.stdout or "")[-400:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    order = {h: i for i, h in enumerate(_PRINT_SECTIONS)}
+
+    # The sections: the law's every one, in order, and nobody's anything else.
+    heads = _print_heads(got["cases"]["law"]["full"])
+    if heads != _PRINT_SECTIONS:
+        bad.append(f"HB 1681 with everything on prints {heads}, not {_PRINT_SECTIONS}")
+    for name, c in got["cases"].items():
+        for view in ("full", "dflt"):
+            hs = _print_heads(c[view])
+            odd = [h for h in hs if h not in order]
+            if odd:
+                bad.append(f"{name} prints a section the sheet does not have: {odd}")
+            elif [order[h] for h in hs] != sorted(order[h] for h in hs):
+                bad.append(f"{name} prints its sections out of order: {hs}")
+        for k, gone in _PRINT_OPTION.items():
+            left = [h for h in _print_heads(c["off"][k]) if h in gone]
+            if left:
+                bad.append(f"{name} with '{k}' off still prints {left}")
+        if '<svg class="ps-qrsvg"' in c["noqr"] or '<svg class="ps-qrsvg"' not in c["full"]:
+            bad.append(f"{name}'s QR code does not follow its setting")
+        if re.search(r'class="[^"]*\b(?:rail|stop)\b', c["full"]):
+            bad.append(f"{name} draws the rail, whose table the person took off the sheet")
+    # Absence by the record: the part, its section and its line in the menu go together.
+    for k, v in got["variants"].items():
+        hs = _print_heads(v["sheet"])
+        want_gone = {"how": ["How It Got Here"], "names": []}.get(k, _PRINT_OPTION.get(k, []))
+        if [h for h in hs if h in want_gone]:
+            bad.append(f"HB 1681 without its {k} still prints {[h for h in hs if h in want_gone]}")
+        opt = {"names": 'data-opt="names"'}.get(k, f'data-sec="{k}"')
+        if k != "how" and opt in v["menu"]:
+            bad.append(f"HB 1681 without its {k} is still offered it in the menu")
+        if k == "how" and "How It Got Here" in v["menu"]:
+            bad.append("the menu still says How It Got Here always prints, for a bill with no journey")
+        if k == "names" and "ps-roll" in v["sheet"]:
+            bad.append("a roll call with no members recorded still prints them member by member")
+        if k == "text" and "holds no text" not in v["menu"]:
+            bad.append("the menu does not say the record holds no text, where it holds none")
+    # The text: off until ticked, never remembered ticked, and whole once ticked.
+    tx = got["text"]
+    for name, c in got["cases"].items():
+        if "The Bill’s Text" in _print_heads(c["dflt"]):
+            bad.append(f"{name} prints its text with the settings as they open")
+        box = re.search(r'<input type="checkbox" data-sec="text"( checked)?><span>([^<]*)', c["menu"])
+        if c["has"]["text"] and (not box or box.group(1) or box.group(2) != "Include the bill&rsquo;s text"):
+            bad.append(f"{name}'s menu does not offer 'Include the bill's text', unticked")
+        if '<p class="ps-count"' not in c["menu"]:
+            bad.append(f"{name}'s menu has no line for how many pages the sheet prints")
+    if tx["dflt"] or tx["remembered"] or tx["choice"] != ["clean"]:
+        bad.append(f"the text is ticked by default ({tx['dflt']}) or its tick is remembered "
+                   f"({tx['remembered']}), or which text is not ({tx['choice']!r})")
+    huge = tx["huge"].split('<div class="ps-text">', 1)
+    drawn = len(_print_text(huge[1].split("</section>", 1)[0]).split()) if len(huge) > 1 else 0
+    if drawn != tx["final"]:
+        bad.append(f"a bill said to be ten million words long, ticked, prints {drawn} of its "
+                   f"current version's {tx['final']} words")
+    if tx["said"] != ["Prints 9 pages", "Prints 1 page"]:
+        bad.append(f"the menu says the pages as {tx['said']}")
+
+    # The kinds.
+    law, died, study, cacr, plain, arch, veto = (got["cases"][k] for k in
+                                                 ("law", "died", "study", "cacr", "plain", "archived", "veto"))
+    for name, word in (("law", "Became Law"), ("died", "Died"), ("study", "Interim Study"), ("veto", "Died")):
+        mast = got["cases"][name]["full"].split("</header>")[0]
+        if f'<span class="ps-word ps-word-m">{word}</span>' not in mast:
+            bad.append(f"{name}'s masthead does not say its status, {word!r}, in words")
+    if "Constitutional Amendment Concurrent Resolution" not in _print_text(cacr["full"]).split("At a Glance")[0]:
+        bad.append("CACR 13's masthead does not name the kind of measure")
+    if "The voters" not in _print_text(cacr["full"]):
+        bad.append("CACR 13's votes do not include the voters'")
+    if "Votes" in _print_heads(arch["full"]) or 'data-sec="votes"' in arch["menu"]:
+        bad.append("the archived bill, which no vote is recorded on, prints or offers Votes")
+    if "ps-amds" in plain["full"] or "The record holds one version" not in _print_text(plain["full"]):
+        bad.append("HB 102, one version and no amendment, prints an amendment list or does not say why none")
+    if "The Governor’s Veto Message" not in _print_text(veto["full"]):
+        bad.append("SB 268's veto message is not printed")
+    if 'data-opt="names"' in died["menu"] or "ps-roll" in died["full"]:
+        bad.append("a bill whose roll calls carry no members offers or prints them member by member")
+
+    # The components and the words.
+    for name, c in got["cases"].items():
+        glance = c["full"].split("At a Glance", 1)[-1].split("</table>", 1)[0]
+        chips = len(re.findall(r'<span class="mchip p-[A-Z]" translate="no">', glance))
+        if chips != c["sponsors"]:
+            bad.append(f"{name} draws {chips} of its {c['sponsors']} sponsors as the person chip")
+        mine = re.sub(r'<span class="ps-addr">.*?</span>|<div class="ps-text">.*?</div>|'
+                      r'<p class="ps-flat">.*?</p>', " ", c["full"], flags=re.S)
+        for m in re.finditer(r"\b(?:19|20)\d\d-[01]\d-[0-3]\d\b|\b\d{1,2}/\d{1,2}/\d{4}\b", _print_text(mine)):
+            bad.append(f"{name} prints a date in figures: {m.group(0)}")
+            break
+        for m in re.finditer(r'<span class="ps-word[^"]*">(.*?)</span>', c["full"]):
+            if not m.group(1).strip():
+                bad.append(f"{name} prints an outcome box with no word in it")
+    if "Motion Passed" not in law["full"]:
+        bad.append("HB 1681's votes do not say what each did in the vote words (WORDBOOK.votes)")
+    rolls = re.findall(r'<ul class="ps-names">(.*?)</ul>', law["full"], re.S)
+    if sum(len(re.findall(r"<li>", r)) for r in rolls) != law["members"]:
+        bad.append(f"HB 1681's roll call prints {sum(len(re.findall('<li>', r)) for r in rolls)} names of "
+                   f"its {law['members']} members")
+    if "ps-roll" in law["nonames"] or "ps-roll" in law["dflt"]:
+        bad.append("the members of a roll call print with the setting off, and it is off by default")
+
+    # The text, and which amendment made which change.
+    for name, b in got["blame"].items():
+        if not (b["now"] and b["was"]):
+            bad.append(f"{name}'s marked text is not its current version less the struck words "
+                       f"({b['now']}) or its introduced version less the inserted ones ({b['was']})")
+    steps = got["blame"]["law"]["steps"]
+    if steps != [["one", "1", "2026-0998h"], ["one", "2", "2026-1709s"], ["one", "3", "2026-2191e"],
+                 ["chaptered", "C", None]]:
+        bad.append(f"HB 1681's versions are joined to its amendments as {steps}")
+    marked = law["full"].split('<div class="ps-text">', 1)[-1]
+    listed = re.findall(r'<li><span class="ps-tagk">([^<]*)</span>', law["full"])
+    tags = set(re.findall(r'<sup class="ps-tag"><span class="ps-vh">amendment </span>([^<]*)</sup>', marked))
+    if listed != ["1", "2", "3", "C"] or not tags or not tags <= set(listed):
+        bad.append(f"HB 1681's list numbers {listed} and its marks carry {sorted(tags)}")
+    runs = re.findall(r'<(ins|del) class="ps-(?:ins|del)">(.*?)</\1>(<sup class="ps-tag")?', marked, re.S)
+    if not runs or any(not s for _, _, s in runs):
+        bad.append("a change in HB 1681's marked text carries no amendment's number")
+    if any(k == "del" and not (t.startswith("[") and t.endswith("]")) for k, t, _ in runs):
+        bad.append("a struck run in the marked text is not in brackets, so it says itself by its line alone")
+    for name, c in got["cases"].items():
+        for k, t, _ in re.findall(r'<(ins|del) class="ps-(?:ins|del)">(.*?)</\1>(<sup)?', c["full"], re.S):
+            if k == "del" and not (t.startswith("[") and t.endswith("]")):
+                bad.append(f"{name} has a struck run out of brackets")
+                break
+    n = got["needs"]["law"]
+    if (n["marked"], n["clean"], n["loaded"]) != (n["versions"], 1, 0) or "Loading the bill" not in n["loading"]:
+        bad.append(f"the files the law's text needs are asked for wrongly: {n}")
+
+    # The QR code.
+    q = got["qr"]
+    differ = [s["text"] for s in q["symbols"] if not s["same"]]
+    if differ or len(q["symbols"]) < 10:
+        bad.append(f"print.js's QR code is not the symbol the second encoder made for {differ}")
+    if not all(s["read"] for s in q["symbols"]) or not all(q["every"]):
+        bad.append("a QR code does not read back to its bill's address")
+    if q["damaged"] != "refused":
+        bad.append(f"a damaged QR code is not refused: {q['damaged']}")
+    if 'fill="currentColor"' not in q["svg"] or 'class="ps-qrbg"' not in q["svg"]:
+        bad.append("the QR code is not drawn in the paper's ink on its ground")
+    if not got["open"]["ok"]:
+        bad.append("GRPrint.open did not mount the sheet: " + got["open"].get("err", ""))
+
+    # Published as it is -- print.js without its comments, as every script
+    # since 23 October 2026 (build_pages.published_js) -- with every script's
+    # freshness.
+    import build_pages as BP
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    for f in ("print.js", "print.css"):
+        src = Path("src/pages", f).read_bytes()
+        want = BP.published_js(f, src.decode("utf-8")).encode("utf-8") if f.endswith(".js") else src
+        if not (site / f).exists() or (site / f).read_bytes() != want:
+            bad.append(f"the fixture build does not publish src/pages/{f} as it is"
+                       + (", without its comments" if f.endswith(".js") else ""))
+        if not re.search(rf"/{re.escape(f)}\s*\n\s*Cache-Control:[^\n]*max-age=0, must-revalidate",
+                         (site / "_headers").read_text(encoding="utf-8") if (site / "_headers").exists() else ""):
+            bad.append(f"_headers does not give /{f} the freshness every script has")
+    assert not bad, f"{len(bad)} findings: " + "; ".join(bad[:10])
+    return "ok", (f"{len(got['cases'])} records composed with every setting: {len(_PRINT_SECTIONS)} "
+                  f"sections in order, each absent with its part of the record and with its setting; "
+                  f"{len(got['blame'])} versioned texts read back to both ends; HB 1681's changes "
+                  f"numbered 1, 2, 3 and C; {len(got['qr']['symbols'])} QR codes the second "
+                  "encoder's, module for module")
+
+
+@check("frontend", "every page in Spanish says once, in the same words, what on it stays in English "
+                   "and why, and no English page does", needs=("chrome", "i18n"))
+def _one_language_note(chrome, i18n):
+    """The laptop manager session, 7 November 2026: a native Spanish speaker
+    who read the Spanish pages for the owner could not tell why some parts
+    were translated and others were not. Four pages said it four ways
+    (home.lang_note, guides.lang_note, guides.hub_lang_note,
+    learn.lang_note), none said why, and Officials and the glossary said
+    nothing. Now chrome.lang_note draws one note, the line and an opener
+    with the four reasons, under the title of every page i18n.PAGES names in
+    Spanish, built on the fixture: each carries it exactly once. Each English
+    twin carries none. The four old keys are gone from the code and the
+    catalog. The "(en inglés)" markers where a list names an English page
+    stay."""
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    note = chrome.lang_note("es")
+    bad = []
+    if chrome.lang_note("en") != "":
+        bad.append("an English page would carry the note")
+    for key in ("lang.why_record", "lang.why_names", "lang.why_links", "lang.why_not_yet"):
+        if i18n.catalog("es")["strings"].get(key, {}).get("es", "\0") not in note:
+            bad.append(f"the note does not give its reason {key} in Spanish")
+    # THE WORDING THE OWNER APPROVED AS DRAFTED (6 November 2026, "fine as is
+    # for now"), word for word in both languages, read as a reader sees it:
+    # a change goes through the catalog on purpose (the Latino caucus's
+    # review may bring one), and then here. lang.why_names was reworded at
+    # the owner's word on 7 November 2026: "y cargos" dropped, since the
+    # Spanish Officials page translates offices, and a committee's Spanish
+    # name carries its English beside it.
+    approved = {
+        "lang.note": ("This page is in Spanish. Some parts stay in English on purpose, and some "
+                      "pages aren't translated yet.",
+                      "Esta página está en español. Algunas partes se quedan en inglés a propósito, "
+                      "y algunas páginas todavía no están traducidas."),
+        "lang.why": ("Why some parts are in English", "Por qué algunas partes están en inglés"),
+        "lang.why_record": (
+            "The official record stays in English. Bill titles and text, the laws, each bill's "
+            "history, votes and committee reports are the General Court's official record, which is "
+            "written in English. Translating legal wording can change what it means, so the site "
+            "shows it as written.",
+            "El registro oficial se queda en inglés. Los títulos y el texto de los proyectos de ley, "
+            "las leyes, el historial de cada proyecto, las votaciones y los informes de los comités "
+            "son el registro oficial de la Legislatura, que está escrito en inglés. Traducir un texto "
+            "legal puede cambiar su significado, así que el sitio lo muestra tal como está escrito."),
+        "lang.why_names": (
+            "Names of people, committees and towns stay as the record prints them; where a "
+            "committee is given a Spanish name, its English name is beside it. Search finds "
+            "subjects by their English words (housing, not vivienda).",
+            "Los nombres de personas, comités y municipios se dejan como los imprime el registro; "
+            "donde un comité aparece con un nombre en español, su nombre en inglés va al lado. La "
+            "búsqueda encuentra los temas por sus palabras en inglés (housing, no vivienda)."),
+        "lang.why_links": ("Official state pages the site links to are in English.",
+                           "Las páginas oficiales del estado a las que enlaza el sitio están en inglés."),
+        # Without "the calendar" since 9 November 2026, when the Calendar was
+        # built in Spanish: a page that says a page is not translated when it is
+        # says what is not so.
+        "lang.why_not_yet": (
+            'Not translated yet: the pages for bills, legislators, committees and the '
+            'laws, and any page marked "in English" where it is listed.',
+            'Todavía sin traducir: las páginas de proyectos de ley, legisladores, comités y las '
+            'leyes, y cualquier página marcada "en inglés" donde aparece en una '
+            'lista.')}
+
+    import html as _h
+
+    def seen(s):
+        s = _h.unescape(re.sub(r"<[^>]+>", "", s or ""))
+        return s.replace("’", "'").replace("“", '"').replace("”", '"')
+    cat = i18n.catalog("es")["strings"]
+    for key, (en, es) in approved.items():
+        e = cat.get(key) or {}
+        if seen(e.get("en")) != en or seen(e.get("es")) != es:
+            bad.append(f"{key} is not the wording the owner approved")
+        if e.get("state") != "draft":
+            bad.append(f"{key} is {e.get('state')!r}, not draft, before the caucus's review")
+    if '<details class="langwhy"><summary>' not in note:
+        bad.append("the reasons are not under an opener")
+    built = 0
+    for page in i18n.PAGES["es"]:
+        es, en = site / i18n.href("es", page).lstrip("/"), site / page
+        if es.is_dir() or es.suffix != ".html":
+            es = es / "index.html" if es.is_dir() or not es.suffix else es
+        if not es.is_file():
+            continue
+        built += 1
+        t = es.read_text(encoding="utf-8")
+        n = t.count(note)
+        if n != 1:
+            bad.append(f"{es.relative_to(site)} carries the note {n} times")
+        if en.is_file() and 'class="langwhy"' in en.read_text(encoding="utf-8"):
+            bad.append(f"{page}, in English, carries the Spanish note")
+    if built < 4:
+        bad.append(f"only {built} Spanish pages built on the fixture to look at")
+    # The markers show only where a listed page is still in English, which on
+    # the fixture none is, so the code that draws them is what is held.
+    if 'class="r-en">(' not in _source("src/pages/build_civics.py"):
+        bad.append("the \"(en inglés)\" markers on a list's English pages are gone")
+    old = ("home.lang_note", "guides.lang_note", "guides.hub_lang_note", "learn.lang_note")
+    code = "".join(p.read_text(encoding="utf-8") for p in Path("src/pages").glob("*.py"))
+    left = [k for k in old if f'"{k}"' in code or k in i18n.catalog("es")["strings"]]
+    if left:
+        bad.append(f"the old notes are still asked for or kept: {left}")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", f"{built} Spanish pages each say it once; no English page does; the four old notes gone"
+
+
+TRREPORT_TEST = r"""
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import { onRequest } from __FN__;
+const require = createRequire(import.meta.url);
+require("./stub.js");
+const LANG = process.argv[2];
+const on = {};
+document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
+document.documentElement.getAttribute = n => (n === "lang" ? LANG : null);
+const footBtn = { hidden: true, focus() {} };
+document.querySelectorAll = s => (s === "[data-trreport]" ? [footBtn] : []);
+const made = [];
+const mk = document.createElement;
+document.createElement = t => {
+  const e = mk(t), kids = {}, attrs = {};
+  e.querySelector = s => (kids[s] ||= mk("div"));
+  e.setAttribute = (k, v) => { attrs[k] = String(v); };
+  e._kids = kids;
+  e._attrs = attrs;
+  made.push(e);
+  return e;
+};
+const para = {}, main = { contains: n => n === para };
+const byId = document.getElementById;
+document.getElementById = id => (id === "main" ? main : byId(id));
+let sel = "";
+globalThis.getSelection = () => ({ isCollapsed: !sel, rangeCount: sel ? 1 : 0,
+  getRangeAt: () => ({ commonAncestorContainer: para }), toString: () => sel });
+globalThis.setTimeout = () => 0;
+Object.assign(location, { pathname: "/es/guides/how-to-vote", hostname: "graniterecord.org",
+  origin: "https://graniterecord.org" });
+let env = {}, posted = 0;
+const page = { fetch: async u => new URL(u).pathname === "/es/guides/how-to-vote"
+  ? new Response('<!DOCTYPE html><html lang="es" data-alt-en="/guides/how-to-vote">')
+  : new Response("", { status: 404 }) };
+globalThis.fetch = async (url, opts = {}) => {
+  if (url !== "/api/report")
+    return { ok: true, status: 200, json: async () => ({ finished: "2026-10-24T08:00:00Z" }) };
+  posted++;
+  return onRequest({ env, request: new Request("https://graniterecord.org/api/report", {
+    method: opts.method, body: opts.body,
+    headers: { ...opts.headers, "Origin": "https://graniterecord.org" } }) });
+};
+try { (0, eval)(readFileSync("./page.js", "utf8")); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const mine = t => (on[t] || []).filter(f => /trreport|trform|trclose|trpill/.test(String(f)));
+const fail = [];
+const tick = () => new Promise(r => setImmediate(r));
+if (LANG === "en") {
+  const any = ["click", "submit", "pointerdown"].some(t => mine(t).length) || (on.selectionchange || []).length;
+  if (any || !footBtn.hidden) fail.push("an English page carries the translation report's behaviour");
+  console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
+  process.exit(fail.length ? 1 : 0);
+}
+if (footBtn.hidden) fail.push("the footer's button stays hidden on a page in Spanish");
+const pill = made.find(e => e.className === "trpill");
+if (!pill) fail.push("no button in the corner for selected words");
+// Words of the page selected, then the footer's button pressed.
+sel = "Vote";
+(on.selectionchange || []).forEach(f => f({}));
+if (pill && pill.hidden) fail.push("the corner button is not shown while words are selected");
+let T = 1000000;
+Date.now = () => T;
+const press = { closest: s => (s === "[data-trreport]" ? footBtn : null) };
+mine("pointerdown").forEach(f => f({ target: press }));
+mine("click").forEach(f => f({ target: press }));
+const box = made.find(e => e.className === "trbox");
+if (!box || box.hidden) fail.push("pressing the button opens no box");
+const html = box ? box.innerHTML : "";
+const W = JSON.parse(readFileSync("./want.json", "utf8"));
+for (const w of W.box) if (!html.includes(w)) fail.push("the box lacks " + JSON.stringify(w));
+if (box && box._kids[".trq"].textContent !== "Vote") fail.push("the box does not show the words selected");
+if (box && (box._attrs.role !== "dialog" || box._attrs["aria-labelledby"] !== "trbox-h"))
+  fail.push("the box is not a dialog named by its heading");
+if (box && box._kids[".trquote"].hidden) fail.push("the words selected are hidden");
+async function send(words, quote) {
+  const st = { textContent: "", innerHTML: "" }, btn = { disabled: false };
+  const form = { elements: { note: { value: words }, quote: { checked: quote }, website: { value: "" } },
+    closest: s => (s === ".trform" ? form : null),
+    querySelector: s => (s === ".trstate" ? st : btn) };
+  T += 9000;
+  mine("submit").forEach(f => f({ target: form, preventDefault() {} }));
+  // Until the send is done: the button is given back when it is.
+  for (let i = 0; i < 2000 && btn.disabled; i++) await tick();
+  await tick();
+  return { st, left: form.elements.note.value };
+}
+const stored = [];
+const good = { DB: { prepare: sql => ({ bind: (...a) => ({ first: async () => 1,
+  run: async () => { if (/INTO reports/.test(sql)) stored.push(a); } }) }) }, ASSETS: page };
+env = good;
+const few = await send("no", true);
+if (few.st.textContent !== W.few || posted) fail.push("a note of two letters was sent: " + few.st.textContent);
+const ok = await send("Debería decir «Votar».", true);
+const row = stored[0] || [];
+const want = ["translation:/es/guides/how-to-vote", "translation", "/es/guides/how-to-vote", "",
+              "translation", "«Vote»\n\nDebería decir «Votar»."];
+if (JSON.stringify(row.slice(1, 7)) !== JSON.stringify(want))
+  fail.push("the report stored is not the page, its language, the kind and the words selected: "
+            + JSON.stringify(row.slice(1, 7)));
+if (row[7] !== "2026-10-24T08:00:00Z") fail.push("the report does not say which build: " + row[7]);
+if (ok.st.textContent !== W.thanks || ok.left !== "") fail.push("a kept report was not thanked and cleared: " + ok.st.textContent);
+const noquote = await send("Otra cosa está mal aquí.", false);
+if (!stored[1] || stored[1][6] !== "Otra cosa está mal aquí.") fail.push("the words selected were sent though unticked");
+env = { ASSETS: page };
+const down = await send("No hay base de datos.", true);
+if (!down.st.innerHTML.includes("mailto:contact@graniterecord.org") || !down.st.innerHTML.includes(W.failed)
+    || down.left === "" || /Gracias/.test(down.st.textContent + down.st.innerHTML))
+  fail.push("a report not kept does not offer the email with the words kept: " + down.st.innerHTML);
+if (!decodeURIComponent(down.st.innerHTML).includes("page: https://graniterecord.org/es/guides/how-to-vote"))
+  fail.push("the email does not name the page");
+(on.keydown || []).forEach(f => f({ key: "Escape", target: {} }));
+if (box && !box.hidden) fail.push("Escape does not close the box");
+console.log("@@" + JSON.stringify({ box: html.slice(0, 300) }));
+console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
+process.exit(fail.length ? 1 : 0);
+"""
+
+
+@check("frontend", "every page in Spanish offers a way to report a mistake in its translation, "
+                   "which sends the page, its language and the words the reader selected",
+       needs=("chrome", "i18n", "compile_reports"))
+def _translation_report(chrome, i18n, CR):
+    """The owner, 24 October 2026: "We should also add a report button for
+    translation inaccuracy." Every page in another language carries, in its
+    footer, a button (chrome.tr_report) that components.js shows and that
+    opens a box posting to /api/report as a record's own box does, as a
+    report of the kind "translation": the page's address, which names its
+    language, the reader's words, and the words they had selected on the
+    page before pressing it, so a proofreader's note says which sentence.
+
+    Run in node: components.js as the page loads it, with the Spanish words
+    file's words, on a page whose <html lang> is "es", posting into
+    report.js's own onRequest. It must show the button; open the box with
+    its words in Spanish and the selected words in it; refuse a note of two
+    letters; store a report whose record, kind, address, field and note are
+    the page's, "translation" and the selected words quoted before the
+    reader's, with the build; leave the selected words out when the reader
+    unticks them; offer the email address with the words kept when nothing
+    is stored; and close on Escape. On a page in English none of it runs.
+    And the compiler, which reads what the Function stores, must take such a
+    report as well formed, show it where the site built that page, and hold
+    it where it did not."""
+    import build_pages as BP
+    es_foot, en_foot = chrome.footer_html("es"), chrome.footer_html("en")
+    assert 'data-trreport hidden' in es_foot and 'data-trreport' not in en_foot, (
+        "the footer's button for a mistake in the translation is missing in Spanish or there in English")
+    strings = i18n.catalog("es")["strings"]
+    assert strings["foot.tr_report"]["es"] in es_foot, "the footer's button is not in Spanish"
+    fn, stub = Path("functions/api/report.js"), Path("tests/dom_stub.js")
+    if not fn.exists():
+        return "skip", "no functions/api/report.js here"
+    node = shutil.which("node")
+    if not node:
+        return "skip", "node is not on PATH"
+    js = _source("src/pages/components.js")
+    words = i18n.words_js("es", BP.with_words(js))
+    want = {"box": [html_escape(strings["trrep.title"]["es"]), 'name="note"', 'name="website"',
+                    'name="quote" checked', 'id="trbox-h"', "mailto:contact@graniterecord.org"],
+            "few": strings["trrep.few"]["es"], "thanks": strings["trrep.thanks"]["es"],
+            "failed": html_escape(strings["trrep.failed"]["es"].split(" (")[0])}
+    results = {}
+    for lang in ("es", "en"):
+        root = Path(tempfile.mkdtemp())
+        try:
+            prog = (words + "\n" if lang == "es" else "") + _with_components("")
+            (root / "page.js").write_text(prog, encoding="utf-8")
+            (root / "stub.js").write_text(_source(stub), encoding="utf-8")
+            (root / "want.json").write_text(json.dumps(want, ensure_ascii=False), encoding="utf-8")
+            (root / "t.mjs").write_text(TRREPORT_TEST.replace("__FN__", json.dumps(fn.resolve().as_uri())),
+                                        encoding="utf-8")
+            r = _run([node, "t.mjs", lang], capture_output=True, text=True, cwd=root, encoding="utf-8")
+            results[lang] = r
+            assert r.returncode == 0 and "ALL OK" in r.stdout, (
+                f"on a page in {lang}: " + (r.stdout + r.stderr).strip()[-600:])
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+    # The compiler: a translation report as the Function stores it.
+    row = {"id": 5, "at": "2026-10-24T12:00:00Z", "record": "translation:/es/guides/how-to-vote",
+           "kind": "translation", "url": "/es/guides/how-to-vote", "tab": "", "field": "translation",
+           "note": "«Vote» debería decir «Votar».", "build": "", "hidden": 0}
+    assert CR.well_formed(row), "the compiler sets aside a translation report as malformed"
+    assert not CR.well_formed(dict(row, field="other")), "the compiler takes a translation of another field"
+    assert not CR.well_formed(dict(row, tab="Votes")), "the compiler takes a translation with a tab"
+    assert not CR.well_formed(dict(row, record="bill:2026/HB1", kind="bill", url="/bill/2026/hb1")), (
+        "the compiler takes a bill's report of the field a translation has")
+    judged, _ = CR.judge([row], {}, {"/es/guides/how-to-vote"})
+    assert judged and not judged[0][1] and judged[0][2] == "/es/guides/how-to-vote", (
+        f"a translation report from a built page is not shown: {judged}")
+    judged, _ = CR.judge([row], {}, set())
+    assert judged and judged[0][1], "a translation report from a page the site did not build is not held"
+    site = Path(tempfile.mkdtemp())
+    try:
+        for rel in ("es/index.html", "es/guides/how-to-vote.html", "es/learn/glossary.html"):
+            (site / rel).parent.mkdir(parents=True, exist_ok=True)
+            (site / rel).write_text("x", encoding="utf-8")
+        got = CR.translated_pages(site)
+    finally:
+        shutil.rmtree(site, ignore_errors=True)
+    assert got == {"/es/", "/es/guides/how-to-vote", "/es/learn/glossary"}, got
+    return "ok", ("the footer's button in Spanish only; in node the box opens in Spanish with the "
+                  "words selected, sends the page, its language and those words, is stored by "
+                  "report.js, offers the email when it is not, and runs on no English page; the "
+                  "compiler shows it from a built page and holds it from any other")
+
+
+def html_escape(s):
+    import html
+    return html.escape(s, quote=False)
+
+
+_LANG_HEAD_RUN = r"""
+const script = require("fs").readFileSync(process.argv[2], "utf8");
+function run(c) {
+  const store = Object.assign({}, c.stored || {}); let to = null; const cls = new Set();
+  const alt = c.alt || {};
+  global.window = {};
+  global.document = {documentElement: {lang: c.lang, classList: {add: x => cls.add(x)},
+                     getAttribute: k => ({"data-alt-es": alt.es, "data-alt-en": alt.en})[k] || null},
+                     addEventListener() {}};
+  global.localStorage = {getItem: k => (k in store ? store[k] : null),
+                         setItem: (k, v) => { store[k] = String(v); }};
+  // node has a navigator of its own, which an assignment does not replace.
+  Object.defineProperty(globalThis, "navigator", {value: {languages: c.browser, language: c.browser[0]},
+                                                  configurable: true, writable: true});
+  global.location = {pathname: c.path || "/", search: "", hash: "", replace: u => { to = u; }};
+  eval(c.offer ? script.replace(/OFFER=\[[^\]]*\]/, 'OFFER=["en","es"]') : script);
+  return {to, langs: cls.has("langs"), seen: store["gr-lang-seen"] || ""};
+}
+const home = {es: "/es/"}, es = {en: "/"};
+const out = {
+  first_es_browser: run({lang: "en", alt: home, browser: ["es-MX", "en"]}),
+  opens_es: run({lang: "es", alt: es, path: "/es/", browser: ["en-US"]}),
+  seen_es_browser: run({lang: "en", alt: home, browser: ["es-MX"], stored: {"gr-lang-seen": "1"}}),
+  seen_chose_es: run({lang: "en", alt: home, browser: ["en-US"], stored: {"gr-lang-seen": "1", "gr-lang": "es"}}),
+  chose_en_on_es: run({lang: "es", alt: es, path: "/es/", browser: ["es-MX"], stored: {"gr-lang": "en"}}),
+  auto_on_es: run({lang: "es", alt: es, path: "/es/", browser: ["en-US"], stored: {"gr-lang-seen": "1"}}),
+  no_twin: run({lang: "en", browser: ["en"], stored: {"gr-lang-seen": "1", "gr-lang": "es"}, path: "/about"}),
+  offered_es_browser: run({lang: "en", alt: home, browser: ["es-US", "en"], offer: 1}),
+  offered_en_browser: run({lang: "en", alt: home, browser: ["en-GB", "es"], offer: 1}),
+  offered_fr_es: run({lang: "en", alt: home, browser: ["fr-FR", "es-ES"], offer: 1}),
+};
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the language a reader wants is found before the first paint: their choice, "
+                   "else their browser's, and only a choice moves a reader off a Spanish page",
+       needs=("chrome",))
+def _language_choice(chrome):
+    """chrome.LANG_HEAD, run in node against a stub of the page for each case
+    the person's request names -- chosen in Settings, or the browser's -- and
+    the rule that keeps an unoffered language to the people trying it. Fails
+    on a redirect that should not happen (an English reader sent to Spanish
+    while it is unlisted; a reader who opened a Spanish link sent away from
+    it by their browser) and on one that should (a choice not honoured, a
+    Spanish browser left on English once Spanish is offered)."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not here"
+    head = chrome.lang_head()
+    body = head[head.index("<script>") + 8:head.rindex("</script>")]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "head.js").write_text(body, encoding="utf-8")
+        (root / "go.js").write_text(_LANG_HEAD_RUN, encoding="utf-8")
+        r = _run([node, "go.js", "head.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "the language script would not run: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    if "es" not in json.loads(re.search(r"OFFER=(\[[^\]]*\])", body).group(1)):
+        want = {"first_es_browser": {"to": None, "langs": False, "seen": ""},
+                "opens_es": {"to": None, "langs": True, "seen": "1"},
+                "seen_es_browser": {"to": "/es/", "langs": True, "seen": "1"},
+                "seen_chose_es": {"to": "/es/", "langs": True, "seen": "1"},
+                "chose_en_on_es": {"to": "/", "langs": True, "seen": "1"}}
+    else:
+        want = {"first_es_browser": {"to": "/es/", "langs": True, "seen": ""}}
+    want.update({"auto_on_es": {"to": None, "langs": True, "seen": "1"},
+                 "no_twin": {"to": None, "langs": True, "seen": "1"},
+                 "offered_es_browser": {"to": "/es/", "langs": True, "seen": ""},
+                 "offered_en_browser": {"to": None, "langs": True, "seen": ""},
+                 "offered_fr_es": {"to": "/es/", "langs": True, "seen": ""}})
+    bad = {k: (got.get(k), v) for k, v in want.items() if got.get(k) != v}
+    assert not bad, "the language script decided: " + "; ".join(
+        f"{k}: {g} where it should be {v}" for k, (g, v) in bad.items())
+    return "ok", (f"{len(want)} cases: a choice honoured both ways, the browser's language moving a "
+                  "reader only off English, nobody moved to an unoffered language they have not opened")
+
+
+@check("frontend", "a Spanish page's dates and times are the Spanish forms, the same from Python "
+                   "and from the browser, and the browser's tr() gives the page's words",
+       needs=("components",))
+def _spanish_dates(components):
+    """components.date_words and date_span, and clock, in Spanish: "19 de
+    febrero de 2026", "28 de septiembre – 4 de octubre de 2026", "1:30 p. m."
+    -- and components.js's dateWords, dateSpan and clock with the page's
+    language set (window.GR_LANG) say the same, form for form, run in node."""
+    C = components
+    cases = {("2026-02-19", "long"): "jueves, 19 de febrero de 2026",
+             ("2026-02-19", "full"): "19 de febrero de 2026",
+             ("2026-02-19", "medium"): "19 feb. 2026",
+             ("2026-02-19", "short"): "19 feb.",
+             ("2026-02-19", "day"): "jueves, 19 de febrero",
+             ("2026-02-19", "wkd"): "jue., 19 feb."}
+    for (d, form), want in cases.items():
+        assert C.date_words(d, form, "es") == want, (d, form, C.date_words(d, form, "es"))
+    spans = [("2026-10-05", "2026-10-11", "full"), ("2026-09-28", "2026-10-04", "full"),
+             ("2026-12-28", "2027-01-03", "full"), ("2026-02-09", "2026-02-13", "medium"),
+             ("2026-09-28", "2026-10-02", "medium"), ("2026-05-21", "2026-05-21", "full")]
+    days = ["2026-02-19", "2024-02-29", "2026-01-01", "2025-12-31", "2026-05-21", "1989-01-04"]
+    times = ["00:05", "09:30", "12:00", "13:30", "23:59", "soon"]
+    py = {"words": [C.date_words(d, f, "es") for d in days for f in C.DATE_FORMS],
+          "spans": [C.date_span(a, b, f, "es") for a, b, f in spans],
+          "clock": [C.clock(t, "es") for t in times]}
+    assert py["spans"][:3] == ["5–11 de octubre de 2026", "28 de septiembre – 4 de octubre de 2026",
+                               "28 de diciembre de 2026 – 3 de enero de 2027"], py["spans"]
+    assert py["clock"][3] == "1:30 p. m.", py["clock"]
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "ok", "Python's Spanish forms hold; node is not here to compare the browser's"
+    # The language is the caller's to pass (a Spanish page passes
+    # window.GR_LANG); and the page's words come through tr(), which reads
+    # window.GR_WORDS and fills {names}, the English where the page has none.
+    prog = ("globalThis.window=globalThis;window.GR_LANG='es';"
+            "window.GR_WORDS={'t.a':'hoy','t.b':'en {n} días'};\n"
+            + _components_js() + "\n"
+            + f"const days={json.dumps(days)},forms={json.dumps(list(C.DATE_FORMS))},"
+            + f"spans={json.dumps(spans)},times={json.dumps(times)};\n"
+            + "process.stdout.write(JSON.stringify({words:days.flatMap(d=>forms.map(f=>dateWords(d,f,'es'))),"
+            + "spans:spans.map(s=>dateSpan(s[0],s[1],s[2],'es')),clock:times.map(t=>clock(t,'es')),"
+            + "tr:[tr('t.a','today'),tr('t.b','in {n} days',{n:3}),tr('t.c','in {n} days',{n:2}),"
+            + "tr('t.b','in {n} days',{m:1})]}));")
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, "components.js would not run: " + (r.stderr or "")[-300:]
+    js = json.loads(r.stdout)
+    assert js.pop("tr") == ["hoy", "en 3 días", "in 2 days", "en {n} días"], (
+        "components.js's tr() does not give the page's words, the English where it has none, "
+        "and {names} filled where given")
+    bad = [f"{k}[{i}]: Python {a!r}, browser {b!r}" for k in py
+           for i, (a, b) in enumerate(zip(py[k], js[k])) if a != b]
+    assert not bad, "Spanish dates differ: " + "; ".join(bad[:6])
+    return "ok", (f"{len(py['words'])} dates, {len(spans)} spans and {len(times)} times, "
+                  "the same in Python and in the browser")
+
+
+@check("frontend", "the home page's Coming up keeps the whole week in a box that scrolls")
+def _coming_up_scrolls():
+    """A week in session is forty sittings, and Coming up drew all of them.
+
+    The week of 26 January 2026 held 43, and in full they ran the left rail to
+    about four times the height of the middle column, and put forty cards
+    between a phone's finder and its floor sessions. Asked on 24 September to
+    keep the whole week, cap the length, and let the reader scroll through the
+    rest. The check above holds every sitting of the week to the rail, so the
+    cap cannot come back as a cut in the markup; this holds the other half.
+
+    Every card sits inside one box, with the heading above it and the line to
+    next week below it, where they stay in view. The box is a stop on the
+    keyboard with a role and a name, because a box that scrolls and cannot be
+    focused cannot be scrolled without a pointer. And app.css gives it a
+    height and a scrollbar at every width, not only inside the three-column
+    block; keeps each day's date in view; fades the bottom edge while more
+    follows; pads the edges a card is scrolled to when the keyboard reaches
+    it, since a card brought to the nearest edge came to rest flush under the
+    date or the fade (Chrome, scrollIntoView to the nearest edge: 0px from
+    either, and 40 and 32 with the padding); and sets nothing -- no
+    overscroll-behavior, no snapping -- that takes the scroll from the reader.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    from html.parser import HTMLParser
+    import build_pages as BP
+
+    monday = _dt.date(2026, 1, 26)
+    rows = [{"term": "2025-2026", "bill": f"HB{1100 + 10 * d + c}", "body": "H",
+             "kind": "public hearing", "date": (monday + _dt.timedelta(days=d)).isoformat(),
+             "time": f"{9 + c // 3:02d}:00", "committee": f"Committee {c + 1}",
+             "venue": "LOB 302"}
+            for d in range(5) for c in range(9)]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-comingup-box-"))
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            page = BP.calendar_html(tmp, today=monday, rows=rows)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    class Walk(HTMLParser):
+        """Where each part of the rail sits: inside the box or outside it."""
+        VOID = {"br", "hr", "img", "input", "link", "meta", "wbr"}
+
+        def __init__(self):
+            super().__init__()
+            self.stack, self.boxes = [], []
+            self.inside, self.outside = Counter(), Counter()
+
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            cls = set((a.get("class") or "").split())
+            within = any("calscroll" in c for _t, c in self.stack)
+            if "calscroll" in cls:
+                self.boxes.append(a)
+            for part in ("calday", "calmeet", "calall", "note"):
+                if part in cls:
+                    (self.inside if within else self.outside)[part] += 1
+            if tag not in self.VOID:
+                self.stack.append((tag, cls))
+
+        def handle_endtag(self, tag):
+            while self.stack and self.stack.pop()[0] != tag:
+                pass
+
+    w = Walk()
+    w.feed(page)
+    assert len(w.boxes) == 1, (
+        f"Coming up has {len(w.boxes)} scrolling boxes, not one: " + page[:200])
+    box = w.boxes[0]
+    assert box.get("tabindex") == "0" and box.get("role") == "region" \
+        and (box.get("aria-label") or "").strip(), (
+            "the Coming up box is not a named region on the keyboard: it carries "
+            f"{box}; it needs tabindex=\"0\", role=\"region\" and an aria-label")
+    assert (w.inside["calmeet"], w.outside["calmeet"]) == (45, 0) \
+        and (w.inside["calday"], w.outside["calday"]) == (5, 0), (
+            f"of a week of 45 sittings on 5 days, the box holds {w.inside['calmeet']} "
+            f"cards on {w.inside['calday']} days and {w.outside['calmeet']} cards sit "
+            "outside it: the whole week belongs inside the box")
+    # The note on hearings is off the home page (the person, 22 October 2026).
+    assert w.outside["calall"] == 1 and w.inside["calall"] == 0 \
+        and not w.outside["note"] and not w.inside["note"], (
+            "the line to next week belongs under the box, in view, not scrolled away "
+            "inside it, and the home page carries no note on hearings")
+    assert page.index("<h2>Coming Up</h2>") < page.index('class="calscroll"'), (
+        "the Coming up heading is not above the box")
+
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
+    m = re.search(r":where\(body\.pg\) \.calscroll\{([^}]*)\}", css)
+    assert m, "app.css has no :where(body.pg) .calscroll rule"
+    depth = css[:m.start()].count("{") - css[:m.start()].count("}")
+    assert depth == 0, (
+        "the .calscroll rule sits inside an @media or @supports block, so the "
+        "box stops scrolling at some width; the cap is for desktop and phone alike")
+    assert "max-height" in m.group(1) and "overflow-y:auto" in m.group(1), (
+        f"the Coming up box has no height or no scrollbar: {m.group(1)}")
+    rules = re.findall(r"([^{}]*\.calscroll[^{}]*)\{([^}]*)\}", css)
+    for sel, body in rules:
+        assert "overscroll-behavior" not in body and "scroll-snap" not in body, (
+            f"{sel.strip()} takes the scroll from the reader: {body}")
+    assert any(sel.strip().endswith(".calscroll") and "scroll-padding:" in body
+               for sel, body in rules), (
+        "the Coming up box has no scroll-padding, so a card reached by Tab comes "
+        "to rest under the day's date or under the fade")
+    head = re.search(r"\.calscroll \.caldate\{([^}]*)\}", css)
+    assert head and "position:sticky" in head.group(1) and "top:0" in head.group(1), (
+        "a day's date no longer stays at the top of the box while its cards "
+        "scroll, so partway down a busy day the cards belong to no day in sight")
+    fade = re.search(r"\.calscroll::after\{([^}]*)\}", css)
+    assert fade and all(k in fade.group(1) for k in
+                        ("position:sticky", "bottom:0", "pointer-events:none")), (
+        "the Coming up box has lost the sticky fade at its foot that says more "
+        "follows (or it catches the pointer and a card under it cannot be opened)")
+    # The panel's ground is the one Latest Activity has, and the dates and the
+    # fade are drawn in it: in the page's own colour (--paper) they showed as a
+    # grey band behind each date and a haze under the last card (the owner,
+    # 14 November 2026). Nothing is drawn behind the rows that Latest Activity
+    # does not draw, and the section adds no bottom margin of its own.
+    ground = re.search(r"\.hv-sections #upcoming,[^{}]*\.hrecent\{[^}]*?background:([^;}]+)", css)
+    assert ground, "app.css has no shared ground for the .hv-sections panels"
+    ground = ground.group(1).strip()
+    painted = {}
+    for sel, body in re.findall(r"([^{}]*)\{([^}]*)\}", css):
+        bg = re.search(r"(?:^|;)background:([^;]+)", body)
+        if not bg:
+            continue
+        for one in sel.split(","):
+            one = re.sub(r"^:where\(body\.pg\)\s*", "", one.strip())
+            if one in ("#upcoming .calscroll .caldate", "#upcoming .calscroll::after"):
+                painted[one] = bg.group(1).strip()
+    assert painted == {"#upcoming .calscroll .caldate": ground,
+                       "#upcoming .calscroll::after": ground}, (
+        f"Coming Up draws something behind its rows that Latest Activity does not: "
+        f"the panel's ground is {ground} and its dates and fade are {painted}")
+    assert re.search(r":where\(body\.pg\) #upcoming > \.cal\{margin-bottom:0\}", css), (
+        "Coming Up's section adds a bottom margin under the panel's own padding, "
+        "which Latest Activity does not")
+    return "ok", ("45 sittings, all inside one named, focusable box, with the "
+                  "heading above and next week below; capped at every width, "
+                  "dates kept in view, a fade while more follows, padded for the keyboard; "
+                  "dates and fade drawn in the panel's own ground, no extra margin")
+
+
+@check("frontend", "once the webinar is over, its box on the home page is the recording, played only "
+       "when Play is pressed", needs=("build_pages",))
+def _webinar_recording(BP):
+    """The owner, 11 November 2026: "Add the link to the webinar youtube video
+    as an embedded player on the homepage". Before WEBINAR_UNTIL the box
+    registers; from it, the recording, by the session recordings' Play: a
+    button with the video's id, nothing from YouTube until it is pressed, and
+    HOME_JS's handler answering it there too. In Spanish it says English."""
+    before = BP.home_webinar(today="2026-11-10")
+    after = BP.home_webinar(today=BP.WEBINAR_UNTIL)
+    es = BP.home_webinar(today=BP.WEBINAR_UNTIL, lang="es")
+    assert "zoom.us" in before and "wbrec" not in before, "the registration is gone before the day"
+    assert "wbrec" in after and f'data-embed="{BP.WEBINAR_VIDEO}"' in after and "zoom.us" not in after, (
+        "from the day after the webinar the box is not its recording")
+    assert "youtube" not in after.lower() and "<iframe" not in after, (
+        "the recording asks YouTube for something before Play is pressed")
+    assert "wbrec [data-embed]" in BP.HOME_JS, "HOME_JS does not open the recording's Play"
+    assert "(en inglés)" in es, "the Spanish home page does not say the recording is in English"
+    return "ok", ("registration until 11 November, then the recording under the search, played "
+                  "only on Play, in English and Spanish")
+
+
+@check("frontend", "the webinar stands under the home page's search, in both languages and at every width",
+       needs=("build_pages",))
+def _webinar_under_search(BP):
+    """The owner, 24 October 2026: "Could you move the webinar below the
+    search bar?" On the page as written -- which is the order on a desktop,
+    and the order a screen reader hears -- the box follows the search and its
+    line of help and comes before the cards, in English and in Spanish; below
+    1180px, where each block is placed by its own order (app.css), it takes
+    the search's, and so stands after it. Drawn on a day it is still shown
+    (GRANITE_BUILD_DATE, 24 October 2026)."""
+    was = os.environ.get("GRANITE_BUILD_DATE")
+    os.environ["GRANITE_BUILD_DATE"] = "2026-10-24"
+    try:
+        pages = {lang: BP.home_body(lang, False, "", "", "", "") for lang in ("en", "es")}
+    finally:
+        if was is None:
+            os.environ.pop("GRANITE_BUILD_DATE", None)
+        else:
+            os.environ["GRANITE_BUILD_DATE"] = was
+    bad = []
+    for lang, body in pages.items():
+        at = [body.find(x) for x in ('class="searchbig"', 'id="hqhint"', '<aside class="webinar"',
+                                     '<div class="entry">')]
+        if -1 in at or at != sorted(at):
+            bad.append(f"{lang}: the search, its help, the webinar and the cards stand at {at}")
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
+    orders = {}
+    for sel in ("searchbig", "hqhint", "webinar"):
+        m = re.search(r"\.hcols \." + sel + r"\b[^{]*\{order:(\d+)\}", css)
+        orders[sel] = int(m.group(1)) if m else None
+    if None in orders.values() or orders["webinar"] < orders["searchbig"] or orders["webinar"] < orders["hqhint"]:
+        bad.append(f"below 1180px the webinar is ordered before the search: {orders}")
+    assert not bad, "; ".join(bad)
+    return "ok", f"under the search and its help, before the cards, in English and Spanish; orders {orders}"
+
+
+@check("frontend", "a committee's Upcoming session says what a reader may do at a hearing, in the person's words, and the home page's Coming up no longer does")
+def _hearing_note_wording():
+    """"Anyone may attend a public hearing and ask to speak. You can also sign
+    in online to register a position and submit written testimony." -- the
+    person's wording, exactly (7 October 2026, F2), for the note that said
+    anyone may attend and speak, or sign in for or against without speaking.
+    Two renderers print it, build_pages for the home page's Coming up and
+    app.js's calendarBlock for a committee's Upcoming session, so both are
+    drawn here and both must carry the two sentences and not the old one.
+
+    THE SENATE'S FORM TAKES NO TESTIMONY (23 October 2026): its online
+    sign-in registers a position, and the page confirming it says how to send
+    written testimony (the Senate's guidance, guides.TESTIMONY's record). A
+    Senate committee's note, and a Senate hearing's item in the feed, say
+    so; neither the bill page's Testify pane nor the emails (workers/follow/
+    mail.js testifyWords) has said it since the person's shorter wording of
+    26 October 2026, which both share; and the feed takes the note from
+    build_pages rather than typing it."""
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_pages as BP
+    want = ("Anyone may attend a public hearing and ask to speak. You can also sign in "
+            "online to register a position and submit written testimony.")
+    senate = ("Anyone may attend a public hearing and ask to speak. You can also sign in "
+              "online to register a position. The page that confirms your sign-in says how to "
+              "send written testimony.")
+    assert BP.HEARING_NOTE == want, f"build_pages.HEARING_NOTE reads {BP.HEARING_NOTE!r}"
+    assert BP.HEARING_NOTE_SENATE == senate, f"build_pages.HEARING_NOTE_SENATE reads {BP.HEARING_NOTE_SENATE!r}"
+    assert [BP.hearing_note(b) for b in ("H", "S", "s ", None, "")] == [want, senate, senate, want, want], \
+        "build_pages.hearing_note does not give the Senate's note for the Senate alone"
+
+    def said(html):
+        notes = re.findall(r'<p class="note">(.*?)</p>', html, re.S)
+        return [" ".join(n.split()) for n in notes]
+    today = _dt.date(2026, 9, 21)
+    rows = [{"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "public hearing",
+             "date": "2026-09-22", "time": "10:00", "committee": "Judiciary", "venue": "LOB 206"}]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-hearnote-"))
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            home = said(BP.calendar_html(tmp, today=today, rows=rows))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    # OFF THE HOME PAGE (the person, 22 October 2026): Coming up carries no
+    # note; a committee's Upcoming session and the hearings feed keep it.
+    assert not home, f"Coming up still carries a note: {home}"
+    up = [{"date": "2026-09-22", "time": "10:00", "bill": "HB1", "term": "2025-2026",
+           "committee": "Judiciary", "what": "public hearing", "venue": "LOB 206"}]
+    sen = [dict(u, body="S", committee="Judiciary and Public Safety") for u in up]
+    got = _app_js('[scope.calendarBlock(' + json.dumps(up) + ', "Upcoming session"), '
+                  'scope.calendarBlock(' + json.dumps(sen) + ', "Upcoming session")]',
+                  names=("calendarBlock",))
+    drew = "node is not here to run app.js"
+    if got is not None:
+        cmte, scmte = said(got[0]), said(got[1])
+        assert any(n.startswith(want) for n in cmte), (
+            f"a committee's Upcoming session note reads {cmte}")
+        assert any(n.startswith(senate) for n in scmte), (
+            f"a Senate committee's Upcoming session note reads {scmte}")
+        assert not any("for or against" in n for n in cmte + scmte), "app.js keeps the old sentence"
+        drew = "and app.js's calendarBlock prints it too, the Senate's for a Senate committee"
+    assert not any("for or against" in n for n in home), "Coming up keeps the old sentence"
+    # The upcoming-hearings feed takes the note from build_pages, by the
+    # hearing's chamber, and types neither.
+    feeds = _source(_paths.locate("build_feeds.py"))
+    flat = " ".join(re.sub(r'"\s*\n\s*"', "", feeds).split())
+    assert 'BP.hearing_note(u.get("body"))' in flat, \
+        "the upcoming-hearings feed does not take its note from build_pages.hearing_note"
+    assert "ask to speak" not in flat, "the upcoming-hearings feed types the note out again"
+    assert "sign in for or against" not in flat, "the upcoming-hearings feed keeps the old sentence"
+    return "ok", (f"the hearings feed takes it from build_pages by chamber and Coming up no longer "
+                  f"says it, {drew}")
+
+
+# What a box one line high needs to be 24px tall, and an inline link whose
+# box is its letters: app.css's --tap-line and --tap-text, spaces aside.
+_TAP = {"--tap-line": "max(0px,(24px-1lh)/2)", "--tap-text": "max(0px,(24px-1em)/2)"}
+
+
+@check("frontend", "a link a finger taps is 24px tall at the least: a card's number and its committee, a "
+       "Laws chapter's RSA link, a player bar's link and a member named in a sentence take app.css's "
+       "--tap-line or --tap-text, and one that is a line of its own adds no height", needs=("components",
+                                                                                "build_session_pages"))
+def _tap_targets_24(C, BSP):
+    """The accessibility sweep of the R1 preview (29 October 2026; WCAG
+    2.5.8, target size): at 390 a card's number (a.cnum) was 20px tall, the
+    committee in its byline (.cmeta > a) 22px, a Laws chapter's "RSA 3-A ›"
+    (a.lw-go) 22px and a member named in a sentence (a.psent) 19px; a session
+    day's "On YouTube" in its player bar (.pbar > a), measured beside them,
+    22px. Each keeps the size of its words: what grows is the box a tap
+    lands in, by padding above and below, and a box with a line of its own
+    gives it back in margin, so nothing beside it moves.
+
+    The arithmetic is app.css's two tokens. --tap-line,
+    max(0px, (24px - 1lh) / 2), makes a one-line box 1lh + 2 x that, which
+    is 24px or more whatever the line's height; --tap-text,
+    max(0px, (24px - 1em) / 2), makes an inline link, whose box is its
+    letters (1em and a little more), 24px or more whatever its size. So the
+    check holds the tokens to those formulas, and each kind of link, where
+    the pages write it, to them: the fixture's Laws page and session days,
+    and a card as components.bill_card draws it (as components.js draws it
+    in the browser), in bills.html's #results, where app.js lists them.
+    The cascade (_css_won, every screen rule, padding and margin spread to
+    their sides) must give each kind's top and bottom padding the token, and
+    a line's box the token back as negative margin. A kind taken out of the
+    rule, or a later rule that sets its padding, fails here.
+
+    A LINK THAT IS A LINE OF ITS OWN ADDS NO HEIGHT (the review of 29
+    October 2026). A speaker in a printed debate is an a.psent, and .sdsp a
+    makes it a block: --tap-text grew each linked speaker by 8px and moved
+    every speech after it, and the speakers with no link kept the old gap.
+    So a link of these kinds that the cascade makes a block -- a debate's
+    speaker, drawn by build_session_pages._debate_html in a session day's
+    <main> -- is held to --tap-line, and to the margins it would have had
+    without the tap rules, each less the token: the box is a line's, 24px
+    at the least, and nothing beside it moves."""
+    css = _source("src/pages/app.css")
+    rules = _css_screen_rules(css)
+    # What each side's margin would be without the tap rules, which a line's
+    # box gives its padding back from.
+    untapped = [r for r in rules if not any("--tap-" in str(v) for v, _i in r[3].values())]
+    tokens = {k: v for _o, _c, sel, d, _l in rules if sel.strip() == ":root"
+              for k, (v, _i) in d.items() if k in _TAP}
+    bad = [f"{k} is {tokens.get(k)!r}, not {want}" for k, want in _TAP.items()
+           if "".join(str(tokens.get(k)).split()) != want]
+    assert not bad, ("app.css's tap tokens are not the arithmetic that makes a box 24px: "
+                     + "; ".join(bad))
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    kinds = {"a Laws chapter's RSA link (a.lw-go)": ("line", lambda c: "lw-go" in c[0]["classes"]),
+             "a card's number (a.cnum)": ("line", lambda c: c[0]["tag"] == "a" and "cnum" in c[0]["classes"]),
+             "a card's committee (.cmeta > a)": ("line", lambda c: c[0]["tag"] == "a" and len(c) > 1
+                                                  and "cmeta" in (c[1] or {"classes": ()})["classes"]),
+             "a player bar's link (.pbar > a)": ("line", lambda c: c[0]["tag"] == "a" and len(c) > 1
+                                                 and "pbar" in (c[1] or {"classes": ()})["classes"]),
+             "a member named in a sentence (a.psent)": ("text", lambda c: c[0]["tag"] == "a"
+                                                        and "psent" in c[0]["classes"])}
+    found = {k: {} for k in kinds}
+
+    def take(chain, where):
+        for k, (_how, test) in kinds.items():
+            if test(chain):
+                sig = tuple((e["tag"], tuple(sorted(e["classes"]))) if e else None for e in chain)
+                found[k].setdefault(sig, (where, chain))
+    for f in [site / "laws.html"] + sorted((site / "session").rglob("*.html"))[:6]:
+        if f.exists():
+            _html_walk(f.read_text(encoding="utf-8"), element=lambda c, w=f.name: take(c, w))
+    # A card as the pages draw it, in whatever holds it.
+    card = C.bill_card({"id": "HB1", "n": "HB 1", "year": "2026", "href": "bill/2026/hb1.html",
+                        "title": "relative to the state budget", "word": "Passed", "cls": "s-law",
+                        "byline": C.bill_byline({"display_full": "Rep. Alice Wade (D - Straf 15)",
+                                                 "party_code": "D", "slug": "alice-wade"},
+                                                ["House Judiciary"], "Courts", "2025-2026",
+                                                {"House Judiciary": "H37"})})
+    # bills.html's list, where app.js draws its cards: the ancestors a card
+    # is drawn in, out to the root.
+    held_in = []
+    _html_walk(_source("src/pages/bills.html"),
+               element=lambda c: held_in.append(c) if "results" in c[0]["ids"] else None)
+    assert held_in, "bills.html has no #results for its cards"
+    _html_walk(card, element=lambda c: take(c + held_in[0], "a card in bills.html's #results"))
+    # A printed debate, its first speaker a member with a page (a.psent) and
+    # the chair without one, in a session day's <main>.
+    class Speakers:
+        by_slug = {"alice-wade": {"party": "D"}}
+
+        def slug(self, body, name):
+            return "alice-wade" if name == "Wade" else ""
+
+        def label(self, slug, body):
+            return "Rep. Alice Wade (D - Straf 15)"
+    debate = BSP._debate_html({"bill": "HB1", "speeches": [
+        ("Rep. Wade", "I rise in support of the committee report."),
+        ("Speaker Packard", "The question is on the committee report.")]}, "H", Speakers(),
+        __import__("html").escape)
+    day = sorted((site / "session" / "H").glob("*.html"))
+    in_day = []
+    if day:
+        _html_walk(day[0].read_text(encoding="utf-8"),
+                   element=lambda c: in_day.append(c) if c[0]["tag"] == "main" else None)
+    assert in_day and 'class="psent"' in debate, (
+        f"no session day's <main> to draw a debate in ({len(day)} days), or _debate_html wrote no linked "
+        f"speaker: {debate[:300]}")
+    _html_walk(debate, element=lambda c: take(c + in_day[0], "a printed debate on a session day"))
+    missing = [k for k, v in found.items() if not v]
+    assert not missing, f"the fixture's build and bill_card no longer write {missing}"
+    held, blocks = [], 0
+    for k, (how, _test) in kinds.items():
+        for where, chain in found[k].values():
+            won = _css_won(rules, chain)
+            # A box the cascade puts on a line of its own is a line's box.
+            alone = won.get("display", ("inline",))[0].strip() in ("block", "flex", "grid", "list-item",
+                                                                   "table")
+            tok = f"var(--tap-{'line' if alone else how})"
+            blocks += alone and how == "text"
+            pad = {s_: won.get(f"padding-{s_}", ("0",))[0] for s_ in ("top", "bottom")}
+            mar = {s_: won.get(f"margin-{s_}", ("0",))[0] for s_ in ("top", "bottom")}
+            had = _css_won(untapped, chain)
+            back = {s_: (f"calc(-1*{tok})" if "".join(had.get(f"margin-{s_}", ("0",))[0].split()) in ("0", "0px")
+                         else f"calc({''.join(had[f'margin-{s_}'][0].split())}-{tok})")
+                    for s_ in ("top", "bottom")}
+            if any("".join(v.split()) != tok for v in pad.values()):
+                bad.append(f"{k} on {where}: padding {pad['top']} / {pad['bottom']}, not {tok} "
+                           f"(from {won.get('padding-top', ('', 'no rule', 0))[1]})"
+                           + (", and it is a line of its own" if alone and how == "text" else ""))
+            elif (how == "line" or alone) and any("".join(mar[s_].split()) != back[s_] for s_ in mar):
+                bad.append(f"{k} on {where}: its padding is not given back from its margins ({mar}, where "
+                           f"{back} would), so what is under it moves")
+        held.append(f"{k} var(--tap-{how}) ({len(found[k])})")
+    assert blocks, "no debate's speaker was read as the line of its own .sdsp a makes it"
+    assert not bad, ("a link a finger taps is under 24px tall, or moves what is beside it (WCAG 2.5.8): "
+                     + "; ".join(bad[:5]))
+    return "ok", ("each takes the tap token: " + ", ".join(held)
+                  + f"; {blocks} on a line of its own (a debate's speaker) --tap-line, given back")
+
+
+@check("frontend", "a term's years are written \"2025–2026\" wherever a reader sees them: the built pages' "
+       "words and names, and the term menus and sentences app.js draws; an address or a file name keeps its hyphen",
+       needs=("components",))
+def _terms_with_a_dash(C):
+    """The cohesion audit of 30 October 2026 (I-2): about half the site wrote
+    "2025-2026" with a hyphen, sometimes on the same screen as "2025–2026".
+    components.term_words and components.js's termWords write a term of two
+    years with an en dash, and nothing else; every builder and app.js ask
+    them for what a reader sees. Held here: the helper's answers; app.js's
+    term menu and the sentences that name a term asking for it; and every
+    page the fixture builds, its text and its spoken names, where a term
+    with a hyphen may stand only inside an address or a file's name."""
+    import html as _h
+    bad = []
+    if (C.term_words("2025-2026"), C.term_words("2027-requests"), C.term_words(None)) != ("2025–2026", "2027-requests", ""):
+        bad.append("components.term_words does not write a term with a dash, and leave the rest")
+    app = _source("src/pages/app.js")
+    for need in ('${termDash(t)} Term</option>', ':`in the ${termDash(term)} term`',
+                 # A member's picker names the requests' term by its label
+                 # and every other term by termDash (_member_requests).
+                 '${esc(termLabel(x))}</option>', '`${reqYear()} Bill Requests`):termDash(t)',
+                 'function termDash(t){ return termWords(t||""); }'):
+        if need not in app:
+            bad.append(f"app.js no longer writes {need!r}")
+    site = _fixture_site_shared()[0] / "site"
+    term = re.compile(r"(?<![\w/.\-])(?:19|20)\d\d-(?:19|20)\d\d(?![\w/.\-])")
+    pages = 0
+    for f in sorted(site.rglob("*.html")):
+        t = f.read_text(encoding="utf-8", errors="replace")
+        t = re.sub(r"<(script|style|code|pre)\b.*?</\1>|<!--.*?-->", " ", t, flags=re.S)
+        # <wbr> is no character: a citation's address offers a break after
+        # each slash with one (shell.cite_url), and read as a space it would
+        # be a term's years standing alone in the words
+        t = _cite_plain(t)
+        said = _h.unescape(re.sub(r"<[^>]+>", " ", re.sub(r'\s(?:aria-label|title)="([^"]*)"', r"> \1 <", t)))
+        pages += 1
+        for m in term.finditer(said):
+            bad.append(f"{f.relative_to(site)}: {' '.join(said[max(0, m.start() - 40):m.end() + 10].split())!r}")
+    if pages < 50:
+        bad.append(f"only {pages} pages in the fixture's site; the pages are not being read")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", f"{pages} built pages write every term with a dash; app.js's menus and sentences ask termWords"
+
+
+@check("frontend", "one word for one thing: a bill that ended so is \"Died\", a player's button says "
+       "\"Play the recording\", and a recording with no marked moment says the exact moment was not found",
+       needs=("build_pages",))
+def _one_word_per_meaning(BP):
+    """The cohesion audit of 30 October 2026 (I-11): a bill that ended was
+    "Died" on the Bills chip and "Killed:" on a committee meeting's card; the
+    play button said "Play" on the home page and "Play the recording" on
+    every committee, study committee and session page; and a recording with
+    no marked moment was "(exact moment not found)" on a bill (the owner's
+    words of 25 October 2026) and "no moment in this recording has been
+    identified yet", lower case and unstopped, on a committee's meeting. One
+    word each now. The bill's own segment buttons ("Play hearing on this
+    bill -- 1:14:38-1:20:02") say which part they play and keep their words."""
+    app = _source("src/pages/app.js")
+    bad = []
+    if "<b>Killed:</b>" in app or "<b>Died:</b>" not in app:
+        bad.append("a committee meeting's card names a bill that ended \"Killed\"")
+    if re.search(r"(?i)no moment in this recording has been identified", app) \
+            or app.count("Exact moments not found.") != 2:
+        bad.append("a recording with no marked moment is not said as a bill's player says it")
+    home = BP.recent_sessions({"latest_sessions": [{"date": "2026-08-19", "video_id": "vH", "chamber": "House"}]},
+                              "en", {("H", "2026-08-19")})
+    if "<span>Play the recording</span>" not in home:
+        bad.append(f"the home page's player says {re.findall(r'<span>(Play[^<]*)</span>', home)}")
+    bare = [m.group(0) for f in ("src/pages/app.js", "src/pages/build_pages.py", "src/pages/build_full_sessions.py",
+                                 "src/pages/build_session_pages.py", "src/pages/build_study_committees.py")
+            for m in re.finditer(r"<span>Play</span>", _source(f))]
+    if bare:
+        bad.append(f"a player's button says only \"Play\": {bare[:2]}")
+    assert not bad, "; ".join(bad)
+    return "ok", "\"Died\", \"Play the recording\" and \"Exact moments not found.\", one word each"
+
+
+@check("frontend", "an interim study report is coloured by one rule in all four places it is shown: the "
+       "Reports tab's chip, the docket line's mark, a committee meeting's card and the sitting pages' chip",
+       needs=("build_pages",))
+def _interim_report_one_colour(BP):
+    """The person, 30 October 2026: recommending future legislation green,
+    not recommending it red, no recommendation plain, wherever the report
+    is shown. Each place is read as it draws: recColour (app.js) for the
+    Reports tab; journeyList in node, whose line carries jrec-<what it said>
+    from build_site_v2's line, and app.css's colour for each; actSaid in
+    node for a committee's meeting card, and app.css's .mrec, .mkill and
+    .mwithout; and build_pages.STUDY_KIND for a sitting's page. Each must
+    come to the same token: --st-law, --st-done, or none."""
+    css = _source("src/pages/app.css")
+    colour, order = {}, {}
+    for n, (at, sel, body, _l) in enumerate(_css_rules(css)):
+        if at:
+            continue
+        d = dict(_css_decls(body))
+        for part in (x.strip() for x in re.split(r",(?![^()]*\))", sel)):
+            if "color" in d:
+                colour[part] = d["color"]
+                order[part] = n
+    # A rule that is not there, or orange, is neither colour nor plain (the
+    # review of 30 October 2026): only the ink a rule names as plain is plain.
+    tok = lambda c: ("missing" if c is None else {"var(--st-law)": "law", "var(--st-done)": "done",
+                                                  "var(--st-study)": "study"}.get(c, ""))
+    # "" is a report whose row states none of the three ("Interim Study
+    # Report filed"; committee_acts.study_said): plain, as "without" is (the
+    # person, 30 October 2026).
+    want = {"rec": "law", "not": "done", "without": "", "": ""}
+    words = {"rec": "RECOMMENDED FOR FUTURE LEGISLATION", "not": "NOT RECOMMENDED FOR FUTURE LEGISLATION",
+             "without": "WITHOUT RECOMMENDATION", "": "Interim Study Report filed"}
+    n = len(words)
+    bad = []
+    got = _app_js(
+        "[" + ",".join(f"scope.recColour({json.dumps(w)})" for w in words.values()) + ","
+        + ",".join("scope.actSaid({act: 'study report', said: '%s'}, 'The committee', '')" % k for k in words)
+        + ",scope.journeyList({id: 'HB1'}, {journey: {steps: ["
+        + ",".join("{mark: '%s', rec: '%s', body: 'H', text: 'Interim study report', date: '2026-10-01'}"
+                   % ("f" if k == "rec" else "s", k) for k in words) + "]}})]",
+        names=("recColour", "actSaid", "journeyList"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    chips, cards, journey = got[:n], got[n:2 * n], got[2 * n]
+    lines = re.findall(r'<li class="([^"]*)"', journey)
+    for i, k in enumerate(words):
+        places = {"the Reports tab's chip": {"s-law": "law", "s-done": "done", "": ""}.get(chips[i], chips[i]),
+                  "a sitting's chip (STUDY_KIND)": BP.STUDY_KIND.get(k, "?")}
+        cls = re.search(r'class="mact ([^"]*)"', cards[i])
+        cls = cls.group(1).split() if cls else []
+        if "mwithout" in cls:
+            card = "" if colour.get(".mwithout .mmark") == "inherit" else "coloured"
+        elif "mrec" in cls:
+            card = tok(colour.get(".mrec .mmark"))
+        elif "mkill" in cls:
+            card = tok(colour.get(".mkill .mmark"))
+        else:
+            card = "?"
+        places["a committee meeting's card"] = card
+        jl = lines[i].split() if i < len(lines) else []
+        kk = k or "without"     # the line of a report that states none takes the "without" class
+        places["the docket line's mark"] = (tok(colour.get(f".jl .jrec-{kk} .jg")) if f"jrec-{kk}" in jl
+                                            else "no jrec class")
+        for where, saw in places.items():
+            if saw != want[k]:
+                bad.append(f"{k}: {where} is {saw or 'plain'!r}, not {want[k] or 'plain'!r}")
+    # The docket line's three colours must come after the orange both kinds
+    # of line already draw (.j-istudy, .j-ifuture), or that orange wins.
+    first = order.get(".jl .j-istudy .jg", -1)
+    for k in ("rec", "not", "without"):
+        if order.get(f".jl .jrec-{k} .jg", -1) <= first:
+            bad.append(f".jl .jrec-{k} .jg is not after .jl .j-istudy .jg, so the orange wins")
+    src = _source("src/pages/build_site_v2.py")
+    if '"rec": rep["rec"]' not in src:
+        bad.append("build_site_v2's interim report line no longer says which of the three it was")
+    assert not bad, "; ".join(bad[:8])
+    return "ok", "recommends green, does not red, without plain, alike in all four places"
+
+
+@check("frontend", "Testify is a button in a bill's row, as Follow is: filled and dated while a hearing "
+                   "is ahead, with the form and its steps in its pane; greyed, saying which and linking "
+                   "nothing, while none is; none for an earlier term; and not on the Summary")
+def _testify_in_the_row():
+    """The person, 25 October 2026: "The testify option should also be a
+    button when it's active in the same format as the print, share, and follow
+    buttons instead of on the summary page, and it will be greyed out when the
+    deadline has passed or hasn't yet opened and will tell you which one it is
+    when you click on it instead of linking you to the submission page with
+    the instructions. When it's active, the testify button could maybe be
+    colored in so it's a more clear indicator as to when it's live, and it
+    should say when testimony submissions close if it's scheduled."
+
+    Drawn in node against dom_stub.js, for a bill of the sitting term
+    (sittingTerm's own answer, so this holds in any year):
+
+    LIVE, a Senate hearing ahead: a <details class="testify tlive"> whose
+    summary is the testify drawing and "Testify until Jan 13" -- the hearing's
+    day, short -- and whose pane is the person's of 26 October 2026, and
+    nothing else: "The testify button explanation is overly wordy. It could
+    read more like: 'The public hearing on SB 123 is scheduled for Tuesday,
+    April 2nd at 10:30AM in the Legislative Office Building Room 123. Public
+    testimony is open until midnight the day of the hearing.' ----- 'To
+    submit online testimony, choose the hearing date, committee, and bill
+    number as shown below.' Submit Online Testimony (LINK) 'Tuesday, April
+    2nd, 2026' / 'House Housing Committee' / 'SB 123'". Filled from the
+    record: the day as the site writes days (no ordinal), the time as it
+    writes times, the room in roomWords' words; a time or a room the record
+    lacks left out cleanly, and a committee it lacks too -- the station's, or
+    where the station names none, the record's for that chamber
+    (house_committee, senate_committee; the review of 26 October 2026 found
+    HB 154's, HB 382's and HR 18's hearings showing no committee); then the site's
+    rule, the sentence, the chamber's form as the button, and the date in
+    full, the committee with its chamber and the bill's number, a line each
+    -- "Senate Finance Committee", and "House Special Committee on Housing"
+    for a name that says Committee itself, never the word or the chamber
+    twice. The older sentences -- "Until then, anyone may sign in online", "On the
+    form, choose", "The page that confirms your sign-in", "In practice" --
+    are gone. PASSED and NOT OPENED: the
+    greyed button (testify toff), its summary saying in words that it is not
+    open, so a screen reader hears it, and its pane the sentence that says
+    which, with no link and no steps. An EARLIER TERM: nothing. THE SUMMARY
+    (renderSummary) carries no Testify section, for a bill whose hearing is
+    ahead. Each button is held to _icons_named's rules: one drawing, hidden,
+    in a summary with words of its own.
+
+    The review of 25 October 2026 found what the checks let through. A
+    hearing TODAY is still live, New Hampshire's today, worked out here as
+    app.js must: "Testify until Jan 13" is most read on the 13th. The day is
+    CONCORD'S, not the reader's: with node's own clock in Los Angeles, 11:30
+    p.m. on 13 January there is 2:30 a.m. on the 14th in Concord and shut;
+    in London, 1 a.m. on the 14th is 8 p.m. on the 13th in Concord and live;
+    and the term turns by Concord's day too. A bill that ENDED WITHOUT A
+    HEARING (HR 2 of 2025, adopted the day it came in) is not told testimony
+    "opens once a public hearing is scheduled": it did not open.
+
+    MOUNTED IN THE ROW (mountTestify), against a row that holds Cite and
+    Follow: after Follow, or after Cite where there is no Follow; the open one
+    marked to take a row of its own on a phone; drawn once, and left alone
+    by a redraw that says the same, so a pane the reader opened stays open;
+    drawn again, ONCE, when what it says changes (live, then passed, leaves
+    one button, the greyed one); and taken away for a record that did not
+    load. render() mounts it on a bill's own page and focusActions on a bill
+    opened from the search, which the next check runs.
+
+    THE COLOURS: the filled button is --on-pine on --pine, its drawing too,
+    and the greyed one --ink-2 on --wash, each at least 4.5:1 in both
+    palettes; open, the filled one has a ring as the others' outline turns
+    to the ink (its own pine outline did not change), at least 3:1 on what
+    it lies on, and one the keyboard's focus ring cannot cover: inside the
+    button, or wholly beyond the :focus-visible outline's offset and width
+    (the review of 25 October 2026 found the ring of the ink at 2px to 3px
+    under the outline's 2px to 4px, focused-open and focused-shut the same
+    pixels) -- measured against every rule of app.css that can reach the
+    open button, shut of focus and under it, and not one selector's (the
+    review of 26 October 2026: a later rule with no ring under focus, or an
+    outline drawn inside the button, passed), with no rule but the ring's own
+    setting a box-shadow on it; the pane's rule is the site's divider and its values the ink on
+    the wash; the row is left off the printed sheet, Testify with it; and on
+    a phone the open one spans the row, where "Testify until Jan 13" is one
+    line.
+
+    ONE PLACE DECIDES THE ROW (the review of 25 October 2026): mountTestify,
+    by the record's own term. focusActions had a term-aware lookup of its own
+    that mountTestify always overruled, so taking it out changed nothing and
+    no check failed; it hands in the number alone."""
+    import components as C
+    got = _app_js("""(() => {
+  const term = scope.sittingTerm(new Date());
+  const st = (what, when, body, committee, time, venue) => ({what, when, body, committee, time, venue});
+  // A bill still moving, as the site has it (testifyMoving): its row's kind
+  // "active", and the House ahead of it on its rail.
+  const moving = {rail: [{stop: "Introduced", mark: "p"}, {stop: "Senate", mark: "h"}, {stop: "House", mark: "-"},
+                         {stop: "Governor", mark: "-"}, {stop: "Law", mark: "-"}]};
+  const bill = (stations, t = term) => ({term: t, stations, journey: moving});
+  const live = bill([st("hearing", "2999-01-13", "S", "Finance", "13:00", "SH 103")]);
+  // The parts a record can lack: the time, the room, the committee.
+  const bare = bill([st("hearing", "2999-01-13", "S", "", "", "")]);
+  const timeOnly = bill([st("hearing", "2999-01-13", "S", "Finance", "09:15", "")]);
+  const roomOnly = bill([st("public hearing", "2999-01-13", "H", "Housing", "", "GP Room 230")]);
+  // A committee whose name says "Committee" itself, and one that names its
+  // chamber already: neither is given the word, or the chamber, twice.
+  const special = bill([st("public hearing", "2999-01-13", "H", "Special Committee on Housing", "10:30",
+                           "LOB 306-308")]);
+  const named = bill([st("hearing", "2999-01-13", "S", "Senate Finance", "13:00", "SH 103")]);
+  // A station that names no committee, where the record names the bill's
+  // committee in that chamber (HB 154's Senate hearing of 29 April 2025, HR
+  // 18's House hearing of 18 March 2025): the record's is shown.
+  const fromRecS = Object.assign(bill([st("hearing", "2999-01-13", "S", "", "09:30", "LOB 103")]),
+                                 {senate_committee: "Election Law and Municipal Affairs", house_committee: "Election Law"});
+  const fromRecH = Object.assign(bill([st("public hearing", "2999-01-13", "", "", "10:30", "LOB 301-303")]),
+                                 {house_committee: "Environment and Agriculture", senate_committee: "Energy and Natural Resources"});
+  const passed = bill([st("hearing", "2000-01-13", "S", "Finance")]);
+  const none = bill([]);
+  // HR 2 of 2025, adopted by the House the day it came in.
+  const ended = {term, stations: [], journey: {rail: [{stop: "Introduced", mark: "p"}, {stop: "House", mark: "p"}]}};
+  const b = {id: "SB406", n: "SB 406-FN-A", kind: "active"};
+  const hr2 = {id: "HR2", n: "HR 2", kind: "adopted"};
+  // New Hampshire's day, worked out here rather than asked of app.js.
+  const nh = Object.fromEntries(new Intl.DateTimeFormat("en-US", {timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit"}).formatToParts(new Date()).map(x => [x.type, x.value]));
+  const today = `${nh.year}-${nh.month}-${nh.day}`;
+  // The reader's clock somewhere else: node takes TZ as it changes.
+  const sb406 = {term: "2025-2026", stations: [st("hearing", "2026-01-13", "S", "Finance")], journey: moving};
+  const at = (tz, iso) => {
+    const was = process.env.TZ;
+    process.env.TZ = tz;
+    try { return {html: scope.testifyButton(sb406, b, new Date(iso)), term: scope.sittingTerm(new Date(iso)),
+                  local: new Date(iso).getDate()}; }
+    finally { if (was === undefined) delete process.env.TZ; else process.env.TZ = was; }
+  };
+  // A row as shell.py writes it and mountFollow fills it: Cite, then Follow.
+  const row = (withFollow) => {
+    const kids = [];
+    const node = (cls, id) => ({className: cls, id: id || "", get parentNode() { return acts; },
+      get nextSibling() { return kids[kids.indexOf(this) + 1] || null; }});
+    const acts = {
+      kids,
+      querySelector(sel) {
+        if (sel === "#followbox") return kids.find(k => k.id === "followbox") || null;
+        if (sel === ".pcite") return kids.find(k => k.className === "pcite") || null;
+        if (sel === ".testifyin") return kids.find(k => /\\btestifyin\\b/.test(k.className || "")) || null;
+        return null;
+      },
+      insertBefore(n, ref) { const i = ref ? kids.indexOf(ref) : kids.length; kids.splice(i < 0 ? kids.length : i, 0, n); },
+      get firstChild() { return kids[0] || null; },
+    };
+    kids.push(node("pcite"));
+    if (withFollow) kids.push(node("followin", "followbox"));
+    kids.push(node("", "reportbox"));
+    return acts;
+  };
+  const mount = (acts, bb, d) => {
+    const was = document.getElementById;
+    document.getElementById = id => id === "pageacts" ? acts : was(id);
+    try { scope.mountTestify(bb, d); } finally { document.getElementById = was; }
+    acts.kids.forEach(k => { if (k.remove && !k._rm) { const kk = k; k.remove = () => {
+      kk._rm = true; acts.kids.splice(acts.kids.indexOf(kk), 1); }; } });
+    return acts.kids.map(k => k.id || k.className);
+  };
+  const withF = row(true), noF = row(false), again = row(true);
+  const placed = mount(withF, b, live);
+  const plain = mount(noF, b, passed);
+  const first = mount(again, b, live);
+  const drawn = again.kids.find(k => /testifyin/.test(k.className));
+  const second = mount(again, b, live);
+  const kept = again.kids.find(k => /testifyin/.test(k.className)) === drawn;
+  const broken = mount(again, b, {term: term, stations: [], _error: "404"});
+  const earlier = mount(row(true), b, bill([st("hearing", "2999-01-13", "S", "Finance")], "1999-2000"));
+  // The words change under a reader: live, then the hearing passes.
+  const swap = row(true);
+  mount(swap, b, live);
+  const swapped = mount(swap, b, passed);
+  const swappedHtml = swap.kids.filter(k => /testifyin/.test(k.className)).map(k => k.innerHTML).join("");
+  return {
+    live: scope.testifyButton(live, b),
+    bare: scope.testifyButton(bare, b),
+    timeOnly: scope.testifyButton(timeOnly, b),
+    roomOnly: scope.testifyButton(roomOnly, {id: "HB1", n: "HB 1", kind: "active"}),
+    special: scope.testifyButton(special, {id: "HB1", n: "HB 1", kind: "active"}),
+    named: scope.testifyButton(named, b),
+    nameless: scope.testifyButton(live, {id: "SB406", kind: "active"}),
+    fromRecS: scope.testifyButton(fromRecS, {id: "HB154", n: "HB 154", kind: "active"}),
+    fromRecH: scope.testifyButton(fromRecH, {id: "HR18", n: "HR 18", kind: "active"}),
+    day: scope.dateWords("2999-01-13", "day"),
+    long: scope.dateWords("2999-01-13", "long"),
+    passed: scope.testifyButton(passed, b),
+    none: scope.testifyButton(none, b),
+    ended: scope.testifyButton(ended, hr2),
+    today: scope.testifyButton(bill([st("hearing", today, "S", "Finance")]), b),
+    todayShort: scope.dateWords(today, "short"),
+    la: at("America/Los_Angeles", "2026-01-14T07:30:00Z"),
+    london: at("Europe/London", "2026-01-14T01:00:00Z"),
+    turn: at("Europe/London", "2026-12-01T03:00:00Z"),
+    swapped, swappedHtml,
+    old: scope.testifyButton(bill([st("hearing", "2999-01-13", "S", "Finance")], "1999-2000"), b),
+    summary: scope.renderSummary(b, Object.assign({}, live, {billtext: {analysis: "This bill does a thing."}})),
+    placed, plain, first, second, kept, broken, earlier,
+    liveClass: drawn ? drawn.className : "",
+    passedClass: (noF.kids.find(k => /testifyin/.test(k.className)) || {}).className || "",
+    short: scope.dateWords("2999-01-13", "short"),
+  };
+})()""", names=("testifyButton", "sittingTerm", "renderSummary", "mountTestify", "dateWords"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    flat = lambda h: " ".join(re.sub(r"<[^>]+>", " ", h).replace("&rsquo;", "’").split())
+    live, passed, none = got["live"], got["passed"], got["none"]
+    summ = lambda h: (re.search(r"<summary>(.*?)</summary>", h, re.S) or [None, ""])[1]
+    pane = lambda h: (re.search(r'<div class="testifypane">(.*?)</div></details>', h, re.S) or [None, ""])[1]
+    # LIVE
+    assert live.startswith('<details class="testify tlive"><summary>'), f"the live control is {live[:120]!r}"
+    assert summ(live) == (C.icon("testify") + '<span>Testify<span class="tuntil"> until '
+                          + got["short"] + "</span></span>"), (
+        f"the live button does not say when it closes, \"Testify until {got['short']}\": {summ(live)!r}")
+    lp = flat(pane(live))
+    # TODAY, AND CONCORD'S DAY
+    assert got["today"].startswith('<details class="testify tlive">') \
+        and f" until {got['todayShort']}</span>" in summ(got["today"]), (
+            f"a hearing today, {got['todayShort']} in New Hampshire, is not live: {got['today'][:200]!r}")
+    la, london = got["la"], got["london"]
+    assert la["local"] == 13 and la["html"].startswith('<details class="testify toff">') \
+        and "have closed as of January 13, 2026." in flat(la["html"]), (
+            "at 11:30 p.m. on 13 January in Los Angeles, 2:30 a.m. on the 14th in Concord, SB 406's Testify "
+            f"is not shut: {la['html'][:200]!r}")
+    assert london["local"] == 14 and london["html"].startswith('<details class="testify tlive">') \
+        and " until Jan 13</span>" in summ(london["html"]), (
+            "at 1 a.m. on 14 January in London, 8 p.m. on the 13th in Concord, SB 406's Testify is not live: "
+            f"{london['html'][:200]!r}")
+    assert got["turn"]["term"] == "2025-2026" and got["turn"]["local"] == 1, (
+        f"at 3 a.m. on 1 December in London, still 30 November in Concord, the sitting term is {got['turn']['term']}")
+    # THE LIVE PANE IN THE PERSON'S WORDS (26 October 2026), and nothing else
+    nb = lambda s: s.replace(" ", " ")
+    hearing = (f"The public hearing on SB 406-FN-A is scheduled for {got['day']} at 1:00 PM in State House 103. "
+               "Public testimony is open until midnight the day of the hearing.")
+    choose = "To submit online testimony, choose the hearing date, committee, and bill number as shown below."
+    values = [got["long"], "Senate Finance Committee", "SB 406-FN-A"]
+    assert nb(lp) == " ".join([hearing, choose, "Submit Online Testimony"] + values), (
+        f"the live pane is not the person's of 26 October 2026: {nb(lp)!r}")
+    paras = [nb(flat(x)) for x in re.findall(r"<p>(.*?)</p>", pane(live), re.S)]
+    assert paras == [hearing, choose, "Submit Online Testimony"], f"the live pane's paragraphs are {paras}"
+    # the rule between the hearing and the steps, as the person's "-----"
+    assert re.search(r"</p>\s*<hr class=\"trule\">\s*<p>To submit online testimony", pane(live)), (
+        "the live pane has no rule between the hearing and how to submit")
+    link = re.findall(r'<a class="tgo" href="([^"]+)" target="_blank" rel="noopener">([^<]*)</a>', pane(live))
+    assert link == [("https://gc.nh.gov/remotecommittee/senate.aspx", "Submit Online Testimony")] \
+        and pane(live).count("<a ") == 1, f"the live pane's link is not the Senate's form, as a button: {link}"
+    lines = lambda h: [nb(flat(x)) for x in re.findall(r"<li>(.*?)</li>",
+                       (re.search(r'<ul class="tvals">(.*?)</ul>', pane(h), re.S) or [None, ""])[1], re.S)]
+    assert lines(live) == values and pane(live).rstrip().endswith("</ul>"), (
+        f"the live pane's three values to choose are {lines(live)}, not {values}, last")
+    for old in ("Until then, anyone may sign", "On the form", "The page that confirms your sign-in",
+                "In practice", "online testimony</a>"):
+        assert old not in pane(live) and old not in lp, f"the live pane still says {old!r}"
+    # WHO ELSE SAYS THE SENATE'S SENTENCE (the review of 26 October 2026). The
+    # comment above build_pages.HEARING_NOTE_SENATE said its last sentence was
+    # in "the words the bill page's Testify pane and the emails use", and the
+    # pane has not said it since the person's wording of 26 October. So that
+    # comment names the emails' testifyWords, which say it, and says the pane
+    # no longer does; and both halves are read off the code.
+    sentence = "The page that confirms your sign-in says how to send written testimony."
+    bp_lines = _source("src/pages/build_pages.py").splitlines()
+    at = next(i for i, x in enumerate(bp_lines) if x.startswith("HEARING_NOTE_SENATE = "))
+    above = []
+    for x in reversed(bp_lines[:at]):
+        if not x.startswith("#"):
+            break
+        above.insert(0, x.lstrip("#").strip())
+    above = " ".join(above)
+    mail = _source("workers/follow/mail.js")
+    words = mail[mail.index("export function testifyWords("):mail.index("function testifyBlock(")]
+    app_src = _source("src/pages/app.js")
+    button_src = app_src[app_src.index("function testifyButton("):app_src.index("function mountTestify(")]
+    # Since the emails took the pane's words too (26 October 2026), neither
+    # says the Senate note's last sentence, and the comment says so of both.
+    assert sentence not in words and sentence not in button_src, (
+        "the emails' testifyWords or the Testify pane say the Senate note's last sentence again; the "
+        "comment above build_pages.HEARING_NOTE_SENATE says neither does")
+    assert "mail.js testifyWords" in above and "testifyButton" in above \
+        and "Testify pane and the emails use" not in above \
+        and re.search(r"neither\s+carries this sentence", above), (
+            "the comment above build_pages.HEARING_NOTE_SENATE does not say that neither the Testify pane "
+            f"nor the emails carry the Senate note's last sentence: {above!r}")
+    # The same claim in the note's own check is held the same way (the review
+    # of 26 October 2026): its docstring names the emails' testifyWords and
+    # never says the pane carries the sentence.
+    doc = " ".join((_hearing_note_wording.__doc__ or "").split())
+    assert "testifyWords" in doc and "in the words of the bill page's Testify pane" not in doc \
+        and "in the words the emails use" not in doc, (
+        f"_hearing_note_wording's docstring says the Testify pane carries the Senate note's words: {doc[-300:]!r}")
+    # A part the record lacks is left out cleanly; a day carries no ordinal.
+    for name, want, vals in (
+            ("bare", f"The public hearing on SB 406-FN-A is scheduled for {got['day']}. Public testimony",
+             [got["long"], "SB 406-FN-A"]),
+            ("timeOnly", f"The public hearing on SB 406-FN-A is scheduled for {got['day']} at 9:15 AM. Public",
+             [got["long"], "Senate Finance Committee", "SB 406-FN-A"]),
+            ("roomOnly", f"The public hearing on HB 1 is scheduled for {got['day']} in Granite Place 230. Public",
+             [got["long"], "House Housing Committee", "HB 1"]),
+            ("special", f"The public hearing on HB 1 is scheduled for {got['day']} at 10:30 AM in Legislative "
+             "Office Building 306-308. Public", [got["long"], "House Special Committee on Housing", "HB 1"]),
+            ("named", f"The public hearing on SB 406-FN-A is scheduled for {got['day']} at 1:00 PM in State "
+             "House 103. Public", [got["long"], "Senate Finance Committee", "SB 406-FN-A"]),
+            ("nameless", f"The public hearing on this bill is scheduled for {got['day']} at 1:00 PM in State "
+             "House 103. Public", [got["long"], "Senate Finance Committee"]),
+            ("fromRecS", f"The public hearing on HB 154 is scheduled for {got['day']} at 9:30 AM in Legislative "
+             "Office Building 103. Public", [got["long"], "Senate Election Law and Municipal Affairs Committee",
+                                             "HB 154"]),
+            ("fromRecH", f"The public hearing on HR 18 is scheduled for {got['day']} at 10:30 AM in Legislative "
+             "Office Building 301-303. Public", [got["long"], "House Environment and Agriculture Committee",
+                                                 "HR 18"])):
+        said = nb(flat(pane(got[name])))
+        assert said.startswith(want) and lines(got[name]) == vals, (
+            f"the live pane of a record with {name} reads {said!r}, its values {lines(got[name])}")
+        assert not re.search(r"undefined|null| at \.| in \.|\d(?:st|nd|rd|th)\b", said), (
+            f"the live pane of a record with {name} says what the record does not: {said!r}")
+    assert 'href="https://gc.nh.gov/house/committees/remotetestimony/"' in pane(got["roomOnly"]), (
+        "a House hearing's live pane does not link the House's form")
+    # PASSED AND NOT OPENED: greyed, saying which, linking nothing
+    for name, h, said, heard in (
+            ("passed", passed, "Online testimony submissions for this bill have closed as of January 13, 2000. "
+             "They may open again if the bill goes to the House and the House holds its own public hearing.",
+             "Testify, closed"),
+            ("not opened", none, "Online testimony has not opened yet: it opens once a public hearing "
+             "is scheduled.", "Testify, not open yet"),
+            ("ended without a hearing", got["ended"], "Online testimony did not open for this bill: it had no "
+             "public hearing.", "Testify, not open: no hearing was held")):
+        assert h.startswith('<details class="testify toff"><summary>'), f"the {name} control is {h[:120]!r}"
+        assert re.sub(r"<[^>]+>", "", summ(h)) == heard and '<span class="sr">' in summ(h), (
+            f"the {name} button does not say in words that it is not open: {summ(h)!r}")
+        assert flat(pane(h)) == said, f"the {name} pane says {flat(pane(h))!r}"
+        assert "<a " not in h and "gc.nh.gov" not in h and "On the form" not in h and "tgo" not in h, (
+            f"the {name} pane still links the form or gives the steps: {h!r}")
+    assert got["old"] == "", "a bill of an earlier term has a Testify button"
+    # NOT ON THE SUMMARY
+    s = got["summary"]
+    assert "Official Legislative Analysis" in s, "the Summary was not drawn"
+    assert "Testify" not in s and 'id="testify"' not in s and "tbox" not in s and "testify" not in s, (
+        "the Summary still carries a Testify section")
+    # THE RULES FOR A DRAWING
+    for name, h in (("live", live), ("passed", passed), ("not opened", none)):
+        found = _icons_in(h)
+        assert len(found) == 1, f"the {name} Testify button carries {len(found)} drawings"
+        attrs, text, ctl = found[0]
+        assert attrs.get("aria-hidden") == "true" and not text and ctl and ctl[0] == "summary" \
+            and re.search(r"\w", ctl[2]), f"the {name} Testify button's drawing breaks _icons_named's rules"
+    # IN THE ROW
+    assert got["placed"] == ["pcite", "followbox", "testifyin tliverow", "reportbox"], (
+        f"with Follow, the row reads {got['placed']}")
+    assert got["plain"] == ["pcite", "testifyin", "reportbox"], f"without Follow, the row reads {got['plain']}"
+    assert got["liveClass"] == "testifyin tliverow" and got["passedClass"] == "testifyin", (
+        f"the open one is not marked for a phone's row of its own: {got['liveClass']!r}, {got['passedClass']!r}")
+    assert got["first"] == got["second"] and got["kept"], (
+        "a redraw that says the same drew Testify again, which shuts a pane the reader opened")
+    assert got["swapped"] == ["pcite", "followbox", "testifyin", "reportbox"] \
+        and got["swappedHtml"].startswith('<details class="testify toff">'), (
+            f"live, then passed, leaves the row {got['swapped']}, not one greyed Testify")
+    assert got["broken"] == ["pcite", "followbox", "reportbox"], (
+        f"a record that did not load keeps a Testify button: {got['broken']}")
+    assert got["earlier"] == ["pcite", "followbox", "reportbox"], (
+        f"a bill of an earlier term is given a Testify button in its row: {got['earlier']}")
+    js = re.sub(r"//[^\n]*", "", _source("src/pages/app.js"))
+    assert re.search(r"if\(fb\)\{focusActions\(fb\.id\);placeActions\(\);mountTestify\(fb,detail\[dkey\(fb\.id\)\]\);\}", js), \
+        "render() no longer mounts Testify on a bill's own page"
+    fa = js[js.index("function focusActions("):js.index("function parkActions(")]
+    assert "mountTestify(" in fa and fa.index("mountReport(") < fa.index("mountTestify(") < fa.index("placeActions();"), \
+        "a bill opened from the search no longer gets Testify in its row"
+    # ONE PLACE DECIDES THE ROW (the review of 25 October 2026): mountTestify,
+    # by the record's own term; focusActions hands in the number alone.
+    call = fa[fa.index("mountTestify("):fa.index(";", fa.index("mountTestify("))]
+    assert "IDX" not in call and "term" not in call, (
+        f"focusActions decides Testify's row as well as mountTestify: {call!r}")
+    mt = js[js.index("function mountTestify("):js.index("function renderSummary(")]
+    assert "IDX.find(x=>x.id===b.id&&x.term===d.term)" in mt, (
+        "mountTestify no longer picks the row of the record's own term")
+    assert "function testifyBox(" not in js, "app.js still draws the Summary's Testify box"
+    # THE COLOURS, THE SHEET AND THE PHONE
+    text = _source("src/pages/app.css")
+    pal = _css_palette(text)
+    rules = {}
+    for ctx, sel, body, _ in _css_rules(text):
+        for one in _css_selectors(sel):
+            rules.setdefault((ctx, one), {}).update(dict(_css_decls(body)))
+    filled = rules.get(((), ".testify.tlive > summary"), {})
+    grey = rules.get(((), ".testify.toff > summary"), {})
+    assert filled.get("background") == "var(--pine)" and filled.get("color") == "var(--on-pine)", (
+        f"the open Testify button is not filled in pine: {filled}")
+    assert grey.get("background") == "var(--wash)" and grey.get("color") == "var(--ink-2)", (
+        f"the shut Testify button is not greyed: {grey}")
+    drawing = rules.get(((), ".testify.tlive > summary .icon"), {})
+    assert drawing.get("color") == "var(--on-pine)", (
+        f"the filled Testify button's drawing is not --on-pine, so it is the second ink on pine: {drawing}")
+    # THE OPEN RING, AND THE KEYBOARD'S FOCUS RING OVER IT (the review of 25
+    # October 2026). The focus ring is :focus-visible's outline, drawn from
+    # its offset to its offset and width outside the button; a ring of the
+    # open state lying in that band is painted over, and focused-open and
+    # focused-shut are the same pixels. So the ring that marks it open, open
+    # and focused alike, lies inside the button (an outline at an offset of
+    # nothing or more never paints there) or wholly beyond the band.
+    # EVERY RULE THAT CAN REACH IT (the review of 26 October 2026). This read
+    # the ring's own selector and :focus-visible's alone, and a later
+    # ".testify.tlive > summary:focus-visible{box-shadow:none}" took the ring
+    # away under focus, and "outline-offset:-3px" on the open button laid the
+    # focus ring over it, with every check passing. So every rule of app.css
+    # but the printed sheet's whose selector can match that summary -- open,
+    # live, in its row, in the bill's head, as a bill's page and a bill
+    # opened on /bills draw it (the ancestors read off the preview, 26
+    # October 2026; the body with the mark other pages carry, the root with
+    # either theme the reader may choose), shut of focus and under it -- is
+    # gathered by
+    # _css_can_reach and the cascade worked out (specificity, then order,
+    # !important over both): no rule but the ring's own sets a box-shadow on
+    # it, none sets an outline-offset below nothing, and the outline and the
+    # ring measured below are the ones that win.
+    RING = ".testify.tlive[open] > summary"
+    # THE OUTLINE THAT WINS, ITS STYLE TOO (the review of 26 October 2026).
+    # This read the winning outline's width alone, so a later
+    # ".testify.tlive > summary:focus-visible{outline-style:none}" took the
+    # keyboard's focus ring off the live button with every check passing; and
+    # the cascade kept no !important, since _css_decls takes the mark off a
+    # value. So each rule's declarations keep it, the outline shorthand is
+    # its three longhands (what it leaves out is reset, as a browser resets
+    # it), and the winning outline-style, outline-width and outline-offset
+    # are the ones measured: a style of none or hidden, or no width, is no
+    # focus ring at all.
+    OUTLINE_STYLES = ("none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge",
+                      "inset", "outset", "auto")
+    def _decls_kept(body):
+        out = {}
+        for k, v in _css_decls(body):
+            imp = bool(re.search(r"(?:^|[;{\s])" + re.escape(k) + r"\s*:[^;]*!\s*important", body, re.I))
+            if k == "outline":
+                width, style, colour = "medium", "none", "currentcolor"
+                for tok in re.findall(r"[\w-]+\([^)]*\)|\S+", v):
+                    if tok.lower() in OUTLINE_STYLES:
+                        style = tok.lower()
+                    elif re.fullmatch(r"-?\d*\.?\d+(?:px|em|rem)?|thin|medium|thick", tok):
+                        width = tok
+                    else:
+                        colour = tok
+                out.update({"outline-width": (width, imp), "outline-style": (style, imp),
+                            "outline-color": (colour, imp)})
+            else:
+                out[k] = (v, imp)
+        return out
+    el = lambda tag, ids=(), classes=(), attrs=None, states=(), focused=False: {
+        "tag": tag, "ids": set(ids), "classes": set(classes), "attrs": attrs or {},
+        "states": set(states) | ({"focus-within"} if focused else set())}
+    def _chain(focused):
+        return [el("summary", states=("focus", "focus-visible") if focused else (), focused=focused),
+                el("details", classes=("testify", "tlive"), attrs={"open": ""}, states=("open",), focused=focused),
+                el("div", classes=("testifyin", "tliverow"), focused=focused),
+                el("div", ids=("pageacts",), classes=("pageacts", "inhead"), focused=focused),
+                el("div", classes=("racts",), focused=focused),
+                el("header", classes=("rhead", "rh-bill"), focused=focused),
+                el("article", classes=("card", "focus", "rec"), attrs={"data-id": "SB406"}, focused=focused),
+                el("div", ids=("results",), focused=focused),
+                el("main", ids=("main",), focused=focused),
+                el("div", classes=("shell", "nofacets", "focused"), focused=focused),
+                el("body", classes=("pg",), focused=focused),
+                el("html", classes=("js",), attrs={"lang": "en", "data-theme": None}, focused=focused)]
+    on_screen = [(order, r) for order, r in enumerate(_css_rules(text)) if not any("print" in c for c in r[0])]
+    def _reaching(focused, at=0):
+        chain = _chain(focused)[at:]
+        hits = []
+        for order, (ctx, sel, body, line) in on_screen:
+            for one in _css_selectors(sel):
+                if _css_can_reach(one, chain):
+                    hits.append(((_css_specificity(one), order), ctx, one, _decls_kept(body), line))
+        hits.sort(key=lambda h: h[0])
+        won = {}
+        for _key, ctx, one, decls, line in hits:
+            for k, (v, imp) in decls.items():
+                if k not in won or imp or not won[k][1]:
+                    won[k] = (v, imp, one, line)
+        return [(key, ctx, one, {k: v for k, (v, _i) in d.items()}, line)
+                for key, ctx, one, d, line in hits], won
+    shut_hits, shut_won = _reaching(False)
+    focus_hits, focus_won = _reaching(True)
+    # A RULE BEHIND THE SITE'S OWN DARK GUARD REACHES THE BUTTON (the review of
+    # 26 October 2026). The root's data-theme may be anything, and :not() took
+    # "may be anything" for a sure match, so every rule written as app.css
+    # writes dark ones -- :root:not([data-theme="light"]) ... -- was left out
+    # of the cascade, and a dark-only ring of 1.07:1 passed every check.
+    for guard in (':root:not([data-theme="light"]) .testify.tlive > summary:focus-visible',
+                  'html:not([data-theme="light"]) .testify.tlive > summary:focus-visible'):
+        assert _css_can_reach(guard, _chain(True)), f"the cascade model never lets {guard!r} reach the button"
+    # A TOKEN AS IT STANDS ON THE BUTTON: a custom property a rule sets on the
+    # button or any element round it below the root -- where the palette's
+    # own blocks set them -- is inherited, the nearest winning; then the
+    # palette of the scheme. So a rule that turns --on-pine to the pine
+    # under focus is a ring of the pine on the pine, and is measured so.
+    def _tokens(focused):
+        mine = {}
+        for at in range(len(_chain(focused)) - 2, -1, -1):
+            mine.update({k: v[0] for k, v in _reaching(focused, at)[1].items() if k.startswith("--")})
+        return mine
+    def _colour(value, mine, scheme, depth=0):
+        v = str(value or "").strip()
+        m = re.fullmatch(r"var\(\s*(--[\w-]+)\s*(?:,[^)]*)?\)", v)
+        if m and depth < 8:
+            tok = m.group(1)
+            return _colour(mine[tok], mine, scheme, depth + 1) if tok in mine \
+                else _colour(pal[scheme].get(tok, ""), {}, scheme, depth + 1)
+        return _css_hex(v) if re.fullmatch(r"#[0-9A-Fa-f]{3}|#[0-9A-Fa-f]{6}", v) else None
+    assert any(one == RING and not ctx for _k, ctx, one, _d, _l in shut_hits), (
+        f"{RING} is not among the rules that reach the open Testify button: the reach is not read right")
+    others = sorted({(one, d["box-shadow"], line) for _k, ctx, one, d, line in focus_hits
+                     if "box-shadow" in d and not (one == RING and not ctx)})
+    assert not others, (
+        "a rule besides the open ring's own sets a box-shadow on the filled Testify button, open or open and "
+        f"focused, over the ring that marks it open: {others}")
+    inward = sorted({(one, d["outline-offset"], line) for _k, ctx, one, d, line in focus_hits
+                     if re.match(r"\s*-\s*\d*\.?\d+", d.get("outline-offset", ""))})
+    assert not inward, (
+        "a rule puts the focus ring inside the filled Testify button, open, where it lies over the ring that "
+        f"marks it open: {inward}")
+    style = (focus_won.get("outline-style") or ("none",))[0]
+    assert style not in ("none", "hidden"), (
+        f"the winning outline-style on the focused Testify button is {style!r} "
+        f"({(focus_won.get('outline-style') or ('', '', 'no rule'))[2]}): the keyboard's focus ring is gone")
+    wv = (focus_won.get("outline-width") or ("",))[0]
+    ow = {"thin": 1, "medium": 3, "thick": 5}.get(wv) or (
+        int(float(re.match(r"(-?\d*\.?\d+)", wv).group(1))) if re.match(r"-?\d*\.?\d+(px)?$", wv) else 0)
+    assert ow >= 1, (
+        f"no outline reaches the focused Testify button to measure the open ring against: "
+        f"{focus_won.get('outline-width')}, {focus_won.get('outline-style')}, {focus_won.get('outline-offset')}")
+    # AN OFFSET OF 0 NEEDS NO UNIT (the review of 26 October 2026): this read
+    # a px length alone, and a valid outline-offset:0 failed here as "no
+    # outline reaches" the button. A length in px, or a bare 0.
+    def _offset_px(value):
+        v = str(value or "").strip()
+        m = re.fullmatch(r"(-?\d*\.?\d+)px", v) or re.fullmatch(r"([-+]?0*\.?0+)", v)
+        return int(float(m.group(1))) if m else None
+    assert [_offset_px(x) for x in ("0", "0px", "2px", "-2px", "2", "2em")] == [0, 0, 2, -2, None, None], (
+        "the focus ring's outline-offset is not read as a length in px or a bare 0")
+    ov = str((focus_won.get("outline-offset") or ("0",))[0]).strip()
+    off = _offset_px(ov)
+    assert off is not None, (
+        f"the winning outline-offset on the focused Testify button, {ov!r} "
+        f"({(focus_won.get('outline-offset') or ('', '', 'no rule'))[2]}), is not one this check reads: a "
+        "length in px, or 0")
+    reach = off + ow
+    # THE OUTLINE'S COLOUR (the review of 26 October 2026). This read the
+    # winning outline's style and width and never its colour, so a later
+    # ".testify.tlive > summary:focus-visible{outline:2px solid}" -- the
+    # colour left to currentcolor, the button's own --on-pine -- or an
+    # outline-color of transparent or of the paper took the keyboard's ring
+    # out of sight (1.20:1 on the paper in the light scheme, 1.07:1 in the
+    # dark) with every check passing. So the winning outline-color is
+    # resolved as it stands on the button: currentcolor is the button's
+    # winning color, the nearest set going out; transparent, or a colour
+    # this check cannot read, is no ring; and it must be 3:1 on the paper
+    # round the button, where an outline at an offset of nothing or more is
+    # drawn, in both schemes.
+    oc = str((focus_won.get("outline-color") or ("currentcolor",))[0]).strip()
+    oc_rule = (focus_won.get("outline-color") or ("", "", "no rule"))[2]
+    if oc.lower() == "currentcolor":
+        oc = ""
+        for at in range(len(_chain(True))):
+            c = str((_reaching(True, at)[1].get("color") or ("",))[0]).strip()
+            if c and c.lower() not in ("inherit", "currentcolor"):
+                oc = c
+                break
+    mine_focused = _tokens(True)
+    outline_ratios = []
+    for scheme in ("light", "dark"):
+        a, g = _colour(oc, mine_focused, scheme), _colour("var(--paper)", mine_focused, scheme)
+        assert oc.lower() != "transparent" and a and g, (
+            f"the focus ring's colour on the Testify button, {oc!r} ({oc_rule}), is not a colour this check can "
+            f"read in the {scheme} palette: a ring of no colour is no focus ring")
+        r = _css_ratio(a, g)
+        assert r >= 3, (
+            f"the focus ring on the Testify button, {oc} ({oc_rule}), is {r:.2f}:1 on the paper in the {scheme} "
+            "palette, under 3:1: the keyboard's ring is out of sight")
+        outline_ratios.append(f"{r:.2f}")
+    ring = (shut_won.get("box-shadow") or ("",))[0]
+    fring = (focus_won.get("box-shadow") or ("",))[0]
+    def _ring(shadow):
+        parts = [p.strip() for p in shadow.split(",") if p.strip()]
+        out, inner = [], 0
+        for p in parts:
+            m = re.fullmatch(r"(inset )?0 0 0 (\d+)px var\((--[\w-]+)\)", p)
+            assert m, f"the open Testify button's ring is not one this check reads: {shadow!r}"
+            if m.group(1):
+                out.append(("inset", int(m.group(2)), m.group(3)))
+            else:
+                out.append(("out", (inner, int(m.group(2))), m.group(3)))
+                inner = max(inner, int(m.group(2)))
+        marks = [r for r in out if r[2] != "--paper"]
+        assert len(marks) == 1, f"the open Testify button's ring is not one ring and the paper: {shadow!r}"
+        return marks[0]
+    for name, shadow in (("open", ring), ("open and focused", fring)):
+        where, band, ink = _ring(shadow)
+        if where == "inset":
+            assert band >= 2 and off >= 0, (
+                f"the filled Testify button, {name}, has a ring inside it of {band}px under an outline at "
+                f"{off}px: {shadow!r}")
+        else:
+            assert band[1] - max(band[0], reach) >= 1, (
+                f"the filled Testify button, {name}, has its ring at {band[0]}px to {band[1]}px, under the "
+                f"focus ring's {off}px to {reach}px, so focused-open and focused-shut are the same pixels: "
+                f"{shadow!r}")
+    ratios = []
+    for ink, ground in (("--on-pine", "--pine"), ("--ink-2", "--wash")):
+        for scheme in ("light", "dark"):
+            r = _css_ratio(_css_token_colour(ink, pal[scheme]), _css_token_colour(ground, pal[scheme]))
+            assert r >= 4.5, f"{ink} on {ground} is {r:.2f}:1 in the {scheme} palette, under 4.5:1"
+            ratios.append(f"{r:.2f}")
+    # The ring on what it lies on, each as it stands on the button, open and
+    # open and focused: inside, the button's own winning ground; outside, the
+    # paper round it.
+    for focused, won, shadow in ((False, shut_won, ring), (True, focus_won, fring)):
+        where, band, ink = _ring(shadow)
+        mine = _tokens(focused)
+        ground = (won.get("background-color") or won.get("background") or ("",))[0] if where == "inset" \
+            else "var(--paper)"
+        for scheme in ("light", "dark"):
+            a, g = _colour(f"var({ink})", mine, scheme), _colour(ground, mine, scheme)
+            assert a and g, (f"the open ring, {ink} on {ground}, is not a colour this check can read in the "
+                             f"{scheme} palette")
+            r = _css_ratio(a, g)
+            assert r >= 3, (f"the open ring{', focused,' if focused else ''} {ink} on {ground} is {r:.2f}:1 in "
+                            f"the {scheme} palette as it stands on the button, under 3:1")
+            if not focused:
+                ratios.append(f"{r:.2f}")
+    # THE PANE'S RULE AND ITS VALUES: the site's divider in a panel, and the
+    # ink on the wash, set apart.
+    hr = rules.get(((), ".testifypane .trule"), {})
+    assert hr.get("border-top") == "1px solid var(--rule)" and hr.get("border") == "0", (
+        f"the live pane's rule is not the site's divider: {hr}")
+    tv = rules.get(((), ".testifypane .tvals"), {})
+    assert tv.get("background") == "var(--wash)" and tv.get("color") == "var(--ink)" \
+        and tv.get("list-style") == "none", f"the live pane's values are not set apart: {tv}"
+    for scheme in ("light", "dark"):
+        r = _css_ratio(_css_token_colour("--ink", pal[scheme]), _css_token_colour("--wash", pal[scheme]))
+        assert r >= 4.5, f"the live pane's values, --ink on --wash, are {r:.2f}:1 in the {scheme} palette"
+        ratios.append(f"{r:.2f}")
+    phone = [ctx for (ctx, sel), d in rules.items()
+             if sel == ".racts .pageacts > .tliverow" and d.get("grid-column", "").replace(" ", "") == "1/-1"]
+    assert any("45em" in " ".join(c) for c in phone), "on a phone the open Testify button does not take a row of its own"
+    quiet = [sel for (ctx, sel) in rules if not ctx and sel.startswith(".testify > summary")]
+    assert ".testify > summary" in quiet, "Testify is not drawn as the quiet action button"
+    hidden = re.search(r"([^{}]+)\{display:none !important\}",
+                       text[text.index("nav.top,.skip,.calskip"):]).group(1)
+    assert ".testify" in {x.strip() for x in hidden.split(",")} and ".pageacts" in hidden, \
+        "the Testify button is printed"
+    return "ok", (f"open: \"Testify until {got['short']}\", filled, its pane the person's of 26 October 2026 "
+                  f"with the form and the three values; passed and not opened: greyed, said in words, no "
+                  f"link; none for an earlier term or on the Summary; after Follow, or Cite, in the row; "
+                  f"on-pine on pine {ratios[0]} and {ratios[1]}:1, ink-2 on wash {ratios[2]} and "
+                  f"{ratios[3]}:1, the open ring {where} {ratios[4]} and {ratios[5]}:1 clear of the focus "
+                  f"ring's {off}-{reach}px, the focus ring {outline_ratios[0]} and {outline_ratios[1]}:1 on "
+                  f"the paper, the values {ratios[6]} and {ratios[7]}:1; live on the hearing's "
+                  f"day, by Concord's clock; an ended bill unheard told so; the row decided in mountTestify")
+
+
+# THE EMAIL'S TESTIMONY BLOCK, IN NODE (26 October 2026): the sender's own
+# reader of current.json and of a night, its collect() and mail.js's digest,
+# over the rows a build hands over, for each case named in the file given;
+# each email's subject, HTML and plain text, and what the readers noted. A
+# case follows one bill (its key, label, url and rows) or each of "recs";
+# "night" is one night's refs for the sender to read (none by default); and
+# "ahead" draws the block as a test send does, on any day before the hearing.
+_TESTIFY_MAIL_HARNESS = r"""
+import { readFileSync } from "node:fs";
+import { checkCurrent, checkNight } from __CHANGES__;
+import { collect } from __SENDER__;
+import { digestEmail, pageNames } from __MAIL__;
+const out = {};
+const head = day => ({format: 1, date: day, built: `${day}T09:00:00Z`, sitting_term: "2025-2026",
+  new_by: "record-date"});
+for (const c of JSON.parse(readFileSync(process.argv[2], "utf8"))) {
+  const recs = c.recs || [{key: c.key, label: c.label, url: c.url, rows: c.rows}];
+  const followable = {}, upcoming = {};
+  for (const x of recs) { followable[x.key] = {label: x.label, url: x.url}; upcoming[x.key] = x.rows; }
+  const r = checkCurrent(Object.assign(head(c.today), {followable, upcoming}));
+  const n = c.night ? checkNight(Object.assign(head(c.today), {refs: c.night}), c.today)
+    : {value: null, problems: [], notes: []};
+  const problems = r.problems.concat(n.problems), notes = r.notes.concat(n.notes);
+  if (!r.value || (c.night && !n.value)) { out[c.name] = {problems, notes}; continue; }
+  const follows = recs.map(x => ({kind: x.key.slice(0, x.key.indexOf(":")), ref: x.key.slice(x.key.indexOf(":") + 1),
+                                  fh: "x"}));
+  const sections = collect({follows, nights: n.value ? [n.value] : [], cursor: {}, current: r.value,
+    frequency: c.frequency, today: c.today, testifyAhead: !!c.ahead});
+  const m = digestEmail({origin: "https://graniterecord.org", frequency: c.frequency, date: c.today, sections,
+    manage: "M".repeat(43), unsub: "U".repeat(43), names: pageNames(r.value)});
+  out[c.name] = {problems, notes, subject: m.subject, html: m.html, text: m.text};
+}
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+def _testify_mail(cases):
+    """_TESTIFY_MAIL_HARNESS over `cases`: {name: {subject, html, text,
+    notes, problems}}, or None where node or workers/follow is not here."""
+    node = shutil.which("node") or shutil.which("node.exe")
+    files = [Path(f"workers/follow/{n}.js") for n in ("changes", "sender", "mail")]
+    if not node or not all(f.is_file() for f in files):
+        return None
+    root = Path(tempfile.mkdtemp(prefix="gr-testify-mail-"))
+    try:
+        js = _TESTIFY_MAIL_HARNESS
+        for n, f in zip(("__CHANGES__", "__SENDER__", "__MAIL__"), files):
+            js = js.replace(n, json.dumps(f.resolve().as_uri()))
+        (root / "t.mjs").write_text(js, encoding="utf-8")
+        (root / "cases.json").write_text(json.dumps(cases), encoding="utf-8")
+        r = _run([node, "t.mjs", "cases.json"], cwd=root, capture_output=True, text=True, timeout=120,
+                 encoding="utf-8")
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), \
+            "the email's testimony block did not draw in node: " + (r.stderr or r.stdout or "")[-500:]
+        return json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _testify_said(site_html, mail_html, mail_text, origin="https://graniterecord.org"):
+    """What a bill's live Testify pane says, and what an email's testimony
+    block says, each as {button, hearing, rule, choose, go, values, amendment},
+    and the plain text's lines, for comparing: words as a reader reads them,
+    the no-break space a space, the links' addresses beside their words. The
+    plain text's lines are the block's, and the amendment's address after it
+    where it gives one (_testify_text_want)."""
+    import html as H
+
+    def words(h):
+        return " ".join(H.unescape(re.sub(r"<[^>]+>", "", h)).replace("\u00a0", " ").split())
+
+    def amended(p):
+        m = re.search(r'\(<a href="([^"]+)"[^>]*>([^<]+)</a>\) to ', p)
+        return (m.group(1), m.group(2)) if m else None
+    site = None
+    if site_html.startswith('<details class="testify tlive">'):
+        pane = (re.search(r'<div class="testifypane">(.*?)</div></details>', site_html, re.S) or [None, ""])[1]
+        ps = re.findall(r"<p>(.*?)</p>", pane, re.S)
+        go = re.findall(r'<a class="tgo" href="([^"]+)"[^>]*>([^<]*)</a>', pane)
+        ul = (re.search(r'<ul class="tvals">(.*?)</ul>', pane, re.S) or [None, ""])[1]
+        a = amended(ps[0]) if ps else None
+        site = {"button": words((re.search(r"<summary>(.*?)</summary>", site_html, re.S) or [None, ""])[1]),
+                "hearing": words(ps[0]) if ps else "", "choose": words(ps[1]) if len(ps) > 1 else "",
+                "rule": bool(re.search(r'</p>\s*<hr class="trule">\s*<p>', pane)),
+                "go": [(u, words(t)) for u, t in go],
+                "values": [words(x) for x in re.findall(r"<li>(.*?)</li>", ul, re.S)],
+                "amendment": (origin + "/" + a[0].lstrip("/"), a[1]) if a else None}
+    mail = None
+    at = mail_html.find('font-size:16px">Testify until')
+    if at >= 0:
+        start = mail_html.rfind("<p ", 0, at)
+        block = mail_html[start:mail_html.find("</td></tr></table></td></tr></table>", at) + 5]
+        ps = re.findall(r'<p style="margin:0">(.*?)</p>', block, re.S)
+        go = re.findall(r'<a href="([^"]+)" style="display:inline-block[^"]*">([^<]*)</a>', block)
+        cell = (re.search(r'font-weight:600;color:#[0-9A-Fa-f]{6}">(.*?)</td>', block, re.S) or [None, ""])[1]
+        a = amended(ps[0]) if ps else None
+        mail = {"button": words(block[:block.find("</p>")]), "hearing": words(ps[0]) if ps else "",
+                "choose": words(ps[1]) if len(ps) > 1 else "",
+                "rule": bool(re.search(r'</p><hr style="[^"]*"><p style="margin:0">', block)),
+                "go": [(H.unescape(u), words(t)) for u, t in go],
+                "values": [words(x) for x in cell.split("<br>")] if cell else [],
+                "amendment": (H.unescape(a[0]), a[1]) if a else None}
+    lines = mail_text.replace("\u00a0", " ").splitlines()
+    i = next((k for k, ln in enumerate(lines) if ln.strip().startswith("Testify until")), None)
+    text = [ln.strip() for ln in lines[i:i + 4 + len((mail or {}).get("values") or [])]] if i is not None else []
+    if text and i + len(text) < len(lines) and lines[i + len(text)].strip().startswith("Amendment "):
+        text.append(lines[i + len(text)].strip())
+    return site, mail, text
+
+
+def _testify_text_want(s):
+    """The plain text's lines for the live pane `s` (_testify_said): its
+    words in its order, and where it links the amendment's number, a line
+    with the address (the review of 26 October 2026: the plain text printed
+    "(2026-0422h)" with no way to reach it)."""
+    return ([s["button"], s["hearing"], s["choose"]] + [f"{t}: {u}" for u, t in s["go"]] + s["values"]
+            + ([f"Amendment {s['amendment'][1]}: {s['amendment'][0]}"] if s["amendment"] else []))
+
+
+def _testify_email_agrees(FC, PA, log):
+    """Each Testify button in `log` (_SWITCHED.testify_log: the record, the row and
+    New Hampshire's day it was drawn for, what it drew, and what app.js's own
+    testifyHearings and testifyMoving said), put to the email's copy of the
+    button's rules: follow_changes' testify_hearings and testify_moving on
+    the same record, row and day; and, for a button of the sitting term (the
+    only term build_feeds reads), the rows bill_upcoming hands over that day,
+    through the sender's reader, collect() and mail.js as a test send draws
+    them ("ahead", so that the block is drawn on any day before the hearing,
+    as the pane is live on any day) -- a hearing marked to testify at exactly
+    where the pane is live, and the block saying what the pane says, in the
+    HTML and the plain text. Returns (problems, the live panes compared word
+    for word, the buttons read)."""
+    said = lambda s: [s["when"], str(s.get("time") or ""), FC.testify_body(s),
+                      str(s.get("committee") or "").strip(), str(s.get("venue") or ""),
+                      s.get("amendment") or "", s.get("amendment_num") or ""]
+    bad, cases, drawn, read = [], [], {}, 0
+    for i, e in enumerate(log):
+        rec, row, day = e.get("rec"), e.get("row") or {}, e.get("day")
+        if not isinstance(rec, dict):
+            continue
+        read += 1
+        n = f"{row.get('n') or 'a bill with no number'} on {day} (button {i})"
+        mine = [said(s) for s in FC.testify_hearings(rec)]
+        if mine != e["heard"]:
+            bad.append(f"{n}: follow_changes.testify_hearings gives {mine}, app.js's testifyHearings {e['heard']}")
+        if FC.testify_moving(rec, row.get("kind"), day) != e["moving"]:
+            bad.append(f"{n}: follow_changes.testify_moving says {not e['moving']}, app.js's testifyMoving "
+                       f"{e['moving']}")
+        if not e["html"]:
+            continue
+        rows = [a["row"] for a in FC.bill_upcoming(rec, kind=row.get("kind"), today=day, place=PA.place)]
+        live = e["html"].startswith('<details class="testify tlive">')
+        if live != any(r.get("form") for r in rows):
+            bad.append(f"{n}: the site's Testify is {'live' if live else 'not live'}, and the rows the build hands "
+                       f"the email {'mark no' if live else 'mark a'} hearing to testify at: {rows}")
+            continue
+        if not live or not row.get("n"):
+            continue
+        year, bid = rec.get("year") or row.get("year"), str(rec.get("id") or row.get("id") or "")
+        cases.append({"name": str(i), "key": f"bill:{year or 2026}/{bid.upper() or 'HB1'}", "label": row["n"],
+                      "url": f"/bill/{year}/{bid.lower()}" if year and bid else "", "rows": rows, "today": day,
+                      "frequency": "daily", "ahead": True})
+        drawn[str(i)] = (n, e["html"])
+    mail = _testify_mail(cases) if cases else None
+    if mail is None:
+        return bad, 0, read
+    for c in cases:
+        (n, html), m = drawn[c["name"]], mail[c["name"]]
+        if not m.get("html") or m["problems"] or m["notes"]:
+            bad.append(f"{n}: the sender's reader refused the build's rows: {m['problems']} {m['notes']} {c['rows']}")
+            continue
+        s, e, text = _testify_said(html, m["html"], m["text"])
+        if e is None:
+            bad.append(f"{n}: the pane is live and the email has no testimony block: {c['rows']}")
+            continue
+        for k in ("button", "hearing", "rule", "choose", "go", "values", "amendment"):
+            if s[k] != e[k]:
+                bad.append(f"{n}: the pane's {k} is {s[k]!r}, the email's {e[k]!r}")
+        if text != _testify_text_want(s):
+            bad.append(f"{n}: the plain text says {text}, the pane {_testify_text_want(s)}")
+    return bad, len(cases), read
+
+
+@check("frontend", "an email's testimony block says what the bill's Testify button says: the hearings it "
+                   "counts, read from the bill's record by its rules, and its live pane's words in its "
+                   "order, the amendment's number a link, in the HTML and the plain text",
+       needs=("follow_changes", "plain_action"))
+def _testify_email_in_sync(FC, PA):
+    """The person, 26 October 2026: "Emails should stay in sync with how the
+    site displays the testify button." The site's button (app.js
+    testifyButton) reads a bill's record; the email read current.json's
+    upcoming, which was home.json's calendar rows: the first eighty of a
+    fortnight that in session holds hundreds, none of the hearings on a
+    proposed amendment, a hearing whose station names no committee told
+    nothing, and a bill that can no longer be heard told all the same. And
+    it said it in words of its own -- "HB 1's public hearing is tomorrow ...
+    Anyone may sign in online ... In practice the sign-in stays open until
+    midnight ... On the form, choose" -- which the pane's of 26 October had
+    replaced on the site. Now the build reads each bill's own record by the
+    button's rules, in Python (follow_changes.testify_hearings,
+    testify_house_committee, testify_moving, testify_committee and
+    bill_upcoming, which build_feeds files under the bill and the committee
+    that will sit), and marks the hearings the button counts as live with
+    "form"; the sender tells those and no others (testifyFor), and mail.js's
+    block says the pane's words (testifyWords).
+
+    So, drawn on the same records -- the pane by app.js in node, the email by
+    the Python rows through the sender's own reader, collect() and
+    mail.js's digest in node:
+
+      EVERY BUTTON A CHECK DRAWS (the review of 26 October 2026, which took
+        six of follow_changes' rules out one at a time -- session_over, a
+        House station standing for an amendment's line, the line's room
+        choosing between two committees, a Senate journal's referral, a
+        corrected row's day, a committee naming its chamber in another case
+        -- and nothing failed: the records that exercise them were the JS
+        checks' alone). Every check that draws a Testify button in node is
+        run here with each button it draws logged (_SWITCHED.testify_log) -- this
+        one's records, the Testify checks', the Map Room's and the search's
+        -- and every button is put to the email's copy
+        (_testify_email_agrees): the same hearings, the same answer on
+        whether the bill can still be heard, and on the sitting term a
+        hearing marked to testify at exactly where the pane is live, its
+        block saying what the pane says. A shape added to any of those
+        checks is the email's case too. Each check's own findings stay its
+        own to report.
+      THE SAME WORDS, IN ORDER. Where it is live: the button's "Testify until
+        Feb 3" as the block's head; the hearing and "Public testimony is open
+        until midnight the day of the hearing."; a rule; "To submit online
+        testimony, choose ..."; Submit Online Testimony to the same form; and
+        the three values, the same, in order -- in the HTML, and in the plain
+        text's lines. The amendment's number links to the same address on the
+        Bill Text tab (the person: "the amendment number should link to open
+        it on the bill text tab"), where the pane links it, and nowhere it
+        does not; and the plain text gives that address on a line after the
+        block, "Amendment 2026-0422h: https://...", where it printed the
+        number with no address (the same review).
+      THE RECORDS, ON THE MORNINGS A READER'S EMAIL IS SENT: a Senate hearing
+        in the State Library's Map Room ("SL is the state library map
+        room"); HB 1560-FN's own House hearing, the day of it, and its
+        hearing on a proposed non-germane amendment (2026-0422h) the day
+        before, linked; HB 524-FN's on 2025-3021h, held by Ways and Means,
+        the committee that had the bill that day (testifyHouseCommittee);
+        HB 71-FN's House hearing whose station names no committee (Finance's)
+        and HB 154's Senate one (its referral's); CACR 12's at 3:00 PM in
+        Representatives' Hall; two on one day, the amendment's first; a
+        Senate hearing whose station names its committee with the chamber in
+        capitals, "SENATE JUDICIARY", the chamber not named again; and none
+        told for a bill sent to interim study, a day a committee's report
+        gives, or a line the docket called off.
+      THE WEEK AHEAD: the weekly, which has it beside the hearing, says the
+        pane's sentences, its form and its values, names the amendment and
+        gives its address in the plain text.
+      THE BUILD HANDS THEM OVER: build_feeds on the run's fixture site, its
+        home.json calendar emptied as the eighty-row cut left a bill's rows,
+        with a hearing on an amendment and a Senate hearing in the Map Room
+        whose station names no committee added to HB 1442's record: both
+        reach current.json's upcoming under the bill, marked, worded and
+        linked as the pane has them, and the emails of the eve of one and
+        the morning of the other say what the pane says those days. SB 900,
+        its index row "study" -- sent to interim study -- and its rail read
+        as moving, with a Senate hearing ahead: its rows carry no form and
+        its email on the eve no block, as its button is greyed (the same
+        review: build_feeds' lookup of the row's kind could be lost with
+        nothing failing, HB 1442 being moving by its rail as by its kind).
+      A COMMITTEE'S ROW, which names no bill, names the bill an amendment is
+        to (committee_row; the same review: "... (2026-0999h), House
+        Commerce Committee" told a committee's follower nothing): "a
+        proposed non-germane amendment (2026-0999h) to HB 1442", without the
+        bill's own mark and link; a follower of the committee alone has it
+        so in the week ahead, and one who follows the committee and the bill
+        has the hearing once, "For HB 1442".
+      THE CONTRACT: a row's "form" that is neither H nor S, or an
+        "amendment_num" that is no amendment's number, is noted by
+        follow_changes.check and by the sender's own reader alike."""
+    import inspect
+    E = lambda when, text, **more: dict({"date": when, "text": text, "routine": False}, **more)
+    fixtures = Path("tests/follow/fixtures/changes")
+    if fixtures.is_dir():
+        root = Path(tempfile.mkdtemp(prefix="gr-testify-contract-"))
+        try:
+            shutil.copytree(fixtures, root / "changes")
+            cur = json.loads((root / "changes" / "current.json").read_text(encoding="utf-8"))
+            key = next(k for k, rows in cur["upcoming"].items() if any(r.get("form") for r in rows))
+            cur["upcoming"][key][0].update(form="X", amendment="a proposed amendment (2026-0422h)",
+                                           amendment_num="not-a-number")
+            (root / "changes" / "current.json").write_text(json.dumps(cur), encoding="utf-8")
+            said = {"follow_changes.check": FC.check(root / "changes"),
+                    "check_changes.js": _changes_node(root / "changes")}
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+        missed = [f"{who} ({want})" for who, p in said.items() if p is not None
+                  for want in ("form is neither H nor S", "amendment_num is not an amendment's number")
+                  if not any(want in x for x in p)]
+        assert not missed, f"a row's mark or amendment number that breaks the contract passes {missed}: {said}"
+    H = lambda what, when, time, committee, venue: {"what": what, "when": when, "time": time, "body": "H",
+                                                    "committee": committee, "venue": venue}
+    moving = {"rail": [{"stop": "Introduced", "mark": "p"}, {"stop": "House", "mark": "h"},
+                       {"stop": "Senate", "mark": "-"}]}
+    senate_moving = {"rail": [{"stop": "Introduced", "mark": "p"}, {"stop": "Senate", "mark": "h"},
+                              {"stop": "House", "mark": "-"}]}
+    hb1560 = {"id": "HB1560", "year": 2026, "term": "2025-2026", "house_committee": "Transportation",
+              "senate_committee": "", "namd": 1, "journey": moving,
+              "stations": [H("public hearing", "2026-01-27", "10:40", "Transportation", "GP 232"),
+                           H("executive session", "2026-02-10", "10:00", "Transportation", "GP 234")],
+              "events": [E("2026-01-27", "Public Hearing: 01/27/2026 10:40 am GP 232"),
+                         E("2026-02-03", "Public Hearing on non-germane Amendment # 2026-0422h: 02/03/2026 "
+                                         "11:20 am GP234")]}
+    HHS = "Health, Human Services and Elderly Affairs"
+    hb524 = {"id": "HB524", "year": 2025, "term": "2025-2026", "house_committee": HHS,
+             "senate_committee": "Health and Human Services", "journey": moving,
+             "stations": [H("public hearing", "2025-02-12", "10:30", HHS, "LOB 301-303"),
+                          {"what": "floor debate", "when": "2025-03-06", "time": None, "committee": "House"},
+                          H("executive session", "2025-10-29", "10:00", "Ways and Means", "GP 159")],
+             "events": [E("2025-01-09", "Introduced (in recess of) 01/09/2025 and referred to " + HHS,
+                          cite="HJ 2, page 7"),
+                        E("2025-03-06", "Referred to Ways and Means 03/06/2025", cite="HJ 7, page 57"),
+                        E("2025-10-29", "==CANCELLED== Public Hearing on non-germane Amendment # 2025-2982h: "
+                                        "10/29/2025 10:10 am GP159", called_off=True),
+                        E("2025-10-29", "Public Hearing on non-germane Amendment # 2025-3021h: 10/29/2025 "
+                                        "10:10 am GP 159")]}
+    EPA = "Education Policy and Administration"
+    hb71 = {"id": "HB71", "year": 2025, "term": "2025-2026", "house_committee": EPA,
+            "senate_committee": "Judiciary", "journey": moving,
+            "stations": [H("public hearing", "2025-01-22", "09:30", EPA, "LOB 205-207"),
+                         H("executive session", "2025-02-06", "09:00", EPA, "LOB 205-207"),
+                         H("public hearing", "2025-03-17", "13:00", "", "LOB 210-211")],
+            "events": [E("2025-01-08", "Introduced 01/08/2025 and referred to " + EPA, cite="HJ 1"),
+                       E("2025-02-06", "Referred to Finance 02/06/2025", cite="HJ 5")]}
+    hb154 = {"id": "HB154", "year": 2025, "term": "2025-2026", "house_committee": "Election Law",
+             "senate_committee": "Election Law and Municipal Affairs", "journey": senate_moving,
+             "stations": [H("public hearing", "2025-02-04", "10:00", "Election Law", "LOB 306-308"),
+                          {"what": "hearing", "when": "2025-04-08", "time": "09:30", "body": "S",
+                           "committee": None, "venue": "LOB 103"}], "events": []}
+    sb123 = {"id": "SB123", "year": 2026, "term": "2025-2026", "house_committee": "",
+             "senate_committee": "Education", "journey": senate_moving, "events": [],
+             "stations": [{"what": "hearing", "when": "2026-01-13", "time": "09:00", "body": "S",
+                           "committee": "Education", "venue": "SL Map Room"}]}
+    cacr12 = {"id": "CACR12", "year": 2026, "term": "2025-2026", "house_committee": "Ways and Means",
+              "senate_committee": "Finance", "journey": moving,
+              "stations": [{"what": "hearing", "when": "2026-01-27", "time": "13:15", "body": "S",
+                            "committee": "Finance", "venue": "SH 103"},
+                           H("public hearing", "2026-03-09", "10:45", "Ways and Means", "GP 159")],
+              "events": [E("2026-04-15", "Public Hearing on non-germane Amendment # 2026-1134h: 04/15/2026 "
+                                         "03:00 pm SH Reps Hall")]}
+    hb1300 = {"id": "HB1300", "year": 2026, "term": "2025-2026", "house_committee": "Commerce and Consumer Affairs",
+              "journey": moving, "namd": 2,
+              "stations": [H("public hearing", "2026-01-20", "10:00", "Commerce and Consumer Affairs", "GP 158")],
+              "events": [E("2026-01-20", "Public Hearing on non-germane Amendment # 2026-0093h: 01/20/2026 "
+                                         "09:30 am GP 158")]}
+    # A station naming its committee with the chamber, and in capitals: the
+    # chamber is not given again, whatever its case (testifyCommittee).
+    sb321 = {"id": "SB321", "year": 2026, "term": "2025-2026", "house_committee": "",
+             "senate_committee": "Judiciary", "journey": senate_moving, "events": [],
+             "stations": [{"what": "hearing", "when": "2026-01-14", "time": "13:00", "body": "S",
+                           "committee": "SENATE JUDICIARY", "venue": "SH 100"}]}
+    reported = {"id": "SB76", "year": 2025, "term": "2025-2026", "senate_committee": "Judiciary",
+                "journey": senate_moving, "events": [],
+                "stations": [{"what": "hearing", "when": "2025-01-30", "time": None, "body": "S",
+                              "committee": "Judiciary", "venue": None, "dated_by": "report", "docket_heard": []}]}
+    called = dict(hb1560, events=[E("2026-02-03", "Public Hearing on non-germane Amendment # 2026-0422h: "
+                                                  "02/03/2026 11:20 am GP234", called_off=True)])
+    # name: (record, the index row's number and kind, the moment, the email's frequency)
+    cases = {
+        "senateMapRoom": (sb123, "SB 123", "active", "2026-01-12T17:00:00Z", "daily"),
+        "houseDay": (hb1560, "HB 1560-FN", "active", "2026-01-27T13:00:00Z", "daily"),
+        "amendment": (hb1560, "HB 1560-FN", "active", "2026-02-02T17:00:00Z", "daily"),
+        "amendmentWeek": (hb1560, "HB 1560-FN", "active", "2026-01-31T17:00:00Z", "weekly"),
+        "committeeThatDay": (hb524, "HB 524-FN", "active", "2025-10-28T16:00:00Z", "daily"),
+        "houseNameless": (hb71, "HB 71-FN", "active", "2025-03-16T16:00:00Z", "daily"),
+        "senateNameless": (hb154, "HB 154", "active", "2025-04-07T16:00:00Z", "daily"),
+        "repsHallAfternoon": (cacr12, "CACR 12", "active", "2026-04-14T16:00:00Z", "daily"),
+        "twoOneDay": (hb1300, "HB 1300", "active", "2026-01-19T17:00:00Z", "daily"),
+        "chamberInCapitals": (sb321, "SB 321", "active", "2026-01-13T17:00:00Z", "daily"),
+        "interimStudy": (hb1560, "HB 1560-FN", "study", "2026-02-02T17:00:00Z", "daily"),
+        "reportDated": (reported, "SB 76", "active", "2025-01-29T17:00:00Z", "daily"),
+        "calledOff": (called, "HB 1560-FN", "active", "2026-02-02T17:00:00Z", "daily"),
+    }
+    js_cases = {n: {"rec": rec, "row": {"id": rec["id"], "n": num, "kind": kind, "year": rec["year"]}, "at": at}
+                for n, (rec, num, kind, at, _f) in cases.items()}
+    was, _SWITCHED.testify_log = _SWITCHED.testify_log, []
+    try:
+        site = _app_js("""(() => {
+  const C = %s, out = {};
+  for (const [n, c] of Object.entries(C)) {
+    const now = new Date(c.at);
+    out[n] = {html: scope.testifyButton(c.rec, c.row, now), day: scope.nhDay(now)};
+  }
+  return out;
+})()""" % json.dumps(js_cases), names=("testifyButton", "nhDay"))
+        if site is None:
+            return "skip", "node, app.js or dom_stub.js is not here"
+        # EVERY OTHER CHECK THAT DRAWS A TESTIFY BUTTON, its buttons logged.
+        drew = {}
+        for c in CHECKS:
+            if c["fn"] is _testify_email_in_sync or not _TESTIFY_DRAWN_BY.search(inspect.getsource(c["fn"])):
+                continue
+            had = len(_SWITCHED.testify_log)
+            status, _msg = _check_outcome(c)
+            drew[c["fn"].__name__] = (status, len(_SWITCHED.testify_log) - had)
+        log = list(_SWITCHED.testify_log)
+    finally:
+        _SWITCHED.testify_log = was
+    none = [n for n, (status, k) in drew.items() if status != "skip" and not k]
+    assert len(drew) >= 6 and not none, (
+        f"the checks that draw a Testify button drew none for the email's copy to be held to: {none or drew}")
+    bad, compared, read = _testify_email_agrees(FC, PA, log)
+    assert not bad, (f"{len(bad)} of the {read} Testify buttons drawn by this check and {len(drew)} others: "
+                     + " | ".join(bad[:4]))
+    mail_cases = []
+    for n, (rec, num, kind, at, freq) in cases.items():
+        today = site[n]["day"]
+        rows = [a["row"] for a in FC.bill_upcoming(rec, kind=kind, today=today, place=PA.place)]
+        mail_cases.append({"name": n, "key": f"bill:{rec['year']}/{rec['id']}", "label": num,
+                           "url": f"/bill/{rec['year']}/{rec['id'].lower()}", "rows": rows, "today": today,
+                           "frequency": freq})
+    mail = _testify_mail(mail_cases)
+    if mail is None:
+        return "skip", (f"node or workers/follow is not here; follow_changes agrees with app.js on the {read} "
+                        "Testify buttons the checks draw")
+    live = 0
+    for c in mail_cases:
+        n, m = c["name"], mail[c["name"]]
+        assert m.get("html") and not m["problems"] and not m["notes"], (
+            f"{n}: the sender's reader refused the build's rows: {m.get('problems')} {m.get('notes')} {c['rows']}")
+        s, e, text = _testify_said(site[n]["html"], m["html"], m["text"])
+        if c["frequency"] == "weekly":
+            continue
+        if (s is None) != (e is None):
+            bad.append(f"{n}: the site's Testify is {'live' if s else 'not live'} on {c['today']}, and the email "
+                       f"{'has' if e else 'has no'} testimony block: {c['rows']}")
+            continue
+        if s is None:
+            continue
+        live += 1
+        for k in ("button", "hearing", "rule", "choose", "go", "values", "amendment"):
+            if s[k] != e[k]:
+                bad.append(f"{n}: the pane's {k} is {s[k]!r}, the email's {e[k]!r}")
+        if text != _testify_text_want(s):
+            bad.append(f"{n}: the plain text says {text}, the pane {_testify_text_want(s)}")
+    assert not bad, " | ".join(bad[:4])
+    # The records' particulars, so a case that stopped testing what it names fails.
+    words = {n: _testify_said(site[n]["html"], mail[n]["html"], mail[n]["text"])[1] for n in mail}
+    for n, part, want in (
+            ("senateMapRoom", "hearing", "The public hearing on SB 123 is scheduled for Tuesday, January 13 at 9:00 AM "
+             "in State Library Map Room. Public testimony is open until midnight the day of the hearing."),
+            ("senateMapRoom", "values", ["Tuesday, January 13, 2026", "Senate Education Committee", "SB 123"]),
+            ("houseDay", "button", "Testify until Jan 27"),
+            ("amendment", "amendment", ("https://graniterecord.org/bill/2026/hb1560/text#amendment-2026-0422h",
+                                        "2026-0422h")),
+            ("amendment", "values", ["Tuesday, February 3, 2026", "House Transportation Committee", "HB 1560-FN"]),
+            ("committeeThatDay", "values", ["Wednesday, October 29, 2025", "House Ways and Means Committee",
+                                            "HB 524-FN"]),
+            ("committeeThatDay", "amendment", None),
+            ("houseNameless", "values", ["Monday, March 17, 2025", "House Finance Committee", "HB 71-FN"]),
+            ("senateNameless", "values", ["Tuesday, April 8, 2025", "Senate Election Law and Municipal Affairs "
+                                          "Committee", "HB 154"]),
+            ("twoOneDay", "hearing", "The public hearing on a proposed non-germane amendment (2026-0093h) to HB 1300 "
+             "is scheduled for Tuesday, January 20 at 9:30 AM in Granite Place 158. Public testimony is open until "
+             "midnight the day of the hearing."),
+            ("chamberInCapitals", "values", ["Wednesday, January 14, 2026", "SENATE JUDICIARY Committee", "SB 321"])):
+        got = (words.get(n) or {}).get(part, "(no block)")
+        assert got == want, f"{n}'s email gives {part} {got!r}, not {want!r}"
+    assert "3:00 PM in Representatives' Hall, State House" in words["repsHallAfternoon"]["hearing"]
+    assert "\n  Amendment 2026-0422h: https://graniterecord.org/bill/2026/hb1560/text#amendment-2026-0422h\n" \
+        in mail["amendment"]["text"], "the plain text gives no address for the amendment the HTML links"
+    for n in ("interimStudy", "reportDated", "calledOff"):
+        assert words[n] is None and "Testify until" not in mail[n]["text"], f"{n}: the email tells testimony"
+    wk = mail["amendmentWeek"]
+    ahead = wk["html"][wk["html"].find(">Coming up<"):]
+    s = _testify_said(site["amendmentWeek"]["html"], "", "")[0]
+    flat = " ".join(re.sub(r"<[^>]+>", "", re.sub(r"<(?:br|/p|/td|table|p)\b[^>]*>", " ", ahead))
+                    .replace("\u00a0", " ").split())
+    for w in ("Public hearing on a proposed non-germane amendment (2026-0422h)",
+              "Public testimony is open until midnight the day of the hearing. To submit online testimony, "
+              "choose the hearing date, committee, and bill number as shown below.",
+              "Submit Online Testimony", " ".join(s["values"])):
+        assert w in flat, f"the weekly's week ahead does not say {w!r}: {flat[:600]}"
+    assert f'href="{s["go"][0][0]}"' in ahead and f'href="{s["amendment"][0]}"' in ahead, \
+        "the weekly's week ahead does not link the form and the amendment as the pane does"
+    assert f"    Amendment {s['amendment'][1]}: {s['amendment'][0]}\n" in wk["text"], (
+        "the weekly's plain text gives no address for the amendment its week ahead links: "
+        + wk["text"][wk["text"].find("COMING UP"):][:900])
+
+    # THE BUILD HANDS THEM OVER
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", (f"{read} Testify buttons drawn by this check and {len(drew)} others, the email's copy "
+                      f"agreeing, {compared} word for word; {live} live panes and their emails alike on a "
+                      "reader's mornings; the build not run, not here: " + ", ".join(absent))
+    import site_read as SR
+    root = Path(tempfile.mkdtemp(prefix="gr-testify-build-"))
+
+    def inline(page, change):
+        t = page.read_text(encoding="utf-8")
+        i = t.find(SR.INLINE_OPEN) + len(SR.INLINE_OPEN)
+        j = t.find(SR.INLINE_CLOSE, i)
+        rec = json.loads(t[i:j])
+        change(rec)
+        page.write_text(t[:i] + json.dumps(rec, ensure_ascii=False).replace("</", "<\\/") + t[j:],
+                        encoding="utf-8")
+        return rec
+    try:
+        _fixture_site_whole(root)
+
+        def hb1442(rec):
+            rec["namd"] = 1
+            rec["senate_committee"] = "Commerce"
+            rec["stations"].append({"what": "hearing", "when": "2026-03-12", "time": "09:00", "body": "S",
+                                    "committee": None, "venue": "SL Map Room"})
+            rec["events"].append(E("2026-03-11", "Public Hearing on non-germane Amendment # 2026-0999h: "
+                                                 "03/11/2026 11:20 am GP 234"))
+        rec = inline(root / "site" / "bill" / "2026" / "hb1442.html", hb1442)
+
+        # SB 900, sent to interim study by its index row, its rail read as
+        # moving, a Senate hearing ahead: the row's kind alone says it is
+        # not heard again.
+        def sb900(rec):
+            rec.pop("session_over", None)
+            rec["journey"] = {"rail": [{"stop": "Introduced", "mark": "p"}, {"stop": "Senate", "mark": "h"},
+                                       {"stop": "House", "mark": "-"}, {"stop": "Governor", "mark": "-"},
+                                       {"stop": "Law", "mark": "-"}]}
+            rec["stations"].append({"what": "hearing", "when": "2026-03-12", "time": "10:00", "body": "S",
+                                    "committee": "Judiciary", "venue": "SH 100"})
+        study = inline(root / "site" / "bill" / "2026" / "sb900.html", sb900)
+        ip = root / "site" / "idx" / "2025-2026.json"
+        index = json.loads(ip.read_text(encoding="utf-8"))
+        for r in index:
+            if r["id"] == "SB900":
+                r["kind"] = "study"
+        ip.write_text(json.dumps(index), encoding="utf-8")
+        hp = root / "site" / "home.json"
+        home = json.loads(hp.read_text(encoding="utf-8"))
+        home["upcoming"] = []
+        hp.write_text(json.dumps(home), encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_feeds.py"), "--site", "site"], cwd=root,
+                 capture_output=True, text=True, timeout=180, env={"GRANITE_BUILD_DATE": "2026-03-07T09:00:00"})
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-300:]
+        cur = json.loads((root / "site" / "changes" / "current.json").read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    meta = cur["followable"]["bill:2026/HB1442"]
+    amd = {"date": "2026-03-11", "what": "public hearing", "time": "11:20", "committee": "House Commerce Committee",
+           "venue": "Granite Place 234", "amendment": "a proposed non-germane amendment (2026-0999h)"}
+    sl = {"date": "2026-03-12", "what": "hearing", "time": "09:00", "committee": "Senate Commerce Committee",
+          "venue": "State Library Map Room", "form": "S"}
+    rows = cur["upcoming"].get("bill:2026/HB1442")
+    assert rows == [dict(amd, form="H", amendment_num="2026-0999h"), sl], (
+        "build_feeds did not hand over HB 1442's hearings from its record, with home.json's calendar empty, "
+        f"as its Testify counts them: {rows}")
+    to_bill = dict(amd, amendment=f"{amd['amendment']} to {meta['label']}")
+    assert to_bill in cur["upcoming"].get("committee:H43", []), (
+        "the hearing on an amendment is not under the committee that sits, naming the bill it is to and without "
+        f"the bill's own mark: {cur['upcoming'].get('committee:H43')}")
+    gone = cur["upcoming"].get("bill:2026/SB900") or []
+    assert [u["date"] for u in gone] == ["2026-03-12"] and not any("form" in u for u in gone), (
+        f"SB 900, its index row sent to interim study and its rail read as moving, is handed over as a hearing to "
+        f"testify at: {gone}")
+    days = (("eve of the amendment's", "2026-03-10T17:00:00Z"), ("day of the Map Room's", "2026-03-12T13:00:00Z"))
+    site = _app_js("""(() => {
+  const rec = %s, row = {id: "HB1442", n: %s, kind: "active", year: 2026};
+  const study = %s, srow = {id: "SB900", n: "SB 900", kind: "study", year: 2026};
+  return {hb1442: %s.map(at => ({html: scope.testifyButton(rec, row, new Date(at)), day: scope.nhDay(new Date(at))})),
+          sb900: {html: scope.testifyButton(study, srow, new Date("2026-03-11T17:00:00Z")),
+                  day: scope.nhDay(new Date("2026-03-11T17:00:00Z"))}};
+})()""" % (json.dumps(rec), json.dumps(meta["label"]), json.dumps(study), json.dumps([at for _, at in days])),
+                   names=("testifyButton", "nhDay"))
+    cmte = cur["followable"]["committee:H43"]
+    recs = {"bill": {"key": "bill:2026/HB1442", "label": meta["label"], "url": meta["url"], "rows": rows},
+            "committee": {"key": "committee:H43", "label": cmte["label"], "url": cmte.get("url") or "",
+                          "rows": cur["upcoming"]["committee:H43"]}}
+    mail = _testify_mail([{"name": w, "key": "bill:2026/HB1442", "label": meta["label"], "url": meta["url"],
+                           "rows": rows, "today": site["hb1442"][k]["day"], "frequency": "daily"}
+                          for k, (w, _at) in enumerate(days)]
+                         + [{"name": f"sb900{a}", "key": "bill:2026/SB900", "label": "SB 900", "url": "/bill/2026/sb900",
+                             "rows": gone, "today": site["sb900"]["day"], "frequency": "daily", "ahead": a}
+                            for a in ("", "ahead")]
+                         + [{"name": "committeeAlone", "recs": [recs["committee"]], "today": "2026-03-07",
+                             "frequency": "weekly"},
+                            {"name": "billAndCommittee", "recs": [recs["bill"], recs["committee"]],
+                             "today": "2026-03-07", "frequency": "weekly"}])
+    said = []
+    for k, (w, _at) in enumerate(days):
+        s, e, text = _testify_said(site["hb1442"][k]["html"], mail[w]["html"], mail[w]["text"])
+        assert s and s == e and text == _testify_text_want(s), (
+            f"on the {w} day, the pane says {s}, the email {e}, its plain text {text}")
+        said.append(s)
+    assert said[0]["amendment"] == ("https://graniterecord.org/bill/2026/hb1442/text#amendment-2026-0999h",
+                                    "2026-0999h") and said[0]["values"][1] == "House Commerce Committee" \
+        and " in State Library Map Room." in said[1]["hearing"] \
+        and said[1]["values"][1] == "Senate Commerce Committee", (
+            f"the fixture's two hearings are not what this holds: {said}")
+    assert site["sb900"]["html"].startswith('<details class="testify toff">'), (
+        f"SB 900's button, its row sent to interim study, is live: {site['sb900']['html'][:200]}")
+    for a in ("", "ahead"):
+        m = mail[f"sb900{a}"]
+        assert m.get("html") and not m["problems"] and not m["notes"] and "Testify until" not in m["text"], (
+            f"SB 900's email on the eve of its hearing{', as a test sends it,' if a else ''} tells testimony its "
+            f"greyed button does not: {m.get('problems')} {m.get('notes')} {m.get('text', '')[:400]}")
+    on = f"Public hearing on a proposed non-germane amendment (2026-0999h) to {meta['label']}, House Commerce Committee"
+    alone = mail["committeeAlone"]
+    assert on in alone["text"] and on in " ".join(re.sub(r"<[^>]+>", "", alone["html"]).split()), (
+        "a committee's follower is told of a hearing on an amendment without the bill it is to: "
+        + alone["text"][alone["text"].find("COMING UP"):][:700])
+    both = mail["billAndCommittee"]
+    rows_said = [ln for ln in both["text"].splitlines() if "(2026-0999h)" in ln and ": Public hearing" in ln]
+    assert len(rows_said) == 1 and rows_said[0].endswith(f"For {meta['label']}."), (
+        f"a reader who follows HB 1442 and the committee has its hearing on 2026-0999h as {rows_said}, not once "
+        f"for the bill")
+    return "ok", (f"{read} Testify buttons drawn by this check and {len(drew)} others, the email's copy agreeing, "
+                  f"{compared} live word for word and link for link; {live} live panes and their emails alike on a "
+                  f"reader's mornings, and {len(cases) - live - 1} with none in either; the weekly's week ahead; "
+                  "build_feeds handing over HB 1442's hearing on an amendment and its Senate hearing in the Map "
+                  "Room from its record with home.json's calendar empty, SB 900's, sent to study, with no form, "
+                  "and a committee's row naming the bill its amendment is to, once for a reader who follows both")
+
+
+@check("frontend", "an email tells a hearing once: the line that set the hearing its testimony block tells is not "
+                   "said again beneath it in the email's other clock, and a line that moved it stays",
+       needs=("follow_changes", "plain_action"))
+def _testify_told_once(FC, PA):
+    """The review of 26 October 2026. The night a hearing is set -- the
+    "open" night, before the eve and the day -- the bill's testimony block
+    says it in the Testify pane's words, and directly under it the bill's
+    list carried the line that set it, in the email's other clock: "... is
+    scheduled for Tuesday, February 3 at 11:20 AM in Granite Place 234" and
+    "Hearing on non-germane amendment 2026-0422h set for Tuesday, February
+    3, 11:20 a.m., Granite Place 234". It read as a mistake, and every
+    "open" email had it. mail.js leaves that line out of the list wherever
+    the block is drawn (setsHearing). Drawn here through the sender's reader
+    of the night and of current.json, its collect() and mail.js, with each
+    night's item made as build_feeds makes it (follow_changes.item,
+    plain_action.meeting) and each bill's rows as bill_upcoming hands them:
+
+      HB 1560-FN ON 30 JANUARY, its hearing on 2026-0422h set the night
+        before for 3 February: the block, and the time once, "11:20 AM";
+        no "set for" line, and no "11:20 a.m.".
+      A SENATE HEARING IN THE MAP ROOM, set the night before the eve: the
+        block, and no "Hearing set for" line, on the eve as on the open
+        night.
+      A HEARING PUT OFF to the day the block tells ("==RESCHEDULED=="): the
+        line stays, since that it moved is news the block does not carry.
+      The subject still names what was set, as it carries no block."""
+    E = lambda when, text: {"date": when, "text": text, "routine": False}
+    moving = {"rail": [{"stop": "Introduced", "mark": "p"}, {"stop": "House", "mark": "h"},
+                       {"stop": "Senate", "mark": "-"}]}
+    smoving = {"rail": [{"stop": "Introduced", "mark": "p"}, {"stop": "Senate", "mark": "h"},
+                        {"stop": "House", "mark": "-"}]}
+    amd = "Public Hearing on non-germane Amendment # 2026-0422h: 02/03/2026 11:20 am GP234"
+    hb1560 = {"id": "HB1560", "year": 2026, "term": "2025-2026", "house_committee": "Transportation", "namd": 1,
+              "journey": moving, "events": [E("2026-01-27", "Public Hearing: 01/27/2026 10:40 am GP 232"),
+                                            E("2026-01-29", amd)],
+              "stations": [{"what": "public hearing", "when": "2026-01-27", "time": "10:40", "body": "H",
+                            "committee": "Transportation", "venue": "GP 232"}]}
+    sl = "Hearing: 04/14/2026, Room Map Room, SL, 09:15 am"
+    hb1093 = {"id": "HB1093", "year": 2026, "term": "2025-2026", "senate_committee": "Education", "journey": smoving,
+              "events": [E("2026-04-02", sl)],
+              "stations": [{"what": "hearing", "when": "2026-04-14", "time": "09:15", "body": "S",
+                            "committee": "Education", "venue": "SL Map Room"}]}
+    moved = "==RESCHEDULED== Hearing: 04/14/2026, Room Map Room, SL, 09:15 am"
+
+    def case(name, rec, label, today, line, entered):
+        rows = [a["row"] for a in FC.bill_upcoming(rec, kind="active", today=today, place=PA.place)]
+        key = f"bill:{rec['year']}/{rec['id']}"
+        it = FC.item(f"x:{rec['id']}:{entered}", entered, "scheduled", f"{label} \u2014 {line}",
+                     f"/bill/{rec['year']}/{rec['id'].lower()}", rec["term"], milestone=True,
+                     meeting=PA.meeting(line))
+        assert it and it.get("meeting"), f"{name}: the build makes no meeting of {line!r}: {it}"
+        return {"name": name, "key": key, "label": label, "url": f"/bill/{rec['year']}/{rec['id'].lower()}",
+                "rows": rows, "today": today, "frequency": "daily", "night": {key: {"items": [it]}}}
+    mail = _testify_mail([case("open", hb1560, "HB 1560-FN", "2026-01-30", amd, "2026-01-29"),
+                          case("openMapRoom", hb1093, "HB 1093", "2026-04-03", sl, "2026-04-02"),
+                          case("eveMapRoom", hb1093, "HB 1093", "2026-04-13", sl, "2026-04-12"),
+                          case("putOff", hb1093, "HB 1093", "2026-04-03", moved, "2026-04-02")])
+    if mail is None:
+        return "skip", "node or workers/follow is not here"
+    for n, m in mail.items():
+        assert m.get("html") and not m["problems"] and not m["notes"], (n, m.get("problems"), m.get("notes"))
+        assert "Testify until" in m["text"], f"{n}: the email has no testimony block: {m['text'][:600]}"
+    # The email's words: the plain text's, and the HTML's as a reader sees
+    # them -- not its head, which carries the subject, nor the hidden preview
+    # an inbox shows beside it, which keep what was set, as the subject does.
+    look = lambda m: m["text"].replace("\u00a0", " ") + "\n" + " ".join(
+        re.sub(r"<[^>]+>", " ", re.sub(r'<div style="display:none[^"]*">.*?</div>', "",
+                                       m["html"][m["html"].find("</head>"):], flags=re.S))
+        .replace("&nbsp;", " ").replace("\u00a0", " ").split())
+    for n, clock, other in (("open", "11:20 AM", "11:20 a.m."), ("openMapRoom", "9:15 AM", "9:15 a.m."),
+                            ("eveMapRoom", "9:15 AM", "9:15 a.m.")):
+        said = look(mail[n])
+        assert clock in said and other not in said and "set for" not in said, (
+            f"{n}: the hearing the block tells is told again beneath it, in the other clock: "
+            + mail[n]["text"][:900])
+    assert "set for" in mail["open"]["subject"], (
+        f"the subject no longer names the hearing set: {mail['open']['subject']!r}")
+    assert "Hearing rescheduled for" in mail["putOff"]["text"], (
+        "a line that put the hearing off is left out with the one that set it: " + mail["putOff"]["text"][:900])
+    return "ok", ("HB 1560-FN's hearing on 2026-0422h and a Map Room hearing told once, by the block, the night "
+                  "they are set and on the eve; a hearing put off keeps its line; the subject names what was set")
+
+
+@check("frontend", "the home page's Recent Session Days are a player for each chamber, dated "
+                   "\"House Session (Aug 19, 2026)\" to the sitting's page, loading nothing from "
+                   "YouTube until Play is pressed, in both languages; and the rebuild line under "
+                   "Coming up speaks only to warn",
+       needs=("build_pages", "chrome"))
+def _home_says_each_once(BP, chrome):
+    """RECENT SESSION DAYS (the owner, 26 October 2026, of the release
+    candidate: "the embedded house and session recent session videos are no
+    longer displaying properly"). The audit of 25 October, M8, had put one
+    line, "Aug 19, 2026 — House · Senate recordings", where the live site
+    has two click-to-play players under "Recent Session Days"; the owner
+    wants the players back, with the date in the site's own style.
+
+    recent_sessions, drawn from home.json's latest_sessions at build time:
+    the heading, then for each chamber in home.json's order its title,
+    "House Session (Aug 19, 2026)" -- date_words' medium form, no ordinal --
+    the date the way to the sitting's page where one is built and words
+    where none is, over a .player holding one Play button: its accessible
+    name the chamber's and the day's ("Play the House floor session of Aug
+    19, 2026"), the frame's title on it for when it is pressed. Chambers
+    that last sat on different days each carry their own date. No sitting is
+    nothing. The Spanish page says it all in Spanish, its date in Spanish
+    form, its links the same. Nothing in it asks YouTube or Google for
+    anything -- no frame, no thumbnail, no script -- and app.css draws the
+    still as the bill's player is drawn: 16:9, Play in its middle. It lays
+    the two out too (the review of 26 October 2026): side by side where a
+    row holds two at 280px, one column in the left rail and on a phone, the
+    title at the meta size, and #session a sheet with a margin and a ruled
+    heading wherever Coming up is one, and not drawn when empty.
+
+    HOME_JS's click handler, run in node, puts the no-cookie player in
+    Play's place, titled from the button, with the focus where Play had it;
+    it draws nothing else into #session. Its rebuild block is run against
+    build.json as a fresh, a stale and a failed build leave it: the fresh
+    one leaves the line empty -- the footer says when (chrome.FOOT_JS) --
+    and the other two warn (the audit of 25 October 2026, M8, kept)."""
+    import html as _html
+    import components as C
+    one = {"latest_sessions": [{"date": "2026-08-19", "video_id": "vH", "chamber": "House"},
+                               {"date": "2026-08-19", "video_id": "vS", "chamber": "Senate"}]}
+    sits = {("H", "2026-08-19"), ("S", "2026-08-19")}
+
+    def cells(h):
+        """[(title as text, the date's href or None, {Play's attributes},
+        Play's words, the cell's HTML)] of a drawn Recent Session Days."""
+        out = []
+        for c in re.findall(r'<div class="sess">(.*?)</div></div>', h, re.S):
+            title = re.search(r'<p class="sesstitle">(.*?)</p>', c, re.S)
+            stub = re.findall(r'<div class="player"><button type="button" class="pstub" ([^>]*)>(.*?)'
+                              r'</button>$', c, re.S)
+            href = re.search(r'<a href="([^"]+)">', title.group(1)) if title else None
+            attrs = dict(re.findall(r'([\w-]+)="([^"]*)"', stub[0][0])) if len(stub) == 1 else {}
+            out.append((_html.unescape(re.sub(r"<[^>]+>", "", title.group(1))) if title else None,
+                        href.group(1) if href else None,
+                        {k: _html.unescape(v) for k, v in attrs.items()},
+                        re.sub(r"<[^>]+>", "", stub[0][1]) if len(stub) == 1 else None, c))
+        return out
+
+    got = BP.recent_sessions(one, "en", sits)
+    assert got.startswith("<h2>Recent Session Days</h2>"), f"Recent Session Days is not its heading: {got[:120]!r}"
+    drawn = cells(got)
+    want = [("House Session (Aug 19, 2026)", "session/H/2026-08-19.html",
+             {"data-embed": "vH",
+              "data-title": "Recording of the House floor session, Aug 19, 2026",
+              "aria-label": "Play the recording of the House floor session, Aug 19, 2026"}, "Play the recording"),
+            ("Senate Session (Aug 19, 2026)", "session/S/2026-08-19.html",
+             {"data-embed": "vS",
+              "data-title": "Recording of the Senate floor session, Aug 19, 2026",
+              "aria-label": "Play the recording of the Senate floor session, Aug 19, 2026"}, "Play the recording")]
+    assert [d[:4] for d in drawn] == want, (
+        f"both chambers' sittings of 19 August are drawn as {[d[:4] for d in drawn]}, not two "
+        f"players titled \"House Session (Aug 19, 2026)\" and \"Senate Session (Aug 19, 2026)\", "
+        f"each dated to its page and Play named for its chamber and day")
+    # NOTHING FROM YOUTUBE OR GOOGLE BEFORE PLAY (the privacy page: "a player
+    # only loads if you press play"): no frame, no image, no script, and no
+    # address of theirs at all.
+    loads = [w for w in ("<iframe", "<img", "<script", "<link", "youtube", "ytimg", "google",
+                         "srcset", "background") if w in got.lower()]
+    assert not loads, f"Recent Session Days asks for something before Play is pressed: {loads}"
+    assert "19th" not in got and "August" not in got, f"a date in the old ordinal style: {got[:300]!r}"
+    # Different days, one without a page: each its own date, the one with no
+    # page in words.
+    apart = {"latest_sessions": [{"date": "2026-06-04", "video_id": "vH", "chamber": "House"},
+                                 {"date": "2026-06-11", "video_id": "vS", "chamber": "Senate"}]}
+    drawn = cells(BP.recent_sessions(apart, "en", {("H", "2026-06-04")}))
+    assert [(d[0], d[1], d[2].get("aria-label")) for d in drawn] == [
+        ("House Session (Jun 4, 2026)", "session/H/2026-06-04.html",
+         "Play the recording of the House floor session, Jun 4, 2026"),
+        ("Senate Session (Jun 11, 2026)", None, "Play the recording of the Senate floor session, Jun 11, 2026")], (
+        f"chambers that sat on different days, one without a page, are drawn as "
+        f"{[(d[0], d[1], d[2].get('aria-label')) for d in drawn]}")
+    assert BP.recent_sessions({}, "en", sits) == "" and BP.recent_sessions(
+        {"latest_sessions": []}, "en") == "", "no sitting on record still draws Recent Session Days"
+    # In Spanish: the same days' pages under a Spanish date, in Spanish words.
+    es = BP.recent_sessions(one, "es", sits)
+    day = C.date_words("2026-08-19", "medium", "es")
+    drawn = cells(es)
+    assert [d[1] for d in drawn] == ["session/H/2026-08-19.html", "session/S/2026-08-19.html"] \
+        and all(day in d[0] and day in d[2].get("aria-label", "") and day in d[2].get("data-title", "")
+                for d in drawn), f"the Spanish players do not lead to the same days under {day!r}: {es[:400]!r}"
+    english = [w for w in ("Recent Session", "Session", ">Play<", "Play the", "Recording of", "floor")
+               if w in es]
+    assert not english, f"the Spanish Recent Session Days says English words: {english}"
+    # THE STILL IS A VIDEO'S: the shared .pstub is 16:9 with Play in its
+    # middle, and the frame that takes its place 16:9 too.
+    rules = _css_rules(_source("src/pages/app.css"))
+    flat = {sel.strip(): dict(_css_decls(body)) for at, sel, body, n in rules if not at}
+    stub, frame = flat.get(".pstub", {}), flat.get(".player iframe", {})
+    assert (stub.get("aspect-ratio"), stub.get("display"), stub.get("align-items"),
+            stub.get("justify-content"), frame.get("aspect-ratio")) == (
+        "16/9", "flex", "center", "center", "16/9"), (
+        f"app.css's Play is not a 16:9 still with Play in its middle: .pstub {stub}, "
+        f".player iframe {frame}")
+    assert ".sessline" not in _source("src/pages/app.css") \
+        and not hasattr(BP, "session_line"), "the one line that stood for the players is still here"
+    # THE PLAYERS, LAID OUT (the review of 26 October 2026: none of this was
+    # held, and with .twoup, #session's sheet and its margin gone, the
+    # preview's two players at 1024px stood one over the other at 976x550
+    # each, out of any sheet, where they sit side by side at 463x261 in one).
+    # Two across where a row holds two at 280px, one column in the left rail
+    # and on a phone; the title at the meta size over its player; and
+    # #session set apart wherever Coming up is -- the same sheet, margin and
+    # heading rule, in the same block -- and drawn not at all when empty.
+    P, WIDE, ONE, NARROW = (":where(body.pg) ", ("@media(min-width:73.75em)",),
+                            ("@media(max-width:73.74875em)",), ("@media(max-width:45em)",))
+    laid = [(tuple(re.sub(r"\s+", "", a) for a in at), {" ".join(s.split()) for s in sel.split(",")},
+             {k: " ".join(v.split()) for k, v in _css_decls(body)}) for at, sel, body, n in rules]
+
+    def said(ctx, sel):
+        """What app.css sets for `sel` under exactly the at-rules `ctx`."""
+        out = {}
+        for c, sels, decls in laid:
+            if c == ctx and P + sel in sels:
+                out.update(decls)
+        return out
+
+    want = [((), ".twoup", {"display": "grid", "gap": "var(--sp-6)",
+                            "grid-template-columns": "repeat(auto-fit,minmax(280px,1fr))"}),
+            (WIDE, ".hside .twoup", {"grid-template-columns": "1fr"}),
+            (NARROW, ".twoup", {"grid-template-columns": "1fr"}),
+            ((), ".sesstitle", {"margin": "0 0 var(--sp-3)", "font-size": "var(--t-sm)"}),
+            ((), ".sess .player", {"margin-top": "0"}),
+            (ONE, ".hcols #session:empty", {"display": "none"}),
+            ((), ".hv-sections #session:empty", {"display": "none"}),
+            (ONE, ".hv-panels #session:empty", {"display": "none"})]
+    unlaid = [f"{' '.join(c)} {s} {d} (it sets {said(c, s)})".strip() for c, s, d in want
+              if any(said(c, s).get(k) != v for k, v in d.items())]
+    unlaid += [f"{' '.join(c)} {s} is not in the block that sets {s.replace('#session', '#upcoming')} apart"
+               .strip() for c, s in ((ONE, ".hcols #session"), ((), ".hv-sections #session"),
+                                     (ONE, ".hv-panels #session"), (ONE, ".hv-panels #session h2"),
+                                     (ONE, ".hv-sections #session h2"))
+               if not any(c2 == c and {P + s, P + s.replace("#session", "#upcoming")} <= sels
+                          for c2, sels, _ in laid)]
+    assert not unlaid, "app.css does not lay out Recent Session Days: " + "; ".join(unlaid)
+
+    # HOME_JS: PLAY OPENS THE PLAYER, run in node; nothing else drawn into
+    # #session, and no address of YouTube's but the player's own.
+    js = BP.HOME_JS
+    assert 'getElementById("session")' not in js and "ordinal(" not in js \
+        and js.count("youtube") == 1 and "ytimg" not in js, (
+            "HOME_JS draws into #session, or asks YouTube for more than the player")
+    hand = re.search(r'document\.addEventListener\("click",e=>\{\s*const st=e\.target\.closest&&'
+                     r'e\.target\.closest\("#session \[data-embed\], \.wbrec \[data-embed\]"\);.*?\n\}\);', js, re.S)
+    assert hand, "HOME_JS has no handler that turns Recent Session Days' Play into its player"
+    # The footer keeps the day the data was rebuilt, on every page.
+    assert 'getElementById("built")' in chrome.FOOT_JS and "Data rebuilt" in chrome.FOOT_JS, (
+        "the footer no longer says when the data was rebuilt")
+
+    # THE REBUILD LINE, RUN: a fresh build says nothing here, a stale or a
+    # failed one warns.
+    m = re.search(r'fetch\(DATA\("build\.json"\)\).*?\}\)\.catch\(\(\)=>\{\}\);', js, re.S)
+    assert m, "HOME_JS has no block reading build.json"
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "ok", ("Recent Session Days drawn in both languages; node is not here to run Play "
+                      "or the rebuild line")
+    prog = _components_js() + "\n" + (
+        "globalThis.window=globalThis;const DATA=f=>f;let B=null;"
+        "const el={className:'fresh',innerHTML:''};"
+        "globalThis.document={getElementById:id=>id==='fresh'?el:null};"
+        "globalThis.fetch=()=>Promise.resolve({json:()=>B});"
+        "const day=864e5,now=Date.now();"
+        "const run=async b=>{B=b;el.className='fresh';el.innerHTML='';"
+        "await (" + m.group(0)[:-1] + ");return {cls:el.className,html:el.innerHTML};};"
+        "(async()=>{const out={};"
+        "out.fresh=await run({finished:new Date(now-3600e3).toISOString(),steps:[{step:'a',status:'ok'}]});"
+        "out.stale=await run({finished:new Date(now-5*day).toISOString(),steps:[]});"
+        "out.failed=await run({finished:new Date(now-3600e3).toISOString(),"
+        "steps:[{step:'a',status:'failed'}]});"
+        "process.stdout.write(JSON.stringify(out));})();")
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, "the rebuild line would not run: " + (r.stderr or "")[-300:]
+    got = json.loads(r.stdout)
+    assert got["fresh"] == {"cls": "fresh", "html": ""}, (
+        f"a fresh build still says when it was rebuilt under Coming up, beside the footer: "
+        f"{got['fresh']}")
+    assert got["stale"]["cls"] == "fresh stale" and "5 days ago" in got["stale"]["html"], (
+        f"a build five days old does not warn: {got['stale']}")
+    assert got["failed"]["cls"] == "fresh stale" and "1 build step failed" in got["failed"]["html"], (
+        f"a build with a failed step does not warn: {got['failed']}")
+
+    # PLAY, RUN: the handler alone, over a button as recent_sessions draws it,
+    # pressed with the focus on it and without; and a click elsewhere, which
+    # it leaves alone.
+    prog = _components_js() + "\n" + (
+        "const heard=[];globalThis.document={activeElement:null,"
+        "addEventListener:(t,f)=>heard.push([t,f])};\n" + hand.group(0) + "\n"
+        "const press=(had,inside)=>{let n=0;const frame={focus(){n++;}};"
+        "const st={dataset:{embed:'vH',title:'Recording of the House floor session, Aug 19, 2026'},"
+        "parentNode:{querySelector:q=>q==='iframe'?frame:null}};"
+        "document.activeElement=had?st:{};"
+        "heard.forEach(([t,f])=>t==='click'&&f({target:{closest:q=>"
+        "inside&&q==='#session [data-embed], .wbrec [data-embed]'?st:null}}));"
+        "return {html:st.outerHTML||null,focus:n};};"
+        "process.stdout.write(JSON.stringify({had:press(true,true),not:press(false,true),"
+        "away:press(true,false)}));")
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, "Play's handler would not run: " + (r.stderr or "")[-300:]
+    got = json.loads(r.stdout)
+    frame_ = re.sub(r"\s+", " ", got["had"]["html"] or "")
+    assert re.fullmatch(r'<iframe allow="autoplay" allowfullscreen src="https://www\.youtube-nocookie'
+                        r'\.com/embed/vH\?autoplay=1" title="Recording of the House floor session, '
+                        r'Aug 19, 2026"></iframe>', frame_), (
+        f"pressing Play does not put the no-cookie player, titled for its chamber and day, in "
+        f"its place: {frame_!r}")
+    assert (got["had"]["focus"], got["not"]["focus"], got["away"]["html"]) == (1, 0, None), (
+        f"the player takes the focus only where Play had it, and a click elsewhere opens "
+        f"nothing: {got}")
+    return "ok", ("Recent Session Days: a 16:9 player for each chamber, \"House Session (Aug 19, "
+                  "2026)\" dated to its page, its own date where the chambers sat apart, in "
+                  "English and Spanish, two across where they fit and one column in the left rail "
+                  "and on a phone, a sheet wherever Coming up is one; nothing from YouTube until "
+                  "Play, which opens the no-cookie "
+                  "player with Play's focus; the rebuild line silent when fresh, a warning when "
+                  "five days old or a step failed")
+
+
+@check("frontend", "the home page's one search box is the header's finder, its top results in a "
+                   "dropdown, with no second finder beside it")
+def _home_finder_suggests_towns():
+    """D13 (the person, 8 October 2026): "The home page's main search becomes
+    one box like the header search: bills, legislators, towns, committees
+    and the rest from the same box, with a dropdown of the top results (no
+    separate legislator finder)." It replaces the finder of towns in the
+    right-hand column (F4, 7 October 2026), whose datalist this used to hold.
+
+    Read off the fixture's built home page, HOME_JS, find.js and app.css:
+    one box, tied to its dropdown and written before the cards; no finder of
+    towns beside it; HOME_JS draws with find.js's own findDraw into the box's
+    own ids, so one matcher and one set of rows serve the header and the
+    home page; findDraw takes the ids it draws into, the header's by default,
+    and every redraw it asks for passes them on; and the dropdown is placed
+    under the box."""
+    import build_pages as BP
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    page = (site / "index.html").read_text(encoding="utf-8")
+    assert 'id="hq2"' not in page and "hq2towns" not in page and 'class="hfind"' not in page, (
+        "the home page still has a second finder beside its search box")
+    box = re.search(r'<input id="hq"[^>]*>', page)
+    assert box and 'aria-controls="hqout"' in box.group(0) and 'autocomplete="off"' in box.group(0), (
+        f"the home box is not tied to its dropdown: {box.group(0) if box else 'no box'}")
+    assert '<div class="findout hqdrop" id="hqout" role="region" aria-label="Top results" hidden>' \
+        '</div>' in page and page.index('id="hqout"') < page.index('class="entry"'), (
+            "the home box has no dropdown of its own, written before the cards")
+    js = BP.HOME_JS
+    assert 'const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};' in js \
+        and "findDraw(v,HQ)" in js and 'id="hqsay"' in page, (
+            "the home box does not draw with find.js's findDraw into its own ids")
+    # GO IS SEARCH (16 October 2026): Return does what the box's Search button
+    # does -- and since 9 November 2026 for a bill number too, as the header's
+    # box has since the 8th (Alice: "Home search opens results").
+    assert "location.href=hqAddr(hq.value);" in js \
+        and "findBill(hq.value)" not in js and "first.href" not in js, (
+            "the home box's Return opens a row or a bill, where the reader asked for results")
+    assert "if(opening)hqLift();" in js, "the home box's rows open under a phone's keyboard again"
+    fj = _source("src/pages/find.js").replace("\r\n", "\n")
+    assert 'const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};' in fj \
+        and "function findDraw(q,ids){\n  ids=ids||FIND_IDS;" in fj \
+        and "function findSay(html,ids){" in fj, "find.js's findDraw does not take the ids it draws into"
+    # Four redraws: the bills counted, the words the bills use, (25 October
+    # 2026) a statute's chapter looked up, and (6 November 2026) next
+    # session's bill requests read for a request's number -- each into the
+    # box that asked.
+    redraws = fj[fj.index("function findDraw(q,ids){"):fj.index("function findSay(")]
+    assert "findDraw(box.value);" not in redraws and redraws.count("findDraw(box.value,ids);") == 4, (
+        "a redraw find.js asks for draws into the header's panel whichever box asked")
+    css = (site / "app.css").read_text(encoding="utf-8")
+    assert ":where(body.pg) .hqdrop{position:absolute;top:calc(100% + var(--sp-2))" in css \
+        and ":where(body.pg) .searchbig{position:relative}" in css and ".hfind" not in css, (
+            "app.css does not put the dropdown under the box, or still styles the old finder")
+    return "ok", ("one box, the header's finder, its top results in its own dropdown under it; "
+                  "no finder of towns beside it")
+
+
+@check("frontend", "the Officials page is six tabs, My Town, Legislators, Federal Delegation, "
+                   "Executive Branch, Judicial Branch and County Officials, drawn as the town "
+                   "pages' tabs are")
+def _legislators_page_tabs():
+    """The person's feedback of 9 October 2026, item 4, and decision 127: the
+    Legislators page is Officials, in tabs -- My Town (the town finder and
+    the district map), Legislators (the roster), Federal Delegation, Executive
+    Branch (Statewide Officials until the person's approval of 17 October
+    2026, which also added Judicial Branch beside it) and County Officials --
+    the strip and the switching script the town pages' (F5, 7 October 2026),
+    as the page's two tabs were.
+
+    Read off the fixture's built page: one strip, written hidden for the
+    script to show, with the five in that order, each panel under its own
+    heading; the finder and then the map in My Town; the roster, who holds
+    the seats and the vacancies in Legislators; the people of the other three
+    from corrections/officials.json; the old page's #towns sent to #my-town
+    before the script reads the address; the town pages' switching script
+    after the panels; and the strip's rules in app.css, once, so this page
+    draws it as a town page does."""
+    import build_town_pages as BT
+    import build_pages as BP
+    import html as _html
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    page = (site / "officials.html").read_text(encoding="utf-8")
+    strips = re.findall(r'<div class="twntabs oftabs" role="tablist"[^>]*>(.*?)</div>', page, re.S)
+    assert len(strips) == 1, f"the Officials page has {len(strips)} tab strips"
+    assert re.search(r'<div class="twntabs oftabs" role="tablist" aria-label="Officials" '
+                     r'data-retired="legislators" hidden>', page), (
+        "the strip is not written hidden for the script to show, naming Legislators as the tab "
+        "a retired tab's address opens")
+    tabs = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="([a-z-]+)"[^>]*>([^<]+)', strips[0])
+    want = [("my-town", "My Town"), ("legislators", "Legislators"),
+            ("federal", "Federal Delegation"), ("executive", "Executive Branch"),
+            ("judicial", "Judicial Branch"), ("counties", "County Officials")]
+    # SEVEN TABS ON ONE LINE (the owner, 7 November 2026): the tab says the
+    # short name and its panel's heading the whole one (_officials_tabs_fit).
+    on_tab = dict(want, federal="Federal", executive="Executive", judicial="Judicial",
+                  counties="County")
+    assert [(t, n.strip()) for t, p, n in tabs if t == p] == [(t, on_tab[t]) for t, _n in want], (
+        f"the strip's tabs are {tabs}")
+    panes = {}
+    starts = [(page.index(f'<div class="twnpane" id="{pid}" role="tabpanel" '
+                          f'aria-labelledby="tab-{pid}">'), pid) for pid, _n in want]
+    assert [p for _i, p in sorted(starts)] == [p for p, _n in want], "the panels are out of order"
+    starts.sort()
+    for k, (i, pid) in enumerate(starts):
+        panes[pid] = page[i:starts[k + 1][0] if k + 1 < len(starts) else len(page)]
+        name = dict(want)[pid]
+        assert f'<h2 class="twnph">{name}</h2>' in panes[pid], f"the {name} panel has no heading"
+    towns, legs = panes["my-town"], panes["legislators"]
+    assert 'id="lq"' in towns and 'id="lmatch"' in towns and 'id="roster"' not in towns, (
+        "My Town is not the finder")
+    assert towns.index('id="lmatch"') < towns.index('id="ofmap"'), (
+        "My Town does not hold the map under the finder")
+    assert 'id="roster"' in legs and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
+    if 'class="comp-wrap' in page:
+        assert 'class="comp-wrap comp-top"' in legs, "who holds the seats is outside the Legislators panel"
+    # The other tabs' offices are officials.json's people, each the one
+    # person chip (the department heads and the judges are
+    # _officials_heads_and_judges's).
+    off = _officials_now()
+    for pid, names in (("federal", [s["name"] for s in off["us_senate"]["seats"]]
+                        + [r["name"] for r in off["us_house"]["districts"].values()]),
+                       ("executive", [off["governor"]["name"]]
+                        + [r["name"] for r in off["council"]["districts"].values()]),
+                       ("counties", [r["name"] for c in off["county"]["counties"].values()
+                                   for r in c["commissioners"].values()])):
+        for nm in names:
+            assert re.search(r'<span class="mchip p-[A-Z]" translate="no">' + re.escape(_html.escape(nm)), panes[pid]), (
+                f"{nm} is not a person chip on the {pid} tab")
+    # A commissioner of both nominations on the neutral chip with both
+    # letters; the neutral offices with no party at all (the person, 9 Oct).
+    county = panes["counties"]
+    ids = re.findall(r' id="([^"]+)"', page)
+    assert len(ids) == len(set(ids)), (
+        f"the Officials page gives an id twice: {sorted({i for i in ids if ids.count(i) > 1})}")
+    for c in off["county"]["counties"].values():
+        for r in c["commissioners"].values():
+            if "/" in (r.get("party") or ""):
+                assert (f'<span class="mchip p-X" translate="no">{_html.escape(r["name"])} <span class="mtag">'
+                        f'({r["party"]})</span>') in county, (
+                    f"{r['name']} ({r['party']}) is not on the neutral chip with both letters")
+        sheriff = (c.get("sheriff") or {}).get("name")
+        if sheriff:
+            assert f'<span class="mchip p-X" translate="no">{_html.escape(sheriff)}</span>' in county, (
+                f"the sheriff {sheriff} carries a party, or is not a chip")
+    assert BP.OFFICIALS_HASH_JS in page and page.index(BP.OFFICIALS_HASH_JS) < page.index(
+        BT.TABS_JS), "the old page's #towns is not sent to #my-town before the tabs read it"
+    tabs_js = BT.TABS_JS
+    assert tabs_js in page and page.index(tabs_js) > starts[-1][0], (
+        "the town pages' switching script is not after the panels")
+    assert page.count('id="out"') == 1, "the county listing's #out is on the page twice"
+    # THE INSTRUCTION IS THE TOWNS TAB'S (the look of 7 October 2026): "Type a
+    # town ... or a name" describes the box, and it sat over both tabs.
+    lead = re.search(r'<p class="lead">(.*?)</p>', page, re.S)
+    assert lead and "Type a town" not in lead.group(1) and "Type a town" in towns, (
+        "the finder's instruction is not in the My Town panel, over its box")
+    # THE TOWNS TAB IS THE LIVE SITE'S FINDER (the person, 7 October 2026: "I
+    # didn't want the change to the town ordering to also make it 5 columns
+    # wide", and asked how it should list them, "Like the live site"): the
+    # box, and under it the list in its 260px window, one column, scrolling
+    # inside itself -- and nothing below the finder, where the district map is
+    # to come. For an afternoon the tab ran every town down the page in
+    # columns; nothing in the script or either stylesheet does that now.
+    # AND THE MAP UNDER IT (Polish 3): the finder's own box holds the box and
+    # its list and nothing else, and the map is the next part of the panel.
+    rest = re.sub(r"<!--.*?-->", "", towns.split('<div class="lfind">', 1)[1], flags=re.S)
+    rest = rest.split("</section>", 1)[0]
+    assert re.fullmatch(r'\s*(?:<label [^>]*>[^<]*</label>|<input [^>]*>|<p [^>]*>[^<]*</p>'
+                        r'|<div class="lmatch" id="lmatch"></div>|\s)*</div>\s*', rest), (
+        "the finder holds something after its box and its list")
+    assert '.classList.toggle("all"' not in page, (
+        "the finder marks its list as the whole list of towns, for columns down the page")
+    css = (site / "app.css").read_text(encoding="utf-8")
+    for sheet, text in (("the published app.css", css),
+                        ("app.css", _source("src/pages/app.css"))):
+        rules = [(sel.strip(), body) for sel, body in re.findall(
+            r"([^{}]*)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", text, flags=re.S))]
+        win = [body for sel, body in rules if sel == ":where(body.pg) .lmatch"]
+        assert len(win) == 1 and "max-height:260px" in win[0] and "overflow-y:auto" in win[0], (
+            f"{sheet} does not hold the finder's list in its 260px window")
+        # By its class, its id or an attribute naming either (the review of 7
+        # October 2026: a rule on #lmatch passed while this read the class).
+        lifted = [sel for sel, body in rules
+                  if re.search(r"\.lmatch\b|#lmatch\b|\[(?:id|class)[~|^$*]?=\W?lmatch", sel)
+                  and sel != ":where(body.pg) .lmatch"
+                  and re.search(r"max-height|overflow|columns|column-(?:count|width)", body)]
+        assert not lifted, f"{sheet} lifts or widens the finder's window: {lifted}"
+    # And the roster's three arrangements are a view switch, not a second row
+    # of underlined tabs under the page's own.
+    assert re.search(r"\.rtabs \[role=tab\]\{[^}]*border:1px solid var\(--edge\)", css) \
+        and re.search(r"\.rtabs \[role=tab\]\[aria-selected=true\]\{[^}]*background:var\(--pine\)",
+                      css), "By last name / By county / By seat is drawn as a second tab strip"
+    for rule in (".twntabs{display:flex", ".twntabs[hidden]{display:none}",
+                 ".twnpane[hidden]{display:none}",
+                 ".twntabs:not([hidden]) ~ .twnpane > .twnph{position:absolute"):
+        assert rule in css, f"the published app.css has no {rule}"
+    app = _source("src/pages/app.css")
+    assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
+    return "ok", ("My Town, Legislators, Federal Delegation, Executive Branch, Judicial Branch "
+                  "and County Officials, each a panel under its own heading, switched by the "
+                  "town pages' script and drawn by the same rules as a town's; My Town "
+                  "the finder over its 260px window and the map under it; the officials as "
+                  "person chips")
+
+
+# The Officials page's town finder (build_pages.LEGFIND_JS) in node against
+# dom_stub.js, over a few towns and no members: opened as /officials?town=X,
+# then typed into.
+_TOWN_FINDER_JS = r"""
+require("./stub.js");
+const fs = require("fs");
+const D = {"Andover": {"0": {}}, "Dover": {"1": {}, "2": {}}, "Concord": {"1": {}, "2": {}, "3": {}},
+           "Durham": {"0": {}}, "Hampton": {"0": {}}, "New Hampton": {"0": {}}};
+globalThis.fetch = async (u) => ({ok: true, status: 200,
+  json: async () => String(u).endsWith("districts.json") ? D : []});
+globalThis.dispatchEvent = () => {};
+globalThis.CustomEvent = globalThis.CustomEvent || class { constructor(t, o) { this.detail = o && o.detail; } };
+location.search = process.argv[2] || "";
+const box = document.getElementById("lq"), out = document.getElementById("lmatch");
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+(0, eval)(fs.readFileSync("./finder.js", "utf8"));
+(async () => {
+  await ticks(20);
+  const res = {opened: out.innerHTML, typed: {}};
+  for (const q of ["dover", "hampton", "ham", "concord"]) {
+    box.value = q; box.fire("input"); res.typed[q] = out.innerHTML;
+  }
+  console.log(JSON.stringify(res));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "the Officials page's town finder matches a town from the start of a word, so "
+       "Dover is not Andover, and a city named in its address opens its wards",
+       needs=("build_pages",))
+def _town_finder_words(BP):
+    """The audit of 25 October 2026, M4: the town finder listed any town
+    whose name held the letters typed, so "Dover" still listed Andover, and
+    "ham" Durham. It matches from the start of a word now -- "Hampton" still
+    lists Hampton and New Hampton, and "ham" them and not Durham -- and a
+    city named in the address,
+    /officials?town=Concord, which the site search's one row for a city opens
+    (find.json), arrives with its wards open, since a ward is what the reader
+    came for. LEGFIND_JS, run in node over six towns."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    m = re.search(r"<script>(.*?)</script>", BP.LEGFIND_JS, re.S)
+    assert m, "build_pages.LEGFIND_JS carries no <script>"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "finder.js").write_text(_with_components(m.group(1)), encoding="utf-8")
+        (root / "go.js").write_text(_TOWN_FINDER_JS, encoding="utf-8")
+        got = {}
+        for name, arg in (("town", "?town=Concord"), ("none", "")):
+            r = _run(["node", "go.js", arg], cwd=root, capture_output=True, text=True, timeout=60)
+            said = (r.stdout + r.stderr).strip()
+            last = (said.splitlines() or ["no output"])[-1]
+            assert r.returncode == 0 and last.startswith("{"), f"node go.js {arg}: {last[:300]}"
+            got[name] = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    towns = lambda h: re.findall(r"<b>([^<]+)</b>", h)  # noqa: E731
+    t = got["none"]["typed"]
+    assert towns(t["dover"]) == ["Dover"] and "Durham" not in towns(t["ham"]) \
+        and towns(t["hampton"]) == ["Hampton", "New Hampton"], (
+        f"the town finder lists {towns(t['dover'])} for 'dover', {towns(t['ham'])} for 'ham' and "
+        f"{towns(t['hampton'])} for 'hampton': a town is matched from the start of a word")
+    opened = got["town"]["opened"]
+    assert all(f'href="town/concord-ward-{w}"' in opened for w in (1, 2, 3)) \
+        and "town/concord-ward-" not in got["none"]["typed"]["concord"], (
+        "/officials?town=Concord does not arrive with Concord's wards open, or a city typed "
+        f"opens them unasked: {opened[:300]!r}")
+    return "ok", ("'dover' lists Dover alone, 'hampton' Hampton and New Hampton, 'ham' not Durham; "
+                  "/officials?town=Concord opens its wards")
+
+
+@check("frontend", "the Statewide Officials tab is Executive Branch, /officials#statewide still "
+                   "opens it, and it says the legislature elects two of its officers")
+def _executive_branch_renamed():
+    """The person's approval of 17 October 2026: "rename the tab Executive
+    Branch with the note". Read off the fixture's built page: the tab and its
+    panel are #executive, labelled Executive Branch, and nothing on the page
+    still says Statewide Officials or carries the old id; the panel opens
+    with officials_tabs.CHOSEN_BY_LEGISLATURE, which cites the Constitution's
+    Part Second, Article 67 by its number. And the old address still opens
+    the tab: build_pages.OFFICIALS_HASH_JS, run in node against a stub
+    location, rewrites #statewide to #executive at load and on a hashchange
+    (and #towns to #my-town, as before), and leaves a live address alone.
+    Fails if the tab is named back, the line goes, or the alias does."""
+    import build_pages as BP
+    import officials_tabs as OT
+    import html as _html
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    assert "Statewide Officials" not in page and 'id="statewide"' not in page \
+        and 'data-pane="statewide"' not in page, "the page still names Statewide Officials"
+    assert re.search(r'role="tab" id="tab-executive" data-pane="executive"[^>]*>Executive'
+                     r'(?: <span class="ofn">| ?</button>)', page), "no Executive tab at #executive"
+    start = page.index('<div class="twnpane" id="executive" role="tabpanel"')
+    pane = page[start:page.index('<div class="twnpane"', start + 1)]
+    line = OT.CHOSEN_BY_LEGISLATURE
+    assert "Secretary of State" in line and "Treasurer" in line and "legislature" in line \
+        and "Part Second, Article 67" in line, f"the note reads {line!r}"
+    assert re.match(r'<div class="twnpane" id="executive"[^>]*><h2 class="twnph">Executive Branch'
+                    r'</h2><div class="ofintro"><p class="ofwhy">' + re.escape(_html.escape(line))
+                    + r"</p></div>", pane), "the Executive Branch panel does not open with the note"
+    if not shutil.which("node"):
+        return "skip", "the tab and its note are in place; node is not installed to run the alias"
+    script = re.search(r"<script>(.*?)</script>", BP.OFFICIALS_HASH_JS, re.S)
+    assert script, "build_pages.OFFICIALS_HASH_JS carries no <script>"
+    probe = ("var L={},loc={pathname:'/officials',search:'',hash:'#statewide'};"
+             "global.location=loc;global.history={replaceState:function(s,t,u){"
+             "var i=u.indexOf('#');loc.hash=i<0?'':u.slice(i);}};"
+             "global.addEventListener=function(n,f){(L[n]=L[n]||[]).push(f);};"
+             + script.group(1) +
+             ";var out=[loc.hash];['#towns','#statewide','#federal'].forEach(function(h){"
+             "loc.hash=h;(L.hashchange||[]).forEach(function(f){f();});out.push(loc.hash);});"
+             "console.log(JSON.stringify(out));")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "probe.js").write_text(probe, encoding="utf-8")
+        r = _run(["node", "probe.js"], cwd=root, capture_output=True, text=True, timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert r.returncode == 0, f"the alias script does not run: {(r.stderr or r.stdout)[-200:]}"
+    got = json.loads(r.stdout.strip().splitlines()[-1])
+    assert got == ["#executive", "#my-town", "#executive", "#federal"], (
+        f"the old addresses go to {got}: #statewide at load, then #towns, #statewide and "
+        "#federal on a hashchange")
+    return "ok", ("#executive, labelled Executive Branch, under the note citing Part Second, "
+                  "Article 67; #statewide opens it at load and on a hashchange, #towns My Town")
+
+
+@check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")
+def _vacancy_wording():
+    """"Vacant districts: 'Grafton District 6'" and "the vacancy sentence
+    assumes every seat is filled by special election" (the person, 7 October
+    2026, F6 and F7). A district's name takes its capital as it does
+    everywhere else on the site, and the sentence is the agreed wording from
+    RSA 661:8, II: a House seat is filled by special election only if the town
+    or city asks for one. Read off the fixture's built legislators page, whose
+    roster leaves five districts vacant."""
+    import build_pages as BP
+    want = ("Seats fall vacant during a term when members resign or die. A House seat is "
+            "filled by special election only if the town or city asks the Governor and "
+            "Executive Council to call one, so some stay vacant until the next general "
+            "election. A Senate seat is filled as the state constitution provides.")
+    assert BP.VACANCY_NOTE == want, f"build_pages.VACANCY_NOTE reads {BP.VACANCY_NOTE!r}"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    vac = re.search(r'<details class="vac">(.*?)</details>', page, re.S)
+    assert vac, "the fixture's legislators page lists no vacant seats to check"
+    assert f'<p class="note" style="margin-top:8px">{want}</p>' in vac.group(1), (
+        "the vacancy list does not carry the agreed sentence")
+    assert "filled by special\nelection." not in page and "are filled by special election" not in page, (
+        "the old sentence is still on the page")
+    rows = re.findall(r'<div class="mem">([^<]*)</div>', vac.group(1))
+    assert rows and all(re.fullmatch(r"\S.* District \d+( — \d+ seats)?", r) for r in rows), (
+        f"the vacant districts read {rows[:4]}")
+    return "ok", f"{len(rows)} vacant districts, each \"<County> District <n>\", under the RSA 661:8 sentence"
+
+
+@check("frontend", "the House by seat is one column per division, in the chart's order, five abreast where the width allows")
+def _seat_list_by_division():
+    """"The House seating chart shows 3 columns for 5 sections" (the person, 7
+    October 2026, F8). seat_columns is drawn over a House of every division
+    and a Speaker, out of order of nothing -- the members come in seat order
+    as the roster sorts them -- and gives five columns headed Division 1 to 5,
+    as the chart above them runs, each holding its own seats and counted, the
+    Speaker above them and no division column for the rostrum; and the
+    stylesheet puts five abreast only where five fit, and below that one
+    division under the next, never a column cut across."""
+    import build_pages as BP
+    import seating
+    seats = [1001, 1043, 2001, 2101, 3050, 4099, 5002, 5043, seating.SPEAKER_SEAT]
+    house = [{"seat": str(s), "name": f"Member {s}"} for s in sorted(seats)]
+    html = BP.seat_columns(house, lambda m: f'<li class="seatrow" data-seat="{m["seat"]}"></li>')
+    heads = re.findall(r"<h3>([^<]*)</h3>", html)
+    # IN THE CHART'S ORDER, 1 TO 5 (the person, 7 October 2026: "rotated 180
+    # degrees so that the divisions can be listed in ascending order left to
+    # right"). The chart is the plan turned, Division 1 on the left, and the
+    # list follows it; it ran 5 to 1 while the chart was drawn as the plan is.
+    assert seating.LEFT_TO_RIGHT == [1, 2, 3, 4, 5], (
+        f"the chart runs its divisions {seating.LEFT_TO_RIGHT} from left to right")
+    assert heads == ["The rostrum", "Division 1 &mdash; 2", "Division 2 &mdash; 2",
+                     "Division 3 &mdash; 1", "Division 4 &mdash; 1", "Division 5 &mdash; 2"], (
+        f"the seat list's columns are headed {heads}")
+    cols = re.findall(r'<section class="sdiv"><h3>Division (\d) &mdash; \d+</h3>'
+                      r'<ol class="seatlist">(.*?)</ol></section>', html)
+    for d, body in cols:
+        got = re.findall(r'data-seat="(\d+)"', body)
+        assert got and all(int(s) // 1000 == int(d) for s in got), (
+            f"Division {d}'s column holds seats {got}")
+    assert html.index("The rostrum") < html.index('<div class="seatdivs">'), (
+        "the Speaker is not above the five columns")
+    assert html.count('class="seatrow"') == len(seats), "a member is missing from the seat list"
+    assert BP.seat_columns([{"name": "x"}], lambda m: "<li></li>").count("No seat on file") == 1
+    css = _source("src/pages/app.css")
+    # FIVE ABREAST FROM 1180px, AND BELOW IT ONE DIVISION UNDER THE NEXT (the
+    # look of 7 October 2026). A grid that wrapped five into rows of four or
+    # three started a row under the longest division above it: at 1024px
+    # Division 1 began 7,400px down under a column that had ended 4,600px
+    # earlier. So the five-column grid is only at the width that holds five,
+    # and under it each division takes the width with its seats in columns.
+    m = re.search(r"@media \(min-width:([\d.]+)em\)\{\s*:where\(body\.pg\) \.seatdivs\{display:grid;"
+                  r"gap:var\(--sp-(\d+)\);\s*grid-template-columns:repeat\(5,minmax\(0,1fr\)\)", css)
+    assert m, "app.css lays the divisions out five abreast at no width"
+    sp = dict(re.findall(r"--sp-(\d+):(\d+)px", css))
+    at, gap = round(float(m.group(1)) * 16), int(sp[m.group(2)])
+    assert at >= 1180, f"five divisions abreast from {at}px, where the page has not the room"
+    # The page's full width at 1180px is .wrap.wide's less its gutters.
+    col = ((at - 2 * 24) - 4 * gap) / 5
+    assert col >= 190, f"a division's column at {at}px is {col:.0f}px"
+    assert re.search(r":where\(body\.pg\) \.seatdivs\{display:grid", css[:m.start()]) is None, (
+        "the divisions are a grid below the width that holds five, so a row starts under the "
+        "longest division above it")
+    assert ":where(body.pg) .seatcols .sdiv .seatlist{columns:270px" in css, (
+        "under five abreast a division's seats are not in columns of its own")
+    # A chip that wraps does so before its "(R - Rock 2)", never inside it.
+    assert ".mchip .mtag{white-space:nowrap}" in css and \
+        '<span class="mtag">(D - Hills 6)</span>' in BP.pchip(
+            {"display_full": "Rep. Suzanne Vail (D - Hills 6)", "party": "D", "slug": "s"}), (
+        "a chip's party and district are not one unit, so a chip that wraps breaks inside them")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    assert '<div class="seatcols" id="seatlist">' in page and '<ol class="seatlist" id="seatlist">' \
+        not in page, "the built page's seat list is not the columns"
+    return "ok", (f"five columns headed 1 to 5 as the chart runs, the Speaker above, five "
+                  f"abreast from {at}px at {col:.0f}px each and one division under the next "
+                  "below it")
+
+
+@check("frontend", "Latest activity on the home page links each bill to its own page",
+       needs=("build_pages", "build_site_v2"))
+def _latest_activity_links_the_bill(BP, B):
+    """Latest activity's "SB 256-FN" led to the search list, bills.html#SB256
+    (the survey of 7 October 2026), where any bill is a search away and a
+    number another term shares opens on whichever the list shows first. Each
+    row now carries the year its bill is filed under, and the box links
+    /bill/<year>/<bill>.html.
+
+    ONE RENDERER SINCE 24 OCTOBER 2026. The box had two -- the list
+    build_pages writes and HOME_JS, which drew it again from home.json's
+    `recent` -- and this held both to the bill's page. Since the box became a
+    meeting an item (_latest_activity_meetings), only build_pages draws it,
+    each bill through recent_href from home.json's `latest`, whose rows carry
+    the year; HOME_JS says its days again in the reader's clock and draws
+    nothing else, and this holds that it does not come back."""
+    import inspect
+    import latest_activity as LA
+    assert BP.recent_href({"bill": "SB256", "year": 2025, "n": "SB 256-FN"}) == \
+        "bill/2025/sb256.html", BP.recent_href({"bill": "SB256", "year": 2025})
+    assert BP.recent_href({"bill": "SB256"}) == "bills.html#SB256"
+    static = inspect.getsource(BP.recent_box) + inspect.getsource(BP.latest_card)
+    assert "recent_href(b)" in static and "bills.html#" not in static, (
+        "the static Latest activity does not link each bill through recent_href")
+    assert 'getElementById("recent").innerHTML' not in BP.HOME_JS and "H.recent" not in BP.HOME_JS, (
+        "HOME_JS draws Latest activity a second time, from home.json")
+    assert '"year": b.get("year") or ""' in inspect.getsource(LA.latest), (
+        "home.json's latest meetings do not carry the year each bill is filed under")
+    return "ok", "SB 256-FN of 2025 leads to bill/2025/sb256.html, from the one renderer"
+
+
+def _latest_rows():
+    """(proceedings rows, histories, bills) for _latest_activity_meetings: the
+    General Court's own rows of October 2026 for House Finance, Executive
+    Departments and Administration and Health and Human Services, and HB
+    396's at the House's sitting of 19 August, as proceedings.csv and
+    narratives.json hold them; with a study committee's meeting, a notice for
+    a withdrawn bill and a meeting still to come, none of which is activity."""
+    def p(bill, kind, date, time, cmte, venue):
+        return {"term": "2025-2026", "bill": bill, "body": "H", "kind": kind, "date": date,
+                "time": time, "committee": cmte, "venue": venue, "video_id": "", "source": "docket"}
+    eda = "Executive Departments and Administration"
+    hhs = "Health, Human Services and Elderly Affairs"
+    rows = [p("HB1710", "executive session", "2026-10-23", "10:00", "Finance", "GP 230"),
+            p("HB1004", "executive session", "2026-10-22", "10:30", eda, "GP 231"),
+            p("SB193", "executive session", "2026-10-22", "10:30", eda, "GP 231"),
+            p("HB1004", "full committee work session", "2026-10-15", "10:30", eda, "GP 231"),
+            p("SB193", "full committee work session", "2026-10-15", "10:30", eda, "GP 231"),
+            p("SB441", "executive session", "2026-10-15", "10:00", hhs, "GP 230"),
+            p("HB1763", "study committee", "2026-10-15", "", "", ""),
+            p("HB9998", "executive session", "2026-10-21", "10:00", "Finance", "GP 230"),
+            p("HB1004", "executive session", "2026-10-28", "10:00", eda, "GP 231")]
+
+    def ev(date, typ, raw, **kw):
+        return {"date": date, "type": typ, "body": "H", "cancelled": False, "raw": raw, **kw}
+    study = "Interim Study Report: {} for Future Legislation {} (Vote {};)"
+    histories = {"2025-2026": {
+        "HB1710": {"events": [
+            ev("2026-03-17", "exec", "Executive Session: 03/17/2026 10:00 am GP 230"),
+            ev("2026-03-17", "report", "Committee Report: Refer for Interim Study 03/17/2026 (Vote 25-0; CC)",
+               side="", committee="Finance", recommendation="Refer for Interim Study",
+               amendment="", report_date="03/17/2026", yeas="25", nays="0"),
+            ev("2026-10-23", "exec", "Executive Session: 10/23/2026 10:00 am GP 230"),
+            ev("2026-10-23", "interim_report", study.format("Not Recommended", "10/23/2026", "18-3"))]},
+        "HB1004": {"events": [
+            ev("2026-10-15", "worksession", "Full Committee Work Session: 10/15/2026 10:30 am GP 231"),
+            ev("2026-10-22", "exec", "Executive Session: 10/22/2026 10:30 am GP 231"),
+            ev("2026-10-22", "interim_report", study.format("Recommended", "10/22/2026", "10-4"))]},
+        "SB193": {"events": [
+            ev("2026-10-15", "worksession", "Full Committee Work Session: 10/15/2026 10:30 am GP 231"),
+            ev("2026-10-22", "exec", "Executive Session: 10/22/2026 10:30 am GP 231"),
+            ev("2026-10-22", "interim_report", study.format("Recommended", "10/22/2026", "9-5"))]},
+        # HHS met on the 15th and its report is dated the 22nd.
+        "SB441": {"events": [
+            ev("2026-10-15", "exec", "Executive Session: 10/15/2026 10:00 am GP 230"),
+            ev("2026-10-22", "interim_report", study.format("Not Recommended", "10/22/2026", "12-1"))]},
+        "HB9998": {"withdrawn": "2026-10-01", "events": []},
+        # A reconsideration carried between two failed overrides: the veto
+        # stood, and the last override's count is what the sitting did.
+        "HB396": {"events": [
+            {"date": "2026-08-19", "type": "veto_override", "body": "H", "cancelled": False,
+             "raw": "Veto Sustained 08/19/2026: RC 204-116 Lacking Necessary Two-Thirds Vote"},
+            ev("2026-08-19", "floor", "Reconsider HB 396 (Rep. Flanagan): MA RC 187-120 08/19/2026",
+               action="Reconsider HB 396", mover="Rep. Jack Flanagan", motion="MA",
+               vote_kind="RC", yeas="187", nays="120"),
+            {"date": "2026-08-19", "type": "veto_override", "body": "H", "cancelled": False,
+             "raw": "Veto Sustained 08/19/2026: RC 202-107 Lacking Necessary Two-Thirds Vote"}]}}}
+    titles = {"HB1710": "relative to procedures relating to child abduction.",
+              "HB1004": "exempting certain dwelling units from automatic sprinkler system requirements.",
+              "SB193": "requiring the head of each state agency to submit a strategic plan for "
+                       "program activities.",
+              "SB441": "relative to the financial responsibility for local assistance",
+              "HB396": "relative to the processing of cattle, swine, sheep, and goats"}
+    bills = {("2025-2026", b): {"year": 2026, "title": t} for b, t in titles.items()}
+    return rows, histories, bills
+
+
+@check("frontend", "Latest activity is a meeting an item, drawn as Coming up draws one: each "
+                   "bill once, an executive session and the report voted at it one entry, "
+                   "linked into the meeting, in English and in Spanish alike",
+       needs=("build_pages", "latest_activity", "i18n"))
+def _latest_activity_meetings(BP, LA, i18n):
+    """The person, 24 October 2026: "On the latest activity bar on the
+    homepage, bills should not be repeated twice like they are right now for
+    both the bill executive sessions and the outcome of the executive session
+    listed as two separate meetings. Maybe have latest activity show things
+    like recent meetings and all the bills from that meeting are grouped
+    together and when you click it, it takes you to the committee page or a
+    house session day page scrolled down to that meeting?"
+
+    The box was the five newest docket events, and an executive session and
+    the report voted at it are two: that day it was HB 1710 twice and SB 193
+    twice. Now it is home.json's `latest` (latest_activity.latest): a
+    committee's day or a chamber's sitting an item, each bill once with what
+    was done to it there. Held here, on the General Court's own rows of
+    October 2026 (_latest_rows):
+
+      - the meetings, newest first, the sitting before a committee of its
+        day, and no study committee, notice of a withdrawn bill or meeting
+        still to come among them;
+      - no bill twice within a meeting, and HB 1710's executive session and
+        its interim study report one entry, saying the report and its vote;
+      - a report the docket dates after its meeting (HHS, met the 15th,
+        dated the 22nd) said with its own day; a sitting's bill said by the
+        motion that settled it (HB 396's last override, not the
+        reconsideration that carried between);
+      - drawn IN COMING UP'S FORMAT (the owner, that evening: "formatted
+        similarly to the coming up page just listing past events with the
+        ability to click it for a dropdown to list all the bills from that
+        session"): under each day, headed with its date and how long ago it
+        was, each meeting a card (details.calmeet) whose summary names it
+        with its hours and count, opening on every bill it took up -- each
+        once, with what was done to it on a line of its own -- and the way
+        into the meeting: committee/<code>.html#day-<date>, which app.js's
+        showDay opens, or the sitting's page; in English and in Spanish with
+        the same meetings, bills and links;
+      - the meetings the page shows keeping every bill (RECENT_BILLS), the
+        rest BILLS_KEPT;
+      - HOME_JS's latRel saying how long ago each day was as past_rel does,
+        in node;
+      - and the fixture's built home pages: the same box in both languages,
+        every link it holds leading to a page the builders wrote, a
+        committee's into a day that page's record holds."""
+    import contextlib
+    import datetime as _dt
+    import io
+    import components as C
+    rows, histories, bills = _latest_rows()
+    got = LA.latest(rows, histories, "2026-10-24", bills,
+                    motion_words=C.WORDBOOK["votes"]["motions"])
+    eda = "Executive Departments and Administration"
+    hhs = "Health, Human Services and Elderly Affairs"
+    said = [(m["date"], "floor" if m.get("floor") else m["committee"]) for m in got]
+    assert said == [("2026-10-23", "Finance"), ("2026-10-22", eda), ("2026-10-15", eda),
+                    ("2026-10-15", hhs), ("2026-08-19", "floor")], f"the meetings are {said}"
+    by = {(m["date"], m.get("committee") or "floor"): m for m in got}
+    for m in got:
+        ids = [b["bill"] for b in m["bills"]]
+        assert len(ids) == len(set(ids)) == m["n"], f"{m['date']} {m.get('committee')} lists {ids}"
+    fin = by[("2026-10-23", "Finance")]
+    assert [b["bill"] for b in fin["bills"]] == ["HB1710"] and fin["kinds"] == ["executive session"], fin
+    assert fin["bills"][0]["did"] == {"act": "study report", "said": "not", "yeas": 18, "nays": 3}, (
+        f"HB 1710's executive session and its report are not one entry: {fin['bills'][0]}")
+    assert [(b["bill"], b["did"]["said"], b["did"]["yeas"]) for b in by[("2026-10-22", eda)]["bills"]] \
+        == [("HB1004", "rec", 10), ("SB193", "rec", 9)], by[("2026-10-22", eda)]
+    assert all("did" not in b for b in by[("2026-10-15", eda)]["bills"]), (
+        "a work session is said to have voted")
+    assert by[("2026-10-15", hhs)]["bills"][0]["did"].get("dated") == "2026-10-22", (
+        f"HHS's report is not said with its own day: {by[('2026-10-15', hhs)]}")
+    long = ("prohibiting investments by the New Hampshire retirement system in businesses "
+            "owned by a sitting president or the president's family members")
+    cut = LA.short_title(long)
+    assert len(cut) <= LA.TITLE_KEPT + 1 and cut.endswith("\u2026") and long.startswith(cut[:-1]) \
+        and long[len(cut) - 1] == " ", f"a long title is cut mid-word: {cut!r}"
+    assert LA.short_title("relative to child abduction.") == "relative to child abduction."
+    fl = by[("2026-08-19", "floor")]["bills"][0]["did"]
+    assert (fl["mk"], fl["carried"], fl["yeas"], fl["nays"]) == ("override_first", False, 202, 107), fl
+
+    # ---- drawn -------------------------------------------------------------
+    codes = {("H", "finance"): "H34", ("H", eda.lower()): "H07", ("H", hhs.lower()): "H10"}
+    sits = {("H", "2026-08-19")}
+    day = _dt.date(2026, 10, 24)
+    with contextlib.redirect_stdout(io.StringIO()):
+        html = {lang: BP.recent_box({"latest": got}, lang, codes, sits, day) +
+                BP.recent_box({"latest": got[-1:]}, lang, codes, sits, day)
+                for lang in ("en", "es")}
+
+    def items(t):
+        return re.findall(r'<details class="calmeet latm".*?</details>', t, re.S)
+    for lang, t in html.items():
+        its = items(t)
+        assert len(its) == BP.RECENT_SHOWN + 1, f"{lang}: {len(its)} meetings drawn"
+        for it in its:
+            nums = re.findall(r'class="cbn" href="[^"]+">([^<]+)<', it)
+            assert nums and len(nums) == len(set(nums)), f"{lang}: a meeting lists {nums}"
+        assert t.count(">HB 1710<") == 1, f"{lang}: HB 1710 is drawn {t.count('>HB 1710<')} times"
+    en = html["en"]
+    for want in ('<span class="calcmte">House Finance</span><span class="caltime">10:00 AM</span>'
+                 '<span class="calcount">(1 bill)</span>',
+                 '<a href="committee/H34.html#day-2026-10-23">This meeting on the House Finance '
+                 'page</a>',
+                 '<a class="cbn" href="bill/2026/hb1710.html">HB 1710</a>',
+                 '<span class="calcmte">House Session Day</span>',
+                 '<a href="session/H/2026-08-19.html">What the House did that day</a>',
+                 '<div class="calday" data-d="2026-10-23"><h3 class="caldate"><span>Fri, Oct 23'
+                 '</span><span class="cdrel">yesterday</span></h3>',
+                 '<p class="latkinds">Executive Session</p>',
+                 # The vote inside the chip (the owner's walk of dry run 8).
+                 '<span class="latdid">' + C.vote_chip("override_first", False, "HB396")[:-7]
+                 + ' <span class="latvote">(202–107)</span></span>',
+                 "dated Oct 22"):
+        assert want in en, f"Latest activity does not draw {want!r}"
+    assert en.count('<div class="calday" data-d="2026-10-15">') == 1 and re.search(
+        r'<div class="calday" data-d="2026-10-15">(?:(?!<div class="calday).)*?'
+        r'<details class="calmeet latm".*?<details class="calmeet latm"', en, re.S), (
+        "two meetings of one day are not two cards under the one day")
+    assert "latwhen" not in en and "latlist" not in en, "the old Latest activity is drawn"
+    assert (C.chip(C.title_words(C.WORDBOOK["study_report"]["said"]["not"]), "cstat s-done")[:-7]
+            + ' <span class="latvote">(18–3)</span></span>') in en, (
+        "HB 1710's report is not drawn in study_report.json's words, in the colour of a killing")
+    hrefs = {lang: re.findall(r'href="([^"]+)"', t) for lang, t in html.items()}
+    assert hrefs["es"] == hrefs["en"], "Spanish Latest activity holds other meetings, bills or links"
+    es = html["es"]
+    for want in ('<span class="cdrel">ayer</span>', "10:00 a. m.",
+                 i18n.say_word("es", "kind", "Executive Session"),
+                 'lang="en">House Finance</span>', i18n.say_word("es", "vote", "Motion Failed")):
+        assert want in es, f"the Spanish box does not say {want!r}"
+
+    # ---- the meetings the page shows keep every bill -----------------------
+    many = [dict(m, n=60, bills=[{"bill": f"HB{i}", "term": "2025-2026", "year": 2026,
+                                   "n": f"HB {i}", "title": ""} for i in range(1, 61)])
+            for m in got[:1]]
+    with contextlib.redirect_stdout(io.StringIO()):
+        lots = BP.recent_box({"latest": many}, "en", codes, sits, day)
+    assert lots.count('class="cbn"') == 60 and '<p class="latmore">' not in lots, (
+        "a meeting's card does not list every bill it is given")
+    capped = [dict(m, n=60, bills=m["bills"][:BP.RECENT_BILLS]) for m in many]
+    with contextlib.redirect_stdout(io.StringIO()):
+        lots = BP.recent_box({"latest": capped}, "en", codes, sits, day)
+    assert '<p class="latmore">and 20 more</p>' in lots, "past RECENT_BILLS the card does not say how many more"
+    import inspect
+    assert "cap(len(out))" in inspect.getsource(LA.latest) and BP.RECENT_BILLS >= 40, (
+        "home.json does not keep every bill of the meetings the page shows")
+
+    # ---- HOME_JS says the days as the build does, in the reader's clock ----
+    node = shutil.which("node") or shutil.which("node.exe")
+    ran = "node is not on PATH, so HOME_JS's latRel was not run"
+    if node:
+        lw = re.search(r"\nconst latRel=.*?\n\};\n", BP.HOME_JS, re.S)
+        assert lw, "HOME_JS has no latRel saying how long ago Latest activity's days were"
+        assert 'querySelectorAll("#recent .calday[data-d]")' in BP.HOME_JS, (
+            "HOME_JS does not say Latest activity's days again in the reader's clock")
+        cases = ["2026-10-24", "2026-10-23", "2026-10-21", "2026-10-10", "2026-10-02"]
+        for lang in ("en", "es"):
+            words = i18n.words_js(lang, BP.HOME_JS) if lang != "en" else ""
+            prog = _components_js() + "\n" + (
+                f"globalThis.window=globalThis;window.GR_LANG={json.dumps(lang)};{words}\n"
+                + lw.group(0)
+                + f"process.stdout.write(JSON.stringify({json.dumps(cases)}.map(c=>"
+                "latRel(c,new Date(2026,9,24)))));")
+            r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+            assert r.returncode == 0, "HOME_JS's latRel would not run: " + (r.stderr or "")[-300:]
+            want = [BP.past_rel(d, day, lang) for d in cases]
+            assert json.loads(r.stdout) == want, (
+                f"{lang}: HOME_JS says {json.loads(r.stdout)} where the build says {want}")
+        ran = "HOME_JS says the days as the build does, in both languages"
+
+    # ---- the fixture's home pages ------------------------------------------
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", f"{len(got)} meetings of October 2026 grouped and drawn; {ran}; no fixture site"
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    H = json.loads((site / "home.json").read_text(encoding="utf-8"))
+    assert H.get("latest"), "the fixture's home.json holds no latest activity"
+
+    def box(t):
+        i = t.find('<div id="recent"')
+        return t[i:t.find("</section>", i)] if i >= 0 else ""
+    built = {lang: box((site / f).read_text(encoding="utf-8"))
+             for lang, f in (("en", "index.html"), ("es", "es/index.html"))}
+    links = {lang: re.findall(r'href="([^"]+)"', t) for lang, t in built.items()}
+    assert links["en"] and links["es"] == links["en"], (
+        f"the fixture's home pages hold different Latest activity: {links['en']} and {links['es']}")
+    assert len(items(built["en"])) == min(len(H["latest"]), BP.RECENT_SHOWN), (
+        "the fixture's box does not draw home.json's latest meetings")
+    bad = []
+    for h in links["en"]:
+        path, _h, frag = h.lstrip("/").partition("#")
+        path = path.split("?")[0]
+        f = site / (path if path.endswith(".html") else path + ".html")
+        if not f.is_file():
+            bad.append(f"{h} leads to no page")
+        elif frag:
+            rec = f.with_suffix(".json")
+            days = {s.get("date") for s in (json.loads(rec.read_text(encoding="utf-8")).get("sessions")
+                                            or [])} if rec.is_file() else set()
+            if not frag.startswith("day-") or frag[4:] not in days:
+                bad.append(f"{h}: {f.name}'s record holds no meeting of {frag[4:]}")
+    # AND EVERY COMMITTEE MEETING, BY THE CODES build_committees WROTE. The home
+    # page is built four steps before the committees (build_all), so it links
+    # a committee by committee_codes -- today's committees from data/, then
+    # last night's committees.json -- as Coming up's cards do, and the
+    # fixture has neither: its box names Commerce's meeting unlinked. Linked
+    # by the committees.json written since, each must lead into a day that
+    # committee's own record holds, which is what #day-<date> opens.
+    codes = BP.committee_codes(site)
+    for m in H["latest"]:
+        h = BP.latest_href(m, codes, set())
+        if m.get("floor") or not h:
+            continue
+        links["en"].append(h)
+        path, _h, frag = h.partition("#")
+        rec = site / path.replace(".html", ".json")
+        days = {s.get("date") for s in (json.loads(rec.read_text(encoding="utf-8")).get("sessions")
+                                        or [])} if rec.is_file() else set()
+        if not (site / path).is_file() or frag != f"day-{m['date']}" or m["date"] not in days:
+            bad.append(f"{m.get('committee')} of {m['date']} would lead to {h}, which holds no such day")
+    assert any("#day-" in h for h in links["en"]), (
+        "no committee meeting of the fixture's latest activity leads into its committee's page")
+    assert not bad, "; ".join(bad[:4])
+    kinds = Counter("a committee's day" if "#day-" in h else "a sitting" if "session/" in h
+                    else "a bill" if "bill/" in h else "the bill search" for h in links["en"])
+    return "ok", (f"{len(got)} meetings of October 2026 grouped, HB 1710 once with its report; "
+                  f"drawn alike in both languages; {ran}; the fixture's links all lead somewhere: "
+                  + ", ".join(f"{n} to {k}" for k, n in sorted(kinds.items())))
+
+
+@check("frontend", "the header, the nav, the footer and the head's shared lines are written once, in "
+                   "chrome.py, and every page carries them")
+def _frame_written_once():
+    """ONE WRAPPER, WRITTEN TWICE BECAUSE THE NAV IS -- the comment that stood
+    in build_pages.shell() until 23 October 2026. The frame of every page was
+    written by hand in two places: bills.html, the template of the 34,000
+    record pages, and build_pages.shell(), which writes the home page,
+    Officials, About, /search and 404. When Data was added to one nav and not
+    the other, three pages lacked the link the rest had, and the checks that
+    held the two copies to each other found such drift only after the second
+    edit had been forgotten. Now chrome.py writes the head's shared lines,
+    the header, the footer and the closing scripts once, bills.html carries a
+    slot for each, and build_pages.shell() asks for the same four.
+
+    So: bills.html has each of chrome.SLOTS once and none of the frame
+    written out; no builder in src/pages/ writes a header, a footer, the menu
+    button, the theme control, the icons or the fonts of its own -- chrome.py
+    is the only file that names them; chrome.fill fills every slot and is
+    harmless twice; and every page the fixture's builders wrote carries
+    chrome's header, with only the section it is on marked, and chrome's
+    footer, at the addresses the host serves -- whichever of the two
+    emitters wrote it.
+    """
+    import chrome as CH
+    import shell as S
+    t = _source("src/pages/bills.html")
+    for slot in CH.SLOTS:
+        assert t.count(f"<!-- CHROME:{slot} -->") == 1, (
+            f"bills.html has {t.count(f'<!-- CHROME:{slot} -->')} of the {slot} slot, not one")
+    # What only the frame writes. A builder that writes one of these has its
+    # own copy of the frame again.
+    own = {'<nav class="top"': "a header", "<footer>": "a footer", 'class="navmenu"': "the menu button",
+           'class="themer"': "the theme control", 'rel="icon"': "the icons",
+           "fonts.googleapis.com/css2": "the fonts", 'id="built"': "the footer's date",
+           'localStorage.getItem("gr-theme")': "the theme's pre-paint script"}
+    bad = []
+    for f in sorted(Path("src/pages").iterdir()):
+        if f.suffix not in (".py", ".html", ".js") or f.name == "chrome.py":
+            continue
+        code = f.read_text(encoding="utf-8", errors="replace")
+        if f.suffix == ".py":
+            code = re.sub(r"(?m)^\s*#.*$", "", code)
+        bad += [f"{f.name} writes {what}" for k, what in own.items() if k in code]
+    assert not bad, ("the frame is written outside chrome.py: " + "; ".join(bad[:6])
+                     + ". Write it in chrome.py, or ask chrome for it")
+    filled = CH.fill(t, "bills.html")
+    assert "<!-- CHROME:" not in filled and CH.fill(filled, "bills.html") == filled, (
+        "chrome.fill leaves a slot, or changes a template it has filled")
+    try:
+        CH.fill(t.replace("<!-- CHROME:nav -->", ""), "bills.html")
+        raise AssertionError("chrome.fill filled a template that has lost its nav slot")
+    except AssertionError as e:
+        if "lost its nav slot" in str(e):
+            raise
+    assert S.template(Path("site")) == filled, "shell.template() is not bills.html with its frame filled"
+
+    def plain(html):
+        """The frame as a reader is given it, whichever emitter wrote it: the
+        addresses as the host serves them, from the root, without the marks
+        of the section a reader is on, and with no space between tags."""
+        html = S.clean_links(html).replace(' aria-current="page"', "")
+        html = re.sub(r'(href|src)="/?', r'\1="/', html)
+        html = re.sub(r'href="/index"', 'href="/"', html)
+        return re.sub(r">\s+<", "><", re.sub(r"\s+", " ", html)).strip()
+    nav, foot = plain(CH.nav()), plain(CH.FOOTER)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    n = 0
+    for f in sorted(site.rglob("*.html")):
+        page = f.read_text(encoding="utf-8", errors="replace")
+        if "<head" not in page:
+            continue
+        rel = f.relative_to(site).as_posix()
+        n += 1
+        # A page in another language has chrome's frame in that language,
+        # its footer leading to the versions the page names (i18n.py).
+        # An English page with a twin (the glossary, 24 October 2026) names it
+        # in its footer as a page in another language does.
+        lm = re.search(r'<html lang="([a-z]+)"((?: data-alt-[a-z]+="[^"]*")*)', page[:600])
+        lang = lm.group(1) if lm else "en"
+        alts = dict(re.findall(r'data-alt-([a-z]+)="([^"]*)"', lm.group(2))) if lm else {}
+        want_nav = nav if lang == "en" else plain(CH.nav(lang=lang))
+        want_foot = foot if lang == "en" and not alts else plain(CH.footer_html(lang, alts or None))
+        got = re.findall(r'<nav class="top".*?</nav>', page, re.S)
+        if len(got) != 1 or plain(got[0]) != want_nav:
+            bad.append(f"{rel}: its header is not chrome's")
+        elif got[0].count(' aria-current="page"') > 1:
+            bad.append(f"{rel}: its header marks more than one section as the one it is on")
+        got = re.findall(r"<footer>.*?</footer>", page, re.S)
+        if len(got) != 1 or plain(got[0]) != want_foot:
+            bad.append(f"{rel}: its footer is not chrome's")
+        for piece, what in ((CH.THEMER_HEAD, "the theme's pre-paint script"),
+                            (CH.THEMER_JS, "the theme control's handler"),
+                            (CH.FOOT_JS, "the footer's date"),
+                            (CH.STYLESHEET, "the one stylesheet")):
+            if page.count(piece) != 1:
+                bad.append(f"{rel}: {what} is there {page.count(piece)} times")
+    assert n > 20, f"only {n} fixture pages with a head"
+    assert not bad, f"{len(bad)} faults on the fixture's pages: " + "; ".join(bad[:6])
+    return "ok", (f"bills.html has the {len(CH.SLOTS)} slots and no frame of its own, no builder "
+                  f"writes one, and all {n} pages the fixture's builders wrote carry chrome's "
+                  "header, footer, theme control and stylesheet once")
+
+
+@check("frontend", "every page's footer says who makes the site and leads to About, which says it once")
+def _footer_credit():
+    """"An independent project by Alice Wade" and a link to About: one quiet
+    line in the footer of every page, and on the About page one plain
+    sentence that Granite Record is built and maintained by Alice Wade,
+    independently, with a place left for the person's own fuller description
+    (7 October 2026). The footer is chrome.py's, the one both emitters use
+    (_frame_written_once), and every page the fixture's builders wrote
+    carries the line once.
+
+    THE DESCRIPTION IS WRITTEN (9 October 2026). The person's own account
+    took the place left for it, under "Who Makes Granite Record" in the About
+    page's Title Case, and opens by saying who makes the site; so the page
+    says that once, under that heading, and the placeholder is gone."""
+    line = ('<p class="footby">An independent project by Alice Wade &middot; '
+            '<a href="about.html">About</a></p>')
+    import chrome as CH
+    assert CH.FOOTER.count(line) == 1, "chrome.FOOTER: the footer's credit line is missing or doubled"
+    assert CH.FOOTER.index(line) < CH.FOOTER.index('class="logocredit"'), (
+        "chrome.FOOTER: the credit line is not above the logo's")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    pages = sorted((shared / "site").rglob("*.html"))
+    with_footer = [p for p in pages if "<footer>" in p.read_text(encoding="utf-8", errors="replace")]
+    # The 404 page is served at any address, so its links are written from
+    # the root ("/about"), which is the same line; and every page names it at
+    # the address the host serves (shell.clean_links, 12 October 2026).
+    said = re.compile(re.escape(line).replace(re.escape('href="about.html"'),
+                                              r'href="/?about"'))
+    # A page in another language says it in that language (i18n.py), with
+    # the same link.
+    import i18n
+    said_in = {lang: re.compile(re.escape(
+        f'<p class="footby">{i18n.say(lang, "foot.by", "An independent project by Alice Wade")} '
+        f'&middot; <a href="about.html">{i18n.say(lang, "foot.about", "About")}</a></p>'
+    ).replace(re.escape('href="about.html"'),
+              # About is in Spanish too (9 November 2026): the footer leads to it.
+              r'href="/?' + re.escape(i18n.href(lang, "about.html").lstrip("/").replace(".html", "")) + '"'))
+        for lang in i18n.LANGS if lang != i18n.DEFAULT}
+
+    def credit(text):
+        m = re.search(r'<html lang="([a-z]+)"', text[:600])
+        return said_in.get(m.group(1) if m else "en", said)
+    lacking = [p.relative_to(shared / "site").as_posix() for p in with_footer
+               for text in [p.read_text(encoding="utf-8", errors="replace")]
+               if len(credit(text).findall(text)) != 1]
+    assert with_footer and not lacking, (
+        f"{len(lacking)} of {len(with_footer)} pages carry the credit line other than once: "
+        f"{lacking[:5]}")
+    about = (shared / "site" / "about.html").read_text(encoding="utf-8")
+    who = '<h2 id="who">Who Makes Granite Record</h2>'
+    says = "I'm Alice Wade, a State Representative from Dover, and Granite Record is my"
+    flat = " ".join(about.split())
+    assert flat.count(says) == 1 and about.count(who) == 1 \
+        and flat.index(who) < flat.index(says) \
+        and "<h2" not in flat[flat.index(who) + len(who):flat.index(says)], (
+            "the About page does not say who makes the site, once, under its own heading")
+    assert "<!-- WHO MAKES IT:" not in about, (
+        "the About page still holds the place for the person's description it now carries")
+    return "ok", (f"the credit line once on each of {len(with_footer)} pages with a footer, and "
+                  "About says who makes it")
+
+
+# What the public documents said of email following before it went live, and
+# must not say once production binds its database (_follow_documents_live).
+FOLLOW_NOT_LIVE_WORDS = {
+    "README.md": ("not yet live",),
+    "SECURITY.md": ("exactly one exception", "it holds none"),
+    "functions/api/report.js": ("THE ONLY THING ON THIS SITE THAT RUNS",),
+    "workers/follow/README.md": ("Before go-live", ", at go-live", "has not been tried"),
+    "wrangler.toml": ("at go-live and not before",),
+}
+
+
+@check("build", "once production binds the follow database, the public documents say email "
+       "following is live, and SECURITY.md names every endpoint and Worker", needs=("shell",))
+def _follow_documents_live(S):
+    """The audit of 25 October 2026 (C2). Email following went live on 23
+    October 2026, when the root wrangler.toml bound FOLLOW_DB for production
+    (shell.follow_live), and two days later README.md still listed it as
+    "built and not yet live", SECURITY.md called report.js "exactly one
+    exception" and said workers/ held no Worker, report.js's header called
+    itself "THE ONLY THING ON THIS SITE THAT RUNS", and workers/follow/README.md
+    read as a checklist for a go-live already done. The code switched, and
+    nothing held the words to it. Now, while production binds the database,
+    none of those documents says what they said before it
+    (FOLLOW_NOT_LIVE_WORDS); and whether or not it does, SECURITY.md -- the
+    page that tells a researcher what the surface is -- names every endpoint
+    under functions/api/ and every Worker folder under workers/, so the next
+    one cannot be added without saying so there."""
+    live = S.follow_live(_paths.ROOT / "wrangler.toml")
+    said = []
+    for name, words in FOLLOW_NOT_LIVE_WORDS.items():
+        p = _paths.ROOT / name
+        if live and p.is_file():
+            text = " ".join(p.read_text(encoding="utf-8").split())
+            said += [f"{name}: \"{w}\"" for w in words if w in text]
+    assert not said, ("production binds FOLLOW_DB, so email following is live, and these still say "
+                      "it is not: " + "; ".join(said))
+    sec = _source(_paths.ROOT / "SECURITY.md")
+    api, workers = _paths.ROOT / "functions" / "api", _paths.ROOT / "workers"
+    surface = []
+    if api.is_dir():
+        surface += sorted(f"functions/api/{p.name}/" if p.is_dir() else f"functions/api/{p.name}"
+                          for p in api.iterdir() if p.is_dir() or p.suffix == ".js")
+    if workers.is_dir():
+        surface += sorted(f"workers/{p.name}/" for p in workers.iterdir() if p.is_dir())
+    assert surface, "no endpoint under functions/api/ and no Worker under workers/ was found"
+    unnamed = [x for x in surface if f"`{x}`" not in sec]
+    assert not unnamed, "SECURITY.md does not name what the site runs: " + ", ".join(unnamed)
+    return "ok", (f"email following {'live, and said so' if live else 'not live yet'}; SECURITY.md "
+                  f"names all {len(surface)}: {', '.join(surface)}")
+
+
+# Every email following sends, drawn by mail.js in node: on each day named
+# ("day"), with that day as the email's own; or with no day given, on the
+# clock set to the moment named ("clock"), as the confirmation, the welcome
+# and a new link are sent. Whether each says the beta line, plain and HTML.
+_FOLLOW_BETA_HARNESS = r"""
+import { FOLLOW_BETA, confirmationEmail, digestEmail, newLinkEmail, nothingNewEmail, welcomeEmail }
+  from __MAIL__;
+const [mode, at] = process.argv.slice(2);
+if (mode === "clock") {
+  const Real = Date, fixed = new Real(at).getTime();
+  globalThis.Date = class extends Real {
+    constructor(...a) { super(...(a.length ? a : [fixed])); }
+    static now() { return fixed; }
+  };
+}
+const today = mode === "day" ? at : undefined;
+const origin = "https://graniterecord.org", links = { manage: "M".repeat(43), unsub: "U".repeat(43) };
+const day = today || "2026-11-10";
+const emails = {
+  confirmation: confirmationEmail({ origin, label: "HB 1442", title: "relative to insurance", token: "T".repeat(43),
+                                    today }),
+  welcome: welcomeEmail({ origin, kind: "bill", label: "HB 1442", title: "", url: "/bill/2026/hb1442",
+                          frequency: "daily", ...links, today }),
+  newLink: newLinkEmail({ origin, ...links, today }),
+  ...(mode === "day" ? {
+    daily: digestEmail({ origin, frequency: "daily", date: day, sections: [], ...links }),
+    weekly: digestEmail({ origin, frequency: "weekly", date: day, sections: [], ...links }),
+    nothingNew: nothingNewEmail({ origin, frequency: "daily", date: day, nights: 1, ...links }),
+  } : {}),
+};
+const said = h => h.replace(/<[^>]+>/g, "").replace(/&#39;/g, "'").includes(FOLLOW_BETA.note);
+process.stdout.write("\n@@" + JSON.stringify(Object.fromEntries(Object.entries(emails).map(([k, m]) =>
+  [k, [m.text.includes(FOLLOW_BETA.note), said(m.html)]]))));
+"""
+
+
+@check("frontend", "email following says it is in beta, in the Follow by email pane and in every email it "
+                   "sends, plain and HTML, from one file, until the day after the webinar, by itself",
+       needs=("build_pages",))
+def _follow_beta_note(BP):
+    """The person, 26 October 2026: "Email following can maybe have a
+    disclosure that email following is in beta testing right now until the
+    webinar so folks know that even though it's live, things may be changing
+    day by day." One line, src/pages/words/follow_beta.json's "note", said
+    until its "until", the day after the webinar of 10 November -- the day
+    the home page's webinar box retires (build_pages.WEBINAR_UNTIL), held
+    equal here so that moving one moves the other.
+
+      THE SITE: the Follow by email pane (app.js followMailForm, under node)
+        carries the line in its small print, with data-until -- the way the
+        webinar's box retires, which components.js's behaviour hides by the
+        reader's date (untilAttrs: shown on 10 November, hidden on the 11th)
+        -- and its words are components.js's WORDBOOK.follow_beta, the file's.
+      THE EMAILS: site.gen.js's FOLLOW_BETA is the file's (follow_site.py),
+        and every email mail.js draws -- the confirmation, the welcome, a new
+        link, the daily, the weekly and the test's "nothing new" -- says it,
+        in the plain text and the HTML, on 26 October and on 10 November, and
+        none says it on 11 November: by the email's own day, and where an
+        email names none, by the day it is sent IN CONCORD -- at 11:30 p.m.
+        on the 10th there, 04:30 on the 11th in UTC, the line is still said,
+        and at 12:30 a.m. on the 11th it is not.
+
+      THE WORDS NAME THE WEBINAR, as the person did ("until the webinar")
+        and as the home page's box does ("Free webinar"): the line said
+        "until the public launch on November 10", a word the site never
+        uses, which a reader signing up on a site plainly live could read as
+        a site not yet launched (the review of 26 October 2026).
+
+    The emails reach inboxes as the sender is deployed: the confirmation,
+    the welcome and a new link with the site's next publish (the Pages
+    Functions send them), the daily and the weekly once the person deploys
+    workers/follow again."""
+    import components as C
+    beta = json.loads(_source("src/pages/words/follow_beta.json"))
+    note, until = beta.get("note"), beta.get("until")
+    assert note and until == BP.WEBINAR_UNTIL, (
+        f"follow_beta.json's line retires on {until!r}, and the webinar's box on {BP.WEBINAR_UNTIL!r}: the "
+        "beta lasts until the webinar, the person's words")
+    assert "until the webinar" in note and "launch" not in note.lower(), (
+        f"the beta line reads {note!r}: it names the webinar, the person's word and the home page's, and no "
+        "launch, which the site never names")
+    assert C.WORDBOOK.get("follow_beta") == {"note": note, "until": until}, \
+        "components.WORDBOOK does not carry follow_beta.json as it stands"
+    gen = _site_gen().get("FOLLOW_BETA")
+    assert gen == {"note": note, "until": until}, (
+        f"workers/follow/site.gen.js's FOLLOW_BETA is {gen}, not follow_beta.json's: run "
+        "python3 src/pages/follow_site.py")
+    comp = _source("src/pages/components.js")
+    assert 'querySelectorAll("[data-until]")' in comp and "function untilAttrs(" in comp, \
+        "components.js no longer hides what carries data-until by itself"
+    site = _app_js("""(() => ({form: scope.followMailForm("bill:2026/HB1442"),
+  shown: scope.untilAttrs(scope.WORDBOOK.follow_beta.until, "2026-11-10"),
+  gone: scope.untilAttrs(scope.WORDBOOK.follow_beta.until, "2026-11-11"), words: scope.WORDBOOK.follow_beta}))()""",
+                   names=("followMailForm", "untilAttrs", "WORDBOOK"))
+    if site is None:
+        return "skip", "node, app.js or dom_stub.js is not here; the file, WORDBOOK and site.gen.js agree"
+    import html as H
+    line = re.findall(r'<p class="panfine followbeta"([^>]*)>(.*?)</p>', site["form"], re.S)
+    assert len(line) == 1 and H.unescape(" ".join(line[0][1].split())) == note \
+        and line[0][0] == f' data-until="{until}"', (
+            f"the Follow by email pane does not carry the beta line, retiring on {until}: {line or site['form'][:300]}")
+    assert site["form"].index("followbeta") > site["form"].index("Nothing is sent until you confirm"), \
+        "the beta line is not in the pane's small print, under its promises"
+    assert site["words"] == {"note": note, "until": until} and site["shown"] == f' data-until="{until}"' \
+        and site["gone"] == f' data-until="{until}" hidden', (
+            f"the pane's line is not shown on 10 November and hidden from the 11th: {site}")
+    node = shutil.which("node") or shutil.which("node.exe")
+    mail = Path("workers/follow/mail.js")
+    if not (node and mail.is_file()):
+        return "skip", "node or workers/follow is not here; the pane says it and retires it"
+    root = Path(tempfile.mkdtemp(prefix="gr-follow-beta-"))
+    try:
+        (root / "t.mjs").write_text(_FOLLOW_BETA_HARNESS.replace("__MAIL__", json.dumps(mail.resolve().as_uri())),
+                                    encoding="utf-8")
+        got = {}
+        for mode, at in (("day", "2026-10-26"), ("day", "2026-11-10"), ("day", "2026-11-11"),
+                         ("clock", "2026-11-11T04:30:00Z"), ("clock", "2026-11-11T05:30:00Z")):
+            r = _run([node, "t.mjs", mode, at], cwd=root, capture_output=True, text=True, timeout=60,
+                     encoding="utf-8")
+            assert r.returncode == 0 and "@@" in (r.stdout or ""), \
+                "mail.js did not draw its emails in node: " + (r.stderr or r.stdout or "")[-400:]
+            got[at] = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    for at, want in (("2026-10-26", True), ("2026-11-10", True), ("2026-11-11", False),
+                     ("2026-11-11T04:30:00Z", True), ("2026-11-11T05:30:00Z", False)):
+        for name, (text, html_) in got[at].items():
+            if (text, html_) != (want, want):
+                bad.append(f"{name} on {at}: the plain text {'says' if text else 'lacks'} it, the HTML "
+                           f"{'says' if html_ else 'lacks'} it")
+    assert len(got["2026-11-10"]) == 6 and len(got["2026-11-11T04:30:00Z"]) == 3, got
+    assert not bad, "the beta line is not where it belongs: " + "; ".join(bad[:6])
+    return "ok", (f"the pane and {len(got['2026-11-10'])} emails say it through 10 November, by the email's "
+                  "own day and by Concord's clock, and none from the 11th; one file, WORDBOOK and site.gen.js")
+
+
+SHARE_BOX_TEST = r"""
+const { readFileSync } = require("fs");
+require("./stub.js");
+const on = {};
+document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
+const tick = () => new Promise(r => setImmediate(r));
+const want = JSON.parse(readFileSync("./want.json", "utf8"));
+try { (0, eval)(readFileSync("./page.js", "utf8")); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const setNav = v => Object.defineProperty(globalThis, "navigator",
+  { value: v, configurable: true, writable: true });
+(async () => {
+const fail = [];
+// THE BOX, AS IT WAS, behind its drawing.
+const box = reportBox("bill", "2026/HB1442");
+// " a problem" in a span of its own, which a phone's row of buttons leaves out,
+// inside the one the words are, so the button's gap does not part them.
+if (!box.includes("<summary>" + want.report
+    + '<span>Report<span class="rpw"> a problem</span></span></summary>'))
+  fail.push("the report's button is not its drawing and its words");
+for (const part of want.form) if (!box.includes(part)) fail.push("the report's form lost " + part);
+const kinds = (box.match(/<option value="[a-z]+">/g) || []).map(s => s.slice(15, -2));
+if (kinds.join() !== want.fields.join()) fail.push("the report offers " + kinds.join());
+if (shareBox() !== want.share) fail.push("Share is drawn as " + shareBox());
+// OPENING IT starts its clock and asks which build the page is, as before.
+const toggles = (on.toggle || []).filter(f => String(f).includes('"report"'));
+const form = { dataset: {} }, asked = [];
+globalThis.fetch = async u => { asked.push(u); return { ok: true, json: async () => ({ finished: "x" }) }; };
+toggles.forEach(f => f({ target: { classList: { contains: c => c === "report" }, open: true,
+  querySelector: s => s === ".reportform" ? form : null } }));
+await tick(); await tick();
+if (toggles.length !== 1 || !form.dataset.opened || !asked.includes("/build.json"))
+  fail.push("opening the report box no longer starts its clock and asks for the build");
+// SHARE, pressed in each kind of browser.
+const presses = (on.click || []).filter(f => String(f).includes("[data-share]"));
+if (presses.length !== 1) fail.push(presses.length + " listeners for Share");
+const URL0 = "https://graniterecord.org/bill/2026/hb1442/votes";
+async function press(nav) {
+  const st = { textContent: "stale" };
+  const btn = { parentNode: { querySelector: s => s === ".sharestate" ? st : null } };
+  setNav(nav);
+  location.href = URL0 + "#cite-mla";
+  document.title = "HB 1442 (2026) | Granite Record";
+  presses.forEach(f => f({ target: { closest: s => s === "[data-share]" ? btn : null } }));
+  for (let i = 0; i < 6; i++) await tick();
+  return st.textContent;
+}
+let shared = [], copied = [];
+const clip = { writeText: async t => { copied.push(t); } };
+const refuse = name => async () => { const e = new Error(name); e.name = name; throw e; };
+let said = await press({ share: async d => { shared.push(d); }, clipboard: clip });
+if (shared.length !== 1 || shared[0].url !== URL0 || shared[0].title !== document.title || copied.length)
+  fail.push("with a share sheet: " + JSON.stringify({ shared, copied }));
+shared = []; copied = [];
+said = await press({ clipboard: clip });
+if (said !== "Link copied" || copied.join() !== URL0)
+  fail.push("with no share sheet the address was not copied and said: " + JSON.stringify({ said, copied }));
+copied = [];
+said = await press({ share: refuse("AbortError"), clipboard: clip });
+if (copied.length) fail.push("the reader closed the sheet and the address was copied anyway");
+said = await press({ share: refuse("NotAllowedError"), clipboard: clip });
+if (said !== "Link copied" || copied.join() !== URL0)
+  fail.push("a sheet that failed did not fall back to copying: " + JSON.stringify({ said, copied }));
+said = await press({});
+if (said !== "Copy this address: " + URL0) fail.push("with no clipboard: " + JSON.stringify(said));
+said = await press({ clipboard: { writeText: refuse("NotAllowedError") } });
+if (said !== "Copy this address: " + URL0) fail.push("with the clipboard refused: " + JSON.stringify(said));
+// FOLLOW, as mountFollow writes it beside Cite this page.
+const made = [], mk = document.createElement, byId = document.getElementById;
+document.createElement = t => { const e = mk(t); made.push(e); return e; };
+document.getElementById = id => (id === "followbox" ? null : byId(id));
+mountFollow("bill");
+const follow = made.map(e => e.innerHTML).find(h => h.includes('class="follow"')) || "";
+if (!follow.includes("<summary>" + want.follow + "Follow</summary>"))
+  fail.push("Follow is not its drawing and its word: " + follow.slice(0, 160));
+// FOLLOW WITH A FEED gives the feed's address in its box, a button to copy
+// it and the RSS sentence, and no link that opens the feed itself (the
+// person, 16 October 2026: on a phone "Open the feed" showed raw XML).
+made.length = 0;
+mountFollow("bill", want.feed, "2026/HB100");
+const fed = made.map(e => e.innerHTML).find(h => h.includes('class="follow"')) || "";
+const feedAt = new URL(want.feed, location.origin).href;
+if (!fed.includes('aria-label="The feed\'s address"') || !fed.includes('value="' + feedAt + '"'))
+  fail.push("the feed's address is not in its box: " + fed.slice(0, 400));
+if (!fed.includes('data-copyfeed="1">Copy the address</button>'))
+  fail.push("Follow lost Copy the address: " + fed.slice(0, 400));
+if (!fed.includes("<b>By RSS</b>, in any feed reader: "))   // its second sentence trimmed, 22 October 2026
+  fail.push("Follow lost its RSS sentence: " + fed.slice(0, 400));
+// The href is read however it is quoted -- double, single or bare -- since
+// the template is a string and a link back written <a href='...'> is as much
+// a link (the review of 16 October 2026).
+const opens = (fed.match(/<a\b[^>]*>/gi) || []).filter(a => {
+  const m = a.match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i);
+  if (!m) return false;
+  const h = m[1] ?? m[2] ?? m[3];
+  let at = "";
+  try { at = new URL(h, location.origin).href; } catch (_) {}
+  return /\.xml(?:[?#]|$)/i.test(h) || at === feedAt;
+});
+if (opens.length || /open the feed/i.test(fed))
+  fail.push("the Follow panel has a link that opens the feed itself: " + (opens.join(" ") || "Open the feed"));
+console.log("@@" + JSON.stringify({ report: box, share: shareBox(), follow, fed }));
+console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
+process.exit(fail.length ? 1 : 0);
+})();
+"""
+
+
+@check("frontend", "Share opens the browser's own sheet or copies the address and says so, and the "
+                   "report box beside it opens as before")
+def _share_beside_report():
+    """Report a problem and Share at the foot of a record's page (the person, 9
+    October 2026: "a visual polish of the report button so it matches the
+    style of the print, testify, cite this page, and follow icons and add a
+    share button alongside the report button with the same thing in mind").
+
+    Run in node on app.js as the page loads it: the report box is the box it
+    was -- the same form, the thirteen kinds of fault, the honeypot, Send and
+    its status line, the email address -- with the report drawing before its
+    words, and opening it still starts its clock and asks for the build
+    (sending it is _report_box_fallback's, which posts through the same
+    handler into report.js). Share is one button with its drawing and its
+    word and a status line beside it. Pressed where the browser has a share
+    sheet, it hands the sheet the page's title and its address without the
+    fragment, and copies nothing; where there is none, it copies the address
+    and says "Link copied"; where the reader closes the sheet, nothing more
+    happens; where the sheet fails, it copies instead; and where the
+    clipboard is missing or refused, it says the address to copy. Nothing is
+    sent anywhere: no share service and no fetch. Follow, on a page with a
+    feed, gives the RSS sentence, the feed's address in its box and Copy the
+    address, and no link that opens the feed itself: "Open the feed" was
+    dropped on 16 October 2026, because on a phone it showed raw XML. And the
+    three buttons mounted where drawn_pages does not record them -- Report a
+    problem, Share and Follow -- are held to _icons_named's rules: one drawing
+    each, hidden, in a button or a summary with words of its own."""
+    import components as C
+    app, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    if not (app.exists() and stub.exists()):
+        return "skip", "app.js or dom_stub.js is not here"
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        assert not os.environ.get("GITHUB_ACTIONS"), "node is not on PATH on the nightly"
+        return "skip", "node is not on PATH"
+    want = {
+        "report": C.icon("report"), "follow": C.icon("follow"),
+        "share": (f'<button type="button" class="pshare" data-share>{C.icon("share")}Share</button>'
+                  '<span class="sharestate" role="status" aria-live="polite"></span>'),
+        "form": ['<details class="report" data-rkind="bill" data-rref="2026/HB1442">',
+                 '<form class="reportform" novalidate>',
+                 '<select name="field"><option value="">Choose one</option>',
+                 '<textarea name="note" rows="4" maxlength="1000"></textarea>',
+                 '<input name="website" tabindex="-1" autocomplete="off">',
+                 '<button type="submit">Send</button> <span class="reportstate" role="status" '
+                 'aria-live="polite"></span>',
+                 '<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>'],
+        "fields": ["date", "status", "sponsor", "vote", "hearing", "committee", "text", "link",
+                   "chapter", "veto", "topic", "fiscal", "other"],
+        # The feed /bill/2026/hb100.html names in its head on the night of
+        # 16 October 2026, a bill still moving.
+        "feed": "/feed/bill/2026/hb100.xml",
+    }
+    root = Path(tempfile.mkdtemp(prefix="gr-share-"))
+    try:
+        (root / "page.js").write_text(_with_components(_source(app)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
+        (root / "want.json").write_text(json.dumps(want), encoding="utf-8")
+        (root / "t.js").write_text(SHARE_BOX_TEST, encoding="utf-8")
+        r = _run([node, "t.js"], capture_output=True, text=True, encoding="utf-8", cwd=root, timeout=60)
+        assert r.returncode == 0 and "ALL OK" in r.stdout, (r.stdout + r.stderr).strip()[-500:]
+        drawn = json.loads(r.stdout.split("@@", 1)[1].splitlines()[0])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    # The three controls held to _icons_named's rules: each drawing hidden,
+    # and each in a button or a summary that says what it is in words. Follow
+    # is held twice, without a feed and with one.
+    for what, html in drawn.items():
+        found = _icons_in(html)
+        assert len(found) == 1, f"{what} carries {len(found)} drawings, not one"
+        attrs, text, ctl = found[0]
+        assert attrs.get("aria-hidden") == "true" and not text, f"{what}'s drawing is read aloud"
+        assert ctl and ctl[0] in ("button", "summary") and re.search(r"\w", ctl[2]), (
+            f"{what}'s drawing is not in a button or summary with words of its own: {ctl}")
+    return "ok", ("the report box's form and its thirteen kinds unchanged behind its drawing, and "
+                  "opening it starts its clock; Share hands the sheet the title and the address, "
+                  "copies and says \"Link copied\" without one or when it fails, does nothing when "
+                  "closed, and says the address when the clipboard is missing or refused; Follow "
+                  "gives a feed's address to copy and no link that opens it")
+
+
+# Sentences the About page, the Data page and manifest.json carried on 23
+# September, each contradicted by the record: the site's own dockets for every
+# archived term, the House Calendars that announced live streams before 2020,
+# the search forms that put a query in the address, the 1995 docket's
+# "PASSED RC(210-136)" on a bill with no roll call counted, the budget bills
+# and rules resolutions whose own text names no sponsor. A regression that
+# brings any of them back fails here.
+#
+# And two the first rewrite introduced: every written report on an archived
+# bill is a House committee's, from a House Calendar, so "Written committee
+# reports start with the 1997-1998 term" credited the Senate's committees with
+# reports no archived term has; and floor_stated opens on the clerk's reading
+# of the committee report (segment_markers.FLOOR_OPEN_RE), not on the chair.
+CONTRADICTED = {
+    "about": ("never sent anywhere", "gencourt.state.nh.us", "thinner record",
+              "began streaming", "none does", "March 2020",
+              "That is where the record starts",
+              "Written committee reports start"),
+    "data": ("Everything this site knows", "decided on a voice vote",
+             "It probably is", "34 GB of recordings", "has not been collected yet",
+             "as the archived dockets are fetched", "Every recorded vote:",
+             "An empty column is a field not yet collected",
+             "a record not yet collected rather than a bill without one",
+             "chair opened and closed it", "Three values mean no moment"),
+}
+
+
+@check("build", "the About and Data pages, and an archived bill's note, make no claim the record contradicts",
+       needs=("build_pages", "about_figures", "build_site_v2"))
+def _about_data_claims(build_pages, about_figures, build_site_v2):
+    """The About page, the Data page and the machine-readable manifest were
+    read end to end on 23 September against the record, and twenty-eight
+    passages were wrong: the archived terms described as having no docket
+    when all eighteen have one, streaming dated to March 2020, a search box
+    that "never sent anywhere" beside three forms that put the query in the
+    address, every empty cell called "not yet collected", a passage column
+    described as House-first for 8,794 Senate bills. The bill pages' archived
+    note told 6,676 bills of 1989-1996 their written reports were "not yet
+    fetched", from calendars that are not online before 1997.
+
+    Three halves. The pages are filled and rendered on fixtures and read for
+    the sentences that were wrong; what the pages document is checked against
+    what the code emits -- every passage character, every how_placed value;
+    and the note is drawn in node for the terms either side of each boundary,
+    with the tabs that now say each boundary instead of it (25 October 2026).
+    """
+    BP, AF, B = build_pages, about_figures, build_site_v2
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        # ---- About: a census whose two no-recording groups add up ----------
+        (root / "site").mkdir()
+        census = {"total": 100, "bills": 40, "placed": 15, "recording_only": 5,
+                  "consent": 5, "no_recording": 75,
+                  "by_state": {"prestream": 70, "novideo": 5, "stated": 15,
+                               "approximate": 5, "consent": 5}}
+        (root / "site" / "station_census.json").write_text(json.dumps(census),
+                                                           encoding="utf-8")
+        # The bill index, before About is filled: its opening counts the
+        # bills and the first year from it (the person's text of 9 October
+        # 2026), and the Data page's build below reads the same rows.
+        passages = {"HB1": "Hpppp", "SB2": "Spxx-", "HB3": "Hphh-",
+                    "HR4": "Hpp", "HB5": ""}
+        _bill_index_write(root / "site", [
+            {"term": "2025-2026", "year": "2026", "id": b, "title": "a bill",
+             "status": "In committee", "kind": "active", "passage": p}
+            for b, p in passages.items()])
+        figs = AF.figures(site=root / "site", root=here)
+        if "marked" not in figs:
+            return "skip", "alignment_score.json is not here, so about.html cannot be filled"
+        assert figs.get("bills") == "5" and figs.get("since") == "2025", (
+            "the About page's count of bills and first year are not the index's: "
+            f"{figs.get('bills')!r}, {figs.get('since')!r}")
+        about = AF.fill(BP.ABOUT, figs)
+        flat = " ".join(about.split())
+        for bad in CONTRADICTED["about"]:
+            assert bad not in flat, f"about.html says {bad!r} again"
+        assert "It covers 5 bills since 2025," in flat, (
+            "the About page does not open with the index's count of bills and its first year")
+        assert AF.STREAM_START_WORDS in flat, "the About page does not say when the channels begin"
+        assert "The House committees' written reports" in flat and "Senate committees'" in flat, (
+            "the About page no longer says whose written reports begin in 1997: they are the "
+            "House committees', and no archived term has a Senate committee's")
+
+        # ---- Data page and manifest, built by build_exports on a fixture ---
+        (root / "data").mkdir()
+        shutil.copy2(here / "src/pages/bills.html", root / "site" / "bills.html")
+        # The gate's score, where the build reads it: the Data page's How the
+        # Record Is Built states it, and fill() stops a build without it.
+        (root / "generated").mkdir()
+        shutil.copy2(here / "generated" / "alignment_score.json",
+                     root / "generated" / "alignment_score.json")
+        (root / "site" / "legislators.json").write_text("[]", encoding="utf-8")
+        (root / "data" / "sponsors.json").write_text("{}", encoding="utf-8")
+        (root / "data" / "member_votes.json").write_text("[]", encoding="utf-8")
+        (root / "rollcalls.json").write_text("{}", encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_exports.py"), "--site", "site",
+                  "--data", "data"], cwd=root, capture_output=True, text=True,
+                 timeout=120, env={**os.environ, "GRANITE_PROCEEDINGS": ""})
+        assert r.returncode == 0, "build_exports on the fixture: " + (r.stderr or r.stdout)[-300:]
+        data = " ".join((root / "site" / "data.html").read_text(encoding="utf-8").split())
+        manifest = json.loads((root / "site" / "data" / "manifest.json").read_text(encoding="utf-8"))
+        mtext = " ".join(json.dumps(manifest).split())
+        for bad in CONTRADICTED["data"]:
+            assert bad not in data, f"data.html says {bad!r} again"
+            assert bad not in mtext, f"manifest.json says {bad!r} again"
+        # WHAT MOVED FROM ABOUT (9 October 2026): How the Record Is Built and
+        # Privacy in Detail are About's old sections word for word, so the
+        # sentences About was held free of are held off them here, and the
+        # no-recording sentence is read where it now is.
+        for bad in CONTRADICTED["about"]:
+            assert bad not in data, f"data.html says {bad!r}, which About was held free of"
+        para = next((p for p in re.findall(r"<p[^>]*>(.*?)</p>", data)
+                     if "no recording to offer" in p), "")
+        # Each count as a word of its own: "5" is inside "75", so a sentence
+        # that lost the unmatched five passed while it was matched as text.
+        assert para and all(re.search(rf"\b{n}\b", para) for n in ("75", "70", "5")), (
+            "the Data page's no-recording sentence does not split its total "
+            f"into the sittings before the channels and the unmatched rest: {para[:200]!r}")
+        with (root / "site" / "data" / "bills.csv").open(encoding="utf-8", newline="") as fh:
+            used = {ch for row in csv.DictReader(fh) for ch in row["passage"]}
+        undocumented = sorted(c for c in used if f"<code>{c}</code>" not in data)
+        assert not undocumented, (
+            f"bills.csv's passage column uses {undocumented} and data.html does not say what it means")
+        assert AF.STREAM_START_WORDS in data, "data.html does not say when the channels begin"
+        # Every state a station with a recording can carry is a how_placed
+        # value, and the table's own description names each. A station with
+        # no recording is written with an empty how_placed, which it explains.
+        # The states are read the way _states_covered reads them, from both
+        # the builder and the page's own branches, since a ternary in the
+        # builder hides its else arm from any one pattern.
+        src = _source(B.__file__)
+        states = set(re.findall(r'"state":\s*"(\w+)"', src))
+        states |= set(re.findall(r'\["state"\]\s*=\s*"(\w+)"', src))
+        states |= set(re.findall(r'state,\s*start\s*=\s*"(\w+)"', src))
+        states |= set(re.findall(r's\.state\s*===\s*"(\w+)"', page_source()[0]))
+        states -= {"prestream", "novideo", "candidates"}
+        what = next(t["what"] for t in manifest["tables"] if t["file"] == "proceedings.csv")
+        unnamed = sorted(s for s in states if not re.search(r"\b%s\b" % s, what))
+        assert not unnamed, f"proceedings.csv's how_placed can be {unnamed}, and its description never says so"
+        assert "empty how_placed" in what, "proceedings.csv does not say what an empty how_placed means"
+        # The clerk opens a floor item by reading the committee report and
+        # the chair closes it with the result (segment_markers.FLOOR_OPEN_RE,
+        # FLOOR_CLOSE_RE); the gloss said the chair did both.
+        assert re.search(r"floor_stated \([^)]*clerk", what), (
+            "proceedings.csv no longer says a floor_stated debate opens on the clerk's reading")
+
+        # ---- the bill pages' archived note, either side of each boundary ---
+        # WHAT IS MISSING, AND NOTHING ELSE (the audit of 25 October 2026,
+        # S4). About This Record said where the record's boundaries fall and
+        # what was here: 79 words on HB 200 of 1997, whose Votes tab said
+        # "No roll call votes on this bill" under a Summary that said the
+        # House killed it on a roll call 286-57. Each boundary is said once,
+        # on the tab where the reader asks, and the note names only a gap: a
+        # boundary is never one, and a record with none has no note.
+        def rec(term, reports, votes, text, sponsors=True):
+            return {"term": term, "sponsors": [{"name": "A Sponsor"}] if sponsors else [],
+                    "billtext": {"body": "Be it Enacted..."} if text else None,
+                    "archived": {"docket": True, "committee": True, "hearings": True,
+                                 "sponsors": sponsors, "reports": reports, "votes": votes,
+                                 "video": False}}
+        dock = {"body": "H", "committee": "Municipal and County Government", "date": "1991-02-06",
+                "side": "Majority", "vote_yeas": 19, "vote_nays": 0,
+                "recommendation": "Inexpedient to Legislate"}
+        drawn = _app_js("[" + ",".join(
+            "scope.archivedNote(" + json.dumps(x) + ")" for x in (
+                rec("1991-1992", False, False, True), rec("1997-1998", True, False, False),
+                rec("2005-2006", False, True, True), rec("1995-1996", False, False, True, False),
+                rec("2017-2018", True, True, True))) + ","
+            "scope.renderVotes({id: 'HB200'}, {term: '1997-1998', rollcalls: []}),"
+            "scope.renderVotes({id: 'HB200'}, {term: '2005-2006', rollcalls: []}),"
+            "scope.renderReports({id: 'HB200'}, {term: '1991-1992', docket_reports: ["
+            + json.dumps(dock) + "]}, s => s),"
+            "scope.renderBillText({id: 'HB200'}, {term: '1997-1998'}, s => s)]",
+            names=("archivedNote", "renderVotes", "renderReports", "renderBillText"))
+        if drawn is None:
+            return "ok", "About and Data pages and the manifest clean (node not here, the archived note not drawn)"
+        n1991, n1997, n2005, n1995, n2017, v1997, v2005, r1991, t1997 = (
+            " ".join(re.sub(r"<[^>]+>", " ", n).split()) for n in drawn)
+        assert not n1991 and not n1997 and not n2017, (
+            "a record with nothing missing still carries About This Record, which says what the "
+            f"tabs beside it show: {[n[:120] for n in (n1991, n1997, n2017) if n]}")
+        assert "the sponsors" in n1995 and "roll calls" not in n1995 and "written reports" not in n1995, (
+            "a 1995 bill without its sponsors is not told they are missing, or is told the roll "
+            f"calls or written reports its term never had are missing: {n1995[:300]!r}")
+        assert "the House committees' written reports" in n2005, (
+            "a 2005 bill with no written report is no longer told the House's reports are a gap")
+        # Not the files' names, nor this site's own word for an old term
+        # (the language sweep of 17 October 2026).
+        for n in (n1995, n2005, v1997):
+            assert "RollCall" not in n and "archived" not in n and "fetched" not in n, (
+                f"the archived note speaks the site's own language: {n[:200]!r}")
+        # The roll calls' boundary, on the Votes tab: what begins in 1999 is
+        # the named votes this site lists, not the votes -- the printed
+        # journals of 1997 name who voted -- and the docket's tallies are on
+        # the Summary.
+        assert "Named roll calls here begin in 1999" in v1997 and "How It Got Here" in v1997 \
+            and "Journals name who voted" in v1997 and "No roll call votes" not in v1997, (
+                f"a 1997 bill's empty Votes tab reads: {v1997!r}")
+        assert v2005 == "No roll call votes on this bill.", f"a 2005 bill's empty Votes tab reads: {v2005!r}"
+        # The written reports' boundary, on the report: the House's, from 1997.
+        assert "begin in 1997" in r1991 and "Not yet fetched" not in r1991, (
+            f"a 1991 House committee's report is not told its written report begins in 1997: {r1991[-300:]!r}")
+        assert "The Documents tab links to it" in t1997, (
+            "a bill with no text of its own is no longer told where its text is")
+        return "ok", ("About and Data pages and the manifest free of the 23 September sentences; "
+                      f"{len(used)} passage marks and {len(states)} how_placed values documented; "
+                      "About This Record names only what is missing, and each boundary is said on "
+                      "its tab: the roll calls' on Votes, the written reports' on Reports")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "data.html counts the checks a run registers, wherever they are defined, and the "
+                "files inventory finds stamped, and says neither where one cannot be counted",
+       needs=("build_exports", "inventory"))
+def _data_page_counts_the_registry(BE, inventory):
+    """THE SITE'S COUNT OF CHECKS IS THE RUN'S (the refactor's stage 1, step 1,
+    the owner's yes of 16 November 2026). data.html says how many files carry
+    a version stamp and how many checks run over the repository
+    (build_exports.repo_facts, repo_sentence). The second was the number of
+    times the characters "@check(" appear in this file: 1279 at 62df0ce9 for
+    the 1273 checks a run registered, four of the six over inside
+    _PIECES_SAMPLE and two in the piece parser's words. Splitting this file
+    into a package would have made it the count of what stayed here, or
+    none, and the sentence would have gone without a word. It is counted off
+    the code now, as a run registers the checks (build_exports.checks_counted),
+    and held here:
+
+      the count is this run's registry, len(CHECKS), and the stamps are
+      inventory.registry()'s;
+      the sentence says both, and is empty where either is missing;
+      on a planted tree, a check defined in a second code file is counted,
+      and "@check(" in a string or a comment is not; a tree that defines no
+      check counts none, and says so.
+    """
+    facts = BE.repo_facts()
+    assert facts.get("checks") == len(CHECKS), (
+        f"data.html would say {facts.get('checks')} checks run, and this run registers "
+        f"{len(CHECKS)}: build_exports.checks_counted no longer counts what a run registers")
+    stamped = len(inventory.registry(_paths.ROOT))
+    assert facts.get("stamped") == stamped, (
+        f"data.html would say {facts.get('stamped')} files carry a stamp, and inventory finds {stamped}")
+    said = BE.repo_sentence(facts)
+    assert f"{stamped} files carry a version stamp" in said and f"{len(CHECKS)} checks run over" in said, (
+        f"data.html's sentence does not say both counts: {said!r}")
+    for part in ({"stamped": stamped}, {"checks": len(CHECKS)}, {}):
+        assert BE.repo_sentence(part) == "", f"the sentence is said with only {part}"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-facts-"))
+    try:
+        stamp = "# GRANITE_VERSION: 2026-11-16.1\n"
+        planted = _plant(tmp / "with", {
+            "preflight.py": (stamp + 'S = """\n@check("x", "in a string")\n"""\n'
+                             '# @check("x", "in a comment")\n\n\n'
+                             '@check("a", "one")\ndef one():\n    return "ok", "one"\n\n\n'
+                             '@check("a", "two", needs=("m",))\ndef two(m):\n    return "ok", "two"\n'),
+            "src/checks/pf_more.py": stamp + '@check("b", "three")\ndef three():\n    return "ok", "3"\n'})
+        got = BE.repo_facts(planted)
+        assert got == {"stamped": 2, "checks": 3}, (
+            "on a tree of two checks in preflight.py, one in a second code file and the words in a "
+            f"string and a comment, repo_facts counted {got}, not two stamped files and three checks")
+        bare = _plant(tmp / "none", {"preflight.py": stamp + "X = 1\n"})
+        import contextlib
+        import io
+        heard = io.StringIO()
+        with contextlib.redirect_stderr(heard):
+            none = BE.repo_facts(bare)
+        assert none == {"stamped": 1, "checks": 0}, f"a tree that defines no check: {none}"
+        assert "no code file registers a check" in heard.getvalue(), (
+            f"a count of no checks was not said aloud: {heard.getvalue()!r}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"data.html says {stamped} files carry a stamp and {len(CHECKS)} checks run, the "
+                  "run's own count; a check in a second file is counted and the words in a string "
+                  "or a comment are not")
+
+
+@check("data", "a proceeding starts at the same moment on both pages")
+def _one_start():
+    """The committee page and the bill page must not disagree about a time.
+
+    They did, by four hours. The bill page draws the boundary the chair
+    stated, found by segment_markers from the captions; the committee page was
+    drawing proceedings.csv's predicted_offset, which is the schedule guess --
+    the meeting began at ten and this was third on the agenda. SB430's
+    executive session on 4 May 2026 was 14557s on one page and 1774s on the
+    other, and neither said which to believe.
+
+    Two paths to one number is how they came to differ, so the committee page
+    reads the bill's own station now and there is one path. This asserts that
+    stays true, because the failure is silent: both pages render, both look
+    confident, and only somebody opening the recording finds out.
+    """
+    # IT READ THE WRONG PLACE FOR TWO DAYS AND PASSED. It opened
+    # site/bills/<year>/<ID>.json, which since the records moved inside the
+    # pages exists only for the few too large to inline; a missing file was
+    # skipped, and it only looked at committee items that already had a start.
+    # So it checked 298 proceedings and passed while the committee pages
+    # printed no time for 9,672 the bill pages timed. Now it reads the pages,
+    # checks every item that has a recording -- a start on one page and none
+    # on the other is a disagreement too -- and fails on an item it cannot
+    # find on its bill page rather than stepping round it.
+    croot = Path("site/committee")
+    if not croot.exists() or not Path("site/bill").is_dir():
+        return "skip", "committee JSON or bill pages not built"
+    import site_read as SR
+    recs = SR.by_bill("site", SR.video_years(), fields=("stations",))
+    checked, bad, lost = 0, [], []
+    for f in sorted(croot.glob("*.json")):
+        c = json.loads(f.read_text(encoding="utf-8"))
+        for sess in c.get("sessions", []):
+            for it in sess.get("items", []):
+                if not it.get("video_id"):
+                    continue
+                key = (str(it.get("year") or ""), (it.get("bill") or "").upper())
+                want = (it.get("kind") or "").strip().lower()
+                st = next((x for x in ((recs.get(key) or {}).get("stations")
+                                       or [])
+                           if x.get("when") == sess.get("date")
+                           and (not want
+                                or want in (x.get("what") or "").lower())), None)
+                if not st:
+                    lost.append(f"{c.get('code')} {sess.get('date')} "
+                                f"{it.get('bill')} ({it.get('year')})")
+                    continue
+                checked += 1
+                a, b = it.get("start"), st.get("start")
+                if (a is None) != (b is None) or (
+                        a is not None and abs(float(a) - float(b)) > 1):
+                    bad.append(f"{c.get('code')} {sess.get('date')} "
+                               f"{it.get('bill')}: committee says {a}, "
+                               f"the bill page says {b}")
+    if not checked and not lost:
+        return "skip", "no committee item carries a recording"
+    assert not lost, (
+        f"{len(lost)} committee item(s) with a recording have no matching "
+        f"station on their bill page: {'; '.join(lost[:3])}")
+    assert not bad, (
+        f"{len(bad)} of {checked:,} proceedings start at a different moment on "
+        f"the committee page than on the bill page: {'; '.join(bad[:2])}")
+    return "ok", (f"{checked:,} recorded proceedings, one start each, on both "
+                  f"pages")
+
+
+@check("build", "a bill page's inline record is read by str.find as the pattern that defines "
+       "it reads it", needs=("site_read",))
+def _page_record_find(SR):
+    """site_read._page_record finds the inline record with two str.find calls
+    rather than INLINE's lazy pattern (16 October 2026: 7.8 s to 3.2 s a walk
+    over 33,717 pages, every record the same). Held here on the shapes that
+    could part them: two inline blocks, a block that never closes, a closing
+    tag before the opening one, an empty record, and a page with none, which
+    falls to the sidecar as before."""
+    o, c = SR.INLINE_OPEN, SR.INLINE_CLOSE
+    pages = {
+        "plain": f'<p>x</p>{o}{{"id": 1}}{c}<p>y</p>',
+        "two": f'{o}{{"id": 1}}{c}<script>z</script>{o}{{"id": 2}}{c}',
+        "unclosed": f'<p>x</p>{o}{{"id": 1}}',
+        "close first": f'{c}<p>x</p>{o}{{"id": 3}}{c}',
+        "empty": f"{o}{c}",
+        "none": '<meta name="gr-data" content="/bill/2026/hb1.json"><p>x</p>',
+    }
+    tmp = Path(tempfile.mkdtemp(prefix="gr-record-"))
+    try:
+        (tmp / "bill" / "2026").mkdir(parents=True)
+        (tmp / "bill" / "2026" / "hb1.json").write_text('{"id": "side"}', encoding="utf-8")
+        for name, html in pages.items():
+            f = tmp / f"{name.replace(' ', '_')}.html"
+            f.write_text(html, encoding="utf-8")
+            m = SR.INLINE.search(html)
+            if m:
+                try:
+                    want = json.loads(m.group(1))
+                except ValueError:
+                    want = None
+            else:
+                want = {"id": "side"} if 'name="gr-data"' in html else None
+            got = SR._page_record(tmp, f)
+            assert got == want, (f"the {name!r} page's record is {got!r} where the pattern "
+                                 f"reads {want!r}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", "six shapes of page, each read as INLINE reads it, the sidecar where none is inline"
+
+
+@check("build", "the search index reads a phrase in the bills that have its words, found by "
+       "their sets as asking each bill found them, in the plan's order",
+       needs=("build_search_index",))
+def _search_phrase_asks(SI):
+    """build_search_index.phrase_asks gathers the bills that have each word a
+    phrase needs and hands a phrase to the bills in all of those sets, where
+    build_term used to ask every bill about every phrase (16 October 2026,
+    private/BUILD_SPEED.md, item H). Held here to that question, asked the
+    old way, on the shapes that could part them: a word only in the
+    analysis, only in the text, a word counted 0, a phrase whose earlier
+    words are no words at all ("a b"), one needing two words that no bill
+    has together, and a bill with none -- and every bill's list in the
+    plan's order, so that nothing written can move. And build_term must
+    still read its phrases through it."""
+    C = Counter
+    counts = {"HB1": (C({"gender": 1}), C()),
+              "HB2": (C(), C({"gender": 3, "identity": 2, "risk": 1})),
+              "HB3": (C({"gender": 0}), C({"risk": 1, "protection": 2})),
+              "HB4": (C(), C()),
+              "SB5": (C({"protection": 1}), C({"gender": 1}))}
+    plan = [(p, None, need, False, len(p.split()))
+            for p, need in (("gender identity", ["gender"]),
+                            ("risk protection order", ["risk", "protection"]),
+                            ("a b", []),
+                            ("protection gender", ["protection"]),
+                            ("gender risk x", ["gender", "risk"]),
+                            ("identity protection y", ["identity", "protection"]))]
+    want = {bid: [a for a in plan if not any(not (ta[k] or tb[k]) for k in a[2])]
+            for bid, (ta, tb) in counts.items()}
+    got = SI.phrase_asks(plan, counts)
+    assert got == want, ("phrase_asks gives bills other phrases than asking each bill gives",
+                         {b: [a[0] for a in got.get(b, [])] for b in counts},
+                         {b: [a[0] for a in want[b]] for b in counts})
+    said = {b: [a[0] for a in v] for b, v in want.items()}
+    assert said["HB4"] == ["a b"] and "gender identity" not in said["HB3"] \
+        and "protection gender" in said["SB5"] \
+        and not any("identity protection y" in v for v in said.values()), \
+        ("the fixture no longer has a bill each way", said)
+    src = _source(_paths.locate("build_search_index.py"))
+    assert "phrase_asks(plan, {bid: tok[bid][:2] for bid in docs})" in src \
+        and "in asks[bid]:" in src, \
+        "build_term no longer reads its phrases through phrase_asks"
+    return "ok", (f"{len(plan)} phrases over {len(counts)} bills go where asking each bill "
+                  "sent them, in the plan's order")
+
+
+@check("naming", "sponsors.csv gives a 1989-1998 sponsor the party the bill's own page draws, and no later "
+       "row a party from a page")
+def _sponsors_csv_early_party():
+    """The owner, 15 November 2026: a 1989-1998 sponsor with a page is drawn with the page's party where
+    every record of them gives that one party (build_site_v2.early_party). data/sponsors.json, which the
+    download reads, carries no party for those years, so sponsors.csv said none beside a page that said R
+    -- a page and the download it promises disagreeing. build_exports.early_parties reads the party from
+    each 1989-1998 bill page itself (site_read.by_bill). Held on a fixture: Sytek on 1993 HB 108 takes the
+    R her page draws; a co-sponsor the page gives no party keeps none; a 2001 row whose raw party is empty
+    takes nothing from its page's D; and with no site nothing is taken."""
+    import site_read as SR
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        for d in ("data", "out", "site/bill/1993", "site/bill/2001"):
+            (root / d).mkdir(parents=True)
+        w = lambda p, o: (root / p).write_text(json.dumps(o), encoding="utf-8")
+        w("data/bills.json", {"1993-1994": {"HB108": {}}, "2001-2002": {"HB5": {}}})
+        row = lambda mid, name, prime: {"member_id": mid, "name": name, "label": name, "party": "",
+                                        "chamber": "H", "prime": prime, "source": "sponsor file"}
+        w("data/sponsors.json", {"1993-1994": {"HB108": [row("365809", "Donna Sytek", True),
+                                                        row("999", "Pat Nobody", False)]},
+                                 "2001-2002": {"HB5": [row("365809", "Donna Sytek", True)]}})
+        page = lambda sps: (f'<!doctype html><html>{SR.INLINE_OPEN}'
+                            + json.dumps({"sponsors": sps}) + f'{SR.INLINE_CLOSE}</html>')
+        (root / "site/bill/1993/hb108.html").write_text(page([
+            {"member_id": "365809", "party": "R", "display_full": "Rep. Donna Sytek (R - Rock 26)"},
+            {"member_id": "999", "party": "", "display_full": "Rep. Pat Nobody"}]), encoding="utf-8")
+        (root / "site/bill/2001/hb5.html").write_text(page([{"member_id": "365809", "party": "D"}]),
+                                                      encoding="utf-8")
+
+        def run(with_site):
+            r = _run([sys.executable, "-c",
+                      "import sys; sys.path.insert(0, sys.argv[1]); import _paths; "
+                      "from pathlib import Path; import build_exports as BE; "
+                      "BE.sponsors(Path('out'), 'data', None, " + ("Path('site')" if with_site else "None") + ")",
+                      str(here)], cwd=root, capture_output=True, text=True, timeout=60)
+            assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+            with (root / "out" / "sponsors.csv").open(encoding="utf-8", newline="") as fh:
+                return {(x["term"], x["bill"], x["member_id"]): x["party"] for x in csv.DictReader(fh)}
+        got = run(True)
+        assert got.get(("1993-1994", "HB108", "365809")) == "R", (
+            f"sponsors.csv gives Sytek on 1993 HB 108 {got.get(('1993-1994', 'HB108', '365809'))!r}, "
+            "not the R her page draws")
+        assert got.get(("1993-1994", "HB108", "999")) == "", "a sponsor the page gives no party took one"
+        assert got.get(("2001-2002", "HB5", "365809")) == "", "a row after 1998 took its party from a page"
+        assert run(False).get(("1993-1994", "HB108", "365809")) == "", "with no site a party was taken"
+        return "ok", ("a 1993 sponsor takes the party the bill's page draws, one it gives none keeps none, "
+                      "a 2001 row takes nothing from a page, and no site takes nothing")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("data", "an archived bill's page names the sponsors its own text names, and a covered bill keeps the database's")
+def _text_sponsors_built():
+    """The code check above proves the reading; this, that the build used it.
+
+    build_site_v2 and build_exports each merge text_sponsors.json in. A merge dropped
+    or a path moved would put "No sponsors on file" back on every bill before 2023 and
+    exit zero, and a merge done the wrong way round would put the text's list over the
+    database's on 2023-2024. So: the first bills of the oldest terms the text covers
+    carry exactly its names, prime first, on their pages and in the search index; a
+    2023-2024 bill the database covers carries none of them; and sponsors.csv has both.
+    """
+    # meta.json, which names the bill index's terms and is written by the
+    # same step as their files, says when the index was built.
+    ts_p, idx_p = Path("text_sponsors.json"), Path("site") / "meta.json"
+    if not (ts_p.exists() and idx_p.exists()):
+        return "skip", "text_sponsors.json or the built index is not here"
+    if ts_p.stat().st_mtime > idx_p.stat().st_mtime:
+        return "skip", "text_sponsors.json is newer than the built site; rebuild to check it"
+    try:
+        import site_read as SR
+    except ImportError:
+        return "skip", "site_read.py will not import"
+    ts = json.loads(ts_p.read_text(encoding="utf-8"))
+    rows = {(r.get("term"), r.get("id")): r for r in _site_bills() or []}
+    picked = [(t, b, recs) for t in sorted(ts) if t < "2023"
+              for b, recs in sorted(ts[t].items())[:1]][:4]
+    if not picked:
+        return "skip", "the text names no sponsors for a term before 2023 yet"
+    for t, b, recs in picked:
+        row = rows.get((t, b))
+        assert row, f"{t} {b} is in text_sponsors.json and not in the index"
+        rec = SR.one("site", row.get("year"), b)
+        assert rec, f"{t} {b}: its page carries no record"
+        got = [(s.get("name"), s.get("source"), bool(s.get("prime"))) for s in rec.get("sponsors") or []]
+        want = [(s["name"], "bill text", i == 0) for i, s in enumerate(recs)]
+        assert got == want, f"{t} {b}'s page names {got[:3]}; its text {want[:3]}"
+        assert row.get("sponsor") == recs[0]["name"], (
+            f"{t} {b}'s index row says {row.get('sponsor')!r}, its text's prime {recs[0]['name']!r}")
+    sp = json.loads((Path("data") / "sponsors.json").read_text(encoding="utf-8"))
+    covered = sorted((sp.get("2023-2024") or {}).items())[:1]
+    for b, db in covered:
+        row = rows.get(("2023-2024", b))
+        rec = SR.one("site", row.get("year"), b) if row else None
+        assert rec and rec.get("sponsors"), f"2023-2024 {b} lost its sponsors"
+        assert not any(s.get("source") == "bill text" for s in rec["sponsors"]), (
+            f"2023-2024 {b}'s database sponsors were replaced by its text's")
+    csv_p = Path("site") / "data" / "sponsors.csv"
+    if csv_p.exists() and csv_p.stat().st_mtime >= ts_p.stat().st_mtime:
+        text = csv_p.read_text(encoding="utf-8")
+        assert ",bill text" in text and ",bill status page" in text, (
+            "sponsors.csv does not carry both the database's sponsors and the text's")
+    return "ok", (f"{len(picked)} archived bills name their text's sponsors on page and index; "
+                  "the database's own list stands on 2023-2024")
+
+
+@check("frontend", "a member's Elections tab is drawn by app.js: each row linked to its race on the "
+       "elections page with its result, votes and share, a Spanish label, the tab only for a member "
+       "with a row, and its address in the lists that serve it",
+       needs=("build_pages",))
+def _member_elections_tab(BP):
+    names = ("renderMemberElections", "memberElectionTab", "MEMBER_TABS")
+    member = {"elections": [
+        {"d": "2026-11-03", "k": "S|5", "a": "r-s-5", "r": "open", "v": 9000, "s": 1, "pl": 1, "of": 2,
+         "sh": 52.9, "rq": 1},
+        {"d": "2024-11-05", "k": "H|Rockingham|3", "a": "r-h-rockingham-3", "r": "won", "v": 3000,
+         "s": 2, "fl": 1, "rc": 1, "pl": 2, "of": 3},
+        {"d": "2024-11-05", "k": "H|Rockingham|1", "a": "r-h-rockingham-1", "r": "lost", "v": 1500,
+         "s": 1, "pl": 2, "of": 4, "sh": 41.0}]}
+    html = _app_js("scope.renderMemberElections(" + json.dumps(member) + ")", names=names)
+    if html is None:
+        return "skip", "node, app.js or the stub is not here"
+    for want in ('href="/elections/2026-11-03-general#r-s-5"',
+                 'href="/elections/2024-11-05-general#r-h-rockingham-3"',
+                 "Result not final, 1st of 2", "a recount was requested", "Elected, 2nd of 3",
+                 "Not elected, 2nd of 4", "Recounted", "9,000", "(52.9%)", "(41.0%)",
+                 "Senate, District 5", "House, Rockingham 3", "floterial",
+                 'href="/elections/2024-11-05-general">2024 general election',
+                 "Secretary of State"):
+        assert want in html, f"the Elections tab does not say {want!r}"
+    assert html.count('<td class="d"') == 3 and "(%)" not in html and "narrow" not in html.lower() \
+        and "safe" not in html.lower(), "the tab's rows, or a word it should not say"
+    tab = _app_js("[scope.memberElectionTab(" + json.dumps(member) + "), scope.memberElectionTab({}), "
+                  "scope.renderMemberElections({})]", names=names)
+    assert tab[0] == ["Elections", 3] and tab[1] is None and tab[2] == "", (
+        f"the tab appears for a member with no race, or not for one with: {tab}")
+    # The tab's address, in the lists that serve it, and the label in Spanish.
+    assert "elections" in BP.MEMBER_TAB_SLUGS and "/legislator/:who/elections /legislator/:who 200" in BP.REDIRECTS_DYNAMIC, (
+        "/legislator/<who>/elections is not served by the member's page")
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"]
+    assert es["race.tab"]["es"] == "Elecciones" and es["race.tab"]["en"] == "Elections", "no Spanish label"
+    return "ok", "three rows linked, the words the elections page uses, no tab without a race, the address served, Elecciones"
+
+
+@check("build", "check_site refuses a site/members_elect.json on or after the day its "
+                "members-elect take office, which holds the night", needs=("check_site",))
+def _elect_refused_on_the_day(CS):
+    """Check 6 of the plan: the third guard after the step and the browser.
+    A members_elect.json still in the site on its takes_office, or after, is
+    a site that would call sitting members members-elect; check_site refuses
+    it, and a refusal there holds the night. Before the day it passes, and
+    says until when; a file that names no day is refused, since nothing
+    would take it down. And main() runs it: a site dated 2 December with the
+    file in it is refused by name."""
+    from datetime import date
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-check-"))
+    try:
+        site = root / "site"
+        site.mkdir()
+        p = site / "members_elect.json"
+        p.write_text(json.dumps({"election": "2026-11-03", "takes_office": "2026-12-02",
+                                 "term": "2027-2028", "races": {}}), encoding="utf-8")
+        got = {}
+        for day in (date(2026, 11, 20), date(2026, 12, 1), date(2026, 12, 2), date(2027, 1, 6)):
+            errors = []
+            CS.members_elect(site, errors, today=day)
+            got[day.isoformat()] = bool(errors)
+        assert got == {"2026-11-20": False, "2026-12-01": False, "2026-12-02": True,
+                       "2027-01-06": True}, f"check_site refuses members_elect.json on {got}"
+        p.write_text(json.dumps({"election": "2026-11-03", "races": {}}), encoding="utf-8")
+        errors = []
+        CS.members_elect(site, errors, today=date(2026, 11, 20))
+        assert errors and "takes_office" in errors[0], (
+            "check_site passes a members_elect.json that names no day it retires on")
+        p.unlink()
+        errors = []
+        CS.members_elect(site, errors, today=date(2027, 1, 6))
+        assert not errors, f"check_site refuses a site with no members_elect.json: {errors}"
+        p.write_text(json.dumps({"takes_office": "2026-12-02", "races": {}}), encoding="utf-8")
+        # The files every site must hold, as stand-ins, so that the refusal
+        # is among the first errors main() prints rather than after them.
+        for name in CS.REQUIRED:
+            (site / name).write_text('{"x": 1}' if name.endswith(".json") else "<p>x</p>",
+                                     encoding="utf-8")
+        r = _run([sys.executable, _paths.script("check_site.py"), "--site", str(site)],
+                 capture_output=True, text=True, timeout=120,
+                 env={"GRANITE_BUILD_DATE": "2026-12-02"})
+        said = (r.stdout or "") + (r.stderr or "")
+        assert r.returncode != 0 and "members_elect.json is still in the site on 2026-12-02" in said, (
+            "check_site.py, run on a site dated 2 December with members_elect.json in it, does "
+            "not refuse it by name: " + said[-300:])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("passed on 20 November and 1 December, refused on 2 December and after, and "
+                  "refused with no takes_office; main() refuses it by name")
+
+
+@check("data", "the measures the search page left out read as their records say, and "
+               "HB 459's roll call reaches it")
+def _left_out_on_site():
+    """On what was built: each of the 25 is in the index under its term with a
+    status, and the ones that never were introduced are drawn no rail. The
+    statuses the record's own words give are pinned by name, and so is HB 459
+    of 2021: killed, with roll call 35 of 2021 on its page and the count the
+    House Journal prints, 198-153.
+
+    The histories that come from the past docket view are asked for only
+    where the view is on this machine; without it those bills have a record
+    and a status and no history, which narrate_archive says.
+    """
+    rows = _site_bills()
+    if rows is None:
+        return "skip", "no bill index here; run build_site_v2.py"
+    idx = {(r.get("term"), r.get("id")): r for r in rows}
+    every = [k for v in _LEFT_OUT.values() for k in v]
+    gone = [f"{b} of {t}" for t, b in every if (t, b) not in idx]
+    if gone and not Path("db/past/PastLegislation.psv").exists():
+        return "skip", "no db/past/PastLegislation.psv here, so these measures are not built"
+    assert not gone, f"not in the site's index: {gone}"
+    want = {
+        ("2009-2010", "HB1308"): "Withdrawn prior to introduction",
+        ("2009-2010", "HB1582"): "Withdrawn prior to introduction",
+        ("2009-2010", "HB1584"): "Withdrawn prior to introduction",
+        ("2009-2010", "HB1587"): "Withdrawn prior to introduction",
+        ("2011-2012", "HB523"): "Withdrawn", ("2011-2012", "HB547"): "Withdrawn",
+        ("2011-2012", "HB1284"): "Withdrawn", ("2011-2012", "HB1472"): "Withdrawn",
+        ("2011-2012", "HB1512"): "Withdrawn", ("2011-2012", "PET29"): "Withdrawn",
+        # One docket row each that says "Introduced", and a House Journal
+        # whose resolution of introduction steps over the number.
+        ("2009-2010", "HB87"): "Not introduced", ("2009-2010", "HB134"): "Not introduced",
+        ("2007-2008", "HB633"): "Not introduced",
+        ("2007-2008", "SB267"): "Refused introduction",
+        ("2015-2016", "SB499"): "Refused introduction",
+        ("2005-2006", "HB3"): "Proposed for the special session",
+        ("2011-2012", "HR31"): "Adopted by the House",
+        ("1991-1992", "HR69"): "Adopted by the House",
+        ("2017-2018", "HR1"): "Adopted by the House",
+        ("2017-2018", "HR6"): "Adopted by the House",
+        ("2021-2022", "HB459"): "Killed",
+    }
+    bad = [f"{b} of {t}: {idx[(t, b)].get('status')!r}, not {s!r}"
+           for (t, b), s in want.items() if idx[(t, b)].get("status") != s]
+    assert not bad, "; ".join(bad)
+    never = [(t, b) for (t, b), s in want.items()
+             if s in ("Withdrawn prior to introduction", "Refused introduction",
+                      "Proposed for the special session", "Not introduced")
+             or (t, b) in (("2011-2012", "HB1284"), ("2011-2012", "HB1472"))]
+    railed = [f"{b} of {t} ({idx[(t, b)]['passage']})" for t, b in never
+              if idx[(t, b)].get("passage")]
+    assert not railed, f"a bill that was never introduced is drawn a rail: {railed}"
+    assert len(never) == 12, never
+    # Nothing was referred of a bill that was never introduced, and it was
+    # not carried over from the December its row was typed in.
+    filed = [f"{b} of {t} ({idx[(t, b)].get('committee')!r}, carried "
+             f"{idx[(t, b)].get('carried')})" for t, b in never
+             if idx[(t, b)].get("committee") or idx[(t, b)].get("carried")]
+    assert not filed, f"a bill that was never introduced is filed under a committee: {filed}"
+    # HB 1512 of 2012 the other way: the House Journal of 4 January 2012
+    # lists it among the bills introduced and referred.
+    hb1512 = idx[("2011-2012", "HB1512")]
+    assert hb1512.get("passage") and "Municipal and County Government" in (
+        hb1512.get("committee") or ""), (
+        "HB 1512 of 2012 was introduced and referred, by the House Journal, and reads "
+        f"rail {hb1512.get('passage')!r}, committee {hb1512.get('committee')!r}")
+    assert all(idx[k].get("kind") != "active" for k in every), (
+        "a measure of a closed term is still moving")
+
+    import site_read
+
+    def page(year, bid):
+        # The record inside the bill's page, where the records live.
+        return site_read.one("site", year, bid)
+    hb = page(2021, "HB459")
+    if hb is not None:
+        rc = hb.get("rollcalls") or []
+        assert any((r.get("yeas"), r.get("nays")) == (198, 153) for r in rc), (
+            f"HB 459 of 2021's page carries no roll call of 198-153: "
+            f"{[(r.get('yeas'), r.get('nays')) for r in rc]}")
+        assert [s.get("as_printed") for s in hb.get("sponsors") or []][:2] == [
+            "Silber, Belk. 2", "Sylvia, Belk. 6"], hb.get("sponsors")
+        assert hb.get("title", "").startswith("prohibiting a transfer of funds")
+    h = page(2012, "HB1284")
+    if h is not None:
+        late = [s.get("when") for s in h.get("stations") or [] if (s.get("when") or "") > "2012-01-04"]
+        assert not late, (f"HB 1284 of 2012, withdrawn on 4 January, is drawn sittings "
+                          f"on {late}")
+    j = page(2009, "HB87")
+    if j is not None and Path("narratives.json").exists():
+        assert "The docket enters it as introduced on January 7, 2009" in (
+            j.get("narrative") or "") and "It was introduced" not in j["narrative"], (
+            f"HB 87 of 2009 is told as {j.get('narrative')!r}")
+        assert j.get("status_source") == "House Journal" and any(
+            "31 through 86, 88 through 133 and 135 through 223" in n
+            for n in j.get("notes") or []), (j.get("status_source"), j.get("notes"))
+    w = page(2012, "HB1512")
+    if w is not None and Path("narratives.json").exists():
+        assert (w.get("narrative") or "").startswith(
+            "It was introduced on January 4, 2012 and referred to the House Municipal "
+            "and County Government committee. It was withdrawn on January 4, 2012."), (
+            f"HB 1512 of 2012 is told as {w.get('narrative')!r}")
+    s = page(2007, "SB267")
+    if s is not None and (s.get("events") or []):
+        assert any("SB 267-FN" in n and "SB 266" in n for n in s.get("notes") or []), (
+            "SB 267 of 2007's one docket row names SB 266, and its page does not say "
+            f"whose vote it was: {s.get('notes')}")
+    said = ""
+    if Path("db/past/PastDocket.psv").exists() and Path("narratives.json").exists():
+        narr = _narratives()
+        told = [("2015-2016", "SB340"), ("2015-2016", "SB499"), ("2019-2020", "HB451"),
+                ("2021-2022", "HB459")] + [("2017-2018", f"HR{i}") for i in range(1, 7)]
+        none = [f"{b} of {t}" for t, b in told if not ((narr.get(t) or {}).get(b) or {}).get("events")]
+        assert not none, ("the past docket view is here and these bills, whose rows only "
+                          f"it holds, have no history: {none}")
+        said = f"; {len(told)} histories read from the past docket view"
+    else:
+        said = "; the past docket view is not here, so the histories it gives were not asked for"
+    return "ok", (f"{len(every)} measures in the index, {len(want)} statuses as their "
+                  "records word them, no rail on the ones never introduced, HB 459 "
+                  "with its roll call" + said)
+
+
+@check("data", "the sixteen chapters the docket gave to two bills are the database's, "
+               "and each bill's history says the number its page prints")
+def _chapters_settled_data():
+    """chapters.json, where the past table is on this machine: the eight
+    pairs of laws the docket numbers alike, by name, with the chapter the
+    General Court's database gives each -- which is the one each bill's own
+    final version is headed with wherever that text is on disk. No number
+    stays withheld for a clash in a past term. And narratives.json tells HB
+    1278 of 1992 as Chapter 232, where its docket line reads CHAP.0233.
+    """
+    cp = Path("chapters.json")
+    if not cp.exists():
+        return "skip", "no chapters.json here; run extract_chapters.py"
+    if not Path("db/past/PastLegislation.psv").exists():
+        return "skip", "no db/past/PastLegislation.psv here, so the clashes stay withheld"
+    ch = json.loads(cp.read_text(encoding="utf-8"))
+    want = {("1991-1992", "HB1278"): 232, ("1991-1992", "HB1330"): 233,
+            ("2005-2006", "HB1417"): 262, ("2005-2006", "HB1426"): 263,
+            ("2009-2010", "SB28"): 31, ("2009-2010", "SB109"): 28,
+            ("2013-2014", "HB1121"): 43, ("2013-2014", "HB1152"): 48,
+            ("2013-2014", "SB45"): 262, ("2013-2014", "SB48"): 263,
+            ("2015-2016", "SB244"): 127, ("2015-2016", "SB524"): 127,
+            ("2017-2018", "SB399"): 284, ("2017-2018", "SB418"): 285,
+            ("2021-2022", "HB476"): 125, ("2021-2022", "HB523"): 111}
+    bad = [f"{b} of {t}: {((ch.get(t) or {}).get(b) or {}).get('chapter')}, not {n}"
+           for (t, b), n in want.items()
+           if ((ch.get(t) or {}).get(b) or {}).get("chapter") != n]
+    assert not bad, "; ".join(bad)
+    current = max(ch)
+    still = [f"{b} of {t}" for t, bb in ch.items() if t != current
+             for b, r in bb.items() if "also claims" in (r.get("withheld") or "")]
+    assert not still, f"still withheld for a clash in a past term: {still}"
+    said = "16 chapters settled, none withheld for a clash in a past term"
+    # The database's effective date beside each docket number that was the
+    # other bill's, and beside no other: seven of the sixteen.
+    dated = sorted(k for k in want if "database_effective" in ch[k[0]][k[1]])
+    other = sorted(k for k in want if ch[k[0]][k[1]].get("docket") != ch[k[0]][k[1]]["chapter"])
+    assert dated == other and len(dated) == 7, (
+        f"database_effective is on {dated}; the docket's number was another bill's on "
+        f"{other}")
+    sb28 = ch["2009-2010"]["SB28"]
+    assert sb28.get("database_effective") == "2009-07-14", (
+        f"SB 28 of 2009's effective date by the database: {sb28}")
+    import site_read
+    page = site_read.one("site", 2009, "SB28")
+    if page is not None:
+        law = [s.get("text") for s in (page.get("journey") or {}).get("steps") or []
+               if s.get("act") == "law"]
+        assert law == ["Chapter 31, in effect Jul 14, 2009"], (
+            "SB 28 of 2009's enrolled text says \"Effective Date: July 14, 2009\", and its "
+            f"page says {law}")
+        said += "; SB 28 of 2009 in effect 14 July 2009, not the 7 July of SB 109's line"
+    np_ = Path("narratives.json")
+    if np_.exists():
+        narr = _narratives()
+        told = ((narr.get("1991-1992") or {}).get("HB1278") or {}).get("narrative") or ""
+        assert "Chapter 232" in told and "Chapter 233" not in told, (
+            "HB 1278 of 1992's history does not say Chapter 232: " + told[-160:])
+        said += "; HB 1278 of 1992's history says Chapter 232"
+    return "ok", said
+
+
+@check("data", "each chamber's session days of a term are on the site as data: every day, "
+               "every vote on each bill in order, who presided and who was excused")
+def _session_terms_on_the_site():
+    """site/session/<H|S>/<term>.json (build_session_pages.write_term_records):
+    every day site/session/days.json names is in one term's file, once;
+    every roll call's card is a card of that bill's Votes tab with the same
+    count. And the record's own days: the House on 19 February 2026 --
+    roll calls 83-88 with Speaker Packard presiding and 89-99 with Deputy
+    Speaker Steven Smith (RollCallHistory.txt); the consent calendar's 59
+    killed, 41 passed and 18 sent to interim study, and HB 652-FN, HB 1028,
+    HB 1572-FN and HB 1602-FN taken off it; HB 1705-FN's three votes, the
+    third roll call 95, 194-154 -- and on 19 August 2026, 24 members excused,
+    10 Democrats and 14 Republicans (each journal name read as the member
+    serving that term, whose ballots that day say excused, but for Rep.
+    Aldrich, whom the ballots record voting)."""
+    days_file = Path("site/session/days.json")
+    if not days_file.exists():
+        return "skip", "site/session is not built"
+    listed = json.loads(days_file.read_text(encoding="utf-8"))
+    bad, n_days, n_votes, n_cards = [], 0, 0, 0
+    import site_read
+    records = {}
+
+    def record(year, bill):
+        if (year, bill) not in records:
+            records[(year, bill)] = site_read.one("site", year, bill) or {}
+        return records[(year, bill)]
+
+    for body in ("H", "S"):
+        got = []
+        for f in sorted((Path("site/session") / body).glob("*.json")):
+            rec = json.loads(f.read_text(encoding="utf-8"))
+            got += [d["date"] for d in rec.get("days") or []]
+            for d in rec.get("days") or []:
+                n_days += 1
+                for b in d.get("bills") or []:
+                    for v in b.get("votes") or []:
+                        n_votes += 1
+                        if "card" in v and rec["term"] == "2025-2026":
+                            n_cards += 1
+                            r = record(b.get("year"), b["bill"])
+                            card = (r.get("rollcalls") or [])[v["card"]:v["card"] + 1]
+                            if not card or (card[0].get("yeas"), card[0].get("nays")) != (
+                                    v.get("yeas"), v.get("nays")):
+                                bad.append(f"{body} {d['date']} {b['bill']}: card {v['card']} "
+                                           f"is not roll call {v.get('rollcall')}")
+        if sorted(got) != sorted(listed.get(body) or []):
+            bad.append(f"{body}: the term files hold {len(got)} days, days.json "
+                       f"{len(listed.get(body) or [])}")
+    term = Path("site/session/H/2025-2026.json")
+    by = {d["date"]: d for d in json.loads(term.read_text(encoding="utf-8"))["days"]} \
+        if term.exists() else {}
+    feb = by.get("2026-02-19") or {}
+    pres = [(p.get("id"), p.get("roll_calls"), p.get("office")) for p in feb.get("presiding") or []]
+    if pres[:2] != [("425", 6, "Speaker of the House"), ("656", 11, "Deputy Speaker of the House")]:
+        bad.append(f"who presided on 19 Feb 2026: {pres}")
+    cons = feb.get("consent") or {}
+    if ([(o["outcome"], o["bills"]) for o in cons.get("outcomes") or []]
+            != [("Killed", 59), ("Passed", 41), ("Sent to Interim Study", 18)]
+            or cons.get("removed") != ["HB652", "HB1028", "HB1572", "HB1602"]):
+        bad.append(f"the consent calendar of 19 Feb 2026: {cons}")
+    hb = next((b for b in feb.get("bills") or [] if b["bill"] == "HB1705"), {})
+    got = [(v["motion"], v["result"], v.get("how"), v.get("yeas"), v.get("rollcall"))
+           for v in hb.get("votes") or []]
+    if got != [("Refer for Interim Study", "failed", "division", 167, None),
+               ("Adopt Amendment", "adopted", "voice vote", None, None),
+               ("Ought to Pass with Amendment 2026-0531h", "adopted", "roll call", 194,
+                "2026-H-95")] or hb.get("referred") != "Finance":
+        bad.append(f"HB 1705-FN on 19 Feb 2026: {got}, {hb.get('referred')}")
+    aug = (by.get("2026-08-19") or {}).get("excused")
+    if aug != {"total": 24, "by_party": {"D": 10, "R": 14}, "unmatched": 0}:
+        bad.append(f"excused on 19 Aug 2026: {aug}")
+    assert not bad, f"{len(bad)} wrong: " + "; ".join(bad[:6])
+    return "ok", (f"{n_days:,} days, {n_votes:,} votes on bills, {n_cards:,} roll-call cards of "
+                  "2025-2026 each its bill's; 19 Feb 2026 presided by Speaker Packard (6) and "
+                  "Deputy Speaker Steven Smith (11); 19 Aug 2026, 24 excused, 10 D and 14 R")
+
+
+@check("code", "the coverage table counts a blank committee as covered only where the record "
+               "shows the bill never had one",
+       needs=("build_exports",))
+def _coverage_committee_none(BE):
+    import tempfile
+    out = Path(tempfile.mkdtemp())
+    (out / "bills.csv").write_text(
+        "term,year,bill,title,sponsor,committee,topic,status,outcome,passage\n"
+        "1991-1992,1991,HR5,t,,,x,Adopted by the House,adopted,H\n"
+        "1991-1992,1991,HB6,t,a,House Education,x,Killed,done,H\n"
+        "1991-1992,1991,HB8,t,a,,x,Killed,done,H\n"
+        "1991-1992,1991,HB9,t,a,,x,Withdrawn prior to introduction,done,\n",
+        encoding="utf-8")
+    row = BE.coverage(out, none_on_record={("1991-1992", "HR5")})[0]
+    assert row["bills"] == 4 and row["committee"] == 1, row
+    assert row["committee_none"] == 2, row            # HR5 by its docket, HB9 never introduced
+    return "ok", "committee_none counts HR5 and a never-introduced bill, not HB8"
+
+
+@check("code", "the coverage table counts a resolution the chamber itself offered as having its sponsor",
+       needs=("build_exports",))
+def _coverage_sponsor_body(BE):
+    """Alice, 9 November 2026: "Offered by the House of Representatives" names
+    the body as the sponsor, so the Sponsor column counts it covered."""
+    import tempfile
+    out = Path(tempfile.mkdtemp())
+    (out / "bills.csv").write_text(
+        "term,year,bill,title,sponsor,committee,topic,status,outcome,passage\n"
+        "2021-2022,2021,HR7,t,,,x,Adopted by the House,adopted,H\n"
+        "2021-2022,2021,HR8,t,,,x,Adopted by the House,adopted,H\n"
+        "2021-2022,2021,HB9,t,a,House Education,x,Killed,done,H\n",
+        encoding="utf-8")
+    row = BE.coverage(out, none_on_record=set(), by_chamber={("2021-2022", "HR7")})[0]
+    assert row["sponsor"] == 1 and row["sponsor_body"] == 1, row
+    page = _source("src/pages/build_exports.py")
+    assert 'c["sponsor"] + c.get("sponsor_body", 0)' in page, (
+        "the data page's Sponsor figure does not add the resolutions the chamber offered")
+    rs = _source("src/parse/resolution_sponsors.py")
+    assert 'BODY.match(b["who"]' in rs and "resolution_bodies.json" in rs, (
+        "resolution_sponsors.py no longer writes the resolutions the chamber offered")
+    return "ok", "HR7, offered by the House, counts as covered; HR8, naming nobody, does not"
+
+
+@check("frontend", "the home page's left column is two cards as the right is, the Committees tab is a gavel, "
+                   "and the Laws preview holds a definition's box inside it")
+def _visual_fixes_of_11_november():
+    """The owner's three fixes of 11 November 2026, each held to its contract.
+
+    1. The home page's left column was one sheet with the status box flush
+       against the Recent Session Days heading. It is two cards, the status
+       and Recent Session Days, drawn as the right column's two (Coming up
+       and Latest activity): the same surface, edge, radius and padding, the
+       sheet around the column gone, and a gap between them.
+    2. The Committees tab's drawing is the gavel, one of components.ICONS,
+       drawn as its neighbours are (the one ICON_PAINT).
+    3. The Laws page's preview is held at the top as tall as the screen
+       allows, never scrolls sideways, and DEFS_JS bounds a definition's box
+       by the panel it opens in: its width, its words wrapping, its top and
+       bottom (which is what lets it open above near the panel's bottom)."""
+    import build_pages as BP
+    import build_rsa as B
+    import chrome as CH
+    import components as C
+    for lang in ("en", "es"):
+        body = BP.home_body(lang, False, "", "", "", "")
+        left = re.search(r'<section class="hside hleft".*?</section>', body, re.S)
+        assert left and 'id="state"' in left.group(0) and 'id="session"' in left.group(0), (
+            f"the {lang} home page's left column no longer holds the status and Recent Session Days "
+            f"as #state and #session")
+        right = re.search(r'<section class="hside hright".*?</section>', body, re.S)
+        assert right and 'id="upcoming"' in right.group(0) and 'id="recent"' in right.group(0), (
+            f"the {lang} home page's right column no longer holds #upcoming and #recent")
+    css = _source("src/pages/app.css")
+    laid = [(tuple(re.sub(r"\s+", "", a) for a in at), {" ".join(x.split()) for x in sel.split(",")},
+             {k: " ".join(v.split()) for k, v in _css_decls(body)}) for at, sel, body, _n in _css_rules(css)]
+    wide = ("@media(min-width:73.75em)",)
+    P = ":where(body.pg) "
+
+    def said(sel):
+        out = {}
+        for at, sels, decls in laid:
+            if at == wide and P + sel in sels:
+                out.update(decls)
+        return out
+    card = {k: said(".hv-panels .hright > #upcoming").get(k) for k in
+            ("background", "border", "border-radius", "padding")}
+    assert all(card.values()), f"the right column's cards are not drawn as cards in app.css: {card}"
+    for sel in (".hv-panels .hleft > #state", ".hv-panels .hleft > #session"):
+        got = {k: said(sel).get(k) for k in card}
+        assert got == card, (f"the left column's {sel.rsplit('#', 1)[1]} is not the card the right "
+                             f"column's are: {got} against {card}")
+    assert said(".hv-panels .hleft").get("border") == "0" and said(".hv-panels .hleft").get("background") == "none", (
+        "the left column is still one sheet around its blocks")
+    assert said(".hv-panels .hleft > #state ~ #session").get("margin-top") == "var(--sp-6)", (
+        "the status card and the Recent Session Days card have no gap between them")
+    nav = {href: g for href, _label, g in CH.NAV_TABS}
+    assert nav.get("committees.html") == "gavel" and "gavel" in C.ICONS, (
+        f"the Committees tab's drawing is {nav.get('committees.html')!r}, not the gavel")
+    assert C.icon("gavel").startswith('<svg class="icon" viewBox="0 0 24 24"') and C.ICON_PAINT in C.icon("gavel"), (
+        "the gavel is not drawn as the other icons are")
+    assert "gavel:" in _source("src/pages/components.js"), (
+        "components.js has no gavel, so a page drawn in the browser would lack the Committees drawing")
+    read = {}
+    for at, sels, decls in laid:
+        if not at and ".lw-read" in sels:
+            read.update(decls)
+    assert read.get("position") == "sticky" and read.get("overflow-x") == "hidden" \
+        and read.get("height") == "calc(100vh - 32px)", (
+        f"the Laws preview is not held at the top, as tall as the screen allows, with no sideways scroll: {read}")
+    place = B.DEFS_JS[B.DEFS_JS.find("function place("):B.DEFS_JS.find("function show(")]
+    assert "overflowX" in place and "pop.style.maxWidth" in place and "host.clientWidth" in place \
+        and "bot-below" in place and "r.top-6-top" in place, (
+        "DEFS_JS does not bound a definition's box by the panel it opens in, its width and its top and bottom")
+    return "ok", ("the left column's two cards are the right's; the Committees tab is the gavel; the Laws "
+                  "preview is as tall as the screen and its definition box is held inside it")
+
+
+@check("frontend", "a bill number is one of the kinds the General Court numbers, so 'covid 19' and "
+       "'Rule 64' are words, every real number and its written forms still a number, and the header's "
+       "row to the votes opens on every term", needs=("build_pages",))
+def _votes_numbers(BP):
+    """The review of 14 November 2026: billNumbers() read any two to five letters before digits as a
+    bill number, so "covid 19" was the bill COVID19 (no vote, where "covid-19" had 24), and "Rule
+    64", "Route 101" and "title 5" the same. It is shared with /bills and the header, so the real
+    numbers are held too: every kind, padded, spaced, written out and listed, and every bill id of
+    the fixture -- and of site/idx where the site is built -- read as itself. And the header's row
+    "Search the votes for ..." said every roll call from 1999 and opened on 2025-2026: "SB 2" found
+    none of the 19 it has."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    app = _source("src/pages/app.js")
+    find = _source("src/pages/find.js")
+    kinds = re.search(r"const BILL_KINDS=new Set\(\[([^\]]*)\]\)", app)
+    fkinds = re.search(r"const FBILLKIND=new Set\(\[([^\]]*)\]\)", find)
+    assert kinds and fkinds, "app.js has no BILL_KINDS, or find.js no FBILLKIND"
+    kinds, fkinds = set(re.findall(r'"([A-Z]+)"', kinds.group(1))), set(re.findall(r'"([A-Z]+)"', fkinds.group(1)))
+    assert kinds == fkinds | {"LSR"}, f"app.js reads {sorted(kinds)} as numbers and the header {sorted(fkinds)}"
+    ids = set()
+    cases = Path("tests/search_cases.json")
+    if cases.exists():
+        ids |= set(json.loads(_source(cases)).get("bills") or {})
+    real = sorted(Path("site/idx").glob("*.json")) if Path("site/idx").is_dir() else []
+    for f in real:
+        ids |= {str(b.get("id") or "").upper() for b in json.loads(f.read_text(encoding="utf-8"))}
+    ids.discard("")
+    lacking = sorted({re.match(r"[A-Z]*", i).group(0) for i in ids} - kinds)
+    assert not lacking, f"the bills carry kinds the matcher does not read as numbers: {lacking}"
+    matcher = BP.bill_matcher_js(app)
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "billmatch.js").write_text(matcher, encoding="utf-8")
+        (root / "ids.json").write_text(json.dumps(sorted(ids)), encoding="utf-8")
+        (root / "go.js").write_text(r"""
+const fs = require("fs"), window = {};
+new Function("window", fs.readFileSync("./billmatch.js", "utf8"))(window);
+const A = window.GR_BILLMATCH, out = {words: {}, numbers: {}, off: []};
+for (const q of ["covid 19", "Rule 64", "Route 101", "title 5", "hills 29", "Ward 3", "SD 22", "Straf 14",
+                 "covid 19, HB 1", "chapter 11"]) out.words[q] = A.billNumbers(q);
+for (const q of ["HB 1", "hb1442", "HB 0115", "H.B. 703", "Senate Bill 11", "CACR 3", "SSHCR 1", "PET 5",
+                 "HBI 2", "HA 3", "HCO 1", "HB 1, SB 2", "LSR 2027-0002"]) out.numbers[q] = A.billNumbers(q);
+for (const id of JSON.parse(fs.readFileSync("./ids.json", "utf8"))) {
+  const spaced = id.replace(/^([A-Z]+)(\d)/, "$1 $2");
+  for (const q of [id, spaced, spaced.toLowerCase()]) {
+    const got = A.billNumbers(q);
+    if (!got || got.length !== 1 || got[0] !== id) { out.off.push([q, got]); break; }
+  }
+}
+process.stdout.write("\n@@" + JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "the matcher cut from app.js did not run: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    read = {q: v for q, v in got["words"].items() if v is not None}
+    assert not read, f"words read as bill numbers: {read}"
+    want = {"HB 1": ["HB1"], "hb1442": ["HB1442"], "HB 0115": ["HB115"], "H.B. 703": ["HB703"],
+            "Senate Bill 11": ["SB11"], "CACR 3": ["CACR3"], "SSHCR 1": ["SSHCR1"], "PET 5": ["PET5"],
+            "HBI 2": ["HBI2"], "HA 3": ["HA3"], "HCO 1": ["HCO1"], "HB 1, SB 2": ["HB1", "SB2"],
+            "LSR 2027-0002": ["LSR20270002"]}
+    wrong = {q: got["numbers"][q] for q in want if got["numbers"].get(q) != want[q]}
+    assert not wrong, f"real bill numbers no longer read as numbers: {wrong}"
+    assert not got["off"], f"bill ids not read as themselves: {got['off'][:5]}"
+    # The header's row to the votes opens on every term.
+    (P,) = _find_more_run(BP, ("panel", ""))
+    rows = {q: re.findall(r'href="(/votes\?[^"]*)"', h) for q, h in P["panel"].items()}
+    lost = {q: v for q, v in rows.items() if not v or any("term=all" not in u for u in v)}
+    assert not lost, f"the header's row to the votes does not open on every term: {dict(list(lost.items())[:3])}"
+    return "ok", (f"{len(got['words'])} word searches stay words; {len(want)} numbers and {len(ids):,} bill ids "
+                  f"({'with' if real else 'without'} site/idx) read as themselves; the header's votes row "
+                  f"opens on every term in {len(rows)} searches")
+
+
+@check("build", "the not-found page goes to a bill asked for under its term's other year, or its "
+       "filing year, writes its number as the record does, and offers the closest town for a "
+       "town not found; elsewhere it does not speak of bills", needs=("build_pages",))
+def _not_found_finds_the_bill(BP):
+    """THE LAPTOP'S TEST OF 7 NOVEMBER 2026, on dry run 181's preview.
+    /bill/2026/hb703 and /bill/2019/hb703 -- HB 703 of 2025-2026 asked for
+    under its term's other year, and HB 703 of 2020 under the year it was
+    filed -- offered only a search, for "HB703". The page now asks for the
+    bill's page at the term's other year, says where the bill is and goes
+    there, its tab and fragment kept; a number the term does not have keeps
+    the search, as "HB 9999", of every term. /town/harts-location was told
+    about bill numbers: a town's address not found says so, and offers the
+    town or ward of that name from the site search's list, or goes there
+    where the name is the address's exactly (Hart's Location is
+    /town/hart-s-location).
+
+    And the review of that night. A city's row in find.json is its Officials
+    page (officials?town=Dover), so /town/manchster offered Lancaster and
+    /town/kene Lee; a ward a city does not have offered its Ward 1, the
+    wrong representatives; /town/Dover and /town/dover/ are /town/dover; an
+    address under /bill/ that is not a bill's whole address kept no word of
+    bill addresses; the page said "No page" while it looked; a bill's page
+    with a tab that is not one is asked at its own year, and never in a way
+    that could go round.
+
+    And the second review. The number padded as the General Court writes it
+    (/bill/2025/hb0703), a real tab with a slash at its end, and /BILL/ in
+    capitals said "No page" or nothing for a bill that is there; a request
+    that failed said there was no page; /bill/hb703 kept the lead and gave
+    no search. A ward with no number the city has offered its Ward 1, or
+    went to Ward 12; the long name of a place the record writes short
+    (Chandler's Pur.) offered another place; two letters swapped counted
+    twice; an exact name whose page was not there went to itself for ever;
+    the town page said "No page" while it looked.
+
+    And the third. /legislation/2025/HB0703.html, the General Court's own
+    address with this host, read "mistyped"; /bill/2026/hb703.html asked for
+    itself; one-word towns were made short (Atkinson to "atk", so /town/ath
+    offered it over Bath); a slip of three letters reached Rye; a ward's city
+    could be a town with no wards (/town/ochester-ward-3 offered Chester); a
+    slip near a ward offered the ward (/town/manchester-war-11, Ward 1); and
+    a town's address with .html was offered, not gone to. Run in node over
+    the page's own script, with the pages a HEAD finds (each bill's real tabs
+    with it) and find.json as the site serves them."""
+    node = shutil.which("node")
+    if not node:
+        return "skip", "node is not here"
+    script = re.search(r"<script>(.*?)</script>", BP.NOT_FOUND, re.S).group(1)
+    pages = ["/bill/2025/hb703", "/bill/2020/hb703", "/bill/2025/hb1"]
+    find = [["town", "Hart's Location", "Carroll County", "town/hart-s-location", "Carroll"],
+            ["town", "Lancaster", "Coos County", "town/lancaster", "Coos"],
+            ["town", "Lee", "Strafford County", "town/lee", "Strafford"],
+            ["town", "Andover", "Merrimack County", "town/andover", "Merrimack"],
+            # a city's own row is its Officials page, as the site serves it
+            ["town", "Dover", "Strafford County", "officials?town=Dover", "Strafford"],
+            ["town", "Manchester", "Hillsborough County", "officials?town=Manchester", "Hillsborough"],
+            ["town", "Keene", "Cheshire County", "officials?town=Keene", "Cheshire"],
+            ["ward", "Dover, Ward 1", "Strafford County", "town/dover-ward-1", "Strafford"],
+            ["ward", "Dover, Ward 2", "Strafford County", "town/dover-ward-2", "Strafford"],
+            ["ward", "Manchester, Ward 1", "Hillsborough County", "town/manchester-ward-1", "Hillsborough"],
+            ["ward", "Manchester, Ward 12", "Hillsborough County", "town/manchester-ward-12", "Hillsborough"],
+            # places the record writes short, and one written long beside them
+            ["town", "Chandler's Pur.", "Coos County", "town/chandler-s-pur", "Coos"],
+            ["town", "Hadley's Purchase", "Coos County", "town/hadley-s-purchase", "Coos"],
+            ["town", "Wentworth's Loc.", "Coos County", "town/wentworth-s-loc", "Coos"],
+            ["town", "Thompson & Mes's Purchase", "Coos County", "town/thompson-mes-s-purchase", "Coos"],
+            # after Lee: a slip of two letters swapped is Lyme's, not Lee's
+            ["town", "Lyme", "Grafton County", "town/lyme", "Grafton"],
+            # a row whose page is not there, at the address the page is on
+            ["town", "Testtown", "Nowhere County", "town/testtown", "Nowhere"],
+            # the third review: one-word towns the short words must not
+            # shorten, and the place written shortest
+            ["town", "Atkinson", "Rockingham County", "town/atkinson", "Rockingham"],
+            ["town", "Gilmanton", "Belknap County", "town/gilmanton", "Belknap"],
+            ["town", "Bath", "Grafton County", "town/bath", "Grafton"],
+            ["town", "Hill", "Merrimack County", "town/hill", "Merrimack"],
+            ["town", "Rye", "Rockingham County", "town/rye", "Rockingham"],
+            ["town", "Atk. & Gil. Academy Grant", "Coos County", "town/atk-gil-academy-grant", "Coos"],
+            # a town with no wards first, then a city with them, one letter
+            # from each other
+            ["town", "Chester", "Rockingham County", "town/chester", "Rockingham"],
+            ["town", "Rochester", "Strafford County", "officials?town=Rochester", "Strafford"],
+            ["ward", "Rochester, Ward 3", "Strafford County", "town/rochester-ward-3", "Strafford"],
+            ["legislator", "Rep. Hart Lee", "", "legislator/hart-lee-carr-1", ""]]
+    prog = r"""
+const PAGES = new Set(%s), FIND = %s, SCRIPT = %s;
+// A bill's real tabs answer where its page does (the site's tab rewrites);
+// FAILS are asked and never answered, as when the connection is down.
+const TABS = ["text", "votes", "hearings", "videos", "reports", "sponsors", "documents", "related"];
+const FAILS = new Set(["/bill/2023/hb5"]);
+const there = u => { if (PAGES.has(u)) return true; const t = /^(.*)\/([a-z]+)$/.exec(u);
+  return !!t && TABS.includes(t[2]) && PAGES.has(t[1]); };
+async function go(path) {
+  let went = null, asked = [];
+  const els = {};
+  const el = id => (els[id] = els[id] || {id, hidden: true, kids: [], written: false, said: [],
+    set textContent(v) { this.written = true; this.kids = v ? [v] : []; },
+    get textContent() { return this.kids.map(k => typeof k === "string" ? k : k.textContent).join(""); },
+    appendChild(k) { this.kids.push(k.nodeText !== undefined ? k.nodeText : k); }});
+  const document = {getElementById: id => (id === "nf-lead" || id === "nf-bill" ? el(id) : null),
+    createTextNode: t => ({nodeText: t}), createElement: () => ({href: "", textContent: ""})};
+  const location = {pathname: path, search: "", hash: "#x", replace: u => { went = u; }};
+  const fetch = async (u, o) => {
+    asked.push(((o && o.method) || "GET") + " " + u);
+    if (o && o.method === "HEAD") { if (FAILS.has(u)) throw new Error("offline"); return {ok: there(u)}; }
+    return u === "/find.json" ? {ok: true, json: async () => FIND} : {ok: false, json: async () => null};
+  };
+  new Function("location", "document", "fetch", SCRIPT)(location, document, fetch);
+  const first = els["nf-bill"] && !els["nf-bill"].hidden ? els["nf-bill"].textContent : null;
+  const firstLead = els["nf-lead"] && els["nf-lead"].written ? els["nf-lead"].textContent : null;
+  for (let i = 0; i < 30; i++) await new Promise(r => setImmediate(r));
+  const links = k => (els[k] ? els[k].kids.filter(x => typeof x !== "string").map(a => a.href) : []);
+  return {went, asked, first, firstLead, lead: els["nf-lead"] && els["nf-lead"].written ? els["nf-lead"].textContent : null,
+          leadLinks: links("nf-lead"), billLinks: links("nf-bill"),
+          bill: els["nf-bill"] && !els["nf-bill"].hidden ? els["nf-bill"].textContent : null};
+}
+(async () => {
+  const out = {};
+  for (const p of ["/bill/2026/hb703", "/bill/2019/hb703", "/bill/2026/hb703/votes", "/bill/2025/hb9999",
+                   "/bill/1987/hb1", "/bill/0000/hb1", "/bill/2025/hb1", "/bill/2025/hb703/nosuchtab",
+                   "/bill/hb703", "/bill/2025-2026/hb703",
+                   "/town/harts-location", "/town/hartslocatoin", "/town/dovr-ward-2", "/town/dover-ward-9",
+                   "/town/manchster", "/town/kene", "/town/nowhere-at-all", "/town/%%e0%%a4%%a",
+                   "/town/Dover", "/town/dover/", "/legislator/nobody-here",
+                   "/bill/2025/hb0703", "/bill/2025/hb703/votes/", "/BILL/2025/hb703", "/bill/2024/hb5",
+                   "/bill/2025/hb-703", "/town/dover-ward", "/town/manchester-ward-1-2", "/town/edwards",
+                   "/town/chandlers-purchase", "/town/wentworths-location",
+                   "/town/thompson-and-meserves-purchase", "/town/lyem", "/town/testtown",
+                   "/legislation/2025/HB0703.html", "/bill/2026/hb703.html", "/town/ath", "/town/hil",
+                   "/town/xyz", "/town/atkinson-and-gilmanton-academy-grant", "/town/ochester-ward-3",
+                   "/town/manchester-war-11", "/town/harts-location.html", "/town/dovr-ward-2.html",
+                   "/town/leeward"]) out[p] = await go(p);
+  process.stdout.write(JSON.stringify(out));
+})();
+""" % (json.dumps(pages), json.dumps(find), json.dumps(script))
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, f"the not-found page's script did not run: {(r.stderr or '')[-400:]}"
+    got = json.loads(r.stdout)
+    bad = []
+    want_went = {"/bill/2026/hb703": "/bill/2025/hb703#x", "/bill/2019/hb703": "/bill/2020/hb703#x",
+                 "/bill/2026/hb703/votes": "/bill/2025/hb703/votes#x",
+                 "/bill/2025/hb703/nosuchtab": "/bill/2025/hb703#x",
+                 "/town/harts-location": "/town/hart-s-location",
+                 "/town/Dover": "/town/dover#x", "/town/dover/": "/town/dover#x",
+                 # the second review: the number padded, a real tab with a
+                 # slash, capitals, and places the record writes short
+                 "/bill/2025/hb0703": "/bill/2025/hb703#x",
+                 "/bill/2025/hb703/votes/": "/bill/2025/hb703/votes#x",
+                 "/BILL/2025/hb703": "/bill/2025/hb703#x",
+                 "/town/chandlers-purchase": "/town/chandler-s-pur",
+                 "/town/wentworths-location": "/town/wentworth-s-loc",
+                 "/town/thompson-and-meserves-purchase": "/town/thompson-mes-s-purchase",
+                 # the third review: the General Court's own address of a
+                 # bill, the long name of the place written shortest, and a
+                 # town's address with .html
+                 "/legislation/2025/HB0703.html": "/bill/2025/hb703#x",
+                 "/bill/2026/hb703.html": "/bill/2025/hb703#x",
+                 "/town/atkinson-and-gilmanton-academy-grant": "/town/atk-gil-academy-grant",
+                 "/town/harts-location.html": "/town/hart-s-location"}
+    for p, g in got.items():
+        if g["went"] != want_went.get(p):
+            bad.append(f"{p} went to {g['went']!r}, not {want_went.get(p)!r}")
+    if "HB 703 of the 2025–2026 term is at /bill/2025/hb703" not in (got["/bill/2026/hb703"]["bill"] or ""):
+        bad.append(f"/bill/2026/hb703 says {got['/bill/2026/hb703']['bill']!r}")
+    if got["/bill/2026/hb703"]["first"] != "Looking for HB 703 in the 2025–2026 term…":
+        bad.append(f"/bill/2026/hb703 says {got['/bill/2026/hb703']['first']!r} while it looks")
+    # No address is asked for that is the one the page is on: it is not
+    # there, and going to it would go round.
+    for p, g in got.items():
+        here = re.sub(r"\.html?$", "", p.lower())
+        if any(a in ("HEAD " + p.lower(), "HEAD " + here) for a in g["asked"]):
+            bad.append(f"{p} asked for itself: {g['asked']}")
+    for p, said, link in (
+            ("/bill/2025/hb9999", "No page for HB 9999 of 2025. Search for HB 9999 in every term",
+             "/bills?q=HB%209999&term=all"),
+            ("/bill/1987/hb1", "No page for HB 1 of 1987. Search for HB 1 in every term",
+             "/bills?q=HB%201&term=all"),
+            ("/bill/0000/hb1", "No page for HB 1 of 0. Search for HB 1 in every term",
+             "/bills?q=HB%201&term=all"),
+            ("/bill/2025/hb1", "No page for HB 1 of 2025. Search for HB 1 in every term",
+             "/bills?q=HB%201&term=all"),
+            # A request that fails is not a page that is not there.
+            ("/bill/2024/hb5", "Could not look for HB 5 just now. Search for HB 5 in every term",
+             "/bills?q=HB%205&term=all"),
+            # No bill's shape, but a number in it: the search for it.
+            ("/bill/hb703", "Search for HB 703 in every term", "/bills?q=HB%20703&term=all"),
+            ("/bill/2025-2026/hb703", "Search for HB 703 in every term", "/bills?q=HB%20703&term=all"),
+            ("/bill/2025/hb-703", "Search for HB 703 in every term", "/bills?q=HB%20703&term=all")):
+        if got[p]["bill"] != said or got[p]["billLinks"] != [link]:
+            bad.append(f"{p} says {got[p]['bill']!r} with {got[p]['billLinks']}, not {said!r} with {link}")
+    for p in ("/bill/1987/hb1", "/bill/0000/hb1"):
+        if got[p]["asked"]:
+            bad.append(f"{p}, a year with no bills, asked {got[p]['asked']}")
+    nf = "No town or ward has a page at this address."
+    for p, said, link in (("/town/hartslocatoin", nf + " Did you mean Hart's Location?",
+                           ["/town/hart-s-location"]),
+                          ("/town/dovr-ward-2", nf + " Did you mean Dover, Ward 2?", ["/town/dover-ward-2"]),
+                          ("/town/dover-ward-9", nf + " Did you mean Dover? It has wards 1 to 2.",
+                           ["/officials?town=Dover"]),
+                          ("/town/manchster", nf + " Did you mean Manchester?", ["/officials?town=Manchester"]),
+                          ("/town/kene", nf + " Did you mean Keene?", ["/officials?town=Keene"]),
+                          ("/town/nowhere-at-all", nf, []),
+                          ("/town/%e0%a4%a", nf, []),
+                          ("/legislator/nobody-here", "The address may be mistyped.", []),
+                          # the second review: a ward with no number the city
+                          # has names the city, never one of its wards
+                          ("/town/dover-ward", nf + " Did you mean Dover? It has wards 1 to 2.",
+                           ["/officials?town=Dover"]),
+                          ("/town/manchester-ward-1-2", nf + " Did you mean Manchester? It has wards 1 to 2.",
+                           ["/officials?town=Manchester"]),
+                          # ...and a name ending in "wards" is no ward of a
+                          # town that has none
+                          ("/town/edwards", nf, []),
+                          ("/town/leeward", nf, []),
+                          # two letters swapped are one slip
+                          ("/town/lyem", nf + " Did you mean Lyme?", ["/town/lyme"]),
+                          # a name whose page is the address the page is on is
+                          # offered, never gone to: that would go round
+                          ("/town/testtown", nf + " Did you mean Testtown?", ["/town/testtown"]),
+                          # the third review: one-word towns are not made
+                          # short, and a slip of four letters or fewer is one
+                          ("/town/ath", nf + " Did you mean Bath?", ["/town/bath"]),
+                          ("/town/hil", nf + " Did you mean Hill?", ["/town/hill"]),
+                          ("/town/xyz", nf, []),
+                          # a ward's city is one with wards; a slip near a
+                          # ward names the city, never one of its wards
+                          ("/town/ochester-ward-3", nf + " Did you mean Rochester, Ward 3?",
+                           ["/town/rochester-ward-3"]),
+                          ("/town/manchester-war-11", nf + " Did you mean Manchester? It has wards 1 to 2.",
+                           ["/officials?town=Manchester"]),
+                          ("/town/dovr-ward-2.html", nf + " Did you mean Dover, Ward 2?", ["/town/dover-ward-2"])):
+        if got[p]["lead"] != said or got[p]["leadLinks"] != link:
+            bad.append(f"{p}'s lead says {got[p]['lead']!r} with links {got[p]['leadLinks']}, "
+                       f"not {said!r} with {link}")
+    if got["/town/harts-location"]["firstLead"] != "Looking for a town or ward at this address…":
+        bad.append(f"/town/harts-location says {got['/town/harts-location']['firstLead']!r} while it looks")
+    for p in ("/bill/2026/hb703", "/bill/2025/hb9999", "/bill/hb703", "/bill/2025-2026/hb703"):
+        if got[p]["lead"] is not None:
+            bad.append(f"{p}'s lead was rewritten to {got[p]['lead']!r}: a bill's address keeps it")
+    assert not bad, f"{len(bad)} wrong:\n  " + "\n  ".join(bad)
+    return "ok", ("/bill/2026/hb703 and /bill/2019/hb703 go to HB 703 of 2025 and of 2020, a tab kept, "
+                  "saying they look meanwhile; a tab that is not one goes to the bill; HB 9999, HB 1 of "
+                  "1987 and of 2025 keep the search of every term, never asking for themselves; a "
+                  "padded number, a tab with a slash and /BILL/ go to the bill; a failed request "
+                  "says so; Hart's Location and the places written short gone to, Manchester, Keene, "
+                  "Lyme and Dover, Ward 2 offered, a ward a city lacks or a ward with no number "
+                  "offered as the city; nothing goes to itself; capitals and a slash put right; bill "
+                  "addresses keep their lead")
+
+
+@check("build", "the not-found page's example address is a bill page the build writes: HB 1 of the "
+       "newest term with a page, else that term's first bill, at the year its page is under",
+       needs=("build_pages",))
+def _not_found_example_is_there(BP):
+    """P2 of the polish of 26 October 2026: every 404 said "for example
+    /bill/2026/hb1", and HB 1 of the 2025-2026 term was filed in 2025, so the
+    one address offered to a lost reader was itself a 404 (/bill/2025/hb1 is
+    the page). build_pages.not_found_example reads it off the bill index the
+    way build_bill_pages.py writes the pages: the index row's year, and only
+    a bill with a record to write its page from. Here, on a site of a few
+    files: HB 1 at its own year before a bill listed ahead of it; a term with
+    no record yet passed over for the term before it; a record already
+    inlined into its page counted; no index, no example and no "for example"
+    clause. Then, on the fixture site, the address its built 404.html offers
+    is a page the build wrote. On the preview of 26 October 2026 (the real
+    record) the rule gives /bill/2025/hb1, the budget, which answers 200."""
+    root = Path(tempfile.mkdtemp(prefix="gr-404ex-"))
+    site = root / "site"
+
+    def plant(rows, records=(), pages=()):
+        shutil.rmtree(site, ignore_errors=True)
+        terms = sorted({r["term"] for r in rows})
+        _mk(site / "meta.json").write_text(json.dumps({"terms": terms}), encoding="utf-8")
+        for t in terms:
+            _mk(site / "idx" / f"{t}.json").write_text(
+                json.dumps([r for r in rows if r["term"] == t]), encoding="utf-8")
+        for yr, bid in records:
+            _mk(site / "bills" / yr / f"{bid}.json").write_text("{}", encoding="utf-8")
+        for yr, bid in pages:
+            _mk(site / "bill" / yr / f"{bid.lower()}.html").write_text("<p>x</p>", encoding="utf-8")
+
+    try:
+        rows = [{"term": "2025-2026", "id": "HB561", "year": "2026"},
+                {"term": "2025-2026", "id": "HB1", "year": "2025"},
+                {"term": "2025-2026", "id": "HB2", "year": ""},
+                {"term": "2027-2028", "id": "HB1", "year": "2027"}]
+        plant(rows, records=[("2026", "HB561"), ("2025", "HB1")])
+        got = [BP.not_found_example(site)]
+        plant(rows, records=[("2026", "HB561")])
+        got.append(BP.not_found_example(site))
+        plant(rows, records=[("2027", "HB1")], pages=[("2025", "HB1")])
+        got.append(BP.not_found_example(site))
+        plant(rows, pages=[("2025", "HB1")])
+        got.append(BP.not_found_example(site))
+        shutil.rmtree(site, ignore_errors=True)
+        got.append(BP.not_found_example(site))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    want = ["/bill/2025/hb1", "/bill/2026/hb561", "/bill/2027/hb1", "/bill/2025/hb1", ""]
+    assert got == want, f"the not-found page's example on five sites is {got}, not {want}"
+    with_one = BP.not_found_body("/bill/2025/hb1")
+    without = BP.not_found_body("")
+    assert "<code>/bill/2025/hb1</code>, and a bill number" in with_one, \
+        "the not-found page does not give the example it was handed"
+    assert "for example" not in without and "has a page of its own, and a bill number" in without, \
+        "with no example the not-found page still says 'for example', or lost the sentence round it"
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "ok", "the example is chosen as held; the fixture site was not built: not here, " + \
+            ", ".join(absent)
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = shared / "site"
+    page = (built / "404.html").read_text(encoding="utf-8")
+    found = re.findall(r"for example\s*<code>(/bill/(\d{4})/([a-z0-9]+))</code>", page)
+    assert len(found) == 1, f"the fixture's 404.html offers {len(found)} bill addresses as its example"
+    addr, yr, bid = found[0]
+    assert (built / "bill" / yr / f"{bid}.html").is_file(), (
+        f"the fixture's 404.html offers {addr}, and the build wrote no page there")
+    return "ok", (f"HB 1 first, at its own year, from the newest term with a record; the fixture's "
+                  f"404.html offers {addr}, a page the build wrote")
+
+
+@check("build", "check_site holds the sitemap to the site both ways: an address only a folder answers "
+       "needs its slash, one file's limits are an error past them, and an indexable page is listed",
+       needs=("check_site",))
+def _sitemap_both_ways(CS):
+    """The sitemap audit's eighth finding (16 October 2026): no check would
+    catch a future break. check_site went from the sitemap to the files and
+    never back, called a folder served at an address the host redirects
+    (/laws/404, its fourth finding), only warned past one file's limits and
+    of a site with no sitemap at all. Here, on a site of a few files: a
+    folder answers its address with the slash and not without (a page of its
+    own beside it, as bills.html beside bills/, answers either way); past
+    one file's limit of 50,000 addresses is an error; no sitemap.xml is an
+    error; and an indexable page naming itself as canonical must be
+    listed, the exceptions read off the pages themselves -- noindex, a
+    canonical naming another page. Since 17 October 2026 every calendar
+    week's own page is noindex, meeting or none, and a page the sitemap
+    lists that asks not to be indexed is an error."""
+    import contextlib
+    import io
+    base = "https://graniterecord.org"
+    root = Path(tempfile.mkdtemp(prefix="gr-smboth-"))
+
+    def page(path, head="", body=""):
+        f = site / path
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(f"<!doctype html><html><head><title>x</title>{head}</head><body>{body}</body></html>",
+                     encoding="utf-8")
+
+    def canon(addr):
+        return f'<link rel="canonical" href="{base}{addr}">'
+
+    def run(locs):
+        (site / "sitemap.xml").write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+            + "".join(f"<url><loc>{base}{u}</loc></url>\n" for u in locs) + "</urlset>\n",
+            encoding="utf-8")
+        errors, warnings = [], []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.sitemap_checks(site, base, errors, warnings)
+        return errors, warnings
+
+    try:
+        site = root / "site"
+        page("index.html", canon("/"))
+        page("bills.html", canon("/bills"))
+        (site / "bills").mkdir()
+        page("laws/404/index.html", canon("/laws/404/"))
+        page("laws.html", canon("/laws"), '<a class="lw-go" href="/laws/404/">RSA 404</a>')
+        page("a.html", canon("/a"))
+        page("404.html", '<meta name="robots" content="noindex">')
+        page("calendar.html", canon("/calendar"), '<div class="wkpage calapp"><details class="calmeet"></details></div>')
+        robots = '<meta name="robots" content="noindex,follow">'
+        page("calendar/2026-W11.html", robots + canon("/calendar"), '<div class="wkpage calapp"></div>')
+        page("calendar/2026-W13.html", robots + canon("/calendar/2026-W13"),
+             '<div class="wkpage calapp"><p class="calempty">No meetings scheduled.</p></div>')
+        assert not CS.served(site / "laws/404", folder=False) and CS.served(site / "laws/404"), (
+            "a folder's index.html is not told apart from an address with no slash")
+        assert CS.served(site / "bills", folder=False), "bills.html beside bills/ does not answer /bills"
+        good = ["/", "/bills", "/laws", "/laws/404/", "/a", "/calendar"]
+        errors, warnings = run(good)
+        assert not errors and not warnings, f"check_site refuses a sound sitemap: {errors} {warnings}"
+        errors, _w = run(["/", "/bills", "/laws", "/laws/404", "/a", "/calendar"])
+        assert any("answered only by a folder" in e and f"{base}/laws/404" in e for e in errors), (
+            f"check_site passes /laws/404, which the host answers with a 308: {errors}")
+        errors, _w = run([u for u in good if u != "/a"])
+        assert any("not in the sitemap" in e and f"{base}/a" in e for e in errors), (
+            f"check_site passes an indexable page the sitemap leaves out: {errors}")
+        # A SITE KEPT BETWEEN BUILDS (16 October 2026): with a build.json to
+        # say when the build began, an unlisted page older than that is one
+        # no builder wrote this time, and is warned of by name; one written
+        # since is still refused.
+        import time as _time
+        from datetime import datetime as _dtm
+        began = _time.time() - 600
+        (site / "build.json").write_text(json.dumps(
+            {"finished": _dtm.fromtimestamp(began + 300).isoformat(timespec="seconds"),
+             "seconds": 300.0}), encoding="utf-8")
+        assert abs(CS.build_began(site) - (began - 2)) < 1.5, (
+            f"check_site reads the build's start as {CS.build_began(site)}, not {began - 2}")
+        page("b.html", canon("/b"))
+        os.utime(site / "a.html", (began - 3600, began - 3600))
+        errors, warnings = run([u for u in good if u != "/a"] + ["/b"])
+        assert not any("not in the sitemap" in e for e in errors) and any(
+            "left from an earlier build" in w and f"{base}/a" in w and f"{base}/b" not in w for w in warnings), (
+            f"a page an earlier build left, unlisted, was refused or not named: {errors} {warnings}")
+        os.utime(site / "a.html", None)
+        errors, warnings = run([u for u in good if u != "/a"] + ["/b"])
+        assert any("not in the sitemap" in e and f"{base}/a" in e for e in errors) and not any(
+            "earlier build" in w for w in warnings), (
+            f"a page this build wrote, unlisted, was only warned of: {errors} {warnings}")
+        (site / "b.html").unlink()
+        (site / "build.json").unlink()
+        # A CALENDAR WEEK IS NOINDEX AND UNLISTED, MEETING OR NONE (17 October
+        # 2026): only /calendar is listed. A week page that lost its noindex
+        # is refused as left out, and one the sitemap lists is refused for
+        # asking not to be indexed.
+        assert not any("2026-W13" in e for e in errors), (
+            f"a noindex week with no meeting was refused as left out: {errors}")
+        page("calendar/2026-W13.html", robots + canon("/calendar/2026-W13"),
+             '<div class="wkpage calapp"><details class="calmeet"></details></div>')
+        errors, _w = run(good)
+        assert not errors, f"a noindex week holding a meeting was refused: {errors}"
+        errors, _w = run(good + ["/calendar/2026-W13"])
+        assert any("ask not to be indexed" in e and "2026-W13" in e for e in errors), (
+            f"check_site passes a sitemap that lists a week asking not to be indexed: {errors}")
+        page("calendar/2026-W13.html", canon("/calendar/2026-W13"),
+             '<div class="wkpage calapp"><details class="calmeet"></details></div>')
+        errors, _w = run(good)
+        assert any("not in the sitemap" in e and "2026-W13" in e for e in errors), (
+            f"check_site passes an unlisted week page that lost its noindex: {errors}")
+        (site / "calendar/2026-W13.html").unlink()
+        # Past one file's limit, held with the limit made small so the check
+        # does not stat 50,000 files; the limit itself is the protocol's.
+        assert (CS.SITEMAP_MAX_URLS, CS.SITEMAP_MAX_BYTES) == (50_000, 50_000_000), (
+            f"check_site's limits are {CS.SITEMAP_MAX_URLS:,} URLs and {CS.SITEMAP_MAX_BYTES:,} bytes, "
+            "not the 50,000 and 50 MB one sitemap may hold")
+        saved = CS.SITEMAP_MAX_URLS
+        CS.SITEMAP_MAX_URLS = len(good)
+        try:
+            errors, _w = run(good)
+            assert not any("past the" in e for e in errors), f"a sitemap at the limit is refused: {errors}"
+            errors, _w = run(good + ["/a"])
+            assert any(f"past the {len(good)} URLs" in e for e in errors), (
+                f"check_site only warns of a sitemap past one file's limit: {errors[:3]}")
+        finally:
+            CS.SITEMAP_MAX_URLS = saved
+        (site / "sitemap.xml").unlink()
+        errors, warnings = [], []
+        with contextlib.redirect_stdout(io.StringIO()):
+            CS.sitemap_checks(site, base, errors, warnings)
+        assert any("no sitemap.xml" in e for e in errors), (
+            f"check_site only warns of a site with no sitemap: {errors} {warnings}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("/laws/404 refused and /laws/404/ passed; an unlisted indexable page refused, and "
+                  "one an earlier build left warned of by name; a noindex page and a copy left out, "
+                  "a noindex page listed refused; past one file's limit an error; no sitemap an error")
+
+
+@check("build", "check_live asks for the sitemap and robots.txt, reads the sitemap whole, and holds "
+       "it to the file in site/", needs=("check_live",))
+def _check_live_sitemap(CL):
+    """The sitemap audit's eighth finding (16 October 2026): nothing asked the
+    live host for /sitemap.xml or /robots.txt, so a deploy that left either
+    behind passed. Against a site served from memory: a sitemap served as XML
+    with the build's count and first and last address passes; another count
+    or another first address is a deploy that did not land, and so is the
+    home page in its place; robots.txt must name it; and the request reads up
+    to SITEMAP_LIMIT, past which it is not checked rather than passed."""
+    import contextlib as _cl
+    import io as _io
+    base = "http://site.invalid"
+    root = Path(tempfile.mkdtemp(prefix="gr-livesm-"))
+
+    def sm(*paths):
+        return ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+                + "".join(f"<url><loc>{base}{p}</loc></url>\n" for p in paths) + "</urlset>\n").encode()
+
+    built = sm("/", "/bills", "/laws/404/")
+    (root / "sitemap.xml").write_bytes(built)
+    (root / "robots.txt").write_text(f"User-agent: *\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
+    page = b"<!doctype html><html>home</html>"
+    good = {
+        "/": (200, "text/html", page),
+        "/bills": (200, "text/html", b"<!doctype html><html>bills</html>"),
+        "/app.css": (200, "text/css", b"body{}"),
+        "/meta.json": (200, "application/json", b'{"terms": ["2025-2026"]}'),
+        "/idx/2025-2026.json": (200, "application/json", b'[{"id":"HB1"}]'),
+        "/legislators": (200, "text/html", b"<!doctype html><html>members</html>"),
+        "/feed/all.xml": (200, "application/rss+xml", b'<?xml version="1.0"?><rss/>'),
+        "/sitemap.xml": (200, "application/xml", built),
+        "/robots.txt": (200, "text/plain", f"User-agent: *\nSitemap: {base}/sitemap.xml\n".encode()),
+    }
+    served, limits = dict(good), {}
+
+    def fake_get(url, limit=400_000):
+        path = url[len(base):]
+        limits[path] = limit
+        st, ct, body = served.get(path, (404, "text/html", b"not found"))
+        return st, ct, body[:limit], None
+
+    def gate(**change):
+        served.clear()
+        served.update(good)
+        served.update(change)
+        saved = (CL.get, sys.argv)
+        CL.get = fake_get
+        sys.argv = ["check_live.py", "--gate", "--base", base, "--site", str(root)]
+        try:
+            with _cl.redirect_stdout(_io.StringIO()) as out:
+                code = CL.main()
+        finally:
+            CL.get, sys.argv = saved
+        return code, out.getvalue()
+
+    try:
+        code, out = gate()
+        assert code == 0, f"check_live --gate fails a site serving the sitemap it built:\n{out[-600:]}"
+        assert limits.get("/sitemap.xml", 0) >= CL.SITEMAP_LIMIT >= 50_000_000 and "/robots.txt" in limits, (
+            f"the sitemap was not read to 50 MB, or robots.txt not asked for: {limits}")
+        for why, change in (
+                ("the sitemap lists another count", {"/sitemap.xml": (200, "application/xml",
+                                                                      sm("/", "/bills"))}),
+                ("the sitemap starts elsewhere", {"/sitemap.xml": (200, "application/xml",
+                                                                   sm("/a", "/bills", "/laws/404/"))}),
+                ("the sitemap is the home page", {"/sitemap.xml": (200, "text/html", page)}),
+                ("the sitemap is not there", {"/sitemap.xml": (404, "text/html", b"not found")}),
+                ("robots.txt names no sitemap", {"/robots.txt": (200, "text/plain", b"User-agent: *\n")})):
+            code, out = gate(**change)
+            assert code == 1 and "DID NOT LAND" in out, (
+                f"check_live --gate passes a deploy when {why} ({code}):\n{out[-600:]}")
+        # A PREVIEW OR A DRY RUN (16 October 2026): asked at its own address,
+        # here site.invalid, while the robots.txt built for it names the
+        # site's sitemap. The served line is held to the built one, not to
+        # --base, so that passes, and a served line naming another fails.
+        live = "Sitemap: https://graniterecord.org/sitemap.xml\n"
+        (root / "robots.txt").write_text("User-agent: *\n" + live, encoding="utf-8")
+        code, out = gate(**{"/robots.txt": (200, "text/plain", ("User-agent: *\n" + live).encode())})
+        assert code == 0 and "/robots.txt is" not in out and "/robots.txt names" not in out, (
+                f"check_live --gate fails a preview whose robots.txt is the one built:\n{out[-600:]}")
+        code, out = gate()
+        assert code == 1 and "DID NOT LAND" in out and "/robots.txt is not the file" in out, (
+            f"check_live --gate passes a robots.txt naming another sitemap than the built one ({code}):\n"
+            f"{out[-600:]}")
+        (root / "robots.txt").write_text(f"User-agent: *\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
+        code, out = gate(**{"/sitemap.xml": (200, "text/plain", built)})
+        assert "served as text/plain, not as XML" in out, f"a sitemap served as text/plain was not said:\n{out[-400:]}"
+        saved = CL.SITEMAP_LIMIT
+        CL.SITEMAP_LIMIT = 50
+        try:
+            code, out = gate()
+        finally:
+            CL.SITEMAP_LIMIT = saved
+        assert code == CL.NOT_CHECKED and "DID NOT LAND" not in out, (
+            f"a sitemap larger than check_live reads passed, or was called a deploy that did not land "
+            f"({code}):\n{out[-600:]}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the sitemap read to 50 MB and held to site/'s count, first and last address; the "
+                  "home page in its place, another count, no robots.txt line each a deploy that did "
+                  "not land; robots.txt held to site/'s, so a preview passes; too large to read, not "
+                  "checked")
+
+
+@check("build", "the legislator, committee, town and directory builders put their addresses in the "
+       "sitemap through shell.sitemap_merge, which takes out what they no longer write",
+       needs=("shell",))
+def _sitemap_writers_merge(S):
+    """The sitemap audit's eighth finding (16 October 2026): four builders
+    added their addresses by asking whether each appeared anywhere in the
+    file's text, which takes /town/chester as listed wherever
+    /town/chesterfield is, and none took out an address it had stopped
+    writing. All four go through shell.sitemap_merge now, each owning its
+    part of the site whole. Here each one's source is read for the call and
+    for the text test it replaced, and sitemap_merge is held to the two
+    cases: the shorter address added beside the longer, and a stale one of
+    the builder's own taken out while another builder's stays."""
+    owns = {"build_legislator_pages.py": '"/legislator"', "build_committees.py": '"/committee"',
+            "build_town_pages.py": '"/town"', "build_indexes.py": '"/directory"'}
+    for f, own in owns.items():
+        src = _paths.locate(f).read_text(encoding="utf-8")
+        assert re.search(r"S\.sitemap_merge\([^)]*" + re.escape(own) + r"\)", src), (
+            f"{f} does not put its addresses in the sitemap through S.sitemap_merge(..., {own})")
+        assert not re.search(r"not in text\b", src), (
+            f"{f} still tests whether an address is anywhere in the sitemap's text")
+    base = "https://graniterecord.org"
+    root = Path(tempfile.mkdtemp(prefix="gr-smmerge-"))
+    try:
+        sm = root / "sitemap.xml"
+        sm.write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n'
+                      f"<url><loc>{base}/town/chesterfield</loc></url>\n"
+                      f"<url><loc>{base}/town/gone</loc></url>\n"
+                      f"<url><loc>{base}/towns-elsewhere</loc></url>\n</urlset>\n", encoding="utf-8")
+        added, dropped = S.sitemap_merge(root, base, [f"{base}/town/chesterfield", f"{base}/town/chester"],
+                                         "/town")
+        locs = re.findall(r"<loc>([^<]*)</loc>", sm.read_text(encoding="utf-8"))
+        assert f"{base}/town/chester" in locs and locs.count(f"{base}/town/chesterfield") == 1, (
+            f"the shorter address was not added beside the longer, or one was doubled: {locs}")
+        assert f"{base}/town/gone" not in locs and f"{base}/towns-elsewhere" in locs \
+            and (added, dropped) == (1, 1), (
+            f"a town no longer written was kept, or another builder's address taken: {locs}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", "four builders merge through sitemap_merge; chester added beside chesterfield, a stale town out"
+
+
+@check("frontend", "every node harness that runs a page's script gets from the published "
+                   "copy, without its comments, what it gets from the source",
+       needs=("build_pages", "strip_js"))
+def _published_scripts_run_the_same(BP, SJ):
+    """The other half of _published_scripts_stripped: that the copy a reader
+    is sent DOES what the source does (23 October 2026, when the scripts
+    began to go out without their comments). Every check of the code that
+    runs a page's script in node through _node_app or _with_components --
+    directly or through a helper of the suite's, so a harness added later is
+    held too -- is run again with _SWITCHED.published_scripts set, so that node is
+    handed components.js with app.js, find.js, print.js or map.js as the site
+    publishes them, and each must come out as it came out on the source in
+    this run: the same status, and the same words but for the numbers, of
+    which some are timings (_search_work draws in 39 ms one run and 41 the
+    next). Its numbers are its own to hold, and do; what this holds is that
+    taking the comments out changed none of its findings. A run that chose
+    its checks (--changed) runs again only the harnesses it chose
+    (_published_harnesses), each already run on the source; one this run
+    has not run on the source -- it comes after this, or the run is not
+    main()'s -- is run here on both. The data checks are left to the source:
+    they read the record."""
+    if not (shutil.which("node") or shutil.which("node.exe")):
+        return "skip", "node is not here, and every one of these harnesses needs it"
+    if _published_script_sources() is None:
+        return "skip", "the browser's scripts are not all in src/pages/ here"
+    found, chosen = _published_harnesses()
+    assert len(found) >= 20, (
+        f"only {len(found)} checks were found that run a page's script in node: _reaching "
+        "is not finding the harnesses")
+    if not chosen:
+        return "skip", (f"this run chose none of the {len(found)} checks that run a page's "
+                        "script in node, so none is run again on the published copy")
+
+    def words(msg):
+        return re.sub(r"\d+", "#", str(msg))
+    differ, ran = [], Counter()
+    for c in chosen:
+        name = c["fn"].__name__
+        source = _OUTCOMES.get(name) or _check_outcome(c)
+        _SWITCHED.published_scripts = True
+        try:
+            published = _check_outcome(c)
+        finally:
+            _SWITCHED.published_scripts = False
+        ran[source[0]] += 1
+        if published[0] != source[0] or words(published[1]) != words(source[1]):
+            differ.append(f"{name}: on the source {source[0]} ({str(source[1])[:160]}); on the "
+                          f"published copy {published[0]} ({str(published[1])[:160]})")
+    assert not differ, (f"{len(differ)} of {len(chosen)} harnesses come out otherwise on the "
+                        "scripts as published, without their comments (strip_js.py): "
+                        + " | ".join(differ[:4]))
+    return "ok", (f"{len(chosen)} checks that run a page's script in node came out the same on "
+                  f"the published copy ({', '.join(f'{n} {k}' for k, n in sorted(ran.items()))})"
+                  + ("" if len(chosen) == len(found) else
+                     f": the {len(chosen)} of the {len(found)} this run chose"))
+
+
+@check("build", "rendered_sweep.drive ends node and Chrome before it removes the profile, whatever stopped it")
+def _bug_hunt_sweep_drive_ends_its_children():
+    """#7 an exception or a stray stdout line skipped proc.wait() and the finally removed the profile
+    Chrome held while node and Chrome ran on. A fake process stands in; nothing is launched."""
+    import rendered_sweep as RS
+    log = {}
+
+    class Fake:
+        pid = 0
+        returncode = None
+
+        def __init__(self, cmd, **kw):
+            job = json.loads(Path(cmd[-1]).read_text(encoding="utf-8"))
+            log["tmp"] = Path(cmd[-1]).parent
+            log["profile_was_there"] = log["tmp"].exists()
+            self.stdout = self._lines()
+
+        def _lines(self):
+            yield "a stray line that is not JSON\n"
+            yield json.dumps({"browser": "x"}) + "\n"
+            raise RuntimeError("the reader died")
+
+        def poll(self):
+            return None if not log.get("killed") else -9
+
+        def kill(self):
+            log["killed"] = True
+            log["tmp_at_kill"] = log["tmp"].exists()
+
+        def wait(self, timeout=None):
+            log["waited"] = timeout
+            return 0
+
+    saved = (RS.subprocess.Popen, RS.subprocess.run, RS._paths.locate)
+    RS.subprocess.Popen = Fake
+    RS.subprocess.run = lambda *a, **k: log.setdefault("taskkill", a[0])
+    RS._paths.locate = lambda name: Path(name)
+    try:
+        try:
+            RS.drive("chrome", "http://x.invalid", [], None, 0, progress=False)
+        except RuntimeError as e:
+            assert "reader died" in str(e)
+        else:
+            raise AssertionError("the reader's failure was swallowed")
+    finally:
+        RS.subprocess.Popen, RS.subprocess.run, RS._paths.locate = saved
+    assert log.get("killed"), "node was left running when the sweep stopped"
+    assert log.get("tmp_at_kill"), "the profile was removed before node and Chrome were stopped"
+    assert not log["tmp"].exists(), "the sweep's folder was left behind"
+    return "ok", "an exception ends the child first, then removes the profile"

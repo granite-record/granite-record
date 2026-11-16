@@ -419,9 +419,9 @@ that nothing is found missing a session later. Every one ends the same way:
    the name `preflight.py`; one that reads the checks' own code reads
    `_suite_files()`; a switch one check sets for the checks it runs is an
    attribute of `_SWITCHED`, never a global rebound with `global`. The
-   checks are to move into `src/checks/suite/`, and
-   `_suite_speaks_of_itself` fails on a check that would then read one
-   module and pass.
+   checks are modules of `src/checks/suite/` by area, and
+   `_suite_speaks_of_itself` fails on a check that would read one module
+   and pass.
 7. A data check runs on the night after the build unless it is named in
    `NOT_ON_THE_NIGHT` with its reason; one that compares against the
    official record goes in `RECORD_CHECKS`, so it warns rather than holds

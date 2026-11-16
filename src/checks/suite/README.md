@@ -21,6 +21,10 @@ what is run, and holds every check; these are what it imports:
   `REMINDERS`).
 
 Each uses only those above it in this list, and none imports `preflight`.
+The checks are here too, by the module each tests (`pf_<area>.py`, the
+rule of reports/refactor/stage0-checks.md, section 7), with `pf_shared.py`
+holding what two areas share; `ORDER.json` keeps the order a run takes
+them in, which was the one file's.
 They were cut out of `preflight.py` as they stood, with the comments above
 each (the refactor's stage 1, step 4, 16 November 2026); the next step moves
 the checks here, by area, as `pf_<area>.py`, keeping the order a run takes

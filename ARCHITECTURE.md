@@ -584,7 +584,8 @@ constraint.
 **`preflight.py` builds the whole site on a fixture.** Most of its checks exist
 because of a specific failure; it has caught stamp mismatches three times and a
 dead-zone error once. Run it for the current count -- a number written here
-would be wrong within a day, and was. The checks are in `preflight.py`;
+would be wrong within a day, and was. The checks are modules of
+`src/checks/suite/` by area, which `preflight.py` imports;
 the registry, the runner and the helpers they share -- the fixture among
 them -- are modules of `src/checks/suite/`, whose README says which holds
 what.
