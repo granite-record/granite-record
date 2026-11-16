@@ -96556,6 +96556,655 @@ def _night_timer():
     return "ok", f"{count['pass']} tests of the timer, its cron the workflow's"
 
 
+@check("workflows", "the night says who started it -- the timer, GitHub's schedule or a person -- "
+                    "and warns, without holding the night, when the schedule had to start it late "
+                    "because the timer started none", needs=("nightly",))
+def _night_started_by(NI):
+    """WHO STARTED THE NIGHT (nightly.py; the refactor's stage 0, ops item 8). With the night
+    timer's GitHub token expired or revoked, GitHub's own schedule started the night five to
+    seven hours late and nothing said why. The workflow's STARTED_BY, read as GitHub would for
+    every kind of run in WF_RUNS (boxes as booleans and as strings), names the timer, the
+    schedule or a person; its job "started" hands the night when it looked and whether it could
+    read the day's runs; nightly.TIMER_UTC is the minute of the workflow's cron and the
+    Worker's. Then started_by_record() and started_by_warned() under the words each kind of
+    start sets: no warning for the timer, a person, a schedule within TIMER_GRACE of the
+    timer's minute, or a re-run; one naming the timer's README for a schedule past it, worded
+    for a list that was read and for one that could not be, the lateness counted from the
+    latest 08:17 UTC at or before it; of a kind the gate never holds a night for, while a new
+    kind of any other warning still holds; in Night.warned() and in the standing warnings;
+    and a night that stopped before writing its verdict records who started it all the same."""
+    import contextlib
+    import io
+    import types
+    from datetime import datetime as dt, timezone
+    wf = WORKFLOW_DIR / "nightly.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/nightly.yml here"
+    text = wf.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    said_by = _wf_value(lines, NI.STARTED_BY_ENV)
+    assert said_by, f"nightly.yml sets no {NI.STARTED_BY_ENV} in its top-level env"
+    kinds = 0
+    for event, ref, boxes, _dry, _title in WF_RUNS["nightly.yml"]:
+        typed = [boxes] + ([{k: str(v).lower() for k, v in boxes.items()}]
+                           if event == "workflow_dispatch" else [])
+        for bx in typed:
+            got = _gh_render(said_by, _wf_run_ctx(event, ref, bx))
+            want = ("schedule" if event == "schedule" else
+                    "timer" if str(bx.get("timer")).lower() == "true" else "hand")
+            assert got == want, (f"nightly.yml's {NI.STARTED_BY_ENV} is {got!r} for a {event} of "
+                                 f"{ref} with {bx or 'no boxes'}, not {want!r}")
+            kinds += 1
+    jobs = _wf_jobs(text)
+    started = "\n".join(_wf_code(jobs.get("started") or []))
+    for out in ("by_timer", "at", "looked"):
+        assert re.search(rf"^      {out}: \$\{{\{{ steps\.look\.outputs\.{out} \}}\}}$", started,
+                         re.M), f"nightly.yml's job started does not hand on {out!r}"
+    assert 'echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"' in started and \
+        "|| { n=0; looked=no; }" in started and 'echo "looked=$looked" >> "$GITHUB_OUTPUT"' in started, \
+        "nightly.yml's job started does not say when it looked, or that a list it could not read was not read"
+    night = _wf_code(jobs.get("night") or [])
+    for key, out in ((NI.STARTED_AT_ENV, "at"), (NI.STARTED_LOOKED_ENV, "looked")):
+        assert f"      {key}: ${{{{ needs.started.outputs.{out} }}}}" in night, (
+            f"nightly.yml's night job does not pass {key} from the job started")
+    cron = re.search(r'^    - cron: "(\d+) (\d+) \* \* \*"$', text, re.M)
+    assert cron and (int(cron.group(2)), int(cron.group(1))) == NI.TIMER_UTC, (
+        f"nightly.TIMER_UTC is {NI.TIMER_UTC} and the workflow's cron "
+        f"{cron.group(0).strip() if cron else 'is not read'}")
+    worker = Path("workers/night-timer/wrangler.toml")
+    if worker.is_file():
+        assert f'crons = ["{cron.group(1)} {cron.group(2)} * * *"]' in worker.read_text(encoding="utf-8"), (
+            "the night timer's cron is not the workflow's, which nightly.TIMER_UTC is")
+
+    keys = (NI.STARTED_BY_ENV, NI.STARTED_AT_ENV, NI.STARTED_LOOKED_ENV, "GITHUB_RUN_ATTEMPT")
+    saved = {k: os.environ.get(k) for k in keys + ("GITHUB_RUN_ID", "GITHUB_ACTIONS",
+                                                   "GITHUB_STEP_SUMMARY", "GITHUB_SHA")}
+
+    def started(by, at="", looked="", attempt="1", now=None):
+        for k, val in zip(keys, (by, at, looked, attempt)):
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        rec = NI.started_by_record(now)
+        return rec, NI.started_by_warned(rec)
+
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-started-"))
+    try:
+        late = dt(2026, 11, 16, 14, 2, 11, tzinfo=timezone.utc)
+        for by, at, looked, attempt, now, want, minutes, warns in (
+                ("timer", "", "", "1", None, "timer", None, None),
+                ("hand", "", "", "1", None, "hand", None, None),
+                ("", "", "", "1", None, "unknown", None, None),
+                ("hand", "", "", "3", None, "hand", None, None),
+                ("schedule", "2026-11-16T08:17:40Z", "yes", "1", None, "schedule", 0, None),
+                ("schedule", f"2026-11-16T08:{17 + NI.TIMER_GRACE}:59Z", "yes", "1", None,
+                 "schedule", NI.TIMER_GRACE, None),
+                ("schedule", f"2026-11-16T08:{18 + NI.TIMER_GRACE}:00Z", "yes", "1", None,
+                 "schedule", NI.TIMER_GRACE + 1, "started no night today"),
+                ("schedule", "2026-11-16T14:02:11Z", "yes", "1", None, "schedule", 345,
+                 "5 hours 45 minutes late"),
+                ("schedule", "2026-11-16T14:02:11Z", "no", "1", None, "schedule", 345,
+                 "could not read today's runs"),
+                ("schedule", "2026-11-17T00:30:00Z", "yes", "1", None, "schedule", 973, "16 hours"),
+                ("schedule", "2026-11-16T14:02:11Z", "yes", "2", None, "schedule", 345, None),
+                ("schedule", "", "", "1", late, "schedule", 345, "5 hours 45 minutes late"),
+                ("schedule", "not a time", "yes", "1", late, "schedule", 345, "late")):
+            rec, warned = started(by, at, looked, attempt, now)
+            assert rec["by"] == want and rec.get("late") == minutes and rec.get("line"), (
+                f"{NI.STARTED_BY_ENV}={by!r} at {at or now} gave {rec}")
+            if warns is None:
+                assert not warned, f"a start that is no fault of the timer's warned: {rec} {warned}"
+                continue
+            assert [k for k, _s in warned] == [NI.KIND_TIMER] and warns in warned[0][1] and \
+                (NI.TIMER_README in warned[0][1]), f"{rec} warned {warned}"
+            assert NI.KIND_TIMER.startswith(NI.KIND_HEALTH) and \
+                NI.warning_reasons(warned, [], ()) == [], (
+                    "a night the schedule had to start would wait for approval: " + str(warned))
+        assert NI.warning_reasons([("a kind no night has carried", "something new")], [], ()), (
+            "the gate no longer holds a night for a new kind of warning at all")
+        rec, warned = started("schedule", "2026-11-16T14:02:11Z", "yes")
+        assert "had started no night today" in rec["line"] and \
+            dict(NI.Night.warned(types.SimpleNamespace(v={"started": "2026-11-16T09:02:11",
+                                                          "started_by": rec}))).get(NI.KIND_TIMER) \
+            == warned[0][1] and warned[0][1] in NI.warns_of({"started_by": rec}), (
+                "the timer's warning is not among the night's warnings and its standing ones")
+        # A night that stopped before nightly.py wrote its verdict still says who started it.
+        os.chdir(tmp)
+        for k in ("GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY"):
+            os.environ.pop(k, None)
+        os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_SHA"] = "9001", "0" * 40
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = NI.close_verdict(types.SimpleNamespace(weekly=False, dry_run=False,
+                                                          outcome=["kit-down=failure"]))
+        v = json.loads(Path(NI.VERDICT).read_text(encoding="utf-8"))
+        assert code == 1 and v.get("started_by", {}).get("late") == 345 and \
+            warned[0][1] in v.get("standing_warnings", []), (
+                "a night that stopped early does not say the schedule had to start it: "
+                f"{v.get('started_by')} {v.get('standing_warnings')}")
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", (f"{NI.STARTED_BY_ENV} read for {kinds} kinds of run; the job started says when it "
+                  f"looked and whether it could read the runs; the timer's minute is the cron's; "
+                  f"a schedule more than {NI.TIMER_GRACE} minutes past it warns, in two wordings, "
+                  "never holding the night, in the warnings, the standing ones and a night that "
+                  "stopped early, and nothing else does")
+
+
+@check("workflows", "the night reads the private list of renewal dates brought down with its state "
+                    "files and warns 30 days before each, its words kept off the public page",
+       needs=("nightly", "cloud"))
+def _night_expiries(NI, CL):
+    """KNOWN EXPIRIES (nightly.py; the refactor's stage 0, ops item 7). Five tokens, the
+    certificate, the domain and the card each run out or renew on a day nothing read. The
+    person keeps them in state/expiries.json in the bucket, which cloud_kit.json's state list
+    brings down to nightly.EXPIRIES, a path git ignores, so the list never reaches the public
+    repository. Then expiries_record() on fixtures: no file is one quiet line and no warning;
+    a file that is not JSON, is not the shape or is another format warns; of a list read, a day
+    31 days off is the next and not due, 30 days off, today, past, renewing itself ahead and
+    behind, and a guess are each due, soonest first, in their own words with what to do; a null
+    date is listed and never warned of; a bad date, a missing what-to-do and a renews that is
+    not true or false are each an entry that will not read. The public warnings, the record's
+    line and GitHub's log carry only counts, while the standing warnings and the night's own
+    log carry each name; none of it holds a night, and a night that stopped early reads the
+    list all the same, without emailing it."""
+    import contextlib
+    import io
+    import subprocess as sp
+    import types
+    from datetime import date as d_, timedelta
+    kit = CL.load_kit(".")
+    have = [s for s in kit.get("state", []) if s.get("key") == "expiries.json"]
+    assert have and have[0]["path"] == NI.EXPIRIES.as_posix() == "archive/expiries.json", (
+        f"{CL.KIT_FILE}'s state list does not bring state/expiries.json down to "
+        f"{NI.EXPIRIES.as_posix()}: {have}")
+    assert "expiries.json" not in (kit.get("dry_run") or {}).get("state", []), (
+        "a dry run's state-up may send the private list of renewal dates")
+    git = shutil.which("git")
+    if git and Path(".git").exists():
+        ignored = sp.run([git, "check-ignore", "-q", NI.EXPIRIES.as_posix()], capture_output=True)
+        tracked = sp.run([git, "ls-files", "--", "*expiries.json"], capture_output=True, text=True)
+        assert ignored.returncode == 0 and not tracked.stdout.strip(), (
+            f"{NI.EXPIRIES} is not ignored by git, or a list of renewal dates is tracked "
+            f"({tracked.stdout.strip()[:80]}): the list stays out of the public repository")
+
+    today = d_(2026, 11, 16)
+
+    def on(n):
+        return (today + timedelta(days=n)).isoformat()
+
+    secret = ("the deploy token", "the night timer's token", "the laptop's GitHub token",
+              "the certificate", "the domain", "the read-only R2 token", "the card")
+    good = {"format": 1, "expiries": [
+        {"name": secret[0], "date": on(31), "do": "make a new one"},
+        {"name": secret[1], "date": on(30), "do": "make a new one as its README says"},
+        {"name": secret[2], "date": on(0), "do": "make a new fine-grained token"},
+        {"name": secret[5], "date": on(-3), "do": "make a new one", "renews": False},
+        {"name": secret[3], "date": on(10), "do": "check the dashboard", "renews": True},
+        {"name": secret[4], "date": on(-2), "do": "check the registrar", "renews": True},
+        {"name": "the Pages plan", "date": on(5), "do": "check the bill", "guess": True},
+        {"name": secret[6], "date": None, "do": "put its expiry here", "note": "the person's"},
+        {"name": "a token", "date": "2027-9-25", "do": "x"},
+        {"name": "another", "date": on(1)},
+        {"name": "a third", "date": on(2), "do": "x", "renews": "yes"}]}
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-expiries-"))
+    saved = {k: os.environ.get(k) for k in ("GITHUB_RUN_ID", "GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY",
+                                            "GITHUB_SHA", NI.STARTED_BY_ENV)}
+    quiet, log = NI.QUIET, NI.LOG
+    try:
+        f = tmp / "expiries.json"
+        rec = NI.expiries_record(today, f)
+        assert rec["read"] == "missing" and "none was checked" in rec["line"] and \
+            NI.expiries_warned(rec) == NI.expiries_warned(rec, private=True) == [], rec
+        for body, why in (("{not json", "Error"), ("[]", "not an object"),
+                          (json.dumps({"format": 2, "expiries": []}), "format")):
+            f.write_text(body, encoding="utf-8")
+            rec = NI.expiries_record(today, f)
+            warned = NI.expiries_warned(rec)
+            assert rec["read"] == "unreadable" and why in rec["why"] and \
+                [k for k, _s in warned] == [NI.KIND_EXPIRY_UNREAD] and \
+                warned == NI.expiries_warned(rec, private=True), (body, rec, warned)
+        f.write_text(json.dumps(good), encoding="utf-8")
+        rec = NI.expiries_record(today, f)
+        due = [(x["name"], x["days"]) for x in rec["due"]]
+        assert rec["read"] == "read" and due == [
+            (secret[5], -3), (secret[4], -2), (secret[2], 0), ("the Pages plan", 5),
+            (secret[3], 10), (secret[1], 30)], due
+        assert rec["next"] == {"name": secret[0], "date": on(31), "days": 31} and \
+            rec["undated"] == [secret[6]] and len(rec["problems"]) == 3 and \
+            [p.split(":")[0].split(" has")[0] for p in rec["problems"]] == ["entry 9", "entry 10", "entry 11"], rec
+        said = {x["name"]: x["said"] for x in rec["due"]}
+        for name, words in ((secret[1], "runs out on 16 December 2026, in 30 days: make a new one as "
+                                        "its README says."),
+                            (secret[2], "runs out today, 16 November 2026: make a new fine-grained token."),
+                            (secret[5], "ran out on 13 November 2026, 3 days ago: make a new one. Then "
+                                        "put its new date in expiries.json."),
+                            (secret[3], "renews itself on 26 November 2026, in 10 days: check that it "
+                                        "does (check the dashboard), then put its next date in "
+                                        "expiries.json."),
+                            (secret[4], "was due to renew itself on 14 November 2026, 2 days ago: check "
+                                        "that it did (check the registrar)"),
+                            ("the Pages plan", "(a guess: the date is not recorded)")):
+            assert words in said[name] and said[name][0].isupper(), (name, said[name])
+        public, private = NI.expiries_warned(rec), NI.expiries_warned(rec, private=True)
+        assert [k for k, _s in public] == [NI.KIND_EXPIRY, NI.KIND_EXPIRY_UNREAD] and \
+            "6 dates" in public[0][1] and "3 entries" in public[1][1], public
+        assert len(private) == 9 and [s for _k, s in private[:6]] == [x["said"] for x in rec["due"]], private
+        leaks = [n for n in secret + ("the Pages plan",) for s in [rec["line"]] + [x for _k, x in public]
+                 if n.lower() in s.lower()]
+        assert not leaks and "6 due within 30 days" in rec["line"], (
+            f"the public words name what is on the private list: {leaks} ({rec['line']})")
+        assert NI.warning_reasons(public + private, [], ()) == [], "a renewal due would hold the night"
+        v = {"expiries": rec}
+        assert dict(NI.Night.warned(types.SimpleNamespace(v=dict(v, started="2026-11-16T03:20:00")))
+                    ).get(NI.KIND_EXPIRY) == public[0][1] and \
+            all(s in NI.warns_of(v) for _k, s in private), (
+                "the night's warnings are not the counts, or its standing ones not each line")
+        # GitHub's log is public: each name goes to the night's own log alone.
+        NI.QUIET, NI.LOG = True, []
+        night = types.SimpleNamespace(v={"sha": "0" * 40, "run_id": "1", "expiries": rec,
+                                         "started_by": {"line": "Started by hand."}},
+                                      a=types.SimpleNamespace(no_fetch=False, dry_run=False,
+                                                              new_term=False))
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            NI.Night.intro(night)
+        printed, kept = out.getvalue(), "\n".join(NI.LOG)
+        assert rec["line"] in printed and not [n for n in secret if n.lower() in printed.lower()] and \
+            all(x["said"] in kept for x in rec["due"]) and secret[0] in kept.lower() and \
+            secret[6] in kept.lower(), (
+                "GitHub's public log names what is on the private list, or the night's own log "
+                f"does not: {printed[-300:]}")
+        NI.QUIET, NI.LOG = quiet, log
+        # A night that stopped before its verdict reads the list all the same; nothing emails it.
+        os.chdir(tmp)
+        Path("archive").mkdir()
+        Path(NI.EXPIRIES).write_text(json.dumps(good), encoding="utf-8")
+        for k in ("GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY", NI.STARTED_BY_ENV):
+            os.environ.pop(k, None)
+        os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_SHA"] = "9002", "0" * 40
+        with contextlib.redirect_stdout(io.StringIO()):
+            NI.close_verdict(types.SimpleNamespace(weekly=False, dry_run=False,
+                                                   outcome=["kit-down=failure"]))
+        got = json.loads(Path(NI.VERDICT).read_text(encoding="utf-8"))
+        mailed = NI.ALERT_FILE.read_text(encoding="utf-8") + NI.APPROVAL_FILE.read_text(encoding="utf-8")
+        assert (got.get("expiries") or {}).get("read") == "read" and \
+            any(secret[1] in s.lower() for s in got.get("standing_warnings", [])) and \
+            secret[1] not in mailed.lower(), (
+                "a night that stopped early does not read the list, or emails it: "
+                f"{got.get('expiries', {}).get('read')} {got.get('standing_warnings')}")
+    finally:
+        NI.QUIET, NI.LOG = quiet, log
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", (f"state/expiries.json comes down to {NI.EXPIRIES.as_posix()}, which git ignores; no file is a "
+                  "quiet line, an unreadable one a warning; six due of eleven, soonest first, each in "
+                  f"its own words {NI.EXPIRY_DAYS} days ahead and after, the undated listed, three "
+                  "entries refused; counts alone on the public page and log, each line in the "
+                  "standing warnings and the night's own log; never holding a night or emailed")
+
+
+@check("workflows", "the night gives each source it takes one line -- what it brought, when it last "
+                    "brought something new, what stood in -- and warns of one that should change "
+                    "only past the record's longest stillness for the season", needs=("nightly",))
+def _night_sources(NI):
+    """ONE LINE PER SOURCE (nightly.py; the refactor's stage 0 do-first list). A fixture folder
+    holds kit-down's record of the night's files and the files themselves -- the docket changed
+    tonight, the other day files and the term's data re-installed byte for byte, the requests
+    unchanged -- the study committees' meetings with their entry times, the recordings' index,
+    a docket and the livestream state; and a verdict as a fetching night leaves it.
+    sources_record() gives every one of SOURCE_NAMES a line in order, saying what it brought,
+    when it last brought something new (tonight by its bytes, else the kit's day, else its own
+    dates, else last night's) and what stood in; the night's other lines are left as they were.
+    SOURCE_STILL is held to the measured figures, and a source warns only past its season's:
+    the term's data against the docket, the meetings and the recordings by their own dates and
+    the list of calendars and journals by the last night it grew, each at its limit and a day
+    past it, never on a night that did not fetch, nor the list on a night it was not taken; of
+    a kind the gate never holds a night for, in the warnings and the standing ones. And
+    finish() writes the lines to the verdict, the log and the run's page."""
+    import contextlib
+    import hashlib
+    import io
+    import types
+    from datetime import date as d_, datetime as dt_, timedelta
+    assert NI.SOURCE_STILL == {"study": {"session": 113, "interim": 27},
+                               "documents": {"session": 8, "interim": 14},
+                               "recordings": {"session": 17, "interim": 51}}, (
+        "SOURCE_STILL is not the stillness measured on the record (16 November 2026): change the "
+        "figures with the measurement in nightly.py's note, not alone")
+    assert [k for k, _n in NI.SOURCE_NAMES] == ["export", "db_day", "study", "term", "statutes", "lsrs",
+                                                 "documents", "document_files", "recordings", "inbox",
+                                                 "laptop", "production"], NI.SOURCE_NAMES
+    today = d_(2026, 11, 16)
+
+    def ns(day):
+        return int(dt_.fromisoformat(day + "T12:00:00").timestamp() * 1e9)
+
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-sources-"))
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY", "GITHUB_OUTPUT")}
+    quiet, log = NI.QUIET, NI.LOG
+    try:
+        os.chdir(tmp)
+        for k in saved:
+            os.environ.pop(k, None)
+        kit = {}
+
+        def put(rel, body, day, *, changed=False):
+            p = Path(rel)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(body, encoding="utf-8")
+            data = (body + "an earlier copy") if changed else body
+            kit[rel] = [len(data.encode()), hashlib.sha256(data.encode()).hexdigest(), ns(day)]
+        put("Docket.txt", "2026|0001|11/13/2026 10:00:00 AM|HB1|H|x|11/13/2026 10:00:00 AM\n",
+            "2026-11-10", changed=True)
+        put("LSRs.txt", "x\n", "2026-11-12")
+        for f in ("db/Legislation.psv", "db/LegislationText.psv", "db/CandH_Reports.psv",
+                  "bill_status.json", "senate_reports.json", "testimony_db.json"):
+            put(f, "{}", "2026-10-01")
+        put("lsrs.json", "[]", "2026-11-14")
+        put("db/NH_RSA.psv", "x", "2026-07-01")
+        put("calendars/2026/HC041.txt", "x", "2026-11-07")
+        put("bill_text.json", "{}", "2026-09-22")
+        Path("archive/cloud").mkdir(parents=True)
+        Path(NI.KIT_DOWN).write_text(json.dumps({"files": kit}), encoding="utf-8")
+
+        def study(newest):
+            Path("db").mkdir(exist_ok=True)
+            Path(NI.STUDY_TABLE).write_text(
+                "|1|55|11/06/1991 11:00:00|RM101,LOB   (Org meeting)||\n"
+                "|2|1678|08/20/2024 10:30:00|LOB Room 101  Regular Meeting||08/13/2024 11:57:11\n"
+                f"|3|1695|{newest:%m/%d/%Y} 09:00:00|LOB Room 101||{newest:%m/%d/%Y} 09:34:45\n",
+                encoding="utf-8")
+
+        def recorded(newest):
+            Path("collected/videos").mkdir(parents=True, exist_ok=True)
+            Path("collected/videos/videos_house_x.csv").write_text(
+                "video_id,title,published_at\na,b,2026-08-01T03:12:08Z\n", encoding="utf-8")
+            Path("videos_house_livestreams.csv").write_text(
+                f"video_id,title,published_at\nc,d,{newest.isoformat()}T03:12:08Z\n", encoding="utf-8")
+        study(d_(2026, 11, 5))
+        recorded(d_(2026, 10, 31))
+        Path(NI.LIVE_STATE).write_text(json.dumps({"inbox_arrived": {"at": "2026-11-15T19:00:00Z"}}),
+                                       encoding="utf-8")
+        v = {"tried": ["the export, try 1: installed"], "fetch": "installed", "files_from": "export",
+             "study_meetings": {"StatStudMeetings": "installed, 11,542 rows (was 11,542)",
+                                "StatStudDetails": "installed, 1,543 rows (was 1,543)"},
+             "term_data": {"Legislation": "installed, 2,234 rows (was 2,234)",
+                           "LegislationText": "installed, 6,825 rows (was 6,825)",
+                           "CandH_Reports": "not taken: the fetch did not complete (exit 1)",
+                           "senate_reports.json": "installed, 1,254 (was 1,254)",
+                           "testimony_db.json": "installed, 2,982 (was 2,982)",
+                           "bill_status.json": "installed, 4,230 (was 4,230)"},
+             "lsrs": "installed, 483 requests (was 483)",
+             "documents": "installed, 4,413 documents (was 4,413): nothing new",
+             "document_files": {"wanted": 3, "fetched": 2, "remain": 1, "said": "", "warn": "", "read": {}},
+             "captions": {"step": "tonight", "asked": {"captioned": 1, "from the inbox": 1}},
+             "built": True, "live_fingerprint": "abc", "live_commit": "c" * 40,
+             NI.KINDS_SERVED: {"fingerprint": "abc", "kinds": [], "day": "2026-11-15"}}
+        before = json.dumps(v, sort_keys=True)
+        recs = NI.sources_record(v, today)
+        assert json.dumps(v, sort_keys=True) == before, "the sources' lines changed the verdict's own"
+        lines = {r["source"]: r["line"] for r in recs}
+        assert [r["source"] for r in recs] == [k for k, _n in NI.SOURCE_NAMES], [r["source"] for r in recs]
+        for key, want in (
+                ("export", "the General Court's daily export: the 14 files, whole; last new tonight"),
+                ("db_day", "its database, for the day's files when the export fails: not needed tonight; "
+                           "last new not known"),
+                ("study", "11,542 meetings, 1,543 committees' details; last new 5 November 2026 (11 days ago)"),
+                ("term", "5 of 6 installed, 2,234 bills; last new 1 October 2026 (46 days ago); the "
+                         "installed copy stood in for CandH_Reports"),
+                ("statutes", "not asked tonight: taken on 1 to 3 January and 1 to 3 July, and by the "
+                             "weekly job; last new 1 July 2026 (138 days ago)"),
+                ("lsrs", "installed, 483 requests (was 483); last new 14 November 2026 (2 days ago)"),
+                ("documents", "nothing new; last new not known"),
+                ("document_files", "2 of the 3 not on this disk fetched, 1 left for later nights; last new tonight"),
+                ("recordings", "1 captioned; last new 31 October 2026 (16 days ago)"),
+                ("inbox", "1 recording's captions; last new tonight"),
+                ("laptop", "as the laptop last sent it (bill_text.json); last new 22 September 2026"),
+                ("production", "read: it serves commit cccccccc; last new 15 November 2026 (1 day ago)")):
+            assert want in lines[key], f"the {key} line is {lines[key]!r}, which lacks {want!r}"
+        # The term's data stood still 43 days while the docket moved on to 13 November: one day
+        # past the interim's 42. Nothing else warns tonight.
+        warned = NI.sources_warned(recs)
+        assert [k for k, _s in warned] == [NI.KIND_SOURCE_STILL + "term"] and \
+            "to 13 November 2026: 43 days" in warned[0][1], warned
+        assert NI.warning_reasons(warned, [], ()) == [] and all(
+            k.startswith(NI.KIND_HEALTH) for k, _s in warned), "a source standing still would hold the night"
+        assert dict(NI.Night.warned(types.SimpleNamespace(v={"started": "2026-11-16T03:20:00",
+                                                             "sources": recs}))).get(
+            NI.KIND_SOURCE_STILL + "term") == warned[0][1] and warned[0][1] in NI.warns_of({"sources": recs}), (
+                "a source standing still is not among the night's warnings and its standing ones")
+        # Each limit, and a day past it: the meetings and the recordings by their own dates,
+        # the list by the last night it grew, carried, and not on a night it was not taken.
+        for key, write, limit in (("study", study, 27), ("recordings", recorded, 51), ("documents", None, 14)):
+            for past, warns in ((0, False), (1, True)):
+                old = [{"source": "documents", "new": (today - timedelta(days=limit + past)).isoformat()}]
+                if write:
+                    write(today - timedelta(days=limit + past))
+                got = [k for k, _s in NI.sources_warned(NI.sources_record(v, today, prev=old))]
+                assert (NI.KIND_SOURCE_STILL + key in got) == warns, (
+                    f"{key}, still {limit + past} days in the interim (limit {limit}), warned {got}")
+                assert not NI.sources_warned(NI.sources_record(v, today, fetched=False, prev=old)), (
+                    "a night that did not fetch was told a source stood still")
+            if write:
+                write({"study": d_(2026, 11, 5), "recordings": d_(2026, 10, 31)}[key])
+        old = [{"source": "documents", "new": "2026-09-01"}]
+        grew = dict(v, documents="installed, 4,415 documents (was 4,413): 2 new: House Calendar 42, "
+                                 "Senate Calendar 30")
+        recs2 = NI.sources_record(grew, today, prev=old)
+        refused = NI.sources_record(dict(v, documents="not taken: the listing stopped; the earlier 4,413 "
+                                                      "kept"), today, prev=old)
+        assert "last new tonight" in [r["line"] for r in recs2 if r["source"] == "documents"][0] and \
+            NI.KIND_SOURCE_STILL + "documents" not in [k for k, _s in NI.sources_warned(recs2)] and \
+            NI.KIND_SOURCE_STILL + "documents" not in [k for k, _s in NI.sources_warned(refused)], (
+                "a night the list grew is not its last new one, or a list not taken says it stood still")
+        # The database standing in for the export, and last night's day carried.
+        db = dict(v, fetch="empty: 13 of 14 files came back with no data in them", files_from="database",
+                  day_files={"source": "database", "why_code": ""}, db_nights=2)
+        got = {r["source"]: r["line"] for r in NI.sources_record(
+            db, today, prev=[{"source": "db_day", "new": "2026-11-10"}])}
+        assert got["export"].endswith("the General Court's database stood in") and \
+            "stood in for the export, night 2 in a row; last new tonight" in got["db_day"], got
+        got = {r["source"]: r["line"] for r in NI.sources_record(
+            v, today, prev=[{"source": "db_day", "new": "2026-11-10"}])}
+        assert "last new 10 November 2026 (6 days ago)" in got["db_day"], got["db_day"]
+        # finish() writes them to the verdict, the night's log and the run's page.
+        Path("summary.md").write_text("", encoding="utf-8")
+        os.environ["GITHUB_STEP_SUMMARY"] = str(Path("summary.md").resolve())
+        n = NI.Night.__new__(NI.Night)
+        n.a = types.SimpleNamespace(no_fetch=False, dry_run=True, new_term=False)
+        n.day, n.path, n.review_why, n.prev_sources = "2026-11-16", NI.DRY_VERDICT, [], None
+        n.v = json.loads(before) | {"preflight": "passed", "started": "2026-11-16T03:20:00", "built": False}
+        NI.LOG = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            n.finish(0)
+        page = Path("summary.md").read_text(encoding="utf-8")
+        kept = json.loads(Path(NI.DRY_VERDICT).read_text(encoding="utf-8"))
+        assert [r["source"] for r in kept.get("sources") or []] == [k for k, _n in NI.SOURCE_NAMES] and \
+            all(f"  - {r['line']}" in page for r in kept["sources"]) and \
+            all(r["line"] in "\n".join(NI.LOG) for r in kept["sources"]), (
+                "the sources' lines are not in the verdict, on the run's page and in the log")
+    finally:
+        NI.QUIET, NI.LOG = quiet, log
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", (f"{len(NI.SOURCE_NAMES)} sources, a line each in order, in the verdict, the log and "
+                  "the run's page, the verdict's own lines untouched; new tonight by the bytes, else "
+                  "the kit's day, the record's own dates or last night's; the term's data against the "
+                  "docket and the meetings, the list and the recordings each warn a day past the "
+                  "measured limit and not at it, never on a night that did not fetch or holding one")
+
+
+@check("workflows", "after each deploy the night asks every Function once, by GET alone, judges each "
+                    "answer by what the environment binds, and warns without failing the deploy",
+       needs=("nightly",))
+def _night_functions_probe(NI):
+    """THE FUNCTIONS AFTER A DEPLOY (nightly.py; the refactor's stage 0, ops section 1.3). Nothing
+    asked the site's Functions after a deploy, so one that broke the report box or the follow
+    sign-up would have been found by a reader. Held here: FUNCTION_PROBES names every Function
+    under functions/, by its route, and the binding each reads before it answers, as its own
+    source does; ask_function sends a bare GET, with no body and no other method; what
+    wrangler.toml binds in production and the previews; judge_function on every answer a
+    deployed Function gives, the site's own not-found page, a binding gone, a database that
+    will not read and a request that could not be made; functions_probe asking each once, in
+    order, a second apart, against a stand-in server; and upload_and_check asking them once a
+    deploy has landed and only then, its answer the deploy's whatever they say, with the lines
+    in the log and on the run's page, the record kept for the preview's verdict, and a failure
+    a warning in the standing ones, of a kind that never holds a night."""
+    import argparse
+    import contextlib
+    import inspect
+    import io
+    import subprocess as sp
+    import types
+    routes = {}
+    for f in sorted(Path("functions").rglob("*.js")):
+        if f.name.startswith("_"):
+            continue
+        rel = f.relative_to("functions").with_suffix("").as_posix()
+        routes["/" + re.sub(r"\[(\w+)\]", r"{\1}", rel)] = f.read_text(encoding="utf-8")
+    probes = {p: (needs, kind) for p, needs, kind in NI.FUNCTION_PROBES}
+    assert routes and set(probes) == set(routes), (
+        "FUNCTION_PROBES and functions/ differ: no probe for "
+        f"{sorted(set(routes) - set(probes))}, a probe of no Function {sorted(set(probes) - set(routes))}")
+    for p, src in routes.items():
+        needs, kind = probes[p]
+        first = src[src.find("export async function onRequest"):]
+        if needs == "FOLLOW_DB":
+            assert -1 < first.find("!env.FOLLOW_DB") < first.find("request.method") and \
+                "notHere()" in first, f"{p} no longer answers 404 without FOLLOW_DB before anything else"
+        elif needs == "LIVE":
+            assert -1 < first.find("liveStore(env)") < first.find("request.method") and \
+                "notFound" in first, f"{p} no longer reads its bucket before the method"
+        else:
+            assert "env.DB" not in first or \
+                -1 < first.find('request.method !== "POST"') < first.find("env.DB"), (
+                    f"{p} reads its database before it refuses a GET")
+        if kind == "post":
+            assert re.search(r'request\.method !== "POST"\)\s*\{?\s*return (?:plain\(405|new Response\('
+                             r'"POST only)', first), f"{p} no longer refuses a GET with 405"
+    body = inspect.getsource(NI.ask_function)
+    assert "urllib.request.Request(url, headers=" in body and "data=" not in body and \
+        "method=" not in body, "ask_function sends something other than a bare GET"
+    for env in ("production", "preview"):
+        assert {"DB", "FOLLOW_DB", "LIVE"} <= (NI.wrangler_bindings(env) or set()), (
+            f"wrangler.toml's {env} does not bind DB, FOLLOW_DB and LIVE: "
+            f"{NI.wrangler_bindings(env)}; the probes' expectations follow it, so read them again")
+    assert NI.wrangler_bindings("production", path="no-such-wrangler.toml") is None
+
+    T, H, J = "text/plain; charset=utf-8", "text/html; charset=utf-8", "application/json; charset=utf-8"
+    good = {"post": (405, T, "POST", "POST only\n"), "page": (200, H, "", "<!doctype html>"),
+            "count": (200, T, "", "12\n"), "live": (200, J, "", "{}")}
+    for kind, ans in good.items():
+        assert NI.judge_function(kind, True, *ans)[0], (kind, NI.judge_function(kind, True, *ans))
+    for kind, bound, ans, ok, words in (
+            ("live", True, (404, T, "", "Not found\n"), True, "not shown"),
+            ("post", False, (404, T, "", "Not found\n"), True, "not configured"),
+            ("page", True, (404, H, "", "<html>"), False, "not deployed"),
+            ("post", True, (404, T, "", "Not found\n"), False, "binding is missing"),
+            ("count", True, (503, T, "", ""), False, "503"),
+            ("count", True, (200, H, "", "<html>"), False, "not as a deployed Function"),
+            ("live", True, (503, T, "", "Live status could not be read\n"), False, "503"),
+            ("post", True, (403, H, "", "blocked"), False, "403"),
+            ("post", False, (405, T, "POST", "POST only\n"), False, "not configured")):
+        got = NI.judge_function(kind, bound, *ans)
+        assert got[0] is ok and words in got[1], (kind, bound, ans, got)
+    assert not NI.judge_function("page", True, None, "", "", "", "URLError: down")[0]
+
+    asked, waited = [], []
+    by_kind = {p: k for p, _n, k in NI.FUNCTION_PROBES}
+
+    def fake(url, answers=None):
+        asked.append(url)
+        path = url.split("https://x.example", 1)[1]
+        kind = by_kind.get(path) or by_kind["/api/live/votes/{day}"]
+        out = (answers or {}).get(path) or good[kind]
+        return (*out, "")
+    fx = NI.functions_probe("https://x.example", "preview", day="2026-11-16", ask=fake, wait=waited.append)
+    assert asked == ["https://x.example" + p.format(day="2026-11-16") for p, _n, _k in NI.FUNCTION_PROBES] \
+        and waited == [NI.FUNCTIONS_GAP] * (len(asked) - 1) and NI.FUNCTIONS_GAP >= 1, (asked, waited)
+    assert fx["failed"] == 0 and fx["line"] == (f"The site's {len(asked)} Functions answered as deployed "
+                                               "at https://x.example."), fx
+    del asked[:]
+    bad = NI.functions_probe("https://x.example", "production", day="2026-11-16", wait=waited.append,
+                             ask=lambda url: fake(url, {"/api/follow/count": (404, T, "", "Not found\n"),
+                                                        "/api/report": (404, H, "", "<html>")}))
+    warned = NI.functions_warned(bad)
+    assert bad["failed"] == 2 and "2 of the site's 9 Functions did not answer" in bad["line"] and \
+        "/api/report the site's own not-found page" in bad["line"] and \
+        [k for k, _s in warned] == [NI.KIND_FUNCTIONS] and "The deploy stands" in warned[0][1] and \
+        NI.warning_reasons(warned, [], ()) == [] and \
+        warned[0][1] in NI.warns_of({"preview": {"functions": bad}}), (bad["line"], warned)
+    assert NI.functions_warned(fx) == [] and NI.functions_warned(None) == []
+    # An environment that binds only DB: the Functions that need FOLLOW_DB or LIVE are
+    # expected to answer their own 404 there, and a deployed one of them a failure.
+    own404 = {p.format(day="2026-11-16"): (404, T, "", "Not found\n") for p, n, _k in NI.FUNCTION_PROBES if n}
+    real_bindings = NI.wrangler_bindings
+    try:
+        NI.wrangler_bindings = lambda env, path="wrangler.toml": {"DB"}
+        bare = NI.functions_probe("https://x.example", "preview", day="2026-11-16", wait=waited.append,
+                                  ask=lambda url: fake(url, own404))
+        full = NI.functions_probe("https://x.example", "preview", day="2026-11-16", wait=waited.append,
+                                  ask=fake)
+    finally:
+        NI.wrangler_bindings = real_bindings
+    assert bare["failed"] == 0 and full["failed"] == len(own404) == 8, (
+        "the probes do not follow what wrangler.toml binds in the environment: "
+        f"{bare['line']} | {full['line']}")
+
+    # upload_and_check asks them once a deploy has landed, and only then.
+    saved = (NI.child.run, NI.time.sleep, NI.run, NI.functions_probe, NI.LOG[:])
+    sums = Path(tempfile.mkdtemp(prefix="gr-functions-")) / "summary.md"
+    env_was = {k: os.environ.get(k) for k in ("GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS")}
+    calls = []
+    try:
+        os.environ["GITHUB_STEP_SUMMARY"] = str(sums)
+        os.environ.pop("GITHUB_ACTIONS", None)
+        NI.child.run = lambda *a_, **k_: sp.CompletedProcess(a_, 0, "", "")
+        NI.time.sleep = lambda s: None
+        NI.functions_probe = lambda base, env, **k: calls.append((base, env)) or bad
+        for live_code, target, landed in ((0, NI.PREVIEW_BRANCH, True), (1, NI.PREVIEW_BRANCH, False),
+                                          (0, NI.PRODUCTION_BRANCH, True)):
+            NI.run = lambda args, label, cwd=None, c=live_code: c
+            del calls[:]
+            with contextlib.redirect_stdout(io.StringIO()):
+                got = NI.upload_and_check(argparse.Namespace(project="p"), Path("."), target,
+                                          "https://x.example")
+            want_env = "production" if target == NI.PRODUCTION_BRANCH else "preview"
+            assert got is landed and calls == ([("https://x.example", want_env)] if landed else []), (
+                f"a deploy that {'landed' if landed else 'did not land'} to {target}: {got}, asked {calls}")
+        page = sums.read_text(encoding="utf-8")
+        assert page.count(bad["line"]) == 2 and NI.FUNCTIONS_SEEN.get("line") == bad["line"] and \
+            any(bad["line"] in ln for ln in NI.LOG), "the Functions' answers are not on the page and in the log"
+        NI.functions_probe = lambda base, env, **k: (_ for _ in ()).throw(RuntimeError("a bug"))
+        NI.run = lambda args, label, cwd=None: 0
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert NI.upload_and_check(argparse.Namespace(project="p"), Path("."), NI.PREVIEW_BRANCH,
+                                       "https://x.example") is True, "a probe that broke failed the deploy"
+    finally:
+        NI.child.run, NI.time.sleep, NI.run, NI.functions_probe = saved[:4]
+        NI.LOG[:] = saved[4]
+        NI.FUNCTIONS_SEEN.clear()
+        shutil.rmtree(sums.parent, ignore_errors=True)
+        for k, val in env_was.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    src = inspect.getsource(NI.runner_deploy)
+    assert '"functions": dict(FUNCTIONS_SEEN)' in src and "return 0 if landed else 1" in src, (
+        "runner_deploy does not keep the preview's Functions in its verdict, or lets them decide its exit")
+    return "ok", (f"{len(probes)} Functions, each asked once by a bare GET a second apart, judged by "
+                  "what production and the previews bind in wrangler.toml; a missing Function, a "
+                  "lost binding, a 5xx and an unreachable site are failures, a live 404 is not; asked "
+                  "only after a deploy lands, never changing its answer; a warning on the page, in "
+                  "the log and the standing warnings that never holds a night")
+
+
 # ---- the live layer's reader of the General Court's public SQL database ----------
 # The live layer's design (26 October 2026, approved by the person as
 # "defaults"), sections 2.1, 2.2, 2.7 and 6.2: workers/live/tds.js, sql.js and
@@ -138951,6 +139600,102 @@ def _bug_hunt_clock_and_today():
         if saved is not None:
             os.environ[build_date.ENV] = saved
     return "ok", "12-hour strings come back as they came; the day is Concord's"
+
+
+@check("build", "the build's day looks New Hampshire's zone up once a process, and answers as the "
+       "lookup on every call did", needs=("build_date",))
+def _build_date_zone_once(build_date):
+    """B1 of the refactor's stage 0 (16 November 2026). From 11 November today() built
+    zoneinfo.ZoneInfo(TIMEZONE) on every call. Where the zone database is missing --
+    Windows, the laptop and GitHub's runner alike -- each failed only after searching
+    every folder on sys.path for tzdata: 967 us a call, and 120-225 s a night once every
+    page asked through shell.cited(). build_date._zone() now asks once a process.
+
+    ZoneInfo is replaced for the moment by a stand-in that counts its constructions, in
+    three shapes: a zone found 14 hours ahead of UTC, one found 12 hours behind (whose
+    days always differ, so the zone is shown to be applied, not merely found), and the
+    database missing. In each, a thousand calls construct it once, and every answer is
+    what the lookup on every call (62df0ce9's today(), kept below as it was) gives under
+    the same stand-in. A stated day, and a stated day and time, answer their day without
+    the zone asked; a date that is not one, or one with a zone, stops as before. The
+    builders this suite runs are child processes, so the stand-in reaches none of them."""
+    import datetime as dt
+    import zoneinfo
+    from state_settings import TIMEZONE
+
+    def per_call():
+        """62df0ce9's build_date.today(), as it was: the zone asked on every call."""
+        when = build_date.stated()
+        if when:
+            return when.date()
+        try:
+            import zoneinfo
+            return dt.datetime.now(zoneinfo.ZoneInfo(TIMEZONE)).date()
+        except Exception:                                       # noqa: BLE001
+            return dt.date.today()
+
+    real, made, calls, days = zoneinfo.ZoneInfo, [], 1000, {}
+
+    def stand_in(zone):
+        def construct(key):
+            made.append(key)
+            if zone is None:
+                raise zoneinfo.ZoneInfoNotFoundError(f"No time zone found with key {key}")
+            return zone
+        return construct
+
+    saved = os.environ.pop(build_date.ENV, None)
+    try:
+        for label, zone in (("found, 14 hours ahead of UTC", dt.timezone(dt.timedelta(hours=14))),
+                            ("found, 12 hours behind UTC", dt.timezone(dt.timedelta(hours=-12))),
+                            ("missing", None)):
+            zoneinfo.ZoneInfo = stand_in(zone)
+            first = per_call()
+            build_date._zone.cache_clear()
+            made.clear()
+            got = {build_date.today() for _ in range(calls)}
+            looked = len(made)
+            last = per_call()
+            assert looked == 1, (
+                f"with the zone {label}, {calls} calls of build_date.today() constructed "
+                f"ZoneInfo {looked} times: the zone is looked up on every call again, which "
+                "cost the night 120-225 s where the zone database is missing")
+            assert got <= {first, last}, (
+                f"with the zone {label}, build_date.today() answered {sorted(map(str, got))}, "
+                f"the lookup on every call {first}")
+            days[label] = first
+        ahead, behind = days["found, 14 hours ahead of UTC"], days["found, 12 hours behind UTC"]
+        assert ahead > behind, (
+            f"a zone 14 hours ahead gave {ahead} and one 12 hours behind {behind}: the zone "
+            "found is not the one the day is read in")
+        zoneinfo.ZoneInfo = stand_in(dt.timezone(dt.timedelta(hours=14)))
+        build_date._zone.cache_clear()
+        made.clear()
+        for raw in ("2026-10-02", "2026-10-02T23:30:00"):
+            os.environ[build_date.ENV] = raw
+            assert build_date.today() == dt.date(2026, 10, 2) == per_call(), (
+                f"{build_date.ENV}={raw} gave {build_date.today()}, not 2 October 2026")
+        assert not made, f"a stated day still looked the zone up ({len(made)} times)"
+        for raw in ("next tuesday", "2026-10-02T14:30:00+00:00"):
+            os.environ[build_date.ENV] = raw
+            for fn in (build_date.today, per_call):
+                try:
+                    fn()
+                except SystemExit as e:
+                    assert build_date.ENV in str(e), f"{raw!r} stopped without naming {build_date.ENV}"
+                else:
+                    raise AssertionError(f"{build_date.ENV}={raw!r} did not stop the build")
+    finally:
+        zoneinfo.ZoneInfo = real
+        build_date._zone.cache_clear()
+        os.environ.pop(build_date.ENV, None)
+        if saved is not None:
+            os.environ[build_date.ENV] = saved
+    here = "missing" if build_date._zone() is None else "installed"
+    assert build_date.today() == per_call(), "here, today() and the lookup on every call disagree"
+    return "ok", (f"{calls} calls construct the zone once, found ahead, found behind or missing, "
+                  "and answer as the lookup on every call did; a stated day asks no zone and a "
+                  f"bad one stops; here the zone database is {here}")
 
 
 @check("build", "rendered_sweep.drive ends node and Chrome before it removes the profile, whatever stopped it")

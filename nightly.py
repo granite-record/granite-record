@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.88
+# GRANITE_VERSION: 2026-09-04.92
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -133,6 +133,21 @@ night itself does is here, and what differs on that machine is behind --runner:
                       its caption runs behind, the inbox silent -- a warning
                       each, and a line of the verdict's standing warnings
                       (WHEN THE RECORD STOPS MOVING)
+  who started it      the night's timer, GitHub's own schedule or a person,
+                      in the verdict ("started_by") and on the run's page; a
+                      night the schedule had to start late, because the timer
+                      started none, warns (WHO STARTED THE NIGHT)
+  renewal dates       a private list, state/expiries.json, brought down with
+                      the state files: each token, certificate, domain or card
+                      on it warns 30 days before its day and after, its words
+                      kept to the verdict and the night's own log, both
+                      private; the public page counts them (KNOWN EXPIRIES)
+  the sources         one line each in the verdict ("sources"), the log and
+                      the run's page: what it brought, when it last brought
+                      something new, and what stood in; the study meetings,
+                      the calendars and journals, the recordings and the
+                      term's data warn past the record's longest stillness
+                      for the season (ONE LINE PER SOURCE)
   the gates           against archive/census.json, the last good build's
                       counts, which cloud.py carries in R2's state/, because
                       site/ starts empty. No census is no baseline, and that
@@ -147,7 +162,10 @@ night itself does is here, and what differs on that machine is behind --runner:
                       "production" environment deploys it, once approved
   deploys             --deploy-to preview|production, workflow steps of their
                       own that alone hold the Pages token; wrangler pinned;
-                      the live check retried before a deploy is called failed
+                      the live check retried before a deploy is called failed;
+                      and once one lands, each Function asked once by GET, a
+                      failure a warning that never fails the deploy (THE
+                      FUNCTIONS AFTER A DEPLOY)
   reader reports      not pulled there. They stay on the laptop, where the
                       morning triage pulls them
   the log             the whole log to logs/nightly-<date>.log, which goes to
@@ -5213,11 +5231,13 @@ def warning_reasons(warned, served, recent=()):
     for kind, said in warned:
         # Nor a failed check of the built site against the record (BUILT_CHECKS),
         # nor a piece of the current term's data not taken (KIND_TERM_DATA),
-        # nor a part of the record that has stopped moving (KIND_NOT_MOVING):
-        # each warns and never holds.
+        # nor a part of the record that has stopped moving (KIND_NOT_MOVING),
+        # nor what the night depends on going wrong (KIND_HEALTH, THE NIGHT'S
+        # OWN HEALTH): each warns and never holds.
         if kind in seen or fallback_kind(kind) or str(kind).startswith((KIND_BUILT_WARN,
                                                                        KIND_TERM_DATA,
-                                                                       KIND_NOT_MOVING)):
+                                                                       KIND_NOT_MOVING,
+                                                                       KIND_HEALTH)):
             continue
         seen.add(kind)
         said = str(said)
@@ -5427,6 +5447,816 @@ def site_manifest(site, out):
     return len(rows)
 
 
+# ---- the night's own health ---------------------------------------------------
+#
+# THE NIGHT'S OWN HEALTH (16 November 2026; the refactor's stage 0, its ops
+# inventory and do-first list). What the night depends on going wrong while
+# the night itself goes well, each said below where it is worked out. Each
+# is a warning for the morning triage -- in the verdict's warnings and
+# standing warnings, and on the run's page -- of a kind the gate never holds
+# a night for (warning_reasons): none is a fault of tonight's build, and a
+# site that builds and passes its checks goes out (the person, 6 October 2026).
+KIND_HEALTH = "the night's own health: "
+
+# WHO STARTED THE NIGHT. Three things start nightly.yml: the night's timer
+# (workers/night-timer/), a Cloudflare cron at 08:17 UTC that ticks the box
+# `timer`; GitHub's own schedule at the same minute, the fallback since 23
+# October, which stands down when its job "started" finds a run of the timer's
+# today; and a person, by hand. The workflow says which in STARTED_BY, and
+# "started" when it looked (STARTED_AT) and whether it could read the day's
+# runs (STARTED_LOOKED). A scheduled run reaches the night only when it found
+# no run of the timer's, so one that does more than TIMER_GRACE minutes after
+# the timer's minute is tonight's night because the timer started none -- its
+# GitHub token expired or revoked, the Worker down, GitHub refusing it -- and
+# until now the only sign was a night five to seven hours late. Within the
+# grace GitHub's run may simply have come first: the timer asks three times,
+# twenty seconds apart (index.js), and stands down for a scheduled run it sees.
+# A re-run of a scheduled night is a person's, and says nothing of the timer.
+STARTED_BY_ENV, STARTED_AT_ENV, STARTED_LOOKED_ENV = "STARTED_BY", "STARTED_AT", "STARTED_LOOKED"
+STARTED_BY = ("timer", "schedule", "hand")
+TIMER_UTC = (8, 17)             # the timer's cron, and the workflow's: "17 8 * * *"
+TIMER_GRACE = 15                # minutes
+TIMER_README = "workers/night-timer/README.md"
+KIND_TIMER = KIND_HEALTH + "the night's timer started no night"
+
+
+def minutes_said(n):
+    """45 -> "45 minutes", 345 -> "5 hours 45 minutes", 60 -> "1 hour"."""
+    n = max(0, int(n))
+    h, m = divmod(n, 60)
+    parts = ([f"{h} hour{'s' if h != 1 else ''}"] if h else []) + \
+        ([f"{m} minute{'s' if m != 1 else ''}"] if m or not h else [])
+    return " ".join(parts)
+
+
+def started_by_record(now=None):
+    """Who started this run, from the workflow's words (WHO STARTED THE
+    NIGHT): {"by": one of STARTED_BY or "unknown", "attempt", "line"}, and for
+    a scheduled run "at" (UTC, when its first job looked), "late" (minutes
+    after the timer's minute, the latest one at or before it) and "looked"
+    (whether the day's runs could be read). "line" is the sentence the log and
+    the run's page carry. `now`, an aware UTC moment, stands in where the
+    workflow names none."""
+    from datetime import timedelta, timezone
+    by = github(STARTED_BY_ENV).strip().lower()
+    by = by if by in STARTED_BY else "unknown"
+    try:
+        attempt = max(1, int(github("GITHUB_RUN_ATTEMPT") or 1))
+    except ValueError:
+        attempt = 1
+    rec = {"by": by, "attempt": attempt}
+    again = f" (attempt {attempt}, run again by hand)" if attempt > 1 else ""
+    if by != "schedule":
+        rec["line"] = {"timer": "Started by the night's timer",
+                       "hand": "Started by hand",
+                       "unknown": "Who started this run is not known: the workflow did not "
+                                  "say"}[by] + again + "."
+        return rec
+    at = _utc_of(github(STARTED_AT_ENV)) if github(STARTED_AT_ENV).endswith("Z") else None
+    at = at or now or datetime.now(timezone.utc)
+    due = at.replace(hour=TIMER_UTC[0], minute=TIMER_UTC[1], second=0, microsecond=0)
+    if due > at:
+        due -= timedelta(days=1)
+    late = int((at - due).total_seconds() // 60)
+    looked = github(STARTED_LOOKED_ENV).strip().lower() != "no"
+    rec.update(at=at.strftime("%Y-%m-%dT%H:%M:%SZ"), late=late, looked=looked)
+    when, due_at = f"{at:%H:%M} UTC", f"{TIMER_UTC[0]:02d}:{TIMER_UTC[1]:02d}"
+    if late <= TIMER_GRACE:
+        rec["line"] = (f"Started by GitHub's own schedule at {when}, on time, before any run of "
+                       f"the night's timer{again}.")
+    elif looked:
+        rec["line"] = (f"Started by GitHub's own schedule at {when}, {minutes_said(late)} after "
+                       f"the night's timer was due at {due_at}: the timer had started no night "
+                       f"today{again}.")
+    else:
+        rec["line"] = (f"Started by GitHub's own schedule at {when}, {minutes_said(late)} after "
+                       f"the night's timer was due at {due_at}; today's runs could not be read, "
+                       f"so whether the timer had started one is not known{again}.")
+    return rec
+
+
+def started_by_warned(rec):
+    """[(kind, sentence)]: the warning for a night GitHub's schedule started
+    late because the night's timer started none (WHO STARTED THE NIGHT); []
+    for every other start, a re-run among them, and for no record."""
+    if not isinstance(rec, dict) or rec.get("by") != "schedule" or int(rec.get("attempt") or 1) > 1:
+        return []
+    late = rec.get("late")
+    if not isinstance(late, int) or late <= TIMER_GRACE:
+        return []
+    when = f"{str(rec.get('at') or '')[11:16]} UTC"
+    if rec.get("looked", True):
+        said = (f"The night's timer started no night today, so GitHub's own schedule started this "
+                f"one at {when}, {minutes_said(late)} late: the timer's GitHub token may have "
+                f"expired or been revoked. {TIMER_README} says how to make a new one.")
+    else:
+        said = (f"GitHub's own schedule started this night at {when}, {minutes_said(late)} after "
+                "the night's timer was due, and could not read today's runs to see whether the "
+                'timer had started one. If the Actions page shows no run "by the timer" today, '
+                f"its GitHub token may have expired or been revoked: {TIMER_README} says how to "
+                "make a new one.")
+    return [(KIND_TIMER, said)]
+
+
+# KNOWN EXPIRIES (the refactor's stage 0, ops item 7). Tokens, a certificate,
+# the domain and a card each run out or renew on a day nothing read. The
+# person keeps the days in a private file, state/expiries.json in the bucket,
+# which state-down brings to EXPIRIES with the other state files (cloud_kit.json
+# "state"), and the night says each one EXPIRY_DAYS ahead, and every night after
+# until the file carries its next day. The format, one object:
+#
+#   {"format": 1,
+#    "expiries": [{"name": "the deploy token (CLOUDFLARE_API_TOKEN)",
+#                  "date": "2027-09-25",
+#                  "do": "make a new Pages: Edit token and put it in the three GitHub environments",
+#                  "renews": false,
+#                  "guess": false}, ...]}
+#
+#   name    what runs out, as the person calls it (required)
+#   date    the day it runs out or renews, YYYY-MM-DD; null where no day is
+#           recorded, which the night lists and never warns of (required key)
+#   do      what to do about it, one short sentence (required)
+#   renews  true where it renews itself (the certificate, the domain from the
+#           card): the night says to check that it did (default false)
+#   guess   true where the date is a guess, which the night says (default false)
+#
+# Any other key is kept for the person and not read. THE LIST IS PRIVATE: it
+# stays out of the public repository, and the run's page and GitHub's log are
+# public too, so they carry only how many days are due; each one, with what to
+# do, is in the verdict's standing warnings and the night's own log, both in
+# the private bucket. No file is one quiet line, never a failure; a file that
+# will not read, or an entry that will not, is a warning.
+EXPIRIES = Path("archive/expiries.json")
+EXPIRIES_FORMAT = 1
+EXPIRY_DAYS = 30
+KIND_EXPIRY = KIND_HEALTH + "a renewal or expiry due on the private list"
+KIND_EXPIRY_UNREAD = KIND_HEALTH + "the private list of renewals unreadable"
+MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August",
+          "September", "October", "November", "December")
+
+
+def day_said(d):
+    """date(2027, 1, 4) -> "4 January 2027"."""
+    return f"{d.day} {MONTHS[d.month - 1]} {d.year}"
+
+
+def _days(n):
+    return f"{n} day{'s' if n != 1 else ''}"
+
+
+def expiries_record(today, path=None):
+    """What the private list of renewals says tonight (KNOWN EXPIRIES):
+    {"read": "missing" | "unreadable" | "read", "line": a sentence the public
+    page may carry, and for a list read "dated", "undated" (names), "due" (one
+    {"name", "date", "days", "said"} each, inside EXPIRY_DAYS or past, soonest
+    first), "next" (the soonest not due) and "problems" (entries that will not
+    read)}; for one that will not read, "why". `today` is a date."""
+    path = EXPIRIES if path is None else Path(path)
+    if not path.is_file():
+        return {"read": "missing",
+                "line": f"No list of renewal dates came down with the state files ({path.as_posix()}), "
+                        "so none was checked tonight."}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return {"read": "unreadable", "why": f"{type(e).__name__}: {str(e)[:120]}"}
+    if not isinstance(raw, dict) or not isinstance(raw.get("expiries"), list):
+        return {"read": "unreadable", "why": 'it is not an object with a list "expiries"'}
+    if raw.get("format", EXPIRIES_FORMAT) != EXPIRIES_FORMAT:
+        return {"read": "unreadable",
+                "why": f"its format is {raw.get('format')!r}, and this reads {EXPIRIES_FORMAT}"}
+    dated, undated, problems = [], [], []
+    for i, e in enumerate(raw["expiries"], 1):
+        name = e.get("name") if isinstance(e, dict) else None
+        do = e.get("do") if isinstance(e, dict) else None
+        if not (isinstance(name, str) and name.strip() and isinstance(do, str) and do.strip()):
+            problems.append(f"entry {i} has no name or no what-to-do")
+            continue
+        if any(not isinstance(e.get(k, False), bool) for k in ("renews", "guess")):
+            problems.append(f"entry {i}: renews and guess are true or false")
+            continue
+        if "date" not in e:
+            problems.append(f"entry {i} has no date (null where none is recorded)")
+            continue
+        if e["date"] is None:
+            undated.append(name.strip())
+            continue
+        s = str(e["date"])
+        try:
+            when = date.fromisoformat(s) if re.fullmatch(r"\d{4}-\d{2}-\d{2}", s) else None
+        except ValueError:
+            when = None
+        if when is None:
+            problems.append(f"entry {i}: its date {s[:20]!r} is not a day written YYYY-MM-DD")
+            continue
+        dated.append((when, name.strip(), do.strip().rstrip("."), bool(e.get("renews")),
+                      bool(e.get("guess"))))
+    dated.sort()
+    due, nxt = [], None
+    for when, name, do, renews, guess in dated:
+        n = (when - today).days
+        if n > EXPIRY_DAYS:
+            nxt = nxt or {"name": name, "date": when.isoformat(), "days": n}
+            continue
+        g = " (a guess: the date is not recorded)" if guess else ""
+        on = day_said(when)
+        if renews and n >= 0:
+            said = (f"{name[:1].upper()}{name[1:]} renews itself on {on}, in {_days(n)}{g}: check "
+                    f"that it does ({do}), then put its next date in expiries.json.")
+        elif renews:
+            said = (f"{name[:1].upper()}{name[1:]} was due to renew itself on {on}, {_days(-n)} "
+                    f"ago{g}: check that it did ({do}), and put its next date in expiries.json.")
+        elif n > 0:
+            said = f"{name[:1].upper()}{name[1:]} runs out on {on}, in {_days(n)}{g}: {do}."
+        elif n == 0:
+            said = f"{name[:1].upper()}{name[1:]} runs out today, {on}{g}: {do}."
+        else:
+            said = (f"{name[:1].upper()}{name[1:]} ran out on {on}, {_days(-n)} ago{g}: {do}. "
+                    "Then put its new date in expiries.json.")
+        due.append({"name": name, "date": when.isoformat(), "days": n, "said": said})
+    k = len(dated) + len(undated)
+    line = (f"Renewal dates: {k} on the private list, "
+            + (f"{len(due)} due within {EXPIRY_DAYS} days or past" if due else
+               f"none due within {EXPIRY_DAYS} days") + ".")
+    return {"read": "read", "line": line, "dated": len(dated), "undated": undated,
+            "due": due, "next": nxt, "problems": problems}
+
+
+def expiries_warned(rec, private=False):
+    """[(kind, sentence)] for the private list of renewals (KNOWN EXPIRIES):
+    one for a list that will not read; then, where `private`, each date due
+    and each entry that will not read, in full -- the verdict's standing
+    warnings, in the private bucket -- and otherwise one line counting them,
+    for the night's warnings, which the public page carries. [] for none."""
+    if not isinstance(rec, dict) or rec.get("read") == "missing":
+        return []
+    if rec.get("read") == "unreadable":
+        return [(KIND_EXPIRY_UNREAD,
+                 f"The private list of renewal dates ({EXPIRIES.as_posix()}) would not read "
+                 f"({rec.get('why') or 'no reason given'}), so no date on it was checked tonight: "
+                 "mend it and put it back in the bucket's state/expiries.json.")]
+    due, bad = list(rec.get("due") or []), list(rec.get("problems") or [])
+    if private:
+        return ([(KIND_EXPIRY, str(d.get("said"))) for d in due]
+                + [(KIND_EXPIRY_UNREAD, f"The private list of renewal dates: {p}, so it was "
+                    "not checked; mend it in the bucket's state/expiries.json.") for p in bad])
+    out = []
+    if due:
+        out.append((KIND_EXPIRY,
+                    f"{len(due)} date{'s' if len(due) != 1 else ''} on the private list of "
+                    f"renewals {'is' if len(due) == 1 else 'are'} due within {EXPIRY_DAYS} days "
+                    "or past: the night's verdict says which, and what to do, in its standing "
+                    "warnings."))
+    if bad:
+        out.append((KIND_EXPIRY_UNREAD,
+                    f"{len(bad)} entr{'y' if len(bad) == 1 else 'ies'} of the private list of "
+                    "renewals would not read and were not checked: the night's verdict says "
+                    "which."))
+    return out
+
+
+# ONE LINE PER SOURCE (the refactor's stage 0, its do-first list; stage0-data's
+# list of what the night takes). Every source the night asks, or reads as the
+# kit brings it, gets one line in the verdict ("sources", sources_record) and
+# on the run's page and in the log: what it brought tonight, or that it was
+# not asked; when it last brought something new; and what stood in for it,
+# where something did. The verdict's own lines for each source are kept as
+# they were: this section is beside them, worked out from them.
+#
+# WHEN IT LAST BROUGHT SOMETHING NEW. A file the night installs is new tonight
+# where its bytes differ from the copy kit-down brought (KIT_DOWN records each
+# file's sha256); otherwise it last changed on the day the kit's manifest gives
+# it, since kit-up sends back only a file whose bytes changed and a dry run
+# sends back none of these (kit_changed). Two sources date themselves, and
+# that date is used, because their limits below are measured on it: the study
+# committees' meetings by the time each row was entered, the recordings by
+# when YouTube published each. The list of calendars and journals is new on a
+# night it gains documents (its own sentence counts them), and otherwise
+# carries the day of the last night it did, which is near each document's own
+# date, the date its limit is measured on: the list, rewritten on every night
+# that reads it, is new by its bytes every night, and a fixture's or an old
+# list's document dates say nothing of when the night last read a new one. A
+# source with no date of any kind carries the last night's too (the database
+# standing in for the export), and one with none on record yet says so.
+#
+# WHEN ONE THAT SHOULD CHANGE HAS NOT. Out of session the export can be quiet
+# for weeks, and a warning on what is normal is noise the person learns to
+# ignore, so a source warns only past the longest stillness the record shows
+# for the season tonight is in, measured as STILL_DAYS was (each gap given to
+# the season of the day it ended, March and April 2020 set aside), on this
+# disk on 16 November 2026:
+#
+#   the study committees' meetings   113 days in the session (7 February to 30
+#                                    May 2024), 27 in the interim (13 June to 10
+#                                    July 2024), over each row's entry time,
+#                                    2024-2026 (the column begins in 2024)
+#   the calendars and journals list  8 in the session (13 to 21 June 2024, and
+#                                    twice in June 2018), 14 in the interim (28
+#                                    June to 12 July 2019), over each document's
+#                                    own date, 2015-2026
+#   the recordings' index            17 in the session (24 December 2021 to 10
+#                                    January 2022), 51 in the interim (30 June
+#                                    to 20 August 2021), over YouTube's
+#                                    published_at, House and Senate, 2020-2026
+#   the current term's data          STILL_DAYS, against the docket: the same
+#                                    bills, so it warns only where the docket
+#                                    moved on for longer than it ever stands
+#                                    still and this did not move at all, as
+#                                    the laptop's share does
+#
+# The rest warn as they did, or not at all: the export by the docket standing
+# still (docket_still); the database for the day's files at DB_NIGHTS_MOST
+# nights in a row; the captions inbox by inbox_silent; the laptop's share by
+# laptop_share_behind; a document the night could not fetch by its own step;
+# the statutes change on the days new laws take effect; next session's bill
+# requests come in a season this disk keeps no dates of; and production is
+# read for the gate, which says when it could not be.
+SOURCE_STILL = {"study": {"session": 113, "interim": 27},
+                "documents": {"session": 8, "interim": 14},
+                "recordings": {"session": 17, "interim": 51}}
+KIND_SOURCE_STILL = KIND_HEALTH + "a source standing still: "
+STUDY_TABLE = Path("db/StatStudMeetings.psv")
+STUDY_ENTERED = re.compile(r"\|(\d{2})/(\d{2})/(\d{4}) \d{2}:\d{2}:\d{2}[ \t]*$", re.M)
+RECORDINGS = ("collected/videos/videos_*.csv", "videos_*_livestreams.csv")
+STATUTE_FILE = "db/NH_RSA.psv"
+DOCUMENT_TEXT = ("calendars/", "calendars_senate/", "journals/", "journals_senate/")
+LIST_GREW = re.compile(r"installed, ([\d,]+) documents \(was ([\d,]+)\)")
+# What each line calls its source: the General Court's, then the rest.
+SOURCE_NAMES = (
+    ("export", "the General Court's daily export"),
+    ("db_day", "its database, for the day's files when the export fails"),
+    ("study", "its database: the study committees' meetings"),
+    ("term", "its database: the current term's bills, texts, reports, sign-ins and status fields"),
+    ("statutes", "its database: the statutes"),
+    ("lsrs", "its web pages: next session's bill requests"),
+    ("documents", "its web pages: the list of calendars and journals"),
+    ("document_files", "its web pages: the calendars and journals themselves"),
+    ("recordings", "YouTube: the recordings' index"),
+    ("inbox", "the captions inbox, from the laptop through the bucket"),
+    ("laptop", "the laptop's share of the record, in the kit"),
+    ("production", "graniterecord.org, read for the gate"))
+
+
+def _sha256_of(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def kit_changed(paths, today, record=KIT_DOWN):
+    """(the day the newest of `paths` last changed, or None; whether one did
+    tonight), by WHEN IT LAST BROUGHT SOMETHING NEW: tonight where a file's
+    bytes differ from kit-down's copy, else the day the kit's manifest gives
+    it. A path kit-down's record does not hold says nothing: a file git
+    keeps, or one the kit has not carried yet."""
+    rec = load_json(record)
+    files = rec.get("files") if isinstance(rec, dict) else None
+    if not isinstance(files, dict):
+        return None, False
+    newest, tonight = None, False
+    for p in paths:
+        e = files.get(p)
+        if not (isinstance(e, list) and len(e) >= 3):
+            continue
+        try:
+            st = Path(p).stat()
+            moved = (st.st_size, st.st_mtime_ns) != (e[0], e[2]) and _sha256_of(p) != e[1]
+        except OSError:
+            continue
+        if moved:
+            tonight = True
+        elif isinstance(e[2], int) and e[2] > 0:
+            d = datetime.fromtimestamp(e[2] / 1e9).date()
+            newest = d if newest is None or d > newest else newest
+    return (today if tonight else newest), tonight
+
+
+def kit_newest_under(prefixes, record=KIT_DOWN):
+    """The newest day the kit's manifest gives a file under any of `prefixes`, or None."""
+    rec = load_json(record)
+    files = rec.get("files") if isinstance(rec, dict) else None
+    best = max((e[2] for p, e in (files or {}).items() if str(p).startswith(prefixes)
+                and isinstance(e, list) and len(e) >= 3 and isinstance(e[2], int)), default=0)
+    return datetime.fromtimestamp(best / 1e9).date() if best > 0 else None
+
+
+def study_newest(path=STUDY_TABLE):
+    """The newest day a row of the study committees' meetings was entered (the
+    table's last column), or None."""
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    best = None
+    for m in STUDY_ENTERED.finditer(text):
+        try:
+            d = date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+        except ValueError:
+            continue
+        best = d if best is None or d > best else best
+    return best
+
+
+def list_grew(said):
+    """Whether take_documents' sentence says tonight's list of calendars and
+    journals gained documents: "installed, N documents (was M)" with N > M."""
+    m = LIST_GREW.match(str(said or ""))
+    return bool(m) and int(m.group(1).replace(",", "")) > int(m.group(2).replace(",", ""))
+
+
+def recordings_newest(globs=RECORDINGS):
+    """The newest day YouTube published a recording the index holds, or None."""
+    import csv
+    best = None
+    for g in globs:
+        for f in sorted(Path(".").glob(g)):
+            try:
+                with open(f, encoding="utf-8", errors="replace", newline="") as fh:
+                    for r in csv.DictReader(fh):
+                        p = str(r.get("published_at") or "")[:10]
+                        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", p):
+                            d = date.fromisoformat(p)
+                            best = d if best is None or d > best else best
+            except (OSError, ValueError):
+                continue
+    return best
+
+
+def _installed_rows(said):
+    """The count an "installed, N rows (was M)" sentence installed, or None."""
+    m = re.match(r"installed, ([\d,]+)", str(said or ""))
+    return int(m.group(1).replace(",", "")) if m else None
+
+
+def _pieces_said(pieces):
+    """{piece: sentence} as "all 3 installed" or "2 of 3 installed", and the
+    pieces the installed copy stood in for."""
+    pieces = pieces if isinstance(pieces, dict) else {}
+    kept = [k for k, r in pieces.items() if not str(r).startswith("installed")]
+    n = len(pieces)
+    return (f"all {n} installed" if not kept else f"{n - len(kept)} of {n} installed"), kept
+
+
+def sources_record(v, today, fetched=True, prev=None, kit=KIT_DOWN):
+    """ONE LINE PER SOURCE: [{"source", "name", "asked", "brought", "new",
+    "fallback", "line"}], each with "still" ({"days", "limit", "season"}, and
+    for the term's data "docket") where it should change (WHEN ONE THAT SHOULD
+    CHANGE HAS NOT). `v` is tonight's verdict as finish() has it, `today` a
+    date, `prev` the last night's list, whose "new" stands in where a source
+    has no date of its own tonight. A night that did not fetch is not told
+    that anything stood still, as WHEN THE RECORD STOPS MOVING is not."""
+    import snapshot_gencourt as SG
+    was = {r.get("source"): r for r in prev or [] if isinstance(r, dict)}
+    season = still_season(today)
+    out = []
+
+    def add(key, asked, brought, new=None, fallback="", still=None):
+        new = new.isoformat() if isinstance(new, date) else new
+        if not new and isinstance(was.get(key), dict):
+            new = was[key].get("new")
+        if not (isinstance(new, str) and day_of(new)):
+            new = None
+        name = dict(SOURCE_NAMES)[key]
+        if new == today.isoformat():
+            when = "tonight"
+        elif new:
+            age = (today - date.fromisoformat(new)).days
+            when = f"{day_said(date.fromisoformat(new))} ({_days(age)} ago)"
+        else:
+            when = "not known"
+        rec = {"source": key, "name": name, "asked": bool(asked), "brought": brought,
+               "new": new, "fallback": fallback,
+               "line": f"{name}: {brought}; last new {when}" + (f"; {fallback}" if fallback else "")}
+        if still:
+            rec["still"] = still
+        out.append(rec)
+
+    def still_of(key, newest):
+        if newest is None or not fetched:
+            return None
+        return {"days": (today - newest).days, "limit": SOURCE_STILL[key][season],
+                "season": season, "newest": newest.isoformat()}
+
+    # The export, and the database standing in for it.
+    day_files = list(SG.FILES) + [n for _u, n in SG.EXTRA]
+    new, _ = kit_changed(day_files, today, kit)
+    asked = bool(v.get("tried"))
+    fetch = str(v.get("fetch") or "not asked")
+    add("export", asked,
+        f"the {len(day_files)} files, whole" if fetch == "installed" else
+        fetch[:140] if asked or fetch.startswith("deferred") else "not asked tonight", new,
+        "the General Court's database stood in" if from_db(v) else
+        "nothing installed: the files already here stood in" if asked and fetch != "installed" else "")
+    df = v.get("day_files") if isinstance(v.get("day_files"), dict) else None
+    if from_db(v):
+        add("db_day", True, f"stood in for the export, night {int(v.get('db_nights') or 1)} in a row",
+            today)
+    elif df is not None:
+        add("db_day", True, f"asked, and installed nothing: {str(df.get('why') or 'no reason given')[:120]}")
+    else:
+        add("db_day", False, "not needed tonight" if fetch == "installed" else "not asked tonight")
+    # The database's pieces.
+    sm = v.get("study_meetings") if isinstance(v.get("study_meetings"), dict) else {}
+    said, kept = _pieces_said(sm)
+    rows = [f"{_installed_rows(sm.get(k)):,} {what}" for k, what in
+            (("StatStudMeetings", "meetings"), ("StatStudDetails", "committees' details"))
+            if _installed_rows(sm.get(k)) is not None]
+    newest = study_newest()
+    add("study", bool(sm), (", ".join(rows) or said) if sm else "not asked tonight", newest,
+        f"the installed copy stood in for {_and(kept)}" if kept else "", still_of("study", newest))
+    td = v.get("term_data") if isinstance(v.get("term_data"), dict) else {}
+    said, kept = _pieces_said(td)
+    files = [f"db/{x}.psv" for x in TERM_VIEWS] + [f for _l, _s, f in TERM_FILES]
+    new, _ = kit_changed(files, today, kit)
+    docket = docket_newest(DOCKET, today)
+    term_still = None
+    if fetched and new is not None and docket is not None:
+        term_still = {"days": (docket - new).days, "limit": STILL_DAYS[still_season(docket)],
+                      "season": still_season(docket), "docket": docket.isoformat()}
+    bills = _installed_rows(td.get("Legislation"))
+    add("term", bool(td), (said + (f", {bills:,} bills" if bills is not None else "")) if td else
+        "not asked tonight", new,
+        f"the installed copy stood in for {_and(kept)}" if kept else "", term_still)
+    st = v.get("statutes") if isinstance(v.get("statutes"), dict) else None
+    new, _ = kit_changed([STATUTE_FILE], today, kit)
+    add("statutes", bool(st), "; ".join(f"{k} {r}" for k, r in st.items())[:140] if st else
+        "not asked tonight: taken on 1 to 3 January and 1 to 3 July, and by the weekly job", new)
+    # The web pages.
+    lsrs = v.get("lsrs")
+    new, _ = kit_changed([LSRS.as_posix()], today, kit)
+    add("lsrs", bool(lsrs), str(lsrs)[:140] if lsrs else "not asked tonight", new,
+        "yesterday's list stood in" if lsrs and not str(lsrs).startswith("installed") else "")
+    docs = v.get("documents")
+    taken = str(docs or "").startswith("installed")
+    newest = today if list_grew(docs) else day_of((was.get("documents") or {}).get("new"))
+    add("documents", bool(docs), str(docs)[:140] if docs else "not asked tonight", newest,
+        "the list already here stood in" if docs and not taken else "",
+        still_of("documents", newest) if taken else None)
+    dfs = v.get("document_files") if isinstance(v.get("document_files"), dict) else None
+    got = int((dfs or {}).get("fetched") or 0)
+    add("document_files", dfs is not None,
+        (f"{got} of the {int(dfs.get('wanted') or 0)} not on this disk fetched"
+         + (f", {int(dfs.get('remain') or 0)} left for later nights" if dfs.get("remain") else ""))
+        if dfs is not None else "not asked tonight",
+        today if got else kit_newest_under(DOCUMENT_TEXT, kit))
+    # YouTube, and what the laptop sends through the bucket.
+    caps = v.get("captions") if isinstance(v.get("captions"), dict) else {}
+    ran = str(caps.get("step") or "").startswith("tonight")
+    asked_yt = {k: n for k, n in (caps.get("asked") or {}).items() if k != "from the inbox"}
+    newest = recordings_newest()
+    add("recordings", ran, (", ".join(f"{n} {k}" for k, n in asked_yt.items()) or "nothing new")
+        if ran else "not asked tonight", newest,
+        "", still_of("recordings", newest))
+    live = load_json(LIVE_STATE)
+    arrived = (live or {}).get("inbox_arrived") if isinstance(live, dict) else None
+    came = _utc_of((arrived or {}).get("at")) if isinstance(arrived, dict) else None
+    inbox = int((caps.get("asked") or {}).get("from the inbox") or 0)
+    add("inbox", ran, (f"{inbox} recording's captions" if inbox == 1 else
+                       f"{inbox} recordings' captions") if inbox else
+        "nothing tonight" if ran else "not asked tonight",
+        today if inbox else (came.astimezone().date() if came else None))
+    moved, path = laptop_share_moved(kit)
+    add("laptop", True, "came down in the kit as the laptop last sent it"
+        + (f" ({path})" if path else ""), moved)
+    # Production, read for the gate.
+    served = v.get(KINDS_SERVED) if isinstance(v.get(KINDS_SERVED), dict) else {}
+    if v.get("live_fingerprint"):
+        commit = str(v.get("live_commit") or "")
+        add("production", True, "read" + (f": it serves commit {commit[:8]}" if commit else ""),
+            served.get("day"))
+    else:
+        add("production", bool(v.get("built")), "could not be read" if v.get("built") else
+            "not read tonight: nothing was built")
+    return out
+
+
+def sources_warned(recs):
+    """[(kind, sentence)]: each source that should change and has stood still
+    longer than the record shows for the season (WHEN ONE THAT SHOULD CHANGE
+    HAS NOT); [] for none."""
+    out = []
+    for r in recs if isinstance(recs, list) else []:
+        s = r.get("still") if isinstance(r, dict) else None
+        if not isinstance(s, dict) or not isinstance(s.get("days"), int) or \
+                not isinstance(s.get("limit"), int) or s["days"] <= s["limit"]:
+            continue
+        key, n, limit, said = r.get("source"), s["days"], s["limit"], STILL_SAID.get(s.get("season"), "")
+        at, was_new = day_of(s.get("newest") or s.get("docket")), day_of(r.get("new"))
+        if at is None or (key == "term" and was_new is None):
+            continue
+        at = day_said(at)
+        if key == "study":
+            text = (f"The study committees' meetings have shown nothing new for {n} days, the newest "
+                    f"row entered on {at}; {said} the record shows {limit} days at most. If the "
+                    "General Court's own study committee schedule lists newer meetings, the database "
+                    "copy the night takes has stopped, which is their IT office's to start again.")
+        elif key == "documents":
+            text = (f"The General Court's list of calendars and journals has gained no document since "
+                    f"the night of {at}, {n} days; {said} the record shows {limit} days at most "
+                    "between documents. If their calendars and journals page lists newer ones, the "
+                    "night's reading of it has stopped: the night's log says what it was answered.")
+        elif key == "recordings":
+            text = (f"No new recording has reached the index for {n} days, the newest published on "
+                    f"{at}; {said} the record shows {limit} days at most. If the House and Senate "
+                    "channels show newer ones, the night's livestream step has stopped finding them: "
+                    "its key and the night's log say why.")
+        else:
+            text = (f"The current term's bills, texts and reports from the General Court's database "
+                    f"last changed on {day_said(was_new)}, and the docket has "
+                    f"moved on since, to {at}: {n} days, longer than the record itself ever stands "
+                    f"still {said} ({limit} days). Their database copy may have stopped updating, "
+                    "which is the General Court's IT office's to start again.")
+        out.append((KIND_SOURCE_STILL + str(key), text))
+    return out
+
+
+# THE FUNCTIONS AFTER A DEPLOY (the refactor's stage 0, ops section 1.3:
+# "Nothing checks the Functions after a deploy"). check_live.py holds what a
+# deploy serves to what was built, and a deploy that broke the report box or
+# the follow sign-up would have been found by a reader. So once a deploy has
+# landed -- the preview's and production's alike, in upload_and_check, which
+# both deploy steps run -- functions_probe() asks each Function under
+# functions/ once, one a second, by GET alone, which none of them answers by
+# writing, sending or reading anything of a reader's: never a POST, never a
+# sign-up or a report. Each answer is judged by what a deployed Function says
+# to a GET, and, where it reads its binding before it answers, by whether the
+# binding is there:
+#
+#   /api/report              405 "POST only"; its database is read only on a
+#                            POST, so a GET cannot show it
+#   /api/follow/signup       405 as above, and /bounce; each only where
+#                            FOLLOW_DB is bound, a 404 of its own without it
+#   /api/follow/confirm      200 and its page; /manage and /unsubscribe the same
+#   /api/follow/count        200 and a number: FOLLOW_DB bound, its database answering
+#   /api/live/streams        200 and today's file, or its own 404: LIVE shows only
+#                            on a day the live Worker has written one, which at
+#                            the night's hour it often has not
+#   /api/live/votes/<today>  the same
+#
+# What each environment binds is read from wrangler.toml, which has owned the
+# project's configuration since 12 September: production and the previews
+# each bind DB, FOLLOW_DB and LIVE, so the same answers are expected of both;
+# a binding an environment lacks makes the Functions that need it expected to
+# answer their own 404. A path with no Function behind it gets the site's own
+# not-found page, in HTML: that is how a Function that did not deploy shows.
+# A failure is a warning for the morning -- on the run's page, and for the
+# preview in the night's standing warnings -- and never fails the deploy,
+# which has landed and stands. Production's is said on the run's page and
+# the publish job's log alone: that job's machine sends no state back.
+FUNCTION_PROBES = (
+    ("/api/report", "", "post"),
+    ("/api/follow/signup", "FOLLOW_DB", "post"),
+    ("/api/follow/bounce", "FOLLOW_DB", "post"),
+    ("/api/follow/confirm", "FOLLOW_DB", "page"),
+    ("/api/follow/manage", "FOLLOW_DB", "page"),
+    ("/api/follow/unsubscribe", "FOLLOW_DB", "page"),
+    ("/api/follow/count", "FOLLOW_DB", "count"),
+    ("/api/live/streams", "LIVE", "live"),
+    ("/api/live/votes/{day}", "LIVE", "live"),
+)
+FUNCTIONS_GAP = 1.0             # seconds between two Functions asked
+FUNCTIONS_TIMEOUT = 20
+FUNCTIONS_SEEN = {}             # the last probe this process made, for runner_deploy
+KIND_FUNCTIONS = KIND_HEALTH + "the site's Functions after a deploy"
+
+
+def wrangler_bindings(env_name, path="wrangler.toml"):
+    """The names of the D1 and R2 bindings wrangler.toml gives `env_name`
+    ("production" or "preview"), or None where the file will not read."""
+    import tomllib
+    try:
+        data = tomllib.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    env = (data.get("env") or {}).get(env_name) or {}
+    return {str(b.get("binding")) for k in ("d1_databases", "r2_buckets")
+            for b in env.get(k) or [] if isinstance(b, dict)}
+
+
+def ask_function(url, timeout=FUNCTIONS_TIMEOUT):
+    """One GET of `url`, and nothing else: (status or None, content type,
+    Allow, the first 4 KB of the body, the error where it could not be asked)."""
+    req = urllib.request.Request(url, headers={"User-Agent": "granite-record-selfcheck/1.0",
+                                               "Cache-Control": "no-cache"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return (r.status, r.headers.get("Content-Type") or "", r.headers.get("Allow") or "",
+                    r.read(4096).decode("utf-8", "replace"), "")
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read(4096).decode("utf-8", "replace")
+        except Exception:               # noqa: BLE001 -- the status is the answer
+            body = ""
+        return e.code, e.headers.get("Content-Type") or "", e.headers.get("Allow") or "", body, ""
+    except Exception as e:              # noqa: BLE001 -- unreadable is a finding
+        return None, "", "", "", f"{type(e).__name__}: {str(e)[:120]}"
+
+
+def judge_function(kind, bound, status, ctype, allow, body, error=""):
+    """(answered as deployed, what it said) for one Function's answer to a
+    GET (THE FUNCTIONS AFTER A DEPLOY): `kind` its row's, `bound` whether
+    the environment binds what it reads first."""
+    plain, html = ctype.startswith("text/plain"), ctype.startswith("text/html")
+    own_404 = status == 404 and plain and body.startswith("Not found")
+    if error:
+        return False, f"could not be asked ({error})"
+    if status == 404 and html:
+        return False, "the site's own not-found page answered: the Function is not deployed"
+    if not bound:
+        return (True, "its own 404, as its binding is not configured here") if own_404 else \
+            (False, f"answered {status}, where its binding is not configured and a 404 of its own was expected")
+    if kind == "post" and status == 405 and "POST" in allow:
+        return True, "refuses a GET (405), as it should"
+    if kind == "page" and status == 200 and html:
+        return True, "answers its page"
+    if kind == "count" and status == 200 and re.fullmatch(r"\d+\s*", body or "x"):
+        return True, "answers a count: its database is bound and answering"
+    if kind == "live" and status == 200 and ctype.startswith("application/json"):
+        return True, "answers today's file: its bucket is bound"
+    if kind == "live" and own_404:
+        return True, ("its own 404: nothing is written for today yet, so whether its bucket is "
+                      "bound is not shown")
+    if own_404:
+        return False, "answered a 404 of its own: its binding is missing from this deployment"
+    if status is not None and status >= 500:
+        return False, f"answered {status}: what it reads could not be read"
+    return False, f"answered {status} ({ctype or 'no type'}), not as a deployed Function does"
+
+
+def functions_probe(base, env_name, day=None, ask=None, wait=None):
+    """Each Function of FUNCTION_PROBES asked once at `base`, GET alone, one
+    a second, and judged (THE FUNCTIONS AFTER A DEPLOY): {"base", "env",
+    "at", "probes": [{"path", "status", "ok", "said"}], "failed", "line"}.
+    `ask` and `wait` stand in for ask_function and the pause in a check."""
+    ask, wait = ask or ask_function, wait or time.sleep
+    day = day or date.today().isoformat()
+    bound = wrangler_bindings(env_name)
+    probes = []
+    for i, (path, needs, kind) in enumerate(FUNCTION_PROBES):
+        if i:
+            wait(FUNCTIONS_GAP)
+        p = path.format(day=day)
+        status, ctype, allow, body, error = ask(base.rstrip("/") + p)
+        ok, said = judge_function(kind, bound is None or not needs or needs in bound,
+                                  status, ctype, allow, body, error)
+        probes.append({"path": p, "status": status, "ok": ok, "said": said})
+    bad = [x for x in probes if not x["ok"]]
+    line = (f"The site's {len(probes)} Functions answered as deployed at {base}." if not bad else
+            f"{len(bad)} of the site's {len(probes)} Functions did not answer as deployed at {base}: "
+            + "; ".join(f"{x['path']} {x['said']}" for x in bad) + ".")
+    return {"base": base, "env": env_name, "at": datetime.now().isoformat(timespec="seconds"),
+            "probes": probes, "failed": len(bad), "line": line,
+            **({} if bound is not None else {"bindings": "wrangler.toml could not be read"})}
+
+
+def functions_after(base, target):
+    """Ask the Functions of the deploy that just landed at `base`, say what
+    they answered in the log and on the run's page, and keep it in
+    FUNCTIONS_SEEN. Never raises: the deploy has landed and stands."""
+    FUNCTIONS_SEEN.clear()
+    try:
+        fx = functions_probe(base, "production" if target == PRODUCTION_BRANCH else "preview")
+    except Exception as e:              # noqa: BLE001 -- a probe never fails a deploy
+        say(f"\n  the site's Functions were not asked: {type(e).__name__}: {e}")
+        return
+    FUNCTIONS_SEEN.update(fx)
+    say(f"\n--- the site's Functions at {base} ---")
+    for x in fx["probes"]:
+        say(f"  {x['path']}: {x['said']}")
+    say(f"  {fx['line']}")
+    gh_summary([f"- {fx['line']}"])
+    if fx["failed"]:
+        gh_annotate("warning", "A Function did not answer as deployed",
+                    fx["line"][:300] + " The deploy stands.")
+
+
+def functions_warned(fx, where="the preview"):
+    """[(kind, sentence)]: the Functions of a deploy that did not answer as
+    deployed (THE FUNCTIONS AFTER A DEPLOY); [] for none, or no probe."""
+    if not isinstance(fx, dict) or not fx.get("failed"):
+        return []
+    bad = [x for x in fx.get("probes") or [] if isinstance(x, dict) and not x.get("ok")]
+    return [(KIND_FUNCTIONS,
+             f"After the deploy to {where} ({fx.get('base')}), {len(bad)} of the site's Functions "
+             "did not answer as deployed: " + "; ".join(f"{x.get('path')} {x.get('said')}" for x in bad)
+             + ". The deploy stands; Cloudflare's dashboard (Workers & Pages, graniterecord, the "
+             "deployment's Functions and its bindings) shows what is missing.")]
+
+
+def health_warned(v, private=False):
+    """[(kind, sentence)] of THE NIGHT'S OWN HEALTH that a verdict carries:
+    each a kind the gate never holds a night for. Read by Night.warned() for
+    the night's warnings, which the public page carries, and by warns_of()
+    with `private` for the standing ones, which only the verdict does."""
+    return (started_by_warned(v.get("started_by"))
+            + expiries_warned(v.get("expiries"), private=private)
+            + sources_warned(v.get("sources"))
+            + functions_warned((v.get("preview") if isinstance(v.get("preview"), dict) else {})
+                               .get("functions")))
+
+
 class Night:
     """What --runner records about one night, and what it decides from it."""
 
@@ -5440,6 +6270,12 @@ class Night:
                   "asked": {"fetch": not a.no_fetch, "dry_run": a.dry_run,
                             "new_term": a.new_term},
                   "built": False, "publishable": False, "clean": False}
+        # Who started the night: the timer, GitHub's schedule or a person
+        # (WHO STARTED THE NIGHT), and a warning where the schedule had to.
+        self.v["started_by"] = started_by_record()
+        # The private list of renewal dates, as state-down brought it (KNOWN
+        # EXPIRIES): each due within EXPIRY_DAYS, or past, warns.
+        self.v["expiries"] = expiries_record(started.date())
         # The gate's reasons from the build and from production (THE GATE),
         # filled in by judge; finish() adds the warnings' and writes "review".
         self.review_why = []
@@ -5452,6 +6288,9 @@ class Night:
         if not_main():
             self.v["off_main"] = not_main()
         prev = load_json(VERDICT)
+        # Last night's lines of its sources (ONE LINE PER SOURCE), whose day
+        # stands in where a source has no date of its own tonight.
+        self.prev_sources = prev.get("sources") if isinstance(prev, dict) else None
         # What the gate's fourth reason compares with (WARNING KINDS): the
         # kinds of the build production served when last read, and of the
         # newest build a night sent for production, and the kinds of the
@@ -5510,6 +6349,20 @@ class Night:
                if self.a.new_term else ""))
         if self.v.get("off_main"):
             say(f"  {off_main_line(self.v['off_main'])}")
+        say(f"  {self.v['started_by']['line']}")
+        exp = self.v.get("expiries") or {}
+        if exp.get("line"):
+            say(f"  {exp['line']}")
+        # The private list's own words go to the night's log alone, which is
+        # the bucket's (KNOWN EXPIRIES): GitHub's log is public.
+        for d in exp.get("due") or []:
+            say(f"    - {d['said']}", echo=False)
+        if exp.get("next"):
+            n = exp["next"]
+            say(f"    the next: {n['name']}, {day_said(date.fromisoformat(n['date']))} "
+                f"({_days(n['days'])})", echo=False)
+        if exp.get("undated"):
+            say(f"    no date recorded for: {'; '.join(exp['undated'])}", echo=False)
         say(f"  the refusal record is {refusal.MARK}; python {sys.version.split()[0]}")
 
     def baseline(self):
@@ -5858,6 +6711,9 @@ class Night:
         # What has stopped moving (WHEN THE RECORD STOPS MOVING), as finish()
         # worked it out into the verdict: of kinds that never hold the night.
         out += not_moving_of(self.v)
+        # What the night depends on going wrong (THE NIGHT'S OWN HEALTH), of
+        # kinds that never hold the night either.
+        out += health_warned(self.v)
         return out
 
     def alarms(self):
@@ -5902,6 +6758,16 @@ class Night:
         v[DB_MISSED] = db_missed_of(v.get(DB_MISSED), v, self.day)
         v["not_moving"] = [list(x) for x in not_moving(
             v, self.day, load_json(LIVE_STATE), laptop_run(), fetched=not self.a.no_fetch)]
+        # ONE LINE PER SOURCE: what each brought, when it last brought
+        # something new, and what stood in; and which has stood still too long.
+        # A line about the sources never stops the verdict being written.
+        try:
+            v["sources"] = sources_record(v, date.fromisoformat(self.day),
+                                          fetched=not self.a.no_fetch,
+                                          prev=getattr(self, "prev_sources", None))
+        except Exception as e:                                  # noqa: BLE001
+            v["sources"] = []
+            say(f"\n  the sources' lines could not be worked out: {type(e).__name__}: {e}")
         why = self.problems()
         alarms = self.alarms()
         warned = self.warned()
@@ -5961,6 +6827,10 @@ class Night:
         line = review_line(v, self.a.dry_run)
         if line:
             say(f"\nthe gate: {line}")
+        if v.get("sources"):
+            say("\nthe sources, one line each:")
+            for r in v["sources"]:
+                say(f"  {r['line']}")
         # "review" is true wherever the gate did not clear the night, a night
         # that did not build included: the safe side for anything that reads it.
         # "publishable" is false for a dry run whatever its build was (the
@@ -5981,6 +6851,13 @@ class Night:
                    + [f"- **error: {x}**" for x in alarms]
                    # The gate's line, under what leads the page.
                    + ([f"- {line}"] if line else [])
+                   # Who started the night (WHO STARTED THE NIGHT), under it,
+                   # and how many renewal dates are due (KNOWN EXPIRIES): the
+                   # list's own words stay off this public page.
+                   + ([f"- {v['started_by']['line']}"]
+                      if isinstance(v.get("started_by"), dict) else [])
+                   + ([f"- {v['expiries']['line']}"]
+                      if isinstance(v.get("expiries"), dict) and v["expiries"].get("line") else [])
                    + ([f"- the day's files arrived whole on try {tries}"]
                       if tries > 1 and v.get("fetch") == "installed" else [])
                    + tried_lines(v)
@@ -5994,7 +6871,9 @@ class Night:
                       if isinstance(v.get("document_files"), dict)
                       and v["document_files"].get("said") else [])
                    + [f"- {w}" for w in why[:8]]
-                   + [f"- warning: {w}" for w in v["warnings"]])
+                   + [f"- warning: {w}" for w in v["warnings"]]
+                   + ((["- the sources, one line each:"] + [f"  - {r['line']}" for r in v["sources"]])
+                      if v.get("sources") else []))
 
 
 def fit_record(v):
@@ -6123,7 +7002,8 @@ def runner_deploy(a):
         say("  " + keep_first_seen())
     if where == "preview":
         v["preview"] = {"at": datetime.now().isoformat(timespec="seconds"),
-                        "base": base, "landed": landed}
+                        "base": base, "landed": landed,
+                        **({"functions": dict(FUNCTIONS_SEEN)} if FUNCTIONS_SEEN else {})}
         write_json(vpath, v)
     log = Path("logs") / f"nightly-{v.get('day', '')}.log"
     if log.exists():
@@ -6135,7 +7015,9 @@ def runner_deploy(a):
 def upload_and_check(a, site, target, base):
     """wrangler to `target`, four attempts, then the live check, retried --
     except where it could not read a file to its end, which looking again
-    would not change."""
+    would not change. A deploy that lands has its Functions asked
+    (functions_after), which never changes what this returns."""
+    FUNCTIONS_SEEN.clear()
     out = ""
     for attempt in range(1, 5):
         # The pinned wrangler, with the branch named: PREVIEW_BRANCH is a
@@ -6159,6 +7041,9 @@ def upload_and_check(a, site, target, base):
                  f"what {base} is serving (look {i} of {len(LIVE_WAITS)})")
         if rc == 0:
             say(f"\nLive at {base}")
+            # The site's Functions, asked once each (THE FUNCTIONS AFTER A
+            # DEPLOY): said, and kept for runner_deploy, never the answer.
+            functions_after(base, target)
             return True
         if rc == LIVE_NOT_CHECKED:
             # Looking again would read the same file and stop at the same byte.
@@ -6248,12 +7133,14 @@ def warns_of(v):
     """What warns and stands until a person acts, kept in the verdict
     (standing_warnings) for the morning triage: a night waiting for
     approval; the checks of tonight's build against the record that failed,
-    the reminders among them; and each part of the record that has stopped
+    the reminders among them; each part of the record that has stopped
     moving (WHEN THE RECORD STOPS MOVING), the laptop's record of its caption
-    runs missing or old among them. [] for none. Only the first is emailed
+    runs missing or old among them; and what the night depends on going
+    wrong (THE NIGHT'S OWN HEALTH). [] for none. Only the first is emailed
     (approval_alerts, whose words it is)."""
     said = built_warn_alert(v.get("built_checks"))
-    return approval_alerts(v) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
+    return (approval_alerts(v) + ([said] if said else []) + [s for _kind, s in not_moving_of(v)]
+            + [s for _kind, s in health_warned(v, private=True)])
 
 
 def approval_alerts(v):
@@ -6362,6 +7249,12 @@ def close_verdict(a):
             for k in (KINDS_SERVED, KINDS_SENDABLE, KINDS_PUBLISHED, NEWEST_FIT, DB_MISSED):
                 if isinstance(older, dict) and isinstance(older.get(k), dict):
                     v[k] = older[k]
+            # ... and who started it (WHO STARTED THE NIGHT): a night the
+            # schedule had to start late is as late when it stops early.
+            v["started_by"] = started_by_record()
+            # ... and the private list of renewal dates (KNOWN EXPIRIES), which
+            # state-down brought before the step that stopped.
+            v["expiries"] = expiries_record(date.today())
         if a.dry_run:
             v["asked"] = {"dry_run": True}
             v["kept_apart"] = apart

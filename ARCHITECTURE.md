@@ -113,7 +113,13 @@ started on -- `main` on a schedule. The start is the night timer's
 (`workers/night-timer/`, a Cloudflare Worker that dispatches the workflow at
 08:17 UTC, since 23 October 2026, because GitHub's scheduler had begun
 starting the night hours late); GitHub's own cron stays as the fallback, and
-`workers/night-timer/README.md` says how its token is made and renewed. Its first job brings the small state
+`workers/night-timer/README.md` says how its token is made and renewed. The
+verdict says who started each night (`started_by`: the timer, the schedule or
+a person, from the workflow's `STARTED_BY` and its job `started`), and since 16
+November 2026 a night the schedule started more than 15 minutes after 08:17 --
+which it reaches only when it found no run of the timer's -- warns that the
+timer's token may have expired, naming that README (`nightly.started_by_warned`,
+of a kind the gate never holds a night for). Its first job brings the small state
 files and the kit down from R2 (`cloud.py state-down`, `cloud.py kit-down`),
 looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 `nightly.py --runner`: the day's bulk files from gc.nh.gov, asked only when no
@@ -328,6 +334,27 @@ recordings wait; and the laptop's own record of its caption runs, which each
 evenings old. That record also puts the laptop's latest refusal by YouTube,
 and its hold, in the verdict beside GitHub's machine's.
 
+**One line per source** (16 November 2026). Every source the night takes --
+the General Court's export, its database standing in for it, the database's
+study committees' meetings, current term's data and statutes, its web pages'
+bill requests and calendars and journals, YouTube, the captions inbox, the
+laptop's share in the kit, and production, read for the gate -- has one line
+in the verdict (`sources`), the night's log and the run's page: what it
+brought tonight or that it was not asked, when it last brought something
+new, and what stood in, where something did (`nightly.sources_record`). New
+tonight is a file whose bytes differ from the copy kit-down brought; else
+the day the kit's manifest gives it, since kit-up sends back only a changed
+file; two sources date themselves -- the study meetings by each row's entry
+time, the recordings by YouTube's `published_at` -- and the list of calendars
+and journals is new on a night it gains documents, the day carried in the
+verdict until the next. Those three warn only past the longest stillness the
+record shows for the season (`SOURCE_STILL`: 113 and 27 days, 17 and 51, and
+8 and 14 over each document's own date, session and interim, measured on
+this disk as `STILL_DAYS` was), the current term's data where the docket moved on for
+longer than `STILL_DAYS` and it did not move at all, and none on a night that
+did not fetch; the rest are left to the warnings that already watch them.
+Each is of a kind the gate never holds a night for.
+
 **The checks of the night's own build.** `preflight.py --code` runs before the
 night fetches or builds, so a check that reads a built site skips there, and
 the data checks never ran on GitHub's machine at all -- which is how the
@@ -357,7 +384,19 @@ term's index, the feed. Those show a sound build is served, and yesterday's
 would pass them all, so it also reads the served `/build.json`, which every
 build writes with the moment it finished and the night with its commit: one
 naming another build, or none, is a deploy that did not land, and the night
-looks again a few times before it says so.
+looks again a few times before it says so. And since 16 November 2026, once a
+deploy has landed, each Function under `functions/` is asked once, by GET
+alone and one a second, never a POST, a sign-up or a report
+(`nightly.functions_probe`, from `upload_and_check`, which both deploy steps
+run): the report box and the follow sign-up and bounce refuse a GET (405),
+confirm, manage and unsubscribe answer their pages, the count answers a
+number, and the two live Functions answer the day's file or their own 404. A
+follow Function answers 404 without `FOLLOW_DB`, and the count reads its
+database, so those show the binding too; what each environment binds is read
+from `wrangler.toml`, where production and the previews bind the same three.
+A path with no Function gets the site's own not-found page. A failure is a
+warning on the run's page and, for the preview, in the night's standing
+warnings (`preview.functions` in its verdict); it never fails the deploy.
 
 **The morning triage.** On the maintainer's laptop,
 `cloud.py pull --changes-only` brings down what the triage reads and nothing else: the
@@ -407,6 +446,25 @@ what readers typed -- are applied to every command. The small state the night
 must remember (`refused.json`, `census.json`, `first-seen.json`, the verdicts)
 lives under `state/`, so a refusal the night meets outlives its machine and
 stops the laptop's fetches too.
+
+**Renewal dates** (16 November 2026). One state file is the person's, not the
+night's: `state/expiries.json`, the private list of each token, certificate,
+domain and card that runs out or renews on a day, which `state-down` brings to
+`archive/expiries.json` with the rest and no machine writes. It is never in
+the repository. Its format is `{"format": 1, "expiries": [...]}`, each entry an
+object of `name` (what runs out, as the person calls it; required), `date`
+(`YYYY-MM-DD`, or `null` where no day is recorded, which the night lists and
+never warns of; required), `do` (what to do about it, one short sentence;
+required), `renews` (true where it renews itself, as the certificate does;
+default false) and `guess` (true where the date is a guess; default false);
+any other key is the person's and not read. Each dated entry warns from 30
+days before its day, and every night after until the file carries its next
+day (`nightly.expiries_record`, `EXPIRY_DAYS`): in full, with what to do, in
+the verdict's standing warnings and the night's own log, both in the private
+bucket; the run's page and GitHub's log, which are public, say only how many
+are due. No file is one quiet line on the page; a file or an entry that will
+not read is a warning. The warnings are of a kind the gate never holds a night
+for.
 
 **The build's cache (23 October 2026).** Two steps keep what they worked out
 in `.build_cache/` (`src/lib/build_cache.py`), and the kit carries it as the

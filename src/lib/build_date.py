@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-02.4
+# GRANITE_VERSION: 2026-10-02.5
 """
 The day a build says it was made, asked for in one place.
 
@@ -48,6 +48,7 @@ reader's own date in a citation where it can.
 """
 
 import datetime
+import functools
 import os
 
 from state_settings import TIMEZONE
@@ -73,6 +74,27 @@ def stated():
     return when
 
 
+@functools.cache
+def _zone():
+    """New Hampshire's zone, worked out once a process: the zone, or None
+    where the zone database is not installed.
+
+    ONCE, NOT PER CALL (16 November 2026). Where the database is missing --
+    Windows, the laptop's Python and GitHub's runner alike, neither of which
+    installs tzdata -- every ZoneInfo(TIMEZONE) fails only after searching
+    each folder on sys.path for it: 967 us a call against 0.76 for
+    datetime.date.today(), and every page asks through shell.cited(), so the
+    lookup cost the night 120 to 225 s from 11 November. The answer cannot
+    change within a process, so it is asked once; a zone that is found was
+    already kept by ZoneInfo's own cache.
+    """
+    try:
+        import zoneinfo
+        return zoneinfo.ZoneInfo(TIMEZONE)
+    except Exception:
+        return None
+
+
 def today():
     """The build's day, unless one is stated: the day in New Hampshire.
 
@@ -80,15 +102,18 @@ def today():
     in Concord, so datetime.date.today() there is a day ahead of the State
     House. Where the zone database is not installed (the laptop's Python on
     Windows, whose clock is Concord's already) the machine's own day stands.
+    The zone is looked up once a process (_zone), not on every call.
     """
     when = stated()
     if when:
         return when.date()
-    try:
-        import zoneinfo
-        return datetime.datetime.now(zoneinfo.ZoneInfo(TIMEZONE)).date()
-    except Exception:
-        return datetime.date.today()
+    zone = _zone()
+    if zone is not None:
+        try:
+            return datetime.datetime.now(zone).date()
+        except Exception:
+            pass
+    return datetime.date.today()
 
 
 def now():
