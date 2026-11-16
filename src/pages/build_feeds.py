@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.47
+# GRANITE_VERSION: 2026-09-04.48
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -42,6 +42,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import build_date
+import build_members_elect as BME
 import build_pages as BP
 import build_rsa as BR
 import components as C
@@ -252,6 +253,169 @@ def vote_guid(mid, v, q):
     return f"vote:{mid}:{v.get('b')}:{v.get('d')}:{q[:30]}"
 
 
+def member_entry(m, who, url):
+    """A sitting member's entry in the changes files' followable: the label,
+    their page, and the roster's own sort name and chamber (the person's test
+    of 16 October 2026: the manage page's list "sorted them by first name
+    instead of last name"). The label begins with the title and the first
+    name, so the page orders legislators by the roster's "aldrich, glen" and
+    sets the House and the Senate apart, as every listing of legislators on
+    the site does. Carried, not worked out again from the label: a surname of
+    two words, or a first name the roster gives in another form, would be
+    split wrongly."""
+    out = {"label": FC.line(m.get("display_full") or who, 120), "url": url}
+    if not out["url"]:
+        del out["url"]
+    if FC.line(m.get("sort") or "", 120):
+        out["sort"] = FC.line(m["sort"], 120)
+    if FC.CHAMBERS.get(str(m.get("chamber") or "").upper()):
+        out["chamber"] = FC.CHAMBERS[str(m["chamber"]).upper()]
+    return out
+
+
+# A MEMBER WHO SITS ON UNDER ANOTHER NUMBER (16 November 2026). The General
+# Court gives a member a new number when they move between the House and the
+# Senate (people.py), so the night its roster turns to a new term the key of a
+# representative elected to the Senate leaves the list, and their followers
+# would have been told "is no longer among the sitting legislators" -- from
+# Organization Day, 2 December 2026, Jim Creighton's (Senate district 8) and
+# Laura Telerski's (Senate district 13). The follow now moves to where they
+# sit, as a bill request's moves to its bill (follow_changes.ending,
+# "becomes").
+#
+# WHAT SAYS IT IS THE SAME PERSON, AND WHY NOT A NAME. On that night nothing
+# on disk joins the two numbers: member_links joins a new number to an old
+# one only once the new one has cast a roll call, and people.py's person
+# numbers and careers.json come from roll calls too, so the new senator is a
+# number with no votes until January. The members-elect file has the link,
+# and is gone by then (build_members_elect: it retires on Organization Day).
+# So while it is drawn, the ledger keeps, for each followed member it elects
+# to a seat other than their own, that seat and the name the results print
+# (elected_elsewhere; follow_changes' ledger "elected"); and the night the
+# member's key leaves the roster, the follow moves to whoever the General
+# Court's roster seats there (continuations), where
+#
+#   - the member-elect is this member by the members-elect file's own link,
+#     which it makes only on a certain match: the person's word in the hand
+#     file (Creighton, printed "Jim", is "James" on the roster), or the one
+#     sitting member of exactly that name, with no former member and no other
+#     candidate on the ballot answering to it (BME.moved; Telerski);
+#   - the seat's holder tonight answers to the winner's name by the test the
+#     members-elect file gives a seat's sitting member (BME.auto_link, rule
+#     1: the surname, and the first name or a short form of it; the same first
+#     name where two of the seat share the surname; suffixes agreeing);
+#   - that holder is new to the list tonight, and the only one; and no other
+#     member who left is taken to them.
+#
+# A namesake elsewhere is not in the seat, and one in it would have to be the
+# person the election sent there. Anything less moves nothing: the member is
+# told what any member who leaves is told, and the night says so.
+#
+# THE NEW KEY STAYS FOLLOWABLE. A new senator has no vote and no bill until
+# January, so shell.member_followable passes them over and they have no feed,
+# and a follow moved to a key the list does not carry would be ended the next
+# morning by the sender's fallback ("no longer among the sitting
+# legislators", again wrong). So a member a follow moves to is listed for
+# email from that night, and any member listed last night who still sits is
+# listed tonight (sticky), with nothing to send until their record has some.
+
+def plain_name(m):
+    """A member's name as a sentence says it, without the title: "James
+    Creighton" from the roster's "Sen. James Creighton"."""
+    s = re.sub(r"^(?:Rep|Sen)\.\s+", "", " ".join(str(m.get("display_plain") or "").split()))
+    return s or BME.reading_order(m.get("name"))
+
+
+def seat_words(m):
+    """Where a roster row sits, in the site's words for a seat ("Senate
+    District 8", "Hillsborough District 30": build_elections, officials_tabs)
+    set in a sentence: "the Senate for District 8", "the House for
+    Hillsborough District 30"; "" for a row with no seat."""
+    seat = BME.seat_of(m)
+    m_ = BME.KEY_RE.match(seat or "")
+    if not m_:
+        return ""
+    if m_.group(3):
+        return f"the Senate for District {m_.group(3)}"
+    return f"the House for {m_.group(1)} District {m_.group(2)}"
+
+
+def elected_elsewhere(doc, followable, roster):
+    """{member key: {"seat", "name", "term"}}: each followable member the
+    members-elect file (`doc`, BME.for_pages's) elects to a seat other than
+    the one the roster seats them in -- a sitting member, linked, and not
+    re-elected to their own seat -- with the race's key and the winner's name
+    as the results print it."""
+    out = {}
+    term = str((doc or {}).get("term") or "")
+    if not FC.TERM.match(term):
+        return out
+    seats = {f"member:{m.get('id')}": BME.seat_of(m) for m in roster or []}
+    for seat, r in sorted(((doc or {}).get("races") or {}).items()):
+        for e in (r or {}).get("elected") or []:
+            key, name = f"member:{e.get('id')}", FC.line(e.get("n") or "", 120)
+            if e.get("k") == "sitting" and e.get("id") and not e.get("own") and name \
+                    and key in followable and seats.get(key) != seat:
+                out[key] = {"seat": seat, "name": name, "term": term}
+    return out
+
+
+def remembered(led):
+    """The ledger's "elected", each entry as elected_elsewhere writes one;
+    anything else in it is passed over."""
+    out = {}
+    for k, v in ((led or {}).get("elected") or {}).items():
+        if FC.key_ok(k) and FC.kind_of_key(k) == "member" and isinstance(v, dict) \
+                and BME.KEY_RE.match(str(v.get("seat") or "")) \
+                and FC.line(v.get("name") or "", 120) and FC.TERM.match(str(v.get("term") or "")):
+            out[k] = {"seat": v["seat"], "name": FC.line(v["name"], 120), "term": v["term"]}
+    return out
+
+
+def continuations(gone, sitting, elected, before):
+    """({member key that left: the roster row they sit in now}, [lines for
+    the owner]): A MEMBER WHO SITS ON UNDER ANOTHER NUMBER, above.
+
+    gone     the member keys last night listed and tonight does not
+    sitting  tonight's roster rows, former members left out
+    elected  remembered(): where the members-elect file elected them
+    before  the keys last night listed; the seat's holder must be new to them"""
+    by_seat = {}
+    for m in sitting:
+        if BME.seat_of(m):
+            by_seat.setdefault(BME.seat_of(m), []).append(m)
+    found, said = {}, []
+    for x in sorted(gone):
+        e = elected.get(x)
+        if not e:
+            continue
+        rd, sfx = BME.readings(e["name"])
+        surs = {s for s, _f in rd}
+        holders = [(m, *BME.readings(m.get("name"))) for m in by_seat.get(e["seat"], [])]
+        here = [h for h in holders if surs & {s for s, _f in h[1]}]
+        test = BME.first_equal if len(here) > 1 else BME.seat_first
+        fits = [m for m, mrd, msfx in here
+                if BME.answers({"readings": mrd}, rd, test) and BME.suffixes_agree(msfx, sfx)
+                and f"member:{m.get('id')}" not in before]
+        where = BME.race_words(e["seat"])
+        if len(fits) == 1:
+            found[x] = fits[0]
+        elif not fits:
+            said.append(f"  WARNING: {x}, elected to {where} as {e['name']}, left the roster "
+                        "and nobody new there answers to that name: told they left. Check "
+                        "the roster's spelling of the seat's new member")
+        else:
+            said.append(f"  WARNING: {x}, elected to {where} as {e['name']}, left the roster "
+                        f"and {len(fits)} new members there answer to that name "
+                        f"({', '.join(str(m.get('id')) for m in fits)}): told they left")
+    claimed = Counter(str(m.get("id")) for m in found.values())
+    for x in sorted(x for x, m in found.items() if claimed[str(m.get("id"))] > 1):
+        said.append(f"  WARNING: {x} and another member who left would both move to "
+                    f"member:{found[x].get('id')}: neither moved, both told they left")
+        del found[x]
+    return found, said
+
+
 def clip(s, n=88):
     """Cut a title at a word boundary.
 
@@ -398,6 +562,10 @@ def main():
     def path_of(url):
         """A feed's link as the path on the site the changes files carry."""
         return url[len(base):] or "/" if url.startswith(base) else ""
+
+    def page_of(m):
+        """A roster row's own page, as the changes files carry it."""
+        return path_of(base + S.canon(f"/legislator/{m.get('slug')}.html")) if m.get("slug") else ""
 
     def fc_list(feed_items, *pools):
         """A feed's items, in its order, as follow_changes items: each found
@@ -934,9 +1102,10 @@ def main():
         rc_index = json.loads((site / "rollcalls_index.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         rc_index = {}
+    roster = json.loads(lp.read_text(encoding="utf-8")) if lp.exists() else []
     if lp.exists():
         (fd / "legislator").mkdir(parents=True, exist_ok=True)
-        for m in json.loads(lp.read_text(encoding="utf-8")):
+        for m in roster:
             mid = str(m.get("id") or "")
             # THE TEST THE MEMBER'S PAGE NAMES ITS FEED ON. build_legislator_pages
             # runs before this and has no file to look for, so both ask
@@ -1028,23 +1197,10 @@ def main():
                 if it:
                     mine[it["guid"]] = it
             key = f"member:{mid}"
-            followable[key] = {"label": FC.line(m.get("display_full") or who, 120),
-                               "url": path_of(base + S.canon(f"/legislator/{m.get('slug')}.html"))
-                               if m.get("slug") else ""}
-            if not followable[key]["url"]:
-                del followable[key]["url"]
-            # THE ROSTER'S OWN SORT NAME AND CHAMBER (the person's test of 16
-            # October 2026: the manage page's list "sorted them by first name
-            # instead of last name"). The label begins with the title and the
-            # first name, so the page orders legislators by the roster's
-            # "aldrich, glen" and sets the House and the Senate apart, as every
-            # listing of legislators on the site does. Carried, not worked out
-            # again from the label: a surname of two words, or a first name
-            # the roster gives in another form, would be split wrongly.
-            if FC.line(m.get("sort") or "", 120):
-                followable[key]["sort"] = FC.line(m["sort"], 120)
-            if FC.CHAMBERS.get(str(m.get("chamber") or "").upper()):
-                followable[key]["chamber"] = FC.CHAMBERS[str(m["chamber"]).upper()]
+            # THE ROSTER'S OWN SORT NAME AND CHAMBER, with the label and the
+            # page: member_entry, which a member listed for email alone takes
+            # too (A MEMBER WHO SITS ON UNDER ANOTHER NUMBER, below).
+            followable[key] = member_entry(m, who, page_of(m))
             lists[key] = fc_list(newest(items), mine)
             if not items:
                 # The roster counts a vote or a sponsorship that neither the
@@ -1068,6 +1224,50 @@ def main():
         pruned += n
         if note:
             notes.append(note)
+
+    # A MEMBER WHO SITS ON UNDER ANOTHER NUMBER (above continuations): a
+    # member listed last night who still sits stays listed; a member who left
+    # the roster and sits on under a new key is told where, and the new key
+    # is listed for their follow to move to; and where the members-elect file
+    # is drawn, the ledger is told whom it elects to another seat.
+    before = set((led or {}).get("followable") or {})
+    sitting = [m for m in roster if str(m.get("id") or "") and not m.get("former")]
+    moved_said = []
+    kept = []
+    for m in sitting:
+        key = f"member:{m['id']}"
+        if key in before and key not in followable:
+            followable[key] = member_entry(m, m.get("display") or m.get("name") or key,
+                                           page_of(m))
+            lists[key] = []
+            kept.append(key)
+    if kept:
+        moved_said.append(f"  {len(kept):,} sitting legislators listed last night with nothing on "
+                          f"record to feed are listed again, for email: {kept[:5]}")
+    gone = sorted(k for k in before if FC.kind_of_key(k) == "member" and k not in followable)
+    moves, doubts = continuations(gone, sitting, remembered(led), before)
+    for x, m in sorted(moves.items()):
+        y = f"member:{m['id']}"
+        if y not in followable:
+            followable[y] = member_entry(m, m.get("display") or m.get("name") or y, page_of(m))
+            lists[y] = []
+        hints[x] = {"becomes": y, "name": plain_name(m), "where": seat_words(m)}
+    if moves:
+        moved_said.append(f"  {len(moves):,} followed legislators sit on under a new number, "
+                          "and their follows move there: "
+                          + "; ".join(f"{x} -> member:{m['id']} ({seat_words(m)})"
+                                      for x, m in sorted(moves.items())))
+    moved_said += doubts
+    elect_doc = BME.for_pages(site)
+    if elect_doc:
+        elected = elected_elsewhere(elect_doc, followable, sitting)
+    else:
+        elected = {k: v for k, v in remembered(led).items()
+                   if k in followable and v["term"] >= current}
+    if elected:
+        moved_said.append(f"  {len(elected):,} followed legislators elected to another seat are "
+                          "remembered for the night the roster turns: "
+                          + ", ".join(f"{k} ({v['seat']})" for k, v in sorted(elected.items())))
 
     # BILL REQUESTS, FOLLOWED UNTIL THEY ARE BILLS (the person, 22 October
     # 2026: "email following for LSRs should ping when the legislation has
@@ -1120,7 +1320,8 @@ def main():
         lists.pop(k, None)
     changes_said = FC.write(site, built=BUILT, sitting_term=current, followable=followable,
                             lists=lists, upcoming=upcoming, hints=hints, led=led, why=led_why,
-                            ledger_out=a.ledger_out)
+                            ledger_out=a.ledger_out, elected=elected)
+    changes_said += moved_said
     if unkeyed:
         changes_said.append(f"  WARNING: {len(unkeyed):,} records are not followable because "
                             f"their key is not one the sender reads: {unkeyed[:5]}")

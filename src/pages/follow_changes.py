@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.12
+# GRANITE_VERSION: 2026-10-07.13
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -60,6 +60,11 @@ site/: a fresh clone must build the same site from the same inputs. It holds
                 (by the build that saw them) and the endings told in it
   carried       every guid each record's feed carried on any of the last
                 eight nights, by the last night that carried it
+  elected       only while there is one: each followed member the
+                members-elect file places in another seat for the coming
+                term, with the seat and the name the results print, kept
+                from the weeks the file is drawn to the night the roster
+                turns (A MEMBER WHO SITS ON UNDER ANOTHER NUMBER, below)
 
 Nothing else, so it stays bounded: a record's guid its feed has not carried
 for eight nights, and that no kept night files, is let go. The eight-night memory is
@@ -85,6 +90,20 @@ feed's closing item, or by the turn of its term; a member or committee as
 "left", or "term-ended" on the night the sitting term changes. A record that
 comes back -- a build that lost it, then found it -- has its ending taken
 back, so a night that was never published cannot end anyone's follow later.
+
+A MEMBER WHO SITS ON UNDER ANOTHER NUMBER (16 November 2026). The General
+Court gives a member a new number when they move between the House and the
+Senate, so the night its roster turns to the term a representative was
+elected to the Senate for, their key leaves the list and a new one comes,
+and their followers would have been told "is no longer among the sitting
+legislators".
+build_feeds now finds where such a member sits (its hints "becomes", "name"
+and "where"), and the ending says so -- "Jim Creighton now sits in the
+Senate for District 8.", how "moved" -- and names the new key, as a bill
+request's names its bill; the sender moves the follow there. The match is
+build_feeds' (continuations) and rests on the members-elect file, which is
+gone by that night: the ledger keeps what it said ("elected") for the night
+it is wanted. A member who truly leaves keeps the sentence above.
 
 THE TURN OF A TERM (nightly.py --new-term). The sitting term is the newest
 term the bill index holds, as the feeds take it. The night it changes, every
@@ -453,7 +472,8 @@ def becomes_ok(key, to):
 def ending(key, label, *, term_turned, old_term, hints):
     """The "ended" a record that left tonight is owed. `hints` is
     build_feeds' word on what it knows: a bill's closing item, a bill's
-    row, a committee's record."""
+    row, a committee's record, and where a member sits now under another
+    number ("becomes", "name", "where")."""
     kind, _, ref = key.partition(":")
     h = hints.get(key) or {}
     if kind == "lsr":
@@ -476,6 +496,16 @@ def ending(key, label, *, term_turned, old_term, hints):
         how = h.get("kind") if HOW.match(str(h.get("kind") or "")) else "done"
         return {"how": how, "summary": h.get("said") or f"{label} is no longer moving.",
                 "guid": f"{h.get('term') or old_term}:{ref.split('/')[-1]}:closed:{how}"}
+    if kind == "member" and h.get("becomes") and becomes_ok(key, h["becomes"]) \
+            and line(h.get("where"), 120):
+        # Where the roster seats them tonight, in its own words, and the key
+        # the sender moves the follow to. The follow's fate is the sender's
+        # to say (mail.js): an email from a sender that cannot move it says
+        # it ended, after this sentence, and both stay true.
+        return {"how": "moved", "becomes": h["becomes"],
+                "summary": f"{line(h.get('name') or label, 120)} now sits in "
+                           f"{line(h['where'], 120)}.",
+                "guid": f"{key}:ended:moved"}
     how = "term-ended" if term_turned else "left"
     if kind == "member":
         said = f"{label} is no longer among the sitting legislators."
@@ -486,9 +516,11 @@ def ending(key, label, *, term_turned, old_term, hints):
     return {"how": how, "summary": said, "guid": f"{key}:ended:{how}"}
 
 
-def decide(led, *, tonight, built, sitting_term, followable, lists, hints):
+def decide(led, *, tonight, built, sitting_term, followable, lists, hints, elected=None):
     """Tonight's ledger, from the last one (or None) and tonight's feeds.
-    Returns (ledger, new_by, counts)."""
+    `elected` is build_feeds' word on where followed members were elected to
+    sit next, which the ledger keeps for the night the roster turns (THE
+    LEDGER, above). Returns (ledger, new_by, counts)."""
     days = window(tonight)
     keep = set(days)
     # What a night may file: the items of a record followable tonight, or of
@@ -610,6 +642,8 @@ def decide(led, *, tonight, built, sitting_term, followable, lists, hints):
         "carried": {d: {k: sorted(gs) for k, gs in sorted(by_key.items())}
                     for d, by_key in sorted(by_day.items())},
     }
+    if elected:
+        ledger["elected"] = {k: dict(sorted(elected[k].items())) for k in sorted(elected)}
     counts["carried"] = len(carried)
     return ledger, new_by, counts
 
@@ -914,13 +948,14 @@ def dump(obj, compact=True):
 
 
 def write(site, *, built, sitting_term, followable, lists, upcoming, hints, led, why="",
-          ledger_out=CANDIDATE):
+          ledger_out=CANDIDATE, elected=None):
     """Decide what is new, write site/changes/ and the ledger this build
     leaves (`led` is load()'s, None where there is none, and `why` its
-    reason). Returns the lines to print."""
+    reason; `elected` as decide() takes it). Returns the lines to print."""
     tonight = built[:10]
     ledger, new_by, counts = decide(led, tonight=tonight, built=built, sitting_term=sitting_term,
-                                    followable=followable, lists=lists, hints=hints)
+                                    followable=followable, lists=lists, hints=hints,
+                                    elected=elected)
     out = Path(site) / FOLDER
     out.mkdir(parents=True, exist_ok=True)
     files = {"current.json": current_file(tonight, built, sitting_term, new_by, followable,

@@ -179,6 +179,12 @@ night, a dry run -- every run off `main` among them -- or a rejected switch
 changes nothing the next night reads.
 With no ledger it goes by the record's own dates for that night, and the
 verdict says so.
+The ledger also keeps, while the members-elect file is drawn, the seat each
+followed member was elected to other than their own, because the General
+Court gives a member who changes chamber a new number: the night the roster
+turns, `build_feeds.continuations` finds them in that seat and their follow
+moves to the new key, with an ending that says where they sit, rather than
+telling their followers they left.
 The second job deploys to production. It sits behind one of two GitHub
 environments, which the release gate below chooses between: `production`,
 which has no reviewer, for a night the gate clears, and `production-review`,
