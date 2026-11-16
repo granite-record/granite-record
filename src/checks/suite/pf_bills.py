@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -8857,6 +8857,39 @@ def _requests_party_and_topic():
                   "study or housing category, a labelled topic by its words, or Miscellaneous, with or without "
                   "a model; the model learns from every term's official code, the current term x3, and never "
                   "from an LSR filed under another bill or a nameless code; the same under two hash seeds")
+
+
+@check("build", "the request topic score says what the bills beneath its threshold would give: their accuracy by "
+                "margin band and the official topic of an identical earlier title, counted as the docstring says")
+def _request_topics_below_threshold():
+    """The matcher polish of 16 November 2026 measured whether anything the title gives could place the 178
+    Miscellaneous requests as well as the 314 are placed; nothing could, and request_topics.score() now prints
+    the evidence beside its table (below, same_title), so the claim in its docstring is a command's output.
+    Held on a fixture: a band counts only the answers inside it and under the threshold, a title the model
+    does not know is in none; the identical-title rule keeps the newest training bill of a title, compares in
+    the site's categories, and counts only bills beneath the threshold; and score() prints both."""
+    import inspect
+    import request_topics as RT
+    got = [(6.5, True), (5.5, True), (5.2, False), (4.1, False), (3.0, True), (0.5, False), (-1.0, True), (6.0, False)]
+    assert RT.below(got) == [(5, 6, 1, 2), (4, 5, 0, 1), (2, 4, 1, 1), (0, 2, 0, 1)], RT.below(got)
+    assert RT.below(got, threshold=5.0)[0] == (5, 5.0, 0, 0), "a band reached above the threshold"
+    rows = [("HB1", {"title": "relative to x.", "subject": "Elections"}),
+            ("HB2", {"title": "Relative to  X", "subject": "Taxes - State"}),
+            ("HB3", {"title": "relative to y", "subject": "Insurance"})]
+    test = [("HB9", {"title": "relative to x", "subject": "Taxes - State"}),
+            ("HB8", {"title": "relative to y.", "subject": "Insurance"}),
+            ("HB7", {"title": "relative to z", "subject": "Elections"})]
+    site = lambda s, rec: {"Taxes - State": "Taxes - State", "Insurance": "Insurance", "Elections": "Elections"}.get(s)
+    assert RT.same_title(rows, test, [(2.0, False), (7.0, True), (1.0, False)], site) == (1, 1), (
+        "the identical-title rule: the newest of a title, only beneath the threshold, in the site's categories")
+    assert RT.same_title(list(reversed(rows)), test, [(2.0, False), (7.0, True), (1.0, False)], site) == (0, 1), (
+        "the identical-title rule did not keep the last (newest) bill of a title")
+    src = inspect.getsource(RT.score)
+    assert "below(" in src and "same_title(" in src, "score() no longer prints what beneath the threshold would give"
+    assert "WHAT COULD PLACE THEM" in (RT.__doc__ or ""), "the docstring no longer records the measurement"
+    return "ok", ("margin bands beneath the threshold counted, an unknown title in none; the identical-title "
+                  "rule keeps the newest, counts only beneath the threshold, in the site's categories; score() "
+                  "prints both")
 
 
 @check("build", "the bug hunt of 11 November 2026: the sitting term rolls on Organization Day in the browser "
