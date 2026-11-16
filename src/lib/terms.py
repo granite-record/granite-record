@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.2
+# GRANITE_VERSION: 2026-11-11.3
 """
 A term: its key, the arithmetic of its years, and which one a build is of --
 in one place. A term is the General Court's two years, written "2025-2026";
@@ -73,8 +73,8 @@ without --allow-turn -- and hands it to every step as GRANITE_TERM. sitting()
 is that answer; a step run alone works it out itself, once a process.
 build_all.py records it in site/build.json beside what the day and the bill
 index say (differences() puts a difference in words, and it never stops a
-build). GRANITE_TERM is read here and nowhere else, as GRANITE_BUILD_DATE is
-read only in build_date.py; a value that is no term stops whatever reads it.
+build). GRANITE_TERM is read here and nowhere else, as the build's stated day
+is read only in build_date.py; a value that is no term stops whatever reads it.
 """
 
 import functools

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 The runner: what `python3 preflight.py` does with its checks.
 
@@ -145,6 +145,9 @@ RECORD_CHECKS = {
     # How long the night lets the record stand still, against the export's
     # finished dockets (18 October 2026): the record's history, never the site.
     "_still_days_from_history",
+    # The installed files' term against the built index and the day (16
+    # November 2026): build_all.py says such a difference and builds on.
+    "_sitting_term_on_record",
     # The request list's Sponsors column printing co-sponsors in a form not yet
     # seen (15 November 2026): the source's shape, said on the run's page.
     "_lsr_sponsor_names_are_names"}

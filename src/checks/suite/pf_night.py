@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -686,44 +686,41 @@ def _build_term_decided(BA, BC, T):
                   "before its first step and a dry run said so; no session file, no term")
 
 
-@check("data", "the build's one term agrees with every rule the code reads the sitting term by today -- "
-       "the installed files, the bill index's newest, the day with Organization Day -- on the fixture "
-       "and on the record here, or parts from them only as the turn does",
+def _sitting_index_rules(site, AR, BCV, CL, SR, BA):
+    """{rule: the term it reads as sitting} for the built site at `site`: each way the code reads
+    the sitting term off a bill index (_sitting_term_agrees, _sitting_term_on_record)."""
+    rows = SR.bill_index(site) or []
+    meta = (Path(site) / "meta.json").read_bytes()
+    return {"api_records.sitting_term": AR.sitting_term(rows),
+            "build_civics.sitting_term": BCV.sitting_term(rows),
+            "the newest term of the index's rows (build_bill_pages, build_feeds)":
+                max((r.get("term") or "" for r in rows), default=""),
+            "check_live.newest_term (meta.json's terms)": CL.newest_term(meta),
+            "build_all.index_terms (build.json's index_newest)": (BA.index_terms(site) or [""])[-1]}
+
+
+@check("build", "the build's one term agrees with every rule the code reads the sitting term by today -- "
+       "the installed files, the bill index's newest, the day with Organization Day -- on the fixture, "
+       "and parts from the day's at Organization Day as the turn",
        needs=("terms", "proceedings", "build_all", "api_records", "build_civics", "check_live",
-              "site_read", "build_date"))
-def _sitting_term_agrees(T, P, BA, AR, BCV, CL, SR, BD):
+              "site_read"))
+def _sitting_term_agrees(T, P, BA, AR, BCV, CL, SR):
     """THE ONE DECISION AGAINST THE THREE WAYS (terms.py, THE SITTING TERM). Until every caller
     asks terms.sitting(), the code reads the sitting term three ways: off the installed files
     (proceedings.session_term, 26 calls), as the newest term of the bill index (api_records'
     and build_civics' sitting_term, and the same max() written into build_bill_pages,
     build_feeds and the rest), from meta.json's terms (check_live.newest_term, build_live), and
     by date with Organization Day (proceedings.term_on; app.js's sittingTerm, which
-    _bug_hunt_terms_and_dates holds to it). Each is asked here of what it reads:
-
-      the fixture   its built site's index, against the six session files written beside a
-                    copy of it naming the fixture's two years, and the day of its newest
-                    history line, and Organization Day's eve and day of its last year;
-      the record    where the session files are here (the laptop): terms.decide against
-                    session_term, the built site's index by every rule above where a site/ is
-                    here, and today. On an ordinary night they are one term; around the turn
-                    they may part, but only as terms.differences calls the turn, and anything
-                    else fails here, naming which reading says what."""
-    def index_rules(site):
-        """{rule: the term it reads as sitting} for the built site at `site`."""
-        rows = SR.bill_index(site) or []
-        meta = (Path(site) / "meta.json").read_bytes()
-        return {"api_records.sitting_term": AR.sitting_term(rows),
-                "build_civics.sitting_term": BCV.sitting_term(rows),
-                "the newest term of the index's rows (build_bill_pages, build_feeds)":
-                    max((r.get("term") or "" for r in rows), default=""),
-                "check_live.newest_term (meta.json's terms)": CL.newest_term(meta),
-                "build_all.index_terms (build.json's index_newest)": (BA.index_terms(site) or [""])[-1]}
-
+    _bug_hunt_terms_and_dates holds to it). Each is asked here of the fixture: its built site's
+    index by every rule, against the six session files written beside a copy of it naming the
+    fixture's two years, the day of its newest history line, and Organization Day's eve and day
+    of its last year. The record's own readings are _sitting_term_on_record's, a data check, as
+    a data check builds no fixture."""
     import datetime as dt
 
     # THE FIXTURE.
     shared, _base, _ran, _days = _fixture_site_shared()
-    rules = index_rules(shared / "site")
+    rules = _sitting_index_rules(shared / "site", AR, BCV, CL, SR, BA)
     assert len(set(rules.values())) == 1 and T.is_key(rules["api_records.sitting_term"]), (
         f"the fixture's index rules part: {rules}")
     term = rules["api_records.sitting_term"]
@@ -748,21 +745,33 @@ def _sitting_term_agrees(T, P, BA, AR, BCV, CL, SR, BD):
             f"{T.key_on(days[-1]) if days else ''}, and the eve of Organization Day {T.key_on(eve)}")
     turn = T.differences(decided, T.key_on(org.isoformat()), term)
     assert len(turn) == 1 and "the turn" in turn[0] and "not the turn" not in turn[0], turn
-    said = (f"the fixture: its files, {len(rules)} index rules and the day of its newest history "
-            f"line all {term}, and Organization Day of {last} said as the turn")
+    return "ok", (f"on the fixture its files, {len(rules)} index rules and the day of its newest "
+                  f"history line all say {term}, and Organization Day of {last} is said as the turn")
 
-    # THE RECORD HERE.
+
+@check("data", "on the record here the installed files' term agrees with the built site's bill index by "
+       "every rule and with today, or parts from them only as the turn does",
+       needs=("terms", "proceedings", "build_all", "api_records", "build_civics", "check_live",
+              "site_read", "build_date"))
+def _sitting_term_on_record(T, P, BA, AR, BCV, CL, SR, BD):
+    """THE ONE DECISION ON THE RECORD (terms.py, THE SITTING TERM; _sitting_term_agrees holds
+    the same rules to each other on the fixture). Where the six session files are here -- the
+    laptop, and the night after its build -- terms.decide against proceedings.session_term, the
+    built site's bill index by every rule where a site/ is here, and today. On an ordinary night
+    they are one term; around the turn they may part, but only as terms.differences calls the
+    turn, and anything else fails here, naming which reading says what. A check against the
+    record, so on the night it warns and never holds (RECORD_CHECKS), as build_all.py says such a
+    difference and builds on."""
     if not any(Path(n).exists() for n in P.SESSION_FILES):
-        return "skip", (said + "; the record's own was not held: none of the six session files is "
-                        "here (a clone without data)")
+        return "skip", "none of the six session files is here (a clone without data)"
     decided = T.decide(".")
     assert decided == P.session_term(".") and T.is_key(decided), (
         f"terms.decide reads {decided!r} and proceedings.session_term {P.session_term('.')!r}")
     today = BD.today()
-    readings, index_newest = {"the day": T.key_on(today.isoformat())}, ""
+    readings, index_newest, rules = {"the day": T.key_on(today.isoformat())}, "", {}
     built = (Path("site") / "meta.json").exists()
     if built:
-        rules = index_rules("site")
+        rules = _sitting_index_rules("site", AR, BCV, CL, SR, BA)
         assert len(set(rules.values())) == 1, f"the index's rules part on site/: {rules}"
         index_newest = rules["api_records.sitting_term"]
         readings.update(rules)
@@ -770,7 +779,7 @@ def _sitting_term_agrees(T, P, BA, AR, BCV, CL, SR, BD):
     odd = [p for p in parted if "not the turn" in p]
     assert not odd, (f"the installed files say {decided}, and " + "; ".join(odd)
                      + f" (every reading: {readings})")
-    return "ok", (said + f"; the record here: the files say {decided}, and "
+    return "ok", (f"the files say {decided}, and "
                   + ("; ".join(parted) if parted else
                      f"the day ({today})" + (f" and {len(rules)} index rules on site/" if built else "")
                      + " agree")
