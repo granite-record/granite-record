@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -6178,6 +6178,201 @@ def _follow_lsr_endings(FC):
     told = out["nights"]["2026-12-10"]["ended"]["lsr:2027-0001"]
     assert told["becomes"] == "bill:2027/HB45" and counts["ended"] == 1, told
     return "ok", "drafted names its bill, withdrawn ends, and the night's file carries becomes"
+
+
+@check("build", "a followed legislator who sits on under another number is told where, and the "
+       "follow moves: a representative elected to the Senate, the night the roster turns; one "
+       "who left is told so; a namesake is not moved",
+       needs=("follow_changes", "build_feeds", "build_all"))
+def _follow_member_moves(FC, BF, BA):
+    """16 November 2026: the General Court gives a representative elected to
+    the Senate a new number, so the night its roster turns to the new term
+    their key leaves the list, and their followers were told "is no longer
+    among the sitting legislators" -- Jim Creighton (Senate district 8) and
+    Laura Telerski (13) on 2 December 2026. build_feeds.continuations finds
+    where such a member sits from what the members-elect file said, which the
+    ledger keeps because the file is gone by that night, and the roster's
+    holder of that seat answering to the winner's name -- never from a name
+    alone -- and follow_changes.ending says so, naming the new key
+    ("becomes"), which the sender moves the follow to (tests/follow/
+    moved.test.js, whose cases are run here by name).
+
+    The rules alone first, then three nights of the fixture site through
+    build_feeds as the night runs it:
+      20 November  the members-elect file elects Rep. Jodi Nelson (Rock 13) to
+                   the Senate's district 23, and the ledger remembers it
+      3 December   the roster has turned: Nelson sits in the Senate under a new
+                   number with no vote yet, Rep. Pat Example (Merrimack 9) has
+                   left, and a new Pat Example sits for Merrimack 12 and a new
+                   Jodi Nelson for Rockingham 5. Nelson's followers are told
+                   where she sits and their follow goes to the new key, which
+                   the list carries (with no feed, as her page names none);
+                   Example's are told what any member who leaves is told; no
+                   namesake is listed or moved
+      4 December   the new key is still listed, and nobody is told it ended
+    Every folder passes follow_changes.check() and check_changes.js."""
+    # The ending and the contract.
+    hint = {"becomes": "member:990103", "name": "Jodi Nelson",
+            "where": "the Senate for District 23"}
+    e = FC.ending("member:377204", "Rep. Jodi Nelson (R - Rock 13)", term_turned=True,
+                  old_term="2025-2026", hints={"member:377204": hint})
+    assert e == {"how": "moved", "becomes": "member:990103",
+                 "summary": "Jodi Nelson now sits in the Senate for District 23.",
+                 "guid": "member:377204:ended:moved"}, e
+    for bad in ({**hint, "becomes": "bill:2027/HB45"}, {**hint, "becomes": "member:377204"},
+                {**hint, "where": ""}):
+        got = FC.ending("member:377204", "Rep. Jodi Nelson (R - Rock 13)", term_turned=False,
+                        old_term="2025-2026", hints={"member:377204": bad})
+        assert "becomes" not in got and got["how"] == "left", (bad, got)
+    assert FC.becomes_ok("member:1", "member:2") and FC.becomes_ok("lsr:2027-0001", "bill:2027/HB45") \
+        and not FC.becomes_ok("member:1", "bill:2027/HB45") and not FC.becomes_ok("member:1", "member:1") \
+        and not FC.becomes_ok("committee:H90", "committee:H91") \
+        and not FC.becomes_ok("lsr:2027-0001", "member:2"), "the keys an ending may move a follow to"
+
+    def member(i, last, first, ch, district, county="", abbr="", party="R", votes=0):
+        hon, tag = ("Sen.", f"SD{district}") if ch == "S" else ("Rep.", f"{abbr} {district}")
+        plain = f"{hon} {first} {last}"
+        return {"id": str(i), "name": f"{last}, {first}", "chamber": ch, "party": party,
+                "county": county, "county_abbr": abbr, "district": str(district),
+                "display_plain": plain, "display": f"{plain} ({party})",
+                "display_full": f"{plain} ({party} - {tag})", "district_label": tag,
+                "sort": f"{last}, {first}".lower(), "n_votes": votes, "n_sponsored": 0,
+                "slug": (f"{first}-{last}-" + (f"sd-{district}" if ch == "S"
+                                               else f"{abbr}-{district}")).lower()}
+    new_nelson = member(990103, "Nelson", "Jodi", "S", 23, "Rockingham", "Rock")
+    namesakes = [member(990104, "Nelson", "Jodi", "H", 5, "Rockingham", "Rock"),
+                 member(990102, "Example", "Pat", "H", 12, "Merrimack", "Merr", "D")]
+    # The match, on rows: the seat and the name the members-elect file gave.
+    elected = BF.remembered({"elected": {
+        "member:377204": {"seat": "S|23", "name": "Jodi Nelson", "term": "2027-2028"},
+        "member:990009": {"seat": "S|99", "name": "Nobody", "term": "2027"}}})
+    assert list(elected) == ["member:377204"], elected
+    before = {"member:377204", "member:990002"}
+    found, said = BF.continuations(["member:377204", "member:990002"],
+                                   [new_nelson, *namesakes], elected, before)
+    assert {k: m["id"] for k, m in found.items()} == {"member:377204": "990103"} and not said, \
+        ("the move is not the seat's new holder alone, or a namesake was taken", found, said)
+    found, said = BF.continuations(["member:377204"], [member(990105, "Other", "Sam", "S", 23),
+                                                       *namesakes], elected, before)
+    assert not found and len(said) == 1 and "WARNING" in said[0], (
+        "the seat's new holder was taken though they do not answer to the name", found, said)
+    found, _ = BF.continuations(["member:377204"], [new_nelson], elected, before | {"member:990103"})
+    assert not found, "the seat's holder was taken though last night listed them already"
+    assert BF.seat_words(new_nelson) == "the Senate for District 23" and \
+        BF.seat_words(namesakes[1]) == "the House for Merrimack District 12" and \
+        BF.plain_name(new_nelson) == "Jodi Nelson", "where a member sits, in words"
+
+    # The feeds read tonight's members-elect file, so they run after its step.
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+    scripts = [s.args[0] for s in BA.plan(A())]
+    assert scripts.index("build_members_elect.py") < scripts.index("build_feeds.py"), (
+        "build_all runs build_feeds before the members-elect step, so the ledger would remember "
+        "the file a build before left")
+
+    absent = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if absent:
+        return "skip", "the rules hold; the fixture chain is not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-member-moves-"))
+    try:
+        _fixture_site_whole(root)
+        site, ch = root / "site", root / "site" / "changes"
+        roster = json.loads((site / "legislators.json").read_text(encoding="utf-8"))
+        nelson = next(m for m in roster if str(m.get("id")) == "377204")
+        assert nelson.get("chamber") == "H" and BF.S.member_followable(nelson), nelson
+        leaver = member(990002, "Example", "Pat", "H", 9, "Merrimack", "Merr", "D", votes=3)
+        (site / "legislators.json").write_text(json.dumps(roster + [leaver]), encoding="utf-8")
+        (site / BF.BME.OUT_NAME).write_text(json.dumps({
+            "election": "2026-11-03", "takes_office": "2026-12-02", "term": "2027-2028",
+            "sources": ["https://www.sos.nh.gov/2026-general-election-results"],
+            "races": {"S|23": {"seats": 1, "not_final": 0, "held": 0, "elected": [
+                          {"n": "Jodi Nelson", "p": "R", "k": "sitting", "id": "377204",
+                           "s": nelson.get("slug") or ""}]},
+                      "H|Merrimack|9": {"seats": 1, "not_final": 0, "held": 0, "elected": [
+                          {"n": "Lee Newcomer", "p": "D", "k": "new"}]}}}), encoding="utf-8")
+
+        def feeds(when):
+            r = _run([sys.executable, _paths.script("build_feeds.py"), "--site", "site"],
+                     cwd=root, capture_output=True, text=True, timeout=180,
+                     env={"GRANITE_BUILD_DATE": when, "PYTHONHASHSEED": "0"})
+            assert r.returncode == 0, (when, (r.stderr or r.stdout).strip()[-300:])
+            files = {p.name: json.loads(p.read_text(encoding="utf-8")) for p in ch.glob("*.json")}
+            probs = FC.check(ch) + (_changes_node(ch) or [])
+            assert not probs, (when, probs[:4])
+            nxt = root / "archive" / "first-seen.next.json"
+            led = json.loads(nxt.read_text(encoding="utf-8"))
+            os.replace(nxt, root / "archive" / "first-seen.json")
+            return r.stdout, files, led
+
+        said1, f1, led1 = feeds("2026-11-20T09:00:00")
+        assert {"member:377204", "member:990002"} <= set(f1["current.json"]["followable"]), \
+            sorted(f1["current.json"]["followable"])
+        assert led1.get("elected") == {"member:377204": {"name": "Jodi Nelson", "seat": "S|23",
+                                                         "term": "2027-2028"}}, (
+            "the ledger does not remember whom the members-elect file elects to another seat",
+            led1.get("elected"))
+        # The roster turns, and the members-elect file retires.
+        (site / BF.BME.OUT_NAME).unlink()
+        (site / "legislators.json").write_text(json.dumps(
+            [m for m in roster if str(m.get("id")) != "377204"] + [new_nelson, *namesakes]),
+            encoding="utf-8")
+        said3, f3, led3 = feeds("2026-12-03T09:00:00")
+        refs, cur = f3["2026-12-03.json"]["refs"], f3["current.json"]["followable"]
+        moved = (refs.get("member:377204") or {}).get("ended")
+        assert moved == {"how": "moved", "becomes": "member:990103",
+                         "summary": "Jodi Nelson now sits in the Senate for District 23.",
+                         "date": "2026-12-03", "guid": "member:377204:ended:moved"}, (
+            "the representative elected to the Senate was not told where she sits, with her "
+            "new key", moved)
+        left = (refs.get("member:990002") or {}).get("ended")
+        assert left == {"how": "left", "date": "2026-12-03", "guid": "member:990002:ended:left",
+                        "summary": "Rep. Pat Example (D - Merr 9) is no longer among the sitting "
+                                   "legislators."}, ("the member who left was not told so", left)
+        assert cur.get("member:990103") == {
+            "label": "Sen. Jodi Nelson (R - SD23)", "url": "/legislator/jodi-nelson-sd-23",
+            "sort": "nelson, jodi", "chamber": "Senate"}, (
+            "the new key the follow moves to is not listed for email", cur.get("member:990103"))
+        assert "member:990104" not in cur and "member:990102" not in cur and \
+            not any(k in refs for k in ("member:990104", "member:990102")), \
+            "a namesake was listed or told something"
+        assert not (site / "feed" / "legislator" / "990103.xml").exists(), \
+            "a member with no vote or bill got a feed their page does not name"
+        assert FC.ended_owed(f1["current.json"], f3["current.json"], f3["2026-12-03.json"]) == []
+        assert "elected" not in led3, ("the ledger kept a member-elect it has used", led3.get("elected"))
+        assert "member:377204 -> member:990103 (the Senate for District 23)" in said3, said3[-600:]
+        said4, f4, _ = feeds("2026-12-04T09:00:00")
+        assert "member:990103" in f4["current.json"]["followable"] and not any(
+            (f.get("refs", {}).get("member:990103") or {}).get("ended") for f in f4.values()), (
+            "the key a follow moved to was not listed the next night, or was told it ended")
+        assert FC.ended_owed(f3["current.json"], f4["current.json"], f4["2026-12-04.json"]) == []
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (node and Path("tests/follow/index.js").is_file()):
+        return "skip", ("the rules and three fixture nights hold; node or tests/follow/ is not "
+                        "here, so the sender's moving of the follow did not run")
+    cases = ("a legislator's ending names their new key, and only a member's key, not their own",
+             "the moved legislator's follower is told where they sit, the follow moves, and the "
+             "address stays",
+             "a legislator who left is told so and that follow ends; one already following the "
+             "new key keeps one")
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              "--test-name-pattern=" + "|".join(cases), "tests/follow/index.js"],
+             capture_output=True, text=True)
+    out = r.stdout + r.stderr
+    passed = [c for c in cases
+              if re.search(rf"^ok \d+ - [^\n]*{re.escape(c)}(?![^\n]*# SKIP)", out, re.M)]
+    assert r.returncode == 0 and len(passed) == len(cases), (
+        "tests/follow/ no longer passes the moved legislator's cases "
+        + ", ".join(repr(c) for c in cases if c not in passed) + ": " + out.strip()[-400:])
+    return "ok", ("Rep. Jodi Nelson, elected to the Senate, told \"Jodi Nelson now sits in the "
+                  "Senate for District 23.\" with her new key, listed for email the night the "
+                  "roster turns and the next; the member who left told so; two namesakes not "
+                  f"moved; the rules on rows; the sender's {len(cases)} cases pass")
 
 
 @check("frontend", "an email takes the site's colours, testimony forms, study words and mark from "
