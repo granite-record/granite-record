@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.938
+# GRANITE_VERSION: 2026-09-04.939
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -96613,7 +96613,7 @@ def _night_started_by(NI):
         f"{cron.group(0).strip() if cron else 'is not read'}")
     worker = Path("workers/night-timer/wrangler.toml")
     if worker.is_file():
-        assert f'crons = ["{cron.group(1)} {cron.group(2)} * * *"]' in worker.read_text(encoding="utf-8"), (
+        assert f'crons = ["{cron.group(1)} {cron.group(2)} * * *"]' in _source(worker), (
             "the night timer's cron is not the workflow's, which nightly.TIMER_UTC is")
 
     keys = (NI.STARTED_BY_ENV, NI.STARTED_AT_ENV, NI.STARTED_LOOKED_ENV, "GITHUB_RUN_ATTEMPT")
