@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.940
+# GRANITE_VERSION: 2026-09-04.941
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -24611,10 +24611,16 @@ try {
   const once = rows.filter(b => b.last_action && rows.filter(x => x.last_action === b.last_action).length === 1);
   out.recent = ids("recent", once); out.oldest = ids("oldest", once);
   out.recentAll = ids("recent", rows); out.oldestAll = ids("oldest", rows);
+  // The two ways by number (the owner, 16 November 2026).
+  out.num = ids("num", rows); out.numdesc = ids("numdesc", rows);
   // ?sort=oldest read from an address, and written into one.
   s.unsort(); s.setTerm("all"); s.setQuery("");
   s.filtersFromAddress(new URLSearchParams("sort=oldest&term=all"));
   out.read = s.getSort(); replaced.length = 0; s.addressList(); out.written = replaced.slice(-1)[0] || "";
+  // ...and ?sort=numdesc.
+  s.unsort(); s.setTerm("all"); s.setQuery("");
+  s.filtersFromAddress(new URLSearchParams("sort=numdesc&term=all"));
+  out.readDesc = s.getSort(); replaced.length = 0; s.addressList(); out.writtenDesc = replaced.slice(-1)[0] || "";
   // The requests' note.
   s.unsort(); s.setMeta(Object.assign({}, go.meta, {requests: go.requests})); s.setTerm(go.requests.term);
   s.setQuery(""); s.render(); out.note = document.querySelector("#summary").innerHTML;
@@ -24890,10 +24896,33 @@ def _search_polish(BP):
                    f"by number ({got['numHeads']})")
     if got["read"] != ["oldest", True] or "sort=oldest" not in got["written"]:
         bad.append(f"?sort=oldest is read as {got['read']} and written as {got['written']!r}")
+    # BILL NUMBER, HIGH TO LOW (the owner, 16 November 2026): the kinds in low
+    # to high's order, each kind's numbers the other way, and within a number
+    # the newer term first in both.
+    def kinds_runs(keys):
+        out_, last = [], None
+        for k in keys:
+            kind = re.match(r"[A-Z]+", k.split("/")[1]).group(0)
+            if kind != last:
+                out_.append((kind, []))
+                last = kind
+            out_[-1][1].append(k)
+        return out_
+    up, down = kinds_runs(got["num"]), kinds_runs(got["numdesc"])
+    nums = lambda run: [int(re.search(r"\d+", k.split("/")[1]).group(0)) for k in run]
+    if [k for k, _ in up] != [k for k, _ in down] or len(up) < 2:
+        bad.append(f"high to low does not keep the kinds in low to high's order: {got['numdesc']}")
+    for (kind, ru), (_, rd) in zip(up, down):
+        if sorted(ru) != sorted(rd) or nums(rd) != sorted(nums(rd), reverse=True) \
+                or nums(ru) != sorted(nums(ru)):
+            bad.append(f"{kind} runs {ru} low to high and {rd} high to low")
+    if got["readDesc"] != ["numdesc", True] or "sort=numdesc" not in got["writtenDesc"]:
+        bad.append(f"?sort=numdesc is read as {got['readDesc']} and written as {got['writtenDesc']!r}")
     html_ = _source("src/pages/bills.html")
     opts = re.findall(r'<option value="(\w+)"[^>]*>([^<]*)</option>',
                       html_[html_.index('<select id="sort">'):html_.index("</select>", html_.index('<select id="sort">'))])
-    if opts != [("best", "Best match"), ("num", "Bill number"), ("recent", "Newest action"),
+    if opts != [("best", "Best match"), ("num", "Bill number, low to high"),
+                ("numdesc", "Bill number, high to low"), ("recent", "Newest action"),
                 ("oldest", "Oldest action"), ("status", "Status")]:
         bad.append(f"the Sort offers {opts}")
     # 2 and 3. The panel, /search and Return.
@@ -59744,6 +59773,121 @@ def _status_and_type_filters():
                   "together; Sort by status heads with the categories; an earlier term offers "
                   "only the two its bills are in, and a ticked one at none; All Terms, the "
                   "requests and an address each get what is theirs")
+
+
+# A card opened far down the list, pressed as a reader presses its title: the
+# page's own click listeners are kept (the stub drops document's), and a
+# title is a target whose closest(".card .ctitle") is the card's head.
+_CARD_KEEPS_PLACE_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+const FIX = JSON.parse(fs.readFileSync("./fixture.json", "utf8"));
+globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathname);
+  if (!(p in FIX)) return { ok: false, status: 404, statusText: "Not Found", text: async () => "",
+                            json: async () => { throw new Error("404"); } };
+  return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(FIX[p])) }; };
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+const L = {};
+document.addEventListener = (t, f) => { (L[t] = L[t] || []).push(f); };
+location.search = process.argv[2] || "";
+const box = document.querySelector("#q"); box.disabled = true;
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({render, sel, getShown: () => SHOWN, setQuery: (q) => { query = q; },"
+  + " isOpen: (id) => openCards.has(id), more: () => { SHOWN += PAGE_SIZE; render(true); }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const $ = (q) => document.querySelector(q);
+const cards = () => [...$("#results").innerHTML.matchAll(/<article class="card[^"]*" data-id="([^"]+)"/g)]
+  .map(m => m[1]);
+const press = (id) => {
+  const card = {dataset: {id}, querySelector: () => null, closest: () => null};
+  const head = {closest: (q) => q === ".card" ? card : null};
+  const target = {closest: (q) => q === ".card .ctitle" ? head : null, dataset: {}, tagName: "SPAN"};
+  for (const f of (L.click || [])) {
+    try { f({target, button: 0, preventDefault() {}, stopPropagation() {}}); } catch (_) {}
+  }
+};
+const look = () => ({n: cards().length, shown: s.getShown()});
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) { console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const out = {};
+  const ys = $("#year");
+  const term = async (t) => { ys.value = t; ys.fire("change"); await ticks(40); };
+  try {
+    for (const [name, t] of [["bills", "2025-2026"], ["requests", "2027-requests"]]) {
+      await term(t);
+      Object.values(s.sel).forEach(x => x.clear()); s.setQuery(""); s.render();
+      const o = {first: look()};
+      s.more(); s.more();
+      o.drawn = look();
+      const ids = cards(), id = ids[39];
+      o.id = id;
+      press(id); await ticks(20);
+      o.opened = Object.assign(look(), {open: s.isOpen(id), there: cards().includes(id)});
+      press(id); await ticks(20);
+      o.closed = Object.assign(look(), {open: s.isOpen(id), there: cards().includes(id)});
+      s.render(); o.redrawn = look();
+      s.setQuery(t === "2027-requests" ? "2027-0001" : "HB 1"); s.render(); o.searched = look();
+      s.setQuery(""); s.render(); o.cleared = look();
+      out[name] = o;
+    }
+  } catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
+  process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "a card opened or closed far down the bill search keeps the list where it was: "
+                   "the cards drawn stay drawn and the page does not jump back to the first "
+                   "twenty-five; a new search still starts at them")
+def _card_open_keeps_the_list():
+    """The owner, 16 November 2026, on the live site: opening a request card
+    flashed the footer, and opening one further down "will jump back to
+    LSR-0025". Every redraw went through render() with no argument, which set
+    the list back to its first page (PAGE_SIZE, 25 since 25 October), so the
+    card opened at the fortieth place left the list, the page shrank under the
+    reader for a frame (the footer), and the scroll was clamped to the last
+    card of the first page. render() now takes the first page again only for
+    a list that is not the one it last drew. Run in node over the search
+    fixture made long (sixty more laws and sixty requests): seventy-five cards
+    drawn, the fortieth pressed open and pressed shut, for the term's bills
+    and for the requests -- the seventy-five stay, the card stays among them
+    and opens and shuts; a plain redraw keeps them too; a search starts at
+    twenty-five, and so does clearing it."""
+    fx = _search_groups_fixture(passed=60)
+    req = fx["/idx/2027-requests.json"]
+    base = dict(req[0])
+    fx["/idx/2027-requests.json"] = [dict(base, id=f"LSR2027{i:04d}", n=f"LSR 2027-{i:04d}",
+                                          body="HB" if i % 2 else "SB")
+                                     for i in range(1, 61)]
+    got = _node_app(_CARD_KEEPS_PLACE_HARNESS, {"fixture.json": json.dumps(fx)})
+    if got is None:
+        return "skip", "app.js, dom_stub.js or node is not here"
+    assert "threw" not in got, f"the harness threw: {got['threw']}"
+    bad = []
+    for name in ("bills", "requests"):
+        o = got[name]
+        if o["first"]["n"] != 25 or o["drawn"]["n"] < 41:
+            bad.append(f"{name}: {o['first']['n']} cards at first and {o['drawn']['n']} after two "
+                       "pages more (the fixture is too short to open a card at the fortieth place)")
+            continue
+        n = o["drawn"]["n"]
+        if not (o["opened"]["open"] and o["opened"]["there"] and o["opened"]["n"] == n):
+            bad.append(f"{name}: opening {o['id']} at the fortieth place left {o['opened']['n']} of "
+                       f"{n} cards (open: {o['opened']['open']}, still listed: {o['opened']['there']})")
+        if o["closed"]["open"] or not o["closed"]["there"] or o["closed"]["n"] != n:
+            bad.append(f"{name}: closing {o['id']} left {o['closed']['n']} of {n} cards "
+                       f"(open: {o['closed']['open']}, still listed: {o['closed']['there']})")
+        if o["redrawn"]["n"] != n:
+            bad.append(f"{name}: a plain redraw left {o['redrawn']['n']} of {n} cards")
+        if o["searched"]["shown"] != 25 or o["cleared"]["shown"] != 25:
+            bad.append(f"{name}: a new search did not start again at the first page "
+                       f"(shown {o['searched']['shown']}, then {o['cleared']['shown']} cleared)")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{got['bills']['drawn']['n']} bills and {got['requests']['drawn']['n']} requests "
+                  "drawn; the fortieth of each opened and closed by its title with every card still "
+                  "drawn, a plain redraw keeping them, and a search and its clearing starting again at 25")
 
 
 @check("frontend", "sorted by Status, each heading's number is how many of the whole list are "

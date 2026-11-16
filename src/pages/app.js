@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.332
+// GRANITE_VERSION: 2026-09-07.333
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2900,6 +2900,12 @@ function sortRows(rows){
   const by={
     num:(a,b)=>{const x=billKey(a),y=billKey(b);
                 return x[0]-y[0] || x[1]-y[1] || newerTerm(a,b);},
+    // HIGH TO LOW (the owner, 16 November 2026: "work ascending or descending
+    // with bill numbers"): the kinds in the same order (House bills, then the
+    // Senate's, then the rest), the numbers inside each the other way, and in
+    // All Terms the newer term's first, as low to high has it.
+    numdesc:(a,b)=>{const x=billKey(a),y=billKey(b);
+                    return x[0]-y[0] || y[1]-x[1] || newerTerm(a,b);},
     recent:(a,b)=>(b.last_action||"").localeCompare(a.last_action||"")
                   || billKey(a)[1]-billKey(b)[1],
     // THE OTHER WAY IN TIME (Alice, 8 November 2026: "a sort option for
@@ -3003,7 +3009,7 @@ function filtersFromAddress(params){
    if(sel.party.size)openGroups.add("sponsor");
    {const r=rsaNorm(params.get("rsa")||"");if(r){sel.rsa.add(r);rsaText=r;}}
    const psort=params.get("sort");
-   if(psort&&["best","num","recent","oldest","status"].includes(psort)){
+   if(psort&&["best","num","numdesc","recent","oldest","status"].includes(psort)){
      sortBy=psort; sortChosen=true;
      const so=$("#sort"); if(so)so.value=psort;
    }
@@ -11831,6 +11837,8 @@ function openPage(kind,ref){
 // object declared above, and shadowing it emptied every legislator page.
 const PAGE_SIZE = 25;
 let SHOWN = PAGE_SIZE;
+// THE LIST THE LAST DRAW SHOWED, as its rows' keys in order (render, below).
+let SHOWN_OF = null;
 
 // A TOPIC LEFT ON WHERE THE LIST HAS NONE (the webinar, 11 November 2026: a
 // topic chosen on a past term hid every one of the 2027 bill requests, which
@@ -11849,9 +11857,17 @@ const topicNote=()=>TOPIC_NOTE&&TOPIC_NOTE.term===term&&!sel.topic.size
   ?` (the topic filter was removed: these ${termNoun()} have no topics yet)`:"";
 
 function render(more){
-  // Any change to the result set starts again at the first page. Every
-  // existing caller passes nothing, so only the observer extends.
-  if(!more)SHOWN=PAGE_SIZE;
+  // A CHANGE TO THE RESULT SET STARTS AGAIN AT THE FIRST PAGE, AND NOTHING
+  // ELSE DOES (the owner, 16 November 2026: opening a request card far down
+  // the list flashed the footer and jumped back to LSR 2027-0025). Opening or
+  // closing a card, a record arriving, a tab chosen inside a card: each
+  // redraws through here with no argument, and each used to set the list back
+  // to its first twenty-five, so the card opened forty cards down left the
+  // page, the page shrank under the reader, and the scroll was clamped to the
+  // last card of the first page. The first page is now taken again only where
+  // the rows themselves changed (a search, a filter, a term, an order), read
+  // where they are made, below; the observer's render(true) draws one page
+  // more, as before.
   // A BILL REQUEST'S NUMBER OPENS THE REQUESTS' LIST (the owner, 11 November
   // 2026): a request is no term's (inTermOf), so on any term a search for
   // "2027-0002" listed nothing and offered the list in a sentence under
@@ -11900,6 +11916,12 @@ function render(more){
   // each part in the order chosen (the person, 12 October 2026).
   const bySponsor=sel.sponsor.size>0&&!billNumbers(query);
   if(bySponsor)rows=rows.filter(primeChosen).concat(rows.filter(b=>!primeChosen(b)));
+  // THE FIRST PAGE AGAIN only for a list that is not the one last drawn
+  // (render's first words): its rows' keys, in their order, with the term,
+  // since one number names a bill in every term.
+  {const of=rows.map(b=>b.id+"@"+(b.year||b.term||"")).join(",");
+   if(!more&&of!==SHOWN_OF)SHOWN=PAGE_SIZE;
+   SHOWN_OF=of;}
   const spN=bySponsor?rows.filter(primeChosen).length:0;
   const inTerm=IDX.filter(inTermOf).length;
   // Say when a search matched on a synonym, so nobody wonders why a bill about
