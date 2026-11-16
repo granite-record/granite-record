@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.7
+# GRANITE_VERSION: 2026-11-08.8
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -64,16 +64,21 @@ is numbered. One that is already a sitting or former member's page, or that
 two new people share, is not written: the person stays unlinked and this
 says so. No suffix is invented.
 
-NUMBERED. From Organization Day, the night the roster carries the person --
-exactly one sitting member of the same chamber and district whose name folds
-to theirs -- no provisional page is written for them: their regular page is.
-Where its address is the provisional one, it simply replaces it. Where it is
-another, the provisional address goes in "moved", and build_pages writes a
-301 from it to the regular page for as long as these results are the newest.
-Before Organization Day nobody is numbered: the roster is still the old
-term's, and a sitting member of the same name and district is somebody else.
+NUMBERED. From Organization Day, and once the site's newest term is theirs
+(site/meta.json, the members-elect step's own sign that the roster is the new
+term's), the night the roster carries the person -- exactly one sitting
+member of their seat whom the members-elect step's rule for a seat's sitting
+member takes their name for (numbered_as) -- no provisional page is written
+for them: their regular page is. Where its address is the provisional one,
+it simply replaces it. Where it is another -- the General Court's "Roy,
+Carryl" for the ballot's "Carryl L. Roy" -- the provisional address goes in
+"moved", and build_pages writes a 301 from it to the regular page for as long
+as these results are the newest. Before then nobody is numbered: the roster
+is still the old term's, and a sitting member of the seat is somebody else.
 Who is new is the step's word or the owner's (a null match), so a person the
-step comes to call sitting once the roster has them is still followed.
+step comes to call sitting once the roster has them is still followed; and
+one the owner matches to their new number by hand is followed too, from the
+address their page had to the page of that number.
 
 ON ORGANIZATION DAY, 2 December 2026, the members-elect file and every block
 drawn from it retire, as the owner decided on 16 October; these pages do not
@@ -182,30 +187,37 @@ def first_last(name):
     return f"{first.strip()} {last.strip()}".strip() if sep else str(name or "").strip()
 
 
-def plain_name(name):
-    """('William Lawrence', {'jr'}): a name first-last without its Jr., Sr. or numeral, which
-    is returned beside it, however it was written ('Lawrence, William, Jr.' too)."""
-    s = BME.fold(BME.reading_order(name))
-    sfx = frozenset(x.lower() for x in BME.SUFFIX.findall(s))
-    return " ".join(BME.SUFFIX.sub("", s).replace(",", " ").split()), sfx
+def numbered_as(e_name, chamber, county, district, sitting, people=None):
+    """The one sitting member this person now is, or None: a member of their
+    seat whom the members-elect step's own rule for a seat's sitting member
+    takes their name for (build_members_elect.auto_link, its first rule) --
+    the same surname, and the same first name, a short form member_links.SHORT
+    lists or a first name of four letters or more the other begins with
+    (seat_first); the same first name where two members of the seat share the
+    surname; a Jr., Sr. or numeral on one side only passed over, two that
+    differ no match. So the General Court's "Roy, Carryl" is the ballot's
+    "Carryl L. Roy", and "Coker, Matthew" the ballot's "Matt Coker", as the step
+    links a re-elected member printed so; "Pete" is not "Peter" (one letter
+    more), as it is not there. `people` is BME.People over `sitting`, made
+    here where it is not given."""
+    d = str(district or "").strip()
+    if not d.isdigit():
+        return None
+    key = f"S|{int(d)}" if chamber == "S" else f"H|{BME.full_county(county)}|{int(d)}"
+    people = people or BME.People(sitting, [])
+    rd, sfx = BME.readings(e_name)
+    surs = {s for s, _f in rd}
+    seat = [p for p in people.by_seat.get(key, []) if surs & {s for s, _f in p["readings"]}]
+    fits = [p for p in seat if BME.answers(p, rd, BME.first_equal if len(seat) > 1 else BME.seat_first)]
+    if len(fits) != 1 or not BME.suffixes_agree(fits[0]["sfx"], sfx):
+        return None
+    return next((m for m in sitting if str(m.get("id")) == fits[0]["id"]), None)
 
 
-def numbered_as(e_name, chamber, county, district, sitting):
-    """The one sitting member this person now is, or None: same chamber, same
-    district (and county, for the House), and a name that folds to theirs."""
-    want, want_sfx = plain_name(e_name)
-    hits = []
-    for m in sitting:
-        if not (str(m.get("chamber", "")).upper()[:1] == chamber
-                and str(m.get("district", "")).lstrip("0") == str(district).lstrip("0")
-                and (chamber == "S" or str(m.get("county", "")).lower() == county.lower())):
-            continue
-        name, sfx = plain_name(m.get("name"))
-        # A Jr., Sr. or numeral on one side only is passed over, two that differ are
-        # not a match (BME.suffixes_agree, as the members-elect matching has it).
-        if name == want and BME.suffixes_agree(sfx, want_sfx):
-            hits.append(m)
-    return hits[0] if len(hits) == 1 else None
+def hand_ids(hand):
+    """{(race, name): id} the owner's hand file matches to a member's number."""
+    return {(race, name): str(v) for race, names in ((hand or {}).get("matches") or {}).items()
+            for name, v in (names or {}).items() if v is not None}
 
 
 def confirmed_new(hand):
@@ -215,9 +227,12 @@ def confirmed_new(hand):
             for name, v in (names or {}).items() if v is None}
 
 
-def pages(results, sitting, former, districts, hand, today, takes_office, moved=None):
+def pages(results, sitting, former, districts, hand, today, takes_office, moved=None,
+          roster_term=None):
     """(the pages, what to say, {old address: new address} for a person the
-    roster has numbered at another address).
+    roster has numbered at another address). `roster_term` is the site's
+    newest term (site/meta.json): nobody is numbered until it is the
+    results' own; None leaves it to the day alone.
 
     NEW is the step's own word ("k": "new") or the owner's (a null match):
     once the roster carries a person, the step's rule may call them sitting,
@@ -231,6 +246,12 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
     BME.apply_prior(races, (hand or {}).get("prior"))
     on_file, _ = BME.races_on_file(districts)
     sure = confirmed_new(hand)
+    # Numbered only once the roster is the new term's (the members-elect step's
+    # own sign, site/meta.json's newest term), and from Organization Day.
+    turned = roster_term is None or roster_term == results.get("term")
+    people = BME.People(sitting, [])
+    by_id = {str(m.get("id")): m for m in [*sitting, *former] if m.get("id")}
+    numbers = hand_ids(hand)
     # A member's page, and an old address that already answers with a 301
     # (generated/moved_addresses.json), are both taken.
     taken = {m.get("slug") for m in [*sitting, *former] if m.get("slug")}
@@ -239,14 +260,26 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
     for key in sorted(races, key=BME.race_order):
         for e in races[key].get("elected") or []:
             if e.get("k") != "new" and (key, e.get("n")) not in sure:
+                # NUMBERED BY THE OWNER'S HAND (a match to a number, once the
+                # General Court has given one): the address their provisional
+                # page had answers with a 301 to the page of that number, once
+                # they are numbered (as below), where the two differ and the
+                # address is nobody else's.
+                mid = numbers.get((key, e.get("n")))
+                if mid and today >= takes_office and turned and by_id.get(mid, {}).get("slug"):
+                    chamber, county, district = race_parts(key)
+                    old = slug_of(e.get("n"), chamber, county, district)
+                    to = by_id[mid]["slug"]
+                    if old != to and old not in taken:
+                        moves[f"/legislator/{old}"] = f"/legislator/{to}"
                 continue
             chamber, county, district = race_parts(key)
             slug = slug_of(e.get("n"), chamber, county, district)
             # The address this page was first published at, with a suffix set first
             # (jr-william-lawrence-belk-3): it answers with a 301 to wherever the person is.
             old = slug_of(e.get("n"), chamber, county, district, legacy=True)
-            now = (numbered_as(e.get("n"), chamber, county, district, sitting)
-                   if today >= takes_office else None)
+            now = (numbered_as(e.get("n"), chamber, county, district, sitting, people)
+                   if today >= takes_office and turned else None)
             if old != slug:
                 legacy[f"/legislator/{old}"] = (f"/legislator/{now['slug']}"
                                                 if now and now.get("slug") else
@@ -313,8 +346,13 @@ def main():
     districts = BME.load_json(site / "districts.json", "the district table")
     moved = json.loads(MOVED.read_text(encoding="utf-8")) if MOVED.is_file() else {}
     takes_office = proceedings.organization_day(election.year)
+    # The site's newest term: nobody is numbered until it is the results' own.
+    meta = BME.load_json(site / "meta.json", "the site's meta.json, which names its terms") \
+        if (site / "meta.json").exists() else {}
+    terms = meta.get("terms") if isinstance(meta, dict) else None
     got, said, moves = pages(results, sitting, former, districts, hand,
-                             today.isoformat(), takes_office.isoformat(), moved)
+                             today.isoformat(), takes_office.isoformat(), moved,
+                             roster_term=(terms or [None])[0] if isinstance(terms, list) else None)
     doc = {"election": results["election"], "takes_office": takes_office.isoformat(),
            "sources": [s.get("url") for s in results.get("_source") or [] if s.get("url")],
            "pages": got,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of members-elect and election results.
 
@@ -229,6 +229,89 @@ def _elect_suffix_address():
     return "ok", ("a member-elect's Jr. goes last in their address (william-lawrence-jr-belk-3); the "
                   "first address answers with a 301 to it, or to the regular page once numbered; "
                   "a suffix only one side has is passed over, two that differ do not match")
+
+
+@check("build", "a provisional page gives way when the General Court numbers its person, by the members-elect "
+                "step's own rule for a seat's sitting member, only once the site's newest term is theirs; "
+                "and a number the owner gives by hand keeps the 301")
+def _elect_numbered_by_seat_rule():
+    """The task of 16 November 2026: an address "that redirects or gives way when the General
+    Court numbers them". numbered_as asked for a name that folded to the roster's letter for letter,
+    and on the live roster of 16 November 2026 the ballot's name for 71 of 206 re-elected members
+    did not (55 by a middle initial alone: "David H. Watters", "Watters, David"), so a third of the
+    new members would have kept a second page beside their regular one. Held:
+
+    - numbered_as is the step's rule for a seat's sitting member (build_members_elect.auto_link's
+      first): "Roy, Carryl" is "Carryl L. Roy", "Coker, Matthew" is "Matt Coker"; "Pete" is not
+      "Peter"; of two members of one seat sharing a surname only the same first name; another seat's
+      member never;
+    - nobody is numbered until the site's newest term is the results' own, the roster then being
+      the new term's (on 2 December with the old roster the page stays); with no term given, the
+      day alone decides, as before;
+    - numbered at another address, the provisional one answers with a 301 to the regular page;
+    - a winner the owner matches by hand to their new number keeps that 301 too, once numbered,
+      where the two addresses differ and the old one is nobody else's."""
+    import build_elect_pages as EP
+    import build_members_elect as BME
+    roy = {"id": "380001", "name": "Roy, Carryl", "chamber": "S", "county": "", "district": "12",
+           "slug": "carryl-roy-sd-12"}
+    coker = {"id": "380002", "name": "Coker, Matthew", "chamber": "H", "county": "Hillsborough",
+             "district": "5", "slug": "matthew-coker-hills-5"}
+    pete = dict(coker, id="380003", name="Morency, Pete", slug="pete-morency-hills-5")
+    haley = {"id": "380004", "name": "Carreau, Haley", "chamber": "H", "county": "Rockingham",
+             "district": "13", "slug": "haley-carreau-rock-13"}
+    jamie = dict(haley, id="380005", name="Carreau, Jamie", slug="jamie-carreau-rock-13")
+    sitting = [roy, coker, pete, haley, jamie]
+    for args, want in ((("Carryl L. Roy", "S", "", "12"), "380001"),
+                       (("Matt Coker", "H", "Hillsborough", "5"), "380002"),
+                       (("Peter Morency", "H", "Hillsborough", "5"), None),
+                       (("Haley Carreau", "H", "Rockingham", "13"), "380004"),
+                       (("Hal Carreau", "H", "Rockingham", "13"), None),
+                       (("Carryl L. Roy", "S", "", "13"), None)):
+        got = (EP.numbered_as(*args, sitting) or {}).get("id")
+        assert got == want, f"numbered_as{args} is {got}, not {want}"
+    results = {"election": "2026-11-03", "term": "2027-2028", "races": {}}
+    districts = {"Nashua Ward 1": {"0": {"house": [], "senate": 12}}}
+    new = {"S|12": {"seats": 1, "not_final": 0, "held": 0,
+                    "elected": [{"n": "Carryl L. Roy", "p": "D", "k": "new"}]}}
+    null = {"matches": {"S|12": {"Carryl L. Roy": None}}}
+    moved = {"/legislator/carryl-l-roy-sd-12": "/legislator/carryl-roy-sd-12"}
+    real = BME.members_elect
+    try:
+        BME.members_elect = lambda *a, **k: (json.loads(json.dumps(new)), {})
+        runs = {label: EP.pages(results, [roy], [], districts, null, day, "2026-12-02", {},
+                                roster_term=term)
+                for label, day, term in (("old roster", "2026-12-10", "2025-2026"),
+                                         ("new roster", "2026-12-10", "2027-2028"),
+                                         ("no term", "2026-12-10", None),
+                                         ("before the day", "2026-11-20", "2027-2028"))}
+        # The owner's number, given by hand once the General Court has given one.
+        by_hand = {"matches": {"S|12": {"Carryl L. Roy": "380001"}}}
+        BME.members_elect = lambda *a, **k: ({"S|12": {"seats": 1, "not_final": 0, "held": 0, "elected": [
+            {"n": "Carryl L. Roy", "p": "D", "k": "sitting", "id": "380001", "s": "carryl-roy-sd-12"}]}}, {})
+        hand_new = EP.pages(results, [roy], [], districts, by_hand, "2026-12-10", "2026-12-02", {},
+                            roster_term="2027-2028")
+        hand_old = EP.pages(results, [roy], [], districts, by_hand, "2026-12-10", "2026-12-02", {},
+                            roster_term="2025-2026")
+    finally:
+        BME.members_elect = real
+    slugs = {k: [p["slug"] for p in v[0]] for k, v in runs.items()}
+    assert slugs["old roster"] == ["carryl-l-roy-sd-12"] and not runs["old roster"][2], (
+        f"numbered while the roster is still the old term's: {slugs['old roster']}, {runs['old roster'][2]}")
+    assert slugs["before the day"] == ["carryl-l-roy-sd-12"] and not runs["before the day"][2], (
+        "numbered before Organization Day")
+    for k in ("new roster", "no term"):
+        assert slugs[k] == [] and runs[k][2] == moved, (
+            f"with {k}, Carryl L. Roy is not numbered as Roy, Carryl at carryl-roy-sd-12: {slugs[k]}, "
+            f"{runs[k][2]}")
+    assert hand_new[2] == moved and not hand_new[0], (
+        f"a number the owner gave by hand loses the 301 from the provisional address: {hand_new[2]}")
+    assert not hand_old[2], f"a number given by hand moves an address before the roster is new: {hand_old[2]}"
+    return "ok", ("numbered by the step's own seat rule (a middle initial, a short form, the start of a "
+                  "first name; not one letter more, not a namesake's first name), only once the newest "
+                  "term is theirs; the provisional address answers with a 301, by the rule and by the "
+                  "owner's hand alike")
+
 
 
 # A NEW MEMBER-ELECT'S PAGE, FILLED IN (the owner, 16 November 2026: "members elect should have
