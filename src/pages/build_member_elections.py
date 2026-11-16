@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.3
+# GRANITE_VERSION: 2026-11-10.4
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -220,6 +220,32 @@ def result_of(cand, me, drawn):
     return "open" if me.get("not_final") else "lost"
 
 
+def race_row(election, key, race, me, cand, drawn, held):
+    """One row of the Elections tab, for candidate `cand` of race `key`: the
+    race as it was that year, the result in the elections page's own words
+    (result_of; `drawn` is whether members_elect draws them as a winner), the
+    votes, the seats, and -- where no winner of the race is held back
+    (`held`) -- the place among the candidates shown and, for a race of one
+    seat, the share of every vote cast. `me` is members_elect's answer for
+    the race. A member's tab draws it (app.js electionRow), and so does a new
+    member-elect's provisional page (build_elect_pages)."""
+    seats = race["seats"]
+    row = {"d": election, "k": key, "a": BE.race_id(key), "r": result_of(cand, me, drawn),
+           "v": cand["votes"], "s": seats}
+    if race.get("floterial"):
+        row["fl"] = 1
+    if race.get("recounted"):
+        row["rc"] = 1
+    if me.get("recount"):
+        row["rq"] = 1
+    if not held:
+        row["pl"], row["of"] = rank_of(race, cand, held)
+        counted = sum(x["votes"] for x in race["candidates"]) + int(race.get("scatter") or 0)
+        if seats == 1 and counted:
+            row["sh"] = round(100 * cand["votes"] / counted, 1)
+    return row
+
+
 def election_rows(election, results, races_me, hand, roster, people):
     """({member id: [row, ...]}, [report line, ...]) for one election."""
     rows, report = defaultdict(list), []
@@ -262,22 +288,7 @@ def election_rows(election, results, races_me, hand, roster, people):
                                        why or "no member of exactly that name; the name fits "
                                               "only loosely"))
                     continue
-            res = result_of(c, me, won is not None)
-            seats = race["seats"]
-            row = {"d": election, "k": key, "a": BE.race_id(key), "r": res, "v": c["votes"],
-                   "s": seats}
-            if race.get("floterial"):
-                row["fl"] = 1
-            if race.get("recounted"):
-                row["rc"] = 1
-            if me.get("recount"):
-                row["rq"] = 1
-            if not held:
-                row["pl"], row["of"] = rank_of(race, c, held)
-                counted = sum(x["votes"] for x in race["candidates"]) + int(race.get("scatter") or 0)
-                if seats == 1 and counted:
-                    row["sh"] = round(100 * c["votes"] / counted, 1)
-            rows[member["id"]].append(row)
+            rows[member["id"]].append(race_row(election, key, race, me, c, won is not None, held))
     return rows, report
 
 
