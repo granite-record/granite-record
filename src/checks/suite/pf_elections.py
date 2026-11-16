@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of members-elect and election results.
 
@@ -224,6 +224,118 @@ def _elect_suffix_address():
     return "ok", ("a member-elect's Jr. goes last in their address (william-lawrence-jr-belk-3); the "
                   "first address answers with a 301 to it, or to the regular page once numbered; "
                   "a suffix only one side has is passed over, two that differ do not match")
+
+
+# A NEW MEMBER-ELECT'S PAGE, FILLED IN (the owner, 16 November 2026: "members elect should have
+# pages that are labeled as such with whatever information that is possible to fill out like
+# district and whether they have filed any LSRs yet"). A made-up race of each kind the checks below
+# need: a House race of four seats with one not final and a recount asked for, two of its winners
+# new; a Senate race of one seat, recounted; and the results files they were read from.
+_ME_URL = "https://www.sos.nh.gov/2026-general-election-results"
+_ME_RESULTS = {"election": "2026-11-03", "term": "2027-2028", "_source": [
+    {"file": "records/sources/2026-ge-house-belknap.xlsx", "url": _ME_URL, "saved": "2026-11-05"},
+    {"file": "records/sources/2026-ge-house-carroll_1.xlsx", "url": _ME_URL, "saved": "2026-11-13"},
+    {"file": "records/sources/2026-ge-state-senate-14-16.xlsx", "url": _ME_URL, "saved": "2026-11-07"},
+    {"file": "records/sources/2026-ge-state-senate-17-18.xlsx", "url": _ME_URL, "saved": "2026-11-12"}],
+    "races": {
+        "H|Belknap|6": {"seats": 4, "floterial": False, "towns": ["Gilford"], "scatter": 3, "candidates": [
+            {"name": "Ann Ames", "party": "d", "votes": 3492, "write_in": False, "elected": True},
+            {"name": "Bob McLean", "party": "d", "votes": 3436, "write_in": False, "elected": True},
+            {"name": "Cy Dow", "party": "r", "votes": 3353, "write_in": False, "elected": True},
+            {"name": "Di Eck", "party": "d", "votes": 3283, "write_in": False, "elected": True},
+            {"name": "Ed Fay", "party": "r", "votes": 3259, "write_in": False, "elected": False}]},
+        "S|15": {"seats": 1, "floterial": False, "towns": ["Concord"], "scatter": 10, "recounted": True,
+                 "candidates": [
+                     {"name": "Gil Hart", "party": "d", "votes": 9000, "write_in": False, "elected": True},
+                     {"name": "Hal Ito", "party": "r", "votes": 6990, "write_in": False, "elected": False}]}}}
+# What build_members_elect.members_elect decides of them, stood in for: its own checks hold it.
+_ME_RACES = {
+    "H|Belknap|6": {"seats": 4, "not_final": 1, "held": 0, "recount": True, "elected": [
+        {"n": "Ann Ames", "p": "D", "k": "sitting", "id": "377001", "s": "ann-ames-belk-6", "own": True},
+        {"n": "Bob McLean", "p": "D", "k": "new"}, {"n": "Cy Dow", "p": "R", "k": "new"}]},
+    "S|15": {"seats": 1, "not_final": 0, "held": 0, "elected": [{"n": "Gil Hart", "p": "D", "k": "new"}]}}
+_ME_DISTRICTS = {"Gilford": {"0": {"house": [{"county": "Belknap", "district": 6, "seats": 4}],
+                                   "senate": 7}},
+                 "Concord": {"0": {"house": [], "senate": 15}}}
+
+
+@check("build", "the elections page links a new winner to their provisional page, on the race's card and "
+                "the election's map, only for the election the list is of; a member as before, and a "
+                "namesake in another race to none", needs=("build_elections", "build_members_elect"))
+def _elections_page_provisional(BE, BME):
+    """The owner, 16 November 2026: member-elect pages, linked wherever a member-elect's name is
+    printed. The elections page drew every new winner unlinked (Kurt Webber of Senate District 2,
+    and 169 others, on 16 November), where the Officials tab and the town pages link them. Held:
+    provisional() reads site/elect_pages.json under its own election; with_pages gives a new
+    winner of that election and race their page's "e" and nobody else -- not a sitting member,
+    not a new winner of the same name in another race; chip_slug links a member by id as before,
+    a new winner to "e", anyone else to nothing; and on the fixture's election, build_elections.py
+    links Pat Newell, new, on his race's card and the map's file, once a list names his page, and
+    not where the list is another election's."""
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        assert BE.provisional(site) == {}, "with no list, provisional reads one"
+        (site / "elect_pages.json").write_text("{", encoding="utf-8")
+        assert BE.provisional(site) == {}, "a list that will not read is read"
+        (site / "elect_pages.json").write_text(json.dumps({"election": "2026-11-03", "pages": [
+            {"slug": "bob-mclean-belk-6", "name": "Bob McLean", "race": "H|Belknap|6"}]}), encoding="utf-8")
+        pages = BE.provisional(site)
+    assert pages == {"2026-11-03": {("H|Belknap|6", "Bob McLean"): "bob-mclean-belk-6"}}, pages
+    races = json.loads(json.dumps(_ME_RACES))
+    races["H|Belknap|7"] = {"seats": 1, "not_final": 0, "held": 0, "elected": [
+        {"n": "Bob McLean", "p": "R", "k": "new"}]}
+    BE.with_pages(races, pages.get("2026-11-03"))
+    six = {e["n"]: e for e in races["H|Belknap|6"]["elected"]}
+    rows6 = BE.candidate_rows(_ME_RESULTS["races"]["H|Belknap|6"], six)
+    rows7 = BE.candidate_rows({"seats": 1, "candidates": [
+        {"name": "Bob McLean", "party": "r", "votes": 900, "write_in": False, "elected": True}]},
+        {e["n"]: e for e in races["H|Belknap|7"]["elected"]})
+    links6 = re.findall(r'href="legislator/([^"]+)"', rows6)
+    assert links6 == ["ann-ames-belk-6", "bob-mclean-belk-6"], (
+        f"Belknap 6's card links {links6}: the sitting member and the new winner with a page wanted, "
+        "and not Cy Dow, who has none")
+    assert "href=" not in rows7, "a new winner of the same name in another race is linked to a page"
+    base_map = {"layers": {"base": {"f": {"BE6": 1, "BE7": 1}}, "float": {"f": {}},
+                           "senate": {"f": {"15": 1}}}}
+    who = BE.map_doc(base_map, races, {})["who"]
+    assert [x.get("s") for x in who["base|BE6"]] == ["ann-ames-belk-6", "bob-mclean-belk-6", None] \
+        and [x.get("s") for x in who["base|BE7"]] == [None], (
+        f"the map's people link {who['base|BE6']} and {who['base|BE7']}")
+    assert BE.chip_slug({"n": "Odd", "k": "sitting", "e": "x"}) == "" \
+        and BE.chip_slug({"n": "Odd", "k": "former", "id": "1", "s": "odd-rock-1"}) == "odd-rock-1", (
+        "chip_slug links a member to a provisional page, or a former member to none")
+    # THE BUILD, on the fixture's election: Pat Newell, new, linked once a list names his page.
+    if _elect_absent():
+        return "skip", "not here: " + ", ".join(_elect_absent())
+    root = Path(tempfile.mkdtemp(prefix="el_prov_"))
+    try:
+        site = _elect_fixture(root)
+        if not (site / "district_map.json").exists():
+            return "skip", "the fixture's build wrote no district_map.json"
+        (root / "corrections").mkdir(exist_ok=True)
+        (root / "corrections" / "members_elect.json").write_text(json.dumps(_ELECT_HAND), encoding="utf-8")
+        got = {}
+        for election in ("2026-11-03", "2024-11-05"):
+            (site / "elect_pages.json").write_text(json.dumps({"election": election, "pages": [
+                {"slug": "pat-newell-rock-32", "name": "Pat Newell", "race": "H|Rockingham|32"}]}),
+                encoding="utf-8")
+            r = _run([sys.executable, _paths.script("build_elections.py"), "--site", "site"], cwd=root,
+                     capture_output=True, text=True, timeout=120, env={"GRANITE_BUILD_DATE": _ELECT_IN})
+            assert r.returncode == 0, f"build_elections.py failed: {r.stderr[-600:]}"
+            html = (site / "elections" / "2026-11-03-general.html").read_text(encoding="utf-8")
+            card = re.search(r'id="' + re.escape(BE.race_id("H|Rockingham|32")) + r'".*?</article>', html, re.S)
+            mp = json.loads((site / "elections" / "2026-11-03-map.json").read_text(encoding="utf-8"))
+            got[election] = ('href="legislator/pat-newell-rock-32"' in (card.group(0) if card else ""),
+                             [x.get("s") for v in mp["who"].values() for x in v if x["n"].startswith("Pat Newell")])
+        assert got["2026-11-03"] == (True, ["pat-newell-rock-32"]), (
+            f"with the list of his election, Pat Newell's card and map say {got['2026-11-03']}")
+        assert got["2024-11-05"] == (False, [None]), (
+            f"with a list of another election, Pat Newell is linked: {got['2024-11-05']}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("a new winner with a page is linked on the race's card and the map, a member as "
+                  "before, a namesake in another race and a winner with no page not at all; on the "
+                  "fixture, Pat Newell is linked by his election's list and not by another's")
 
 
 @check("build", "members-elect: earlier service is settled by hand in the person's file (\"none\", or "

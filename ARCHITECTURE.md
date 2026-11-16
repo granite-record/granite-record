@@ -2222,7 +2222,8 @@ Every new winner has a provisional page: `src/pages/build_elect_pages.py`
 writes `site/elect_pages.json` and `build_legislator_pages.py` draws the
 pages, which are noindex until the General Court numbers the person and
 outlive Organization Day. The Officials tab links each one, reading the same
-`e` entry the town pages read. Only a former member elected again is
+`e` entry the town pages read, and so does the elections page, on the race's
+card and its map (`build_elections.with_pages`). Only a former member elected again is
 re-headed: their own page is headed as a new member-elect's is, the
 member-elect of the new seat, with the earlier seat kept below. A sitting
 member elected to the other chamber keeps the heading of the seat they hold,

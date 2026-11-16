@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.6
+# GRANITE_VERSION: 2026-11-07.7
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -20,6 +20,8 @@ races, read by src/parse/parse_sos_results.py); the owner's
 corrections/members_elect.json, read and never written; the site data's
 site/legislators.json, site/former.json and site/districts.json;
 site/district_map.json, which build_district_map.py writes before this runs;
+site/elect_pages.json, where it is on disk, the new members-elect's
+provisional pages (build_elect_pages.py);
 and, for a ballot question, corrections/ballot_results.json (read, never
 written: the constitutional amendments), collected/ballot_questions.json
 (the other questions, read from the Secretary of State's spreadsheets by
@@ -40,6 +42,14 @@ enters has passed, or its count is a recount's; a race the owner marks not
 final reads "Result not final", with "a recount was requested" where she
 says so; a held winner is not shown; and a winner links to a member's page
 only where that function links them. Losers are shown by name and party.
+
+A NEW WINNER LINKS TO THEIR PROVISIONAL PAGE (the owner, 16 November 2026:
+member-elect pages, linked wherever a member-elect's name is printed): the
+page site/elect_pages.json lists for that election, race and name, which
+build_elect_pages.py writes and the Officials tab and the town pages already
+link ("e"). On the race's card and the election's map, and nowhere a member
+is linked: never another member's record, and none for an election the list
+is not of.
 
 NO NUMBER BUT THE SECRETARY OF STATE'S. Every count on the page is the
 collected file's. Where the reader noted that a file's printed total
@@ -142,6 +152,43 @@ def decided(results, sitting, former, districts, hand_path, today, settled=False
     races, report = BME.members_elect(results, sitting, former, districts, hand, today,
                                       settled, history)
     return races, report, hand
+
+
+def provisional(site):
+    """{election day: {(race key, name): slug}}: the new members-elect's
+    provisional pages, site/elect_pages.json's, under the election they are
+    of; {} where there is no list or it will not read."""
+    f = Path(site) / "elect_pages.json"
+    try:
+        doc = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
+    except ValueError:
+        return {}
+    if not isinstance(doc, dict) or not doc.get("election"):
+        return {}
+    return {doc["election"]: {(p.get("race"), p.get("name")): p["slug"]
+                              for p in doc.get("pages") or [] if p.get("slug")}}
+
+
+def with_pages(races_me, pages):
+    """Give each new winner of `races_me` that `pages` ({(race key, name):
+    slug}, provisional's for this election) names their page's "e", as
+    build_members_elect gives the members-elect file's: the chip on the
+    race's card and the map then links it (chip_slug)."""
+    for key, me in (races_me or {}).items():
+        for e in me.get("elected") or []:
+            if e.get("k") == "new" and (pages or {}).get((key, e.get("n"))):
+                e["e"] = pages[(key, e["n"])]
+    return races_me
+
+
+def chip_slug(e):
+    """The page a winner's chip links to: a member's, where members_elect
+    linked one by id; a new person's provisional page ("e"); else none."""
+    if not e:
+        return ""
+    if e.get("id") and e.get("s"):
+        return e["s"]
+    return (e.get("e") or "") if e.get("k") == "new" else ""
 
 
 def settled_in(items, election):
@@ -262,7 +309,7 @@ def candidate_rows(race, elected_names, held=frozenset()):
         tied = c.get("elected") is None
         chipm = {"party_code": p if len(p) == 1 else "X",
                  "display_full": f'{c["name"]} ({p})' if p else c["name"],
-                 "slug": won.get("s") if won and won.get("id") and won.get("s") else ""}
+                 "slug": chip_slug(won)}
         share = f' <span>&middot; {100 * c["votes"] / counted:.1f}%</span>' if one and counted else ""
         bar_cls = p[:1] if p[:1] in ("R", "D") else "X"
         out.append(
@@ -597,7 +644,7 @@ def map_doc(base_map, decided_races, places):
         # nominated them: never one party's colour alone.
         who[mk] = [{"n": f'{e["n"]} ({e["p"]})' if e.get("p") else e["n"],
                     "p": e["p"] if len(str(e.get("p") or "")) == 1 else "X",
-                    **({"s": e["s"]} if e.get("id") and e.get("s") else {})}
+                    **({"s": chip_slug(e)} if chip_slug(e) else {})}
                    for e in me.get("elected") or []]
         nominated[mk] = [x for e in me.get("elected") or [] for x in str(e.get("p") or "").split("/") if x]
     doc = {k: v for k, v in base_map.items() if k not in ("elect", "who", "fill")}
@@ -809,10 +856,12 @@ def build(site, base, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT
         shutil.rmtree(new)
     new.mkdir()
     made, urls, warn = [], [], []
+    pages = provisional(site)
     for election, _p, results in items:
         settled = settled_in(items, election)
         races_me, report, hand = decided(results, sitting, former, districts, hand_path, today,
                                          settled, history)
+        with_pages(races_me, pages.get(election))
         if not hand.get("recount_deadline") and not settled:
             warn.append(f"{election}: no recount_deadline in {Path(hand_path).as_posix()}, so every "
                         "race but a recounted one reads Result not final")
