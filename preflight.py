@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.942
+# GRANITE_VERSION: 2026-09-04.943
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -113363,6 +113363,250 @@ def _workflows_weekly_dry_run(NI, CL):
                   f"{len(WF_RUNS['weekly.yml'])} kinds of run read as GitHub reads them, every "
                   "run off main a dry run titled so; nightly.py and cloud.py read the ref "
                   "themselves")
+
+
+@check("workflows", "the night keeps its build's sha256 list for the weekly, a state file a dry run "
+       "never sends, and the weekly sets the night's folder aside before its fetches and builds it "
+       "cold after them, a failure of either never stopping the week", needs=("nightly", "cloud"))
+def _weekly_cold_build_wired(NI, CL):
+    """THE WEEKLY'S COLD BUILD (16 November 2026, the owner's word: "a weekly cold build compared
+    with the night's before any caching"; nightly.NIGHT_SITE says why). cloud_kit.json's state
+    list carries NIGHT_SITE, so state-up sends the night's and state-down brings it to the week,
+    and a dry run's state-up never sends it; Night.judge() keeps it only on a night that is
+    neither a dry run nor a New term run, whose kit is held; and keep_night_site() writes the
+    same bytes for the same build. In weekly.yml's one job: a step sets the folder aside
+    (--cold-aside) after kit-down and before the week's fetches, a step builds it (--cold-build,
+    the same folder) after kit-up and only where the aside succeeded, both carrying on past
+    their own failure inside their own time limits, and the verdict is told the cold step's
+    outcome (--cold) and nothing makes it a step of the week's own."""
+    import ast as _ast
+    import gzip as _gzip
+    kit = CL.load_kit(".")
+    have = [s for s in kit.get("state", []) if s.get("key") == "night-site.json.gz"]
+    assert have and have[0]["path"] == NI.NIGHT_SITE.as_posix(), (
+        f"{CL.KIT_FILE}'s state list does not carry {NI.NIGHT_SITE.as_posix()}: {have}")
+    assert "night-site.json.gz" not in (kit.get("dry_run") or {}).get("state", []), (
+        "a dry run's state-up may send its build's list over the night's")
+    judge = next(n for n in _ast.walk(_parsed(_paths.locate("nightly.py")))
+                 if isinstance(n, _ast.FunctionDef) and n.name == "judge")
+    real_only = _ast.unparse(_ast.parse("not a.dry_run and not a.new_term", mode="eval").body)
+    kept = [n for n in _ast.walk(judge) if isinstance(n, _ast.If)
+            and _ast.unparse(n.test) == real_only
+            and "keep_night_site(" in _ast.unparse(_ast.Module(body=n.body, type_ignores=[]))]
+    calls = [c for c in _ast.walk(judge) if isinstance(c, _ast.Call)
+             and getattr(c.func, "id", "") == "keep_night_site"]
+    assert len(kept) == 1 and len(calls) == 1, (
+        "Night.judge() keeps the night's build for the weekly on a dry run or a New term run, or "
+        "not at all")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-night-site-"))
+    try:
+        rows = tmp / "site.sha256"
+        rows.write_text("".join(f"{c * 64}  {n}  {p}\n" for c, n, p in (
+            ("a", 10, "index.html"), ("b", 20, "bill/2026/hb1.html"), ("c", 5, "a b  c.html"))),
+            encoding="utf-8", newline="\n")
+        v = {"run_id": "900", "sha": "d" * 40, "started": "2026-11-16T03:17:00"}
+        out = tmp / "archive" / "night-site.json.gz"
+        assert NI.keep_night_site(rows, out, v, "2026-11-16") == 3
+        first = out.read_bytes()
+        NI.keep_night_site(rows, out, v, "2026-11-16")
+        got = json.loads(_gzip.decompress(out.read_bytes()).decode("utf-8"))
+        assert out.read_bytes() == first and got == {
+            "format": 1, "day": "2026-11-16", "run_id": "900", "sha": "d" * 40,
+            "started": "2026-11-16T03:17:00",
+            "files": {"index.html": "a" * 64, "bill/2026/hb1.html": "b" * 64,
+                      "a b  c.html": "c" * 64}}, got
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    wf = _SWITCHED.workflow_dir / "weekly.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/weekly.yml here"
+    jobs = _wf_jobs(wf.read_text(encoding="utf-8"))
+    week = [j for j, jl in jobs.items() if any("nightly.py @flags" in ln for ln in _wf_code(jl))]
+    assert len(week) == 1, f"weekly.yml runs the week in {week}"
+    steps = ["\n".join(st) for st in _wf_steps(_wf_code(jobs[week[0]]))]
+
+    def at(pat):
+        return [k for k, s in enumerate(steps) if re.search(pat, s)]
+    down, aside, fetch = at(r"cloud\.py kit-down"), at(r"--cold-aside "), at(r"nightly\.py @flags")
+    up, cold, close = at(r"cloud\.py kit-up"), at(r"--cold-build "), at(r"--weekly --close")
+    assert all(len(x) == 1 for x in (down, aside, fetch, up, cold, close)) and \
+        down[0] < aside[0] < fetch[0] < up[0] < cold[0] < close[0], (
+            "weekly.yml does not set the night's folder aside after kit-down and before the week's "
+            "fetches, and build it after kit-up and before the verdict: "
+            f"kit-down {down}, aside {aside}, fetches {fetch}, kit-up {up}, cold {cold}, verdict {close}")
+    folder = [re.search(r"--cold-(?:aside|build) (\S+)", steps[k]).group(1) for k in (aside[0], cold[0])]
+    assert folder[0] == folder[1] and "RUNNER_TEMP" in folder[0], (
+        f"the cold build does not build the folder it set aside: {folder}")
+    for k, what in ((aside[0], "aside"), (cold[0], "cold build")):
+        lim = re.search(r"^        timeout-minutes:\s*(\d+)\s*$", steps[k], re.M)
+        assert re.search(r"^        continue-on-error: true\s*$", steps[k], re.M) and lim, (
+            f"weekly.yml's {what} step can stop the week, or has no limit of its own")
+    sid = re.search(r"^        id:\s*(\S+)\s*$", steps[aside[0]], re.M)
+    cid = re.search(r"^        id:\s*(\S+)\s*$", steps[cold[0]], re.M)
+    cond = re.search(r"^        if:\s*(.+?)\s*$", steps[cold[0]], re.M)
+    assert sid and cid and cond and f"steps.{sid.group(1)}.outcome == 'success'" in cond.group(1) \
+        and "always()" in cond.group(1), "the cold build runs where its folder was not set aside"
+    assert f'--cold "${{{{ steps.{cid.group(1)}.outcome }}}}"' in steps[close[0]] and \
+        f"=${{{{ steps.{cid.group(1)}.outcome }}}}" not in steps[close[0]], (
+            "the week's verdict is not told the cold build's outcome, or is told it as a step of "
+            "the week's own, which would fail the week on a difference")
+    return "ok", (f"{NI.NIGHT_SITE.as_posix()} on the state list and never a dry run's; kept by a real "
+                  "night alone, the same bytes for the same build; weekly.yml sets the folder aside "
+                  "before its fetches and builds it after kit-up, both carrying on past a failure, "
+                  "and tells its verdict the outcome apart from its own steps")
+
+
+@check("workflows", "the weekly's cold build compares only with the night its folder is of, builds "
+       "with no cache and the night's day stated, leaves out the files that carry a time, and is a "
+       "warning in the week's verdict only where it differs on the night's own code or did not "
+       "finish", needs=("nightly",))
+def _weekly_cold_build_compares(NI):
+    """nightly.cold_aside(), cold_build(), cold_compare() and the week's --close, on a made-up
+    folder. The aside copies the folder less .build_cache/ at its top -- site/committees.json,
+    which the kit brings for the build to read, comes with it, and a .build_cache further down
+    stays. cold_build runs build_all.py --local --no-captions
+    of the copy (run(..., root=) the copy, in it) with GRANITE_BUILD_DATE the night's day, where
+    no .build_cache is; it says "not compared" with no night's list, or with one of a night the
+    newest real night's verdict does not name, and "failed" for a build that fails. Compared:
+    the same files, the same; a page changed, added or gone, a difference naming it first; the
+    files that carry a time (TREE_LEFT_OUT, the feeds) and the changes files, written against
+    the ledger the night moved on, never one; and a night of other code,
+    compared all the same, a note and no warning. Then --close folds the record into the week's
+    results and, where it warns, its warnings, and leaves "clean" and the exit as they were."""
+    import contextlib
+    import gzip as _gzip
+    import io
+    import types
+    saved = {k: os.environ.get(k) for k in ("GITHUB_RUN_ID", "GITHUB_SHA", "GITHUB_ACTIONS",
+                                            "GITHUB_STEP_SUMMARY")}
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-cold-"))
+    real_run, real_sha = NI.run, NI._sha256_of
+    try:
+        src = tmp / "folder"
+        for rel, body in (("build_all.py", "x"), ("site/committees.json", "{}"), ("logs/a.log", "x"),
+                          (".build_cache/k.json.gz", "x"), ("deep/.build_cache/keep.txt", "kept"),
+                          ("archive/last-night.json", json.dumps({"run_id": "700"}))):
+            (src / rel).parent.mkdir(parents=True, exist_ok=True)
+            (src / rel).write_text(body, encoding="utf-8")
+        night_files = {"index.html": "i", "bill/hb1.html": "b", "build.json": "t1",
+                       "data/manifest.json": "m1", "feed/all.xml": "f1",
+                       "changes/2026-11-15.json": "c1"}
+        sha_of = {"i": "1", "b": "2", "t1": "3", "m1": "4", "f1": "5", "c1": "6"}
+
+        def keep(run_id="700", sha="e" * 40):
+            body = {"format": 1, "day": "2026-11-15", "run_id": run_id, "sha": sha,
+                    "files": {k: sha_of[x] * 64 for k, x in night_files.items()}}
+            (src / NI.NIGHT_SITE).parent.mkdir(parents=True, exist_ok=True)
+            (src / NI.NIGHT_SITE).write_bytes(_gzip.compress(json.dumps(body).encode("utf-8")))
+        dest = tmp / "cold"
+        os.chdir(src)
+        n = NI.cold_aside(dest)
+        os.chdir(here)
+        have = {p.relative_to(dest).as_posix() for p in dest.rglob("*") if p.is_file()}
+        assert n == len(have) == 5 and {"build_all.py", "site/committees.json", "logs/a.log",
+                                         "deep/.build_cache/keep.txt"} <= have and \
+            not any(x.startswith(".build_cache/") for x in have), (n, sorted(have))
+        os.environ.update(GITHUB_RUN_ID="800", GITHUB_SHA="e" * 40)
+        for k in ("GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY"):
+            os.environ.pop(k, None)
+        seen = {}
+
+        def fake_run(args, label, cwd=None, env=None, root=None, built=None):
+            seen.update(args=list(args), cwd=Path(cwd).resolve(), env=dict(env or {}),
+                        root=Path(root).resolve() if root else None,
+                        cache=(Path(cwd) / ".build_cache").exists())
+            site = Path(cwd) / "site"
+            shutil.rmtree(site, ignore_errors=True)
+            for rel, x in (built or seen.get("make") or {}).items():
+                (site / rel).parent.mkdir(parents=True, exist_ok=True)
+                (site / rel).write_text(x, encoding="utf-8")
+            return seen.get("rc", 0)
+        NI.run = fake_run
+        NI._sha256_of = lambda p: sha_of[Path(p).read_text(encoding="utf-8")] * 64
+
+        def cold(make, rc=0):
+            seen.clear()
+            seen.update(make=make, rc=rc)
+            out = tmp / "cold-build.json"
+            with contextlib.redirect_stdout(io.StringIO()):
+                return NI.cold_build(dest, record=out)
+        rec = cold(dict(night_files))
+        assert rec["result"] == "not compared" and "no night" in rec["why"], rec
+        keep(run_id="699")
+        shutil.copy(src / NI.NIGHT_SITE, dest / NI.NIGHT_SITE)
+        rec = cold(dict(night_files))
+        assert rec["result"] == "not compared" and "699" in rec["why"], rec
+        keep()
+        shutil.copy(src / NI.NIGHT_SITE, dest / NI.NIGHT_SITE)
+        rec = cold(dict(night_files), rc=1)
+        assert rec["result"] == "failed" and NI.cold_warns(rec), rec
+        rec = cold(dict(night_files, **{"build.json": "t1", "data/manifest.json": "m1"}))
+        assert rec["result"] == "same" and not NI.cold_warns(rec) and rec["compared"] == 2, rec
+        assert seen["args"] == ["build_all.py", "--local", "--no-captions"] and \
+            seen["cwd"] == dest.resolve() and seen["root"] == dest.resolve() and \
+            seen["env"] == {"GRANITE_BUILD_DATE": "2026-11-15"} and not seen["cache"], seen
+        rec = cold(dict(night_files, **{"build.json": "t1", "data/manifest.json": "i",
+                                         "feed/all.xml": "b", "changes/2026-11-15.json": "i"}))
+        assert rec["result"] == "same", ("a file that carries a time made a difference", rec)
+        rec = cold({"index.html": "b", "bill/hb2.html": "b"})
+        assert rec["result"] == "differs" and NI.cold_warns(rec) and rec["differ"] == 3 and \
+            rec["first"] == ["bill/hb1.html", "bill/hb2.html", "index.html"] and \
+            "index.html" in NI.cold_said(rec), rec
+        os.environ["GITHUB_SHA"] = "f" * 40
+        rec = cold({"index.html": "b", "bill/hb1.html": "b"})
+        assert rec["result"] == "differs" and rec.get("note") and not NI.cold_warns(rec), rec
+        # The week's verdict.
+        os.chdir(tmp)
+        Path("archive").mkdir(exist_ok=True)
+        Path("logs").mkdir(exist_ok=True)
+        page = tmp / "page.md"
+        os.environ["GITHUB_STEP_SUMMARY"] = str(page)
+
+        def close(record, told="success"):
+            NI.write_json(NI.WEEKLY_VERDICT, {"kind": "weekly", "run_id": "800", "clean": True,
+                                               "results": {"committees": "installed"}, "exit": 0})
+            if record is None:
+                NI.COLD_RECORD.unlink(missing_ok=True)
+            else:
+                NI.write_json(NI.COLD_RECORD, dict(record, run_id="800"))
+            page.write_text("", encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = NI.close_verdict(types.SimpleNamespace(
+                    weekly=True, dry_run=False, cold=told, outcome=["weekly=success"]))
+            return code, json.loads(Path(NI.WEEKLY_VERDICT).read_text(encoding="utf-8"))
+        os.environ["GITHUB_SHA"] = "e" * 40
+        differs = cold({"index.html": "b", "bill/hb1.html": "b"})
+        code, v = close(differs)
+        assert code == 0 and v["clean"] and v["results"]["the cold build"] == NI.cold_said(differs) \
+            and v["warnings"] == ["the cold build " + NI.cold_said(differs)] and \
+            v["cold_build"]["result"] == "differs" and \
+            "the cold build differs" in page.read_text(encoding="utf-8"), v
+        same = cold(dict(night_files))
+        code, v = close(same)
+        assert code == 0 and v["clean"] and "warnings" not in v and \
+            v["results"]["the cold build"].startswith("is the same"), v
+        code, v = close(None, told="skipped")
+        assert code == 0 and v["clean"] and v["cold_build"]["result"] == "failed" and v["warnings"], v
+        NI.write_json(NI.WEEKLY_VERDICT, {"kind": "weekly", "run_id": "800", "clean": True,
+                                           "results": {}, "exit": 0})
+        with contextlib.redirect_stdout(io.StringIO()):
+            NI.close_verdict(types.SimpleNamespace(weekly=True, dry_run=False, outcome=["weekly=success"]))
+        v = json.loads(Path(NI.WEEKLY_VERDICT).read_text(encoding="utf-8"))
+        assert "cold_build" not in v and v["results"] == {}, (
+            "a week told nothing of a cold build (an older workflow) says one", v)
+    finally:
+        NI.run, NI._sha256_of = real_run, real_sha
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", ("the aside leaves the cache out, at the top only, and the kit's site file in; the build runs the "
+                  "copy's build_all.py --local --no-captions there with the night's day, no cache; "
+                  "not compared with no list or another night's, failed on a failed build; the same, "
+                  "a difference naming its first files, the files that carry a time left out, other "
+                  "code a note; the week's results and warnings carry it, clean and exit untouched")
 
 
 # The first thing a Healthchecks step's script does: compare the ref with

@@ -193,7 +193,14 @@ production or whose job failed, can no longer make a night waiting for
 approval unapprovable. The weekly workflow, `weekly.yml`, runs on Sunday
 night: the committee rosters, the members who have left and the study
 committees, each fetch whole or not at all. It publishes nothing; Monday's
-night builds what it took.
+night builds what it took. Since 16 November 2026 it also builds the site
+again from the folder as the last night left it, set aside before its own
+fetches, with no build cache and that night's day stated, and compares every
+file with that night's build, whose sha256 list the night keeps as a state
+file (`archive/night-site.json.gz`, `nightly.NIGHT_SITE`; never a dry run's or
+a New term run's), less the files that carry a time and the changes files: a
+difference is a warning in the week's verdict, naming the first files, and
+holds no night.
 
 **The current term's data, from the database** (since 16 October 2026). After
 the day's files and the study committees, a night that fetches takes from the
@@ -481,7 +488,8 @@ from and of the code that worked it out -- the module and every module of
 this project it imports, tokenised with the comments out, as section 9 below
 learned -- so a change to either is a cache that no longer answers. A cache
 that is missing, unreadable or another code's is no cache, and the site
-built warm, cold and without it is the same byte for byte.
+built warm, cold and without it is the same byte for byte; the weekly's cold
+build (above) holds GitHub's nights to that.
 
 ---
 
