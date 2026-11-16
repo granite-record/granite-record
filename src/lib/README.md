@@ -32,10 +32,15 @@ Shared by every stage:
 - `spellings`: a member's name as the record misspells it, and the surname
   it means -- the "spellings" section of
   `corrections/member_corrections.json`, read here and never written;
-- `state_settings`: the state's facts (its counties, time zone, legislature)
-  read from `state_settings.json` beside it, so a fork for another state
-  edits data rather than code; preflight holds every key and fails on a
-  second literal county list;
+- `state_settings`: the state's facts (its counties, time zone, legislature,
+  and its offices and kinds of district, each with its article of the
+  Constitution where it has one) read from `state_settings.json` beside it,
+  so a fork for another state edits data rather than code; preflight holds
+  every key and fails on a second literal county list;
+- `entities`: the model of people, offices, terms, districts and elections --
+  the shape of each kind of record and the rules a model holds to -- which
+  nothing builds or reads yet; what is the state's in it is
+  `state_settings.json`'s;
 - `gr_ids`: Granite Record's own ids, `gr-` and a serial, for a person the
   record names and the General Court gives no number, kept in their own field
   (`granite_id`) and never in `gc_employee_number`: the register's reader and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.950
+# GRANITE_VERSION: 2026-09-04.951
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -163,6 +163,7 @@ import pf_people  # noqa: E402,F401  (its checks register)
 import pf_elections  # noqa: E402,F401  (its checks register)
 import pf_calendar  # noqa: E402,F401  (its checks register)
 import pf_laws  # noqa: E402,F401  (its checks register)
+import pf_entities  # noqa: E402,F401  (its checks register)
 
 
 if __name__ == "__main__":
