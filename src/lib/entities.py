@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
-the shape of each kind of record, and the rules a model holds to.
+the shape of each kind of record, the rules a model holds to, and the views that give today's
+files back from it.
 
     import entities as EN
     EN.KINDS                         # the eight kinds, in the order a model is written
-    EN.SHAPES                        # the shape of each
     EN.problems(model)               # every way a model breaks a shape or a rule, as sentences
-    EN.offices()                     # the state's offices, as office records, from its settings
+    EN.load(folder), EN.write(model, folder, extra)
+    EN.view_people(model)            # site/data/people.json's "people"
+    EN.view_careers(model)           # generated/careers.json but its ballot counts
+    EN.hand_file(model, path)        # a hand file as it is written (corrections/officials.json)
+    EN.view_members_elect(model)     # site/members_elect.json, or None
+    EN.view_districts(model, era)    # site/districts.json
+    EN.view_officers(model)          # site/officers.json's "officers"
 
-NOTHING BUILDS OR READS A MODEL YET (the design of 16 November 2026, step 1): these are its
-shapes and its rules, which preflight holds on a model made up there, and the offices and kinds
-of district the state's settings give.
+src/parse/build_entities.py writes the model to data/entities/ every night from the files on
+disk. NOTHING READS IT YET (the design of 16 November 2026, phase A): preflight holds that each
+of today's files above is a view of it, byte for byte, so that a reader moved onto it later
+cannot change the site, and a model that cannot give a file back has lost something.
 
 THE KINDS. Every record is a JSON object whose first field is its id, named for its kind:
 
@@ -51,7 +58,8 @@ multi-seat districts, the Executive Council, the House of 400, two-year terms, t
 legislature elects -- is data in state_settings.json, each with its article of the Constitution
 where it has one (collected/constitution.json). The shapes below hold for any state.
 
-Standard library only. Nothing here reads or writes a file, or asks the network.
+Standard library only. Nothing here reads a file but load(), writes one but write(), or asks the
+network.
 """
 
 import datetime
@@ -61,6 +69,14 @@ from pathlib import Path
 
 FORMAT = 1
 KINDS = ("person", "office", "district", "place", "term", "tenure", "contest", "candidacy")
+FILES = {"person": "people.json", "office": "offices.json", "district": "districts.json",
+         "place": "places.json", "term": "terms.json", "tenure": "tenures.json",
+         "contest": "contests.json", "candidacy": "candidacies.json"}
+# Not a kind: how a hand file lays its records out, so that it can be given back as written
+# (hand_file). Each holder of an office in it is a tenure; this is the rest, with each
+# holder's place marked {"$tenure": id}.
+LAYOUTS = "layouts.json"
+MANIFEST = "manifest.json"
 
 # ---- ids --------------------------------------------------------------------------------
 
@@ -573,4 +589,289 @@ def problems(model, settings=None, register=None):
                         c["takes_office"], c.get("term"), x.get("person"), c.get("district")):
                     out.append(f"candidacy {xid}'s tenure {t['tenure']} is not the contest's seat, "
                                "day and term, or not the same person")
+    return out
+
+
+# ---- loading and writing --------------------------------------------------------------------
+
+def ordered(kind, rec):
+    """`rec` with its fields in the order its kind's shape names them, any other after."""
+    names = list(SHAPES[kind]["properties"])
+    rank = {k: i for i, k in enumerate(names)}
+    return {k: rec[k] for k in sorted(rec, key=lambda k: (rank.get(k, len(names)), k))}
+
+
+def _lines(kind, records):
+    """A JSON list with one record a line, its fields in its shape's order: small, and a diff
+    reads as records."""
+    if not records:
+        return "[]"
+    return "[\n" + ",\n".join(json.dumps(ordered(kind, r), ensure_ascii=False, separators=(",", ":"))
+                              for r in records) + "\n]"
+
+
+def write(model, folder, layouts=None, manifest=None):
+    """Write `model` into `folder`: a file a kind (FILES), the layouts and the manifest, each
+    {"format", "kind" or "what", ...}. LF line ends on every machine, so that two builds of one
+    model are the same bytes anywhere. Returns {file name: bytes}."""
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    sizes = {}
+
+    def put(name, text):
+        p = folder / name
+        tmp = p.with_suffix(p.suffix + ".tmp")
+        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(text)
+        tmp.replace(p)
+        sizes[name] = p.stat().st_size
+
+    for kind in KINDS:
+        put(FILES[kind], '{"format":%d,"kind":%s,"records":%s}\n'
+            % (FORMAT, json.dumps(kind), _lines(kind, model.get(kind) or [])))
+    put(LAYOUTS, json.dumps({"format": FORMAT, "layouts": layouts or {}}, ensure_ascii=False,
+                            indent=1) + "\n")
+    if manifest is not None:
+        put(MANIFEST, json.dumps(dict(manifest, sizes=dict(sorted(sizes.items()))),
+                                 ensure_ascii=False, indent=1) + "\n")
+    return sizes
+
+
+def load(folder):
+    """(model, layouts, manifest) from `folder` as write() left it; OSError or ValueError where
+    a file is missing or will not read, for the caller to say."""
+    folder = Path(folder)
+    model = {}
+    for kind in KINDS:
+        doc = json.loads((folder / FILES[kind]).read_text(encoding="utf-8"))
+        if doc.get("kind") != kind or doc.get("format") != FORMAT:
+            raise ValueError(f"{folder / FILES[kind]} is not a file of {kind} records, format {FORMAT}")
+        model[kind] = doc["records"]
+    layouts = json.loads((folder / LAYOUTS).read_text(encoding="utf-8"))["layouts"]
+    mp = folder / MANIFEST
+    manifest = json.loads(mp.read_text(encoding="utf-8")) if mp.is_file() else None
+    return model, layouts, manifest
+
+
+# ---- the views: today's files, from the model -----------------------------------------------
+
+def _code(model):
+    """{office: its chamber's letter} for the offices that have one."""
+    return {o["office"]: o["code"] for o in model.get("office") or [] if o.get("code")}
+
+
+def _careers_tenures(model):
+    return [t for t in model.get("tenure") or [] if (t.get("keys") or {}).get("careers")]
+
+
+def view_people(model):
+    """site/data/people.json's "people" (src/lib/people.py's build), from the people and the
+    tenures careers.json gives them: each person's chambers and first and last terms are their
+    General Court numbers' tenures, and sitting is a tenure on today's roster."""
+    code = _code(model)
+    by_num, sitting = {}, set()
+    for t in _careers_tenures(model):
+        by_num.setdefault(t["gc_employee_number"], []).append(t)
+    for t in model.get("tenure") or []:
+        if t.get("sitting") and t.get("person"):
+            sitting.add(t["person"])
+    out = []
+    for p in model.get("person") or []:
+        if p.get("replaced_by"):
+            e = {"person": p["person"], "replaced_by": p["replaced_by"]}
+        elif re.match(GR, p["person"]):
+            continue
+        else:
+            ts = [t for n in p.get("gc_employee_numbers") or [] for t in by_num.get(n, [])]
+            terms = sorted({t["term"] for t in ts})
+            e = {"person": p["person"], "name": p.get("name"),
+                 "employee_numbers": list(p.get("gc_employee_numbers") or []),
+                 "person_ids": list(p.get("gc_person_ids") or []),
+                 "member_ids": list(p.get("member_ids") or []),
+                 "page": p.get("page"),
+                 "sitting": p["person"] in sitting,
+                 "chambers": sorted({code[t["office"]] for t in ts}),
+                 "first_term": terms[0] if terms else None,
+                 "last_term": terms[-1] if terms else None}
+            if p.get("provisional"):
+                e["provisional"] = True
+        if "split_from" in p:
+            e["split_from"] = p["split_from"]
+        out.append(e)
+    return out
+
+
+def view_careers(model):
+    """generated/careers.json (src/parse/build_careers.py) but each record's "votes", a count of
+    ballots, which belong to the roll calls and not to this model: every careers group from its
+    tenures (keys.careers), and the roster's word on its lead number from the person who holds
+    it (gc_roster)."""
+    code = _code(model)
+    roster = {}
+    for p in model.get("person") or []:
+        for n, r in (p.get("gc_roster") or {}).items():
+            roster[n] = r
+    groups = {}
+    for t in _careers_tenures(model):
+        groups.setdefault(t["keys"]["careers"], []).append(t)
+    out = {}
+    for key in sorted(groups):
+        ts = groups[key]
+        by_term = {}
+        for t in ts:
+            v = by_term.setdefault(t["term"], {"chambers": set(), "employee_nos": set()})
+            v["chambers"].add(code[t["office"]])
+            v["employee_nos"].add(t["gc_employee_number"])
+        terms = sorted(by_term)
+        gaps = [terms[i] for i in range(len(terms) - 1) if int(terms[i + 1][:4]) - int(terms[i][:4]) > 2]
+        r = roster.get(key) or {}
+        out[key] = {
+            "by_term": {t: {"chambers": sorted(v["chambers"]), "employee_nos": sorted(v["employee_nos"])}
+                        for t, v in sorted(by_term.items())},
+            "chamber_last": r.get("chamber", ""),
+            # careers.json gives no district for any term: the roster holds one, the last.
+            "district_by_term": {},
+            "employee_nos": sorted({t["gc_employee_number"] for t in ts}),
+            "first": r.get("first", ""),
+            "first_term": terms[0] if terms else "",
+            "last": r.get("last", ""),
+            "last_term": terms[-1] if terms else "",
+            "named": bool(r.get("last")),
+            "party": r.get("party", ""),
+            "person_id": r.get("person_id", ""),
+            "returned_after_a_gap": bool(gaps),
+            "terms": terms,
+        }
+    return out
+
+
+def _fill(x, tenures):
+    """`x` with each {"$tenure": id} in it put back as the record that tenure stood for."""
+    if isinstance(x, list):
+        return [_fill(v, tenures) for v in x]
+    if not isinstance(x, dict):
+        return x
+    if set(x) == {"$tenure"}:
+        return _holder_record(tenures[x["$tenure"]], tenures)
+    return {k: _fill(v, tenures) for k, v in x.items()}
+
+
+def _holder_record(t, tenures):
+    """A hand file's record of a holder, as written, from its tenure: the fields in the order
+    the file has them, the office's kept as they were, the name and party as printed, and the
+    successor under "elect" (the tenure whose place is this one's and "elect")."""
+    slot = t["slot"]
+    kept = slot.get("kept") or {}
+    rec = {}
+    for k in slot["order"]:
+        if k == "elect":
+            succ = tenures.get(t["tenure"] + ".elect")
+            if succ is None:
+                raise ValueError(f"tenure {t['tenure']} had a successor the model does not hold")
+            rec[k] = _holder_record(succ, tenures)
+        elif k == "takes_office":
+            rec[k] = t["from"]
+        elif k in kept:
+            rec[k] = _fill(kept[k], tenures)
+        elif k == "name":
+            rec[k] = t["printed"]
+        elif k == "party":
+            rec[k] = t["party"]
+        else:
+            rec[k] = (t.get("holder") or {})[k]
+    return rec
+
+
+def hand_file(model, layouts, path):
+    """The hand file `path` (corrections/officials.json) as it is written, parsed: its layout
+    with each holder put back from their tenure. preflight compares it with the file, and every
+    page's officials_on(day) with the same of the file."""
+    tenures = {t["tenure"]: t for t in model.get("tenure") or []}
+    return _fill(layouts[path], tenures)
+
+
+def members_elect_contests(model):
+    return [c for c in model.get("contest") or [] if c.get("source") == "site/members_elect.json"]
+
+
+def view_members_elect(model, layouts=None):
+    """site/members_elect.json (src/parse/build_members_elect.py), from its contests and their
+    winners, in the order the file has them; None where the model holds none, as outside the
+    weeks between the election and Organization Day there is no file. Its list of the results'
+    addresses, one a spreadsheet read, is its layout's (each contest has them once)."""
+    contests = members_elect_contests(model)
+    if not contests:
+        return None
+    won = {}
+    for x in model.get("candidacy") or []:
+        if x.get("elected"):
+            won.setdefault(x["contest"], []).append(x)
+    first = contests[0]
+    races = {}
+    for c in contests:
+        row = {"seats": c["seats"], "elected": [], "not_final": c.get("not_final", 0),
+               "held": c.get("held", 0)}
+        if c.get("recount"):
+            row["recount"] = True
+        for x in won.get(c["contest"], []):
+            e = {"n": x["printed"], "p": x.get("party", "")}
+            if "status" in x:
+                e["k"] = x["status"]
+            if x.get("member_id"):
+                e["id"] = x["member_id"]
+            keys = x.get("keys") or {}
+            if "page" in keys:
+                e["s"] = keys["page"]
+            if x.get("own"):
+                e["own"] = True
+            if x.get("doubt"):
+                e["u"] = True
+            if "prior" in x:
+                e["prior"] = x["prior"]
+            if "elect_page" in keys:
+                e["e"] = keys["elect_page"]
+            row["elected"].append(e)
+        races[c["keys"]["results"]] = row
+    sources = ((layouts or {}).get(first["source"]) or {}).get("sources", first.get("sources") or [])
+    return {"election": first["election"], "takes_office": first["takes_office"],
+            "term": first["term"], "sources": list(sources), "races": races}
+
+
+def view_districts(model, era):
+    """site/districts.json (src/towns/parse_districts.py's combine): {town: {ward: {kind: number,
+    "house": [{county, district, floterial, seats}]}}} for the places of `era`."""
+    D = {d["district"]: d for d in model.get("district") or []}
+    out = {}
+    for pl in model.get("place") or []:
+        dids = (pl.get("in") or {}).get(era)
+        if not dids:
+            continue
+        row = {}
+        house = []
+        for did in dids:
+            d = D[did]
+            if d["kind"] == "house":
+                house.append({"county": d["county"], "district": d["number"],
+                              "seats": d["seats"], "floterial": d["floterial"]})
+            else:
+                row[d["kind"]] = d["number"]
+        if house:
+            house.sort(key=lambda x: (x["floterial"], x["district"]))
+            row["house"] = house
+        out.setdefault(pl["town"], {})[pl["ward"]] = row
+    return out
+
+
+def view_officers(model):
+    """site/officers.json's "officers" (build_site_v2.build_officers): the tenures of the chair's
+    offices it gave, in its order."""
+    O = {o["office"]: o for o in model.get("office") or []}
+    out = []
+    for t in model.get("tenure") or []:
+        if "site/officers.json" not in (t.get("files") or []):
+            continue
+        o = O[t["office"]]
+        out.append({"b": o["code"], "office": o["name"], "title": t["title"], "name": t["printed"],
+                    "id": t["member_id"], "s": t["keys"]["ballot_sort"], "from": t["from"],
+                    "to": t["to"], "kind": t["kind"], "source": t["source"]})
     return out

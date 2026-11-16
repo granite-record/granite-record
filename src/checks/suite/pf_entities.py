@@ -1,23 +1,186 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the model of people, offices, terms, districts and elections
-(src/lib/entities.py): its shapes and rules, and the offices and kinds of district the state's
-settings give (the refactor's design of 16 November 2026, step 1).
+(src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
 
-A module of its own, because the model is of no one area: it will read the people's, the
-officials', the districts', the officers' and the members-elect's files. This module uses pf_core
-and itself, and no other area's module.
+A module of its own, because the model is of no one area: it reads the people's, the officials',
+the districts', the officers' and the members-elect's files, and is held to give each back
+(the refactor's design of 16 November 2026, steps 1 and 2). This module uses pf_core and itself,
+and no other area's module.
 """
 
 import ast
 import copy
+import datetime
+import hashlib
 import json
 import re
+import shutil
+import sys
+import tempfile
+from pathlib import Path
 
 import _paths
 
-from pf_core import (_parsed, check)
+from pf_core import (_parsed, _run, check)
+
+TRACKED = ("generated/careers.json", "corrections/officials.json", "generated/gr_ids.json",
+           "collected/county_officials.json", "records/districts/house.txt",
+           "records/districts/senate.txt", "records/districts/council.txt",
+           "records/districts/congress.txt")
+
+
+def _tree_digest(root):
+    """{relative path: sha256} of every file under `root`."""
+    root = Path(root)
+    return {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def _copy_tracked(root, names=TRACKED):
+    """The repository's own copies of `names` laid into `root`."""
+    for rel in names:
+        dest = Path(root) / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(_paths.ROOT / rel, dest)
+
+
+def _people_file(PE, root, careers, legislators=(), former=(), db_rows=()):
+    """site/data/people.json for a tree, as src/lib/people.py makes it: the real writer, over
+    the tree's careers and roster and a roster view of `db_rows` [(PersonID, Employeeno)]."""
+    root = Path(root)
+    (root / "db").mkdir(parents=True, exist_ok=True)
+    (root / "db" / "_columns.json").write_text(json.dumps(
+        {"Legislators": ["PersonID", "LastName", "FirstName", "Employeeno"]}), encoding="utf-8")
+    (root / "db" / "Legislators.psv").write_text("".join(f"{p}|N|F|{e}\n" for p, e in db_rows),
+                                                 encoding="utf-8")
+    (root / "site" / "data").mkdir(parents=True, exist_ok=True)
+    (root / "data").mkdir(exist_ok=True)
+    (root / "site" / "legislators.json").write_text(json.dumps(list(legislators)), encoding="utf-8")
+    (root / "site" / "former.json").write_text(json.dumps(list(former)), encoding="utf-8")
+    (root / "data" / "member_votes.json").write_text("[]", encoding="utf-8")
+    (root / "data" / "sponsors.json").write_text("{}", encoding="utf-8")
+    people, _report = PE.build(root / "site", root / "data", root / "db", careers, None)
+    PE.write(people, root / "site" / "data")
+    return people
+
+
+def _careers_record(terms, first="", last="", party="", chamber="", person_id=""):
+    """A careers.json record as build_careers.py writes one: {term: (chamber, number)}."""
+    nums = sorted({n for _ch, n in terms.values()})
+    ts = sorted(terms)
+    return {"by_term": {t: {"chambers": [terms[t][0]], "employee_nos": [terms[t][1]]} for t in ts},
+            "chamber_last": chamber, "district_by_term": {}, "employee_nos": nums, "first": first,
+            "first_term": ts[0], "last": last, "last_term": ts[-1], "named": bool(last), "party": party,
+            "person_id": person_id,
+            "returned_after_a_gap": any(int(b[:4]) - int(a[:4]) > 2 for a, b in zip(ts, ts[1:])),
+            "terms": ts, "votes": 7}
+
+
+def _world(root, PE):
+    """A made-up tree for the model to be proved on, every file it reads in the shape its writer
+    gives it: two sitting representatives in one seat and a sitting member with no vote yet; a
+    senator who sat in the House before, and an unnamed number of 1999; the chair's offices; a
+    hand file with a successor, a holder linked by a member's page and a holder who only shares
+    a member's name; a county seat the Secretary of State's roster names another holder of; and members-elect, new
+    and returning. The district lists are the repository's own (their seats must be the House's
+    400)."""
+    root = Path(root)
+    _copy_tracked(root, [n for n in TRACKED if n.startswith("records/")])
+    careers = {
+        "376001": _careers_record({"2023-2024": ("H", "376001"), "2025-2026": ("H", "376001")},
+                                  "Ada", "Newcomb", "R", "H", "11600"),
+        "376002": _careers_record({"2025-2026": ("H", "376002")}, "Bo", "Hart", "d", "H"),
+        "209001": _careers_record({"2019-2020": ("H", "376003"), "2025-2026": ("S", "209001")},
+                                  "Cy", "Lund", "R", "S", "11700"),
+        "201723": _careers_record({"1999-2000": ("S", "201723")}),
+    }
+    (root / "generated").mkdir(parents=True, exist_ok=True)
+    (root / "generated" / "careers.json").write_text(json.dumps(careers, indent=1, sort_keys=True),
+                                                     encoding="utf-8")
+    legislators = [
+        {"id": "11600", "name": "Newcomb, Ada", "chamber": "H", "party": "Republican",
+         "county": "Carroll", "district": "1", "slug": "ada-newcomb-carr-1"},
+        {"id": "11700", "name": "Lund, Cy", "chamber": "S", "party": "Republican",
+         "county": "Merrimack", "district": "15", "slug": "cy-lund-sd-15"},
+        {"id": "11800", "name": "Moe, Di", "chamber": "H", "party": "Democrat",
+         "county": "Carroll", "district": "1", "slug": "di-moe-carr-1"}]
+    former = [{"id": "376002", "name": "Hart, Bo", "chamber": "H", "slug": "bo-hart-carr-1", "former": True}]
+    people = _people_file(PE, root, careers, legislators, former,
+                          [("11600", "376001"), ("11700", "209001"), ("11800", "376004")])
+    (root / "site" / "meta.json").write_text(json.dumps({"terms": ["2025-2026", "2023-2024"]}),
+                                             encoding="utf-8")
+    (root / "site" / "officers.json").write_text(json.dumps({
+        "_about": "made up",
+        "officers": [
+            {"b": "H", "office": "Speaker of the House", "title": "Speaker", "name": "Newcomb",
+             "id": "11600", "s": "newcomb, ada", "from": "2024-12-04", "to": "2026-12-02",
+             "kind": "elected", "source": "a journal, made up"},
+            {"b": "S", "office": "President of the Senate", "title": "President", "name": "Lund",
+             "id": "11700", "s": "lund, cy", "from": "2024-12-04", "to": "2026-12-02",
+             "kind": "elected", "source": "a journal, made up"}]}, separators=(",", ":")),
+        encoding="utf-8")
+    (root / "site" / "members_elect.json").write_text(json.dumps({
+        "election": "2026-11-03", "takes_office": "2026-12-02", "term": "2027-2028",
+        "sources": ["https://results.example/2026", "https://results.example/2026"],
+        "races": {
+            "S|15": {"seats": 1, "elected": [{"n": "Cy Lund", "p": "R", "k": "sitting", "id": "11700",
+                                              "s": "cy-lund-sd-15", "own": True}],
+                     "not_final": 0, "held": 0},
+            "H|Carroll|1": {"seats": 3, "elected": [
+                {"n": "Ada Newcomb", "p": "R", "k": "sitting", "id": "11600", "s": "ada-newcomb-carr-1",
+                 "own": True},
+                {"n": "Ed New", "p": "D", "k": "new", "u": True},
+                {"n": "Flo Back", "p": "R/D", "k": "new", "prior": {"terms": ["1995-1996"], "seat": "Carroll 1"},
+                 "e": "flo-back-carr-1"}], "not_final": 0, "held": 0, "recount": True},
+            "H|Carroll|2": {"seats": 2, "elected": [], "not_final": 2, "held": 0}}},
+        ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    (root / "corrections").mkdir(exist_ok=True)
+    (root / "corrections" / "officials.json").write_text(json.dumps({
+        "_README": ["made up"], "_checked": "2026-11-10",
+        "governor": {"office": "Governor", "scope": "statewide", "name": "Gail Gov", "party": "R",
+                     "phone": "1", "about": ["leads"]},
+        "council": {"office": "Executive Council", "about": ["five"], "districts": {
+            "1": {"name": "Hal Held", "party": "R",
+                  "elect": {"name": "Ida Next", "party": "D", "source": "results", "takes_office": "2027-01-06"}},
+            "2": {"name": "Ada Newcomb", "party": "R"}}},
+        "us_house": {"office": "United States House", "districts": {
+            "1": {"name": "Cy Lund", "party": "R", "member": "cy-lund-sd-15", "member_evidence": "made up"}}},
+        "department_heads": {"office": "Heads", "departments": [
+            {"department": "Agriculture", "title": "Commissioner", "name": "Cy Lund",
+             "member": "cy-lund-sd-15", "member_evidence": "made up"}]},
+        "county": {"office": "County Officers", "counties": {"Carroll": {
+            "name": "Carroll", "official_url": "",
+            "sheriff": {"name": "Kim Now", "office": "Sheriff", "domicile": "Conway", "note": "filled a vacancy"},
+            "commissioners": {"1": {"name": "Lu Same", "office": "County Commissioner", "district": "1",
+                                    "party": "R", "party_as_printed": "REP"}}}}}},
+        ensure_ascii=False, indent=2), encoding="utf-8")
+    (root / "collected").mkdir(exist_ok=True)
+    (root / "collected" / "county_officials.json").write_text(json.dumps({"_read_on": "2024-12-05", "officers": [
+        {"county": "Carroll", "office": "Sheriff", "name": "Max Before", "domicile": "Ossipee",
+         "party": "REP", "source_url": "https://roster.example", "read_on": "2024-12-05"},
+        {"county": "Carroll", "office": "County Commissioner", "district": "1", "name": "Lu Same",
+         "domicile": "", "party": "REP", "source_url": "https://roster.example", "read_on": "2024-12-05"}]}),
+        encoding="utf-8")
+    return people
+
+
+def _hand_as_written(BE, EN, BME, model, layouts, path):
+    """The officials' hand file at `path`, as written, against the model's copy of it: the same
+    JSON field by field in its order, and officials_on of each the same on today and on each
+    side of every successor's day. (The step reads the file through read_officials alone; the
+    suite may read it as it is.)"""
+    doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    got = EN.hand_file(model, layouts, BE.HAND)
+    a, b = json.dumps(doc, ensure_ascii=False), json.dumps(got, ensure_ascii=False)
+    assert a == b, "the officials' hand file as written is not the model's: " + BE._first_difference(a, b)
+    import build_date
+    days = BE.switch_days(doc, build_date.today())
+    bad = [d for d in days if json.dumps(BME.officials_on(doc, d), ensure_ascii=False)
+           != json.dumps(BME.officials_on(got, d), ensure_ascii=False)]
+    assert not bad, f"officials_on of the hand file and of the model differ on {bad}"
+    return len(days)
 
 
 @check("build", "each kind of record has a shape, and the model's rules catch every record that breaks one",
@@ -188,3 +351,206 @@ def _entity_settings(EN, ST, PD):
                   f"{len(set(named))} articles of the Constitution named and each on file; the House's "
                   f"{seats} seats, the Senate's {len(senate)}, the Council's {len(council)} agree with the "
                   "district files; the shapes name nothing of the state")
+
+
+@check("build", "the model built from the tracked files gives back careers.json but its ballot counts, the hand file of officials as written and as every page reads it on each successor's day, and the district table, byte for byte",
+       needs=("build_entities", "entities", "people", "build_members_elect", "parse_districts"))
+def _entities_give_back_the_tracked_files(BE, EN, PE, BME, PD):
+    """Phase A of the model (the design of 16 November 2026): each of today's files is a view of
+    it. These are the tracked ones, so this holds in a bare clone: generated/careers.json (all
+    but each record's votes, a count of ballots, which belong to the roll calls),
+    corrections/officials.json as written, field by field in its order, and officials_on of it
+    on today and on each side of every successor's day, and the district table
+    parse_districts.combine makes of records/districts/. The built files the model also reads
+    are stood in for here -- site/data/people.json made by src/lib/people.py itself from the
+    tracked careers.json, an empty roster -- and given back too. A careers record, a hand-file
+    record and a district each changed in the model are each seen."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-entities-"))
+    try:
+        _copy_tracked(tmp)
+        careers = json.loads((tmp / "generated" / "careers.json").read_text(encoding="utf-8"))
+        _people_file(PE, tmp, careers)
+        (tmp / "site" / "meta.json").write_text(json.dumps({"terms": ["2025-2026"]}), encoding="utf-8")
+        (tmp / "site" / "officers.json").write_text('{"_about":"x","officers":[]}', encoding="utf-8")
+        model, layouts, report = BE.build(tmp)
+        assert not report["problems"], f"the model breaks its rules: {report['problems'][:4]}"
+        assert not report["unplaced"], f"records the model does not place: {report['unplaced'][:3]}"
+        got = {rel: (ok, words) for rel, ok, words in BE.rebuilt(model, layouts, tmp)}
+        bad = {rel: words for rel, (ok, words) in got.items() if ok is False}
+        assert not bad, "a tracked file is not given back: " + "; ".join(f"{r}: {w[:300]}" for r, w in bad.items())
+        for rel in ("generated/careers.json", BE.HAND, "records/districts/*.txt",
+                    "site/data/people.json", "site/officers.json"):
+            assert got.get(rel, (None,))[0] is True, f"{rel} was not compared: {got.get(rel)}"
+        assert len(EN.view_careers(model)) == len(careers), "careers.json's records are not all given back"
+        _hand_as_written(BE, EN, BME, model, layouts, tmp / "corrections" / "officials.json")
+        # A model that has lost something is seen.
+        for what, change, rel in (
+                ("a careers term", lambda m: m["tenure"].pop(0), "generated/careers.json"),
+                ("a holder's phone", lambda m: next(t for t in m["tenure"] if t["tenure"] == "officials:governor")
+                 ["holder"].update(phone="0"), BE.HAND),
+                ("a district's seats", lambda m: next(d for d in m["district"] if d["kind"] == "house")
+                 .update(seats=99), "records/districts/*.txt")):
+            m = copy.deepcopy(model)
+            change(m)
+            seen = {r: ok for r, ok, _w in BE.rebuilt(m, layouts, tmp)}
+            assert seen[rel] is False, f"a model that lost {what} still gave {rel} back"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"careers.json's {len(careers):,} records (all but votes), the officials' hand file as written "
+                  "and as officials_on gives it on each side of every successor's day, the district table and "
+                  "the stand-in people.json given back byte for byte; a lost term, phone or seat count each seen")
+
+
+@check("build", "build_entities.py writes the model of a made-up tree into data/entities/ and nothing else, every file it read is a view of it, and no one is linked by a name",
+       needs=("build_entities", "entities", "people", "build_members_elect"))
+def _entities_round_trip(BE, EN, PE, BME):
+    """The night's step on a tree made up here (_world), run as build_all runs it: it writes
+    data/entities/ and changes no other file of the tree; and site/data/people.json,
+    generated/careers.json, corrections/officials.json (as written and on each side of its
+    successor's day), site/members_elect.json, site/districts.json's table and site/officers.json
+    each come back from what it wrote, byte for byte. And the owner's rules, each on a record of
+    the tree: a new member-elect has no person until the General Court numbers them, and a
+    returning one has theirs; a holder the hand file links by a member's page has that member's
+    person, and a holder who only shares a member's name has none; a county seat the roster names another
+    holder of is two tenures of that seat; a successor's tenure begins on the day the hand file
+    names and its holder's names no end; a sitting member with no vote yet sits by the roster
+    alone. A model that has lost a sitting member, a member-elect's mark, a successor's day or an
+    officer's last day is seen to be."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-entities-"))
+    try:
+        _world(tmp, PE)
+        before = _tree_digest(tmp)
+        r = _run([sys.executable, str(_paths.script("build_entities.py")), "--out", "data/entities"],
+                 cwd=tmp, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, f"build_entities.py exited {r.returncode}: {(r.stderr or r.stdout)[-600:]}"
+        after = _tree_digest(tmp)
+        changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+        assert changed and all(k.startswith("data/entities/") for k in changed), (
+            f"build_entities.py wrote outside data/entities/: {[k for k in changed if not k.startswith('data/entities/')]}")
+        model, layouts, manifest = EN.load(tmp / "data" / "entities")
+        assert EN.problems(model) == []
+        got = BE.rebuilt(model, layouts, tmp)
+        bad = [(rel, w) for rel, ok, w in got if ok is not True]
+        assert not bad, "a file of the tree is not given back: " + "; ".join(f"{r}: {w[:300]}" for r, w in bad)
+        _hand_as_written(BE, EN, BME, model, layouts, tmp / "corrections" / "officials.json")
+        T = {t["tenure"]: t for t in model["tenure"]}
+        X = {x["candidacy"]: x for x in model["candidacy"]}
+        new = X["2026-11-03.general.house.carroll-1.ed-new-d"]
+        back = X["2026-11-03.general.house.carroll-1.ada-newcomb-r"]
+        assert new["person"] is None and T[f"elect:{new['candidacy']}"]["person"] is None, (
+            "a new member-elect was given a person before the General Court numbered them")
+        assert back["person"] == "11600" == T[f"elect:{back['candidacy']}"]["person"], back
+        dept = T["officials:department_heads.departments.0"]
+        assert dept["person"] == "11700" and "member" in dept["linked_by"], dept
+        assert T["officials:us_house.districts.1"]["person"] == "11700", T["officials:us_house.districts.1"]
+        assert T["officials:council.districts.2"]["person"] is None, (
+            "a holder who only shares a member's name was linked to them")
+        sheriff = [t for t in model["tenure"] if t["office"] == "sheriff"]
+        assert sorted(t["printed"] for t in sheriff) == ["Kim Now", "Max Before"] \
+            and len({(t["district"], t.get("seat")) for t in sheriff}) == 1, sheriff
+        assert any(d["where"] == "Carroll Sheriff" for d in manifest["disagreements"]), manifest["disagreements"]
+        succ = T["officials:council.districts.1.elect"]
+        assert succ["from"] == "2027-01-06" and "to" not in T["officials:council.districts.1"], succ
+        moe = T["house:2025-2026:11800"]
+        assert moe.get("sitting") and moe["files"] == ["site/legislators.json"], moe
+        # A model that has lost something is seen, file by file.
+        for what, change, rel in (
+                ("a sitting member", lambda m: next(t for t in m["tenure"] if t.get("sitting")).pop("sitting"),
+                 "site/data/people.json"),
+                ("a member-elect's mark", lambda m: next(x for x in m["candidacy"] if x.get("own")).pop("own"),
+                 "site/members_elect.json"),
+                ("a successor's day", lambda m: next(t for t in m["tenure"] if t["tenure"].endswith(".elect"))
+                 .update(**{"from": "2027-01-07"}), BE.HAND),
+                ("an officer's last day", lambda m: next(t for t in m["tenure"] if "site/officers.json" in t["files"])
+                 .update(to="2026-12-03"), "site/officers.json")):
+            m = copy.deepcopy(model)
+            change(m)
+            seen = {r: ok for r, ok, _w in BE.rebuilt(m, layouts, tmp)}
+            assert seen[rel] is False, f"a model that lost {what} still gave {rel} back"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"data/entities/ written and no other file of the tree changed; {len(got)} files given back "
+                  "byte for byte; a new member-elect has no person, a page link links and a shared name does "
+                  "not; a county seat kept twice is two tenures; four "
+                  "losses each seen")
+
+
+@check("pipeline", "build_all builds the model last, after every step whose files it reads, into data/entities/ alone, and nothing reads it yet",
+       needs=("build_all",))
+def _entities_step_in_the_plan(build_all):
+    """The step (the design's step 2): after the district table, the site data (the roster and
+    the officers), the members-elect and the bulk downloads (site/data/people.json), which are
+    the steps that write what it reads; given data/entities as where it writes, and declaring its
+    manifest; optional, because no page waits on a model nothing reads. And nothing reads it yet
+    (phase A): no step of the plan names data/entities but it, and no code file but it, the shapes'
+    module and the checks imports either or names the folder."""
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+    steps = build_all.plan(A())
+    names = [s.args[0] for s in steps]
+    assert names.count("build_entities.py") == 1, "build_all runs build_entities.py other than once"
+    i = names.index("build_entities.py")
+    s = steps[i]
+    for before in ("parse_districts.py", "build_site_v2.py", "build_members_elect.py", "build_exports.py"):
+        assert before in names and names.index(before) < i, f"build_entities.py runs before {before}"
+    assert s.args[1:] == ["--out", "data/entities"] and [p.as_posix() for p in s.produces] == [
+        "data/entities/manifest.json"] and s.optional and not s.network, (s.args, s.produces, s.optional)
+    others = [x.name for x in steps if x is not s and any("data/entities" in str(a) for a in
+                                                          list(x.args) + list(x.needs) + list(x.produces))]
+    assert not others, f"steps besides the model's name data/entities: {others}"
+    allowed = {"build_entities.py", "entities.py", "build_all.py"}
+    readers = []
+    for f in _paths.code_files("*.py"):
+        if f.name in allowed or "suite" in f.parent.name:
+            continue
+        t = f.read_text(encoding="utf-8", errors="replace")
+        if re.search(r"^\s*(?:import|from)\s+(?:entities|build_entities)\b", t, re.M) or "data/entities" in t:
+            readers.append(f.name)
+    assert not readers, f"these read the model, which nothing reads yet: {readers}"
+    return "ok", (f"step {i + 1} of {len(steps)}, after the district table, the site data, the members-elect "
+                  "and the bulk downloads; --out data/entities, optional; no other step or code file reads it")
+
+
+@check("data", "the model the build wrote (data/entities/) gives back today's people, careers, officials, members-elect, district table and officers, byte for byte",
+       needs=("build_entities", "entities", "gr_ids", "build_members_elect"))
+def _entities_give_back_today(BE, EN, GR, BME):
+    """The model's proof on the night's files (the design's step 2): data/entities/, as
+    build_entities.py wrote it in the build, is read back, still keeps every rule, was built from
+    the files on disk now (the sha256 of each it read, in its manifest), and gives back
+    site/data/people.json, generated/careers.json but its ballot counts,
+    corrections/officials.json as written and as every page reads it on today and each side of
+    every successor's day, site/members_elect.json (or none, outside the weeks it is shown),
+    site/districts.json and site/officers.json, each byte for byte but for the line ends a
+    machine writes. A build that ran the step and has no model fails here; a tree no build has
+    run in is skipped."""
+    folder = Path("data") / "entities"
+    if not (folder / EN.MANIFEST).is_file():
+        record = Path("site") / "build.json"
+        if not record.is_file():
+            return "skip", "no build has run here: no data/entities/ and no site/build.json"
+        steps = json.loads(record.read_text(encoding="utf-8")).get("steps") or []
+        mine = [x for x in steps if "as one model" in str(x.get("step"))]
+        assert not mine, f"the build ran the model's step and there is no data/entities/: {mine[0]}"
+        return "skip", "the last build here did not run the model's step (site/build.json names none)"
+    model, layouts, manifest = EN.load(folder)
+    moved = [n for n, sha in (manifest.get("read") or {}).items()
+             if not Path(n).is_file() or hashlib.sha256(Path(n).read_bytes()).hexdigest() != sha]
+    hand = json.dumps(BME.read_officials(today=datetime.date.min), ensure_ascii=False).encode("utf-8")
+    if (manifest.get("read_through") or {}).get(BE.HAND) != hashlib.sha256(hand).hexdigest():
+        moved.append(BE.HAND)
+    assert not moved, ("data/entities/ was built from other files than these, which have changed since: "
+                       + ", ".join(moved) + ". Run python3 src/parse/build_entities.py")
+    register = GR.load_register(Path("generated") / "gr_ids.json")
+    said = EN.problems(model, None, register)
+    assert not said, f"the model breaks {len(said)} rule(s): " + "; ".join(said[:4])
+    got = BE.rebuilt(model, layouts, ".")
+    bad = [(rel, w) for rel, ok, w in got if ok is False]
+    assert not bad, "today's files are not views of the model: " + "; ".join(f"{r}: {w[:400]}" for r, w in bad)
+    _hand_as_written(BE, EN, BME, model, layouts, Path("corrections") / "officials.json")
+    shown = [rel for rel, ok, _w in got if ok]
+    return "ok", (f"{', '.join(shown)} given back from the model of {manifest.get('built_on')} "
+                  f"({sum(manifest.get('counts', {}).values()):,} records); "
+                  f"{len(manifest.get('disagreements') or [])} place(s) where the files disagree, as the manifest lists")

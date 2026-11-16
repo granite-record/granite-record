@@ -38,9 +38,10 @@ Shared by every stage:
   so a fork for another state edits data rather than code; preflight holds
   every key and fails on a second literal county list;
 - `entities`: the model of people, offices, terms, districts and elections --
-  the shape of each kind of record and the rules a model holds to -- which
-  nothing builds or reads yet; what is the state's in it is
-  `state_settings.json`'s;
+  the shape of each kind of record, the rules a model holds to, and the
+  views that give today's files back from it -- which `parse/build_entities.py`
+  writes to `data/entities/` every night and nothing reads yet; what is the
+  state's in it is `state_settings.json`'s;
 - `gr_ids`: Granite Record's own ids, `gr-` and a serial, for a person the
   record names and the General Court gives no number, kept in their own field
   (`granite_id`) and never in `gc_employee_number`: the register's reader and
