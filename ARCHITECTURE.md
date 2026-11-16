@@ -2410,8 +2410,11 @@ have changed since), and in a bare clone on the tracked files and a made-up
 tree (`_entities_give_back_the_tracked_files`, `_entities_round_trip`), so
 that a reader moved onto it later cannot change the site. careers.json's
 ballot counts are the one thing it does not give back: they are the roll
-calls'. A person's id is the General Court's number where it gives one, and none
-for a member-elect until the General Court numbers them; a date only where a record states one; a holder of a hand-file office
+calls'. A person's id is the General Court's number where it gives one, a
+`gr-` id only where the register issued one for that very place
+(`python3 src/ops/gr_register.py --offices`, a person's run, which holds back a name two
+places share), and none for a member-elect until the General Court numbers
+them; a date only where a record states one; a holder of a hand-file office
 is linked to a person only by the file's own `member` entry, never by a name.
 Party and seat are a tenure's. Where the hand file and the county roster name
 different holders of one seat -- on 16 November the Hillsborough sheriff and

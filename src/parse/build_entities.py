@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 The model of people, offices, terms, districts and elections, written to data/entities/ from
 the files on disk (src/lib/entities.py says what the model is).
@@ -32,9 +32,10 @@ something. What it cannot give back is said: careers.json's ballot counts, which
 calls'.
 
 IDS, DATES AND LINKS by the owner's rules (entities.py): the General Court's number where it
-gives one; no id for a member-elect until the General Court numbers them; a date only where a
-record states one; nothing linked by a name. A holder in the hand file is linked to a person only
-by the hand file's own entry (its "member" page address).
+gives one; a gr- id only where the register issued one for that very record (gr_register.py
+--offices, a person's run); no id for a member-elect until the General Court numbers them; a
+date only where a record states one; nothing linked by a name. A holder in the hand file is
+linked to a person only by the hand file's own entry (its "member" page address).
 
 WHERE TODAY'S FILES DISAGREE it says so, in the manifest and on the night's log, and fixes
 nothing: the county officers are kept twice (the hand file, which the pages read, and the
@@ -53,6 +54,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import re
 import tempfile
 import time
 
@@ -109,6 +111,10 @@ SLOTS = (
 )
 # Named groups that are not holders: a court is named, and so is a county.
 NOT_HOLDERS = (("judicial", "*"), ("county", "counties", "*"))
+# The first offices with pages (the design's question 3): a holder of one of these with no
+# General Court number is who gr_register.py --offices would give a gr- id.
+FIRST_OFFICES = ("governor", "executive-council", "us-house", "us-senate", "secretary-of-state",
+                 "treasurer", "attorney-general")
 
 
 class Refused(Exception):
@@ -330,7 +336,7 @@ def districts_and_places(root, settings):
 
 # ---- the hand file's offices --------------------------------------------------------------
 
-def hand_offices(root, settings, by_page, report):
+def hand_offices(root, settings, by_page, register, report):
     """(offices, tenures, layout) of corrections/officials.json: each holder a tenure (and a
     successor under "elect" a second tenure of the same seat, from the day it names), each
     department an office of its own, and the rest of the file the layout, with each holder's
@@ -338,6 +344,11 @@ def hand_offices(root, settings, by_page, report):
     doc = _hand(root)
     era = max(EN.eras(settings))
     base = {o["office"]: o for o in EN.offices(settings)}
+    issued = {}
+    for e in (register or {}).get("ids") or []:
+        for place in (e["issued_for"] if isinstance(e.get("issued_for"), list) else [e.get("issued_for")]):
+            if place:
+                issued.setdefault(place.removesuffix(".elect"), []).append(e)
     offices, tenures, seen_dept = [], [], {}
 
     def where(office, path):
@@ -356,7 +367,8 @@ def hand_offices(root, settings, by_page, report):
 
     def link(t, rec):
         """The person a hand entry links the holder to: the page address it names, as
-        site/data/people.json gives that page. Never a name alone."""
+        site/data/people.json gives that page; or the gr- id the register issued for this place
+        and this name. Never a name alone."""
         page = rec.get("member")
         if page:
             p = by_page.get(f"/legislator/{page}")
@@ -367,6 +379,11 @@ def hand_offices(root, settings, by_page, report):
                     "says": f"member {page}", "other": f"{PEOPLE} gives that page to nobody"})
             else:
                 t["person"], t["linked_by"] = p["person"], f"member /legislator/{page}"
+                return
+        for e in issued.get(t["tenure"].removesuffix(".elect"), []):
+            if " ".join(str(e.get("named_as") or "").split()) == " ".join(str(rec.get("name")).split()):
+                t["person"], t["linked_by"] = e["id"], f"{REGISTER} {e['id']}, issued for this place"
+                return
 
     def holder(path, rec, office):
         tid = f"officials:{_dotted(path)}"
@@ -450,6 +467,32 @@ def hand_offices(root, settings, by_page, report):
 
     layout = walk(doc, ())
     return offices, tenures, layout
+
+
+def gr_candidates(root=".", settings=None, register=None):
+    """[{tenure, office, name, evidence}]: the holders and successors of the first offices with
+    pages (FIRST_OFFICES; the design's question 3, 19 records on 16 November 2026) whom the hand
+    file links to no General Court record -- no "member" page of theirs -- and for whom the
+    register has issued no id. Who gr_register.py --offices would give a gr- id, in the hand
+    file's order; reads only the hand file and the register, and writes nothing."""
+    settings = settings or ST.SETTINGS
+    report = {"unplaced": [], "disagreements": [], "not_rebuilt": []}
+    doc = _hand(root)
+    _o, tenures, _l = hand_offices(root, settings, {}, register, report)
+    names = {o["office"]: o["name"] for o in EN.offices(settings)}
+    out = []
+    for t in tenures:
+        if t["office"] not in FIRST_OFFICES or t.get("person") or (t.get("holder") or {}).get("member"):
+            continue
+        rec = (t.get("holder") or {})
+        read = rec.get("read") or doc.get("_checked") or "?"
+        out.append({"tenure": t["tenure"], "office": t["office"], "name": t["printed"],
+                    "evidence": f"{'Takes' if t.get('from') else 'Holds'} the office of {names[t['office']]} in "
+                                f"the officials' hand file at {_dotted(t['slot']['path'])} (read {read}"
+                                + (f", from {t['from']}" if t.get("from") else "") + "), which links them "
+                                "to no General Court record: no member page and no person number. A "
+                                "shared name is not a link."})
+    return out
 
 
 # ---- the chair's offices --------------------------------------------------------------------
@@ -661,16 +704,20 @@ def build(root=".", settings=None):
         register = GR.load_register(rp)
     persons, tenures, by_mid, roster_term = people_and_service(root, settings, report)
     by_page = {p["page"]: p for p in persons if p.get("page")}
-    hand_off, hand_ten, layout = hand_offices(root, settings, by_page, report)
+    hand_off, hand_ten, layout = hand_offices(root, settings, by_page, register, report)
     county_ten, county_diff, n_county = county_roster(root, hand_ten)
     off_ten = officer_tenures(root, settings, by_mid)
     contests, cands, elect_ten, elect_layout = members_elect(root, settings, by_mid)
     districts, places = districts_and_places(root, settings)
+    gr_people = []
+    for t in hand_ten:
+        if t["person"] and re.match(EN.GR, t["person"]) and t["person"] not in {g["person"] for g in gr_people}:
+            gr_people.append({"person": t["person"], "granite_id": t["person"], "name": t["printed"]})
     all_ten = tenures + hand_ten + county_ten + off_ten + elect_ten
     meta = _read(root, META)
     term_names = set(meta.get("terms") or []) | {t["term"] for t in all_ten if t.get("term")} | \
         {c["term"] for c in contests if c.get("term")}
-    model = {"person": persons, "office": EN.offices(settings) + hand_off,
+    model = {"person": persons + gr_people, "office": EN.offices(settings) + hand_off,
              "district": districts, "place": places, "term": terms_of(term_names), "tenure": all_ten,
              "contest": contests, "candidacy": cands}
     unnumbered = [{"what": "a member-elect linked to an id no person holds", "where": x["candidacy"],

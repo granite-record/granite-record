@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.1
+# GRANITE_VERSION: 2026-11-13.2
 """
 Granite Record's own identifiers, kept apart from the General Court's.
 
@@ -41,6 +41,12 @@ register holds:
     {"format": 1,
      "ids": [{"id": "gr-0001", "named_as": "Jane Doe", "issued": "2026-11-13",
               "evidence": "...", "employee_number": "" | "373027"}]}
+
+An id issued for a holder of an office in corrections/officials.json (src/ops/gr_register.py --offices,
+the owner's decision of 16 November 2026) also names the place it was issued for,
+"issued_for": "officials:<its path in the hand file>", or a list of them for one person in two
+places; src/parse/build_entities.py puts the id on each such place's holder, under the name it
+was issued to, and on no one else.
 """
 
 import json
@@ -114,6 +120,10 @@ def check_register(reg):
             bad.append(f"{i} holds {emp!r} as an employee number, which is digits only")
         if is_gr(emp):
             bad.append(f"{i} holds a gr- id in the employee-number field")
+        if "issued_for" in e:
+            places = e["issued_for"] if isinstance(e["issued_for"], list) else [e["issued_for"]]
+            if not places or not all(isinstance(p, str) and p.startswith("officials:") for p in places):
+                bad.append(f"{i} was issued for {e['issued_for']!r}, which is no place in the hand file")
     if serials != sorted(serials):
         bad.append("the ids are not in the order they were issued")
     held = [str(e.get("employee_number")) for e in reg["ids"] if e.get("employee_number")]

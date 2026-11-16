@@ -58,6 +58,11 @@ workflows, the morning triage and a person run by its path.
   the evidence, and `--found` records the General Court's number for one when
   it is found. A person's run: the nightly reads the register and never writes
   it, and an id once issued is never renumbered, reissued or deleted.
+  `--offices` lists the holders of the first offices with pages whom
+  `corrections/officials.json` links to no General Court record, with the ids
+  they would get, and writes nothing; `--offices --apply` issues them, each
+  naming the place it was issued for, and a name two places share is left to
+  the person.
 
 Run each from the repository root, `python3 src/ops/inventory.py`; each finds
 the rest of the code by bare name through `_paths.py`. They moved here from

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -82,8 +82,9 @@ def _world(root, PE):
     """A made-up tree for the model to be proved on, every file it reads in the shape its writer
     gives it: two sitting representatives in one seat and a sitting member with no vote yet; a
     senator who sat in the House before, and an unnamed number of 1999; the chair's offices; a
-    hand file with a successor, a holder linked by a member's page and a holder who only shares
-    a member's name; a county seat the Secretary of State's roster names another holder of; and members-elect, new
+    hand file with a successor, a holder linked by a member's page, a holder who only shares a
+    member's name, a place the register issued an id for and one it issued to someone else; a
+    county seat the Secretary of State's roster names another holder of; and members-elect, new
     and returning. The district lists are the repository's own (their seats must be the House's
     400)."""
     root = Path(root)
@@ -156,6 +157,12 @@ def _world(root, PE):
             "commissioners": {"1": {"name": "Lu Same", "office": "County Commissioner", "district": "1",
                                     "party": "R", "party_as_printed": "REP"}}}}}},
         ensure_ascii=False, indent=2), encoding="utf-8")
+    (root / "generated" / "gr_ids.json").write_text(json.dumps({"format": 1, "ids": [
+        {"id": "gr-0001", "named_as": "Gail Gov", "issued": "2026-11-16", "evidence": "made up",
+         "employee_number": "", "issued_for": "officials:governor"},
+        {"id": "gr-0002", "named_as": "Someone Else", "issued": "2026-11-16", "evidence": "made up",
+         "employee_number": "", "issued_for": "officials:council.districts.1"}]}, indent=1),
+        encoding="utf-8")
     (root / "collected").mkdir(exist_ok=True)
     (root / "collected" / "county_officials.json").write_text(json.dumps({"_read_on": "2024-12-05", "officers": [
         {"county": "Carroll", "office": "Sheriff", "name": "Max Before", "domicile": "Ossipee",
@@ -402,8 +409,8 @@ def _entities_give_back_the_tracked_files(BE, EN, PE, BME, PD):
 
 
 @check("build", "build_entities.py writes the model of a made-up tree into data/entities/ and nothing else, every file it read is a view of it, and no one is linked by a name",
-       needs=("build_entities", "entities", "people", "build_members_elect"))
-def _entities_round_trip(BE, EN, PE, BME):
+       needs=("build_entities", "entities", "people", "gr_ids", "build_members_elect"))
+def _entities_round_trip(BE, EN, PE, GR, BME):
     """The night's step on a tree made up here (_world), run as build_all runs it: it writes
     data/entities/ and changes no other file of the tree; and site/data/people.json,
     generated/careers.json, corrections/officials.json (as written and on each side of its
@@ -411,7 +418,9 @@ def _entities_round_trip(BE, EN, PE, BME):
     each come back from what it wrote, byte for byte. And the owner's rules, each on a record of
     the tree: a new member-elect has no person until the General Court numbers them, and a
     returning one has theirs; a holder the hand file links by a member's page has that member's
-    person, and a holder who only shares a member's name has none; a county seat the roster names another
+    person, and a holder who only shares a member's name has none; the gr- id the register
+    issued for a place is that place's holder's under the name it was issued to, and an id
+    issued for a place under another name is no one's; a county seat the roster names another
     holder of is two tenures of that seat; a successor's tenure begins on the day the hand file
     names and its holder's names no end; a sitting member with no vote yet sits by the roster
     alone. A model that has lost a sitting member, a member-elect's mark, a successor's day or an
@@ -428,13 +437,14 @@ def _entities_round_trip(BE, EN, PE, BME):
         assert changed and all(k.startswith("data/entities/") for k in changed), (
             f"build_entities.py wrote outside data/entities/: {[k for k in changed if not k.startswith('data/entities/')]}")
         model, layouts, manifest = EN.load(tmp / "data" / "entities")
-        assert EN.problems(model) == []
+        assert EN.problems(model, None, GR.load_register(tmp / "generated" / "gr_ids.json")) == []
         got = BE.rebuilt(model, layouts, tmp)
         bad = [(rel, w) for rel, ok, w in got if ok is not True]
         assert not bad, "a file of the tree is not given back: " + "; ".join(f"{r}: {w[:300]}" for r, w in bad)
         _hand_as_written(BE, EN, BME, model, layouts, tmp / "corrections" / "officials.json")
         T = {t["tenure"]: t for t in model["tenure"]}
         X = {x["candidacy"]: x for x in model["candidacy"]}
+        P = {p["person"]: p for p in model["person"]}
         new = X["2026-11-03.general.house.carroll-1.ed-new-d"]
         back = X["2026-11-03.general.house.carroll-1.ada-newcomb-r"]
         assert new["person"] is None and T[f"elect:{new['candidacy']}"]["person"] is None, (
@@ -445,6 +455,10 @@ def _entities_round_trip(BE, EN, PE, BME):
         assert T["officials:us_house.districts.1"]["person"] == "11700", T["officials:us_house.districts.1"]
         assert T["officials:council.districts.2"]["person"] is None, (
             "a holder who only shares a member's name was linked to them")
+        gov = T["officials:governor"]
+        assert gov["person"] == "gr-0001" and P["gr-0001"]["granite_id"] == "gr-0001", gov
+        assert T["officials:council.districts.1"]["person"] is None, (
+            "an id issued for a place under another name was put on its holder")
         sheriff = [t for t in model["tenure"] if t["office"] == "sheriff"]
         assert sorted(t["printed"] for t in sheriff) == ["Kim Now", "Max Before"] \
             and len({(t["district"], t.get("seat")) for t in sheriff}) == 1, sheriff
@@ -470,8 +484,8 @@ def _entities_round_trip(BE, EN, PE, BME):
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", (f"data/entities/ written and no other file of the tree changed; {len(got)} files given back "
-                  "byte for byte; a new member-elect has no person, a page link links and a shared name does "
-                  "not; a county seat kept twice is two tenures; four "
+                  "byte for byte; a new member-elect has no person, a page link and a register id issued for "
+                  "the place link and a shared name does not; a county seat kept twice is two tenures; four "
                   "losses each seen")
 
 
@@ -483,7 +497,8 @@ def _entities_step_in_the_plan(build_all):
     the steps that write what it reads; given data/entities as where it writes, and declaring its
     manifest; optional, because no page waits on a model nothing reads. And nothing reads it yet
     (phase A): no step of the plan names data/entities but it, and no code file but it, the shapes'
-    module and the checks imports either or names the folder."""
+    module, src/ops/gr_register.py (which asks it only for the hand file's holders) and the
+    checks imports either or names the folder."""
     class A:
         key = None
         session = "2026"
@@ -501,7 +516,7 @@ def _entities_step_in_the_plan(build_all):
     others = [x.name for x in steps if x is not s and any("data/entities" in str(a) for a in
                                                           list(x.args) + list(x.needs) + list(x.produces))]
     assert not others, f"steps besides the model's name data/entities: {others}"
-    allowed = {"build_entities.py", "entities.py", "build_all.py"}
+    allowed = {"build_entities.py", "entities.py", "gr_register.py", "build_all.py"}
     readers = []
     for f in _paths.code_files("*.py"):
         if f.name in allowed or "suite" in f.parent.name:
@@ -512,6 +527,69 @@ def _entities_step_in_the_plan(build_all):
     assert not readers, f"these read the model, which nothing reads yet: {readers}"
     return "ok", (f"step {i + 1} of {len(steps)}, after the district table, the site data, the members-elect "
                   "and the bulk downloads; --out data/entities, optional; no other step or code file reads it")
+
+
+@check("naming", "gr_register.py --offices lists the first offices' holders the hand file links to no General Court record, issues nothing unless told, and never one id for a name two places share",
+       needs=("gr_register", "gr_ids", "build_entities"))
+def _gr_offices_dry_run(REG, GR, BE):
+    """The design's question 3 (yes, 16 November 2026): a gr- id, by a person's run, for each
+    holder and successor of the first offices with pages -- the Governor, the Council, Congress,
+    the Secretary of State, the Treasurer, the Attorney General -- whom the hand file links to no
+    General Court record. On the tracked hand file and register: the dry run lists exactly those
+    (worked out here from the file, independently: each such record with no member page) and
+    leaves the register as it was, in memory and on disk; a name two of the places share gets no
+    id, since one person is one id and a name cannot say whether it is one person; with --apply,
+    on a copy, every id issued names its place, and the register stays well formed. Run on the
+    made-up register of _world, an id issued for a place is found by the place and the name."""
+    reg_path = _paths.ROOT / "generated" / "gr_ids.json"
+    disk = reg_path.read_bytes()
+    reg = GR.load_register(reg_path) or {"format": 1, "ids": []}
+    kept = json.dumps(reg, sort_keys=True)
+    doc = json.loads((_paths.ROOT / "corrections" / "officials.json").read_text(encoding="utf-8"))
+    want = []
+    for key in ("governor", "secretary_of_state", "treasurer", "attorney_general"):
+        want.append((f"officials:{key}", doc[key]))
+    for key, sub in (("council", "districts"), ("us_house", "districts"), ("us_senate", "seats")):
+        items = doc[key][sub].items() if isinstance(doc[key][sub], dict) else enumerate(doc[key][sub])
+        for k, rec in items:
+            want.append((f"officials:{key}.{sub}.{k}", rec))
+            if isinstance(rec.get("elect"), dict):
+                want.append((f"officials:{key}.{sub}.{k}.elect", rec["elect"]))
+    issued_for = {p for e in reg.get("ids") or [] for p in
+                  (e["issued_for"] if isinstance(e.get("issued_for"), list) else [e.get("issued_for")])}
+    want = sorted(t for t, rec in want if not rec.get("member") and t not in issued_for)
+    got = REG.offices(reg, "2026-11-16", apply=False, root=_paths.ROOT)
+    assert sorted(c["tenure"] for _n, c in got) == want, (
+        f"the dry run lists {sorted(c['tenure'] for _n, c in got)}, and the hand file's unlinked first offices "
+        f"are {want}")
+    assert json.dumps(reg, sort_keys=True) == kept and reg_path.read_bytes() == disk, "the dry run wrote"
+    names = [" ".join(c["name"].split()).lower() for _n, c in got]
+    shared = {n for n in names if names.count(n) > 1}
+    assert all((new is None) == (" ".join(c["name"].split()).lower() in shared) for new, c in got), (
+        "an id was offered for a name two places share, or none for a name one place has")
+    work = copy.deepcopy(reg)
+    done = REG.offices(work, "2026-11-16", apply=True, root=_paths.ROOT)
+    new_ids = [e for e in work["ids"] if e not in reg["ids"]]
+    assert len(new_ids) == sum(1 for n, _c in done if n) and GR.check_register(work) == [] and all(
+        e["issued_for"].startswith("officials:") for e in new_ids), "issued ids without their places"
+    assert reg_path.read_bytes() == disk, "offices() with apply wrote the register itself; only main() writes"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-entities-"))
+    try:
+        import people as PE
+        _world(tmp, PE)
+        cands = BE.gr_candidates(tmp, register=GR.load_register(tmp / "generated" / "gr_ids.json"))
+        # The Governor holds the id issued for that place under her name; the holder of
+        # district 1 is not the one gr-0002 was issued to; district 2's shares a member's name,
+        # which links nobody; the member of the US House is linked by the hand file's member
+        # page, and needs none.
+        assert [c["tenure"] for c in cands] == ["officials:council.districts.1",
+                                                "officials:council.districts.1.elect",
+                                                "officials:council.districts.2"], cands
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(got)} holders of the first offices listed, as the hand file's own unlinked records; "
+                  f"{len(shared)} name(s) two places share held back for a person; nothing written by the "
+                  f"dry run; with --apply every id names its place")
 
 
 @check("data", "the model the build wrote (data/entities/) gives back today's people, careers, officials, members-elect, district table and officers, byte for byte",
