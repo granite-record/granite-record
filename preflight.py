@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.935
+# GRANITE_VERSION: 2026-09-04.936
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1017,10 +1017,14 @@ def _source_reads(tree, tracked, text=None):
     than through _source: X.read_text(encoding="utf-8"), with errors= or
     without, where X is Path("<file>"), _paths.locate, script or
     find("<file>"), _paths.ROOT / "<file>", Path(<module>.__file__), or a
-    name its definition binds once (never in a loop, an argument, a with or
-    an augmented assignment) to one of those. `tracked` is git's list of
-    files; a file under _DATA_FOLDERS, or untracked, is not source, and nor
-    is the module's own file, Path(__file__)."""
+    name its definition binds once to one of those -- alone or in a tuple
+    assigned at once, or as the one name a loop takes through a literal
+    tuple or list of them, and never also as an argument, in a with, by an
+    augmented assignment or a loop over anything else -- or Path(n),
+    _paths.locate(n) where n is a name so bound to literal files only.
+    `tracked` is git's list of files; a file under _DATA_FOLDERS, or
+    untracked, is not source, and nor is the module's own file,
+    Path(__file__)."""
     tracked = set(tracked)
     bare = {}
     for t in tracked:
@@ -1066,17 +1070,31 @@ def _source_reads(tree, tracked, text=None):
                  and isinstance(c.func, ast.Attribute) and c.func.attr == "read_text"]
         if not reads:
             continue
-        once, unclean = {}, set()
+        once, loops, unclean = {}, {}, set()
         for a in ast.walk(node):
             if isinstance(a, ast.Assign):
                 for t in a.targets:
                     if isinstance(t, ast.Name):
                         once.setdefault(t.id, []).append(a.value)
+                    elif isinstance(t, (ast.Tuple, ast.List)) and isinstance(a.value, (ast.Tuple, ast.List)) \
+                            and len(t.elts) == len(a.value.elts) \
+                            and not any(isinstance(x, ast.Starred) for x in t.elts + a.value.elts):
+                        for te, ve in zip(t.elts, a.value.elts):
+                            if isinstance(te, ast.Name):
+                                once.setdefault(te.id, []).append(ve)
+                            else:
+                                unclean |= {x.id for x in ast.walk(te) if isinstance(x, ast.Name)}
                     else:
                         unclean |= {x.id for x in ast.walk(t) if isinstance(x, ast.Name)}
             elif isinstance(a, ast.AnnAssign) and isinstance(a.target, ast.Name):
                 once.setdefault(a.target.id, []).append(a.value)
-            elif isinstance(a, (ast.AugAssign, ast.For, ast.AsyncFor, ast.comprehension)):
+            elif isinstance(a, (ast.For, ast.AsyncFor, ast.comprehension)):
+                if isinstance(a.target, ast.Name) and isinstance(a.iter, (ast.Tuple, ast.List)) \
+                        and a.iter.elts and not any(isinstance(x, ast.Starred) for x in a.iter.elts):
+                    loops.setdefault(a.target.id, []).append(a.iter.elts)
+                else:
+                    unclean |= {x.id for x in ast.walk(a.target) if isinstance(x, ast.Name)}
+            elif isinstance(a, ast.AugAssign):
                 unclean |= {x.id for x in ast.walk(a.target) if isinstance(x, ast.Name)}
             elif isinstance(a, ast.withitem) and a.optional_vars is not None:
                 unclean |= {x.id for x in ast.walk(a.optional_vars) if isinstance(x, ast.Name)}
@@ -1097,8 +1115,21 @@ def _source_reads(tree, tracked, text=None):
                     or lit(enc) not in ("utf-8", "utf8"):
                 continue
             r = c.func.value
-            if named(r) or (isinstance(r, ast.Name) and r.id not in unclean
-                            and len(once.get(r.id, ())) == 1 and named(once[r.id][0])):
+
+            def values(n):
+                # What the name n stands for where it is bound once: [its value], or the
+                # elements of the one literal tuple or list a loop takes it through.
+                if n in unclean or len(once.get(n, ())) + len(loops.get(n, ())) != 1:
+                    return None
+                return [once[n][0]] if once.get(n) else list(loops[n][0])
+            if named(r) or (isinstance(r, ast.Name) and values(r.id)
+                            and all(named(v) for v in values(r.id))) \
+                    or (isinstance(r, ast.Call) and len(r.args) == 1 and not r.keywords
+                        and isinstance(r.args[0], ast.Name)
+                        and ast.unparse(r.func) in ("Path", "_paths.locate", "_paths.script",
+                                                    "_paths.find")
+                        and values(r.args[0].id)
+                        and all(lit(v) is not None and source(lit(v)) for v in values(r.args[0].id))):
                 found.append((name, c.lineno, ast.unparse(c)))
     return found
 
@@ -1116,10 +1147,11 @@ def _sources_read_in_one_place():
       time, errors= as read_text takes it, a missing file's own error --
       and a path _SOURCES names is its files, joined;
       the reader of reads (_source_reads) finds, on a sample, a read by
-      Path, _paths.locate, _paths.ROOT, a module's __file__ and a name bound
-      once to one of them, with errors= and without, and passes over a data
-      file, a fixture's path, a name bound in a loop, a read in another
-      encoding and _source itself;
+      Path, _paths.locate, _paths.ROOT, a module's __file__, a name bound
+      once to one of them, alone or in a tuple, and a name a loop takes
+      through literal files, with errors= and without, and passes over a
+      data file, a fixture's path, a loop over anything else, a read in
+      another encoding and _source itself;
       and in this file no check reads a source file by naming it but
       through _source. One that does is moved onto it as
       `_source(<what it named>)`, the same text.
@@ -1181,15 +1213,21 @@ def _sources_read_in_one_place():
               "        h = p.read_text(encoding=\"utf-8\")\n"
               "    i = Path(\"src/pages/app.js\").read_text(encoding=\"utf-8-sig\")\n"
               "    j = Path(__file__).read_text(encoding=\"utf-8\")\n"
-              "    k = _source(\"src/pages/app.js\")\n\n\n"
+              "    k = _source(\"src/pages/app.js\")\n"
+              "    js, stub = Path(\"src/pages/app.js\"), Path(\"tests/dom_stub.js\")\n"
+              "    l = js.read_text(encoding=\"utf-8\")\n"
+              "    for n in (\"src/pages/app.js\", \"src/pages/app.css\"):\n"
+              "        m = Path(n).read_text(encoding=\"utf-8\")\n"
+              "    for n2 in (\"src/pages/app.js\", \"generated/careers.json\"):\n"
+              "        o = Path(n2).read_text(encoding=\"utf-8\")\n\n\n"
               "def _source(path):\n"
               "    return Path(\"src/pages/app.js\").read_text(encoding=\"utf-8\")\n")
     named = ["src/pages/app.js", "src/pages/build_pages.py", "CONTRIBUTING.md", "src/pages/app.css",
-             "generated/careers.json"]
+             "generated/careers.json", "tests/dom_stub.js"]
     got = [line for _d, line, _t in _source_reads(ast.parse(sample), named, sample)]
-    assert got == [3, 4, 5, 6, 8], (
-        f"the reader of reads found lines {got} of the sample, not the five reads of a source file "
-        "it names (3, 4, 5, 6 and 8)")
+    assert got == [3, 4, 5, 6, 8, 17, 19], (
+        f"the reader of reads found lines {got} of the sample, not the seven reads of a source file "
+        "it names (3, 4, 5, 6, 8, 17 and 19)")
     names, why = _tracked()
     if names is None:
         return "skip", why
@@ -8633,8 +8671,8 @@ def _ballot_source_named(build_site_v2):
             "pending": B.ballot_card(pending, None, today=B._date(2026, 10, 5))}
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "recs.json").write_text(json.dumps(recs), encoding="utf-8")
         (root / "go.js").write_text("""
 require("./stub.js");
@@ -15721,8 +15759,8 @@ def _motion_named_and_ruling_said(JM, VP, BSP, SD, NB, C):
         return "skip", "app.js, dom_stub.js or node is not here; the parser and the session day held"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "rc.json").write_text(json.dumps({
             "question": "Uphold Ruling of the Chair", "mk": "uphold_ruling", "mf": {},
             "date": "2015-09-16", "body": "H", "vote_kind": "DV", "yeas": 286, "nays": 89,
@@ -21139,13 +21177,13 @@ def _find_all_results():
     js, bp = Path("src/pages/find.js"), _paths.locate("build_pages.py")
     if not js.exists() or not bp.exists():
         return "skip", "find.js or build_pages.py not in this directory"
-    t = js.read_text(encoding="utf-8")
+    t = _source(js)
     # Since 9 November 2026 /search is also in Spanish: the row's address is
     # the page's own (window.GR_HREFS["search.html"]) and /search otherwise.
     assert "/search?q=" in t or ('"/search"' in t and '"search.html"' in t and "?q=" in t), (
         "find.js sends its last row somewhere other than /search -- if that "
         "is deliberate, this check names the page it should point at")
-    b = bp.read_text(encoding="utf-8")
+    b = _source(bp)
     assert '"search.html"' in b, (
         "build_pages.py no longer writes search.html, and find.js still sends "
         "every page's search panel to /search")
@@ -21620,8 +21658,8 @@ def _header_keyboard():
         return "skip", "find.js, dom_stub.js or node is not here"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "find.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "find.js").write_text(_source(js), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "go.js").write_text(_HEADER_KEYS, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
@@ -21646,7 +21684,7 @@ def _header_keyboard():
         and 'aria-controls="findout"' in p["html"], (
         "the search panel's markup lost its status line, or its box no longer "
         "names the list it fills")
-    src = js.read_text(encoding="utf-8")
+    src = _source(js)
     assert 'panel.setAttribute("role","search")' in src and \
         'panel.setAttribute("aria-label",' in src, (
         "the search panel is not a named search landmark")
@@ -25384,8 +25422,8 @@ def _search_index_main(SI, CS):
     texts_at, cases_at = Path("tests/search_texts.json"), Path("tests/search_cases.json")
     if not (texts_at.exists() and cases_at.exists() and Path("src/pages/app.js").exists()):
         return "skip", "tests/search_texts.json, the cases or app.js not here"
-    held = json.loads(texts_at.read_text(encoding="utf-8"))
-    bills = json.loads(cases_at.read_text(encoding="utf-8"))["bills"]
+    held = json.loads(_source(texts_at))
+    bills = json.loads(_source(cases_at))["bills"]
     new, old = held["term"], "2023-2024"
     here = Path(".").resolve()
     root = Path(tempfile.mkdtemp())
@@ -26908,8 +26946,8 @@ def _fiscal_note_on_a_phone():
         {"caption": "", "raw": ["The Office of Legislative Budget Assistant states this bill has no fiscal impact."]}]}
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "note.json").write_text(json.dumps(note), encoding="utf-8")
         (root / "go.js").write_text("""
 require("./stub.js");
@@ -27633,7 +27671,7 @@ def _token_pairs_measure():
     # app.js and components.js: the wave is the dated rail's, which
     # components.js draws in both languages since 10 October 2026, and app.js
     # names it again (const WAVE=RL_WAVE), which is followed to its drawing.
-    js = "\n".join(Path(f).read_text(encoding="utf-8")
+    js = "\n".join(_source(f)
                    for f in ("src/pages/app.js", "src/pages/components.js") if Path(f).exists())
     for sel, (table, key, svg) in _COLOR_DRAWS_A_MARK.items():
         alias = re.search(rf"\bconst {svg}\s*=\s*([A-Z_][A-Z0-9_]*)\s*;", js)
@@ -30364,7 +30402,7 @@ def _bfilt_controls():
     css_p, js_p = Path("src/pages/app.css"), Path("src/pages/app.js")
     if not (css_p.exists() and js_p.exists()):
         return "skip", "app.css or app.js is not there"
-    js = js_p.read_text(encoding="utf-8")
+    js = _source(js_p)
     want = set()
     for m in re.finditer(r'class="bfilt[^"]*"', js):
         span = js[m.start():js.index("</div>", m.start())]
@@ -30372,7 +30410,7 @@ def _bfilt_controls():
             t = re.search(r'type="(\w+)"', attrs)
             want.add(f".bfilt {tag}[type={t.group(1)}]" if tag == "input" and t else f".bfilt {tag}")
     assert want, "app.js draws no filter strip (class=\"bfilt\") with a control in it"
-    rules = _css_rules(css_p.read_text(encoding="utf-8"))
+    rules = _css_rules(_source(css_p))
     framed, tall = set(), set()
     for at, sel, body, line in rules:
         decls = dict(_css_decls(body))
@@ -30466,7 +30504,7 @@ def _small_visual_s9():
     css_p, js_p = Path("src/pages/app.css"), Path("src/pages/app.js")
     if not (css_p.exists() and js_p.exists()):
         return "skip", "app.css or app.js is not there"
-    rules = _css_rules(css_p.read_text(encoding="utf-8"))
+    rules = _css_rules(_source(css_p))
 
     def decl(selector, phone=False):
         """The declarations of every rule naming `selector`, later ones last."""
@@ -30503,7 +30541,7 @@ def _small_visual_s9():
                    f"is still drawn over a third: {vt}")
     # Report.
     if '<summary>${icon("report")}<span>Report<span class="rpw"> a problem</span></span></summary>' \
-            not in js_p.read_text(encoding="utf-8") or \
+            not in _source(js_p) or \
             decl(".racts .report .rpw", phone=True).get("display") != "none":
         bad.append("Report a problem is not \"Report\" in half a phone's row of actions")
     assert not bad, "; ".join(bad[:5])
@@ -33375,7 +33413,7 @@ def _runs():
     root = Path(tempfile.mkdtemp())
     try:
         (root / "page.js").write_text(_with_components(js), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source(stub),
                                       encoding="utf-8")
         (root / "go.js").write_text("""
 require("./stub.js");
@@ -34205,9 +34243,9 @@ def _app_js(expr, names=("renderHearings", "archivedNote")):
         names = tuple(names) + ("TESTIFY_LOG",)
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8"))
+        (root / "page.js").write_text(_with_components(_source(js))
                                       + (_TESTIFY_LOG_TAIL if logging else ""), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "go.js").write_text(
             'require("./stub.js");\n'
             'const src = require("fs").readFileSync("./page.js", "utf8");\n'
@@ -34863,9 +34901,9 @@ def _hearing_report_drawn(build_site_v2, senate_hearing_reports):
     sb160 = B.hearing_report_for_page(got["SB160"][0], idx, S.name_part)[0]
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(ext.read_text(encoding="utf-8")),
+        (root / "page.js").write_text(_with_components(_source(ext)),
                                       encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"),
+        (root / "stub.js").write_text(_source(stub),
                                       encoding="utf-8")
         (root / "reps.json").write_text(json.dumps([sb11, sb160]),
                                         encoding="utf-8")
@@ -35848,7 +35886,7 @@ def _law_in_stages_shown(build_site_v2, build_rsa):
         got = B.law_in_stages(chapter, parts_)
         assert got == expect, f"Chapter {chapter}'s parts are shown as {got!r}, not {expect!r}"
     for name in ("src/pages/app.js", "src/pages/print.js"):
-        src = Path(name).read_text(encoding="utf-8")
+        src = _source(name)
         assert "esc(s.shown||s.text||\"\")" in src, (
             f"{name} draws How It Got Here from the step's full text, not the line it is shown as")
     return "ok", (f"HB 282 of 2025: \"{want}\" on the page and the rail, its twelve parts still "
@@ -35939,8 +35977,8 @@ def _ballot_card_drawn():
     }
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "recs.json").write_text(json.dumps(recs), encoding="utf-8")
         (root / "go.js").write_text("""
 require("./stub.js");
@@ -38085,8 +38123,8 @@ def _journey_drawn(build_site_v2):
     bills = _journey_bills(build_site_v2)
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
         (root / "go.js").write_text("""
 require("./stub.js");
@@ -39730,7 +39768,7 @@ def _how_to_tasks(G, civics, BC, BP):
     stale = []
     for f in ("src/pages/civics.py", "src/pages/guides.py", "src/pages/build_civics.py",
               "src/pages/build_pages.py", "src/pages/legislative_year.py"):
-        text = Path(f).read_text(encoding="utf-8")
+        text = _source(f)
         stale += [f"{f}: learn/{s}" for s in civics.HOW_TO
                   if re.search(rf'href="/?learn/{re.escape(s)}\b|"/learn/{re.escape(s)}\.html', text)]
     assert not stale, "a link to a moved page's old address: " + "; ".join(stale)
@@ -41806,8 +41844,8 @@ def _sitting_links(BSP):
         return "skip", "app.js, dom_stub.js or node is not here"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "go.js").write_text("""
 require("./stub.js");
 const fs = require("fs");
@@ -43048,8 +43086,8 @@ def _session_misfiled_row(N, B):
             d = {**row, "events": [{"date": e["date"], "text": e["raw"],
                                     **({"row_note": e["row_note"]} if e.get("row_note") else {})}
                                    for e in lines]}
-            (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-            (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+            (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+            (root / "stub.js").write_text(_source(stub), encoding="utf-8")
             (root / "d.json").write_text(json.dumps([row, d]), encoding="utf-8")
             (root / "go.js").write_text("""
 require("./stub.js");
@@ -43209,8 +43247,8 @@ def _docket_keeps_called_off_rows(N, B, BF):
                                    for e in rows],
                  "documents": [{"label": "HC 5", "kind": "record",
                                 "url": "https://gc.nh.gov/house/calendars_journals/x.pdf"}]}
-            (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-            (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+            (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+            (root / "stub.js").write_text(_source(stub), encoding="utf-8")
             (root / "d.json").write_text(json.dumps([row, d]), encoding="utf-8")
             (root / "go.js").write_text("""
 require("./stub.js");
@@ -47651,8 +47689,8 @@ def _filter_offers(B):
         return "skip", "app.js, dom_stub.js or node is not here"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "go.js").write_text(_OFFERS_HARNESS, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
@@ -48714,7 +48752,7 @@ def _study_report_said_once(B, PA):
     typed = [said["rec"], said["not"], f"{head}: {said['without']}"]
     for f in ("src/pages/app.js", "src/pages/components.js", "src/pages/build_site_v2.py",
               "src/pages/build_committees.py", "src/parse/plain_action.py", "tests/follow/sender.test.js"):
-        text = Path(f).read_text(encoding="utf-8")
+        text = _source(f)
         again = [w for w in typed + list(_STUDY_WORDS_GONE) if w in text]
         if f.endswith("sender.test.js"):
             # The tests read the file for the test that holds the words, and
@@ -56379,8 +56417,8 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
         return "skip", "resolved and mapped; app.js, dom_stub.js or node not here to draw it"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(ext.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(ext)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "links.json").write_text(json.dumps(links), encoding="utf-8")
         (root / "go.js").write_text("""
 require("./stub.js");
@@ -58521,7 +58559,7 @@ def _bill_page_start_and_exit():
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
         return "skip", "app.js, dom_stub.js or node is not here"
-    src = js.read_text(encoding="utf-8")
+    src = _source(js)
     boxes = re.findall(r'^[ \t]*(.*\$\("#q"\)\.focus\(\);)[ \t]*$', src, re.M)
     onload = [b for b in boxes if "e.detail" not in b and "preventDefault" not in b]
     assert onload == ['if(!window.GR_BILL)$("#q").focus();'], (
@@ -58534,7 +58572,7 @@ def _bill_page_start_and_exit():
     root = Path(tempfile.mkdtemp())
     try:
         (root / "page.js").write_text(_with_components(src), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "go.js").write_text(_HEARD_PRELUDE + r"""
 load("render, IDX, backIsSearch, addressed, focusBill, setFocused:(x)=>{focused=x;},"
   + " getFocused:()=>focused, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;}");
@@ -58748,8 +58786,8 @@ def _focus_survives():
         return "skip", "app.js, dom_stub.js or node is not here"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "go.js").write_text(_FOCUS_HARNESS, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
@@ -58847,8 +58885,8 @@ def _chip_drawn():
         return "skip", "app.js, dom_stub.js or node is not here"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "go.js").write_text(_CHIP_HARNESS, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
@@ -58993,8 +59031,8 @@ def _node_app(harness, files=None, args=()):
         return None
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         for name, text in (files or {}).items():
             (root / name).write_text(text, encoding="utf-8")
         (root / "go.js").write_text(harness, encoding="utf-8")
@@ -61960,8 +61998,8 @@ def _review_of_audit_fixes(BP):
     # ---- run: app.js ---------------------------------------------------
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "seat.js").write_text(_seat_script(BP), encoding="utf-8")
         (root / "go.js").write_text(_HEARD_PRELUDE + _REVIEW_HARNESS, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
@@ -61971,7 +62009,7 @@ def _review_of_audit_fixes(BP):
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
-    size = re.search(r"^const PAGE_SIZE = (\d+);", js.read_text(encoding="utf-8"), re.M)
+    size = re.search(r"^const PAGE_SIZE = (\d+);", _source(js), re.M)
     size = int(size.group(1)) if size else None
     if got["more"] != {"card": size, "others": 0}:
         bad.append(f"\"show {size} more\" on the list leaves focus on {got['more']}, not on the "
@@ -72736,8 +72774,8 @@ def _bill_order_matches_app(BO):
            for b in BILL_SCRAMBLED]
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "ids.json").write_text(json.dumps(ids), encoding="utf-8")
         (root / "plain.json").write_text(json.dumps(BILL_SCRAMBLED), encoding="utf-8")
         (root / "cal.json").write_text(json.dumps(cal), encoding="utf-8")
@@ -74747,9 +74785,9 @@ def _calendar_clock():
         if not (node and js.exists() and stub.exists()):
             return "ok", f"{seen} times in three kinds of page; node not on PATH, so the scripts were not run"
         import build_calendar as BC
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")),
+        (root / "page.js").write_text(_with_components(_source(js)),
                                       encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "week.js").write_text(_with_components(BC.WEEK_JS), encoding="utf-8")
         up = [{"date": "2026-03-10", "time": t, "bill": b, "term": "2025-2026", "committee": "Judiciary",
                "what": k, "venue": "LOB 206"}
@@ -75224,7 +75262,7 @@ def _components_agree():
     gone = [p.as_posix() for p in (py_f, js_f, cases_f) if not p.exists()]
     assert not gone, "not here: " + ", ".join(gone)
     import components as C
-    cases = {k: v for k, v in json.loads(cases_f.read_text(encoding="utf-8")).items()
+    cases = {k: v for k, v in json.loads(_source(cases_f)).items()
              if not k.startswith("_")}
     py = {n: f for n, f in vars(C).items()
           if inspect.isfunction(f) and f.__module__ == C.__name__ and not n.startswith("_")}
@@ -78216,7 +78254,7 @@ def _print_sheet_css():
     css_p, app_p = Path("src/pages/print.css"), Path("src/pages/app.css")
     if not (css_p.exists() and app_p.exists()):
         return "skip", "print.css or app.css is not here"
-    text, app = css_p.read_text(encoding="utf-8"), app_p.read_text(encoding="utf-8")
+    text, app = _source(css_p), _source(app_p)
     pal = _css_palette(app)
     light = pal["light"]
     bad, sizes, pairs = [], 0, 0
@@ -80127,7 +80165,7 @@ def _translation_report(chrome, i18n, CR):
         try:
             prog = (words + "\n" if lang == "es" else "") + _with_components("")
             (root / "page.js").write_text(prog, encoding="utf-8")
-            (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+            (root / "stub.js").write_text(_source(stub), encoding="utf-8")
             (root / "want.json").write_text(json.dumps(want, ensure_ascii=False), encoding="utf-8")
             (root / "t.mjs").write_text(TRREPORT_TEST.replace("__FN__", json.dumps(fn.resolve().as_uri())),
                                         encoding="utf-8")
@@ -84721,7 +84759,7 @@ def _one_word_per_meaning(BP):
         bad.append(f"the home page's player says {re.findall(r'<span>(Play[^<]*)</span>', home)}")
     bare = [m.group(0) for f in ("src/pages/app.js", "src/pages/build_pages.py", "src/pages/build_full_sessions.py",
                                  "src/pages/build_session_pages.py", "src/pages/build_study_committees.py")
-            for m in re.finditer(r"<span>Play</span>", Path(f).read_text(encoding="utf-8"))]
+            for m in re.finditer(r"<span>Play</span>", _source(f))]
     if bare:
         bad.append(f"a player's button says only \"Play\": {bare[:2]}")
     assert not bad, "; ".join(bad)
@@ -96058,7 +96096,7 @@ def _follow_test_send():
     if not (toml_path.is_file() and js_path.is_file()):
         return "skip", "no workers/follow here"
     import tomllib
-    conf = tomllib.loads(toml_path.read_text(encoding="utf-8"))
+    conf = tomllib.loads(_source(toml_path))
     envs = conf.get("env", {})
     assert conf.get("workers_dev") is False, (
         "workers/follow/wrangler.toml: the production sender must keep workers_dev = false, so that "
@@ -96086,7 +96124,7 @@ def _follow_test_send():
     assert "TEST_SEND_TOKEN" not in set(keys(conf)), \
         "workers/follow/wrangler.toml sets TEST_SEND_TOKEN: a secret goes in with wrangler secret put"
 
-    js = js_path.read_text(encoding="utf-8")
+    js = _source(js_path)
     run_src = _js_block(js, "export async function run(", "\n}\n")
     path_src = (_js_block(js, "export function testSendAllowed(", "\n}\n")
                 + _js_block(js, "export function testAsk(", "\n}\n")
@@ -96276,8 +96314,8 @@ def _follow_plan_limits():
         f"workers/follow/README.md's table of the plan's limits gives {rows}, and the published "
         f"figures are {FOLLOW_PLAN_LIMITS}: read the pages again and change both")
     import tomllib
-    conf = tomllib.loads(toml_path.read_text(encoding="utf-8"))
-    nights = re.search(r"export const NIGHTS_READ = (\d+);", js_path.read_text(encoding="utf-8"))
+    conf = tomllib.loads(_source(toml_path))
+    nights = re.search(r"export const NIGHTS_READ = (\d+);", _source(js_path))
     assert nights, "sender.js no longer says NIGHTS_READ where this check reads it"
     files = int(nights.group(1)) + 1                  # the nights' files and current.json
     over = []
@@ -97729,8 +97767,8 @@ def _follow_signup_frequency():
         return "skip", "app.js, dom_stub.js or node is not here"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(js.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "go.js").write_text(_FOLLOW_FREQ_JS, encoding="utf-8")
         r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
         assert r.returncode == 0 and "@@" in (r.stdout or ""), (
@@ -97989,7 +98027,7 @@ def _follow_panel_states():
     absent = [str(p) for p in (js, stub, harness) if not p.exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
-    app = js.read_text(encoding="utf-8")
+    app = _source(js)
     manage = Path("functions/api/follow/manage.js")
     if manage.exists():
         hints = dict(re.findall(r'radio\("frequency", "(daily|weekly)", freq, "[^"]+", "([^"]+)"\)',
@@ -98081,7 +98119,7 @@ def _report_from_any_tab():
     try:
         t = root / "go.mjs"
         t.write_text(_REPORT_TAB_JS % (json.dumps(fn.resolve().as_uri()),
-                                       json.dumps(js.read_text(encoding="utf-8"))), encoding="utf-8")
+                                       json.dumps(_source(js))), encoding="utf-8")
         r = _run([node, str(t)], capture_output=True, text=True, timeout=60)
     finally:
         shutil.rmtree(root, ignore_errors=True)
@@ -98269,8 +98307,8 @@ def _report_box_fallback():
         return "skip", "node is not on PATH"
     root = Path(tempfile.mkdtemp())
     try:
-        (root / "page.js").write_text(_with_components(app.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(app)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         t = root / "t.mjs"
         t.write_text(REPORT_BOX_TEST % json.dumps(fn.resolve().as_uri()), encoding="utf-8")
         r = _run([node, str(t)], capture_output=True, text=True, cwd=root)
@@ -98445,8 +98483,8 @@ def _share_beside_report():
     }
     root = Path(tempfile.mkdtemp(prefix="gr-share-"))
     try:
-        (root / "page.js").write_text(_with_components(app.read_text(encoding="utf-8")), encoding="utf-8")
-        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(_source(app)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
         (root / "want.json").write_text(json.dumps(want), encoding="utf-8")
         (root / "t.js").write_text(SHARE_BOX_TEST, encoding="utf-8")
         r = _run([node, "t.js"], capture_output=True, text=True, encoding="utf-8", cwd=root, timeout=60)
@@ -98858,14 +98896,14 @@ def _about_reports():
     # Its privacy paragraph is one of two since 11 October 2026, before and
     # after email goes live (build_pages.ABOUT_FOLLOW); both must keep the
     # promise, so each is held below.
-    src = bp.read_text(encoding="utf-8")
+    src = _source(bp)
     follow = " ".join(src[src.index("\nABOUT_FOLLOW = {"):src.index("\n}\n", src.index("\nABOUT_FOLLOW = {"))].split())
     about = about + " " + follow
     # Its drawing comes first since Polish 1 (9 October 2026): the label is
     # the words after it, " a problem" in a span a phone's row leaves out
     # (25 October 2026), read here as the words a wider page shows.
     m = re.search(r'<summary>(?:\$\{icon\("report"\)\})?((?:<span>)?Report\b(?:[^<]|</?span\b[^>]*>)*)'
-                  r'</summary>', app.read_text(encoding="utf-8"))
+                  r'</summary>', _source(app))
     assert m, "app.js no longer labels the report box"
     label = " ".join(re.sub(r"<[^>]+>", "", m.group(1)).split())
     assert f"<i>{label}</i>" in detail, (
@@ -98873,7 +98911,7 @@ def _about_reports():
     named = re.findall(r"<i>(Report\b[^<]*)</i>", about)
     assert named and all(label.startswith(n) for n in named), (
         f"the About page names the box {named}, which is not how the page labels it, <i>{label}</i>")
-    k = re.search(r"^KEEP_DAYS = (\d+)", cr.read_text(encoding="utf-8"), re.M)
+    k = re.search(r"^KEEP_DAYS = (\d+)", _source(cr), re.M)
     assert k, "compile_reports.py no longer says how long a report is kept"
     said = {7: "a week", 14: "two weeks", 30: "a month"}.get(int(k.group(1)))
     assert said and follow.count(f"deleted after {said}") == 2, (
@@ -118076,7 +118114,7 @@ def _sponsors_csv_seat(text_sponsors):
     (see build_exports.sponsors), still say House on the page and here."""
     here = Path(".").resolve()
     for f in ("build_site_v2.py", "build_exports.py"):
-        src = _paths.locate(f).read_text(encoding="utf-8") if _paths.locate(f).exists() else ""
+        src = _source(_paths.locate(f)) if _paths.locate(f).exists() else ""
         if not src:
             return "skip", f"{f} not here"
         for step in ("TS.merge_into(", "TS.seat_into("):
@@ -128242,8 +128280,8 @@ def _map_label_toggle():
         return "skip", "map.js or dom_stub.js is not in this directory"
     root = Path(tempfile.mkdtemp(prefix="gr-map-"))
     try:
-        for name, text in (("map.js", js.read_text(encoding="utf-8")),
-                           ("stub.js", stub.read_text(encoding="utf-8")),
+        for name, text in (("map.js", _source(js)),
+                           ("stub.js", _source(stub)),
                            ("toggle.js", _MAP_TOGGLE_JS)):
             (root / name).write_text(text, encoding="utf-8")
         r = _run(["node", "toggle.js"], cwd=root, capture_output=True, text=True, timeout=60)
@@ -131085,7 +131123,7 @@ def _past_sponsors_fill(text_sponsors, B):
         "Rep. Sherman Packard (R - Rock 16)")
     here = Path(".").resolve()
     for f in ("build_site_v2.py", "build_exports.py"):
-        src = _paths.locate(f).read_text(encoding="utf-8") if _paths.locate(f).exists() else ""
+        src = _source(_paths.locate(f)) if _paths.locate(f).exists() else ""
         if src:
             a, b = src.find("TS.merge_into("), src.find("PSP.merge_into(")
             assert 0 <= a < b, (f"{f} merges the sponsor record before the bills' own "
