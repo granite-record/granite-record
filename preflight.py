@@ -41425,14 +41425,41 @@ def _build_date_stated(build_all, build_date, shell):
         # file, so a night with no change uploads none of them. The pages that
         # name no such day fall back on the build day and may differ, and by
         # that date alone.
+        #
+        # THE CALENDAR'S CURRENT WEEK IS THE BUILD'S, AND THE ONE EXCEPTION.
+        # Every week page carries data-here, the week /calendar serves on the
+        # day it was built, so its script can call that week /calendar; and the
+        # week before it links "Next Week" to /calendar, not to the week's
+        # dated address. Built in two different weeks -- on a Monday or a
+        # Tuesday, with the day before yesterday stated -- every week page
+        # differs by that attribute, and the week before the stated one by that
+        # link too; a past week's page, dated by its record, differs by nothing
+        # else. Those two differences, and only between builds in two different
+        # weeks, are allowed: those pages re-upload on the first night of a
+        # week. Until 16 November 2026 this was unwritten: the check was first
+        # run across a week boundary on a Monday, and the night's --code would
+        # have stopped every Monday and Tuesday.
         plain_site = _fixture_site_shared()[0] / "site"
-        moved, kinds = [], Counter()
+        moved, kinds, weekly = [], Counter(), 0
         fell, fell_stated = shell.cite_day(today), shell.cite_day(day)
+        week_then, week_now = ("{}-W{:02d}".format(*d.isocalendar()[:2]) for d in (day, today))
+
+        def week_neutral(text, week):
+            """The page with the build's week written out: data-here emptied, and a
+            pager link to /calendar given that week's dated address."""
+            text = text.replace(f' data-here="{week}"', ' data-here=""')
+            return re.sub(r'(<a class="wk(?:prev|next)" href="(?:/[a-z]{2})?/calendar)(")',
+                          lambda m: f"{m.group(1)}/{week}{m.group(2)}", text)
+
         for p in sorted(site.rglob("*.html")):
             q = plain_site / p.relative_to(site)
             if not q.is_file():
                 continue
             a_, b_ = (x.read_text(encoding="utf-8", errors="replace") for x in (p, q))
+            if a_ != b_ and week_then != week_now and f' data-here="{week_then}"' in a_ \
+                    and week_neutral(a_, week_then) == week_neutral(b_, week_now):
+                weekly += 1
+                continue
             if a_ == b_:
                 if 'class="citeday' in a_ and f'<span class="citeday">{fell}</span>' not in a_ \
                         and f'<span class="citeday">{fell_stated}</span>' not in a_:
@@ -41491,7 +41518,9 @@ def _build_date_stated(build_all, build_date, shell):
                   f"itself but the {sum(1 for f in CLOCK_OF_THEIR_OWN if own.get(f))} named; "
                   f"built with {day} stated, {said} pages cite it and none cites today, "
                   "and the index, the manifest, the sitemap, the feeds and the calendar's "
-                  "week are that day's; a date that is not one stops the builder")
+                  "week are that day's; a date that is not one stops the builder"
+                  + (f"; built in two weeks, {weekly} calendar week pages differ by the week "
+                     "/calendar serves and nothing else" if weekly else ""))
 
 
 # An address as it is written in a page, and the page furniture that is not one.
