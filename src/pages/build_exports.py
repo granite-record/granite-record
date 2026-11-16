@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.72
+# GRANITE_VERSION: 2026-09-10.73
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -36,7 +36,10 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import csv
+import io
 import json
+import re
+import tokenize
 
 import api_db
 import ballot_source as BS
@@ -638,8 +641,46 @@ def feeds(site):
     <ul class="feeds">{"".join(rows)}</ul>"""
 
 
-def repo_facts():
-    """What a clone of this repository gets, read from this one.
+# A line that may open a check's decorator; _checks_in decides whether it does.
+_CHECK_LINE = re.compile(r"(?m)^@\s*check\s*\(")
+
+
+def _checks_in(text):
+    """How many checks the module `text` registers: each `@check(` that
+    opens a decorator at the start of a line, read as Python's tokens, so
+    that the same characters inside a string or a comment are not one."""
+    n, last = 0, []
+    for tok in tokenize.generate_tokens(io.StringIO(text).readline):
+        if tok.type in (tokenize.NL, tokenize.COMMENT):
+            continue
+        last = (last + [tok])[-3:]
+        if len(last) == 3 and last[0].type == tokenize.OP and last[0].string == "@" \
+                and last[0].start[1] == 0 and last[1].type == tokenize.NAME \
+                and last[1].string == "check" and last[2].string == "(":
+            n += 1
+    return n
+
+
+def checks_counted(root=None):
+    """How many checks a run of preflight registers, counted off the code
+    rather than by running it: every `@check(` decorating a definition at
+    the top of a module (_checks_in), in every code file of the repository
+    that has one, so that the count follows the checks into whichever files
+    hold them. preflight holds it to its run's own registry
+    (_data_page_counts_the_registry)."""
+    n = 0
+    for f in _paths.code_files("*.py", root=root):
+        text = f.read_text(encoding="utf-8", errors="replace")
+        if _CHECK_LINE.search(text):
+            n += _checks_in(text)
+    return n
+
+
+def repo_facts(root=None):
+    """What a clone of this repository gets, read from this one (`root`, the
+    repository by default): how many files carry a version stamp
+    (inventory.registry) and how many checks a run of preflight registers
+    (checks_counted).
 
     OFF THE REPOSITORY'S ROOT, NOT OFF THE WORKING DIRECTORY. preflight runs
     every builder with its cwd set to a temporary fixture tree, so Path(".")
@@ -650,11 +691,18 @@ def repo_facts():
     root, which a move under src/ would have turned into src/pages/ and a
     sentence dropped from data.html without a word.
 
+    THE CHECKS A RUN REGISTERS, NOT THE TEXT "@check(" (16 November 2026, the
+    refactor's stage 1). The count was of those characters in preflight.py:
+    1279 at 62df0ce9 for the 1273 checks a run registered, four of the six
+    over inside the piece parser's test string and two in its words, and the
+    split of preflight.py into a package would have made it the count of
+    what stayed in the file, or none, and the sentence gone without a word.
+
     Every value is counted or absent. Where a file cannot be read the fact is
     left out rather than guessed at, because a wrong number that looks
     defended is worse than no number.
     """
-    root = _paths.ROOT
+    root = Path(root).resolve() if root is not None else _paths.ROOT
     out = {}
     try:
         import inventory
@@ -663,12 +711,27 @@ def repo_facts():
         print(f"  WARNING repo_facts: the stamped files could not be counted "
               f"({type(e).__name__}: {e})", file=sys.stderr)
     try:
-        pf = _paths.locate("preflight.py").read_text(encoding="utf-8")
-        out["checks"] = pf.count("@check(")
+        out["checks"] = checks_counted(root)
     except Exception as e:                                      # noqa: BLE001
-        print(f"  WARNING repo_facts: preflight.py unread, so no check count "
+        print(f"  WARNING repo_facts: the checks could not be counted "
               f"({type(e).__name__}: {e})", file=sys.stderr)
+    if out.get("checks") == 0:
+        print("  WARNING repo_facts: no code file registers a check, so data.html says "
+              "nothing of them", file=sys.stderr)
     return out
+
+
+def repo_sentence(facts):
+    """data.html's sentence of what a clone gets, from repo_facts(): both
+    counts, or "" where either is missing."""
+    if not (facts.get("stamped") and facts.get("checks")):
+        return ""
+    # "against them" read as though the checks only covered the stamped
+    # files. They cover the whole repository, and the stamps are one of
+    # the things they check.
+    return (f'{facts["stamped"]} files carry a version stamp the build '
+            f'refuses to let drift, and {facts["checks"]} checks run over the '
+            'whole of it with no network and nothing fetched. ')
 
 
 def ballot_words(path=Path("corrections/ballot_results.json")):
@@ -1014,15 +1077,7 @@ def data_page(site, out, tables, base, cov=()):
     # About's were; fill() stops the build on one it cannot count.
     how_built = about_figures.fill(HOW_BUILT, about_figures.figures(site=site),
                                    page="data.html")
-    _f = repo_facts()
-    _rf = ""
-    if _f.get("stamped") and _f.get("checks"):
-        # "against them" read as though the checks only covered the stamped
-        # files. They cover the whole repository, and the stamps are one of
-        # the things they check.
-        _rf = (f'{_f["stamped"]} files carry a version stamp the build '
-               f'refuses to let drift, and {_f["checks"]} checks run over the '
-               'whole of it with no network and nothing fetched. ')
+    _rf = repo_sentence(repo_facts())
 
     # BEFORE YOU START: the first note open, because it is the one mistake
     # every user of these files can make; each of the others a closed fold,

@@ -254,7 +254,7 @@ show.
 
 ### Iterating without waiting on the whole of it
 
-Three tools for the time between those proofs, none of which replaces one.
+Five tools for the time between those proofs, none of which replaces one.
 
 - **A change to the browser's files alone** -- `src/pages/app.css`,
   `components.js`, `app.js` or `find.js` -- goes into the site the last full
@@ -290,6 +290,15 @@ Three tools for the time between those proofs, none of which replaces one.
   with `dev` -- or since `--changed <commit>` -- and `--verbose` says why
   each was chosen. It says, every time, that it is not the full suite: the
   full suite is what runs before a merge into `dev`.
+- **What the checks are, without running one.** `python3 preflight.py
+  --manifest FILE` writes every check, in the order a run takes them, with
+  its group, words, needs and marks and two fingerprints of its code -- its
+  own definition, and that with every helper and constant it reaches by
+  name -- into FILE, and nothing else. A change meant to move checks and
+  alter none, such as splitting `preflight.py` into a package, shows it so:
+  the manifest before and after is the same but for the fingerprints the
+  change says it moves. Compare two manifests made by the same Python; each
+  says which made it.
 - **A baseline once per commit.** `src/checks/site_manifest.py` keeps the
   sha256 manifest of a build, keyed by its commit, its stated day, its
   options and the data under it, so the "build before" of step 2 is made
@@ -397,13 +406,27 @@ that nothing is found missing a session later. Every one ends the same way:
 4. A check that reads a built site uses `_fixture_site_shared()` (read only)
    or `_fixture_site_whole(root)` (a copy it may write), rather than building
    its own.
-5. A data check runs on the night after the build unless it is named in
+5. A check that reads the text of one of the repository's own files --
+   `app.js`, a builder, a workflow, a README -- reads it with
+   `_source("src/pages/app.js")` (or `_source(_paths.locate("nightly.py"))`,
+   `_source(MODULE.__file__)`), not `read_text()`: it is read once a run, and
+   a later move of code between files changes the table `_SOURCES`, not the
+   check. `_sources_read_in_one_place` fails on a read that does not.
+6. A check speaks of the suite, never of `preflight.py` alone: one that
+   reads every code file passes over the suite's with `_in_suite(f)`, not by
+   the name `preflight.py`; one that reads the checks' own code reads
+   `_suite_files()`; a switch one check sets for the checks it runs is an
+   attribute of `_SWITCHED`, never a global rebound with `global`. The
+   checks are to move into `src/checks/suite/`, and
+   `_suite_speaks_of_itself` fails on a check that would then read one
+   module and pass.
+7. A data check runs on the night after the build unless it is named in
    `NOT_ON_THE_NIGHT` with its reason; one that compares against the
    official record goes in `RECORD_CHECKS`, so it warns rather than holds
    the night.
-6. A check written ahead of the change that makes it pass carries
+8. A check written ahead of the change that makes it pass carries
    `expect_fail="the change"`.
-7. A check of what the whole run left behind carries `last=True`, and
+9. A check of what the whole run left behind carries `last=True`, and
    `main()` runs it after every other check wherever it is defined:
    `_no_watch_left`, which counts the machine watches the others left going.
 
