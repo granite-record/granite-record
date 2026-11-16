@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 The registry of preflight's checks, and what every module of the suite shares.
 
@@ -233,7 +233,7 @@ def _run_order():
     where there is none."""
     if "names" not in _ORDER:
         p = _paths.ROOT / "src" / "checks" / "suite" / "ORDER.json"
-        _ORDER["names"] = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else []
+        _ORDER["names"] = json.loads(_source(p)) if p.is_file() else []
     return _ORDER["names"]
 
 

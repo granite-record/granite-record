@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import _paths
 
-from pf_core import (_parsed, _run, _sealed_run, _source, check, imp)
+from pf_core import (_in_suite, _parsed, _run, _sealed_run, _source, check, imp)
 from pf_fixture import (CHAIN_NEEDS, _fixture_site_shared, _site_fixture)
 from pf_harness import (_app_js, _node_app, _with_components)
 from pf_shared import (LSR_LISTLIKE, _BALLOTPEDIA, _CHIP_FINISHED, _CHIP_LIVE,
@@ -8939,7 +8939,10 @@ def _shared_helpers_one_home():
     stray = []
     for f in sorted(list(Path("src").rglob("*.py")) + [Path("nightly.py")]):
         posix = f.as_posix()
-        if f.parent.as_posix() == "src/lib":
+        # The suite's own modules write the rules out as the samples they hold
+        # the code to (they were in preflight.py, outside src/, until 16
+        # November 2026): a check is not a second home.
+        if f.parent.as_posix() == "src/lib" or _in_suite(f):
             continue
         txt = f.read_text(encoding="utf-8", errors="replace")
         if posix not in ALLOWED:

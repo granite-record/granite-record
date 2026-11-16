@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import _paths
 
-from pf_core import (_run, _source, _suite_files, check)
+from pf_core import (_in_suite, _run, _source, _suite_files, check)
 from pf_fixture import (CHAIN_NEEDS, _fixture_site_shared)
 from pf_harness import (_app_js, _node_app, _node_file, _with_components)
 from pf_shared import (_CAL_DOM, _HEARD_PRELUDE, _STATUSCAT_HARNESS, _STATUS_CATEGORY,
@@ -5175,9 +5175,14 @@ def _record_not_translated():
     missing = [f"{f}: {w}" for f, ws in want.items()
                for w in ws if w not in Path(f).read_text(encoding="utf-8")]
     assert not missing, "record text a translator may now rewrite: " + "; ".join(missing)
-    # A chip drawn by hand, anywhere a page is written, says it too.
+    # A chip drawn by hand, anywhere a page is written, says it too. The
+    # suite's own modules are not where a page is written: their chips are
+    # samples a check feeds a page (they were in preflight.py, outside src/,
+    # until 16 November 2026).
     loose = []
     for f in sorted(Path("src").rglob("*.py")) + sorted(Path("src/pages").glob("*.js")):
+        if _in_suite(f):
+            continue
         for m in re.finditer(r'<span class="mchip[^"]*"(?:\s+[^>]*)?>', f.read_text(encoding="utf-8")):
             if 'translate="no"' not in m.group(0):
                 loose.append(f"{f.name}: {m.group(0)[:60]}")
