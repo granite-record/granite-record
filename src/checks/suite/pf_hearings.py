@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of livestreams, markers, dockets and proceedings.
 
@@ -4330,6 +4330,7 @@ def _proceedings_table():
     root = Path(tempfile.mkdtemp(prefix="gr-proc-"))
     try:
         for f in PROCEEDINGS_MODULES:
+            (root / f).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(_paths.locate(f), root / f)
         cols = ["bill","body","committee","proceeding","sched_date","sched_time",
                 "venue","tier","bills_in_slot","match","video_id","video_title",

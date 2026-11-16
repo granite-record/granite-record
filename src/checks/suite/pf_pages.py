@@ -14356,6 +14356,218 @@ def _data_page_counts_the_registry(BE, inventory):
                   "or a comment are not")
 
 
+@check("build", "a download packed before is the one packing makes: the bill files, the bill texts and the "
+       "database come out the same with no cache, a warm one, a broken one, another packer's and a cold "
+       "build's, only bytes packed before are taken, and the folder keeps no more than the run used",
+       needs=("build_exports", "api_records", "api_db", "build_cache", "site_read"))
+def _packed_files_kept(BE, AR, AD, BC, SR):
+    """THE PACKED DOWNLOADS (build_cache.Packed; the refactor's build design, step S4, 16 November
+    2026). bills-<term>.jsonl.gz, bill-texts-<term>.jsonl.gz and the database's xz are taken from
+    .build_cache where the same bytes were packed before by the same packer, so nothing about it
+    may change a byte:
+
+      the packing is today's: gzip_bytes is gzip -9 with no name and no time written a line at a
+      time, byte for byte what the bill files' stream wrote into its file, and xz_bytes is
+      lzma.compress at preset 6;
+      the fixture's bill files and texts (bill_files and api_records.Records over its built
+      site) and a small database (api_db.write): cold, then warm -- the same bytes, every file
+      taken on the warm run and none packed;
+      on two terms of lines: a cache cut short, a kept file whose bytes are not its name, an
+      index of another packer's signature and a cold build (GRANITE_COLD) each give the same
+      bytes and take nothing; one term changed is packed again and the other taken; keep()
+      leaves only the files its index names; a writer handed no folder writes none; and a run
+      the bill files stop short of every bill keeps nothing;
+      the packer is in the key: gzip-9 and xz-6 have different signatures, and a gzip level
+      changed makes another."""
+    import contextlib
+    import gzip
+    import hashlib
+    import io
+    import lzma
+    sha = lambda b: hashlib.sha256(b).hexdigest()
+
+    # THE PACKING IS TODAY'S.
+    lines = [(json.dumps({"n": i, "w": "x" * (i % 37)}) + "\n").encode("utf-8") for i in range(3000)]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-packed-"))
+    saved_cold = os.environ.get(BC.COLD)
+    os.environ.pop(BC.COLD, None)
+    try:
+        with (tmp / "old.gz").open("wb") as fh, \
+                gzip.GzipFile(filename="", mode="wb", fileobj=fh, compresslevel=9, mtime=0) as gz:
+            for x in lines:
+                gz.write(x)
+        assert BC.gzip_bytes(lines, 9) == (tmp / "old.gz").read_bytes(), \
+            "build_cache.gzip_bytes is not the bytes the bill files' stream wrote"
+        raw = b"".join(lines)
+        assert BC.xz_bytes([raw], 6) == lzma.compress(raw, format=lzma.FORMAT_XZ, preset=6), \
+            "build_cache.xz_bytes is not lzma.compress at preset 6"
+
+        def quiet(fn, *a, **k):
+            with contextlib.redirect_stdout(io.StringIO()):
+                return fn(*a, **k)
+
+        # THE FIXTURE'S BILL FILES AND TEXTS, cold then warm.
+        shared, _base, _ran, _days = _fixture_site_shared()
+        site = shared / "site"
+        rows = SR.bill_index(site)
+        terms_ = sorted({r["term"] for r in rows}, reverse=True)
+        recs = sorted(SR.records(site), key=lambda x: (x[2].get("term") or "", x[1]), reverse=True)
+
+        def built(cache, name):
+            out = tmp / name
+            out.mkdir()
+            quiet(BE.bill_files, out, site, cache=cache)
+            rec = AR.Records(rows, site, cache=cache)
+            for t in terms_:
+                for _y, _b, r in recs:
+                    if r.get("term") == t:
+                        rec.add_bill(t, r)
+            quiet(rec.text_files, out)
+            return {p.name: p.read_bytes() for p in sorted(out.glob("*.jsonl.gz"))}, rec.packs
+        cache = tmp / "cache"
+        plain, _ = built(False, "plain")
+        cold, packs_cold = built(cache, "cold")
+        warm, packs_warm = built(cache, "warm")
+        assert plain and len(plain) == 2 * len(terms_), sorted(plain)
+        assert cold == plain and warm == plain, (
+            "a packed file kept in the cache is not the one packing makes: "
+            + ", ".join(n for n in plain if cold.get(n) != plain[n] or warm.get(n) != plain[n]))
+        assert (packs_cold.taken, packs_warm.taken, packs_warm.made) == (0, len(terms_), 0), (
+            f"the texts: cold took {packs_cold.taken}, warm took {packs_warm.taken} and packed "
+            f"{packs_warm.made}")
+        bills_index = BC.path_of("bill_files", cache)
+        kept_bills = BC.Packed("bill_files", "gzip-9", cache)
+        assert len(kept_bills.kept) == len(terms_) and \
+            sorted(f.name for f in (cache / BC.PACKED / "bill_files").iterdir()) == \
+            sorted(f"{sha(plain[f'bills-{t}.jsonl.gz'])}.gz" for t in terms_), (
+                "the bill files' index or kept files are not this run's: "
+                f"{sorted(f.name for f in (cache / BC.PACKED / 'bill_files').iterdir())}")
+
+        # THE DATABASE, cold then warm.
+        import api_schema as AS
+        db = tmp / "db"
+        db.mkdir()
+
+        def put(name, cols, rows_):
+            with (db / name).open("w", encoding="utf-8", newline="") as fh:
+                w = csv.writer(fh)
+                w.writerow(cols)
+                w.writerows(rows_)
+        put("bills.csv", list(AS.CSV["bills.csv"]),
+            [["2025-2026", "2025", "HB1", "a title", "", "", "", "", "", "", "0", "", ""]])
+        put("rollcalls.csv", list(AS.CSV["rollcalls.csv"]),
+            [["2025-H-1", "2025-2026", "2025", "H", "1", "2025-01-08", "HB1", "q", "", "200", "100",
+              "0", "1", "1", "", "", "count"]])
+        put("votes-2025-2026.csv", list(AS.CSV["votes-<term>.csv"]),
+            [["2025-H-1", "2025-2026", "2025-01-08", "", "q", "m1", "A Member", "R", "House", "Yea"]])
+        put("sponsors.csv", list(AS.CSV["sponsors.csv"]),
+            [["2025-2026", "HB1", "m1", "A Member", "R", "H", "1", "", "the sponsor file", "1"]])
+        put("legislators.csv", list(AS.CSV["legislators.csv"]),
+            [["m1", "A Member", "House", "R", "1", "Belknap", "", "", "3", "120", "1"]])
+        put("proceedings.csv", list(AS.CSV["proceedings.csv"]),
+            [["2025-2026", "HB1", "H", "public hearing", "2025-01-09", "10:00", "Finance", "LOB 210",
+              "abc", "100", "620.5", "stated", ""][:len(AS.CSV["proceedings.csv"])]])
+        people = [{"person": "1", "name": "A Member", "member_ids": ["m1"], "employee_numbers": ["m1"]}]
+        made = []
+        for c in (False, cache, cache):
+            row = quiet(AD.write, db, AD.Collector(), people, meetings_path=db / "none.json", cache=c)
+            made.append(((db / AD.NAME).read_bytes(), row["sha256"]))
+        assert made[0] == made[1] == made[2], "the database's xz from the cache is not the one packing makes"
+        kept_db = BC.Packed("database", "xz-6", cache)
+        assert len(kept_db.kept) == 1 and kept_db._kept(next(iter(kept_db.kept))) == made[0][0], \
+            "the database's packed file was not kept, or not as written"
+
+        # ON TWO TERMS OF LINES.
+        a = [b'{"a":1}\n'] * 500 + [b'{"a":2}\n']
+        b = [b'{"b":%d}\n' % i for i in range(700)]
+        c2 = tmp / "c2"
+
+        def two(*parts, folder=c2):
+            p = BC.Packed("pair", "gzip-9", folder)
+            got = [p.pack(x) for x in parts]
+            p.keep()
+            return got, p
+        want = [BC.gzip_bytes(a, 9), BC.gzip_bytes(b, 9)]
+        got, p = two(a, b)
+        assert got == want and (p.taken, p.made) == (0, 2)
+        got, p = two(a, b)
+        assert got == want and (p.taken, p.made) == (2, 0), (p.taken, p.made)
+        files = sorted((c2 / BC.PACKED / "pair").iterdir())
+        assert [f.name for f in files] == sorted(f"{sha(x)}.gz" for x in want), [f.name for f in files]
+        b2 = b + [b'{"b":"new"}\n']
+        got, p = two(a, b2)
+        assert got == [want[0], BC.gzip_bytes(b2, 9)] and (p.taken, p.made) == (1, 1), (p.taken, p.made)
+        assert sorted(f.name for f in (c2 / BC.PACKED / "pair").iterdir()) == \
+            sorted(f"{sha(x)}.gz" for x in (want[0], BC.gzip_bytes(b2, 9))), \
+            "keep() left a file its index no longer names"
+        # a kept file whose bytes are not its name
+        victim = c2 / BC.PACKED / "pair" / f"{sha(want[0])}.gz"
+        victim.write_bytes(want[0][:-8] + b"\0" * 8)
+        got, p = two(a, b2)
+        assert got[0] == want[0] and p.taken == 1 and p.made == 1, "a kept file not its own sha256 was taken"
+        # a cache cut short
+        idx = BC.path_of("pair", c2)
+        idx.write_bytes(idx.read_bytes()[:30])
+        got, p = two(a, b2)
+        assert got == [want[0], BC.gzip_bytes(b2, 9)] and p.taken == 0, "a cache cut short was taken"
+        # another packer's signature
+        doc = json.loads(gzip.decompress(idx.read_bytes()))
+        idx.write_bytes(gzip.compress(json.dumps(dict(doc, sig="0" * 64)).encode("utf-8")))
+        got, p = two(a, b2)
+        assert p.taken == 0 and got[0] == want[0], "another packer's file was taken"
+        # a cold build
+        os.environ[BC.COLD] = "1"
+        try:
+            got, p = two(a, b2)
+        finally:
+            os.environ.pop(BC.COLD, None)
+        assert p.taken == 0 and p.made == 2 and got[0] == want[0] and idx.is_file(), \
+            "a cold build took a kept file, or kept nothing"
+        # no folder: packed every time, and nothing kept anywhere
+        got, p = two(a, folder=False)
+        assert got == [want[0]] and p.root is None and p.keep() is False and p.said() == "1 packed", \
+            p.said()
+        # the packer is in the key
+        assert BC.pack_signature("gzip-9") != BC.pack_signature("xz-6")
+        was, sig9 = BC.PACKERS["gzip-9"], BC.pack_signature("gzip-9")
+        try:
+            BC.PACKERS["gzip-9"] = (lambda chunks: BC.gzip_bytes(chunks, 6), ".gz")
+            BC._PACK_SIGS.pop("gzip-9", None)
+            assert BC.pack_signature("gzip-9") != sig9, "a gzip level changed is the same packer to the cache"
+        finally:
+            BC.PACKERS["gzip-9"] = was
+            BC._PACK_SIGS.pop("gzip-9", None)
+        assert BC.pack_signature("gzip-9") == sig9
+
+        # A RUN STOPPED SHORT OF EVERY BILL KEEPS NOTHING.
+        short = tmp / "short"
+        shutil.copytree(site / "idx", short / "idx")
+        shutil.copy(site / "meta.json", short / "meta.json")
+        shutil.copytree(site / "bill", short / "bill")
+        if (site / "bills").is_dir():
+            shutil.copytree(site / "bills", short / "bills")
+        next(iter(sorted((short / "bill").rglob("*.html")))).unlink()
+        before = bills_index.read_bytes()
+        (tmp / "short-out").mkdir()
+        try:
+            quiet(BE.bill_files, tmp / "short-out", short, cache=cache)
+            raise AssertionError("bill_files wrote the bill files with a page missing")
+        except SystemExit:
+            pass
+        assert bills_index.read_bytes() == before, "a run stopped short of every bill rewrote the cache"
+    finally:
+        if saved_cold is None:
+            os.environ.pop(BC.COLD, None)
+        else:
+            os.environ[BC.COLD] = saved_cold
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"the fixture's {len(plain)} bill and text files and a small database the same with no "
+                  f"cache, cold and warm, every one taken warm; on two terms a cut cache, a file not its "
+                  "own sha256, another packer's index and a cold build take nothing and change no byte, "
+                  "one changed term is packed again, keep() prunes, a run stopped short keeps nothing; "
+                  "the packer's settings are in its key")
+
+
 @check("data", "a proceeding starts at the same moment on both pages")
 def _one_start():
     """The committee page and the bill page must not disagree about a time.

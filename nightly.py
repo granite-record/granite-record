@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.96
+# GRANITE_VERSION: 2026-09-04.97
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -287,6 +287,10 @@ scheduled night never carries it. For that one run:
   the feeds           build_all.py --allow-prune, for build_feeds.py. On
                       GitHub's machine site/ starts empty and nothing is
                       stale, so there the census is what sees feeds fall
+  the build's cache   build_all.py --cold: no step reads .build_cache, so
+                      nothing worked out under the old term is taken into
+                      the new one (16 November 2026); what the build works
+                      out is kept, and waits in the held kit with the rest
   the census gates   a fall of the feeds is reported and does not stop the
                       night (NEW_TERM_MAY_FALL, since 5 October 2026: until
                       then any fall). Any other gate's fall, the sitting
@@ -2026,7 +2030,7 @@ def main():
                 # the prune is allowed for a build wherever site/ is kept.
                 night.v["new_term"]["feeds"] = "the prune allowed, for this build"
             if run(["build_all.py", "--local"] + (["--no-captions"] if a.runner else [])
-                   + (["--allow-prune"] if a.new_term else []),
+                   + (["--allow-prune", "--cold"] if a.new_term else []),
                    "rebuild") != 0:
                 say("\nSTOPPED: the build failed. The live site is untouched.")
                 if night:

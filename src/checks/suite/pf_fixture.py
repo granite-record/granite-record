@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 The fixture project and site that preflight's checks build and read, and what a
 run makes once.
@@ -501,6 +501,7 @@ def _site_fixture(root):
     import subprocess, sys
     for f in PROCEEDINGS_MODULES:
         if _paths.locate(f).exists():
+            (root / f).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(_paths.locate(f), root / f)
     r = _run([sys.executable, "build_proceedings.py"], cwd=root,
                        capture_output=True, text=True)
@@ -561,9 +562,12 @@ def _fixture_videos(root):
 # every committee row's name is settled there before the table is written;
 # and _paths.py, which its bootstrap looks for above it. Each is copied from
 # whichever code folder holds it, flat: in the fixture's folder every one is
-# found by its bare name, as in the repository.
+# found by its bare name, as in the repository. terms.py reads the state's
+# settings (16 November 2026), so state_settings.py comes too, and its file at
+# the place under the root where it looks (each copy makes the folder).
 PROCEEDINGS_MODULES = ("_paths.py", "build_proceedings.py", "proceedings.py",
-                       "committee_names.py", "referrals.py", "names.py", "terms.py")
+                       "committee_names.py", "referrals.py", "names.py", "terms.py",
+                       "state_settings.py", "src/lib/state_settings.json")
 
 
 CHAIN_NEEDS = ["build_site_v2.py", "build_search_index.py", "build_pages.py",

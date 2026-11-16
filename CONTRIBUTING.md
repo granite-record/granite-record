@@ -334,6 +334,10 @@ Five tools for the time between those proofs, none of which replaces one.
   make a baseline where there is none. `python3 src/checks/site_manifest.py
   list` shows what is kept, in `logs/site-manifests/`.
 
+  A change to a step that keeps answers in `.build_cache/` is proven cold and
+  warm: `python3 build_all.py --local --cold` reads no cache (and still keeps
+  what it works out), and the build after it reads that; both compare the same.
+
 ## Where new code goes
 
 Code that is not an entry point lives under `src/`; `src/README.md` has the

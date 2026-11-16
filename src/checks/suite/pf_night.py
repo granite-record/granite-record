@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -546,6 +546,244 @@ def _build_date_stated(build_all, build_date, shell):
                   "the builder"
                   + (f"; built in two weeks, {weekly} calendar week pages differ by the week "
                      "/calendar serves and nothing else" if weekly else ""))
+
+
+@check("pipeline", "build_all decides the build's term once, off the installed files, hands it to "
+       "every step, records it in build.json beside the day's and the index's, and takes --cold "
+       "to every step", needs=("build_all", "build_cache", "terms"))
+def _build_term_decided(BA, BC, T):
+    """THE BUILD'S ONE TERM (terms.py, THE SITTING TERM; the refactor's build design, step S1).
+    build_all.py's main(), driven in a child of its own on a temporary folder, with its plan
+    replaced by one step that writes down the environment it was given:
+
+      - with the six session files naming 2025 and 2026, the step is handed GRANITE_TERM=2025-2026,
+        and site/build.json's "term" says so, with the term the stated day falls in, the newest
+        term of the bill index, how many of the index's terms are finished, and a sha256 of each
+        frozen term's manifests;
+      - on 3 December 2026, the day after Organization Day, the day says 2027-2028 and the files
+        2025-2026: the build goes on, and build.json and the log say it is the turn;
+      - --cold hands every step GRANITE_COLD, build.json says the build was cold, and
+        build_cache.load and session_days read nothing kept;
+      - a term the environment states and the files contradict, or one that is no term, stops the
+        build before its first step, and a dry run says it would; the same term stated runs;
+      - with no session file naming a year, no step is handed a term.
+    And nightly.py's New term run asks for the cold build (_nightly_new_term holds the call)."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-build-term-"))
+    probe = tmp / "probe.py"
+    probe.write_text(
+        "import json, os\nfrom pathlib import Path\nPath('site').mkdir(exist_ok=True)\n"
+        "Path('site/probe.json').write_text(json.dumps({k: os.environ.get(k) for k in "
+        f"({T.ENV!r}, {BC.COLD!r})}}), encoding='utf-8')\n", encoding="utf-8")
+    drive = tmp / "drive.py"
+    drive.write_text(
+        "import sys, types\nfrom pathlib import Path\n"
+        f"sys.path.insert(0, {str(_paths.ROOT)!r})\nimport _paths\nimport build_all as BA\n"
+        "BA.plan = lambda a: [BA.Step('probe', ['probe.py'], produces=['site/probe.json'])]\n"
+        f"BA._paths = types.SimpleNamespace(script=lambda name, root=None: {str(probe)!r})\n"
+        "sys.argv = ['build_all.py'] + sys.argv[1:]\nBA.main()\n", encoding="utf-8")
+
+    def run(*args, day="2026-11-16", term=""):
+        for f in ("site/probe.json", "site/build.json"):
+            (tmp / f).unlink(missing_ok=True)
+        r = _sealed_run([sys.executable, str(drive), "--local", *args], cwd=tmp,
+                        capture_output=True, text=True, timeout=120,
+                        env={"GITHUB_ACTIONS": "true", "GRANITE_BUILD_DATE": day, T.ENV: term,
+                             BC.COLD: "", "PYTHONHASHSEED": "0"})
+        got = (json.loads((tmp / "site/probe.json").read_text(encoding="utf-8"))
+               if (tmp / "site/probe.json").exists() else None)
+        rec = (json.loads((tmp / "site/build.json").read_text(encoding="utf-8"))
+               if (tmp / "site/build.json").exists() else None)
+        return r, got, rec
+    try:
+        # A kit build (GITHUB_ACTIONS), so that the build reads its carried outputs and nothing else.
+        for p, _, _ in BA.CARRIED:
+            (tmp / p).write_text('{"recordings": {}}' if p == "caption_spans.json" else "{}",
+                                 encoding="utf-8")
+        (tmp / "Docket.txt").write_text("2025|0001|1/5/2025 10:00:00 AM|HB1|H|Introduced|x\n"
+                                        "2026|0002|1/6/2026 10:00:00 AM|HB1001|H|Introduced|x\n",
+                                        encoding="utf-8")
+        (tmp / "site").mkdir()
+        (tmp / "site" / "meta.json").write_text(json.dumps(
+            {"terms": ["2025-2026", "2023-2024", "2021-2022"],
+             "requests": {"term": "2027-requests"}}), encoding="utf-8")
+        frozen = tmp / "frozen" / "2023-2024"
+        frozen.mkdir(parents=True)
+        (frozen / "manifest.json").write_text('{"files": {}}', encoding="utf-8")
+        (tmp / "db" / "term" / "2023-2024").mkdir(parents=True)
+        (tmp / "db" / "term" / "2023-2024" / "manifest.json").write_text('{"files": {}}',
+                                                                        encoding="utf-8")
+        here = os.getcwd()
+        try:
+            os.chdir(tmp)
+            want_frozen = {"2023-2024": BC.files_digest(["frozen/2023-2024/manifest.json",
+                                                         "db/term/2023-2024/manifest.json"])}
+        finally:
+            os.chdir(here)
+
+        r, got, rec = run()
+        # (GRANITE_COLD is handed down empty: this check's own environment could not unset it.)
+        assert r.returncode == 0 and got == {T.ENV: "2025-2026", BC.COLD: ""}, (
+            f"the step was handed {got} (exit {r.returncode}): {(r.stdout + r.stderr)[-400:]}")
+        assert rec["term"] == {"sitting": "2025-2026", "by_date": "2025-2026",
+                               "index_newest": "2025-2026", "finished": 2,
+                               "frozen": want_frozen} and "cold" not in rec, rec.get("term")
+        assert "the term: 2025-2026, read off the installed files" in r.stdout, r.stdout[:400]
+
+        # The day after Organization Day, before the New term run: the turn, said, and no stop.
+        r, got, rec = run(day="2026-12-03")
+        said = rec["term"].get("said") or []
+        assert r.returncode == 0 and got[T.ENV] == "2025-2026" and rec["term"]["by_date"] == \
+            "2027-2028" and len(said) == 1 and "the turn" in said[0] and \
+            f"the term: {said[0]}" in r.stdout, (r.returncode, rec["term"], r.stdout[-400:])
+
+        # --cold: every step is told, and the cache reads nothing.
+        r, got, rec = run("--cold")
+        assert r.returncode == 0 and got == {T.ENV: "2025-2026", BC.COLD: "1"} and \
+            rec.get("cold") is True and "cold: no step reads the build's cache" in r.stdout, (got, rec)
+        saved = os.environ.get(BC.COLD)
+        cache = tmp / "cache"
+        try:
+            BC.save("probe", "sig", {"k": 1}, folder=cache)
+            os.environ[BC.COLD] = "1"
+            import session_days as SD
+            assert BC.load("probe", "sig", folder=cache) == {} and \
+                SD.load_cache(cache)[0] is None and "cold" in SD.load_cache(cache)[1], \
+                "a cold build's step still read the cache"
+            os.environ[BC.COLD] = ""
+            assert BC.load("probe", "sig", folder=cache) == {"k": 1}, "the cache no longer reads warm"
+        finally:
+            if saved is None:
+                os.environ.pop(BC.COLD, None)
+            else:
+                os.environ[BC.COLD] = saved
+
+        # A stated term the files contradict, or one that is no term, stops the build first.
+        for stated, words in (("2027-2028", "STOPPED: GRANITE_TERM=2027-2028 is stated and the "
+                                            "installed files say 2025-2026"),
+                              ("2025", "GRANITE_TERM='2025' is not a term")):
+            r, got, rec = run(term=stated)
+            assert r.returncode != 0 and got is None and words in r.stdout + r.stderr, (
+                f"GRANITE_TERM={stated} did not stop the build (exit {r.returncode}, step handed "
+                f"{got}): {(r.stdout + r.stderr)[-300:]}")
+        r, got, rec = run("--dry-run", term="2027-2028")
+        assert r.returncode == 0 and got is None and "WOULD STOP: GRANITE_TERM=2027-2028" in r.stdout \
+            and "python3 probe.py" in r.stdout, r.stdout[-400:]
+        r, got, rec = run(term="2025-2026")
+        assert r.returncode == 0 and got[T.ENV] == "2025-2026", (r.returncode, got)
+
+        # No session file names a year: no term handed down, none recorded.
+        (tmp / "Docket.txt").unlink()
+        r, got, rec = run()
+        assert r.returncode == 0 and got == {T.ENV: None, BC.COLD: ""} and \
+            rec["term"]["sitting"] == "" and rec["term"]["finished"] is None and \
+            "the term: none" in r.stdout, (got, rec.get("term"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the step was handed the installed files' term and build.json recorded it with the "
+                  "day's, the index's, two finished terms and the frozen manifests; the day after "
+                  "Organization Day said the turn and built; --cold reached the step and emptied the "
+                  "cache's answers; a contradicting or malformed GRANITE_TERM stopped the build "
+                  "before its first step and a dry run said so; no session file, no term")
+
+
+def _sitting_index_rules(site, AR, BCV, CL, SR, BA):
+    """{rule: the term it reads as sitting} for the built site at `site`: each way the code reads
+    the sitting term off a bill index (_sitting_term_agrees, _sitting_term_on_record)."""
+    rows = SR.bill_index(site) or []
+    meta = (Path(site) / "meta.json").read_bytes()
+    return {"api_records.sitting_term": AR.sitting_term(rows),
+            "build_civics.sitting_term": BCV.sitting_term(rows),
+            "the newest term of the index's rows (build_bill_pages, build_feeds)":
+                max((r.get("term") or "" for r in rows), default=""),
+            "check_live.newest_term (meta.json's terms)": CL.newest_term(meta),
+            "build_all.index_terms (build.json's index_newest)": (BA.index_terms(site) or [""])[-1]}
+
+
+@check("build", "the build's one term agrees with every rule the code reads the sitting term by today -- "
+       "the installed files, the bill index's newest, the day with Organization Day -- on the fixture, "
+       "and parts from the day's at Organization Day as the turn",
+       needs=("terms", "proceedings", "build_all", "api_records", "build_civics", "check_live",
+              "site_read"))
+def _sitting_term_agrees(T, P, BA, AR, BCV, CL, SR):
+    """THE ONE DECISION AGAINST THE THREE WAYS (terms.py, THE SITTING TERM). Until every caller
+    asks terms.sitting(), the code reads the sitting term three ways: off the installed files
+    (proceedings.session_term, 26 calls), as the newest term of the bill index (api_records'
+    and build_civics' sitting_term, and the same max() written into build_bill_pages,
+    build_feeds and the rest), from meta.json's terms (check_live.newest_term, build_live), and
+    by date with Organization Day (proceedings.term_on; app.js's sittingTerm, which
+    _bug_hunt_terms_and_dates holds to it). Each is asked here of the fixture: its built site's
+    index by every rule, against the six session files written beside a copy of it naming the
+    fixture's two years, the day of its newest history line, and Organization Day's eve and day
+    of its last year. The record's own readings are _sitting_term_on_record's, a data check, as
+    a data check builds no fixture."""
+    import datetime as dt
+
+    # THE FIXTURE.
+    shared, _base, _ran, _days = _fixture_site_shared()
+    rules = _sitting_index_rules(shared / "site", AR, BCV, CL, SR, BA)
+    assert len(set(rules.values())) == 1 and T.is_key(rules["api_records.sitting_term"]), (
+        f"the fixture's index rules part: {rules}")
+    term = rules["api_records.sitting_term"]
+    first, last = T.years(term)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-term-agrees-"))
+    try:
+        (tmp / "Docket.txt").write_text(
+            f"{first}|0001|1/5/{first} 10:00:00 AM|HB1|H|Introduced|x\n"
+            f"{last}|0002|1/6/{last} 10:00:00 AM|HB1001|H|Introduced|x\n", encoding="utf-8")
+        (tmp / "LSRs.txt").write_text(f"{last}|0002|t|H\n", encoding="utf-8")
+        decided, by_files = T.decide(tmp), P.session_term(tmp)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    days = sorted(e["date"] for t in json.loads((shared / "narratives.json").read_text(encoding="utf-8"))
+                  .values() for b in t.values() for e in b.get("events") or [] if e.get("date"))
+    org = P.organization_day(last)
+    eve = (org - dt.timedelta(days=1)).isoformat()
+    assert decided == by_files == term and days and T.key_on(days[-1]) == term and \
+        T.key_on(eve) == term, (
+            f"on the fixture the files say {decided!r} (session_term {by_files!r}), the index "
+            f"{term!r}, the day of its newest history line ({days[-1] if days else None}) "
+            f"{T.key_on(days[-1]) if days else ''}, and the eve of Organization Day {T.key_on(eve)}")
+    turn = T.differences(decided, T.key_on(org.isoformat()), term)
+    assert len(turn) == 1 and "the turn" in turn[0] and "not the turn" not in turn[0], turn
+    return "ok", (f"on the fixture its files, {len(rules)} index rules and the day of its newest "
+                  f"history line all say {term}, and Organization Day of {last} is said as the turn")
+
+
+@check("data", "on the record here the installed files' term agrees with the built site's bill index by "
+       "every rule and with today, or parts from them only as the turn does",
+       needs=("terms", "proceedings", "build_all", "api_records", "build_civics", "check_live",
+              "site_read", "build_date"))
+def _sitting_term_on_record(T, P, BA, AR, BCV, CL, SR, BD):
+    """THE ONE DECISION ON THE RECORD (terms.py, THE SITTING TERM; _sitting_term_agrees holds
+    the same rules to each other on the fixture). Where the six session files are here -- the
+    laptop, and the night after its build -- terms.decide against proceedings.session_term, the
+    built site's bill index by every rule where a site/ is here, and today. On an ordinary night
+    they are one term; around the turn they may part, but only as terms.differences calls the
+    turn, and anything else fails here, naming which reading says what. A check against the
+    record, so on the night it warns and never holds (RECORD_CHECKS), as build_all.py says such a
+    difference and builds on."""
+    if not any(Path(n).exists() for n in P.SESSION_FILES):
+        return "skip", "none of the six session files is here (a clone without data)"
+    decided = T.decide(".")
+    assert decided == P.session_term(".") and T.is_key(decided), (
+        f"terms.decide reads {decided!r} and proceedings.session_term {P.session_term('.')!r}")
+    today = BD.today()
+    readings, index_newest, rules = {"the day": T.key_on(today.isoformat())}, "", {}
+    built = (Path("site") / "meta.json").exists()
+    if built:
+        rules = _sitting_index_rules("site", AR, BCV, CL, SR, BA)
+        assert len(set(rules.values())) == 1, f"the index's rules part on site/: {rules}"
+        index_newest = rules["api_records.sitting_term"]
+        readings.update(rules)
+    parted = T.differences(decided, readings["the day"], index_newest)
+    odd = [p for p in parted if "not the turn" in p]
+    assert not odd, (f"the installed files say {decided}, and " + "; ".join(odd)
+                     + f" (every reading: {readings})")
+    return "ok", (f"the files say {decided}, and "
+                  + ("; ".join(parted) if parted else
+                     f"the day ({today})" + (f" and {len(rules)} index rules on site/" if built else "")
+                     + " agree")
+                  + ("" if built else " (no site/ built here)"))
 
 
 @check("build", "the night takes the statutes on the first three nights of January and July, "
@@ -7610,7 +7848,8 @@ def _nightly_new_term(NI, SG, BA):
     refuse a build that fell; the night a term turns over, both are wrong, and a
     blocked night keeps the old baseline, so they would block every night after
     it too. nightly.py --new-term -- the box a person ticks on a run by hand --
-    passes --allow-shrink to the snapshot, --allow-prune to the build, and lets
+    passes --allow-shrink to the snapshot, --allow-prune and --cold (no cache
+    read across the turn) to the build, and lets
     a fall through the census. Driven here through the snapshot's own run() on
     fake answers, so that the record it leaves is the one the nightly reads,
     and through nightly.main() with every step faked.
@@ -7983,8 +8222,8 @@ def _nightly_new_term(NI, SG, BA):
         assert code == 0 and v["clean"] and v["publishable"], (code, v.get("not_clean"))
         assert of("snapshot_gencourt.py") and all("--allow-shrink" in c and "--allow-turn" in c
                                                   for c in of("snapshot_gencourt.py")), calls
-        assert of("build_all.py") == [["build_all.py", "--local", "--no-captions", "--allow-prune"]], \
-            of("build_all.py")
+        assert of("build_all.py") == [["build_all.py", "--local", "--no-captions", "--allow-prune",
+                                       "--cold"]], of("build_all.py")
         let = "feeds fell from 5 to 2"
         assert v["fetch"] == "installed" and v["asked"]["new_term"] is True and \
             v["new_term"]["files"].startswith("accepted 1 much smaller") and \

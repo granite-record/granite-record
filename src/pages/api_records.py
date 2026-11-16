@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 The data API's records, a file each, under /api/.
 
@@ -238,25 +238,35 @@ class Records:
       the sitting term's bills' files, made and held to their promise as
       they pass and kept as bytes -- bill_files lets each term go once it is
       written, and so does this, but for these;
-      every term's bills' text, a line a bill into that term's gzip stream,
-      in memory until text_files writes /data/bill-texts-<term>.jsonl.gz.
+      every term's bills' text, a line a bill, held while the term's bills
+      come and packed (gzip -9, no name and no time) once the next term's
+      begin, until text_files writes /data/bill-texts-<term>.jsonl.gz.
 
     `site` is where the versions are read from (site/versions/); None reads
-    only the records' own printing."""
+    only the records' own printing. `cache` is the build's own run's folder
+    of kept packed files (build_cache.Packed), where a term whose lines were
+    packed before is taken whole; False, the default, packs every term."""
 
-    def __init__(self, rows, site=None):
-        import gzip
-        import io
-        self._gzip, self._io = gzip, io
+    def __init__(self, rows, site=None, cache=False):
+        import build_cache as BC
         self.rows = list(rows or ())
         self.site = site
         self.sitting = sitting_term(self.rows)
         self.by = {(str(r.get("term") or ""), str(r.get("id") or "").upper()): r for r in self.rows}
         self.files = {}         # bill id -> its file's bytes, for the sitting term
         self.seen = 0           # every record handed over, of every term
-        self.texts = {}         # term -> [bytes buffer, gzip stream, lines, with text]
+        self.texts = {}         # term -> [its lines, how many with text], while its bills come
+        self.packed = {}        # term -> (its file's bytes, lines, with text), once packed
+        self.cache = cache
+        self.packs = BC.Packed("bill_texts", "gzip-9", cache)
         self.gaps = 0           # versions listed with no text on file
         self.hashes = {}        # term/bill -> its file's hash (record_hash), of every term
+
+    def _pack_open(self):
+        """Pack the term whose bills were coming, and let its lines go."""
+        for term in list(self.texts):
+            lines, with_text = self.texts.pop(term)
+            self.packed[term] = (self.packs.pack(lines), len(lines), with_text)
 
     def add_bill(self, term, rec):
         self.seen += 1
@@ -264,17 +274,20 @@ class Records:
         row = self.by.get((term, bid))
         if row is None:
             return
+        if term not in self.texts:
+            # A TERM AT A TIME, as bill_files hands them: the term before is
+            # whole once another begins, and is packed then.
+            if term in self.packed:
+                raise SystemExit(f"api_records: a bill of {term} came after that term's texts were "
+                                 "packed; bill_files hands the records a term at a time")
+            self._pack_open()
+            self.texts[term] = [[], 0]
         text, gaps = bill_text(self.site, rec)
         self.gaps += gaps
-        t = self.texts.get(term)
-        if t is None:
-            buf = self._io.BytesIO()
-            t = self.texts[term] = [buf, self._gzip.GzipFile(filename="", mode="wb", fileobj=buf,
-                                                             compresslevel=9, mtime=0), 0, 0]
+        t = self.texts[term]
         line = {"key": f"{term}/{row.get('id')}", **text}
-        t[1].write((json.dumps(line, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8"))
-        t[2] += 1
-        t[3] += bool(text["text_on_file"])
+        t[0].append((json.dumps(line, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8"))
+        t[1] += bool(text["text_on_file"])
         # Every term's bill is hashed as the sitting term's file is made, so
         # the change feed sees a change to a bill of any term, and none at
         # the turn of a term for a bill whose fields did not move.
@@ -289,11 +302,10 @@ class Records:
         in the gzip header); return their rows for the manifest's "files",
         newest term first, as the bill files' are."""
         import hashlib
+        self._pack_open()
         rows = []
-        for term in sorted(self.texts, reverse=True):
-            buf, gz, n, with_text = self.texts[term]
-            gz.close()
-            data = buf.getvalue()
+        for term in sorted(self.packed, reverse=True):
+            data, n, with_text = self.packed[term]
             name = f"bill-texts-{term}.jsonl.gz"
             if len(data) > CAP * 0.9:
                 raise SystemExit(f"api_records: {name} is {len(data) / 1e6:.1f} MB, past what the "
@@ -307,7 +319,11 @@ class Records:
         if self.gaps:
             print(f"    WARNING: {self.gaps:,} version(s) a Bill Text tab lists have no text on file; "
                   "their text is null in /api/ and in bill-texts-<term>.jsonl.gz")
-        self.texts = {}
+        # Every term written: what was packed or taken is what is kept.
+        if self.cache is not False:
+            self.packs.keep()
+            print(f"    bill texts: {self.packs.said()}")
+        self.packed = {}
         return rows
 
 

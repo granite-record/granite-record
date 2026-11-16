@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.2
+# GRANITE_VERSION: 2026-11-11.3
 """
 The state's facts, read from src/lib/state_settings.json.
 
@@ -31,7 +31,7 @@ REQUIRED = {
     "county_abbreviations": (),
     "county_codes": (),
     "timezone": (),
-    "term": ("length_years", "first_year_parity", "organization_day"),
+    "term": ("length_years", "first_year_parity", "organization_day", "key", "label"),
     "bill_prefixes": ("house", "senate"),
     "source_hosts": ("legislature", "secretary_of_state"),
 }
