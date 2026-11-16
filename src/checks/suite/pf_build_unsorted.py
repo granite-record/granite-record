@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of build checks with no module under test, for a person to sort.
 
@@ -3848,6 +3848,136 @@ def _sponsors_who_left():
                   "and not the two who left before it, and CACR 30 lists Rep. Oppel once; each "
                   "who has left labelled as a sitting member is, with the chamber "
                   "db/Legislators.psv gives them")
+
+
+# The General Court's own rows for five members (16 November 2026): db/Legislators.psv's first
+# eleven columns, past_members.json's labels in the file's order (each person once for each
+# chamber, the House label after the Senate one), and the status page's entries for HB 123 of
+# 2025, whose sponsors only that page gives. And one made-up member, Pat Adams, once of Belknap 3
+# and now the senator for District 7, whom HB 123's page lists without a chamber: Rep. Rochefort's
+# case with two different numbers, which no real row of the term has (his are 1 and 1).
+_SITTING_SEATS = {
+    "LsrsOnly.txt": [
+        f"26-2787|{m}|1995|2026|{r}|HB1449|{ch}|(New Title) limiting times vaccine clinics may "
+        "operate at schools, with certain exceptions."
+        for m, r, ch in (("11421", "Prime", "H"), ("11460", "Sponsor", "S"), ("9866", "Sponsor", "H"))],
+    "LsrSponsors.txt": ["2026|2787|1|11421|1", "2026|2787|2|11460|0", "2026|2787|3|9866|0"],
+    "Docket.txt": [
+        "2025|0100|1/6/2025 8:33:35 AM|HB123|H|  Introduced 01/08/2025 and referred to Municipal "
+        "and County Government  HJ 2  P. 6|1/21/2025 1:53:38 PM"],
+    "legislators.txt": [
+        "11421|McGrath|Linda||H|3093|8|40|R", "11460|McGough|Tim||S||6|11|R",
+        "9866|Terry|Paul|A|H|1012|1|7|R", "10604|Pearl|Howard||S||7|17|r",
+        "11458|Rochefort|David||S||5|1|R", "11999|Adams|Pat||S||1|7|R"],
+    "Legislators.psv": [
+        "11460|McGough|Tim|218764||S|True||06|11|R", "5686|McGough|Tim|376150||H|False|1015|06|12|r",
+        "10604|Pearl|Howard|218759||S|True||07|17|r", "8383|Pearl|Howard|408383|C.|H|False||07|26|R",
+        "11458|Rochefort|David|218762||S|True||05|01|R",
+        "10614|Rochefort|David|409162||H|False|2019|05|01|r",
+        "11421|McGrath|Linda|409266||H|True|3093|08|40|R", "9866|Terry|Paul|409053|A|H|True|1012|01|07|R",
+        "11999|Adams|Pat|219999||S|True||01|07|R", "11998|Adams|Pat|419999||H|False||01|03|R"],
+    "former_members.json": {"5686": {"county": "Hillsborough", "district": "12", "name": "McGough, Tim",
+                                     "party": "Republican"}},
+    "past_members.json": {
+        "218759": "Sen. Pearl, Howard(Dist. 17)", "218762": "Sen. Rochefort, David(Dist. 01)",
+        "218764": "Sen. McGough, Tim(Dist. 11)", "219999": "Sen. Adams, Pat(Dist. 07)",
+        "376150": "Rep. McGough, Tim(Hills 12)", "408383": "Rep. Pearl, Howard(Merr. 26)",
+        "409053": "Rep. Terry, Paul(Belk. 07)", "409162": "Rep. Rochefort, David(Graf. 01)",
+        "409266": "Rep. McGrath, Linda(Rock. 40)", "419999": "Rep. Adams, Pat(Belk. 03)"},
+    "bill_status.json": {"2025-2026": {"HB123": {
+        "title": "(Second New Title) defining pre-sequestration timber tax revenue, establishing a "
+                 "moratorium on carbon sequestration and establishing a commission to study the "
+                 "effects of carbon sequestration in New Hampshire forests upon state and local tax "
+                 "revenue, effective forest management, and the health of New Hampshire's logging "
+                 "industry.", "lsr": "100", "body": "H",
+        "sponsors": [{"name": "Howard Pearl", "party": "R", "web_member_id": "",
+                      "senate_district": "17", "chamber": "S",
+                      "url": "http://www.gencourt.state.nh.us/senate/members/webpages/district17.aspx"},
+                     {"name": "David Rochefort", "party": "R", "web_member_id": "",
+                      "senate_district": "", "chamber": "", "url": "", "no_member_page": True},
+                     {"name": "Pat Adams", "party": "R", "web_member_id": "",
+                      "senate_district": "", "chamber": "", "url": "", "no_member_page": True}]}}},
+}
+
+
+@check("build", "a sitting member's sponsor row carries the seat the term's roster gives them, "
+       "not a seat of another term the General Court's list gives the same name, built on real rows")
+def _sitting_sponsors_take_the_roster_seat():
+    """build_data gave every sponsor row without a district the seat of whichever record in
+    `former` shares its first and last name, and `former` holds everyone who has served:
+    past_members.json names each person once for each chamber, with that chamber's seat. So
+    the row of a senator who had sat in the House took the House seat -- 2,471 rows of fifteen
+    senators on 1,049 bills of 2025-2026, Sen. Tim McGough's "Hills 12" (PersonID 5686, his
+    House record, inactive) beside the label "Sen. Tim McGough (R - SD11)" the roster gave the
+    same row. The labels were right; the county and district each bill's record and
+    /data/bills-<term>.jsonl.gz carry were not.
+
+    build_data.py, on these members' real rows: Sen. McGough on HB 1449, read from LsrsOnly.txt
+    by his PersonID, sits for District 11; Sen. Pearl on HB 123, whom only the bill status page
+    lists, by name in the Senate, for District 17, not his old Merrimack 26; Rep. Terry and Rep.
+    McGrath keep the seats they have; and Rep. Rochefort, whom HB 123's page lists without a
+    chamber (a representative, build_data reads it) and who sits in the Senate now, keeps
+    Grafton 1, the House seat the General Court's list gives him: a member a bill names in the
+    chamber they sat in before takes no seat from the chamber they sit in now. His numbers are
+    the same in both chambers, so the made-up Pat Adams holds that rule: Belknap 3, not 7."""
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-sitting-seats-"))
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1",
+               HTTP_PROXY="http://127.0.0.1:9", HTTPS_PROXY="http://127.0.0.1:9")
+    fx, base = _SITTING_SEATS, _SPONSORS_WHO_LEFT
+    try:
+        files = _turn_files([], [r for r in base["Docket.txt"] if "|HB1449|" in r] + fx["Docket.txt"],
+                            [r for r in base["LSRs.txt"] if "|HB1449|" in r], fx["LsrsOnly.txt"],
+                            fx["LsrSponsors.txt"], [], [])
+        files["legislators.txt"] = _turn_day([f"{r}||||NH||rep{r.split('|')[0]}@example.gov"
+                                              for r in fx["legislators.txt"]])
+        for name in ("Counties.txt", "Committees.txt", "SubjectCodes.txt"):
+            files[name] = _turn_day(base[name])
+        for n, b in files.items():
+            (tmp / n).write_bytes(b)
+        db = tmp / "db"
+        db.mkdir()
+        cols = ["PersonID", "LastName", "FirstName", "Employeeno", "MiddleName", "LegislativeBody",
+                "Active", "seatno", "countycode", "District", "party", "Expr1", "Address",
+                "address2", "city", "Zipcode", "Expr2", "EMailAddress", "GenderCode",
+                "SecretaryID", "database"]
+        (db / "_columns.json").write_text(json.dumps({"Legislators": cols}), encoding="utf-8")
+        (db / "Legislators.psv").write_text(
+            "".join(r + "|" * (len(cols) - 11) + "\r\n" for r in fx["Legislators.psv"]),
+            encoding="utf-8")
+        for name in ("former_members.json", "past_members.json", "bill_status.json"):
+            (tmp / name).write_text(json.dumps(fx[name]), encoding="utf-8")
+        shutil.copy2(here / "corrections" / "member_corrections.json",
+                     _mk(tmp / "corrections" / "member_corrections.json"))
+        (tmp / "verification_manifest.csv").write_text("bill,sched_date\n", encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_data.py"), "--dir", ".", "--out", "data"],
+                 cwd=tmp, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                 env=env, timeout=300)
+        out = (r.stdout or "") + (r.stderr or "")
+        assert r.returncode == 0, f"build_data on the fixture: {out[-600:]}"
+        sp = json.loads((tmp / "data" / "sponsors.json").read_text(encoding="utf-8"))
+        sp = sp.get("2025-2026") or {}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    def seat(bill, who):
+        got = [(x.get("chamber"), x.get("county"), x.get("district"), x.get("label"))
+               for x in sp.get(bill) or [] if who in (x.get("member_id"), x.get("name"))]
+        return got[0] if len(got) == 1 else got
+    want = {("HB1449", "11460"): ("S", "Hills", "11", "Sen. Tim McGough (R - SD11)"),
+            ("HB1449", "11421"): ("H", "Rock", "40", "Rep. Linda McGrath (R - Rock 40)"),
+            ("HB1449", "9866"): ("H", "Belk", "07", "Rep. Paul Terry (R - Belk 7)"),
+            ("HB123", "Howard Pearl"): ("S", "Merr", "17", "Howard Pearl (R)"),
+            ("HB123", "David Rochefort"): ("H", "Graf", "01", "David Rochefort (R)"),
+            ("HB123", "Pat Adams"): ("H", "Belk", "03", "Pat Adams (R)")}
+    bad = [f"{b} {who}: {seat(b, who)}, not {w}" for (b, who), w in want.items() if seat(b, who) != w]
+    assert not bad, ("a sponsor row's seat is not the one the record gives the member in that "
+                     "chamber that term:\n  " + "\n  ".join(bad))
+    return "ok", ("Sen. McGough on HB 1449 sits for District 11, not the Hills 12 of his House "
+                  "record, and Sen. Pearl on HB 123's status-page list for District 17, not "
+                  "Merrimack 26; Reps. McGrath and Terry keep their seats, and Rep. Rochefort, "
+                  "a senator now, keeps Grafton 1 on the bill that names him a representative "
+                  "(and the made-up Rep. Adams Belknap 3, not his Senate 7)")
 
 
 @check("build", "a chapter is read in every form the clerks wrote it, and a clash is withheld")

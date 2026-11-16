@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.63
+# GRANITE_VERSION: 2026-09-04.64
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2560,9 +2560,9 @@ def main():
     #
     # A sponsor the status page could not link is a member who has since left,
     # and the page gives their name and party and nothing else. Everyone still
-    # sitting picks up their county and district from the roster downstream;
-    # they cannot, so they were the only sponsors on the site drawn without a
-    # district beside their name.
+    # sitting is drawn with the roster's county and district downstream, and
+    # has them here too (below); they cannot, so they were the only sponsors
+    # on the site drawn without a district beside their name.
     #
     # former_members.json already holds it -- resolve_members.py looked these
     # people up to put names on their votes -- so it is joined here, in the one
@@ -2590,20 +2590,58 @@ def main():
         if _k:
             former_by_name[_k] = (_mid, _f)
 
-    placed = 0
+    # A MEMBER WHO SITS IN THE ROW'S CHAMBER THIS TERM HAS THE ROSTER'S SEAT
+    # (16 November 2026). The loop below gave every row without a district the
+    # seat of whichever record in `former` shares its first and last name, and
+    # `former` holds everyone who has served -- past_members.json names each
+    # person once for each chamber they sat in, with that chamber's seat -- so
+    # the row of a senator who had sat in the House took the House seat: 2,471
+    # rows of fifteen senators on 1,049 bills of 2025-2026, Sen. Tim McGough's
+    # "Hills 12" beside the label "Sen. Tim McGough (R - SD11)" the roster gave
+    # the same row. The labels were right; the county and district fields,
+    # which each bill's record and /data/bills-<term>.jsonl.gz carry, were not.
+    # So a row whose member sits in its chamber this term -- by the roster's id,
+    # or, on a row carrying another id (the bill status page's), by first and
+    # last name among that chamber's members where one alone answers -- has the
+    # county and district of the term's own roster (sess_roster while the
+    # installed one is the next House's), the district in two figures as the
+    # rows write it. Only the rest take `former`'s: members who have left, and
+    # a member a bill names in the chamber they sat in before -- 2025's HB 123
+    # lists Rep. Rochefort, a senator now, and he keeps Grafton 1.
+    _term_roster = sess_roster or legs
+    sitting_by_name = defaultdict(list)
+    for _m in _term_roster.values():
+        sitting_by_name[(_first_last(_m.get("name")), _m.get("chamber"))].append(_m)
+
+    def _sits(row):
+        ch = (row.get("chamber") or "")[:1]
+        m = _term_roster.get(str(row.get("member_id") or ""))
+        if m and m.get("chamber") == ch:
+            return m
+        got = sitting_by_name.get((_first_last(row.get("name")), ch)) or []
+        return got[0] if len(got) == 1 else None
+
+    placed = seated = 0
     for _sp in sponsors.values():
         for _s in _sp:
             if _s.get("district"):
                 continue
             hit = former_by_name.get(_first_last(_s.get("name")))
+            seat = _sits(_s)
+            if seat:
+                _d = str(seat.get("district") or "")
+                _s["county"] = seat.get("county_abbr", "")
+                _s["district"] = _d.zfill(2) if _d.isdigit() else _d
+                seated += 1
             if not hit:
                 continue
             _mid, _f = hit
             _s["member_id"] = _s.get("member_id") or _mid
             _s["party"] = _s.get("party") or (_f.get("party") or "")[:1].upper()
-            _s["county"] = _f.get("county", "")
-            _s["district"] = _f.get("district", "")
-            placed += 1
+            if not seat:
+                _s["county"] = _f.get("county", "")
+                _s["district"] = _f.get("district", "")
+                placed += 1
 
     # ------------------------------ the sponsors who are not on the roster ---
     #
@@ -2658,6 +2696,8 @@ def main():
               f"{sum(1 for _, x in departed if x.get('prime'))} prime, "
               f"{sum(1 for _, x in departed if not x['chamber'])} with no chamber, "
               f"{_unnamed} unnamed")
+    if seated:
+        print(f"sponsors given their seat from the term's roster: {seated:,}")
     if placed:
         print(f"sponsors given a district from former_members.json: {placed:,}")
         report.append(
