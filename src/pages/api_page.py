@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.10
+# GRANITE_VERSION: 2026-10-30.12
 """
 /api: the data API's documentation page, drawn in the data page's own
 components and counted from tonight's manifest.
@@ -33,6 +33,7 @@ mb = lambda b: f"{(b or 0) / 1e6:.1f}&nbsp;MB"
 
 SECTIONS = (
     ("files", "The Files"),
+    ("records", "One Record at a Time"),
     ("start", "Getting Started"),
     ("keys", "Keys and Joins"),
     ("changes", "What Changed Tonight"),
@@ -63,6 +64,82 @@ def _row(name, what, more, count, unit, size, href, verb="Download"):
             f'<td role="cell" class="n dps">{size}</td>'
             f'<td role="cell" class="dpg"><a class="dpget" href="{href}"'
             f'{" download" if verb == "Download" else ""}>{verb}<span class="sr"> {E(name)}</span></a></td></tr>')
+
+
+def records(manifest):
+    """The section on the API's files a record (api_records.py), counted
+    from tonight's manifest (api.records): each kind of file, what it holds
+    in plain words, how many there are, and one of them, linked. Where
+    tonight's build wrote none of a kind it is not described, and where it
+    wrote none at all the section says only that."""
+    rec = (manifest.get("api") or {}).get("records") or {}
+    by = {r["name"]: r for r in rec.get("resources") or []}
+    term, year = rec.get("sitting_term") or "", rec.get("requests_year")
+    if not rec.get("files"):
+        return "<p>No file of this kind was written tonight.</p>"
+
+    def n(name, less=1):
+        """How many records of a kind there are: its files, less its file of rows."""
+        return max((by.get(name) or {}).get("files", 0) - less, 0)
+
+    def eg(name):
+        p = (by.get(name) or {}).get("example")
+        return f' One is <a href="{E(p)}"><code>{E(p.rsplit("/", 1)[-1])}</code></a>.' if p else ""
+    rows = []
+    terms = (by.get("bills") or {}).get("terms") or 0
+    if n("bills", terms) or terms:
+        rows.append(("/api/bills/&lt;term&gt;/index.json",
+                     "Every bill of one term, a row each: its number, title, prime sponsor, "
+                     f"committees, topic, status and how far it got. One file for each of the "
+                     f"{terms:,} terms."))
+        if n("bills", terms):
+            rows.append((f"/api/bills/{E(term)}/&lt;bill&gt;.json",
+                         f"A bill of the current term with its whole record: its docket, sponsors, "
+                         "roll calls, committee reports and amendments, and the text of every "
+                         "version its Bill Text tab shows, each with its name and date. "
+                         f"{n('bills', terms):,} files.{eg('bills')} A bill of an earlier term is a "
+                         "row in its term&rsquo;s file, its whole record is in "
+                         "<code>bills-&lt;term&gt;.jsonl.gz</code>, and its text in "
+                         "<code>bill-texts-&lt;term&gt;.jsonl.gz</code>."))
+    rterms = (by.get("rollcalls") or {}).get("terms") or 0
+    if rterms:
+        rows.append(("/api/rollcalls/&lt;term&gt;.json",
+                     "Every roll call of one term: the question, the tally and whether it carried. "
+                     f"Roll calls begin in 1999, so there are {rterms:,} files."))
+        if n("rollcalls", rterms):
+            rows.append((f"/api/rollcalls/{E(term)}/&lt;roll call&gt;.json",
+                         f"A roll call of the current term, with how each member voted. "
+                         f"{n('rollcalls', rterms):,} files.{eg('rollcalls')}"))
+    if n("members"):
+        rows.append(("/api/members/&lt;person&gt;.json",
+                     f"Each of the {n('members'):,} people with a recorded vote since 1999, by "
+                     "their <code>person</code> number: the General Court&rsquo;s numbers for "
+                     "them, their terms and chambers, their seat if they sit now, and every bill "
+                     f"they sponsored.{eg('members')} <code>/api/members/index.json</code> lists "
+                     "them."))
+    if n("requests") and year:
+        rows.append((f"/api/requests/{E(year)}/&lt;number&gt;.json",
+                     f"Each of the {n('requests'):,} bill requests for {E(year)}: its title, "
+                     "sponsors and where it stands, and the bill it became once it is one."
+                     f"{eg('requests')} <code>/api/requests/{E(year)}/index.json</code> lists "
+                     "them."))
+    if n("laws"):
+        rows.append(("/api/laws/&lt;chapter&gt;.json",
+                     f"Each of the {n('laws'):,} chapters of the laws: each section&rsquo;s "
+                     "heading and text as its page here shows them, the session laws that "
+                     "changed it, the bill each law was, and the day it took effect. The file "
+                     "says the day the text was taken from the General Court&rsquo;s database, "
+                     f"and links the official text.{eg('laws')} "
+                     "<code>/api/laws/index.json</code> lists the chapters."))
+    return ("<p>Each bill and roll call of the current term, each member, each bill request and "
+            "each chapter of the laws also has a small file of its own under <code>/api/</code>, "
+            "for a program that wants one record rather than a whole term. "
+            '<a href="api/index.json">api/index.json</a> lists them, with every field each file '
+            "holds. They hold only the fields <code>schema.json</code> marks <i>stable</i>, so a "
+            f"change to how a page is drawn does not change them. {rec['files']:,} files, "
+            f"{mb(rec.get('bytes'))} in all.</p>"
+            '<dl class="repo">' + "".join(f"<dt><code>{a}</code></dt><dd>{w}</dd>" for a, w in rows)
+            + "</dl>")
 
 
 def body(manifest):
@@ -140,6 +217,30 @@ def body(manifest):
             '<td role="cell" class="dpg"><span class="dpeach">Each term below</span></td></tr>'
             f'<tr role="row" class="dpterms"><td role="cell" colspan="5"><ul class="dptermgrid" '
             f'aria-label="Bills by term">{grid}</ul></td></tr>')
+    texts = [f for f in files if f.get("kind") == "bill_texts"]
+    if texts:
+        # EVERY TERM'S BILL TEXTS (the owner, 16 November 2026), beside the
+        # bill files, which stay as they were: one file a term, as they are.
+        grid = "".join(
+            f'<li><a href="data/{E(f["path"].rsplit("/", 1)[-1])}" download><span class="dpt">'
+            f'{E(C.term_words(f["term"]))}</span> <span class="dpm">{f["rows"]:,} bills &middot; '
+            f'{mb(f["bytes"])}</span> <span class="sr">{E(f["path"].rsplit("/", 1)[-1])}</span></a></li>'
+            for f in texts)
+        rows.append(
+            '<tr role="row" class="dpgroup"><th scope="row" role="rowheader">Bill Texts by Term'
+            '<code>bill-texts-&lt;term&gt;.jsonl.gz</code></th>'
+            '<td role="cell" class="dpw"><p class="dpwhat">The text of every bill, one line a bill: '
+            "each version its Bill Text tab shows, with its name and the day the General Court "
+            f"dated it. One file a term, {len(texts)} in all.</p>"
+            '<details class="dpmore"><summary><span>More about <code>bill-texts-&lt;term&gt;.jsonl.gz'
+            "</code></span></summary><p>Each line is keyed as the bill files are, "
+            f'<code>"key": "{E(texts[0]["term"])}/HB1442"</code>. A bill this site holds no text '
+            'for says so, <code>"text_on_file": false</code>; no text is made up.</p></details></td>'
+            f'<td role="cell" class="n dpr">{sum(f["rows"] for f in texts):,} bills</td>'
+            f'<td role="cell" class="n dps">{mb(sum(f["bytes"] for f in texts))}</td>'
+            '<td role="cell" class="dpg"><span class="dpeach">Each term below</span></td></tr>'
+            f'<tr role="row" class="dpterms"><td role="cell" colspan="5"><ul class="dptermgrid" '
+            f'aria-label="Bill texts by term">{grid}</ul></td></tr>')
     if tables:
         rows.append(_row("bills.csv and the rest",
                          "The spreadsheets, as on the data page, with every date written YYYY-MM-DD "
@@ -192,6 +293,7 @@ def body(manifest):
             '<th scope="col" role="columnheader" class="n">Size</th>'
             '<th scope="col" role="columnheader"><span class="sr">Download</span></th></tr></thead>'
             f'<tbody role="rowgroup">{"".join(rows)}</tbody></table></div>'),
+        "records": (records(manifest), ""),
         "start": (start, ""),
         "keys": (
             "<p><b>A bill is its term and its number.</b> HB 100 names a different bill in every "
@@ -219,7 +321,12 @@ def body(manifest):
             "<p><code>/changes/&lt;date&gt;.json</code> is what each night&rsquo;s build found new, "
             "kept for the last eight nights: the hearings, votes and actions each bill, member, "
             "committee and topic gained. With the checksums in <code>manifest.json</code>, another "
-            "site can fetch only the files that moved.</p>", ""),
+            "site can fetch only the files that moved.</p>"
+            "<p><code>/api/changes/&lt;date&gt;.json</code> says, for the same eight nights, which "
+            "records under <code>/api/</code> changed: each bill, of any term, roll call, member, "
+            "chapter of the laws and bill request whose fields marked <i>stable</i> or whose text "
+            "changed that night, and any that are gone, so a program fetches only those. A change "
+            "to how a page is drawn is not listed.</p>", ""),
         "live": (
             "<p>On a day the House or the Senate sits, <code>/api/live/votes/&lt;date&gt;</code> "
             "holds the roll calls recorded so far that day. They are provisional: the nightly files "

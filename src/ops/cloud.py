@@ -113,7 +113,9 @@ THE BUCKET
     nights/<run>/          the night's built site, one archive, and site.json, which
                            carries the night's own verdict, for the publish job,
                            with first-seen.json, the ledger its build left
-                           (FIRST_SEEN_NEXT), which a New term run's deploy keeps;
+                           (FIRST_SEEN_NEXT), and api-hashes.json, the data
+                           API's hashes it left (API_HASHES_NEXT), which a New
+                           term run's deploy keeps;
                            and under kit/, with kit.json, what a New term run's
                            night changed, waiting for its build to be published
     state/<file>           refused.json, census.json and the rest (cloud_kit.json);
@@ -198,8 +200,8 @@ person's decision of 7 October 2026) -- sends back only what cloud_kit.json's
                       whoever met them, and its own verdict
                       (state/last-dry-run.json, or a dry weekly's
                       state/last-dry-weekly.json); never the census, the
-                      night's verdict, the week's or the first-seen ledger
-                      (DRY_NEVER)
+                      night's verdict, the week's, the first-seen ledger or
+                      the data API's hashes (DRY_NEVER)
 
 Nothing is removed from the kit on a dry night, and the rest it changed is
 named as kept back. The weekly's dry run -- every run of it off main, since 7
@@ -542,8 +544,10 @@ DRY_LOGS = "dry-run"
 # week's, which a dry weekly -- every weekly off main -- keeps apart too (7
 # October 2026), and the first-seen ledger, which says what the email sender
 # has been told is new (src/pages/follow_changes.py): a dry run reads the
-# night's and sends none.
-DRY_NEVER = ("census.json", "last-night.json", "last-weekly.json", "first-seen.json")
+# night's and sends none. Nor the data API's hashes, what its change feed
+# compares each night with (src/pages/api_records.py, 16 November 2026).
+DRY_NEVER = ("census.json", "last-night.json", "last-weekly.json", "first-seen.json",
+             "api-hashes.json")
 # The first-seen ledger a build leaves, beside the one it read
 # (follow_changes.CANDIDATE; preflight holds the two names together). nightly.py
 # keeps it for a build it accepts, and a New term run's only once its build is
@@ -551,6 +555,10 @@ DRY_NEVER = ("census.json", "last-night.json", "last-weekly.json", "first-seen.j
 # and site-down brings it back here, as the run's verdict travels. Only a real
 # run's: site-up refuses a dry run -- every run off main -- before it reads it.
 FIRST_SEEN_NEXT = "archive/first-seen.next.json"
+# ... and the data API's hashes a build leaves (api_records.CANDIDATE,
+# nightly.API_HASHES_NEXT), which travel with a New term run's site the same
+# way, whole or not at all.
+API_HASHES_NEXT = "archive/api-hashes.next.json"
 PULL_DAYS = 7
 # THE CAPTIONS INBOX: the bucket's prefix, where the night's inbox-down puts it
 # (livestreams.py --since-state --inbox names the same folder; preflight holds
@@ -2402,6 +2410,11 @@ def _first_seen_key(run):
     return f"nights/{run}/first-seen.json"
 
 
+def _api_hashes_key(run):
+    """Where a night's data API hashes (API_HASHES_NEXT) wait beside its site."""
+    return f"nights/{run}/api-hashes.json"
+
+
 def _held_keys(run):
     """(prefix, record) for what a New term run's kit-up --hold keeps waiting:
     nights/<run>/kit/<path> for each file, nights/<run>/kit.json listing them."""
@@ -2583,9 +2596,12 @@ def cmd_site_up(a, root):
     total = sum(p.stat().st_size for _, p in files)
     ledger = local(root, FIRST_SEEN_NEXT)
     ledger = ledger.read_bytes() if ledger.is_file() else None
+    hashes = local(root, API_HASHES_NEXT)
+    hashes = hashes.read_bytes() if hashes.is_file() else None
     say(f"site-up: {a.site}/ holds {len(files):,} files, {human(total)}, and run {a.run}'s "
         f"verdict goes with them"
-        + (f", and the first-seen ledger its build left ({FIRST_SEEN_NEXT})" if ledger else ""))
+        + (f", and the first-seen ledger its build left ({FIRST_SEEN_NEXT})" if ledger else "")
+        + (f", and the data API's hashes it left ({API_HASHES_NEXT})" if hashes else ""))
     if a.dry_run:
         say(f"--dry-run: nothing sent. They would go as one archive to {key}.")
         return
@@ -2599,7 +2615,7 @@ def cmd_site_up(a, root):
         size, sha = tmp.stat().st_size, sha256_of(tmp)
         remote = bucket.list(f"nights/{a.run}/")
         rep = Replacer(bucket, f"{datetime.now():%Y-%m-%d}")
-        for k in (key, meta_key, _first_seen_key(a.run)):
+        for k in (key, meta_key, _first_seen_key(a.run), _api_hashes_key(a.run)):
             if k in remote:
                 rep.keep(k)
         bucket.put_file(tmp, key, {"sha256": sha, "files": str(len(files))})
@@ -2608,12 +2624,16 @@ def cmd_site_up(a, root):
             raise Failed(f"{key} arrived as {got} bytes, not {size:,}")
         if ledger is not None:
             bucket.put_bytes(_first_seen_key(a.run), ledger)
+        if hashes is not None:
+            bucket.put_bytes(_api_hashes_key(a.run), hashes)
         bucket.put_bytes(meta_key, json.dumps({
             "run": a.run, "files": len(files), "bytes": total, "size": size,
             "sha256": sha, "written": datetime.now().isoformat(timespec="seconds"),
             "verdict": verdict,
             "first_seen": ({"size": len(ledger), "sha256": hashlib.sha256(ledger).hexdigest()}
                            if ledger is not None else None),
+            "api_hashes": ({"size": len(hashes), "sha256": hashlib.sha256(hashes).hexdigest()}
+                           if hashes is not None else None),
         }, indent=1).encode("utf-8"))
     finally:
         tmp.unlink(missing_ok=True)
@@ -2711,6 +2731,19 @@ def cmd_site_down(a, root):
         part.write_bytes(raw)
         os.replace(part, dst)
         say(f"site-down: the first-seen ledger its build left, at {FIRST_SEEN_NEXT}")
+    # And the data API's hashes, the same way: whole, or not at all.
+    led = meta.get("api_hashes")
+    if isinstance(led, dict):
+        raw = bucket.get_bytes(_api_hashes_key(a.run))
+        if raw is None or len(raw) != led.get("size") or \
+                hashlib.sha256(raw).hexdigest() != led.get("sha256"):
+            raise Failed(f"{_api_hashes_key(a.run)} is missing or not the hashes {meta_key} names")
+        dst = local(root, API_HASHES_NEXT)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        part = dst.with_name(dst.name + ".part")
+        part.write_bytes(raw)
+        os.replace(part, dst)
+        say(f"site-down: the data API's hashes its build left, at {API_HASHES_NEXT}")
     # Its own night's verdict, where --deploy-to production reads it: written
     # last, once the site is whole, so a verdict here always has its site.
     dst = local(root, SITE_VERDICT)

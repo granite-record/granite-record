@@ -26664,6 +26664,36 @@ def _data_cors():
                   "/_headers, /_redirects or a page")
 
 
+@check("build", "every file the API's records put under /api/ may be read from another origin, by "
+                "exactly one _headers rule, and no rule reaches the Functions' /api/ addresses")
+def _api_records_cors():
+    """THE RECORDS ARE READABLE FROM ANYWHERE, as the /data files are
+    (_data_cors, whose reading of _headers this shares): every file the
+    fixture's build wrote under /api/, and an address of each kind the
+    fixture writes none of (a member, a request), is given
+    Access-Control-Allow-Origin: * by exactly one rule -- Pages sends a header
+    two rules name joined, "*, *", which a browser refuses -- and no rule
+    reaches /api/live/, /api/report or /api/follow/, which are the Functions'
+    and answer for themselves."""
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = shared / "site"
+    rules = _cors_rules((built / "_headers").read_text(encoding="utf-8"))
+    paths = sorted("/" + p.relative_to(built).as_posix() for p in (built / "api").rglob("*")
+                   if p.is_file())
+    assert paths, "the fixture's build wrote nothing under /api/"
+    paths += ["/api/members/376682.json", "/api/members/index.json", "/api/requests/2027/0001.json",
+              "/api/requests/2027/index.json", "/api/bills/2027-2028/HB1.json"]
+    wrong = [f"{p} ({_cors_said(rules, p)})" for p in paths if _cors_said(rules, p) != ["*"]]
+    assert not wrong, ("these API files are not given Access-Control-Allow-Origin: * by exactly "
+                       "one _headers rule: " + "; ".join(wrong[:6]))
+    fns = ["/api/live/votes/2026-01-07", "/api/live/streams", "/api/report", "/api/follow/signup",
+           "/api/follow/count"]
+    reach = [p for p in fns if _cors_said(rules, p)]
+    assert not reach, f"a _headers rule reaches the Functions' addresses: {reach}"
+    return "ok", (f"{len(paths)} addresses under /api/ each given * by one rule; none of the "
+                  f"{len(fns)} Functions' addresses by any")
+
+
 @check("frontend", "every record's own page is a working shell for app.js")
 def _bill_shell():
     """What replaced "the bill page stylesheet still formats".
@@ -33424,6 +33454,635 @@ def _api_schema():
     return "ok", ("a small database is built and every table and column of it described, numbers "
                   "stored as numbers; a broken key and a YouTube column are each caught; names are "
                   "unique and every file names its terms")
+
+
+def _api_law_page_text(page, anchor):
+    """(the paragraphs, the source note's line) a chapter's page shows for
+    one section, read off the page itself: the <p>s of its rs-text, their
+    tags and the page's own "(repealed)" marks taken off, and its rs-source;
+    None where the page has no such section."""
+    import html as _html
+    at = page.find(f'<section class="rs-sec" id="{anchor}">')
+    if at < 0:
+        return None
+    sec = page[at:page.find("</section>", at)]
+    body = sec.split('<div class="rs-text" translate="no">', 1)[-1]
+    body = re.split(r'<p class="rs-source">|<div class="rs-folds">', body)[0]
+    body = re.sub(r' <span class="rs-gone">.*?</span>', "", body)   # the page's own "(repealed)"
+    paras = [_html.unescape(re.sub(r"<[^>]+>", "", p)).strip()
+             for p in re.findall(r"<p>(.*?)</p>", body, re.S)]
+    note = re.search(r'<p class="rs-source">(.*?)</p>', sec, re.S)
+    return [p for p in paras if p], (_html.unescape(note.group(1)) if note else "")
+
+
+def _api_bill_text_expected(site, rec):
+    """What a bill's Bill Text tab shows, read here from what the tab reads
+    (app.js: the version index for a bill with more than one version or with
+    amendments, else the record's own printing): [(name, day, text)]."""
+    year, bid = str(rec.get("year")), str(rec.get("id"))
+    ix = Path(site) / "versions" / year / f"{bid}.json"
+    if ((rec.get("nver") or 0) > 1 or (rec.get("namd") or 0)) and ix.is_file():
+        got = []
+        for v in json.loads(ix.read_text(encoding="utf-8")).get("versions") or []:
+            m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(v.get("date") or ""))
+            p = Path(site) / str(v.get("text_url") or "").lstrip("/")
+            got.append((v.get("title"), f"{m[3]}-{int(m[1]):02d}-{int(m[2]):02d}" if m else None,
+                        p.read_text(encoding="utf-8") if v.get("text_url") and p.is_file() else None))
+        if got:
+            return got
+    body = ((rec.get("billtext") or {}).get("body") or "")
+    return [((rec.get("billtext") or {}).get("version") or "", None, body)] if body.strip() else []
+
+
+@check("build", "the API's files a record are each in the shape api_schema promises: \"format\": 1 "
+                "and only fields it marks stable; the sitting term's bills and roll calls a file "
+                "each and no other term's; the members and the requests; and the laws' and the "
+                "bills' text, each as its page shows it",
+       needs=("api_records", "api_schema", "api_page", "site_read", "rsa", "build_rsa"))
+def _api_records(AR, AS, AP, SR, RSA, BR):
+    """THE API'S RECORDS (api_records.py; the owner's word of 16 November
+    2026: static files, "format": 1 in every one and no /v1/ in the path, the
+    sitting term's records first; and the same morning, that laws and bills
+    carry their text). Held three ways, each by its own reading here and not
+    by the writer's own guard (AR.held), so a guard that stopped guarding is
+    caught too:
+
+      the fixture's build   every file build_exports wrote under site/api/:
+                            each is JSON with "format": 1 and no field the
+                            resource it belongs to does not mark stable, to
+                            the depth api_schema describes; the sitting term
+                            -- the newest its bill index holds, never a
+                            literal -- has a file for each bill and roll call,
+                            exactly, and no other term has one; every term has
+                            its rows, and every term's bills a line each in
+                            bill-texts-<term>.jsonl.gz; each bill's text is
+                            what its Bill Text tab shows, and a bill with none
+                            says so; each section's text and source note are
+                            the chapter page's own paragraphs and line, with
+                            the day the table was taken, the latest year of
+                            laws and the official page the page's lead gives;
+                            index.json lists every resource with tonight's
+                            counts; schema.json describes the same fields; and
+                            the /api page names each kind with a file that is
+                            there
+      a record made up here two terms, a person with a seat and a sponsorship,
+                            one replaced, a request become a bill, a bill with
+                            two versions, one with its printing alone, one
+                            with no text, and a file an earlier build left:
+                            the members' and requests' files, which the
+                            fixture has no roster or requests for; the
+                            versions as the tab reads them; the newer term
+                            taking the files a record from the older, whose
+                            file is taken away; and a page's field let into a
+                            bill's file stops the step
+      the real record       where a site/ built from it carries /api/, as on
+                            the laptop after a build: the text of a sample of
+                            the sitting term's bills and of the chapters,
+                            against their pages
+    """
+    import csv as _csv_
+    import gzip
+    shared, _base, _ran, _days = _fixture_site_shared()
+    built = shared / "site"
+    api = built / "api"
+    assert (api / "index.json").is_file(), "the fixture's build wrote no site/api/index.json"
+
+    def walk(obj, spec, inside, where, out, depth=0):
+        """Every field of obj, to the depth `inside` names, that spec does
+        not mark stable -- read here, apart from AR.unpromised."""
+        for k, v in obj.items():
+            f = spec.get(k)
+            if not f or f[2] != "stable":
+                out.append(f"{where}.{k}")
+            elif k in inside and depth < 4:
+                for x in (v if isinstance(v, list) else [v]):
+                    if isinstance(x, dict):
+                        walk(x, inside[k], inside, f"{where}.{k}", out, depth + 1)
+                    elif x is not None:
+                        out.append(f"{where}.{k} holds {type(x).__name__}, not an object")
+
+    def kind(rel):
+        """(resource, rows or record) of a path under api/, or None; a night
+        of the change feed is ("changes", "night")."""
+        if re.fullmatch(r"changes/\d{4}-\d{2}-\d{2}\.json", rel):
+            return "changes", "night"
+        for name, rx_rows, rx_rec in (
+                ("bills", r"bills/\d{4}-\d{4}/index\.json", r"bills/\d{4}-\d{4}/[A-Z]+\d+[A-Z]?\.json"),
+                ("rollcalls", r"rollcalls/\d{4}-\d{4}\.json", r"rollcalls/\d{4}-\d{4}/\d{4}-[HS]-\d+\.json"),
+                ("members", r"members/index\.json", r"members/[0-9A-Za-z-]+\.json"),
+                ("requests", r"requests/\d{4}/index\.json", r"requests/\d{4}/\d{4,5}\.json"),
+                ("laws", r"laws/index\.json", r"laws/\d{1,3}(?:-[A-Z]{1,2})?\.json")):
+            if re.fullmatch(rx_rows, rel):
+                return name, "rows"
+            if re.fullmatch(rx_rec, rel):
+                return name, "record"
+        return None
+
+    def read_api(root):
+        """{path under api/: its object} of every file, and what is wrong with each."""
+        got, bad = {}, []
+        for p in sorted(root.rglob("*")):
+            if not p.is_file():
+                continue
+            rel = p.relative_to(root).as_posix()
+            try:
+                obj = json.loads(p.read_text(encoding="utf-8"))
+            except ValueError as e:
+                bad.append(f"{rel} is not JSON ({e})")
+                continue
+            got[rel] = obj
+            if not isinstance(obj, dict) or obj.get("format") != 1:
+                bad.append(f"{rel} does not say \"format\": 1")
+                continue
+            if rel == "index.json":
+                continue
+            k = kind(rel)
+            if k is None:
+                bad.append(f"{rel} is a file no resource of api_schema describes")
+                continue
+            spec, inside = AS.api_file_fields(*k)
+            extra = []
+            walk(obj, spec, inside, rel, extra)
+            bad += [f"{e}, which api_schema does not promise" for e in extra]
+        return got, bad
+
+    def texts_of(data):
+        """{key: line} of every bill-texts-<term>.jsonl.gz under `data`, and what is wrong."""
+        lines, bad = {}, []
+        spec, inside = AS.api_file_fields("bills", "texts")
+        for p in sorted(Path(data).glob("bill-texts-*.jsonl.gz")):
+            for raw in gzip.decompress(p.read_bytes()).decode("utf-8").splitlines():
+                x = json.loads(raw)
+                extra = []
+                walk(x, spec, inside, p.name, extra)
+                bad += [f"{e}, which api_schema does not promise" for e in extra]
+                lines[x.get("key")] = x
+        return lines, bad
+
+    def as_text(versions):
+        return [(v.get("name"), v.get("date"), v.get("text")) for v in versions]
+
+    got, bad = read_api(api)
+    lines, bad_t = texts_of(built / "data")
+    assert not bad + bad_t, f"{len(bad + bad_t)} findings in the fixture's /api/: " + "; ".join((bad + bad_t)[:8])
+    rows = SR.bill_index(built)
+    sitting = max(r["term"] for r in rows)
+    terms = {r["term"] for r in rows}
+    per_bill = {rel for rel in got if kind(rel) == ("bills", "record")}
+    want = {f"bills/{sitting}/{r['id']}.json" for r in rows if r["term"] == sitting}
+    assert per_bill == want, (f"the bills with a file of their own are not the sitting term's "
+                              f"({sitting}): missing {sorted(want - per_bill)[:4]}, more "
+                              f"{sorted(per_bill - want)[:4]}")
+    for t in terms:
+        f = got.get(f"bills/{t}/index.json") or {}
+        assert f.get("term") == t and len(f.get("bills") or []) == sum(r["term"] == t for r in rows), \
+            f"bills/{t}/index.json does not hold every bill of {t} as a row"
+    assert set(lines) == {f"{r['term']}/{r['id']}" for r in rows}, \
+        "bill-texts-<term>.jsonl.gz do not hold every bill of every term, a line each"
+    one = got[sorted(want)[0]]
+    assert one["key"] == f"{sitting}/{one['id']}" and "events" in one and "narrative" not in one \
+        and "stations" not in one, f"a bill's file is not its row and its record's stable fields: {sorted(one)}"
+    # EACH BILL'S TEXT IS WHAT ITS BILL TEXT TAB SHOWS, read here from what
+    # the tab reads; a bill with none says so, in its file and its line.
+    n_text = 0
+    for y, b, rec in SR.records(built):
+        key = f"{rec.get('term')}/{b}"
+        want_t = _api_bill_text_expected(built, rec)
+        line = lines.get(key) or {}
+        assert as_text(line.get("versions") or []) == want_t and \
+            line.get("text_on_file") == bool(want_t), \
+            f"{key}'s line in bill-texts is not the text its Bill Text tab shows"
+        f = got.get(f"bills/{sitting}/{b}.json")
+        if rec.get("term") == sitting:
+            assert f and as_text(f.get("versions") or []) == want_t and \
+                f.get("text_on_file") == bool(want_t), \
+                f"{key}'s file is not the text its Bill Text tab shows"
+        n_text += bool(want_t)
+    with (built / "data" / "rollcalls.csv").open(encoding="utf-8", newline="") as fh:
+        rcs = list(_csv_.DictReader(fh))
+    per_rc = {rel for rel in got if kind(rel) == ("rollcalls", "record")}
+    want_rc = {f"rollcalls/{sitting}/{r['roll_call']}.json" for r in rcs if r["term"] == sitting}
+    assert want_rc and per_rc == want_rc, (
+        f"the roll calls with a file of their own are not the sitting term's: missing "
+        f"{sorted(want_rc - per_rc)[:4]}, more {sorted(per_rc - want_rc)[:4]}")
+    assert {f"rollcalls/{t}.json" for t in {r["term"] for r in rcs}} <= set(got), \
+        "a term with roll calls has no file of their rows"
+    ballots = [b for rel in per_rc for b in got[rel]["ballots"]]
+    assert ballots and all(b.get("member_id") and b.get("vote") is not None for b in ballots), \
+        f"the sitting term's roll calls carry no ballots, or ballots without a member: {ballots[:2]}"
+    assert all(isinstance(got[rel]["passed"], bool) and isinstance(got[rel]["yeas"], int)
+               for rel in per_rc), "a roll call's file does not type its tally and outcome"
+
+    # THE LAWS: every section's heading, text and source note as its chapter's
+    # page shows them, read off the fixture's built pages, with the source
+    # note's law, the day the table was taken and the page's official link.
+    table = RSA.load(shared / "db" / "NH_RSA.psv", shared / "db" / "_columns.json")
+    taken = json.loads((shared / "db" / "_manifest.json").read_text(encoding="utf-8"))["NH_RSA"]["fetched"][:10]
+    n_sec = 0
+    for ch in table.chapters:
+        law = got.get(f"laws/{ch}.json") or {}
+        page = BR.chapter_file(built / "laws", ch).read_text(encoding="utf-8")
+        assert law.get("text_taken") == taken and law.get("laws_through") == 2025 and \
+            law.get("official") and f'<a href="{law["official"]}" rel="noopener">The official text' in page, \
+            f"laws/{ch}.json does not name the day its text was taken and its source as its page does: {law}"
+        for s in law.get("sections") or []:
+            shown = _api_law_page_text(page, "s" + s["section"].split(":", 1)[1])
+            if s["repealed"]:
+                assert s["text"] is None and s["note"] is None, s
+                continue
+            # A section the table holds no text for is "" here and no
+            # paragraph on its page (18 of the real record's 26,321).
+            assert shown and (s["text"].split("\n") if s["text"] else []) == shown[0] and \
+                (f"Source. {s['note']}" if s["note"] else "") == shown[1] and \
+                s["heading"] == table.sections[s["section"]].heading, \
+                (f"{s['section']}'s text in laws/{ch}.json is not what its chapter's page shows: "
+                 f"{s['text'][:80]!r} against {shown}")
+            n_sec += 1
+    assert n_sec >= 3 and got["laws/91-A.json"]["sections"][0]["changed_by"] == \
+        [{"year": 1967, "law": "251:1", "bill": "", "effective": None}], got["laws/91-A.json"]
+    assert [c["chapter"] for c in got["laws/index.json"]["chapters"]] == ["91-A", "404"], \
+        got["laws/index.json"]
+
+    # THE INDEX, AND THE SCHEMA THAT DESCRIBES THE SAME FIELDS.
+    ix = got["index.json"]
+    names = [r["name"] for r in AS.API_RESOURCES]
+    assert [r["name"] for r in ix["resources"]] == names and ix["sitting_term"] == sitting, \
+        (f"index.json lists {[r['name'] for r in ix['resources']]} for {ix['sitting_term']}, not "
+         f"{names} for {sitting}")
+    counted = {n: sum(1 for rel in got if (kind(rel) or ("",))[0] == n) for n in names}
+    assert {r["name"]: r["files_tonight"] for r in ix["resources"]} == counted, \
+        (ix["resources"], counted)
+    sch = json.loads((built / "data" / "schema.json").read_text(encoding="utf-8"))
+    assert sch.get("x-api-records") == AS.api_records_schema(), \
+        "schema.json does not describe the API's records as api_schema does"
+    assert any(r.get("path", "").startswith("bill-texts-") and r.get("schema") for r in sch["resources"]), \
+        "schema.json does not describe the bill texts' files"
+    flat = [f for r in sch["x-api-records"] for fl in r["files"] for f in fl["fields"]]
+    while any("x-fields" in f for f in flat):
+        flat = [g for f in flat for g in ([f] + f.pop("x-fields", []))]
+    assert flat and all(f["x-stability"] == "stable" for f in flat), \
+        "a field of the API's records is described but not stable, and no file may carry it"
+    people = next(r for r in AS.package([], [{"path": "/data/people.json", "rows": 1, "bytes": 1}],
+                                        "", "x")["resources"] if r["name"] == "people")
+    assert {f["name"]: f["description"] for f in people["schema"]["fields"]} == \
+        {k: v[1] for k, v in AS.API_PERSON.items()}, \
+        "a member's file and people.json describe the same person's fields in different words"
+
+    # THE PAGE names each kind the build wrote, with a file that is there.
+    page = (built / "api.html").read_text(encoding="utf-8")
+    sec = page.split('id="records"', 1)[-1].split("</section>", 1)[0]
+    links = re.findall(r'href="(/api/[^"]+)"', sec)
+    assert "One Record at a Time" in page and links and \
+        all((built / h.lstrip("/")).is_file() for h in links), \
+        f"the /api page does not describe the records with a file that is there: {links}"
+    for name in ("bills", "rollcalls", "laws"):
+        assert f"/api/{name}/" in sec, f"the /api page does not describe /api/{name}/"
+    assert "Bill Texts by Term" in page, "the /api page does not list the bill texts' files"
+
+    # A RECORD MADE UP HERE.
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        site, out = d / "site", d / "site" / "data"
+        (site / "idx").mkdir(parents=True)
+        out.mkdir()
+        row = lambda t, b, y: {"id": b, "year": y, "term": t, "title": f"{b} of {t}", "kind": "active",
+                               "status": "In committee", "sponsor": "A Member", "committees": ["Finance"],
+                               "nrc": 1, "chip": "In Committee", "rail": [], "sponsor_slug": "x"}
+        idx = {"2027-2028": [row("2027-2028", "HB1", 2027)],
+               "2025-2026": [row("2025-2026", "HB1", 2025), row("2025-2026", "SB2", 2026)]}
+        for t, rr in idx.items():
+            (site / "idx" / f"{t}.json").write_text(json.dumps(rr), encoding="utf-8")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps([
+            {"id": "LSR20270001", "n": "LSR 2027-0001", "year": 2027, "title": "a request",
+             "sponsor": "A Member", "cosp": ["B. Two"], "body": "HB", "status": "Filed",
+             "withdrawn": False, "introduced": "HB 1", "address": "request/2027-0001",
+             "sponsor_slug": "x", "rail": []}]), encoding="utf-8")
+        (site / "meta.json").write_text(json.dumps(
+            {"terms": ["2027-2028", "2025-2026"],
+             "requests": {"term": "2027-requests", "year": 2027}}), encoding="utf-8")
+        # HB 1 of 2027 has two versions (build_bill_versions' index and texts);
+        # SB 2 of 2026 its printing alone; HB 1 of 2025 no text at all.
+        vdir = site / "versions" / "2027"
+        vdir.mkdir(parents=True)
+        (vdir / "HB1.0.txt").write_text("AN ACT as introduced.\n1 Section one.", encoding="utf-8")
+        (vdir / "HB1.1.txt").write_text("AN ACT as amended.\n1 Section one, amended.", encoding="utf-8")
+        (vdir / "HB1.json").write_text(json.dumps({"bill": "HB1", "year": "2027", "versions": [
+            {"title": "Introduced", "label": "Introduced", "date": "01/05/2027 09:00:00",
+             "text_url": "/versions/2027/HB1.0.txt"},
+            {"title": "As Amended by the House", "label": "As Amended by the House",
+             "date": "03/10/2027 16:14:22", "text_url": "/versions/2027/HB1.1.txt"}]}), encoding="utf-8")
+
+        def put(name, cols, rows_):
+            with (out / name).open("w", encoding="utf-8", newline="") as fh:
+                w = _csv_.writer(fh)
+                w.writerow(cols)
+                w.writerows(rows_)
+        put("rollcalls.csv", list(AS.CSV["rollcalls.csv"]),
+            [["2025-H-9", "2025-2026", "2025", "H", "9", "2025-03-01", "HB1", "q", "", "200", "100",
+              "0", "1", "0", "", "", "docket"],
+             ["2027-H-1", "2027-2028", "2027", "H", "1", "2027-01-07", "HB1", "q", "", "201", "163",
+              "30", "1", "0", "", "", "count"]])
+        put("votes-2027-2028.csv", list(AS.CSV["votes-<term>.csv"]),
+            [["2027-H-1", "2027-2028", "2027-01-07", "HB1", "q", "m1", "Member, A", "R", "House", "Yea"]])
+        put("legislators.csv", list(AS.CSV["legislators.csv"]),
+            [["m1", "A Member", "House", "Republican", "1", "Belknap", "a@gc.nh.gov",
+              "Finance; Rules", "3", "120", "100"]])
+        put("sponsors.csv", list(AS.CSV["sponsors.csv"]),
+            [["2027-2028", "HB1", "m1", "A Member", "R", "H", "1", "", "the sponsor file", "100"],
+             ["2025-2026", "SB2", "m1", "A Member", "R", "H", "0", "", "the sponsor file", "100"]])
+        stale = site / "api" / "bills" / "2025-2026" / "HB1.json"
+        stale.parent.mkdir(parents=True)
+        stale.write_text("{}", encoding="utf-8")
+        rec = AR.Records([r for rr in idx.values() for r in rr], site)
+        for t, rr in idx.items():
+            for r in rr:
+                rec.add_bill(t, {"id": r["id"], "year": r["year"], "term": t, "title": "(New Title) x",
+                                 "events": [{"date": "2027-01-05", "text": "Introduced"}],
+                                 "narrative": "a page's own words", "stations": [{"when": "x"}],
+                                 "nver": 2 if t == "2027-2028" else 1,
+                                 "billtext": ({"version": "FINAL VERSION", "body": "AN ACT, chaptered."}
+                                              if r["id"] == "SB2" else {"version": "", "body": ""})})
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):          # its lines are the build's
+            text_rows = rec.text_files(out)
+        people = [{"person": "100", "name": "A Member", "employee_numbers": ["m1"], "person_ids": [],
+                   "member_ids": ["m1"], "page": "/legislator/a-member", "sitting": True,
+                   "chambers": ["H"], "first_term": "2025-2026", "last_term": "2027-2028"},
+                  {"person": "101", "replaced_by": "100"}]
+        summary, said = AR.write(site, out, rec, people=people, person_of={"m1": "100"},
+                                 base="https://example.org", built="2027-01-08T09:00:00Z",
+                                 db=d / "no-db", citations=d / "none.json",
+                                 ledger=d / "no-hashes.json", ledger_out=d / "api-hashes.next.json")
+        made, bad = read_api(site / "api")
+        made_t, bad_t = texts_of(out)
+        assert not bad + bad_t, f"{len(bad + bad_t)} findings in the made-up /api/: " + "; ".join((bad + bad_t)[:6])
+        assert len([x for x in made if x.startswith("changes/")]) == 8, sorted(made)
+        made = {k: v for k, v in made.items() if not k.startswith("changes/")}
+        assert sorted(made) == [
+            "bills/2025-2026/index.json", "bills/2027-2028/HB1.json", "bills/2027-2028/index.json",
+            "index.json", "members/100.json", "members/101.json", "members/index.json",
+            "requests/2027/0001.json", "requests/2027/index.json", "rollcalls/2025-2026.json",
+            "rollcalls/2027-2028.json", "rollcalls/2027-2028/2027-H-1.json"], sorted(made)
+        assert not stale.exists(), \
+            "a bill's file an earlier build left, of a term no longer sitting, is still there"
+        hb = made["bills/2027-2028/HB1.json"]
+        two = [{"name": "Introduced", "date": "2027-01-05", "text": "AN ACT as introduced.\n1 Section one."},
+               {"name": "As Amended by the House", "date": "2027-03-10",
+                "text": "AN ACT as amended.\n1 Section one, amended."}]
+        assert hb["title"] == "HB1 of 2027-2028" and hb["events"] and hb["committees"] == ["Finance"] \
+            and hb["outcome"] == "active" and hb["roll_calls"] == 1 and hb["versions"] == two \
+            and hb["text_on_file"] is True, hb
+        assert [x["path"] for x in text_rows] == ["/data/bill-texts-2027-2028.jsonl.gz",
+                                                  "/data/bill-texts-2025-2026.jsonl.gz"] and \
+            made_t == {"2027-2028/HB1": {"key": "2027-2028/HB1", "versions": two, "text_on_file": True},
+                       "2025-2026/HB1": {"key": "2025-2026/HB1", "versions": [], "text_on_file": False},
+                       "2025-2026/SB2": {"key": "2025-2026/SB2", "versions": [
+                           {"name": "FINAL VERSION", "date": None, "text": "AN ACT, chaptered."}],
+                           "text_on_file": True}}, (text_rows, made_t)
+        assert made["rollcalls/2027-2028/2027-H-1.json"]["ballots"] == [
+            {"member_id": "m1", "person": "100", "member": "Member, A", "party": "R", "vote": "Yea"}], \
+            made["rollcalls/2027-2028/2027-H-1.json"]
+        m = made["members/100.json"]
+        assert m["seat"]["committees"] == ["Finance", "Rules"] and m["seat"]["recorded_votes"] == 120 \
+            and m["sponsored"] == [{"key": "2025-2026/SB2", "prime": False},
+                                   {"key": "2027-2028/HB1", "prime": True}], m
+        assert made["members/101.json"] == {"format": 1, "person": "101", "replaced_by": "100",
+                                            "sponsored": []}, made["members/101.json"]
+        assert made["requests/2027/0001.json"] == {
+            "format": 1, "lsr": "2027-0001", "year": 2027, "title": "a request", "sponsor": "A Member",
+            "cosponsors": ["B. Two"], "body": "HB", "status": "Filed", "withdrawn": False,
+            "bill": "2027-2028/HB1"}, made["requests/2027/0001.json"]
+        assert made["index.json"]["sitting_term"] == "2027-2028" and \
+            made["index.json"]["requests_year"] == 2027, made["index.json"]
+        assert any("api/laws/" in s and "not written" in s for s in said), said
+        try:
+            AR.held("bills", "record", {"format": 1, "key": "x", "narrative": "a page's"}, "t")
+            stopped = False
+        except SystemExit:
+            stopped = True
+        assert stopped, "a bill's file carrying a page's field was written, not stopped"
+
+    # THE REAL RECORD, where a site/ built from it carries /api/ (the laptop's
+    # after a build): a sample of the sitting term's bills and of the chapters.
+    real, said_real = Path("site"), "no site/ built from the real record here carries /api/"
+    if (real / "api" / "index.json").is_file() and (real / "laws").is_dir():
+        rix = json.loads((real / "api" / "index.json").read_text(encoding="utf-8"))
+        term = rix["sitting_term"]
+        ids = sorted((str(r["year"]), r["id"]) for r in SR.bill_index(real) if r["term"] == term)
+        recs = [SR.one(real, y, b) for y, b in ids[::max(1, len(ids) // 25)]]
+        for r in recs:
+            f = json.loads((real / "api" / "bills" / term / f"{r['id']}.json").read_text(encoding="utf-8"))
+            assert as_text(f["versions"]) == _api_bill_text_expected(real, r), \
+                f"{term}/{r['id']}'s text in /api/ is not what its Bill Text tab shows"
+        chs = sorted(p.stem for p in (real / "api" / "laws").glob("*.json") if p.stem != "index")
+        for ch in chs[::max(1, len(chs) // 25)]:
+            law = json.loads((real / "api" / "laws" / f"{ch}.json").read_text(encoding="utf-8"))
+            page = BR.chapter_file(real / "laws", ch).read_text(encoding="utf-8")
+            for s in law["sections"]:
+                if not s["repealed"]:
+                    shown = _api_law_page_text(page, "s" + s["section"].split(":", 1)[1])
+                    assert shown and (s["text"].split("\n") if s["text"] else []) == shown[0], \
+                        f"{s['section']}'s text in /api/ is not what its chapter's page shows"
+        said_real = (f"and of the real record's, {len(recs)} of {term}'s bills and "
+                     f"{len(chs[::max(1, len(chs) // 25)])} chapters against their pages")
+    return "ok", (f"the fixture's {len(got):,} files under /api/ each say format 1 and carry only "
+                  f"stable fields; {sitting}'s {len(per_bill)} bills and {len(per_rc)} roll calls a "
+                  f"file each, no other term's; {len(terms)} term(s) of rows and of texts, "
+                  f"{n_text} bill(s) with text and the rest saying they have none; {n_sec} sections' "
+                  "text and notes as their pages show them; index.json, schema.json and the /api "
+                  "page agree; a made-up record's members, request, versions, newer term and stale "
+                  f"file each as promised; {said_real}")
+
+
+@check("build", "the API's change feed lists, each night, exactly the records whose promised fields "
+                "changed and those gone -- a page's field or the day the laws were taken is no "
+                "change -- keeps eight nights, merges a second build of one date, and lists "
+                "nothing, saying why, with no hashes to compare",
+       needs=("api_records", "api_schema", "follow_changes"))
+def _api_changes(AR, AS, FC):
+    """THE CHANGE FEED (api_records.py; the owner's word of 16 November 2026):
+    /api/changes/<date>.json, {"format": 1, "date", "built", "changed":
+    {bills, rollcalls, members, laws, requests}, "removed": {...}}, a change
+    being a change of a field the API promises. Driven here over a record made
+    up for it, night after night, the hashes kept between nights as nightly.py
+    keeps them (archive/api-hashes.next.json to archive/api-hashes.json):
+
+      no hashes        the first night lists nothing, never every record, and
+                       says so; its eight files are there
+      a night's change one of each kind planted -- a bill's docket line, its
+                       text, a roll call's tally, a ballot, a member's seat, a
+                       section's text, a request's status, a request gone and
+                       a bill new -- listed, exactly; and changes no promise
+                       covers -- a bill's narrative and stations -- not listed
+      a second build   of the same date, after the first was kept: what the
+                       first listed and what changed since; and after it was
+                       not kept, everything since the last kept night
+      the turn         a new term's first bill: the old term's roll calls lose
+                       their ballots' files and are not listed for it; and the
+                       statutes taken again the same night, no word changed,
+                       list no chapter
+      eight nights     each build writes the eight nights' files, and the
+                       hashes keep no older night
+      a later ledger   hashes dated after tonight are not compared with
+    """
+    import csv as _csv_
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        led, nxt = d / "archive" / "api-hashes.json", d / "archive" / "api-hashes.next.json"
+
+        def build(tonight, s):
+            """One build over state `s`; (what it said, {date: the night's file})."""
+            site, out, db = d / "site", d / "site" / "data", d / "db"
+            for p in (site / "idx", out, db):
+                p.mkdir(parents=True, exist_ok=True)
+            idx = {}
+            for key, b in s["bills"].items():
+                t, bid = key.split("/")
+                idx.setdefault(t, []).append({"id": bid, "year": int(t[:4]) + 1, "term": t,
+                                              "title": b["title"], "kind": "active", "status": "s",
+                                              "chip": "c", "committees": [], "nrc": 0, "rail": []})
+            for p in (site / "idx").glob("*.json"):
+                p.unlink()
+            for t, rows in idx.items():
+                (site / "idx" / f"{t}.json").write_text(json.dumps(rows), encoding="utf-8")
+            (site / "idx" / "2027-requests.json").write_text(json.dumps([
+                {"n": f"LSR 2027-{n}", "year": 2027, "title": "a request", "sponsor": "A Member",
+                 "body": "HB", "status": st, "withdrawn": False, "address": f"request/2027-{n}"}
+                for n, st in s["requests"].items()]), encoding="utf-8")
+            (site / "meta.json").write_text(json.dumps(
+                {"terms": sorted(idx, reverse=True),
+                 "requests": {"term": "2027-requests", "year": 2027}}), encoding="utf-8")
+
+            def put(name, cols, rows):
+                with (out / name).open("w", encoding="utf-8", newline="") as fh:
+                    w = _csv_.writer(fh)
+                    w.writerow(cols)
+                    w.writerows(rows)
+            put("rollcalls.csv", list(AS.CSV["rollcalls.csv"]),
+                [[rc, t, rc[:4], "H", rc.split("-")[-1], f"{rc[:4]}-03-01", "HB1", "q", "", y, "100",
+                  "0", "1", "0", "", "", "count"] for rc, t, y in s["rollcalls"]])
+            for p in out.glob("votes-*.csv"):
+                p.unlink()
+            for t in idx:
+                put(f"votes-{t}.csv", list(AS.CSV["votes-<term>.csv"]),
+                    [[rc, t, "2026-03-01", "HB1", "q", "m1", "Member, A", "R", "House", v]
+                     for rc, (tt, v) in s["ballots"].items() if tt == t])
+            put("legislators.csv", list(AS.CSV["legislators.csv"]),
+                [["m1", "A Member", "House", "Republican", s["district"], "Belknap", "", "", "1",
+                  "2", "100"]])
+            put("sponsors.csv", list(AS.CSV["sponsors.csv"]), [])
+            (db / "_columns.json").write_text(json.dumps({"NH_RSA": [
+                "id", "TitleNo", "ChapterNo", "SectionNo", "Title", "Chapter", "Section",
+                "SourceNote", "rsa", "EntireRSA", "titleNumber", "url"]}), encoding="utf-8")
+            (db / "_manifest.json").write_text(json.dumps(
+                {"NH_RSA": {"rows": 1, "fetched": s["taken"] + "T20:53:02"}}), encoding="utf-8")
+            (db / "NH_RSA.psv").write_text("|".join([
+                "1", "VI", "91-A", "91-A-4", "TITLE VI PUBLIC OFFICERS AND EMPLOYEES",
+                "CHAPTER 91-A ACCESS TO GOVERNMENTAL RECORDS AND MEETINGS",
+                "Section 91-A:4 Minutes and Records.", "<p><b>Source.</b> 1967, 251:1. </p>", "",
+                f"<codesect> {s['section']}</codesect>", "6", "VI\\91-A\\91-A-4.htm"]) + "\n",
+                encoding="utf-8")
+            (d / "rsa_citations.json").write_text(json.dumps(
+                {"enacted": {"91-A:4": [["1967", "251:1", ""]]}, "asof": {"laws_through": 2025}}),
+                encoding="utf-8")
+            rec = AR.Records([r for rows in idx.values() for r in rows], site)
+            for key, b in s["bills"].items():
+                t, bid = key.split("/")
+                rec.add_bill(t, {"id": bid, "year": int(t[:4]) + 1, "term": t, "title": b["title"],
+                                 "events": [{"date": "2026-01-05", "text": b["events"]}],
+                                 "billtext": {"version": "Introduced", "body": b["text"]},
+                                 "narrative": b["narrative"], "stations": [{"when": b["station"]}]})
+            people = [{"person": "100", "name": "A Member", "member_ids": ["m1"], "sitting": True}]
+            _sum, said = AR.write(site, out, rec, people=people, person_of={"m1": "100"},
+                                  base="https://example.org", built=f"{tonight}T09:00:00Z",
+                                  db=db, citations=d / "rsa_citations.json", ledger=led,
+                                  ledger_out=nxt)
+            nights = {p.stem: json.loads(p.read_text(encoding="utf-8"))
+                      for p in (site / "api" / "changes").glob("*.json")}
+            return said, nights
+
+        def keep():
+            os.replace(nxt, led)
+
+        def listed(f, side="changed"):
+            return {k: v for k, v in f[side].items() if v}
+
+        bill = lambda **k: {"title": "t", "events": "Introduced", "text": "AN ACT.", "narrative": "n",
+                            "station": "x", **k}
+        s = {"bills": {"2025-2026/HB1": bill(), "2025-2026/HB2": bill(), "2025-2026/HB3": bill()},
+             "rollcalls": [("2026-H-1", "2025-2026", "201"), ("2026-H-2", "2025-2026", "150")],
+             "ballots": {"2026-H-1": ("2025-2026", "Yea"), "2026-H-2": ("2025-2026", "Nay")},
+             "district": "1", "section": "I. Every citizen may inspect.", "taken": "2026-09-08",
+             "requests": {"0001": "Requested", "0002": "Requested"}}
+        said, nights = build("2026-11-10", s)
+        assert sorted(nights) == FC.window("2026-11-10") and \
+            all(not listed(f) and not listed(f, "removed") and f["format"] == 1
+                for f in nights.values()), ("a night with no hashes listed something", nights)
+        assert any("WARNING" in x and "api-hashes.json" in x for x in said), said
+        assert set(nights["2026-11-10"]) == {"format", "date", "built", "changed", "removed"} and \
+            list(nights["2026-11-10"]["changed"]) == list(AR.KINDS), nights["2026-11-10"]
+        keep()
+
+        # ONE OF EACH KIND, and three changes no promise covers.
+        s["bills"]["2025-2026/HB1"] = bill(events="Referred to Finance")
+        s["bills"]["2025-2026/HB2"] = bill(narrative="told anew", station="moved")
+        s["bills"]["2025-2026/HB3"] = bill(text="AN ACT, amended.")
+        s["bills"]["2025-2026/HB4"] = bill()
+        s["rollcalls"][0] = ("2026-H-1", "2025-2026", "202")
+        s["ballots"]["2026-H-2"] = ("2025-2026", "Yea")
+        s["district"] = "2"
+        s["section"] = "I. Every citizen may inspect and copy."
+        s["requests"] = {"0001": "Filed"}
+        said, nights = build("2026-11-11", s)
+        want = {"bills": ["2025-2026/HB1", "2025-2026/HB3", "2025-2026/HB4"],
+                "rollcalls": ["2026-H-1", "2026-H-2"], "members": ["100"], "laws": ["91-A"],
+                "requests": ["2027-0001"]}
+        assert listed(nights["2026-11-11"]) == want and \
+            listed(nights["2026-11-11"], "removed") == {"requests": ["2027-0002"]}, \
+            ("the night does not list exactly the records whose promised fields changed",
+             nights["2026-11-11"])
+        assert not listed(nights["2026-11-10"]), "a kept night's file was rewritten with tonight's"
+        keep()
+
+        # A SECOND BUILD OF THE SAME DATE: kept, then one more change.
+        s["bills"]["2025-2026/HB2"] = bill(title="retitled")
+        said, nights = build("2026-11-11", s)
+        assert listed(nights["2026-11-11"])["bills"] == ["2025-2026/HB1", "2025-2026/HB2",
+                                                        "2025-2026/HB3", "2025-2026/HB4"], \
+            ("a second build of one date dropped what the first listed", nights["2026-11-11"])
+        # ... and not kept: the next build of the date compares with the kept one.
+        s["requests"] = {"0001": "Filed", "0003": "Requested"}
+        said, nights = build("2026-11-11", s)
+        assert listed(nights["2026-11-11"])["requests"] == ["2027-0001", "2027-0003"] and \
+            listed(nights["2026-11-11"])["bills"] == ["2025-2026/HB1", "2025-2026/HB2",
+                                                     "2025-2026/HB3", "2025-2026/HB4"], nights["2026-11-11"]
+        keep()
+
+        # THE TURN: the new term's first bill takes the files a record, and the
+        # old term's roll calls, losing their ballots' file, are not listed;
+        # nor is the chapter, its table taken again with no word of it changed.
+        s["taken"] = "2026-09-15"
+        s["bills"]["2027-2028/HB1"] = bill()
+        s["rollcalls"].append(("2027-H-1", "2027-2028", "300"))
+        s["ballots"]["2027-H-1"] = ("2027-2028", "Yea")
+        said, nights = build("2026-12-03", s)
+        assert listed(nights["2026-12-03"]) == {"bills": ["2027-2028/HB1"], "rollcalls": ["2027-H-1"]} \
+            and not listed(nights["2026-12-03"], "removed"), \
+            ("the turn of a term listed records that did not change", nights["2026-12-03"])
+        hashes = json.loads(nxt.read_text(encoding="utf-8"))
+        assert sorted(hashes["nights"]) == ["2026-12-03"] and sorted(nights) == FC.window("2026-12-03"), \
+            ("the hashes keep a night older than the eight the folder carries", sorted(hashes["nights"]))
+        keep()
+
+        # HASHES DATED AFTER TONIGHT are not compared with.
+        said, nights = build("2026-11-20", s)
+        assert not listed(nights["2026-11-20"]) and any("WARNING" in x and "after tonight" in x
+                                                         for x in said), said
+    return "ok", ("no hashes: nothing listed and said; one of each kind listed exactly, a page's "
+                  "fields and the day the laws were taken not; a second build of a date keeps the "
+                  "first's list, and one not kept compares with the kept; the turn lists only the "
+                  "new term's; eight nights; later hashes refused")
 
 
 @check("files", "only record_moves.py writes the former addresses kept for a 301, and they only grow")
@@ -65758,7 +66417,7 @@ def _cloud_dry_night(CL, BA, SG):
     assert set(d.get("state", [])) == {"refused.json", "sql-held.json", "last-dry-run.json",
                                        "last-dry-weekly.json"} and \
         set(CL.DRY_NEVER) == {"census.json", "last-night.json", "last-weekly.json",
-                              "first-seen.json"}, \
+                              "first-seen.json", "api-hashes.json"}, \
         (d.get("state"), CL.DRY_NEVER)
     # Every night file a dry night sends is an archived copy of what was served.
     store_sha = hashlib.sha256(b"x").hexdigest()
@@ -66111,6 +66770,106 @@ def _first_seen_travels(CL, NI, FC):
                   "dry run's to send, by its box or off main; with a New term run's site to the "
                   "publish job byte for byte, a changed one refused before the verdict, none "
                   "where none was left")
+
+
+@check("cloud", "the data API's hashes travel as the first-seen ledger does: in the night's state, "
+                "never from a dry run, and with a New term run's site to the publish job, whole or "
+                "not at all", needs=("cloud", "nightly", "api_records"))
+def _api_hashes_travel(CL, NI, AR):
+    """16 November 2026. What the API's change feed compares each night with
+    (api_records.py) is carried between nights as the first-seen ledger is
+    (_first_seen_travels): in cloud_kit.json's state list, under one name in
+    the three programs that handle it, never among what a dry run may send
+    (DRY_NEVER, which load_kit holds the kit's "dry_run" to), and a New term
+    run's beside its site to the publish job, where nightly.py keeps it once
+    the deploy lands -- byte for byte, or the site-down fails before the
+    verdict that would let it deploy."""
+    assert AR.LEDGER.as_posix() == NI.API_HASHES.as_posix() == "archive/api-hashes.json" and \
+        AR.CANDIDATE.as_posix() == NI.API_HASHES_NEXT.as_posix() == CL.API_HASHES_NEXT, (
+            "api_records, nightly and cloud name the hashes differently",
+            AR.LEDGER, NI.API_HASHES, AR.CANDIDATE, NI.API_HASHES_NEXT, CL.API_HASHES_NEXT)
+    real = CL.load_kit(".")
+    state = {s["key"]: s["path"] for s in real.get("state", [])}
+    assert state.get("api-hashes.json") == NI.API_HASHES.as_posix(), \
+        f"{CL.KIT_FILE}'s state list does not carry the data API's hashes: {sorted(state)}"
+    assert "api-hashes.json" in CL.DRY_NEVER and \
+        "api-hashes.json" not in (real.get("dry_run") or {}).get("state", []), CL.DRY_NEVER
+    tmp = Path(tempfile.mkdtemp(prefix="gr-apihashes-"))
+    try:
+        bad = json.loads(json.dumps(real))
+        bad["dry_run"]["state"] = list(bad["dry_run"]["state"]) + ["api-hashes.json"]
+        (tmp / "cloud_kit.json").write_text(json.dumps(bad), encoding="utf-8")
+        try:
+            CL.load_kit(tmp)
+            refused = False
+        except CL.Failed:
+            refused = True
+        assert refused, f"a {CL.KIT_FILE} whose dry run sends the data API's hashes was taken"
+        (tmp / "cloud_kit.json").unlink()
+
+        bucket = tmp / "bucket"
+        night, publish, bare = tmp / "night", tmp / "publish", tmp / "bare"
+        night.mkdir()
+        _cloud_fixture(night, real)
+        shutil.rmtree(night / "site")
+        for d in (publish, bare):
+            d.mkdir()
+            shutil.copy(night / "cloud_kit.json", d / "cloud_kit.json")
+        B = ["--local-bucket", str(bucket)]
+
+        def call(root, *argv):
+            return _cloud_call(CL, *argv, "--root", str(root), *B)
+        site = night / "site"
+        (site / "api").mkdir(parents=True)
+        (site / "api" / "index.json").write_text("{}", encoding="utf-8")
+        (night / CL.NIGHT_VERDICT).write_text(json.dumps(
+            {"run_id": "4252", "kind": "nightly", "publishable": True,
+             "asked": {"dry_run": False, "new_term": True}}), encoding="utf-8")
+        hashes = b'{"format": 1, "date": "2026-12-02", "hashes": {"bills": {}}, "nights": {}}\n'
+        (night / CL.API_HASHES_NEXT).write_bytes(hashes)
+        saved_env = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", CL.DRY_ENV, CL.REF_ENV)}
+        try:
+            for env in ({CL.DRY_ENV: "true", CL.REF_ENV: CL.MAIN_REF},
+                        {CL.REF_ENV: "refs/heads/dev"}):
+                for k in saved_env:
+                    os.environ.pop(k, None)
+                os.environ.update(GITHUB_ACTIONS="true", **env)
+                code, out = call(night, "site-up", "--run", "4252")
+                assert code == 1 and not (bucket / "nights").exists(), \
+                    ("a dry run sent its site, or the hashes its build left, for production",
+                     env, out[-300:])
+        finally:
+            for k, val in saved_env.items():
+                os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        code, out = call(night, "site-up", "--run", "4252")
+        sent = bucket / "nights/4252/api-hashes.json"
+        assert code == 0 and sent.is_file() and sent.read_bytes() == hashes, \
+            ("site-up did not send the hashes the night's build left beside its site", out[-300:])
+        code, out = call(publish, "site-down", "--run", "4252")
+        assert code == 0 and (publish / CL.API_HASHES_NEXT).read_bytes() == hashes and \
+            (publish / CL.SITE_VERDICT).is_file(), \
+            ("site-down did not bring the hashes back to where nightly.py keeps them", out[-300:])
+        (bucket / "nights/4252/api-hashes.json").write_bytes(hashes.replace(b"2026", b"2025"))
+        code, out = call(bare, "site-down", "--run", "4252")
+        assert code == 1 and not (bare / CL.API_HASHES_NEXT).exists() and \
+            not (bare / CL.SITE_VERDICT).exists(), \
+            ("site-down took hashes that are not the ones its night sent", out[-300:])
+        (night / CL.API_HASHES_NEXT).unlink()
+        (night / CL.NIGHT_VERDICT).write_text(json.dumps(
+            {"run_id": "4253", "kind": "nightly", "publishable": True,
+             "asked": {"dry_run": False}}), encoding="utf-8")
+        assert call(night, "site-up", "--run", "4253")[0] == 0 and \
+            not (bucket / "nights/4253/api-hashes.json").exists()
+        shutil.rmtree(publish / "site")
+        (publish / CL.API_HASHES_NEXT).unlink()
+        code, out = call(publish, "site-down", "--run", "4253")
+        assert code == 0 and not (publish / CL.API_HASHES_NEXT).exists(), out[-300:]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("one name in api_records, nightly, cloud and the kit's state list; never a dry "
+                  "run's to send, by its box or off main; with a New term run's site to the "
+                  "publish job byte for byte, a changed one refused before the verdict, none where "
+                  "none was left")
 
 
 @check("cloud", "a weekly off main sends back none of the lists it took -- only its logs, apart, "
@@ -104083,6 +104842,82 @@ def _nightly_keeps_first_seen(NI):
     return "ok", ("kept by an accepted night and a landed New term deploy; not by a dry run, by "
                   "its box or off main, a stopped night or a New term run waiting; the record's "
                   "dates and no files said in the verdict")
+
+
+@check("build", "the night keeps the data API's hashes its build left exactly where it keeps the "
+       "first-seen ledger -- a real night the gates accept, a New term run once its deploy "
+       "lands -- and never for a dry run, by its box or off main, or a night the gates stop",
+       needs=("nightly",))
+def _nightly_keeps_api_hashes(NI):
+    """16 November 2026. build_exports (api_records.py) reads
+    archive/api-hashes.json, what the change feed under /api/changes/ compares
+    each night with, and leaves its own beside it. Kept by a night the gates
+    stopped, a bad build's records would be what the next night's feed is
+    measured against; kept by a dry run, dev's code would decide main's; kept
+    by a New term run before the person approves it, a rejected switch would
+    be the baseline. So it is kept where the census and the first-seen ledger
+    are, and nowhere else (nightly.keep_api_hashes)."""
+    with _GateNights(NI) as g:
+        made = g.build
+
+        def build():
+            made()
+            Path("archive/api-hashes.next.json").write_text(
+                json.dumps({"format": 1, "build": g.builds}), encoding="utf-8")
+        g.build = build
+
+        def kept():
+            v = NI.load_json(NI.API_HASHES)
+            return v.get("build") if isinstance(v, dict) else None
+
+        def left():
+            v = NI.load_json(NI.API_HASHES_NEXT)
+            return v.get("build") if isinstance(v, dict) else None
+
+        g.night("--runner", "--no-fetch", run_id="701")         # the baseline
+        assert kept() == 1 and left() is None, \
+            ("a real night the gates accepted did not keep the hashes its build left", kept(), left())
+        g.how["touch"] = 3
+        code, _ = g.night("--runner", "--no-fetch", "--dry-run", run_id="702")
+        assert code == 0 and kept() == 1 and left() == 2, \
+            "a dry run kept the hashes its branch's build left"
+        g.how["bills"] = 10
+        code, _ = g.night("--runner", "--no-fetch", run_id="703")
+        assert code == 1 and kept() == 1 and g.verdict()["gates"].startswith("blocked"), \
+            ("a night the gates stopped kept its hashes", g.verdict().get("gates"))
+        g.how["bills"] = 100
+
+        # A New term run: kept only once its build is published.
+        g.how["touch"] = 5
+        code, _ = g.night("--runner", run_id="711")
+        g.publish("711")
+        before = kept()
+        assert before == 4, before
+        g.how["touch"] = 6
+        code, _ = g.night("--runner", "--new-term", run_id="712")
+        v = g.verdict()
+        assert code == 0 and v["publishable"] and kept() == before and left() == 5, (
+            "a New term run kept its hashes before its build was published",
+            kept(), left(), v.get("not_clean"))
+        g.publish("712")
+        assert kept() == 5 and left() is None, \
+            ("a New term run's hashes were not kept when its deploy landed", kept(), left())
+
+        # EVERY RUN OFF MAIN IS A DRY RUN: a run of dev on GitHub's machine
+        # with Dry run unticked keeps none either.
+        g.how["touch"] = 7
+        os.environ["GITHUB_REF"] = "refs/heads/dev"
+        try:
+            code, _ = g.night("--runner", "--no-fetch", run_id="713", sha=GATE_SHA[1],
+                              github=True)
+        finally:
+            os.environ[CHECKS_REF[0]] = CHECKS_REF[1]
+        assert code == 0 and kept() == 5 and left() == 6, (
+            "a run of dev with Dry run unticked kept the hashes its branch's build left",
+            kept(), left())
+        assert not g.stray, f"the nights asked something other than production: {g.stray}"
+    return "ok", ("kept by an accepted night and a landed New term deploy; not by a dry run, by "
+                  "its box or off main, a stopped night or a New term run waiting")
 
 
 @check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))

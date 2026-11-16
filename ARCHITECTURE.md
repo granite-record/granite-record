@@ -2378,6 +2378,57 @@ preflight's reminders, `_officials_rechecked`. The home page's old "Who holds
 office" block, from `corrections/status/officials.txt`, a second copy of the
 Governor and the Council that was never filled in, was retired the same day.
 
+## The data API's records, a file each (16 November 2026)
+
+`src/pages/api_records.py`, which `build_exports.py` calls once its CSVs and
+bill files are written, publishes `site/api/`: a file of rows for each term's
+bills (`/api/bills/<term>/index.json`) and roll calls
+(`/api/rollcalls/<term>.json`), and a file a record for the sitting term's
+bills and roll calls, for everyone `people.json` holds, for the bill requests
+the site lists and for every chapter of the statutes, with `/api/index.json`
+saying what each file holds. A bill's file is its row, every stable field of
+the record its page carries -- handed over by `bill_files` in the pass that
+writes the bill files -- and the text of every version its Bill Text tab
+shows, from the same files the tab reads (the versions
+`build_bill_versions.py` writes, else the record's own printing); every
+term's texts are also in `/data/bill-texts-<term>.jsonl.gz`, a line a bill,
+beside the bill files, which stay as they were. A bill whose text the site
+does not hold says so (`text_on_file`), and none is fetched. A chapter's file
+carries each section's heading, its text a paragraph a line and its source
+note as the chapter's page shows them, read through `build_rsa` from the same
+table, with the day the table was taken, the latest year of laws it holds and
+the official page, and the session laws that changed each section with the
+bill each was and the day it took effect (`build_rsa.note_days`).
+
+Every file says `"format": 1` and holds only the fields
+`api_schema.API_RESOURCES` marks stable, which `schema.json` carries under
+`x-api-records`; a file that would carry another stops the step. The roll
+calls, ballots, seats and sponsorships are read back out of the CSVs just
+written, so a file cannot disagree with a download. The sitting term is the
+newest term the bill index holds and the requests' year is `meta.json`'s, so
+the turn to 2027-2028 moves the files a record to the new term's bills by
+itself, and the folder is the step's alone: a file it did not write tonight is
+taken away. On the record of 7 November with the live list of requests,
+measured: 7,558 files under `/api/` and 19 text files under `/data/`, so the
+deploy stays near 66,000 of the 100,000 Cloudflare Pages takes; a file for
+every bill of every term would not fit. `/api/live/`, `/api/report` and
+`/api/follow/` stay the Functions'; `_headers` lets another origin read the
+records' folders one by one and none of the Functions'.
+
+The change feed, `/api/changes/<date>.json`, lists for each of the last
+eight nights the records whose promised fields changed and those gone, by a
+hash of each record's file: a bill's for every term, so a correction to an
+old bill is listed; a roll call's row, and its ballots while its term sits,
+so the turn of a term lists nothing for losing them; a chapter's less the
+day its text was taken. The hashes travel as the first-seen ledger does: the
+build reads `archive/api-hashes.json` and leaves `archive/api-hashes.next.json`,
+and the night keeps it only where it writes the census -- a build the gates
+accept, or a New term run's once its deploy has landed, for which `site-up`
+carries it with the site -- and a dry run never sends it (`cloud.DRY_NEVER`).
+A second build of one date lists what the first did and what changed since;
+with no hashes a night lists nothing, never every record, and the build says
+so.
+
 ## The bill index's sponsors
 
 A row's `sponsor` is the prime sponsor and `cosp` the co-sponsors, by the

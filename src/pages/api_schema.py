@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.7
+# GRANITE_VERSION: 2026-10-30.9
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -523,6 +523,13 @@ def package(tables, files, base, built, record_keys=(), station_keys=(),
                      description=f"Every bill of {f.get('term')}, one JSON object a line, its "
                                  "full record as its page carries it, keyed term/bill.",
                      schema={"fields": known + extra})
+        elif f.get("kind") == "bill_texts":
+            r.update(format="jsonl", mediatype="application/x-ndjson", compression="gz",
+                     description=f"The text of every bill of {f.get('term')}, one JSON object a "
+                                 "line, keyed term/bill: every version its Bill Text tab shows, "
+                                 "with its name and date (api_records.py).",
+                     schema={"fields": _described(API_BILL_TEXTS_LINE,
+                                                  {"versions": API_BILL_VERSION})})
         elif f.get("kind") == "database":
             cols = db_columns or {}
             r.update(format="sqlite", mediatype="application/vnd.sqlite3", compression="xz",
@@ -571,4 +578,291 @@ def package(tables, files, base, built, record_keys=(), station_keys=(),
             "x-status": "beta", "x-stable-from": "2027-02-01", "created": built,
             "licenses": LICENSES, "x-rights": RIGHTS,
             "sources": [{"title": "New Hampshire General Court", "path": "https://gc.nh.gov"}],
-            "resources": res}
+            "resources": res,
+            # The API's records under /api/ (below): thousands of files, so
+            # described as resources of their own kind, not as Data Package
+            # resources, which are one file each.
+            "x-api-records": api_records_schema()}
+
+
+# ------------------------------------------- the API's records, one file each --
+# /api/ (api_records.py; the owner's word of 16 November 2026): a file a
+# record for the sitting term's bills and roll calls, for every member, every
+# bill request the site lists and every chapter of the statutes, beside a file
+# of rows for each. These say what each file holds, field by field, and
+# api_records writes a field only where it is here and marked stable: a
+# record's file is a promise, and a page's field is not one. Every field here
+# is stable; the bill record's beta and page fields (stations, facts,
+# related, narrative and the rest) are in no file under /api/. schema.json
+# carries them under "x-api-records", and /api/index.json lists them with
+# tonight's counts.
+_BC = CSV["bills.csv"]
+API_BILL_ROW = {
+    "key": BILL_FIELDS["key"],
+    "id": BILL_FIELDS["id"],
+    "year": _BC["year"], "term": _BC["term"], "title": _BC["title"], "sponsor": _BC["sponsor"],
+    "committees": ("array", "The committees it was referred to, in order.", S),
+    "topic": _BC["topic"], "status": _BC["status"], "outcome": _BC["outcome"],
+    "passage": _BC["passage"], "roll_calls": _BC["roll_calls"], "chapter": _BC["chapter"],
+    "chip": _BC["chip"],
+}
+# THE TEXT OF EVERY VERSION THE BILL TEXT TAB SHOWS (the owner, 16 November
+# 2026: "laws and bills carry their text through the API"), from the same
+# files the tab reads: the versions build_bill_versions.py writes for a bill
+# with more than one version or with amendments, else the record's own
+# printing (billtext). Where this site holds no text, versions is empty and
+# text_on_file false: no text is made up, and none is fetched.
+API_BILL_VERSION = {
+    "name": ("string", "The version's name, as the Bill Text tab shows it: Introduced, As Amended by "
+                       "the House, CHAPTERED FINAL VERSION and the like.", S),
+    "date": ("date", "The day the General Court dated that printing, YYYY-MM-DD; null where the "
+                     "record gives none.", S),
+    "text": ("string", "Its text, as the Bill Text tab shows it; null where this site holds no "
+                       "text of that version.", S),
+}
+API_BILL_TEXT = {
+    "versions": ("array", "The text of every version the bill's Bill Text tab shows, oldest first, "
+                          "each with its name and date; empty where this site holds no text of the "
+                          "bill.", S),
+    "text_on_file": ("boolean", "False where this site holds no text of the bill, and versions is "
+                                "empty.", S),
+}
+# A bill's own file: its row, then every stable field of its record, in the
+# record's order, then its text. Where both have a field the row's is kept,
+# so a bill says the same in its file as in its term's rows and in bills.csv:
+# the record's title carries the docket's "(New Title)", which the rows do not.
+API_BILL = {**API_BILL_ROW, **{k: v for k, v in BILL_FIELDS.items()
+                               if v[2] == S and k not in API_BILL_ROW}, **API_BILL_TEXT}
+# A line of /data/bill-texts-<term>.jsonl.gz: every term's bills' text, a
+# line a bill, beside the bill files, which stay as they were.
+API_BILL_TEXTS_LINE = {"key": BILL_FIELDS["key"], **API_BILL_TEXT}
+
+_RC = CSV["rollcalls.csv"]
+API_ROLLCALL_ROW = {
+    **{k: _RC[k] for k in ("roll_call", "term", "year", "body", "number", "date", "bill",
+                           "question", "question_plain", "yeas", "nays", "not_voting")},
+    "passed": ("boolean", "True where the motion carried, as the record states it (outcome_source).", S),
+    "procedural": ("boolean", "True for a procedural vote, such as suspending the rules.", S),
+    "threshold_needed": ("integer", "What it needed where that was more than a majority; null where "
+                                    "a majority was enough.", S),
+    "threshold_rule": _RC["threshold_rule"], "outcome_source": _RC["outcome_source"],
+}
+API_ROLLCALL = {**API_ROLLCALL_ROW,
+                "ballots": ("array", "How each member voted, in the order the General Court's "
+                                     "file lists them.", S)}
+_VC = CSV["votes-<term>.csv"]
+API_BALLOT = {"member_id": _VC["member_id"],
+              "person": ("string", "Their person number in people.json; empty where they have none.", S),
+              "member": _VC["member"], "party": _VC["party"], "vote": _VC["vote"]}
+
+API_PERSON = {
+    "person": ("string", PERSON, S),
+    "name": ("string", "Their name.", S),
+    "employee_numbers": ("array", "The General Court's employee numbers, earliest first.", S),
+    "person_ids": ("array", "The General Court's PersonIDs.", S),
+    "member_ids": ("array", "The ids this site's other files use for them.", S),
+    "page": ("string", "Their page here.", S),
+    "sitting": ("boolean", "Whether they sit now.", S),
+    "chambers": ("array", "H, S or both.", S),
+    "first_term": ("string", "Their first term with a recorded vote.", S),
+    "last_term": ("string", "Their last.", S),
+    "provisional": ("boolean", "True until the person number is issued into the register; it may "
+                               "change until then.", S),
+    "replaced_by": ("string", "On a retired person number: the one that replaces it.", S),
+    "split_from": ("string", "On a person found to be two: the number they were split from.", S),
+}
+API_MEMBER_ROW = {k: API_PERSON[k] for k in ("person", "name", "sitting", "chambers", "first_term",
+                                             "last_term", "replaced_by")}
+API_MEMBER = {**API_PERSON,
+              "seat": ("object", "Where they sit now, as legislators.csv has it; absent for someone "
+                                 "who does not sit now.", S),
+              "sponsored": ("array", "Every bill they put their name to, as sponsors.csv has it, "
+                                     "oldest term first.", S)}
+_LC = CSV["legislators.csv"]
+API_SEAT = {**{k: _LC[k] for k in ("id", "chamber", "party", "district", "county", "email")},
+            "committees": ("array", "Committee seats.", S),
+            "bills_sponsored": _LC["bills_sponsored"], "recorded_votes": _LC["recorded_votes"]}
+API_SPONSORED = {"key": ("string", "The bill, term/bill: 2025-2026/HB1442.", S),
+                 "prime": ("boolean", "True where they were its prime sponsor.", S)}
+
+API_REQUEST = {
+    "lsr": ("string", "The request's number, 2027-0001: the session's year and the number the "
+                      "General Court gave the request.", S),
+    "year": ("integer", "The session it is a request for.", S),
+    "title": ("string", "Its title.", S),
+    "sponsor": ("string", "The prime sponsor, as the General Court's list names them.", S),
+    "cosponsors": ("array", "Its co-sponsors, as the list names them; empty where it names none.", S),
+    "body": ("string", "The kind of bill it would be: HB, SB, HR, HCR, SCR, CACR and the like.", S),
+    "status": ("string", "Requested, Filed or Withdrawn.", S),
+    "withdrawn": ("boolean", "True where it was withdrawn before it became a bill.", S),
+    "bill": ("string", "The bill it became, term/bill, once it is one; empty until then.", S),
+}
+
+API_LAW_ROW = {
+    "chapter": ("string", "The chapter's number, as the statutes print it: 91-A.", S),
+    "name": ("string", "The chapter's name.", S),
+    "title_no": ("string", "The number of the title it is in: VI.", S),
+    "title": ("string", "That title's name.", S),
+    "repealed": ("boolean", "True where the whole chapter is repealed or has moved.", S),
+    "page": ("string", "Its page on this site.", S),
+}
+# THE STATUTES' TEXT (the owner, 16 November 2026): each section's, in the
+# words its chapter's page shows (build_rsa reads the table and sets the text
+# a paragraph a line), with the day the table was taken and where from.
+API_LAW = {**API_LAW_ROW,
+           "official": ("string", "The General Court's own page for the chapter, where the official "
+                                  "text is.", S),
+           "text_source": ("string", "Where the sections' text comes from: the General Court's "
+                                     "statute table, from its database, as this site's Laws pages "
+                                     "show it.", S),
+           "text_taken": ("date", "The day the statute table was taken from the General Court's "
+                                  "database, YYYY-MM-DD: the text is as it stood that day. Null where "
+                                  "the day is not on record.", S),
+           "laws_through": ("integer", "The latest year of session laws the text includes; null "
+                                       "where that is not on record.", S),
+           "sections": ("array", "Its sections in order: each one's number, heading, text and "
+                                 "history.", S)}
+API_SECTION = {
+    "section": ("string", "The section's number: 91-A:4.", S),
+    "heading": ("string", "Its heading, as the statutes print it.", S),
+    "repealed": ("boolean", "True for a repealed section.", S),
+    "text": ("string", "Its text, a paragraph a line, in the words its chapter's page shows; null "
+                       "for a repealed section, which the page shows by its heading alone.", S),
+    "note": ("string", "Its source note, the session laws that wrote and changed it, in the "
+                       "statutes' words; empty where it has none, and null for a repealed "
+                       "section.", S),
+    "changed_by": ("array", "The session laws that wrote or changed it, in the order its source "
+                            "note lists them: oldest first.", S),
+}
+API_LAW_CHANGE = {
+    "year": ("integer", "The year of the session laws.", S),
+    "law": ("string", "The chapter and section of that year's laws, 49:1, as the source note cites "
+                      "them; the chapter alone where it names no section.", S),
+    "bill": ("string", "The bill that law was, term/bill, where this site has it; empty where it "
+                       "does not, as for most laws before 1989.", S),
+    "effective": ("date", "The day it took or takes effect, YYYY-MM-DD, where the source note "
+                          "gives one; null where it does not.", S),
+}
+
+# Every file's first field, and the fields a file of rows has around them.
+API_FORMAT = {"format": ("integer", "The file's format: 1. Read a file of any other format as not "
+                                    "this one: a change that cannot be made by adding becomes a "
+                                    "new file name beside the old.", S)}
+
+
+def _rows_file(context, rows_in, what):
+    """A file of rows: its format, what the rows are of, and the rows."""
+    return {**API_FORMAT, **context, rows_in: ("array", what, S)}
+
+
+# THE CHANGE FEED (api_records.py, 16 November 2026): a file a night, the
+# last eight, saying which records' promised fields changed -- its own
+# folder, not a key in /changes/, so the email sender's contract does not move.
+_KIND_WORDS = {
+    "bills": "bills, term/bill, of any term, whose row, stable record fields or text",
+    "rollcalls": "roll calls, year-body-number, whose row -- or, while their term sits, a "
+                 "ballot --",
+    "members": "people, by person number, whose file",
+    "laws": "chapters of the statutes whose sections' headings, text, notes or history",
+    "requests": "bill requests, by number, whose row",
+}
+API_CHANGED = {k: ("array", f"The {w} changed that night.", S) for k, w in _KIND_WORDS.items()}
+API_REMOVED = {k: ("array", f"The {k} gone that night: in the last build before it, and in no "
+                            "file now.", S) for k in _KIND_WORDS}
+API_CHANGES_NIGHT = {
+    **API_FORMAT,
+    "date": ("date", "The night, YYYY-MM-DD: the day, in UTC, of the build that wrote it, as "
+                     "/changes/ names its nights.", S),
+    "built": ("string", "When the last build of that night ran, YYYY-MM-DDTHH:MM:SSZ.", S),
+    "changed": ("object", "The records whose promised fields changed that night, by kind. A change "
+                          "to how a page is drawn is no change here.", S),
+    "removed": ("object", "The records gone that night, by kind.", S),
+}
+
+
+# Each resource: its name, what it is, the field that names one of its
+# records, and its two kinds of file -- a file of rows and a file a record --
+# each with every field it holds, in order, and the fields inside its arrays
+# and objects ("inside", by the field's name, at any depth).
+API_RESOURCES = (
+    {"name": "bills", "key": "key",
+     "what": "Every bill: a file of rows for each term, a file for each bill of the term now "
+             "sitting with its whole record and the text of every version, and every term's text "
+             "in one file a term beside the bill files under /data/.",
+     "files": (("rows", "/api/bills/{term}/index.json", "every term",
+                _rows_file({"term": ("string", "The term these are the bills of.", S)}, "bills",
+                           "Each bill's row, in the order the site lists bills.")),
+               ("record", "/api/bills/{sitting_term}/{id}.json", "the term now sitting",
+                {**API_FORMAT, **API_BILL}),
+               ("texts", "/data/bill-texts-{term}.jsonl.gz", "every term, a line a bill, gzipped",
+                API_BILL_TEXTS_LINE)),
+     "inside": {"bills": API_BILL_ROW, "versions": API_BILL_VERSION}},
+    {"name": "rollcalls", "key": "roll_call",
+     "what": "Every roll call since 1999: a file of rows for each term, and a file for each roll "
+             "call of the term now sitting, with every member's vote.",
+     "files": (("rows", "/api/rollcalls/{term}.json", "every term with roll calls",
+                _rows_file({"term": ("string", "The term these are the roll calls of.", S)},
+                           "rollcalls", "Each roll call's row, by year, chamber and number.")),
+               ("record", "/api/rollcalls/{sitting_term}/{roll_call}.json", "the term now sitting",
+                {**API_FORMAT, **API_ROLLCALL})),
+     "inside": {"rollcalls": API_ROLLCALL_ROW, "ballots": API_BALLOT}},
+    {"name": "members", "key": "person",
+     "what": "Everyone with a recorded vote since 1999, a file each: the numbers the General Court "
+             "gives them, their terms, their seat if they sit now, and the bills they sponsored.",
+     "files": (("rows", "/api/members/index.json", "everyone",
+                _rows_file({}, "members", "Each person's row, as people.json orders them.")),
+               ("record", "/api/members/{person}.json", "everyone", {**API_FORMAT, **API_MEMBER})),
+     "inside": {"members": API_MEMBER_ROW, "seat": API_SEAT, "sponsored": API_SPONSORED}},
+    {"name": "requests", "key": "lsr",
+     "what": "The bill requests of the next session, before they are bills: a file of rows, and a "
+             "file for each.",
+     "files": (("rows", "/api/requests/{year}/index.json", "the session the site lists",
+                _rows_file({"year": ("integer", "The session these are requests for.", S)},
+                           "requests", "Each request's row, by number.")),
+               ("record", "/api/requests/{year}/{number}.json", "the session the site lists",
+                {**API_FORMAT, **API_REQUEST})),
+     "inside": {"requests": API_REQUEST}},
+    {"name": "laws", "key": "chapter",
+     "what": "Every chapter of the statutes: each section's heading and text, as this site's Laws "
+             "pages show them and as of the day the General Court's table was taken, the session "
+             "laws that changed it, the bill each was, and when each took effect.",
+     "files": (("rows", "/api/laws/index.json", "every chapter",
+                _rows_file({}, "chapters", "Each chapter's row, in the statutes' order.")),
+               ("record", "/api/laws/{chapter}.json", "every chapter", {**API_FORMAT, **API_LAW})),
+     "inside": {"chapters": API_LAW_ROW, "sections": API_SECTION, "changed_by": API_LAW_CHANGE}},
+    {"name": "changes", "key": "date",
+     "what": "Which records changed, night by night: for each of the last eight nights, the bills, "
+             "roll calls, members, chapters of the laws and bill requests whose promised fields "
+             "changed, and those gone, so a program fetches only those.",
+     "files": (("night", "/api/changes/{date}.json", "the last eight nights", API_CHANGES_NIGHT),),
+     "inside": {"changed": API_CHANGED, "removed": API_REMOVED}},
+)
+
+
+def _described(spec, inside, depth=0):
+    """spec's fields as _fields gives them, each array or object named in
+    `inside` with its own fields under "x-fields", to any depth."""
+    out = _fields(spec)
+    for f in out:
+        if f["name"] in inside and depth < 4:
+            f["x-fields"] = _described(inside[f["name"]], inside, depth + 1)
+    return out
+
+
+def api_records_schema():
+    """The API's records as schema.json describes them, and as
+    /api/index.json does beside tonight's counts: each resource, its files,
+    and every field of each, with its type, description and stability."""
+    return [{"name": r["name"], "description": r["what"], "key": r["key"],
+             "files": [{"holds": holds, "path": path, "for": of,
+                        "fields": _described(spec, r["inside"])}
+                       for holds, path, of, spec in r["files"]]}
+            for r in API_RESOURCES]
+
+
+def api_file_fields(name, holds):
+    """{field: (type, description, stability)} of one resource's file of
+    rows or file a record, and the specs inside it: what api_records holds
+    each file it writes to."""
+    r = next(x for x in API_RESOURCES if x["name"] == name)
+    return next(spec for h, _p, _o, spec in r["files"] if h == holds), r["inside"]

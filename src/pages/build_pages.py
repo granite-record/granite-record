@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.284
+# GRANITE_VERSION: 2026-09-04.286
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -246,7 +246,8 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 
 # And the public data API's files, which the manifest lists under "files":
 # the people register as JSON (its CSV is a CSV above); each term's bills a
-# line at a time; the whole record as one database; and schema.json, which
+# line at a time, and their texts the same way (bill-texts-<term>, since 16
+# November 2026); the whole record as one database; and schema.json, which
 # describes every file here, once the API's branch writes it. A program that
 # reads the manifest is handed these addresses, so a browser has to be let
 # follow them. preflight's _data_cors holds every address the manifest names
@@ -259,7 +260,29 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
   Access-Control-Allow-Origin: *
 /data/bills-*.jsonl.gz
   Access-Control-Allow-Origin: *
+/data/bill-texts-*.jsonl.gz
+  Access-Control-Allow-Origin: *
 /data/granite-record.sqlite.xz
+  Access-Control-Allow-Origin: *
+
+# And the API's files a record (api_records.py, 16 November 2026), which
+# /api/index.json lists: its folders one by one, so that no rule here reaches
+# /api/live/, /api/report or /api/follow/, which are the Functions' own and
+# answer for themselves. preflight's _api_records_cors holds every file the
+# fixture writes under /api/ to exactly one of these.
+/api/index.json
+  Access-Control-Allow-Origin: *
+/api/bills/*
+  Access-Control-Allow-Origin: *
+/api/rollcalls/*
+  Access-Control-Allow-Origin: *
+/api/members/*
+  Access-Control-Allow-Origin: *
+/api/requests/*
+  Access-Control-Allow-Origin: *
+/api/laws/*
+  Access-Control-Allow-Origin: *
+/api/changes/*
   Access-Control-Allow-Origin: *
 """
 

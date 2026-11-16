@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.34
+# GRANITE_VERSION: 2026-10-11.35
 """
 The statutes (RSA) as pages: /laws, and one page a chapter at /laws/<chapter>.
 
@@ -1163,6 +1163,19 @@ def repeal_words(note):
     return f" {E(b.group(1).strip())}" if b else ""
 
 
+def official_page(table, ch):
+    """The General Court's own table of contents page for the chapter, the
+    address build_site_v2.rsa_url has linked for a chapter since 4
+    September, rather than a guessed one for the whole chapter's text. The
+    chapter's page links it, and so does its file in the data API
+    (api_records.py)."""
+    secs = table.chapters[ch]["sections"]
+    first = table.sections[secs[0]] if secs else None
+    tno = (first.url.split("/")[0] if first and first.url else "") or (first.title_no if first else "")
+    return (f"https://gc.nh.gov/rsa/html/NHTOC/NHTOC-{tno}-{ch}.htm" if tno
+            else "https://gc.nh.gov/rsa/html/nhtoc.htm")
+
+
 def chapter_page(tmpl, table, data, bills, ch, base):
     info = table.chapters[ch]
     secs = info["sections"]
@@ -1190,13 +1203,7 @@ def chapter_page(tmpl, table, data, bills, ch, base):
     # this, so RSA 404's carry its slash (chapter_path).
     path = chapter_path(ch)
     title = chapter_label(ch, info["name"])
-    first = table.sections[secs[0]] if secs else None
-    # The General Court's own table of contents page for the chapter, the
-    # address build_site_v2.rsa_url has linked for a chapter since 4
-    # September, rather than a guessed one for the whole chapter's text.
-    tno = (first.url.split("/")[0] if first and first.url else "") or (first.title_no if first else "")
-    official = (f"https://gc.nh.gov/rsa/html/NHTOC/NHTOC-{tno}-{ch}.htm" if tno
-                else "https://gc.nh.gov/rsa/html/nhtoc.htm")
+    official = official_page(table, ch)
     # THE NAME A READER SEARCHES FOR (the SEO review, 12 October 2026). The
     # title read "Chapter 91-A -- Laws": no "RSA", which is how the chapter is
     # cited and searched, and no name. Now "RSA 91-A -- Access to Governmental
