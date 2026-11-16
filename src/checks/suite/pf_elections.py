@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of members-elect and election results.
 
@@ -20,6 +20,7 @@ from pathlib import Path
 import _paths
 
 from pf_core import (_in_suite, _parsed, _run, _source, _suite_files, check)
+from pf_harness import (_app_js)
 from pf_runner import (REMINDERS)
 from pf_shared import (_ELECT_DEADLINE, _ELECT_FORMER, _ELECT_HAND, _ELECT_IN, _ELECT_PAGES,
                        _ELECT_TAG, _elect_absent, _elect_blocks, _elect_built, _elect_fixture,
@@ -147,9 +148,13 @@ def _elect_provisional():
             "a provisional page is written without noindex")
         # Seen with script on: app.css hides a .static-rec under html.js
         # unless it is .shown, and the page was drawn blank so (the
-        # screenshots of 8 November 2026).
-        assert '<div class="static-rec shown" id="elect-rec">' in page, (
-            "a provisional page's record is hidden once script runs")
+        # screenshots of 8 November 2026). Since 16 November 2026 the page is
+        # a member's head and tabs written into #results itself, which no
+        # stylesheet rule hides (_elect_page_member_form holds what it says).
+        assert '<div id="results"><header class="rhead rh-member rh-p' in page \
+            and 'class="static-rec' not in page, (
+            "a provisional page's record is not the head written into #results, which shows "
+            "with script and without")
         assert "Took office December 2, 2026." in page and "LSR 2027-0010" in page \
             and "LSR 2027-0011" not in page and "GR_MEMBER" not in page, (
             "a provisional page after Organization Day does not say they took office, list their "
@@ -303,6 +308,160 @@ def _elect_pages_result():
                   "(2nd of 5, 3,436 votes, a recount asked for and 1 seat not final; a recounted Senate "
                   "seat won with 56.2%) and the day of the race's own file, the Senate's by the "
                   "districts its name holds")
+
+
+@check("build", "a new member-elect's provisional page is a member's page in the member-elect's form: the "
+                "head a returning member-elect's is given, the district's towns, the election's line, "
+                "their requests as a member's page lists them or that none is filed yet, the race as "
+                "the Elections tab draws it with its seats not final and the source's day; a member "
+                "who took office from that day", needs=("build_legislator_pages",))
+def _elect_page_member_form(LP):
+    """The owner, 16 November 2026: pages "labeled as such with whatever information that is
+    possible to fill out like district and whether they have filed any LSRs yet", in the site's own
+    components and words. build_legislator_pages.elect_body is held to:
+
+    - the record's head (components.record_head) with the trail ending Member-elect, the name and
+      party as the results print them and the bar in that party's ink -- the head app.js's
+      renderMemberHead gives a returning member-elect, compared in node where it is here; the line
+      saying what they were elected to and the district's towns, each to its page; the earlier
+      service the owner confirmed; Cite this page and Share; no contact detail and no member id;
+    - the election's line, and that their seat and record are added as the General Court
+      publishes them;
+    - the tabs: their requests as a member's page lists them (app.js lsrCardHtml's card, compared
+      in node, its number to the request's own page), or "No bill requests filed for 2027 yet.";
+      and the race as a member's Elections tab draws it (app.js electionRow, compared in node),
+      the seats not final with "a recount was requested", and the source with its day;
+    - from the day they take office: Representative or Senator in the trail, a member of the
+      chamber, "Took office"."""
+    path, base = "/legislator/bob-mclean-belk-6.html", "https://graniterecord.org"
+    p = {"slug": "bob-mclean-belk-6", "name": "Bob McLean", "party": "D", "chamber": "H",
+         "county": "Belknap", "district": "6", "race": "H|Belknap|6",
+         "towns": ["Gilford", "Gilmanton", "Laconia Ward 2"],
+         "result": {"d": "2026-11-03", "k": "H|Belknap|6", "a": "r-h-belknap-6", "r": "won", "v": 3436,
+                    "s": 4, "rq": 1, "pl": 2, "of": 8, "nf": 1},
+         "source": {"url": _ME_URL, "saved": "2026-11-05"}}
+    doc = {"election": "2026-11-03", "takes_office": "2026-12-02"}
+    meta = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027}
+    rail = [{"stop": "Requested", "mark": "p", "say": "made"}, {"stop": "Filed", "mark": "-", "say": "not yet"},
+            {"stop": "Introduced", "mark": "-", "say": "not yet"}]
+    row = {"id": "LSR20270090", "n": "LSR 2027-0090", "year": 2027, "title": "naming a section of Route 3.",
+           "sponsor": "Bob McLean", "sponsor_label": "Bob McLean (D)", "sponsor_slug": p["slug"],
+           "sponsor_party": "D", "body": "HB", "body_label": "House bill request", "committee": "",
+           "committees": [], "topic": "Transportation", "topic_by": "title", "kind": "",
+           "status": "Requested", "status_stated": True, "withdrawn": False, "term": "2027-requests",
+           "carried": False, "passage": "", "last_action": "", "nrc": 0, "votedays": [], "lsr": True,
+           "address": "request/2027-0090", "rail": rail}
+    gone = dict(row, id="LSR20270091", n="LSR 2027-0091", status="Withdrawn", withdrawn=True,
+                address="request/2027-0091", topic="Miscellaneous")
+    places = {"Gilford": "/town/gilford", "Laconia Ward 2": "/town/laconia-ward-2"}
+    before = LP.elect_body(p, doc, [row, gone], meta, places, "2026-11-20", path, base)
+    none = LP.elect_body(p, doc, [], meta, places, "2026-11-20", path, base)
+    after = LP.elect_body(p, doc, [], meta, places, "2026-12-03", path, base)
+    sen = dict(p, slug="gil-hart-sd-15", name="Gil Hart", party="R/D", chamber="S", county="",
+               district="15", race="S|15", towns=["Concord"], source={"url": _ME_URL, "saved": "2026-11-07"},
+               result={"d": "2026-11-03", "k": "S|15", "a": "r-s-15", "r": "won", "v": 9000, "s": 1, "rc": 1,
+                       "pl": 1, "of": 2, "sh": 56.2},
+               prior={"terms": ["1993-1994", "1995-1996"], "seat": "Hillsborough 1"})
+    senate = LP.elect_body(sen, doc, [], meta, {}, "2026-11-20", "/legislator/gil-hart-sd-15.html", base)
+    trail = ('<nav class="rtrail" aria-label="Where this page is"><ol><li><a href="officials">Officials</a>'
+             '</li><li aria-current="page">{}</li></ol></nav>')
+    bad = []
+    for what, ok in (
+            ("the head is a member's, in the party's ink", '<header class="rhead rh-member rh-pD">' in before),
+            ("the trail ends Member-elect", trail.format("Member-elect") in before),
+            ("the heading is the name and party the results print", '<h1 class="rh1">Bob McLean (D)</h1>' in before),
+            ("the line says what they were elected to, and the district's towns, each to its page",
+             '<p class="rline">Member-elect of the New Hampshire House of Representatives, Belknap 6'
+             '&nbsp;&middot; <a href="/town/gilford">Gilford</a>, Gilmanton and '
+             '<a href="/town/laconia-ward-2">Laconia Ward 2</a></p>' in before),
+            ("Cite this page and Share are in the head's actions",
+             re.search(r'<div class="racts"><div class="pageacts" id="pageacts"><details class="pcite">'
+                       r'.*?Cite this page.*?data-share', before, re.S) is not None),
+            ("the election's line", '<p class="elline">Elected November 3, 2026. Takes office December 2, '
+                                    '2026.</p>' in before),
+            ("the seat and record are said to come as the General Court publishes them",
+             "Their seat, committees and record are added here as the General Court publishes them."
+             in before),
+            ("the requests' tab, counted, and the Elections tab",
+             '<button class="tab" role="tab" id="tab_elect_requests" aria-controls="pane_elect_requests" '
+             'aria-selected="true" data-t="requests" data-sstab="">2027 Bill Requests<span class="tn">'
+             '<span class="tnp"> (</span>2<span class="tnp">)</span></span></button>' in before
+             and 'id="tab_elect_elections"' in before
+             and 'data-base="/legislator/bob-mclean-belk-6"' in before),
+            ("the requests in the member page's words, the withdrawn counted",
+             "2 filed for 2027, 1 of them withdrawn.</p>" in before
+             and "<b>Requests, not bills yet.</b>" in before),
+            ("a request's number goes to its own page",
+             '<span class="cnum" translate="no"><a href="request/2027-0090">LSR 2027-0090</a></span>' in before),
+            ("none filed is said", '<p class="src">No bill requests filed for 2027 yet.</p>' in none
+             and 'class="card' not in none and "Requests, not bills yet" not in none),
+            ("the race as the Elections tab draws it",
+             '<td class="v" data-l="Result">Elected, 2nd of 8</td>' in before
+             and '<td class="o" data-l="Votes">3,436</td>' in before
+             and '<a href="/elections/2026-11-03-general#r-h-belknap-6">Nov 3, 2026</a>' in before),
+            ("the race's seats not final, and the recount",
+             '<p class="elnf"><b>Result not final</b> for the last of the district&rsquo;s 4 seats &mdash; '
+             'a recount was requested.</p>' in before),
+            ("the source, its address and its day",
+             f'read from its <a href="{_ME_URL}" rel="noopener">results file</a> saved November 5, 2026'
+             in before),
+            ("no contact detail and no member id",
+             not any(w in before for w in ("mailto:", "<dt>Email", "GR_MEMBER", "legislators/"))),
+            ("from the day they take office, a member who took office",
+             trail.format("Representative") in after
+             and "Member of the New Hampshire House of Representatives, Belknap 6" in after
+             and "Took office December 2, 2026." in after
+             and "Member-elect" not in after and "Takes office" not in after),
+            ("a Senate member-elect's line, and a cross-nomination on the neutral bar",
+             '<header class="rhead rh-member rh-pX">' in senate and '<h1 class="rh1">Gil Hart (R/D)</h1>' in senate
+             and "Member-elect of the New Hampshire Senate, Senate District 15&nbsp;&middot; Concord" in senate),
+            ("a race of one seat gives the share, a recount's count says so",
+             "Elected, 1st of 2 <span class=\"dim\">Recounted</span>" in senate
+             and '9,000 <span class="dim">(56.2%)</span>' in senate
+             and "Result not final" not in senate and "saved November 7, 2026" in senate),
+            ("the earlier service the owner confirmed",
+             "<dt>Earlier service</dt><dd>Hillsborough 1, 1993–1994, 1995–1996</dd>" in senate)):
+        if not ok:
+            bad.append(what)
+    # THE MEMBER PAGE'S OWN PARTS, where node is here: the row app.js's electionRow draws, the card
+    # lsrCardHtml draws (shut, its title the button that opens it, which a page built ahead draws
+    # whole), and the head renderMemberHead gives a returning member-elect of the same race.
+    ret = {"id": "900009", "name": "McLean, Bob", "chamber": "H", "former": True, "party": "D",
+           "display_plain": "Rep. Bob McLean", "display_full": "Rep. Bob McLean (D - Belk 2)",
+           "display": "Rep. Bob McLean (D)", "county": "Belknap", "district": "2",
+           "slug": "bob-mclean-belk-2", "served": {"terms": ["2017-2018"]}, "attendance": {"2017-2018": {"days": 1}}}
+    ge = {"id": "900009", "key": "H|Belknap|6", "election": "2026-11-03", "takes_office": "2999-01-01",
+          "mode": "returning", "name": "Bob McLean", "party": "D",
+          "where": "Member-elect of the New Hampshire House of Representatives, Belknap 6."}
+    rows = [p["result"], sen["result"], dict(p["result"], r="open", fl=1, pl=None, of=None),
+            {"d": "2024-11-05", "k": "H|Coos|7", "a": "r-h-coos-7", "r": "lost", "v": 12, "s": 2, "pl": 11, "of": 12}]
+    js = ("[" + ", ".join(f"scope.electionRow({json.dumps(r)})" for r in rows)
+          + f", scope.lsrCardHtml({json.dumps(row)}, ''), scope.lsrCardHtml({json.dumps(gone)}, ''), "
+          f"(window.GR_ELECT={json.dumps(ge)}, scope.renderMemberHead({json.dumps(ret)}))]")
+    got = _app_js(js, names=("electionRow", "lsrCardHtml", "renderMemberHead"))
+    if got is not None:
+        flat = lambda s: re.sub(r"\s+", " ", s).strip()
+        for r, js_row in zip(rows, got[:4]):
+            if flat(LP.election_row_html(r)) != flat(js_row):
+                bad.append(f"the race's row is not electionRow's: {LP.election_row_html(r)!r} != {js_row!r}")
+        for r, card in zip((row, gone), got[4:6]):
+            shut = re.sub(r'<button type="button" class="ctitle" aria-expanded="false" translate="no">'
+                          r'(.*?)</button>', r'<div class="ctitle" translate="no">\1</div>', card, flags=re.S)
+            shut = re.sub(r'<div class="cbody" hidden>.*</div></article>$', "</article>", shut, flags=re.S)
+            if LP.request_card(r) != shut:
+                bad.append(f"the request's card is not lsrCardHtml's: {LP.request_card(r)!r} != {shut!r}")
+        part = lambda h: tuple((m.group(0) if m else None) for m in (
+            re.search(r'<header class="[^"]*">', h), re.search(r'<nav class="rtrail".*?</nav>', h, re.S),
+            re.search(r'<div class="rtop">.*?</div>', h, re.S)))
+        if part(before) != part(got[6]):
+            bad.append(f"the head is not the one renderMemberHead gives a returning member-elect: "
+                       f"{part(before)} != {part(got[6])}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("the page is a member's in the member-elect's form: the head, the towns, the "
+                  "election's line, the requests or that none is filed yet, the race with its seats not "
+                  "final and the source's day, and a member who took office from the day"
+                  + (", its row, cards and head the ones app.js draws" if got is not None
+                     else " (node not here: the comparisons with app.js not made)"))
 
 
 @check("build", "the elections page links a new winner to their provisional page, on the race's card and "

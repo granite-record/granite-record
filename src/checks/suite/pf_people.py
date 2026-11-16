@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of sponsors, members and officials.
 
@@ -702,8 +702,10 @@ def _elect_returning_pages(OT, LP, BME):
                          {"label": "2027 Bill Requests", "year": 2027, "term": "2027-requests"},
                          {}, "2026-11-20")
     # Each term as a reader sees one, with an en dash (components.term_words): W. Gordon Allen's
-    # read "1993-1994, 1995-1996, 1997-1998", the hand file's keys.
-    if "LSR 2027-0003" not in body or "Earlier service:</b> Hillsborough 1, 1993–1994, 1995–1996" not in body:
+    # read "1993-1994, 1995-1996, 1997-1998", the hand file's keys. A fact of the page's head
+    # since 16 November 2026, when the page became a member's (_elect_page_member_form).
+    if "LSR 2027-0003" not in body or \
+            "<dt>Earlier service</dt><dd>Hillsborough 1, 1993–1994, 1995–1996</dd>" not in body:
         bad.append(f"a provisional page does not show its requests and earlier service: {body[:300]}")
     assert not bad, "; ".join(bad)
     return "ok", ("the tab links every new member-elect with a page; a returning member's page is "
