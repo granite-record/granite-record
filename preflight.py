@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.948
+# GRANITE_VERSION: 2026-09-04.949
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2030,7 +2030,7 @@ def _boundary_problems(root=None, dirs=_paths.CODE_DIRS):
     for f in _paths.code_files("*.py", root=base, dirs=dirs):
         rel = f.relative_to(base).as_posix()
         folder = rel.rsplit("/", 1)[0] if "/" in rel else ""
-        if not folder:
+        if not folder or _in_suite(f):
             continue
         src = f.read_text(encoding="utf-8", errors="replace")
         tree = _parsed(f)

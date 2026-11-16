@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 The registry of preflight's checks, and what every module of the suite shares.
 
@@ -211,9 +211,30 @@ def check(group, name, needs=(), expect_fail=None, last=False):
 
 
 def _in_order(checks):
-    """`checks` in the order main() runs them: as defined, but those marked
-    `last` after all the rest."""
+    """`checks` in the order main() runs them: as ORDER.json lists them, then
+    any it does not list as they were defined, but those marked `last` after
+    all the rest (_run_order)."""
+    rank = {n: i for i, n in enumerate(_run_order())}
+    checks = sorted(checks, key=lambda c: rank.get(c["fn"].__name__, len(rank)))
     return [c for c in checks if not c.get("last")] + [c for c in checks if c.get("last")]
+
+
+# THE RUN ORDER IS ORDER.json's WHILE THE CHECKS MOVE (the refactor's stage 1, step 5). A check
+# registers when its module is imported, so once the checks are modules by area the order they
+# register in is the modules', not the one file's they were defined in, and
+# _published_scripts_run_the_same reads the outcomes of the checks run before it. ORDER.json,
+# beside this file, lists every check as the one file ran them; a run takes them in that order,
+# then any it does not list as they registered, and those marked `last` after all of them.
+_ORDER = {}
+
+
+def _run_order():
+    """The function names src/checks/suite/ORDER.json lists, in order, read once a run; []
+    where there is none."""
+    if "names" not in _ORDER:
+        p = _paths.ROOT / "src" / "checks" / "suite" / "ORDER.json"
+        _ORDER["names"] = json.loads(p.read_text(encoding="utf-8")) if p.is_file() else []
+    return _ORDER["names"]
 
 
 def _settle(status, msg, expect_fail):
