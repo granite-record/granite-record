@@ -128,7 +128,11 @@ journals, those documents the kit does not hold, 25 a night at most, their
 text, and the House committees' reports, the amendments and the meetings read
 off it again where it changed (`nightly.take_document_files`); the rebuild,
 `build_all.py --local --no-captions`, since
-that machine holds no caption files; and the gates -- `preflight.py --code`,
+that machine holds no caption files; and the gates -- `preflight.py --code`
+(since 16 November 2026 a job of its own beside the night, `checks`, from the
+same commit: nothing waits for it, the publish job needs it to have passed,
+and the night reads its result at the end, `nightly.py --checks-result`, and
+its verdict is clean only where it passed),
 `src/checks/check_site.py`, a census of the build against the last good
 build's counts (`archive/census.json`), and a ceiling of 95,000 files
 (`FILE_CEILING`) that nothing lifts. A build that passes goes to a preview
@@ -355,8 +359,9 @@ longer than `STILL_DAYS` and it did not move at all, and none on a night that
 did not fetch; the rest are left to the warnings that already watch them.
 Each is of a kind the gate never holds a night for.
 
-**The checks of the night's own build.** `preflight.py --code` runs before the
-night fetches or builds, so a check that reads a built site skips there, and
+**The checks of the night's own build.** `preflight.py --code` runs beside the
+night (before it fetched or built, until 16 November 2026), never on a built
+site, so a check that reads a built site skips there, and
 the data checks never ran on GitHub's machine at all -- which is how the
 report box dropped readers' reports from nearly every legislator page for
 four days in October 2026 with no night to say so. After `check_site`, the

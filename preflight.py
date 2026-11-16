@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.940
+# GRANITE_VERSION: 2026-09-04.941
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -111697,7 +111697,9 @@ def _workflows_permissions():
     says `contents: read` at the top and nothing more; a job asks for more only
     to re-enable its own schedule (`actions: write`, and then it checks out
     nothing and runs nothing else), or to list the night's own runs
-    (`actions: read`, whether the night's timer has started tonight's night).
+    (`actions: read`, whether the night's timer has started tonight's night),
+    or, in the night, this run's own jobs (`actions: read`, one step, for what
+    the code checks beside it came to).
     And no workflow is started by a pull
     request, a comment or another workflow: a fork's code must never run with
     these keys in reach."""
@@ -111736,8 +111738,20 @@ def _workflows_permissions():
                 # actions: read ONLY TO SEE WHETHER THE TIMER STARTED TONIGHT'S
                 # NIGHT (23 October 2026, nightly.yml's job "started"): it lists
                 # this workflow's own runs, checks out nothing and runs nothing.
+                # AND IN THE NIGHT, TO READ WHAT THE CODE CHECKS CAME TO (16
+                # November 2026, nightly.CHECKS_JOB): one step alone is given
+                # the token, and it runs nightly.py --checks-result, which GETs
+                # this run's own jobs and nothing else; no step runs gh
+                # (_workflows_code_checks_beside holds the rest).
                 if "actions: read" in asks:
                     body = "\n".join(_wf_code(jl))
+                    if "nightly.py --runner --checks-result" in body:
+                        given = [st for st in _wf_steps(_wf_code(jl)) if "github.token" in "\n".join(st)]
+                        assert len(given) == 1 and \
+                            "python nightly.py --runner --checks-result" in "\n".join(given[0]) and \
+                            not re.search(r"^\s+gh\s", body, re.M) and asks == ["contents: read", "actions: read"], \
+                            f"{f.name}: job {j} holds actions: read and does more than read the code checks' result"
+                        continue
                     assert "uses:" not in body and "gh api -X GET" in body \
                         and "actions/workflows/nightly.yml/runs" in body \
                         and not re.search(r"--method|-X (?:POST|PUT|PATCH|DELETE)", body), \
@@ -111748,8 +111762,8 @@ def _workflows_permissions():
                         and "--method PUT" in body, \
                         f"{f.name}: job {j} holds actions: write and does more than re-enable its schedule"
     return "ok", (f"{len(files)} workflow(s): contents: read, actions: write only to re-enable a "
-                  "schedule and actions: read only to list the night's runs, started only by "
-                  "hand or by the clock")
+                  "schedule and actions: read only to list the night's runs and, in the night, "
+                  "its own jobs for the code checks' result, started only by hand or by the clock")
 
 
 @check("workflows", "production is deployed only by the job behind the production environment, "
@@ -111931,6 +111945,265 @@ def _livestream_step_limits(name, job, step, body):
             f"the workflow pins {ejs.group(1)}")
     return (f"its own limit {limit} min for a longest run of {need:g}, inside the night window "
             f"and the job; {L.SOLVER} {ejs.group(1)}")
+
+
+@check("workflows", "the code checks run beside the night in a job of their own, from the run's own "
+       "commit; the publish job runs only when they passed; and the night's verdict is told what "
+       "they came to", needs=("nightly",))
+def _workflows_code_checks_beside(NI):
+    """THE CODE CHECKS BESIDE THE NIGHT (16 November 2026, the owner's word: "preflight --code
+    as its own job beside the night, not before the fetch"; nightly.CHECKS_JOB says why). In
+    nightly.yml a job named CHECKS_JOB runs `python preflight.py --code` and nothing of the
+    night's -- no nightly.py, no secret, no environment, nothing from the bucket -- on a pinned
+    Windows image, from the run's own commit (its checkout names no ref) with its history,
+    outside gc-night, after "started" and under the night's own if, so it runs exactly when the
+    night does; no other job runs preflight --code, and nightly.main() runs it only off GitHub's
+    machine: on the runner it records PREFLIGHT_BESIDE and goes on. The publish job needs both,
+    and its if, as GitHub evaluates it for a main night fit for production, runs it when the
+    checks succeeded and for no other result -- failure, cancelled, skipped, none. And the night
+    hands the result on: its step `checks`, under always(), runs nightly.py --checks-result with
+    the run's token as its own env and a limit past CHECKS_WAIT, the job holding contents: read
+    and actions: read and nothing more, and the verdict step passes that step's output as
+    --checks. Run on nightly.yml as it stood before, this fails on the missing job."""
+    import ast as _ast
+    wf = _SWITCHED.workflow_dir / "nightly.yml"
+    if not wf.exists():
+        return "skip", "no .github/workflows/nightly.yml here"
+    text = wf.read_text(encoding="utf-8")
+    jobs = _wf_jobs(text)
+    named = [j for j, jl in jobs.items()
+             if any(re.fullmatch(rf"    name:\s*{re.escape(NI.CHECKS_JOB)}\s*", ln) for ln in jl)]
+    assert named == ["checks"], (f"nightly.yml has {named or 'no'} job named {NI.CHECKS_JOB!r}, "
+                                 "not one job checks: the code checks are not beside the night")
+    code = _wf_code(jobs["checks"])
+    body = "\n".join(code)
+    runs = [st for st in _wf_steps(code) if any("preflight.py" in ln for ln in st)]
+    assert len(runs) == 1 and "python preflight.py --code" in "\n".join(runs[0]) and \
+        "exit $rc" in "\n".join(runs[0]), (
+            "the job checks does not run preflight.py --code once, and fail when it fails")
+    for bad, why in (("nightly.py", "runs the night's own script"), ("secrets.", "holds a secret"),
+                     ("cloud.py", "takes something from the bucket"),
+                     ("environment:", "runs in an environment"), ("group: gc-night", "waits in gc-night"),
+                     ("ref:", "checks out a ref of its own, not the run's commit")):
+        assert bad not in body, f"nightly.yml's job checks {why} ({bad})"
+    assert re.search(r"^    runs-on:\s*windows-\d{4}\s*$", body, re.M) and \
+        re.search(r"^          fetch-depth: 0\s*$", body, re.M), (
+            "the job checks does not run on the night's pinned Windows image with the history")
+    need, cond = _wf_job_heads(jobs["checks"])
+    night_need, night_cond = _wf_job_heads(jobs.get("night") or [])
+    assert need == ["started"] and cond and cond == night_cond, (
+        f"the job checks needs {need} under {cond!r}; the night needs {night_need} under "
+        f"{night_cond!r}: they must start together and run for the same runs")
+    others = [j for j, jl in jobs.items() if j != "checks"
+              and "preflight.py --code" in "\n".join(_wf_code(jl))]
+    assert not others, f"nightly.yml runs preflight --code in {others} as well"
+    # nightly.main() runs it only where there is no night of GitHub's machine.
+    main_fn = next(n for n in _ast.walk(_parsed(_paths.locate("nightly.py")))
+                   if isinstance(n, _ast.FunctionDef) and n.name == "main")
+    calls = [c for c in _ast.walk(main_fn) if isinstance(c, _ast.Call)
+             and getattr(c.func, "id", "") == "run" and c.args
+             and isinstance(c.args[0], _ast.List)
+             and [getattr(e, "value", None) for e in c.args[0].elts[:2]] == ["preflight.py", "--code"]]
+    beside = [n for n in _ast.walk(main_fn) if isinstance(n, _ast.If)
+              and isinstance(n.test, _ast.Name) and n.test.id == "night"
+              and "PREFLIGHT_BESIDE" in _ast.unparse(_ast.Module(body=n.body, type_ignores=[]))
+              and any(c in list(_ast.walk(_ast.Module(body=n.orelse, type_ignores=[]))) for c in calls)]
+    assert len(calls) == 1 and len(beside) == 1, (
+        f"nightly.main() runs preflight --code {len(calls)} time(s), and {len(beside)} of them only "
+        "off GitHub's machine: on the runner the fetch would wait for it again")
+    # The publish job: both, and only on a pass.
+    pneed, pcond = _wf_job_heads(jobs.get("publish") or [])
+    assert sorted(pneed) == ["checks", "night"], f"the publish job needs {pneed}, not the night and checks"
+    seen = []
+    for result in ("success", "failure", "cancelled", "skipped", None):
+        ctx = dict(_wf_run_ctx("schedule", MAIN_REF, {}), **{
+            "needs.night.result": "success", "needs.night.outputs.publishable": "true",
+            "needs.night.outputs.dry_run": "false", "needs.checks.result": result})
+        go = bool(_gh_eval(pcond, ctx))
+        assert go == (result == "success"), (
+            f"the publish job {'runs' if go else 'does not run'} for a night fit for production "
+            f"whose code checks came to {result!r}: {pcond}")
+        seen.append(result)
+    # The night hands their result to its verdict.
+    nc = _wf_code(jobs.get("night") or [])
+    perms = []
+    for k, ln in enumerate(nc):
+        if re.match(r"^    permissions:\s*$", ln):
+            for x in nc[k + 1:]:
+                if not x.startswith("      ") or not x.strip():
+                    break
+                perms.append(x.strip())
+    assert perms == ["contents: read", "actions: read"], f"the night job's token asks for {perms}"
+    steps = _wf_steps(nc)
+    at = [i for i, st in enumerate(steps) if re.search(r"^        id: checks\s*$", "\n".join(st), re.M)]
+    close = [i for i, st in enumerate(steps) if "nightly.py --runner --close" in "\n".join(st)]
+    assert len(at) == 1 and len(close) == 1 and at[0] < close[0], (
+        "the night has no step checks before its verdict")
+    st = "\n".join(steps[at[0]])
+    lim = re.search(r"^        timeout-minutes:\s*(\d+)\s*$", st, re.M)
+    assert re.search(r"^        if: always\(\)\s*$", st, re.M) and \
+        "          GH_TOKEN: ${{ github.token }}" in steps[at[0]] and \
+        "python nightly.py --runner --checks-result" in st and \
+        lim and int(lim.group(1)) * 60 > NI.CHECKS_WAIT, (
+            "the night's step checks does not run nightly.py --checks-result under always(), with "
+            "the run's token as its own env and a limit past nightly.CHECKS_WAIT")
+    assert '--checks "${{ steps.checks.outputs.result }}"' in "\n".join(steps[close[0]]), (
+        "the night's verdict is not told what the code checks came to (--checks)")
+    return "ok", (f"job checks ({NI.CHECKS_JOB}) runs preflight --code alone, from the run's commit, no "
+                  "secret, outside gc-night, beside the night under its if; nightly.main() runs it only "
+                  "off the runner; the publish job needs both and runs only on success of "
+                  f"{len(seen)} results; the night reads the result (actions: read) and tells its verdict")
+
+
+@check("workflows", "the night's verdict folds in what the code checks beside it came to: only a "
+       "pass is clean, a failure fails the job and gives the newest night fit for production back, "
+       "and a dry run whose checks failed proves no release", needs=("nightly",))
+def _night_code_checks_folded(NI):
+    """THE CODE CHECKS BESIDE THE NIGHT (nightly.CHECKS_JOB), the night's half.
+    checks_result() on a made-up list of this run's jobs: it asks only GET of
+    this run's own jobs, waits while the job is queued or running, and gives
+    its conclusion once it has finished; "not finished" past the wait, "not in
+    this run" for a list that names no such job, "unknown" for none read or a
+    word GitHub does not use. Then close_verdict() on a fit night's verdict, as
+    finish() leaves it with the checks beside it: told success, it is clean,
+    exits 0, keeps itself the newest night fit for production and its page says
+    they passed; told failure, an empty result, a skipped or cancelled job, it
+    is not clean, exits 1, gives that record back to the night before (as for a
+    failed step), and says why in one sentence; told nothing (the laptop's, or
+    an older workflow's), it is as finish() left it. A dry run told failure is
+    not clean, and proven_by_dry_run() takes it for no proof of its commit;
+    told success, it is one. And problems() counts the checks beside the night
+    as no problem until then."""
+    import contextlib
+    import io
+    import types
+    assert set(NI.CHECKS_WORDS) >= {"success", "failure", "cancelled", "skipped", "unknown",
+                                     "not finished", "not in this run"}, NI.CHECKS_WORDS
+    # checks_result, on a made-up API.
+    saved = {k: os.environ.get(k) for k in ("GITHUB_REPOSITORY", "GITHUB_RUN_ID", "GH_TOKEN",
+                                            "GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY", "GITHUB_OUTPUT",
+                                            "GITHUB_SHA")}
+    here = Path(".").resolve()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-code-checks-"))
+    try:
+        os.environ.update(GITHUB_REPOSITORY="owner/repo", GITHUB_RUN_ID="77", GH_TOKEN="t")
+
+        def job(status, conclusion=None):
+            return {"jobs": [{"name": "the night", "status": "in_progress"},
+                             {"name": NI.CHECKS_JOB, "status": status, "conclusion": conclusion}]}
+
+        def drive(answers, wait=90):
+            asked, slept, now = [], [], [0.0]
+
+            def ask(url):
+                asked.append(url)
+                a = answers[min(len(asked), len(answers)) - 1]
+                if isinstance(a, Exception):
+                    raise a
+                return a
+
+            def sleep(s):
+                slept.append(s)
+                now[0] += s
+            got = NI.checks_result(wait=wait, every=30, ask=ask, sleep=sleep, clock=lambda: now[0])
+            return got[0], asked, slept
+        url = f"{NI.GITHUB_API}/repos/owner/repo/actions/runs/77/jobs?per_page=100"
+        res, asked, slept = drive([job("queued"), job("in_progress"), job("completed", "success")])
+        assert res == "success" and asked == [url] * 3 and slept == [30, 30], (res, asked, slept)
+        for answers, want in (([job("completed", "failure")], "failure"),
+                              ([job("completed", "cancelled")], "cancelled"),
+                              ([job("completed", "skipped")], "skipped"),
+                              ([job("completed", "a word GitHub does not use")], "unknown"),
+                              ([job("in_progress")], "not finished"),
+                              ([job("in_progress"), OSError("refused")], "not finished"),
+                              ([{"jobs": [{"name": "the night", "status": "queued"}]}], "not in this run"),
+                              ([OSError("refused")], "unknown"),
+                              ([{"message": "Not Found"}], "unknown"),
+                              ([OSError("once"), job("completed", "success")], "success")):
+            res, asked, _ = drive(answers)
+            assert res == want and set(asked) == {url}, (answers, res, want, asked)
+        os.environ.pop("GITHUB_RUN_ID")
+        assert NI.checks_result(ask=lambda u: 1 / 0)[0] == "unknown", "a result read with no run named"
+
+        # close_verdict, on a fit night's verdict as finish() leaves it.
+        os.chdir(tmp)
+        Path("archive").mkdir()
+        for k in ("GITHUB_ACTIONS", "GITHUB_OUTPUT"):
+            os.environ.pop(k, None)
+        page = tmp / "page.md"
+        os.environ["GITHUB_STEP_SUMMARY"] = str(page)
+        sha = "c" * 40
+        older = {"run_id": "500", "day": "2026-11-15", "started": "2026-11-15T03:17:00",
+                 "fingerprint": "old", "waits": ""}
+
+        def verdict(path, rid, dry=False):
+            v = {"kind": "nightly", "run_id": rid, "sha": sha, "day": "2026-11-17",
+                 "started": "2026-11-17T03:17:00", "built": True, "publishable": not dry,
+                 "clean": True, "not_clean": [], "alarms": [], "warnings": [], "exit": 0,
+                 "preflight": NI.PREFLIGHT_BESIDE, "fetch": "installed", "build": "passed",
+                 "check_site": "passed", "fingerprint": "new", "blocking": [],
+                 "asked": {"fetch": True, "dry_run": dry, "new_term": False}}
+            if not dry:
+                v[NI.NEWEST_FIT] = {"run_id": rid, "day": "2026-11-17", "started": v["started"],
+                                    "fingerprint": "new", "waits": ""}
+                v[NI.FIT_CARRIED] = dict(older)
+            Path(path).write_text(json.dumps(v), encoding="utf-8")
+
+        def close(rid, checks, dry=False):
+            verdict(NI.DRY_VERDICT if dry else NI.VERDICT, rid, dry)
+            page.write_text("", encoding="utf-8")
+            os.environ["GITHUB_RUN_ID"] = rid
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = NI.close_verdict(types.SimpleNamespace(
+                    weekly=False, dry_run=dry, checks=checks,
+                    outcome=["kit-down=success", "night=success", "kit-up=success"]))
+            v = json.loads(Path(NI.DRY_VERDICT if dry else NI.VERDICT).read_text(encoding="utf-8"))
+            return code, v, page.read_text(encoding="utf-8")
+        code, v, said = close("601", "success")
+        assert code == 0 and v["clean"] and v["preflight"] == "passed" and \
+            v["checks"]["result"] == "success" and v[NI.NEWEST_FIT]["run_id"] == "601" and \
+            NI.checks_line("success") in said and "passed" in NI.checks_line("success"), (code, v, said)
+        for told, word in (("failure", "failure"), ("", "unknown"), ("skipped", "skipped"),
+                           ("cancelled", "cancelled"), ("not finished", "not finished")):
+            code, v, said = close("602", told)
+            why = NI.plain_why(v)
+            assert code == 1 and not v["clean"] and v["preflight"] == "failed" and \
+                v["checks"]["result"] == word and v[NI.NEWEST_FIT] == older and \
+                any(NI.CHECKS_JOB in x for x in v["not_clean"]) and \
+                why == NI.checks_why(v["checks"]) + " Nothing was published." and \
+                f"**Why:** {why}" in said and NI.checks_line(word) in said and \
+                "nothing from this run goes to production" in NI.checks_line(word) and \
+                ("The night was not clean: " + why) in v["alerts"], (told, code, v, said)
+        code, v, said = close("603", None)
+        assert code == 0 and v["clean"] and v["preflight"] == NI.PREFLIGHT_BESIDE and \
+            "checks" not in v and not said.strip(), (
+                "a verdict told nothing of the checks (the laptop's) is not as finish() left it", v, said)
+        # A dry run: its checks decide whether it proves its commit.
+        code, v, _ = close("604", "failure", dry=True)
+        assert code == 1 and not v["clean"] and NI.proven_by_dry_run(sha) is None, (
+            "a dry run whose code checks failed proves its commit", code, v)
+        code, v, _ = close("605", "success", dry=True)
+        assert code == 0 and v["clean"] and (NI.proven_by_dry_run(sha) or {}).get("run_id") == "605", (
+            "a dry run whose code checks passed does not prove its commit", code, v)
+        # problems(): beside the night, no problem until --close says.
+        n = types.SimpleNamespace(v={"preflight": NI.PREFLIGHT_BESIDE, "build": "passed",
+                                     "check_site": "passed", "blocking": []},
+                                  a=types.SimpleNamespace(no_fetch=True, dry_run=False, new_term=False))
+        assert NI.Night.problems(n) == [], NI.Night.problems(n)
+        n.v["preflight"] = "failed"
+        assert NI.Night.problems(n) == ["preflight failed"], NI.Night.problems(n)
+        assert NI.plain_why({"preflight": "failed"}) == (
+            "The code checks failed, so nothing was fetched or built. Nothing was published."), (
+                "the laptop's sentence changed", NI.plain_why({"preflight": "failed"}))
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+    return "ok", ("checks_result GETs only this run's jobs, waits while they run, gives the conclusion, "
+                  "and says not finished, not in this run or unknown; close_verdict clean on success "
+                  "alone, five other results not clean, exit 1, the fit record given back, one sentence "
+                  "why; told nothing, as finish() left it; a dry run proves its commit only on success")
 
 
 @check("workflows", "the captions inbox comes down before the livestream step, is taken from "
@@ -112885,7 +113158,7 @@ def _workflows_dry_run(NI, CL):
             said = _gh_render(dry_line, ctx)
             runs = bool(_gh_eval(cond.group(1), dict(ctx, **{
                 "needs.night.outputs.publishable": "true", "needs.night.result": "success",
-                "needs.night.outputs.dry_run": said})))
+                "needs.checks.result": "success", "needs.night.outputs.dry_run": said})))
             named = _gh_render(title or "", ctx) if bx is boxes else want
             if said != ("true" if dry else "false") or runs == dry or named != want:
                 wrong.append(f"{event} of {ref} with {bx or 'no boxes'}: DRY_RUN={said}, the "
@@ -112922,6 +113195,7 @@ def _workflows_dry_run(NI, CL):
     assert _gh_render(dry_line, case) == "false" and \
         _gh_eval(cond.group(1), dict(case, **{"needs.night.outputs.publishable": "true",
                                               "needs.night.result": "success",
+                                              "needs.checks.result": "success",
                                               "needs.night.outputs.dry_run": "false"})), \
         ("GitHub's expressions now tell refs/heads/Main from main, and this check's account of "
          "why nightly.py's step output and the Healthchecks steps' own test are needed is stale")
