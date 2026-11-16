@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -565,12 +565,14 @@ def _entities_say_and_go_on(BE, EN, PE):
        needs=("build_all",))
 def _entities_step_in_the_plan(build_all):
     """The step (the design's step 2): after the district table, the site data (the roster and
-    the officers), the members-elect and the bulk downloads (site/data/people.json), which are
-    the steps that write what it reads; given data/entities as where it writes, and declaring its
+    the officers), the members-elect, the town pages (site/places.json), the district map's data
+    and the bulk downloads (site/data/people.json), which are the steps that write what it reads
+    (the town pages and the map since the district table of step 4 resolves what they print);
+    given data/entities as where it writes, and declaring its
     manifest; optional, because no page waits on a model nothing reads. And nothing reads it yet
     (phase A): no step of the plan names data/entities but it, and no code file but it, the shapes'
-    module, src/ops/gr_register.py (which asks it only for the hand file's holders) and the
-    checks imports either or names the folder."""
+    module, src/ops/gr_register.py (which asks it only for the first offices' holders it links
+    to no one) and the checks imports either or names the folder."""
     class A:
         key = None
         session = "2026"
@@ -581,7 +583,8 @@ def _entities_step_in_the_plan(build_all):
     assert names.count("build_entities.py") == 1, "build_all runs build_entities.py other than once"
     i = names.index("build_entities.py")
     s = steps[i]
-    for before in ("parse_districts.py", "build_site_v2.py", "build_members_elect.py", "build_exports.py"):
+    for before in ("parse_districts.py", "build_site_v2.py", "build_members_elect.py", "build_exports.py",
+                   "build_town_pages.py", "build_district_map.py"):
         assert before in names and names.index(before) < i, f"build_entities.py runs before {before}"
     assert s.args[1:] == ["--out", "data/entities"] and [p.as_posix() for p in s.produces] == [
         "data/entities/manifest.json"] and s.optional and not s.network, (s.args, s.produces, s.optional)
@@ -597,8 +600,9 @@ def _entities_step_in_the_plan(build_all):
         if re.search(r"^\s*(?:import|from)\s+(?:entities|build_entities)\b", t, re.M) or "data/entities" in t:
             readers.append(f.name)
     assert not readers, f"these read the model, which nothing reads yet: {readers}"
-    return "ok", (f"step {i + 1} of {len(steps)}, after the district table, the site data, the members-elect "
-                  "and the bulk downloads; --out data/entities, optional; no other step or code file reads it")
+    return "ok", (f"step {i + 1} of {len(steps)}, after the district table, the site data, the members-elect, "
+                  "the town pages, the district map and the bulk downloads; --out data/entities, optional; no "
+                  "other step or code file reads it")
 
 
 def _first_offices_unlinked(BE, root):
@@ -1564,3 +1568,199 @@ def _party_copies_agree(ST):
                   f"the {len(_PARTY_DIFFERS)} listed: the elections' bar and the emails' X, its ink, and the "
                   "first-letter rules' U; app.css's inks and tints are the table's in both themes; no copy "
                   "written anywhere the list does not know")
+
+
+# ---- the one district table, with its eras and every spelling (the design's step 4) --------------
+
+def _district_tree(root, BE, EN, PE, model):
+    """_world's tree with the files the site prints districts from beside it, each true to the
+    tracked district lists (`model`, their districts and places) but for one fault apiece: a town
+    search placing Conway in Carroll 2 and Albany in a Senate district 99; a 2026 result giving
+    Carroll 1 two seats and a town more, and Belknap 8 as not floterial; the map drawing Carroll 1
+    on the floterial layer; a former member of 2023-2024 whose label and page address name two
+    districts; a sitting member the site data gives another district than the roster does; and,
+    of a term before every era on file, a 2020 result, a 2019-2020 sponsor and two former members
+    whose service the file gives no term of or a term of 2019-2020, which are counted and resolve
+    to nothing."""
+    root = Path(root)
+    _world(root, PE)
+    conway = next(p for p in model["place"] if p["place"] == "conway|0")
+    D = {d["district"]: d for d in model["district"]}
+    of = {D[x]["kind"]: D[x] for x in conway["in"]["2022"]}
+    sd, ec, cd = of["senate"]["number"], of["council"]["number"], of["congress"]["number"]
+    put = lambda rel, doc: ((root / rel).parent.mkdir(parents=True, exist_ok=True),
+                            (root / rel).write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8"))
+    (root / "site" / "districts.json").write_text(json.dumps(EN.view_districts(model, "2022"), indent=2,
+                                                             sort_keys=True), encoding="utf-8")
+    put("site/places.json", {"places": [
+        {"s": "conway", "n": "Conway", "t": "Conway", "h": [["Carroll", 1, 0], ["Carroll", 2, 0]], "sd": sd,
+         "ec": ec, "cd": cd, "m": ["ada-newcomb-carr-1"], "e": ["H|Carroll|1", f"S|{sd}"]},
+        {"s": "albany", "n": "Albany", "t": "Albany", "h": [], "sd": 99, "m": [], "e": []}],
+        "people": {"ada-newcomb-carr-1": ["Rep. Ada Newcomb (R - Carr 1)", "R"],
+                   "cy-lund-sd-15": ["Sen. Cy Lund (R - SD15)", "R"]},
+        "offices": {"ec": {str(ec): ["Hal Held", "R", ""]}, "cd": {str(cd): ["Cy Lund", "R", ""]}},
+        "elect": {"election": "2026-11-03", "races": {"H|Carroll|1": {"seats": 3}}}})
+    c1 = D["house:2022:carroll-1"]
+    put("site/district_map.json", {
+        "layers": {"base": {"f": {"CA1": {}, "BE1": {}}}, "float": {"f": {"BE8": {}, "CA1": {}}},
+                   "senate": {"f": {str(sd): {}}}, "exec": {"f": {str(ec): {}}}, "cong": {"f": {str(cd): {}}}},
+        "seats": {"CA1": c1["seats"], "BE1": D["house:2022:belknap-1"]["seats"], "BE8": D["house:2022:belknap-8"]["seats"]},
+        "who": {"base|CA1": [{"n": "Rep. Ada Newcomb (R - Carr 1)"}]},
+        "elect": {"election": "2026-11-03", "races": {"base|CA1": {"seats": c1["seats"]}}},
+        "places": {"Conway": {"c": "Carroll", "w": {"0": ["CA1", None, str(sd), str(ec), str(cd)]}}}})
+    towns = sorted({BE._town_ward(p) for p in model["place"] if p["place"] in c1["places"]})
+    put("collected/election_2026.json", {"election": "2026-11-03", "term": "2027-2028", "races": {
+        "H|Carroll|1": {"seats": 2, "floterial": False, "towns": towns + ["Madison"]},
+        "H|Belknap|8": {"seats": D["house:2022:belknap-8"]["seats"], "floterial": False,
+                        "towns": sorted({BE._town_ward(p) for p in model["place"]
+                                         if p["place"] in D["house:2022:belknap-8"]["places"]})}}})
+    put("collected/election_2020.json", {"election": "2020-11-03", "term": "2021-2022", "races": {
+        "H|Carroll|9": {"seats": 1, "floterial": False, "towns": ["Nowhere"]}}})
+    put("data/sponsors.json", {"2025-2026": {"HB1": [
+        {"member_id": "11600", "chamber": "H", "label": "Rep. Ada Newcomb (R - Carr 1)"},
+        {"member_id": "11700", "chamber": "S", "label": "Sen. Cy Lund (R - SD15)"}]},
+        "2019-2020": {"HB2": [{"member_id": "1", "chamber": "H", "label": "Rep. Old Timer (D - Carr 9)"}]}})
+    put("data/legislators.json", [{"id": "11600", "chamber": "H", "county_code": "02", "district": "1"},
+                                  {"id": "11800", "chamber": "H", "county_code": "02", "district": "2"}])
+    former = json.loads((root / "site" / "former.json").read_text(encoding="utf-8"))
+    former += [{"id": "376040", "name": "Two, Way", "chamber": "H", "county": "Carroll", "district": "2",
+                "district_label": "Carr 2", "slug": "way-two-carr-3", "served": {"terms": ["2023-2024"]}},
+               {"id": "376041", "name": "Back, Then", "chamber": "H", "county": "Carroll", "district": "9",
+                "district_label": "Carr 9", "slug": "then-back-carr-9", "served": {"terms": ["2019-2020"]}}]
+    put("site/former.json", former)
+
+
+@check("build", "the district table gives each district one id with its era in it and resolves every spelling the files use to it, and the step says each district the site prints that resolves to nothing or disagrees",
+       needs=("build_entities", "entities", "people", "state_settings"))
+def _district_table(BE, EN, PE, ST):
+    """The design's step 4. A district's six spellings -- the results' H|Belknap|8, the elections'
+    belknap-8, the map's BE8, the name Belknap 8, the roster's Belk 8 and the General Court's
+    county code with a number, 01-8 -- and a page address's belk-8 are one id with its era in it,
+    house:2022:belknap-8; the Senate's S|22, SD22, sd-22, Senate District 22 and 22 are
+    senate:2022:22. Held on the tracked district lists (records/districts/): every district has the
+    spellings of its kind, each resolves to it in its era and in none other (a term before every
+    era on file reads as no district, never as today's of that number), and so do the forms the
+    files print them in -- a full stop ("Belk. 8"), a padded number ("Carr 07", "H|Carroll|07",
+    "01-08"), any case; no spelling names two districts, and a model where one does breaks a rule;
+    the settings give every county the General Court's two-digit number, each once. And on a
+    made-up tree with every file the site prints districts from (_district_tree), the step exits 0,
+    writes only data/entities/, and its manifest resolves each spelling in the era of the term it is
+    printed for and says each fault: the Senate district 99 that resolves to nothing; the town
+    placed in a district that does not hold it; a result's seats, towns and floterial mark; the
+    map's floterial layer drawing a district that is not; a former member's label and page address
+    naming two districts; the site data's district for a sitting member against the roster's; and
+    it counts the 2020 result, the 2019-2020 sponsor and former member as of an era not on file,
+    resolving none of them."""
+    S = ST.SETTINGS
+    nums = S["county_numbers"]
+    assert sorted(nums) == sorted(ST.COUNTIES) and all(re.fullmatch(r"\d\d", v) for v in nums.values()) \
+        and len(set(nums.values())) == len(nums), f"the counties' numbers are not one two-digit number each: {nums}"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-districts-"))
+    try:
+        _copy_tracked(tmp, [n for n in TRACKED if n.startswith("records/")])
+        districts, places = BE.districts_and_places(tmp, S)
+        model = {"district": districts, "place": places}
+        index = EN.district_index(model)
+        want = {"house": {"results", "map", "label", "legislature", "slug"}, "senate": {"results", "label", "slug"}}
+        for d in districts:
+            forms = EN.district_spellings(d)
+            assert want.get(d["kind"], set()) <= set(forms), f"{d['district']} has the spellings {sorted(forms)}"
+            for form, said in forms.items():
+                assert EN.resolve_district(index, d["kind"], said, d.get("era")) == d["district"], (
+                    f"{d['district']}'s {form} {said!r} does not resolve to it")
+                if d.get("era"):
+                    assert EN.resolve_district(index, d["kind"], said, None) is None \
+                        and EN.resolve_district(index, d["kind"], said, "2012") is None, (
+                            f"{d['district']}'s {form} {said!r} resolves in an era the table does not hold")
+        same = {"house:2022:belknap-8": ("H|Belknap|8", "belknap-8", "BE8", "Belknap 8", "Belk 8", "01-8",
+                                         "belk-8", "Belk. 8", "BELK 08", "H|Belknap|08", "01-08", "be8"),
+                "house:2022:carroll-7": ("Carr 07", "02-07", "CA07", "Carroll 07"),
+                "senate:2022:22": ("S|22", "SD22", "sd-22", "Senate District 22", "22", "022")}
+        for did, forms in same.items():
+            for said in forms:
+                assert EN.resolve_district(index, did.split(":")[0], said, "2022") == did, f"{said!r} is not {did}"
+        assert EN.resolve_district(index, "house", "22", "2022") is None, "a bare number named a House district"
+        assert not [p for p in EN.problems(dict(model, office=EN.offices(S))) if "spell two" in p]
+        m = copy.deepcopy(model)
+        next(d for d in m["district"] if d["district"] == "house:2022:belknap-2")["keys"]["label"] = "Belk 1"
+        said = EN.problems(m)
+        assert any("spell two of them 'belk 1'" in p for p in said), said[:3]
+        # The step, on a made-up tree with every file the site prints districts from.
+        shutil.rmtree(tmp)
+        tmp.mkdir()
+        _district_tree(tmp, BE, EN, PE, model)
+        before = _tree_digest(tmp)
+        r = _run([sys.executable, str(_paths.script("build_entities.py")), "--out", "data/entities"],
+                 cwd=tmp, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, f"build_entities.py exited {r.returncode}: {(r.stderr or r.stdout)[-600:]}"
+        after = _tree_digest(tmp)
+        changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+        assert changed and all(k.startswith("data/entities/") for k in changed), (
+            f"build_entities.py wrote outside data/entities/: {[k for k in changed if not k.startswith('data/entities/')]}")
+        _model, _layouts, manifest = EN.load(tmp / "data" / "entities")
+        dr = manifest["districts"]
+        assert "districts:" in r.stdout and "WARNING: a senate district the table does not hold" in r.stdout, r.stdout[-800:]
+        assert [x["where"] for x in dr["unresolved"]] == ["site/places.json albany"] and dr["unresolved_count"] == 1, dr["unresolved"]
+        got = sorted((x["what"], x["where"]) for x in dr["disagreements"])
+        assert got == sorted([
+            ("a place in a district that does not hold it", "site/places.json conway"),
+            ("a district's seats, two ways", "collected/election_2026.json H|Carroll|1"),
+            ("a district's towns, two ways", "collected/election_2026.json H|Carroll|1"),
+            ("a district floterial one way and not the other", "collected/election_2026.json H|Belknap|8"),
+            ("a district floterial one way and not the other", "site/district_map.json layers.float.CA1"),
+            ("one record whose spellings name two districts", "former member 376040"),
+            ("one record whose spellings name two districts", "member 11800")]), got
+        assert dr["printed"]["collected/election_2020.json"] == {"resolved": 0, "era not on file": 1, "unresolved": 0} \
+            and dr["printed"]["data/sponsors.json"] == {"resolved": 2, "era not on file": 1, "unresolved": 0} \
+            and dr["printed"]["site/former.json"] == {"resolved": 3, "era not on file": 4, "unresolved": 0}, dr["printed"]
+        assert dr["printed"]["site/legislators.json"]["resolved"] == 6 and not dr["not_here"], (dr["printed"], dr["not_here"])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    n = sum(len(EN.district_spellings(d)) for d in districts)
+    return "ok", (f"{len(districts)} districts of the tracked lists, {n:,} spellings, each resolving to its one id in its "
+                  "era and in no other; Belk. 8, BELK 08, 01-08 and Carr 07 resolve as the files print them; a spelling "
+                  "two districts share breaks a rule; on a made-up tree the step resolves every file the site prints "
+                  "districts from, says the one that resolves to nothing and the seven disagreements, and counts "
+                  "the terms before every era on file")
+
+
+@check("data", "every district the site prints today resolves by the one district table to one id with its era, and where a file and the table disagree is listed",
+       needs=("build_entities", "entities", "state_settings"))
+def _districts_printed_today(BE, EN, ST):
+    """The district table on the night's files (the design's step 4): data/entities/, as the build
+    wrote it, read back, and every district spelling the files the site prints districts from
+    give (build_entities.PRINTED: the roster and the site data's members, the former members, the
+    members-elect, the town table, the town search, the district map, each election's results and
+    the bills' sponsors) read again here and resolved by the model's district table in the era of
+    the term it is printed for. Each one of an era the table holds resolves to one id; what the
+    manifest says of them -- by file, and every disagreement -- is what reading them again gives,
+    so the night's log said what is true. Where the General Court's county table (Counties.txt) is
+    here, its numbers are the settings' county_numbers. A tree no build has run the model in, or
+    one whose model was built before the district table, is skipped."""
+    folder = Path("data") / "entities"
+    if not (folder / EN.MANIFEST).is_file():
+        return "skip", "no build has made data/entities/ here"
+    model, _layouts, manifest = EN.load(folder)
+    if "districts" not in (manifest or {}):
+        return "skip", "data/entities/ was built before the district table (its manifest has no districts)"
+    printed, missing = BE.printed_districts(".", ST.SETTINGS)
+    got = BE.district_report(model, printed, ST.SETTINGS, missing)
+    assert not got["unresolved_count"], (f"{got['unresolved_count']} district(s) the site prints resolve to none: "
+                                         + "; ".join(f"{x['where']}: {x['says']}" for x in got["unresolved"][:5]))
+    assert got == manifest["districts"], ("the manifest's districts are not what today's files give: rebuild the "
+                                          "model (python3 src/parse/build_entities.py)")
+    counties = Path("Counties.txt")
+    said = ""
+    if counties.is_file():
+        theirs = {}
+        for line in counties.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            parts = line.split("|")
+            if len(parts) >= 2 and parts[0].strip().isdigit():
+                theirs[parts[1].strip()] = parts[0].strip().zfill(2)
+        assert theirs == ST.SETTINGS["county_numbers"], (
+            f"Counties.txt numbers the counties {theirs}, the settings {ST.SETTINGS['county_numbers']}")
+        said = "; Counties.txt's county numbers are the settings'"
+    n = {k: sum(v[k] for v in got["printed"].values()) for k in ("resolved", "era not on file")}
+    return "ok", (f"{n['resolved']:,} district spellings in {len(got['printed'])} files resolved to one id each, "
+                  f"{n['era not on file']:,} of a term before every era on file; {got['disagreements_count']} "
+                  f"disagreement(s), as the manifest lists{said}")

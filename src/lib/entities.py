@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -17,6 +17,8 @@ files back from it.
     EN.view_officers(model)          # site/officers.json's "officers"
     EN.view_names(model)             # the search index's part: each confirmed form of a name
     EN.party_letters("r&d")          # ("R", "D"): a printed party by the state's one table
+    EN.resolve_district(EN.district_index(model), "house", "Belk 8", "2022")
+                                     # "house:2022:belknap-8": any spelling, in an era, to its id
 
 src/parse/build_entities.py writes the model to data/entities/ every night from the files on
 disk. NOTHING READS IT YET (the design of 16 November 2026, phase A): preflight holds that each
@@ -535,6 +537,11 @@ def problems(model, settings=None, register=None):
             counties = {d.get("county") for ds in kinds.values() for d in ds if d.get("county")}
             if len(counties) > 1:
                 out.append(f"place {pid} lies in districts of {len(counties)} counties: {sorted(counties)}")
+    # A spelling names one district of its kind in an era: "Belk 8" is Belknap 8 of 2022 and no
+    # other.
+    for (kind, era, said), ids in sorted(district_index(model).items(), key=lambda kv: str(kv[0])):
+        if len(ids) > 1:
+            out.append(f"the {kind} districts of {era or 'no era'} spell two of them {said!r}: {', '.join(ids)}")
     # Each kind's seats add up to its office's, era by era (the House of 400, a Senate of 24,
     # five councilors, two members of the US House).
     for kind, k in s["district_kinds"].items():
@@ -735,6 +742,56 @@ def load(folder):
     mp = folder / MANIFEST
     manifest = json.loads(mp.read_text(encoding="utf-8")) if mp.is_file() else None
     return model, layouts, manifest
+
+
+# ---- a district's spellings ------------------------------------------------------------------
+#
+# ONE DISTRICT, MANY SPELLINGS, ONE ID WITH ITS ERA IN IT (the design's step 4). The files spell a
+# district six ways and more -- the results' "H|Belknap|8", the elections' "belknap-8", the map's
+# "BE8", "Belknap 8", the roster's "Belk 8", the legislature's county code with a number "01-8",
+# a page address's "belk-8" -- and a district record carries each as a key (its "keys", from the
+# state's settings), beside its name and its id. The table resolves any of them, in an era, to
+# the one id: "Belk 8" in 2022 is house:2022:belknap-8, and in a term before every era on file it
+# is no district the model holds, since the same words named other towns then.
+
+def spelling(text):
+    """A district's spelling as the table matches it: lower case, a full stop read as a space, one
+    space between words, and every number without its leading zeros ("Carr 07", "carr. 7" and
+    "CARR 7" are one; "01-08" is "1-8")."""
+    s = " ".join(str(text or "").replace(".", " ").lower().split())
+    return re.sub(r"\d+", lambda m: str(int(m.group())), s)
+
+
+def district_spellings(d):
+    """{form: spelling} of district record `d`: its name, its id's own part ("belknap-8"), each of
+    its keys, and its number alone where a number names one district of its kind (a district in
+    no county; a county's numbers repeat)."""
+    out = {"name": d.get("name"), "id": d["district"].rsplit(":", 1)[-1]}
+    out.update(d.get("keys") or {})
+    if d.get("number") is not None and not d.get("county"):
+        out["number"] = str(d["number"])
+    return {f: str(v) for f, v in out.items() if v}
+
+
+def district_index(model):
+    """{(kind, era, spelling): [district ids]} of every district of the model by every spelling
+    it has (district_spellings, each as spelling() matches it). A spelling under two ids is a
+    problem of the model's (problems)."""
+    out = {}
+    for d in model.get("district") or []:
+        for v in district_spellings(d).values():
+            ids = out.setdefault((d["kind"], d.get("era"), spelling(v)), [])
+            if d["district"] not in ids:
+                ids.append(d["district"])
+    return out
+
+
+def resolve_district(index, kind, text, era):
+    """The id of the district of `kind` the table spells `text` in `era` ("2022"; None for a kind
+    that is not redrawn), or None: where it holds none so spelled, or two, or the era is one it
+    holds no districts of -- a term before every era on file."""
+    ids = index.get((kind, era, spelling(text)))
+    return ids[0] if ids and len(ids) == 1 else None
 
 
 # ---- the views: today's files, from the model -----------------------------------------------

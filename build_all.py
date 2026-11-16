@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.99
+# GRANITE_VERSION: 2026-09-05.100
 """
 Run the whole pipeline in the right order.
 
@@ -1291,7 +1291,9 @@ def plan(a):
         # 16 November 2026 to the design's question 1; src/lib/entities.py). Last, because it
         # reads what the steps above have just written -- the district table, the site data's
         # roster and officers, the members-elect, and site/data/people.json, which the bulk
-        # downloads write -- with the hand files and generated/careers.json, and it writes
+        # downloads write; and, to resolve every district they print by its district table,
+        # the town search and the district map's data -- with the hand files and
+        # generated/careers.json, and it writes
         # data/entities/ and nothing else: never site/, so nothing of it is published. Nothing
         # reads it yet; preflight holds that each of today's files is a view of it. Optional,
         # because no page waits on it -- though check_site still fails a night on any failed

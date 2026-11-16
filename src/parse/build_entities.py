@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 The model of people, offices, terms, districts and elections, written to data/entities/ from
 the files on disk (src/lib/entities.py says what the model is).
@@ -31,8 +31,24 @@ of that day). It reads, and never writes:
                                   (site/former.json, data/legislators.json, the General Court's
                                   member table in db/, past_members.json, member_party.json,
                                   text_sponsors.json, the Manual's returns, the ZIP codes' towns)
+  PRINTED                         the files the site prints districts from, only to resolve
+                                  each district they spell by the one district table and say
+                                  where they disagree (site/districts.json, site/places.json,
+                                  site/district_map.json, collected/election_<year>.json,
+                                  data/sponsors.json, and the roster's, the site data's, the
+                                  former members' and the members-elect's above)
 
 and writes data/entities/ (the build's data folder, never site/: nothing here is published).
+
+THE DISTRICT TABLE, WITH ITS ERAS AND EVERY SPELLING (the design's step 4). A district's id
+carries its era ("house:2022:strafford-21"), and its record carries every spelling the files
+use of it as a key -- the results' H|Strafford|21, the map's ST21, the roster's Straf 21, the
+General Court's county code with the number 09-21, a page address's straf-21 -- beside its name
+and its id's own part (strafford-21), so that any of them resolves, in an era, to the one id
+(entities.district_index). Every district the files of PRINTED spell is resolved in the era of
+the term it is printed for; what resolves to nothing, and where a file and the table disagree
+(seats, floterial, a place, a race's towns, a record naming two districts), is said in the
+manifest ("districts") and on the log, and fixed nowhere.
 
 THE OFFICIALS, LINKED TO THE RECORD (the design study "officials-links" and the owner's answers
 of 16 November 2026). Each holder of an office the legislature does not fill -- the hand file's
@@ -81,6 +97,7 @@ import datetime
 import hashlib
 import json
 import re
+import string
 import tempfile
 import time
 
@@ -335,6 +352,26 @@ def roster_district(r, era):
 
 # ---- districts and places -----------------------------------------------------------------
 
+# A DISTRICT'S SPELLINGS, each a key of its record, in this order, made from its kind's patterns in
+# the settings (district_kinds): the results' and the members-elect's ("H|Belknap|8", "S|22"), the
+# district map's ("BE8"), the roster's label ("Belk 8", "SD22"), the General Court's county code
+# with the number, as its roster and its own district table print them ("01-8"), and the end of
+# a member's page address ("belk-8", "sd-22"). Its name and its id's own part ("belknap-8", the
+# elections' contest ids') are the record's already. entities.district_index resolves them all.
+SPELLINGS = ("results", "map", "label", "legislature", "slug")
+
+
+def spellings_of(kind, fill):
+    """{form: spelling} of a district from its kind's patterns (SPELLINGS, those it has), but a
+    pattern naming something the settings do not give for it (a county's number)."""
+    out = {}
+    for f in SPELLINGS:
+        if kind.get(f) and all(fill.get(name) not in ("", None)
+                               for _t, name, _s, _c in string.Formatter().parse(kind[f]) if name):
+            out[f] = kind[f].format(**fill)
+    return out
+
+
 def districts_and_places(root, settings):
     """(districts, places) from records/districts/*.txt, as parse_districts.combine reads them,
     of the era the settings give the files; and the counties, which are not redrawn."""
@@ -356,13 +393,12 @@ def districts_and_places(root, settings):
         k = kinds["house"]
         n = int(num)
         did = EN.district_id("house", era, f"{EN.slug(county)}-{n}")
-        fill = {"county": county, "n": n, "county_abbr": ST.COUNTY_ABBR.get(county, county),
-                "county_code": ST.COUNTY_CODE.get(county, "")}
+        abbr = ST.COUNTY_ABBR.get(county, county)
+        fill = {"county": county, "n": n, "county_abbr": abbr, "county_code": ST.COUNTY_CODE.get(county, ""),
+                "county_number": ST.COUNTY_NUMBER.get(county, ""), "county_abbr_slug": EN.slug(abbr)}
         d = {"district": did, "kind": "house", "era": era, "name": k["name"].format(**fill),
              "county": county, "number": n, "seats": rec["seats"], "floterial": rec["floterial"],
-             "places": [], "keys": {"results": k["results"].format(**fill), "map": k["map"].format(**fill),
-                                    "label": k["label"].format(**fill)},
-             "source": f"{DISTRICTS}/house.txt"}
+             "places": [], "keys": spellings_of(k, fill), "source": f"{DISTRICTS}/house.txt"}
         for town, ward in rec["towns"]:
             pl = place(town, ward)
             pl["in"][era].append(did)
@@ -379,8 +415,9 @@ def districts_and_places(root, settings):
             did = EN.district_id(kind, era, str(n))
             d = {"district": did, "kind": kind, "era": era, "name": k["name"].format(n=n),
                  "number": n, "seats": 1, "places": []}
-            if k.get("results"):
-                d["keys"] = {"results": k["results"].format(n=n)}
+            keys = spellings_of(k, {"n": n})
+            if keys:
+                d["keys"] = keys
             d["source"] = k["file"]
             for town, ward in entries:
                 pl = place(town, ward)
@@ -821,6 +858,227 @@ def read_parties(model, settings):
     return {"table": PARTY_TABLE, "read": dict(sorted(read.items())),
             "unread": {k: v[:5] + ([f"and {len(v) - 5} more"] if len(v) > 5 else [])
                        for k, v in sorted(unread.items())}}
+
+
+# ---- the districts the site prints, by the one district table ------------------------------------
+#
+# EVERY DISTRICT THE SITE PRINTS RESOLVES TO ONE ID WITH ITS ERA IN IT (the design's step 4). The
+# files the site prints districts from, each read here for every spelling it prints and what it
+# says of the district: the roster and the site data's members (label, county and number, the
+# General Court's county code with the number, the page address), the former members (the same,
+# of the last term they served), the members-elect's races, the town table, the town search's
+# districts, members and races, the district map's layers, seats, sitters and winners, each
+# election's races with their seats, towns and floterial mark, and the bills' sponsors' labels by
+# term. A spelling is read in the era of the term it is printed for (entities.era_of): a seat of
+# a term before every era on file is counted as of an era not on file and resolved to nothing,
+# never to today's district of that number, which named other towns then.
+PLACES_JSON = "site/places.json"
+MAP_JSON = "site/district_map.json"
+RESULTS = "collected/election_<year>.json"
+SPONSORS_JSON = "data/sponsors.json"
+PRINTED = (ROSTER, MEMBERS, FORMER, ELECT, DISTRICTS_JSON, PLACES_JSON, MAP_JSON, RESULTS, SPONSORS_JSON)
+# The district map's layers and the kind of district each draws (build_district_map.FILLED): a
+# House district on the base layer is not floterial, and on the float layer it is.
+MAP_LAYERS = {"base": ("house", False), "float": ("house", True), "senate": ("senate", None),
+              "exec": ("council", None), "cong": ("congress", None)}
+# What a place of the map names, in its order (build_district_map.places_table): its base and its
+# floterial House districts, its Senate, Council and congressional districts.
+MAP_PLACE_SLOTS = (("house", False), ("house", True), ("senate", None), ("council", None), ("congress", None))
+# A label's district: "(R - Hills 12)", "(D - SD11)", "(Belk 6)".
+LABEL_TAG = re.compile(r"\((?:[A-Z/]+\s*-\s*)?([^()]*\d[^()]*?)\s*\)\s*$")
+
+
+def _results_files(root):
+    return sorted(p.relative_to(root).as_posix()
+                  for p in (Path(root) / "collected").glob("election_[0-9][0-9][0-9][0-9].json"))
+
+
+def printed_districts(root, settings):
+    """([printed], [files not here]): every district spelling the files of PRINTED print, each
+    {"file", "where", "kind", "form", "spelling", "era", "record"} with what the file says of
+    the district where it says it ("seats", "floterial", "place", "towns"). `era` is the era of
+    the term it is printed for, None for a term before every era on file; `record` gathers the
+    spellings that must name one district (one member's, in the roster and the site data)."""
+    root = Path(root)
+    out, missing = [], []
+    latest = max(EN.eras(settings))
+    terms = (_read(root, META).get("terms") or [None]) if (root / META).is_file() else [None]
+    seated = EN.era_of(terms[0], settings) if terms[0] else None
+
+    def add(file, where, kind, form, said, era, record=None, **facts):
+        if said in (None, ""):
+            return
+        out.append({"file": file, "where": where, "kind": kind, "form": form, "spelling": str(said),
+                    "era": era, "record": record or f"{file} {where}",
+                    **{k: v for k, v in facts.items() if v is not None}})
+
+    def read(rel, default):
+        if not (root / rel).is_file():
+            missing.append(rel)
+            return default
+        return _read(root, rel)
+
+    def tail(slug):
+        m = re.search(r"-([a-z]+-\d+)$", str(slug or ""))
+        return m.group(1) if m else None
+
+    def race_kind(key):
+        return "senate" if str(key).startswith("S|") else "house"
+
+    for rel in (ROSTER, FORMER):
+        for r in read(rel, []):
+            kind = "senate" if r.get("chamber") == "S" else "house"
+            served = (r.get("served") or {}).get("terms") or []
+            era = seated if rel == ROSTER else (EN.era_of(served[-1], settings) if served else None)
+            who = f"{r.get('id')} {r.get('name')}"
+            rec = f"{'member' if rel == ROSTER else 'former member'} {r.get('id')}"
+            add(rel, who, kind, "label", r.get("district_label"), era, rec)
+            if kind == "house" and r.get("county") and r.get("district"):
+                add(rel, who, kind, "name", f"{r['county']} {r['district']}", era, rec)
+            elif kind == "senate":
+                add(rel, who, kind, "number", r.get("district"), era, rec)
+            add(rel, who, kind, "slug", tail(r.get("slug")), era, rec)
+    for r in read(MEMBERS, []):
+        if r.get("chamber") == "H" and r.get("county_code") and r.get("district"):
+            add(MEMBERS, str(r.get("id")), "house", "legislature", f"{r['county_code']}-{r['district']}",
+                seated, f"member {r.get('id')}")
+    elect_era = latest
+    if (root / ELECT).is_file():
+        doc = _read(root, ELECT)
+        elect_era = EN.era_of(doc.get("term"), settings) if doc.get("term") else None
+        for key, race in (doc.get("races") or {}).items():
+            add(ELECT, key, race_kind(key), "results", key, elect_era, seats=race.get("seats"))
+    for town, wards in read(DISTRICTS_JSON, {}).items():
+        for ward, v in (wards or {}).items():
+            pl, w = EN.place_id(town, ward), f"{town} ward {ward}"
+            for kind in ("senate", "council", "congress"):
+                add(DISTRICTS_JSON, w, kind, "number", v.get(kind), latest, f"{w} {kind}", place=pl)
+            for h in v.get("house") or []:
+                add(DISTRICTS_JSON, w, "house", "name", f"{h.get('county')} {h.get('district')}", latest,
+                    f"{w} house {h.get('district')}", place=pl, seats=h.get("seats"), floterial=h.get("floterial"))
+    doc = read(PLACES_JSON, {})
+    for p in doc.get("places") or []:
+        pl, w = EN.place_id(p.get("t"), p.get("w") or "0"), str(p.get("s"))
+        for county, n, flot in p.get("h") or []:
+            add(PLACES_JSON, w, "house", "name", f"{county} {n}", latest, f"{w} house {n}", place=pl,
+                floterial=bool(flot))
+        for f, kind in (("sd", "senate"), ("ec", "council"), ("cd", "congress")):
+            add(PLACES_JSON, w, kind, "number", p.get(f), latest, f"{w} {kind}", place=pl)
+        for key in p.get("e") or []:
+            add(PLACES_JSON, w, race_kind(key), "results", key, latest, f"{w} {key}", place=pl)
+        for slug in p.get("m") or []:
+            add(PLACES_JSON, w, "senate" if "-sd-" in slug else "house", "slug", tail(slug), seated,
+                f"{w} {slug}", place=pl)
+    for slug, (label, _party) in (doc.get("people") or {}).items():
+        m = LABEL_TAG.search(str(label or ""))
+        if m:
+            add(PLACES_JSON, f"people.{slug}", "senate" if "-sd-" in slug else "house", "label", m.group(1),
+                seated, f"{PLACES_JSON} people.{slug}")
+    for f, kind in (("ec", "council"), ("cd", "congress")):
+        for n in (doc.get("offices") or {}).get(f) or {}:
+            add(PLACES_JSON, f"offices.{f}.{n}", kind, "number", n, latest)
+    for key, race in ((doc.get("elect") or {}).get("races") or {}).items():
+        add(PLACES_JSON, f"elect.{key}", race_kind(key), "results", key, elect_era, seats=race.get("seats"))
+    mp = read(MAP_JSON, {})
+    seats = mp.get("seats") or {}
+    for layer, (kind, flot) in MAP_LAYERS.items():
+        form = "map" if kind == "house" else "number"
+        for key in ((mp.get("layers") or {}).get(layer) or {}).get("f") or {}:
+            add(MAP_JSON, f"layers.{layer}.{key}", kind, form, key, latest, floterial=flot,
+                seats=seats.get(key) if kind == "house" else None)
+    for part, era in (("who", latest), ("elect", elect_era)):
+        got = mp.get(part) or {}
+        for k, race in ((got.get("races") or {}) if part == "elect" else got).items():
+            layer, _, key = k.partition("|")
+            if layer in MAP_LAYERS:
+                kind, flot = MAP_LAYERS[layer]
+                add(MAP_JSON, f"{part}.{k}", kind, "map" if kind == "house" else "number", key, era, floterial=flot,
+                    seats=race.get("seats") if part == "elect" else None)
+    for town, v in (mp.get("places") or {}).items():
+        for ward, ds in ((v or {}).get("w") or {}).items():
+            pl, w = EN.place_id(town, ward), f"places.{town}.{ward}"
+            for (kind, flot), key in zip(MAP_PLACE_SLOTS, ds or []):
+                add(MAP_JSON, w, kind, "map" if kind == "house" else "number", key, latest,
+                    f"{w} {kind} {key}", place=pl, floterial=flot)
+    results = _results_files(root)
+    if not results:
+        missing.append(RESULTS)
+    for rel in results:
+        doc = _read(root, rel)
+        era = EN.era_of(doc.get("term"), settings) if doc.get("term") else None
+        for key, race in (doc.get("races") or {}).items():
+            add(rel, key, race_kind(key), "results", key, era, seats=race.get("seats"),
+                floterial=race.get("floterial"), towns=race.get("towns"))
+    for term, bills in read(SPONSORS_JSON, {}).items():
+        era = EN.era_of(term, settings)
+        for bill, rows in (bills or {}).items():
+            for r in rows or []:
+                m = LABEL_TAG.search(str(r.get("label") or ""))
+                if m:
+                    add(SPONSORS_JSON, f"{term} {bill} {r.get('member_id')}",
+                        "senate" if r.get("chamber") == "S" else "house", "label", m.group(1), era)
+    return out, missing
+
+
+def _town_ward(place):
+    """A place as the results files and the roster print it: "Laconia Ward 1", "Bath"."""
+    return place["town"] + (f" Ward {place['ward']}" if str(place["ward"]) != "0" else "")
+
+
+def district_report(model, printed, settings, missing=()):
+    """What the manifest keeps of the districts the site prints (printed_districts), each resolved
+    by the one table (entities.district_index): by file, how many resolved, how many are of an era
+    not on file and how many resolved to nothing; each that resolved to nothing; and where a file
+    and the table disagree -- a record whose spellings name two districts, a district's seats, its
+    floterial mark, a place it does not hold, a race's towns. Fixes none."""
+    index = EN.district_index(model)
+    D = {d["district"]: d for d in model.get("district") or []}
+    PL = {p["place"]: p for p in model.get("place") or []}
+    by_file, unresolved, differ, records = {}, [], [], {}
+    for x in printed:
+        n = by_file.setdefault(x["file"], {"resolved": 0, "era not on file": 0, "unresolved": 0})
+        if x["era"] is None:
+            n["era not on file"] += 1
+            continue
+        did = EN.resolve_district(index, x["kind"], x["spelling"], x["era"])
+        if did is None:
+            n["unresolved"] += 1
+            unresolved.append({"what": f"a {x['kind']} district the table does not hold",
+                               "where": f"{x['file']} {x['where']}", "says": f"{x['form']} {x['spelling']!r}",
+                               "other": f"no {x['kind']} district of {x['era']} is so spelled"})
+            continue
+        n["resolved"] += 1
+        records.setdefault(x["record"], {}).setdefault(did, x)
+        d = D[did]
+
+        def say(what, says, other):
+            differ.append({"what": what, "where": f"{x['file']} {x['where']}", "says": f"{did}: {says}",
+                           "other": f"{d['source']}: {other}"})
+        if x.get("seats") is not None and x["seats"] != d.get("seats"):
+            say("a district's seats, two ways", f"{x['seats']} seat(s)", f"{d.get('seats')}")
+        if x.get("floterial") is not None and bool(x["floterial"]) != bool(d.get("floterial")):
+            say("a district floterial one way and not the other", "floterial" if x["floterial"] else "not floterial",
+                "floterial" if d.get("floterial") else "not floterial")
+        if x.get("place") and x["place"] not in (d.get("places") or []):
+            say("a place in a district that does not hold it", f"holds {x['place']}", "does not")
+        if x.get("towns") is not None:
+            mine = {_town_ward(PL[p]) for p in d.get("places") or [] if p in PL}
+            theirs = set(x["towns"])
+            if mine != theirs:
+                say("a district's towns, two ways", f"only here: {sorted(theirs - mine)[:5]}",
+                    f"only there: {sorted(mine - theirs)[:5]}")
+    for rec, named in records.items():
+        if len(named) > 1:
+            differ.append({"what": "one record whose spellings name two districts", "where": rec,
+                           "says": "; ".join(f"{x['file']} {x['form']} {x['spelling']!r} is {did}"
+                                             for did, x in named.items()),
+                           "other": "one record, one district"})
+    eras = sorted(EN.eras(settings))
+    return {"table": f"{DISTRICTS}/*.txt, the districts of {', '.join(eras)}",
+            "spellings": sorted({f for d in model.get("district") or [] for f in EN.district_spellings(d)}),
+            "printed": dict(sorted(by_file.items())), "not_here": list(missing),
+            "unresolved_count": len(unresolved), "unresolved": unresolved[:100],
+            "disagreements_count": len(differ), "disagreements": differ[:100]}
 
 
 # ---- the officials, linked to the record ---------------------------------------------------------
@@ -1427,6 +1685,9 @@ def build(root=".", settings=None, register=None):
     report["links"]["roster_term"] = roster_term
     # Every party as its file prints it, read by the one table of parties.
     report["parties"] = read_parties(model, settings)
+    # Every district the site prints, resolved by the one district table, and where they disagree.
+    printed, missing_printed = printed_districts(root, settings)
+    report["districts"] = district_report(model, printed, settings, missing_printed)
     unnumbered = [{"what": "a member-elect linked to an id no person holds", "where": x["candidacy"],
                    "says": f"{ELECT}: id {x['member_id']}", "other": f"{PEOPLE} gives that id to nobody"}
                   for x in cands if x.get("member_id") and x.get("person") is None]
@@ -1565,7 +1826,9 @@ def manifest(model, report, root):
     two builds of the same files on one stated day are the same bytes."""
     root = Path(root)
     read = [n for n in NEEDED + (ELECT, REGISTER, COUNTY_ROSTER) + LINK_EVIDENCE + (OFFICIALS_LINKS,)
+            + tuple(p for p in PRINTED if p not in NEEDED + (ELECT,) + LINK_EVIDENCE)
             if (root / n).is_file()]
+    read += _results_files(root)
     read += sorted(p.relative_to(root).as_posix() for p in (root / DISTRICTS).glob("*.txt"))
     hand = json.dumps(_hand(root), ensure_ascii=False).encode("utf-8")
     return {"format": EN.FORMAT,
@@ -1588,7 +1851,10 @@ def manifest(model, report, root):
             "links": report.get("links") or {},
             "links_hand": report.get("links_hand") or [],
             # Every party as printed, read by the one table of parties, and what it cannot read.
-            "parties": report.get("parties") or {}}
+            "parties": report.get("parties") or {},
+            # Every district the site prints, resolved by the one district table, by file; what
+            # resolved to nothing; and where the files and the table disagree.
+            "districts": report.get("districts") or {}}
 
 
 def links_summary(report):
@@ -1612,6 +1878,26 @@ def links_summary(report):
     if lk.get("waiting"):
         out.append(f"{len(lk['waiting'])} entr{'y' if len(lk['waiting']) == 1 else 'ies'} of the owner's "
                    "name a holder the model does not hold yet: kept for when it does")
+    return out
+
+
+def districts_summary(report):
+    """The lines the step prints of the districts the site prints: one of how many resolved by
+    the one table, and a warning for each that resolved to nothing or disagrees (the first ten of
+    each; the manifest's "districts" holds the rest)."""
+    dr = report.get("districts") or {}
+    if not dr:
+        return []
+    n = {k: sum(v.get(k, 0) for v in (dr.get("printed") or {}).values())
+         for k in ("resolved", "era not on file", "unresolved")}
+    out = [f"districts: {sum(n.values()):,} spellings in {len(dr.get('printed') or {})} files the site prints; "
+           f"{n['resolved']:,} resolved by the one table ({dr.get('table')}), {n['era not on file']:,} of a term "
+           f"before every era on file, {n['unresolved']:,} to no district; {dr.get('disagreements_count', 0)} "
+           "place(s) where a file and the table disagree; fixed none"]
+    for x in (dr.get("unresolved") or [])[:10] + (dr.get("disagreements") or [])[:10]:
+        out.append(f"WARNING: {x['what']}: {x['where']}: {x['says']}; {x['other']}")
+    if dr.get("not_here"):
+        out.append("not here, so not read: " + ", ".join(dr["not_here"]))
     return out
 
 
@@ -1653,6 +1939,8 @@ def main():
     print(f"  parties: {len(pa.get('read') or {})} printed form(s) read by the one table ({PARTY_TABLE})"
           + (f"; {len(pa['unread'])} it does not know, left unread: " + ", ".join(map(repr, pa["unread"]))
              if pa.get("unread") else ""))
+    for line in districts_summary(report):
+        print(f"  {line}")
     if a.links:
         for x in (report.get("links") or {}).get("listed") or []:
             print(f"  for the owner: [{x['kind']}] {x['key']}: {x['why']}")

@@ -17,6 +17,9 @@
   "county_codes": {"Belknap": "BE", "Carroll": "CA", "Cheshire": "CH", "Coos": "CO",
                    "Grafton": "GR", "Hillsborough": "HI", "Merrimack": "ME",
                    "Rockingham": "RO", "Strafford": "ST", "Sullivan": "SU"},
+  "county_numbers": {"Belknap": "01", "Carroll": "02", "Cheshire": "03", "Coos": "04",
+                     "Grafton": "05", "Hillsborough": "06", "Merrimack": "07",
+                     "Rockingham": "08", "Strafford": "09", "Sullivan": "10"},
   "timezone": "America/New_York",
   "term": {
     "length_years": 2,
@@ -107,8 +110,10 @@
   "district_kinds": {
     "house": {"office": "house", "unit": "town-ward", "per_county": true, "multi_seat": true, "overlay": "floterial",
               "name": "{county} {n}", "label": "{county_abbr} {n}", "results": "H|{county}|{n}", "map": "{county_code}{n}",
+              "legislature": "{county_number}-{n}", "slug": "{county_abbr_slug}-{n}",
               "file": "records/districts/house.txt", "constitution": ["Pt. 2, Art. 9", "Pt. 2, Art. 11"]},
     "senate": {"office": "senate", "unit": "town-ward", "name": "Senate District {n}", "results": "S|{n}",
+               "label": "SD{n}", "slug": "sd-{n}",
                "file": "records/districts/senate.txt", "constitution": ["Pt. 2, Art. 26"]},
     "council": {"office": "executive-council", "unit": "town-ward", "name": "Council District {n}",
                 "file": "records/districts/council.txt", "constitution": ["Pt. 2, Art. 65"]},

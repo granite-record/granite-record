@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.4
+# GRANITE_VERSION: 2026-11-11.5
 """
 The state's facts, read from src/lib/state_settings.json.
 
@@ -62,6 +62,9 @@ COUNTY_ABBR_LOWER = {c.lower(): a for c, a in COUNTY_ABBR.items()}
 # The two-letter code GRANIT's layers and the district map use, by name and back.
 COUNTY_CODE = dict(SETTINGS["county_codes"])
 COUNTY_BY_CODE = {code: c for c, code in COUNTY_CODE.items()}
+# The General Court's own number for each county (its Counties.txt: "06|Hillsborough|Hills."),
+# which its roster prints beside a district's number ("06", "22"), by name.
+COUNTY_NUMBER = dict(SETTINGS.get("county_numbers") or {})
 # Every spelling of a county a roster uses, lower case, to its name.
 COUNTY_LOOKUP = {**{c.lower(): c for c in COUNTIES}, **{a.lower(): c for c, a in COUNTY_ABBR.items()}}
 TIMEZONE = SETTINGS["timezone"]
