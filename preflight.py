@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.936
+# GRANITE_VERSION: 2026-09-04.937
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -284,6 +284,66 @@ def imp(name):
         return __import__(name)
     except Exception:
         return None
+
+
+# ---- the suite: what the checks say of themselves (16 November 2026) --------
+#
+# THE CHECKS SPEAK OF THE SUITE, NOT OF THIS FILE (the refactor's stage 1,
+# step 3). The checks are to move out of this file into the modules of
+# src/checks/suite/ (pf_<area>.py), some at a time, and a check that reads
+# "this file" -- by its name, by __file__, by globals(), or by a switch it
+# rebinds with `global` -- would then read one module of the suite and pass
+# while reading less. So each reads the suite through these, which name this
+# file alone until the split:
+#   _suite_files()       the files the checks are defined in;
+#   _in_suite(path)      whether a file is one of them, by its name, so that a
+#                        planted tree's preflight.py is one as this file is;
+#   _suite_namespaces()  each such module's name and namespace, for a walk of
+#                        every definition where globals() is one module's;
+#   _SWITCHED            the switches a check sets for the checks it runs
+#                        inside it, on one object every module reads.
+# check_select indexes one file of checks (choose, _Index), so --changed, and
+# _changed_selects with it, still name this file: the step that moves the
+# first check out gives check_select the suite's files.
+
+def _suite_files():
+    """The files the checks are defined in: this one, until the split."""
+    return [Path(__file__).resolve()]
+
+
+def _in_suite(path):
+    """Whether `path` is one of the suite's files, by its name: preflight.py,
+    or a pf_<area>.py of src/checks/suite/."""
+    p = Path(path)
+    return p.name == "preflight.py" or (
+        p.suffix == ".py" and p.name.startswith("pf_") and p.parent.name == "suite"
+        and p.parent.parent.name == "checks")
+
+
+def _suite_namespaces():
+    """[(module name, its namespace)] of each module the checks are defined
+    in: this one, until the split."""
+    return [(__name__, globals())]
+
+
+class _Switches:
+    """The switches a check sets for the checks it runs inside it, as they
+    stand while none is set: published_scripts, True while
+    _published_scripts_run_the_same runs every harness again on the scripts
+    as the site publishes them; testify_log, a list while
+    _testify_email_in_sync keeps every Testify button drawn; and
+    workflow_dir, the folder the workflow checks read, which _workflows_gate
+    points at a copy. Each was a global rebound with `global`, which another
+    module never sees: split, a harness in one module would have read its
+    own False, and the published pass run the source twice and passed."""
+
+    def __init__(self):
+        self.published_scripts = False
+        self.testify_log = None
+        self.workflow_dir = Path(".github/workflows")
+
+
+_SWITCHED = _Switches()
 
 # ---- the bill index, as a fixture writes it and a check reads it --------------
 #
@@ -1231,14 +1291,113 @@ def _sources_read_in_one_place():
     names, why = _tracked()
     if names is None:
         return "skip", why
-    here = Path(__file__)
-    found = _source_reads(_parsed(here), names, _source(here))
+    found = [r for f in _suite_files() for r in _source_reads(_parsed(f), names, _source(f))]
     assert not found, (
         f"{len(found)} reads of a source file by its name, not through _source: "
         + "; ".join(f"{d} line {n}: {t[:80]}" for d, n, t in found[:6])
         + ". Read it as _source(<what it named>): a later move of code changes _SOURCES, not the check")
     return "ok", ("no check here reads a source file by naming it but through _source, which reads "
                   "each once a run, again when it moves, and a fixture's as asked")
+
+
+def _self_references(tree, allowed=()):
+    """[(definition, line, what)] of each place in `tree` (a module of the
+    suite) where a definition speaks of one file rather than of the suite: a
+    call of globals(), a `global` statement, the name __file__, a comparison
+    with __name__, or a file a loop takes, compared by its name with
+    "preflight.py". The suite's own words (_suite_files, _in_suite,
+    _suite_namespaces) and the definitions named in `allowed` are passed
+    over. In the order of the lines."""
+    own = {"_suite_files", "_in_suite", "_suite_namespaces"} | set(allowed)
+    found = []
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) \
+                or node.name in own:
+            continue
+        looped = {x.id for a in ast.walk(node) if isinstance(a, (ast.For, ast.AsyncFor, ast.comprehension))
+                  for x in ast.walk(a.target) if isinstance(x, ast.Name)}
+        for a in ast.walk(node):
+            what = None
+            if isinstance(a, ast.Call) and isinstance(a.func, ast.Name) and a.func.id == "globals":
+                what = "globals()"
+            elif isinstance(a, ast.Global):
+                what = "global " + ", ".join(a.names)
+            elif isinstance(a, ast.Name) and a.id == "__file__":
+                what = "__file__"
+            elif isinstance(a, ast.Compare):
+                sides = [a.left] + a.comparators
+                if any(isinstance(s, ast.Name) and s.id == "__name__" for s in sides):
+                    what = "a comparison with __name__"
+                elif isinstance(a.left, ast.Attribute) and a.left.attr == "name" \
+                        and isinstance(a.left.value, ast.Name) and a.left.value.id in looped \
+                        and any(isinstance(c, ast.Constant) and c.value == "preflight.py"
+                                for s in a.comparators for c in ast.walk(s)):
+                    what = f'{ast.unparse(a.left)} compared with "preflight.py"'
+            if what:
+                found.append((node.name, a.lineno, what))
+    return sorted(found, key=lambda x: x[1])
+
+
+@check("files", "the checks speak of the suite, not of this file: no globals(), no `global` switch, "
+                "no __file__ and no preflight.py named in a scan, but through the suite's own words")
+def _suite_speaks_of_itself():
+    """THE CHECKS' WORD FOR THEMSELVES IS THE SUITE'S (the refactor's stage 1,
+    step 3; see _suite_files). Once the checks are modules of a package, a
+    check that read this file by its name or its __file__, walked
+    globals(), or rebound a switch with `global` would read one module and
+    pass while reading less, as nine scanners' exemptions of preflight.py by
+    name, the self-reads, the two walks and the three switches did until 16
+    November 2026. Held:
+
+      _in_suite is preflight.py and src/checks/suite/pf_<area>.py, by name,
+      and nothing else; _suite_files() is this file and
+      _suite_namespaces() this module; _SWITCHED's switches stand unset
+      between checks;
+      the reader of self-references (_self_references) finds each of its
+      five forms on a sample, in line order, and passes over a string, an
+      attribute named __file__, a name compared that no loop takes, and
+      the suite's own words;
+      and in the suite's files no definition speaks of one file, but
+      _changed_choice and _changed_selects, which hand check_select the one
+      file it indexes until the split gives it the suite's.
+    """
+    for path, want in (("preflight.py", True), ("src/checks/suite/pf_votes.py", True),
+                       ("src/checks/check_select.py", False), ("src/checks/suite/votes.py", False),
+                       ("src/checks/pf_votes.py", False), ("tests/pf_x.py", False)):
+        assert _in_suite(_paths.ROOT / path) is want, f"_in_suite says {not want} of {path}"
+    assert [f.name for f in _suite_files()] == ["preflight.py"], f"the suite's files: {_suite_files()}"
+    spaces = _suite_namespaces()
+    assert [n for n, _s in spaces] == [_suite_files.__module__] \
+        and spaces[0][1] is _suite_files.__globals__, "the suite's namespaces are not this module's"
+    assert (_SWITCHED.published_scripts, _SWITCHED.testify_log, _SWITCHED.workflow_dir) == (
+        False, None, Path(".github/workflows")), (
+        f"a switch was left set by a check before this one: {vars(_SWITCHED)}")
+    sample = ("def a(files):\n"
+              "    for f in files:\n"
+              "        if f.name == \"preflight.py\":\n"
+              "            continue\n"
+              "    g = globals()\n"
+              "    return Path(__file__)\n\n\n"
+              "def b():\n"
+              "    global X\n"
+              "    X = 1\n"
+              "    return f.__module__ == __name__\n\n\n"
+              "def c(cmd, m):\n"
+              "    return Path(cmd).name == \"preflight.py\", m.__file__, \"__file__\", \"globals()\"\n\n\n"
+              "def _suite_files():\n"
+              "    return [Path(__file__)]\n")
+    got = [(d, n) for d, n, _w in _self_references(ast.parse(sample))]
+    assert got == [("a", 3), ("a", 5), ("a", 6), ("b", 10), ("b", 12)], (
+        f"the reader of self-references found {got} in the sample, not its five")
+    allowed = ("_changed_choice", "_changed_selects")
+    found = [x for f in _suite_files() for x in _self_references(_parsed(f), allowed)]
+    assert not found, (
+        f"{len(found)} places speak of this file rather than the suite: "
+        + "; ".join(f"{d} line {n}: {w}" for d, n, w in found[:6])
+        + ". Use _suite_files(), _in_suite(), _suite_namespaces() or _SWITCHED")
+    return "ok", ("no definition of the suite walks globals(), rebinds a switch, names __file__ or "
+                  "exempts preflight.py by name, but the suite's own words and the two that hand "
+                  "check_select its one file")
 
 
 @check("files", "changed modules import")
@@ -1847,7 +2006,7 @@ def _root_and_launch_problems(root=None):
                 found.setdefault((rel, n.lineno), (
                     f"{rel}:{n.lineno} finds a folder from __file__ ({ast.unparse(n)}), the "
                     "root only while the file sits there: use _paths.ROOT"))
-            elif f.name != "preflight.py" and isinstance(n, ast.List):
+            elif not _in_suite(f) and isinstance(n, ast.List):
                 target = _launch_target(n)
                 if target is None:
                     continue
@@ -13459,7 +13618,10 @@ def _journey_clauses_kept(N, build_site_v2):
         elif isinstance(v, (list, tuple)):
             for x in v:
                 yield from rows_in(x)
-    for name, value in sorted(globals().items()):
+    every = {}
+    for _module, space in _suite_namespaces():
+        every.update(space)
+    for name, value in sorted(every.items()):
         if not name.startswith("_DOCKET_"):
             continue
         parts = value.values() if isinstance(value, dict) else [value]
@@ -16518,7 +16680,7 @@ def _video_indexes_both_places(build_all, proceedings):
         assert handed == want, f"build_all hands {script} {handed}, not {want}"
     own = [f"{f.relative_to(_paths.ROOT).as_posix()}"
            for f in _paths.code_files("*.py")
-           if f.name not in ("proceedings.py", "preflight.py")
+           if f.name != "proceedings.py" and not _in_suite(f)
            and re.search(r"""\.glob\(\s*f?["']videos_""",
                          f.read_text(encoding="utf-8", errors="replace"))]
     assert not own, ("these glob for a video index of their own rather than taking "
@@ -31538,7 +31700,7 @@ def _person_register():
     bad = []
     for f in _paths.code_files("*.py"):
         # The writer, and this file, whose cases above name it on purpose.
-        if f.name in ("person_numbers.py", "preflight.py"):
+        if f.name == "person_numbers.py" or _in_suite(f):
             continue
         if writes(f.read_text(encoding="utf-8", errors="replace")):
             bad.append(f.name)
@@ -33173,7 +33335,7 @@ def _moved_addresses():
     stem = r"moved_addresses\.json"
     bad = []
     for f in _paths.code_files("*.py"):
-        if f.name in ("record_moves.py", "preflight.py"):
+        if f.name == "record_moves.py" or _in_suite(f):
             continue
         src = f.read_text(encoding="utf-8", errors="replace")
         if re.search(r'open\s*\([^)]*' + stem + r'[^)]*["\'][wax]', src) or \
@@ -34232,13 +34394,13 @@ def _app_js(expr, names=("renderHearings", "archivedNote")):
     The value is printed after a marker, so anything app.js itself logs while
     it loads cannot be mistaken for it.
 
-    While _TESTIFY_LOG is a list (_testify_email_in_sync sets it), every
+    While _SWITCHED.testify_log is a list (_testify_email_in_sync sets it), every
     Testify button drawn is added to it as well (_TESTIFY_LOG_TAIL).
     """
     js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     if not (js.exists() and stub.exists() and shutil.which("node")):
         return None
-    logging = isinstance(_TESTIFY_LOG, list)
+    logging = isinstance(_SWITCHED.testify_log, list)
     if logging:
         names = tuple(names) + ("TESTIFY_LOG",)
     root = Path(tempfile.mkdtemp())
@@ -34265,7 +34427,7 @@ def _app_js(expr, names=("renderHearings", "archivedNote")):
             + (" ... " + said[-200:] if len(said) > 600 else said[400:]))
         got = json.loads(r.stdout.rsplit("@@", 1)[1])
         if logging:
-            _TESTIFY_LOG.extend(got["log"])
+            _SWITCHED.testify_log.extend(got["log"])
             return got["out"]
         return got
     finally:
@@ -34283,7 +34445,7 @@ def _app_js(expr, names=("renderHearings", "archivedNote")):
 # and what app.js's own testifyHearings and testifyMoving said, for the email's
 # copy to be put to (_testify_email_agrees). A shape added to any of those
 # checks is held for the email with nothing more to do.
-_TESTIFY_LOG = None
+# (The log is _SWITCHED.testify_log: the suite's switches are at the top.)
 # A check draws a Testify button in node where it calls one of these through
 # _app_js's scope.
 _TESTIFY_DRAWN_BY = re.compile(r"\bscope\.(?:testifyButton|mountTestify|focusActions)\(")
@@ -74965,14 +75127,14 @@ def _components_js(here="."):
 
 # THE HARNESSES RUN THE SOURCE, AND ONCE A RUN THE PUBLISHED COPY (23 October
 # 2026). The site publishes every script without its comments (strip_js.py);
-# while this is True, _with_components hands node that copy of components.js
+# while the switch is set, _with_components hands node that copy of components.js
 # and of the page's script instead of the source. Only
 # _published_scripts_run_the_same sets it, around a second run of every check
 # that runs a page's script through _with_components or _node_app, and holds
 # each result to the result on the source. _components_js stays the source:
 # the checks that read it alone read its lines and its marker comments
 # (_components_agree's coverage, _until_by_the_reader's BEHAVIOUR block).
-_PUBLISHED_SCRIPTS = False
+# (The switch is _SWITCHED.published_scripts: the suite's switches are at the top.)
 
 
 def _node_file(node, prog, **kw):
@@ -74997,13 +75159,14 @@ def _no_components_on_a_command_line():
     on Windows. They run it from a file (_node_file). A harness that builds
     its program from _components_js() and hands it to `-e` is caught here,
     before the file grows past the limit under it again."""
-    src = Path(__file__).read_text(encoding="utf-8").split("\n")
     bad = []
-    for i, line in enumerate(src):
-        if re.search(r'\[\s*node\s*,\s*"-e"', line):
-            before = "\n".join(src[max(0, i - 30):i])
-            if "_components_js()" in before or "_with_components(" in before:
-                bad.append(f"preflight.py:{i + 1}")
+    for f in _suite_files():
+        src = _source(f).split("\n")
+        for i, line in enumerate(src):
+            if re.search(r'\[\s*node\s*,\s*"-e"', line):
+                before = "\n".join(src[max(0, i - 30):i])
+                if "_components_js()" in before or "_with_components(" in before:
+                    bad.append(f"{f.name}:{i + 1}")
     assert not bad, ("these run components.js with node -e, which Windows refuses once the "
                      "file is past 32,767 characters; use _node_file: " + ", ".join(bad))
     return "ok", "every harness that runs components.js runs it from a file"
@@ -75074,8 +75237,8 @@ console.log(JSON.stringify(got));
 def _with_components(js, here="."):
     """A page's script as node is to run it: components.js first, as every
     page loads it, then the script. Both without their comments, as the
-    site publishes them, while _PUBLISHED_SCRIPTS is set."""
-    if _PUBLISHED_SCRIPTS:
+    site publishes them, while _SWITCHED.published_scripts is set."""
+    if _SWITCHED.published_scripts:
         return _stripped(_components_js(here)) + "\n" + _stripped(js)
     return _components_js(here) + "\n" + js
 
@@ -87477,7 +87640,7 @@ def _testify_text_want(s):
 
 
 def _testify_email_agrees(FC, PA, log):
-    """Each Testify button in `log` (_TESTIFY_LOG: the record, the row and
+    """Each Testify button in `log` (_SWITCHED.testify_log: the record, the row and
     New Hampshire's day it was drawn for, what it drew, and what app.js's own
     testifyHearings and testifyMoving said), put to the email's copy of the
     button's rules: follow_changes' testify_hearings and testify_moving on
@@ -87574,7 +87737,7 @@ def _testify_email_in_sync(FC, PA):
         corrected row's day, a committee naming its chamber in another case
         -- and nothing failed: the records that exercise them were the JS
         checks' alone). Every check that draws a Testify button in node is
-        run here with each button it draws logged (_TESTIFY_LOG) -- this
+        run here with each button it draws logged (_SWITCHED.testify_log) -- this
         one's records, the Testify checks', the Map Room's and the search's
         -- and every button is put to the email's copy
         (_testify_email_agrees): the same hearings, the same answer on
@@ -87737,8 +87900,7 @@ def _testify_email_in_sync(FC, PA):
     }
     js_cases = {n: {"rec": rec, "row": {"id": rec["id"], "n": num, "kind": kind, "year": rec["year"]}, "at": at}
                 for n, (rec, num, kind, at, _f) in cases.items()}
-    global _TESTIFY_LOG
-    was, _TESTIFY_LOG = _TESTIFY_LOG, []
+    was, _SWITCHED.testify_log = _SWITCHED.testify_log, []
     try:
         site = _app_js("""(() => {
   const C = %s, out = {};
@@ -87755,12 +87917,12 @@ def _testify_email_in_sync(FC, PA):
         for c in CHECKS:
             if c["fn"] is _testify_email_in_sync or not _TESTIFY_DRAWN_BY.search(inspect.getsource(c["fn"])):
                 continue
-            had = len(_TESTIFY_LOG)
+            had = len(_SWITCHED.testify_log)
             status, _msg = _check_outcome(c)
-            drew[c["fn"].__name__] = (status, len(_TESTIFY_LOG) - had)
-        log = list(_TESTIFY_LOG)
+            drew[c["fn"].__name__] = (status, len(_SWITCHED.testify_log) - had)
+        log = list(_SWITCHED.testify_log)
     finally:
-        _TESTIFY_LOG = was
+        _SWITCHED.testify_log = was
     none = [n for n, (status, k) in drew.items() if status != "skip" and not k]
     assert len(drew) >= 6 and not none, (
         f"the checks that draw a Testify button drew none for the email's copy to be held to: {none or drew}")
@@ -89466,7 +89628,7 @@ def _officials_one_reader(BME, BP, B):
     named, other_way, txt = [], [], []
     calls, imported = {}, set()
     for f in _paths.code_files("*.py"):
-        if f.name == "preflight.py":
+        if _in_suite(f):
             continue
         tree = _parsed(f)
         docs = {id(n.body[0].value) for n in ast.walk(tree)
@@ -89499,7 +89661,7 @@ def _officials_one_reader(BME, BP, B):
     # read_officials of its own, for the towns' officials.
     missing = [r for r in readers if not calls.get(r) or r not in imported]
     assert not missing, f"these no longer read the hand file through read_officials: {missing}"
-    own = Path(__file__).read_text(encoding="utf-8")
+    own = "\n".join(_source(f) for f in _suite_files())
     assert ('Path("corrections/' + 'officials.json").read_text') not in own, (
         "preflight reads the hand file itself, where a page reads it through read_officials")
     # The retired file.
@@ -94154,7 +94316,7 @@ def _every_fetcher_checks_refusal():
     asks, missing, literal = [], [], []
     scanned = _paths.code_files("*.py", dirs=_paths.SCRIPT_DIRS)
     for p in scanned:
-        if p.name in ("netcheck.py", "preflight.py"):
+        if p.name == "netcheck.py" or _in_suite(p):
             continue
         src = p.read_text(encoding="utf-8", errors="replace")
         try:
@@ -94303,7 +94465,7 @@ def _every_fetcher_notes_refusal():
 
     checkers, missing = [], []
     for p in _paths.code_files("*.py", dirs=_paths.SCRIPT_DIRS):
-        if p.name == "preflight.py":
+        if _in_suite(p):
             continue
         try:
             tree = _parsed(p)
@@ -94740,7 +94902,7 @@ def _children_sealed():
                       '    assert x, "fetch_x.py now writes it"\n'
                       '    return "skip", "run build_all.py first"\n')
     assert bare(trial) == ["b", "d", "e"], f"the reader of spawns found {bare(trial)}"
-    found = bare(_parsed(__file__))
+    found = [n for f in _suite_files() for n in bare(_parsed(f))]
     assert not found, ("these checks start a fetcher, the lane or the pipeline as a process "
                        "without the seal, so a regression would reach the network from "
                        "preflight: " + ", ".join(found) + ". Start it with _sealed_run or "
@@ -110568,7 +110730,7 @@ def _committees_fetch_stops(FC):
 # written that way, because a check that cannot find what it checks has
 # checked nothing.
 
-WORKFLOW_DIR = Path(".github/workflows")
+# (The folder is _SWITCHED.workflow_dir: the suite's switches are at the top.)
 # The secrets the workflows may name, and nothing else: CLOUD_MOVE.md's list.
 WORKFLOW_SECRETS = {"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET",
                     "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "YOUTUBE_API_KEY",
@@ -110580,7 +110742,7 @@ WORKFLOW_SECRETS = {"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
 
 
 def _workflows():
-    return sorted(WORKFLOW_DIR.glob("*.yml")) + sorted(WORKFLOW_DIR.glob("*.yaml"))
+    return sorted(_SWITCHED.workflow_dir.glob("*.yml")) + sorted(_SWITCHED.workflow_dir.glob("*.yaml"))
 
 
 def _wf_block(lines, key):
@@ -111116,7 +111278,7 @@ def _workflows_captions_inbox(CL):
     left the readings behind while the state says they were read, and the
     entry is what the next night takes again."""
     files = _workflows()
-    wf = WORKFLOW_DIR / "nightly.yml"
+    wf = _SWITCHED.workflow_dir / "nightly.yml"
     if not files or not wf.exists():
         return "skip", "no .github/workflows/nightly.yml here"
     elsewhere = [f"{f.name}:{j}" for f in files
@@ -111486,10 +111648,9 @@ def _workflows_gate(NI):
     rule, the production rule (_workflows_production) and the New term rule
     (_workflows_new_term), and a routing that dropped the New term clause, or
     that left REVIEW_GATE in shadow, does not."""
-    global WORKFLOW_DIR
     assert (NI.GATE_ENV, NI.GATE_SHADOW, NI.GATE_ON) == ("REVIEW_GATE", "shadow", "on"), \
         "nightly.py reads another word for the gate's mode than the workflow sets"
-    wf = WORKFLOW_DIR / "nightly.yml"
+    wf = _SWITCHED.workflow_dir / "nightly.yml"
     if not wf.exists():
         return "skip", "no .github/workflows/nightly.yml here"
     text = wf.read_text(encoding="utf-8")
@@ -111528,11 +111689,11 @@ def _workflows_gate(NI):
     assert _gate_problems(text.replace(GATE_MODE["shadow"], GATE_MODE["on"]))[1], \
         "REVIEW_GATE on with the publish job still in production passed"
     tmp = Path(tempfile.mkdtemp(prefix="gr-gate-wf-"))
-    saved = WORKFLOW_DIR
+    saved = _SWITCHED.workflow_dir
     try:
         for f in _workflows():
             shutil.copy(f, tmp / f.name)
-        WORKFLOW_DIR = tmp
+        _SWITCHED.workflow_dir = tmp
         (tmp / "nightly.yml").write_text(routed, encoding="utf-8")
         for rule in (_workflows_production, _workflows_new_term):
             status, msg = rule(NI)
@@ -111548,7 +111709,7 @@ def _workflows_gate(NI):
         assert not passed, ("a routing that lets a New term run through without a reviewer "
                             "passed the production rule")
     finally:
-        WORKFLOW_DIR = saved
+        _SWITCHED.workflow_dir = saved
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("REVIEW_GATE is shadow and the publish job goes through production; the routing "
                   "(on, GATE_ROUTED) passes this, the production rule and the New term rule, and "
@@ -111997,7 +112158,7 @@ def _workflows_dry_run(NI, CL):
     night waiting for approval is approved from. nightly.py sends a dry
     run's to DRY_PREVIEW_BRANCH, and the night job's environment, evaluated
     for each kind of run, names the address that run's preview went to."""
-    wf = WORKFLOW_DIR / "nightly.yml"
+    wf = _SWITCHED.workflow_dir / "nightly.yml"
     if not wf.exists():
         return "skip", "no .github/workflows/nightly.yml here"
     text = wf.read_text(encoding="utf-8")
@@ -112150,7 +112311,7 @@ def _workflows_weekly_dry_run(NI, CL):
     takes the week, as the night, as a dry run's from the word or the ref
     whatever a step passed (cloud.py's kit-up and state-up the same,
     _workflows_dry_run). It publishes nothing either way."""
-    wf = WORKFLOW_DIR / "weekly.yml"
+    wf = _SWITCHED.workflow_dir / "weekly.yml"
     if not wf.exists():
         return "skip", "no .github/workflows/weekly.yml here"
     text = wf.read_text(encoding="utf-8")
@@ -112301,7 +112462,7 @@ def _workflows_publish_pings():
     that file at the newer-night refusal and nowhere else."""
     import ast as _ast
     import nightly as NI
-    wf = WORKFLOW_DIR / "nightly.yml"
+    wf = _SWITCHED.workflow_dir / "nightly.yml"
     if not wf.is_file():
         return "skip", "no nightly.yml here"
     jobs = _wf_jobs(wf.read_text(encoding="utf-8"))
@@ -112427,10 +112588,10 @@ def _workflows_skipped_ancestors():
     So in every workflow, a job with a job that has an if anywhere before it
     says always() or !cancelled() in its own if. Run on nightly.yml as it
     stood, this fails on the publish job."""
-    if not WORKFLOW_DIR.exists():
+    if not _SWITCHED.workflow_dir.exists():
         return "skip", "no .github/workflows here"
     bad, held = [], []
-    for f in sorted(WORKFLOW_DIR.glob("*.yml")):
+    for f in sorted(_SWITCHED.workflow_dir.glob("*.yml")):
         heads = {j: _wf_job_heads(jl) for j, jl in _wf_jobs(f.read_text(encoding="utf-8")).items()}
 
         def before(j, seen):
@@ -118721,7 +118882,7 @@ def _gr_register_files(GR):
     bad = []
     for f in _paths.code_files("*.py"):
         # The writer, the module that names the path, and this file, whose cases name it on purpose.
-        if f.name in ("gr_register.py", "gr_ids.py", "preflight.py"):
+        if f.name in ("gr_register.py", "gr_ids.py") or _in_suite(f):
             continue
         if writes(f.read_text(encoding="utf-8", errors="replace")):
             bad.append(f.name)
@@ -133667,7 +133828,7 @@ def _alarm_stays_able_to_ring(NI):
         else:
             os.environ["GITHUB_RUN_ID"] = saved_rid
         shutil.rmtree(tmp, ignore_errors=True)
-    wf = WORKFLOW_DIR / "nightly.yml"
+    wf = _SWITCHED.workflow_dir / "nightly.yml"
     if wf.is_file():
         jobs = _wf_jobs(wf.read_text(encoding="utf-8"))
         ends = [st for jl in jobs.values() for st in _wf_steps(_wf_code(jl))
@@ -136123,10 +136284,10 @@ def _manifest(paths=None):
     read, "python": the Python whose ast made the prints, "checks": in the
     order main() runs them, {i, fn, group, words, needs, expect_fail, last,
     own, reach, helpers}}. `paths` are the files the checks are defined in,
-    this one by default. A check that is not a top-level def of them, or a
+    the suite's (_suite_files) by default. A check that is not a top-level def of them, or a
     function name two checks share, raises: neither can be fingerprinted."""
     import platform
-    paths = [Path(p).resolve() for p in (paths or [__file__])]
+    paths = [Path(p).resolve() for p in (paths or _suite_files())]
     twice = sorted(n for n, k in Counter(c["fn"].__name__ for c in CHECKS).items() if k > 1)
     if twice:
         raise ValueError("two checks share the name " + ", ".join(twice)
@@ -136598,7 +136759,7 @@ def _quick_preview(QP, FE, BP, cloud, NI):
         shutil.rmtree(tmp, ignore_errors=True)
 
     # -- the workflow
-    wf = WORKFLOW_DIR / "preview.yml"
+    wf = _SWITCHED.workflow_dir / "preview.yml"
     if not wf.exists():
         return "skip", "no .github/workflows/preview.yml here"
     text = wf.read_text(encoding="utf-8")
@@ -137763,10 +137924,11 @@ _OUTCOMES = {}
 
 def _reaching(names, skip=()):
     """The checks (CHECKS entries) whose code reaches one of `names` --
-    directly, or through any function of this file it calls, at any depth --
-    but those named in `skip`."""
+    directly, or through any function of the suite's it calls, at any
+    depth, each name read where the function that calls it reads it -- but
+    those named in `skip`."""
     import types
-    g = globals()
+    suite = {name for name, _space in _suite_namespaces()}
 
     def codes(co):
         yield co
@@ -137782,8 +137944,8 @@ def _reaching(names, skip=()):
             for nm in co.co_names:
                 if nm in names:
                     return True
-                f = g.get(nm)
-                if isinstance(f, types.FunctionType) and f.__module__ == __name__ \
+                f = fn.__globals__.get(nm)
+                if isinstance(f, types.FunctionType) and f.__module__ in suite \
                         and reaches(f, seen):
                     return True
         return False
@@ -137817,7 +137979,7 @@ def _published_scripts_run_the_same(BP, SJ):
     began to go out without their comments). Every check of the code that
     runs a page's script in node through _node_app or _with_components --
     directly or through a helper of this file, so a harness added later is
-    held too -- is run again with _PUBLISHED_SCRIPTS set, so that node is
+    held too -- is run again with _SWITCHED.published_scripts set, so that node is
     handed components.js with app.js, find.js, print.js or map.js as the site
     publishes them, and each must come out as it came out on the source in
     this run: the same status, and the same words but for the numbers, of
@@ -137830,7 +137992,6 @@ def _published_scripts_run_the_same(BP, SJ):
         return "skip", "node is not here, and every one of these harnesses needs it"
     if _published_script_sources() is None:
         return "skip", "the browser's scripts are not all in src/pages/ here"
-    global _PUBLISHED_SCRIPTS
     chosen = [c for c in _reaching({"_node_app", "_with_components"},
                                    skip=("_published_scripts_run_the_same",))
               if c["group"] != "data"]
@@ -137844,11 +138005,11 @@ def _published_scripts_run_the_same(BP, SJ):
     for c in chosen:
         name = c["fn"].__name__
         source = _OUTCOMES.get(name) or _check_outcome(c)
-        _PUBLISHED_SCRIPTS = True
+        _SWITCHED.published_scripts = True
         try:
             published = _check_outcome(c)
         finally:
-            _PUBLISHED_SCRIPTS = False
+            _SWITCHED.published_scripts = False
         ran[source[0]] += 1
         if published[0] != source[0] or words(published[1]) != words(source[1]):
             differ.append(f"{name}: on the source {source[0]} ({str(source[1])[:160]}); on the "
@@ -138968,7 +139129,7 @@ def _state_settings_one_place():
     pair = re.compile(r"""["']belknap["'][^\n]{0,30}["']carroll|belknap\|carroll""", re.I)
     seen = []
     for p in _paths.code_files("*.py"):
-        if p.name in ("state_settings.py", "preflight.py"):
+        if p.name == "state_settings.py" or _in_suite(p):
             continue
         t = p.read_text(encoding="utf-8", errors="replace")
         for m in pair.finditer(t):
