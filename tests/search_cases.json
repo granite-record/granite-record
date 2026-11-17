@@ -331,8 +331,9 @@
   },
   {
    "q": "campaign finance",
-   "at_most": 25,
-   "must": ["HB1201", "HB311", "SB405", "HB1031"]
+   "at_most": 35,
+   "must": ["HB1201", "HB311", "SB405", "HB1031"],
+   "why": "the ceiling raised from 25 to 35 (28 bills on the real index with the tags in force, and a quarter more for the term's growth): a whole-subject word: the owner, 17 November 2026"
   },
   {
    "q": "fluoride",
@@ -453,15 +454,15 @@
    "q": "civil rights",
    "first": ["HB641", "SB464"],
    "never": ["HB1135"],
-   "at_most": 20,
-   "why": "the second review, 1 October: a bill on rights in private roads, by the topic Civil Actions"
+   "at_most": 39,
+   "why": "the second review, 1 October: a bill on rights in private roads, by the topic Civil Actions; the ceiling raised from 20 to 39 (31 bills on the real index with the tags in force, and a quarter more for the term's growth): a whole-subject word: the owner, 17 November 2026"
   },
   {
    "q": "property taxes",
    "must": ["HB1380", "HB1581"],
    "never": ["SB42"],
-   "at_most": 80,
-   "why": "a topic stands for one word of several only when it is that word and the title has the rest: 'real property' filed under Taxes, and not notices of death filed under Property"
+   "at_most": 104,
+   "why": "a topic stands for one word of several only when it is that word and the title has the rest: 'real property' filed under Taxes, and not notices of death filed under Property; the ceiling raised from 80 to 104 (83 bills on the real index with the tags in force, and a quarter more for the term's growth): a whole-subject word: the owner, 17 November 2026"
   },
   {
    "q": "organ donation",
@@ -830,9 +831,9 @@
   },
   {
    "q": "town clerk",
-   "at_most": 20,
+   "at_most": 35,
    "must": ["HB1187", "SB218", "HB327"],
-   "why": "the second review, 2 October: HB 1187's analysis says 'their town or city clerk'"
+   "why": "the second review, 2 October: HB 1187's analysis says 'their town or city clerk'; the ceiling raised from 20 to 35 (28 bills on the real index with the tags in force, and a quarter more for the term's growth): a whole-subject word: the owner, 17 November 2026"
   },
   {
    "q": "business taxes",
