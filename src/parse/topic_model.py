@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.12
+# GRANITE_VERSION: 2026-09-16.13
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 src/parse/topic_model.py --apply              # write topics_assigned.json
@@ -402,6 +402,52 @@ def split_topic(name, title, chapters=()):
 def split_names():
     """The four names the two split topics are filed under."""
     return {n for pair in SPLITS.values() for n in pair}
+
+# ------------------------------------------------- a topic drawn from the others
+#
+# CANNABIS IS A TOPIC OF THE SITE'S OWN (the owner, 17 November 2026: "Cannabis
+# makes more sense as a topic to me than a tag"). The General Court has no such
+# topic: it files a marijuana bill under Crimes, a therapeutic cannabis bill
+# under Public and Mental Health, a hemp-product bill under Agriculture, a
+# legalization-and-tax bill under Taxes - State. The site files a bill under
+# Cannabis, whichever topic the General Court or the model gives it, one
+# sentence: its title's first subject (before a semicolon or "and relative to")
+# names cannabis, marijuana, THC, cannabidiol or CBD, hemp-derived products or
+# the alternative treatment centers that dispense therapeutic cannabis (a
+# hemp-derived or hemp-based product among them), and no synthetic
+# cannabinoid. Left where they are: a title of hemp or industrial hemp alone (a
+# crop, which the law defines as no marijuana); a constitutional amendment,
+# under Constitutional Amendments, and a study, under Study Committees and
+# Commissions, as every bill of those kinds is. By the title alone, so a bill
+# and a request are filed alike: the chapters a bill changes (RSA 126-X, Use of
+# Cannabis for Therapeutic Purposes) added none on the record of 17 November
+# 2026 that the title had not.
+#
+# APPLIED AFTER THE MODEL, AS THE SPLITS ARE (build_site_v2.vocabulary_of), and
+# to the General Court's own codes as much as the model's answers -- the one
+# place the site files a bill the General Court coded against its code. The
+# model is not retrained and never answers Cannabis. On that record: 174 bills,
+# 89 of them from Public and Mental Health and 64 from Crimes and Criminal
+# Procedure, the first in 1997-1998.
+CANNABIS = "Cannabis"
+CANNABIS_KEEP = {"CACR", "Constitutional Amendments", STUDY}     # the General Court's name and the site's
+CANNABIS_RE = re.compile(
+    r"(?<![A-Za-z])(?:cannabis|cannabinoids?|cannabidiol|marijuana|marihuana|tetrahydrocannabinol|(?-i:THC|CBD)"
+    r"|hemp[\s-]+(?:derived|based)|alternative treatment cent(?:er|re)s?)(?![A-Za-z])", re.I)
+CANNABIS_NOT = re.compile(r"(?<![A-Za-z])synthetic (?:marijuana|marihuana|cannabinoids?|cannabis)(?![A-Za-z])", re.I)
+ADDED_CODES[CANNABIS] = "CAN"
+
+
+def cannabis_title(title):
+    """True where the first subject of a title is cannabis (the comment above)."""
+    first = re.split(r";|\s+and\s+relative\s+to\s+", NEWTITLE.sub("", title or ""), maxsplit=1)[0]
+    return bool(CANNABIS_RE.search(CANNABIS_NOT.sub(" ", first)))
+
+
+def cannabis_topic(name, title):
+    """CANNABIS for a bill or request filed under `name` whose title is about cannabis, else `name`: a
+    constitutional amendment and a study keep theirs."""
+    return CANNABIS if name not in CANNABIS_KEEP and cannabis_title(title) else name
 
 # ---------------------------------------------------------------- title rules
 #

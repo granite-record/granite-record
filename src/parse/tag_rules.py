@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.9
+# GRANITE_VERSION: 2026-11-12.10
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
@@ -148,10 +148,11 @@ GUIDE_TAGS = 5
 # Under this many at the title and analysis tiers across all terms, a tag is a search
 # synonym that leads to a topic or another tag, unless its entry says keep_small and why.
 MIN_BILLS = 20
-# The site's topics as of 17 November 2026, when two were split in two (topic_model.SPLITS);
-# site/meta.json's "topics" wins where it is on disk.
+# The site's topics as of 17 November 2026, when two were split in two (topic_model.SPLITS) and
+# Cannabis drawn from the rest (topic_model.cannabis_topic); site/meta.json's "topics" wins where
+# it is on disk.
 SITE_TOPICS = (
-    "Agriculture", "Animals", "Banking and Finance", "Business and Industry", "Children", "Civil Actions",
+    "Agriculture", "Animals", "Banking and Finance", "Business and Industry", "Cannabis", "Children", "Civil Actions",
     "Constitutional Amendments", "Corrections", "Counties", "Courts and Procedure", "Crimes and Criminal Procedure",
     "Discrimination", "Domestic Relations", "Education - Finance", "Education - General", "Elections", "Employment",
     "Energy and Utilities", "Environment - Administration", "Environment - Conservation",

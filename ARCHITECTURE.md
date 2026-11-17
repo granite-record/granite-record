@@ -2453,7 +2453,10 @@ print, as for an archived bill's). The model answers in the General Court's own
 names and `build_site_v2.vocabulary_of` files a request where it files a bill:
 the two topics the site splits in two (`topic_model.SPLITS`, 17 November 2026 --
 Crimes and Criminal Procedure or Corrections, Real Estate or Personal Property),
-which a bill's statutes and title decide, a request's title decides alone.
+which a bill's statutes and title decide, a request's title decides alone; and
+Cannabis (`topic_model.cannabis_topic`, 17 November 2026), which a bill's or a
+request's title decides whatever name the model or the General Court gave it,
+but a constitutional amendment's or a study's.
 
 Each request has a page of its own at its row's `address`, `/request/<number>`
 (`src/pages/build_request_pages.py`), until the row carries a `moved_to` --

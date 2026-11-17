@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -7391,13 +7391,131 @@ def _topic_split_on_disk(B, OT, TM):
     tally = Counter()
     for (term, bid), s in split.items():
         got = bills[term][bid].get("subject")
-        assert got in TM.SPLITS[s], f"{term} {bid}, filed under {s}, is now {got!r}"
+        # a cannabis bill of either is Cannabis (topic_model.cannabis_topic, _topic_cannabis_rule)
+        assert got in TM.SPLITS[s] or got == TM.CANNABIS, f"{term} {bid}, filed under {s}, is now {got!r}"
         tally[got] += 1
     empty = [n for n in TM.split_names() if not tally[n]]
     assert not empty, f"no bill on this disk is filed under {empty}: the split is not reaching the record"
     (a, z), (c, d) = TM.SPLITS[TM.CCP_NAME], TM.SPLITS[TM.PRP_NAME]
     return "ok", (f"{tally[a] + tally[z]:,} bills of Crimes: {tally[a]:,} {a}, {tally[z]:,} {z}; "
                   f"{tally[c] + tally[d]:,} of Property: {tally[c]:,} {c}, {tally[d]:,} {d}; no old name kept")
+
+
+# Real titles (topic_model.cannabis_topic): (bill, the name the General Court or the model files it under, its
+# title, the site's topic). The first seven are Cannabis from five topics; the rest keep theirs.
+_CANNABIS_CASES = (
+    ("1997-1998/HB118", "Crimes, Crim.Proc. & Corr.", "relative to penalties for marijuana possession.", "Cannabis"),
+    ("2025-2026/SB264", "Public and Mental Health", "relative to the therapeutic cannabis program.", "Cannabis"),
+    ("2019-2020/HB1581", "Agriculture", "relative to the labeling and sale of hemp products containing CBD.",
+     "Cannabis"),
+    ("2025-2026/SB485", "Agriculture", "relative to the licensure, regulation and taxation of hemp-based derivative "
+     "products.", "Cannabis"),
+    ("2019-2020/HB174", "Public and Mental Health", "relative to alternative treatment center licenses.", "Cannabis"),
+    ("2023-2024/SB426", "Motor Vehicles", "relative to the transportation of marijuana in a motor vehicle or OHRV.",
+     "Cannabis"),
+    ("2009-2010/HB1652", "Taxes - State", "allowing purchase and use of marijuana by adults, regulating the purchase "
+     "and use of marijuana, and imposing taxes on the wholesale and retail sale of marijuana.", "Cannabis"),
+    ("2001-2002/HB293", "Agriculture", "authorizing the production of industrial hemp.", "Agriculture"),
+    ("2013-2014/HB1446", "Public and Mental Health", "relative to synthetic marijuana.", "Public and Mental Health"),
+    ("2021-2022/SB299", "Crimes, Crim.Proc. & Corr.", "relative to the penalty for escape and relative to home "
+     "cultivation of cannabis plants and the possession of certain cannabis-infused products.",
+     "Crimes and Criminal Procedure"),
+    ("2025-2026/CACR19", "CACR", "relative to the personal possession of cannabis. Providing that adults 21 years of "
+     "age or older shall have the right to possess a modest amount of cannabis intended for their personal "
+     "consumption.", "Constitutional Amendments"),
+    ("2015-2016/HB150", "Crimes, Crim.Proc. & Corr.", "establishing a commission to study the legalization, "
+     "regulation, and taxation of marijuana.", "Study Committees and Commissions"),
+    ("2023-2024/HB1240", "Public and Mental Health", "relative to eating disorders as a qualifying condition for the "
+     "therapeutic cannabis program.", "Cannabis"))
+
+
+@check("build", "a bill whose title is about cannabis is filed under Cannabis whichever topic the General Court or "
+                "the model gives it -- but a constitutional amendment and a study -- and a request by its title",
+       needs=("build_site_v2", "topic_model", "build_feeds", "tag_rules"))
+def _topic_cannabis_rule(B, TM, F, TR):
+    """topic_model.cannabis_topic (the owner, 17 November 2026: "Cannabis makes more sense as a topic to me than a
+    tag"). On real titles (_CANNABIS_CASES): marijuana penalties from Crimes, therapeutic cannabis and its
+    alternative treatment centers from Public and Mental Health, hemp products with CBD and hemp-based derivative
+    products from Agriculture, carrying marijuana in a car from Motor Vehicles, legalization and its taxes from
+    Taxes - State are Cannabis; industrial hemp alone, synthetic marijuana, a title whose first subject is
+    something else (escape, before "and relative to" cannabis), a constitutional amendment and a study keep their
+    topics. vocabulary_of files a bill and a request alike, before the splits; unify_vocabulary writes the name
+    and the code CAN and nothing else, and a second pass moves nothing; the model never answers Cannabis; the
+    topic's feed is /feed/topic/cannabis.xml; the tag engine's list of the site's topics has it."""
+    import contextlib
+    import io
+    for key, name, title, want in _CANNABIS_CASES:
+        term, bid = key.split("/")
+        got = B.vocabulary_of(name, {"title": title}, bid, term)
+        assert got == want, f"{key} ({title[:60]}): {got!r}, not {want!r}"
+        named = TM.remap_gold(name, {"title": title, "bill": bid})      # a study is Study before this rule
+        assert (TM.cannabis_topic(named, title) == TM.CANNABIS) == (want == TM.CANNABIS), key
+    req = {"title": "relative to the therapeutic cannabis program.", "subject": "", "bill": ""}
+    assert B.vocabulary_of("Public and Mental Health", req, "") == "Cannabis", "a request's title did not file it"
+    assert TM.cannabis_title("relative to the sale of hemp products containing certain levels of THC.")
+    assert not TM.cannabis_title("relative to the thc of things."), "THC read in lower case"
+    assert TM.cannabis_topic("Constitutional Amendments", "relating to cannabis.") == "Constitutional Amendments"
+    assert TM.ADDED_CODES.get(TM.CANNABIS) == "CAN"
+    assert TM.CANNABIS not in set(TM.new_vocabulary()), "the model's vocabulary took Cannabis"
+    bills = {"2025-2026": {"SB264": {"title": "relative to the therapeutic cannabis program.",
+                                     "subject": "Public and Mental Health", "subject_code": "PMH"},
+                           "CACR19": {"title": _CANNABIS_CASES[10][2], "subject": "CACR", "subject_code": "CACR"},
+                           "HB1": {"title": "relative to penalties for marijuana possession.",
+                                   "subject": TM.CCP_NAME, "subject_code": "CCP"}}}
+    before = {b: set(r) for b, r in bills["2025-2026"].items()}
+    with contextlib.redirect_stdout(io.StringIO()):
+        B.unify_vocabulary(bills)
+        once = {b: (r["subject"], r["subject_code"]) for b, r in bills["2025-2026"].items()}
+        B.unify_vocabulary(bills)
+    assert once == {"SB264": ("Cannabis", "CAN"), "CACR19": ("Constitutional Amendments", "CACR"),
+                    "HB1": ("Cannabis", "CAN")}, once
+    assert once == {b: (r["subject"], r["subject_code"]) for b, r in bills["2025-2026"].items()}, (
+        "a second pass moved a bill")
+    assert before == {b: set(r) for b, r in bills["2025-2026"].items()}, "the vocabulary step wrote a field"
+    assert F.topic_slug("Cannabis") == "cannabis"
+    assert "Cannabis" in TR.SITE_TOPICS
+    return "ok", (f"{len(_CANNABIS_CASES)} real titles filed as the rule says: Cannabis from five topics; hemp alone, "
+                  "synthetic marijuana, a second subject, an amendment and a study keep theirs; a request by its "
+                  "title; the code CAN; a second pass moves nothing")
+
+
+@check("data", "every bill on this disk whose title is about cannabis is filed under Cannabis, and nothing else is",
+       needs=("build_site_v2", "official_topics", "topic_model"))
+def _topic_cannabis_on_disk(B, OT, TM):
+    """The data half of _topic_cannabis_rule: the build's own path to a topic -- the General Court's code
+    (official_topics.adopt), the model's answer for the rest (merge_guessed_topics), then unify_vocabulary -- over
+    data/bills.json. Every bill under Cannabis has a cannabis title and came from no constitutional amendment or
+    study; every bill with a cannabis title and neither of those is under Cannabis. Says the count and the topics it
+    came from: 174 bills on the record of 17 November 2026, 89 from Public and Mental Health and 64 from Crimes."""
+    import contextlib
+    import io
+    if not Path("data/bills.json").exists() or not Path("data/subjects.json").exists():
+        return "skip", "no data/bills.json here"
+    bills = json.loads(Path("data/bills.json").read_text(encoding="utf-8"))
+    subjects = json.loads(Path("data/subjects.json").read_text(encoding="utf-8"))
+    with contextlib.redirect_stdout(io.StringIO()):
+        OT.adopt(bills, subjects)
+        B.merge_guessed_topics(bills)
+    was = {(t, b): (r.get("subject") or "").strip() for t, by in bills.items() for b, r in by.items()}
+    with contextlib.redirect_stdout(io.StringIO()):
+        B.unify_vocabulary(bills)
+    came, wrong, missed = Counter(), [], []
+    for term, by in bills.items():
+        for bid, rec in by.items():
+            s, title = was[(term, bid)], rec.get("title") or ""
+            kept = TM.remap_gold(s, {**rec, "bill": bid}) in TM.CANNABIS_KEEP if s else True
+            if rec.get("subject") == TM.CANNABIS:
+                came[B.vocabulary_of(s, {"title": "relative to something.", "bill": bid}) or s] += 1
+                if kept or not TM.cannabis_title(title):
+                    wrong.append(f"{term} {bid}")
+            elif s and not kept and TM.cannabis_title(title):
+                missed.append(f"{term} {bid}")
+    assert not wrong, f"{len(wrong)} bills under Cannabis that the rule does not give it: {wrong[:3]}"
+    assert not missed, f"{len(missed)} bills with a cannabis title filed elsewhere: {missed[:3]}"
+    if not came:
+        return "skip", "no bill with a cannabis title on this disk"
+    return "ok", (f"{sum(came.values()):,} bills under Cannabis, from " + ", ".join(f"{n} {k}" for k, n in
+                                                                               came.most_common(4)))
 
 
 @check("status", "between two reports, the Reports tab quotes the motion that sent the bill back",
