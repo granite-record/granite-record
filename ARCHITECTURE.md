@@ -2227,7 +2227,10 @@ card and its map (`build_elections.with_pages`). Since 16 November 2026 the
 page is a member's in the member-elect's form, built ahead in Python from
 the components the member page draws with: the head a returning
 member-elect's page has (the trail ending Member-elect, the name and party
-the results print), the district's towns, the election's line, a tab of
+the results print under their title spelled out, "Representative “Elect”
+Heather Deiner (D)" -- `build_legislator_pages.elect_heading`, and `GR_ELECT`'s
+title in `app.js` -- since the owner asked for it on 16 November 2026), the
+district's towns, the election's line, a tab of
 their requests as a member's page lists them (or that none is filed yet) and
 a tab of the race as the Elections tab draws it (`build_member_elections.race_row`),
 with any seats not final and the day the race's results file was saved.

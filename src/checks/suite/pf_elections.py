@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of members-elect and election results.
 
@@ -404,7 +404,9 @@ def _elect_page_member_form(LP):
     components and words. build_legislator_pages.elect_body is held to:
 
     - the record's head (components.record_head) with the trail ending Member-elect, the name and
-      party as the results print them and the bar in that party's ink -- the head app.js's
+      party as the results print them under the member-elect's title spelled out ("Representative
+      “Elect” Bob McLean (D)": the owner, 16 November 2026, "use their title as Rep. "Elect"
+      Heather Denier instead of just their first name") and the bar in that party's ink -- the head app.js's
       renderMemberHead gives a returning member-elect, compared in node where it is here; the line
       saying what they were elected to and the district's towns, each to its page; the earlier
       service the owner confirmed; Cite this page and Share; no contact detail and no member id;
@@ -452,7 +454,8 @@ def _elect_page_member_form(LP):
     for what, ok in (
             ("the head is a member's, in the party's ink", '<header class="rhead rh-member rh-pD">' in before),
             ("the trail ends Member-elect", trail.format("Member-elect") in before),
-            ("the heading is the name and party the results print", '<h1 class="rh1">Bob McLean (D)</h1>' in before),
+            ("the heading is the member-elect's title and the name and party the results print",
+             '<h1 class="rh1">Representative “Elect” Bob McLean (D)</h1>' in before),
             ("the line says what they were elected to, and the district's towns, each to its page",
              '<p class="rline">Member-elect of the New Hampshire House of Representatives, Belknap 6'
              '&nbsp;&middot; <a href="/town/gilford">Gilford</a>, Gilmanton and '
@@ -492,11 +495,12 @@ def _elect_page_member_form(LP):
              not any(w in before for w in ("mailto:", "<dt>Email", "GR_MEMBER", "legislators/"))),
             ("from the day they take office, a member who took office",
              trail.format("Representative") in after
+             and '<h1 class="rh1">Representative Bob McLean (D)</h1>' in after
              and "Member of the New Hampshire House of Representatives, Belknap 6" in after
              and "Took office December 2, 2026." in after
              and "Member-elect" not in after and "Takes office" not in after),
             ("a Senate member-elect's line, and a cross-nomination on the neutral bar",
-             '<header class="rhead rh-member rh-pX">' in senate and '<h1 class="rh1">Gil Hart (R/D)</h1>' in senate
+             '<header class="rhead rh-member rh-pX">' in senate and '<h1 class="rh1">Senator “Elect” Gil Hart (R/D)</h1>' in senate
              and "Member-elect of the New Hampshire Senate, Senate District 15&nbsp;&middot; Concord" in senate),
             ("a race of one seat gives the share, a recount's count says so",
              "Elected, 1st of 2 <span class=\"dim\">Recounted</span>" in senate
@@ -514,7 +518,7 @@ def _elect_page_member_form(LP):
            "display": "Rep. Bob McLean (D)", "county": "Belknap", "district": "2",
            "slug": "bob-mclean-belk-2", "served": {"terms": ["2017-2018"]}, "attendance": {"2017-2018": {"days": 1}}}
     ge = {"id": "900009", "key": "H|Belknap|6", "election": "2026-11-03", "takes_office": "2999-01-01",
-          "mode": "returning", "name": "Bob McLean", "party": "D",
+          "mode": "returning", "name": "Bob McLean", "party": "D", "title": "Rep. “Elect”",
           "where": "Member-elect of the New Hampshire House of Representatives, Belknap 6."}
     rows = [p["result"], sen["result"], dict(p["result"], r="open", fl=1, pl=None, of=None),
             {"d": "2024-11-05", "k": "H|Coos|7", "a": "r-h-coos-7", "r": "lost", "v": 12, "s": 2, "pl": 11, "of": 12}]
