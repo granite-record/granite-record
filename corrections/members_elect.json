@@ -240,7 +240,7 @@
       },
       "H|Hillsborough|38": {
         "Heidi P. Jakoby": null,
-        "Ted Trost": null
+        "Adam Haverstock": null
       },
       "H|Hillsborough|39": {
         "Ellen A. Boudreau": null,
@@ -446,10 +446,6 @@
       }
     },
     "not_final": {
-      "H|Rockingham|13": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 2},
-      "H|Merrimack|5": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
-      "H|Merrimack|26": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
-      "H|Rockingham|14": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
       "H|Grafton|1": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
       "H|Belknap|6": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
       "H|Grafton|11": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
