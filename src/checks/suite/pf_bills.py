@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.17
+# GRANITE_VERSION: 2026-11-16.18
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1681,6 +1681,76 @@ def _request_tabs_switch(build_lsrs):
     return "ok", ("a request page's three panes have their own ids, unique on the page, each tab pointing at "
                   "its pane; a Summary alone has its tab on the page and no strip on the card; the Summary "
                   "does not repeat the chip or the byline")
+
+
+@check("build", "a request's card, opened, says what a request is as its own page's Summary does: About "
+                "Requests in the page's words, after the co-sponsors and the bill it was filed as and "
+                "before the way on to the page", needs=("build_lsrs",))
+def _request_card_summary_explains(build_lsrs):
+    """The owner, 17 November 2026: "Can you make it so that opening the LSR
+    pages shows the same summary of what LSRs are that the full page does
+    since right now it just shows the link to the page and almost doesn't
+    look like the card has expanded?" Held on build_lsrs' rows for a request
+    with a co-sponsor, a withdrawn one and one filed as a bill: the page
+    build_request_pages writes for each carries About Requests in its
+    Summary (explain, with what LSR stands for), and the card app.js draws
+    for the same row, opened, carries that section in its Summary's pane
+    byte for byte but for the page's id, once, after the co-sponsor and the
+    Filed As line and before the link to the page (app.js lsrAbout)."""
+    import tempfile
+    import components as C
+    import build_request_pages as RP
+    L = build_lsrs
+    lsrs = [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "relative to dunes.", "sponsor": "Ann Lee",
+             "cosponsors": ["Bob Roe"]},
+            {"lsr": "2027-0002", "session": 2027, "body": "SB", "title": "relative to coves.", "sponsor": "Ann Lee",
+             "withdrawn": True},
+            {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "relative to capes.", "sponsor": "Ann Lee"}]
+    rows, _ = L.rows_from(lsrs, {}, {"2027-0003": "HB 5"}, 2027, None, {})
+    by = {r["n"][4:]: r for r in rows}
+    assert [by[n]["status"] for n in ("2027-0001", "2027-0002", "2027-0003")] == ["Requested", "Withdrawn", "Filed"] \
+        and by["2027-0001"].get("cosponsors") and by["2027-0003"].get("introduced") == "HB 5", (
+        "the fixture's three requests are not what they were")
+    req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "abbr": L.ABBR}
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "idx").mkdir()
+        (site / "bills.html").write_text(_source("src/pages/bills.html"), encoding="utf-8")
+        (site / "meta.json").write_text(json.dumps({"requests": req}), encoding="utf-8")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(rows), encoding="utf-8")
+        RP.write(site, "https://x")
+        pages = {n: (site / "request" / f"{n}.html").read_text(encoding="utf-8") for n in by}
+    words = f'<p class="lsrnote">{RP.explain(2027, L.ABBR)}</p>'
+    assert "LSR stands for Legislative Service Request." in words, words
+    about, on_page = C.section("About Requests", words), C.section("About Requests", words, "about")
+    for n, page in pages.items():
+        summary = page[page.index(f'id="pane_{by[n]["id"]}_0"'):]
+        nxt = summary.find('<div class="pane sspane"')
+        assert on_page in (summary[:nxt] if nxt >= 0 else summary), (
+            f"/request/{n}'s Summary does not carry About Requests in explain's words")
+    js = ("(() => { scope.setMeta({requests: " + json.dumps(req) + "}); const rows = "
+          + json.dumps([by[n] for n in sorted(by)]) + "; rows.forEach(r => scope.openCards.add(r.id));"
+          " return rows.map(r => scope.lsrCardHtml(r, '')); })()")
+    got = _app_js(js, names=("lsrCardHtml", "openCards", "setMeta: x => (META = x)"))
+    if got is None:
+        return "skip", "the pages carry About Requests; node, app.js or the stub is not here for the card"
+    for n, card in zip(sorted(by), got):
+        start = re.search(r'<div class="pane"[^>]*data-t="0"[^>]*>', card)
+        assert start and 'aria-expanded="true"' in card, f"{n}'s card did not open onto a Summary: {card[:400]!r}"
+        pane = card[start.end():]
+        pane = pane[:pane.find('<div class="pane"')] if '<div class="pane"' in pane else pane
+        assert card.count(about) == 1 and about in pane, (
+            f"{n}'s opened card does not say what a request is as its page does, in its Summary: {pane[:900]!r}")
+        link = pane.find("Open the request’s own page")
+        assert 0 <= pane.find(about) < link, f"{n}'s card puts About Requests after the link to its page"
+        for said in ("<b>Co-Sponsor:</b>", "<b>Filed As:</b>"):
+            assert said not in pane or pane.find(said) < pane.find(about), (
+                f"{n}'s card puts {said!r} under About Requests")
+    assert "<b>Co-Sponsor:</b>" in got[0] and "<b>Filed As:</b>" in got[2], (
+        "the card lost its co-sponsor or the bill it was filed as")
+    return "ok", ("three requests' pages (requested with a co-sponsor, withdrawn, filed as HB 5) carry About "
+                  "Requests in their Summary, and each one's opened card the same section in its Summary, "
+                  "byte for byte, after the co-sponsor and Filed As and before the link to the page")
 
 
 @check("frontend", "a bill's page and card and a request's card draw their tabs with the record's one "
@@ -8917,8 +8987,10 @@ def _request_cards_like_bills(build_lsrs):
     assert 'class="mchip p-D"' in shut \
         and 'class="ctitle"' in shut and 'aria-expanded="false"' in shut and "<div class=\"cbody\" hidden>" in shut, (
         f"a request's card is not a bill card with a person chip: {shut[:600]!r}")
+    # The card's head, that is: opened, its Summary says what LSR stands for in About Requests, as
+    # the page's does (the owner, 17 November 2026; _request_card_summary_explains).
     assert '<a href="request/2027-0001">LSR 2027-0001</a></span>' in shut and "<abbr" not in shut \
-        and "Legislative Service Request" not in shut, (
+        and "Legislative Service Request" not in shut[:shut.index('class="cbody"')], (
         f"a request's card links its number with a tooltip, or not plainly: {shut[:600]!r}")
     assert "Education - General" in shut and "(from the title)" not in shut, (
         "a request's card does not print its topic by name alone")

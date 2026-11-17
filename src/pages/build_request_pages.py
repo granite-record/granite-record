@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.17
+# GRANITE_VERSION: 2026-11-08.18
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -58,7 +58,9 @@ def explain(year, abbr=None):
     (fix/search-polish, 8 November 2026), and what the number's abbreviation
     stands for (the owner, 13 November 2026), said in words beside the
     number's popover (term_html): `abbr` is meta.requests's, a map of an
-    abbreviation to its words."""
+    abbreviation to its words. A request's card on the bill search says the
+    same on its Summary, in these words (app.js lsrAbout; the owner, 17
+    November 2026)."""
     said = "".join(f" {E(k)} stands for {E(v)}." for k, v in (abbr or {}).items())
     return ("<b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill "
             "drafted: a title and a sponsor, nothing more, until it is filed as a numbered "

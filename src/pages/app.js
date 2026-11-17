@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.339
+// GRANITE_VERSION: 2026-09-07.340
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -8360,6 +8360,18 @@ function lsrTextPane(b){
   }
   return head+`<p class="src">Loading the text&hellip;</p>`+pdf;
 }
+// WHAT A REQUEST IS, ON ITS CARD'S SUMMARY (the owner, 17 November 2026:
+// "make it so that opening the LSR pages shows the same summary of what LSRs
+// are that the full page does since right now it just shows the link to the
+// page and almost doesn't look like the card has expanded"): the request
+// page's About Requests, in its words (build_request_pages.explain) -- the
+// request's year, and what the number's abbreviation stands for from
+// meta.requests's abbr -- with no id, since a list opens many cards.
+function lsrAbout(b){
+  const year=String(b.year||reqYear()),abbr=(META.requests||{}).abbr||{};
+  return section("About Requests",`<p class="lsrnote"><b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered ${
+    esc(year)} bill. Some are withdrawn first.${Object.entries(abbr).map(([k,v])=>` ${esc(k)} stands for ${esc(v)}.`).join("")}</p>`);
+}
 function lsrPane(b,t){
   const cos=b.cosponsors||[],hist=b.history||[],sp=cardSponsor(b);
   const prime=sp?pchip(Object.assign({},sp,{prime:false,role:""})):"";
@@ -8381,9 +8393,11 @@ function lsrPane(b,t){
   // the prime sponsor and the topic; what is left is the co-sponsors and the way
   // on to the request's own page.
   // And the bill it was filed as, while it is still a request (the owner, 17
-  // November 2026: "Drafted and filed as HB123 sounds fine").
+  // November 2026: "Drafted and filed as HB123 sounds fine"). Then what a
+  // request is, as its own page's Summary says it (lsrAbout).
   return `${cos.length?`<p><b>${cos.length>1?"Co-Sponsors":"Co-Sponsor"}:</b> ${cos.map(lsrChip).join(" ")}</p>`:""}
     ${b.introduced&&!b.moved_to?`<p><b>Filed As:</b> ${b.bill_at?`<a href="${esc(b.bill_at)}">${esc(b.introduced)}</a>`:esc(b.introduced)}</p>`:""}
+    ${lsrAbout(b)}
     ${b.address?`<p><a href="${esc(b.moved_to||b.address)}">${b.moved_to?"Read the bill":"Open the request’s own page"}</a></p>`:""}`;
 }
 // WHAT A REQUEST'S CARD OPENS ONTO: the bill card's tab strip and panes, from

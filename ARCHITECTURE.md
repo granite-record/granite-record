@@ -2517,7 +2517,9 @@ FN uses.
 Under its head a request's page hangs a bill page's tab strip, the record's
 one (`components.record_tabs`, `recordTabs` in the browser, with which a bill's
 page and card and a request's card draw theirs), the Summary's tab drawn even
-where it is the only one. Its Summary says what the row says of the text
+where it is the only one. Its Summary ends with About Requests, what a request
+is (`build_request_pages.explain`), and an opened card's Summary says the same
+in the same words (`app.js` `lsrAbout`), so that a card visibly opens. Its Summary says what the row says of the text
 (`build_request_pages.text_note`): not public yet while the request is drafted,
 and public once it is filed as a numbered bill; or withdrawn before it was
 filed; and, filed, that its text is public and is added once this site has
