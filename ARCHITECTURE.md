@@ -921,12 +921,14 @@ Cannabis). `?tag=` ticks a tag by its id; two are either, a tag and a topic
 both.
 
 The search reads a tag's words, built in and never displayed: where the
-whole search, or one word of it, is a tag's name or one of the words that
-lead to it (`meta.json`'s `tag_words`), the tag's bills -- or the topic's,
-for a word whose subject is a topic -- are listed at the level of a topic's
-own name, below the bills whose titles say the words (`tagGroups`,
-`fitAlone`); a whole search that is such a phrase ("attorney general",
-"gravel tax") is read as that phrase. A card says nothing of a tag that
+whole search is a tag's name or one of the words that lead to it
+(`meta.json`'s `tag_words`), the tag's bills -- or the topic's, for a word
+whose subject is a topic -- are listed after every bill whose title, or
+whose analysis or text, has the reader's own word (`tagGroups`, `fitAlone`);
+a whole search that is such a phrase ("attorney general", "gravel tax") is
+read as that phrase, and one word of a longer search leads nowhere.
+`preflight`'s `_search_cases_real` asks `tests/search_cases.json` of the
+search as a site with tags publishes it. A card says nothing of a tag that
 listed it, and the line under the box no word that led there. The offers
 add "All bills tagged ...". `find.js` hands the same words to the header
 search's matcher (`billmatch.js`, `setTagWords`), so its counts are

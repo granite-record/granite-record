@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.340
+// GRANITE_VERSION: 2026-09-07.341
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -1699,16 +1699,19 @@ function tagLeads(b,to){
    November 2026: tags "may replace the synonym matching system by having
    those sorts of synonyms built in but not displayed"). A part of the
    search that is a tag's name or one of the words that lead to it (the
-   registry's asks and synonyms) carries where it leads, `to`, and fitAlone
-   lists that tag's bills, or that topic's, at the level of a topic's own
-   name: below a bill whose title has the word, above one whose text alone
-   does. A topic is said on the card as ever ("topic: Cannabis"); a tag, and
-   the words that led to it, never are (whyListed). The whole word or
-   phrase only, never the start of one, so a large tag is not listed for a
-   few letters. A whole search of several words that is one such phrase
-   ("attorney general", "gravel tax") is read as that phrase, one part,
-   where it was a part a word; in a longer search a tag stands for one word,
-   and only where the title has every other part, as a topic does. */
+   registry's asks and synonyms) carries where it leads, `to`, and where it
+   is the whole search fitAlone lists that tag's bills, or that topic's,
+   after every bill whose title says the reader's word and every bill whose
+   analysis or text does ("eviction" lists the bills that say it first;
+   measured on tests/search_cases.json, 17 November 2026: at a topic's own
+   level, 0.5, a tagged bill came above them). A topic is said on the card as ever ("topic:
+   Cannabis"); a tag, and the words that led to it, never are (whyListed).
+   The whole word or phrase only, never the start of one, so a large tag is
+   not listed for a few letters; and the whole search only, never one word
+   of a longer one, where it listed a bill the words found apart ("college
+   students voting", tests/search_cases.json). A whole search of several
+   words that is one such phrase ("attorney general", "gravel tax") is read
+   as that phrase, one part, where it was a part a word. */
 function tagGroups(out,typed){
   if(!TAGLIST.length||!TAGWORDS.size)return;
   const whole=tagKey(typed);
@@ -1716,7 +1719,7 @@ function tagGroups(out,typed){
     const w=String(typed).trim();
     out.splice(0,out.length,{word:w,alts:[w]});
   }
-  for(const g of out){const to=TAGWORDS.get(tagKey(g.word));if(to)g.to=to;}
+  if(out.length===1){const to=TAGWORDS.get(tagKey(out[0].word));if(to)out[0].to=to;}
 }
 // TAGS:END
 // The topic's name as searched: what stands before " - ", and nothing at all
@@ -1807,11 +1810,14 @@ function fitAlone(b,g){
           &&g.rest.every(alts=>alts.some(a=>altRx(a).test(b.hayT)))))){d=0.5;why=["topic"];}
   }
   // TAGS:BEGIN
-  // Where a tag's word or a topic's leads (tagGroups), at the topic's level.
-  // The tag's id third, where no word found is: nothing is "found" in it.
-  if(d>0.5&&g.to&&tagLeads(b,g.to)
-     &&(g.solo||(g.rest&&g.rest.every(alts=>alts.some(a=>altRx(a).test(b.hayT)))))){
-    d=0.5;why=/^tag:/.test(g.to)?["tag","",g.to.slice(4)]:["topic"];}
+  // Where a tag's word or a topic's leads (tagGroups), for the whole search
+  // only, at 1.1: after a bill whose title has the word or a longer word it
+  // begins (1) and one whose analysis or text has the word itself (0.6 to
+  // 0.96), and before the rest -- a longer word in a text, the table's
+  // terms. The tag's id third, where no word found is: nothing is "found"
+  // in it, and the card says nothing (whyListed).
+  if(d>1.1&&g.solo&&g.to&&tagLeads(b,g.to)){
+    d=1.1;why=/^tag:/.test(g.to)?["tag","",g.to.slice(4)]:["topic"];}
   // TAGS:END
   if(d>0.6&&b.term){
     const m=textHits(g,b.term),h=m&&m.get(b.id);

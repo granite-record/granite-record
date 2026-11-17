@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -10111,7 +10111,7 @@ _TAGS_HARNESS = r"""
                 {id: "excavation-tax", name: "Excavation tax", group: "Taxes", definition: "Bills about the excavation tax."}];
   const WORDS = {"attorney general": "tag:office-attorney-general", "ai": "tag:artificial-intelligence",
                  "deepfake": "tag:artificial-intelligence", "mental health": "tag:mental-health",
-                 "gravel tax": "tag:excavation-tax", "excavation tax": "tag:excavation-tax",
+                 "gravel tax": "tag:excavation-tax", "excavation tax": "tag:excavation-tax", "earthwork": "tag:excavation-tax",
                  "weed": "topic:Cannabis", "pot": "topic:Cannabis"};
   const META_T = {terms: ["2025-2026"], committee_codes: {}, topics: ["Cannabis", "Crimes", "Health"],
                   tags: TAGS, tag_words: WORDS};
@@ -10126,7 +10126,9 @@ _TAGS_HARNESS = r"""
     {id: "HB4", n: "HB 4", year: 2025, term: "2025-2026", title: "relative to the attorney general",
      topic: "Crimes", committee: "House Judiciary"},
     {id: "HB5", n: "HB 5", year: 2025, term: "2025-2026", title: "relative to removal of earth", topic: "Health",
-     tags: [3], committee: "House Ways and Means"}];
+     tags: [3], committee: "House Ways and Means"},
+    {id: "HB6", n: "HB 6", year: 2025, term: "2025-2026", title: "relative to earthworkmanship standards",
+     topic: "Health", committee: "House Commerce"}];
   ROWS.forEach(b => { b.hayT = norm([b.id, b.n, b.title].join(" ")); b.hayC = norm(b.committee); });
   const group = (h, k) => { const i = h.indexOf('data-g="' + k + '"'); if (i < 0) return null;
     const j = h.indexOf('<div class="fgroup', i); return h.slice(i, j < 0 ? undefined : j); };
@@ -10258,8 +10260,10 @@ def _tags_in_search(BP):
     reading (groupsFor, matches, whyListed, sortRows, searchHint, billOffers): "weed" lists the bill filed under
     Cannabis, and says so as a topic is said; "gravel tax" the bill tagged Excavation tax whose title says "removal
     of earth"; "attorney general", one phrase, the bill whose title says it first and the two tagged bills after
-    it, their cards saying nothing of the tag and the line under the box no word that led there; "regulating ai"
-    the tagged bill whose title has the other word, and no other. The offers say "All bills tagged Attorney
+    it, their cards saying nothing of the tag and the line under the box no word that led there; "earthwork" the
+    bill whose title has a longer word it begins before the tagged one, as a bill the table found comes after
+    every bill with the reader's own word; and a tag's word stands for the whole search only -- "earthwork
+    removal" and "ai commerce" list nothing, where the title had the other word. The offers say "All bills tagged Attorney
     General" and "All bills with the topic Cannabis", counted. With no tags in meta.json none of these finds more
     than the words do. And billmatch.js published with tags hands find.js setTagWords, after which the header
     search reads "gravel tax" as the tag's phrase."""
@@ -10272,7 +10276,8 @@ def _tags_in_search(BP):
             hint: scope.searchHint(gs, ROWS)}; };
   out.off = {weed: run("weed").ids, ag: run("attorney general").ids, gravel: run("gravel tax").ids};
   scope.setTagWords(TAGS, WORDS);
-  for (const q of ["weed", "gravel tax", "attorney general", "regulating ai", "ai", "excavat", "ai commerce"])
+  for (const q of ["weed", "gravel tax", "attorney general", "earthwork", "earthwork removal", "ai", "excavat",
+                   "ai commerce"])
     out[q] = run(q);
   const offer = q => scope.billOffers(q).map(o => [o.key, o.v, o.n, o.html]);
   out.offAg = offer("attorney general"); out.offWeed = offer("weed"); out.offExc = offer("excavat");
@@ -10288,11 +10293,14 @@ def _tags_in_search(BP):
     assert ag["ids"] == ["HB4", "HB1", "HB3"], f"'attorney general' lists {ag['ids']}: the title's first, then the tag's"
     assert ag["why"] == [] and not re.search(r"attorney|tag", ag["hint"], re.I), (
         f"a card or the line under the box says what led to a tag: {ag['why']} / {ag['hint']!r}")
-    assert got["regulating ai"]["ids"] == ["HB3"], f"'regulating ai': {got['regulating ai']['ids']}"
+    assert got["earthwork"]["ids"] == ["HB6", "HB5"], (
+        f"'earthwork' lists {got['earthwork']['ids']}: the reader's own word first, then the tag's bill")
+    assert got["earthwork removal"]["ids"] == [], (
+        f"'earthwork removal' lists {got['earthwork removal']['ids']}: a tag's word stands for the whole search only")
     assert got["ai"]["ids"] == ["HB3"], f"'ai': {got['ai']['ids']}"
     assert got["excavat"]["ids"] == [], f"the start of a tag's word lists its bills: {got['excavat']['ids']}"
     assert got["ai commerce"]["ids"] == [], (
-        f"'ai commerce' lists {got['ai commerce']['ids']}: a tag stands for a word only where the title has the rest")
+        f"'ai commerce' lists {got['ai commerce']['ids']}: a tag's word stands for the whole search only")
     assert got["off"] == {"weed": [], "ag": ["HB4"], "gravel": []}, f"with no tags the words find {got['off']}"
     assert ["tag", "office-attorney-general", 2, "All bills tagged <b>Attorney General</b>"] in got["offAg"], (
         f"'attorney general' offers {got['offAg']}")

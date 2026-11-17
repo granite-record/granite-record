@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.13
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -2538,14 +2538,19 @@ done();
 """
 
 
-def _search_cases_node(BP, idx_files=(), text_at="tests/search_index.json"):
-    """tests/search_cases.json through the cut matcher: what the script found."""
+def _search_cases_node(BP, idx_files=(), text_at="tests/search_index.json", tags=None):
+    """tests/search_cases.json through the cut matcher: what the script found.
+    `tags`, a meta.json that lists tags, runs it as a site with those tags
+    publishes it: with its TAGS regions, handed the tags and their words."""
     app = _source("src/pages/app.js")
     try:
-        matcher = BP.bill_matcher_js(app)
+        matcher = BP.bill_matcher_js(app, tags=bool(tags))
     except SystemExit as e:
         raise AssertionError(f"build_pages cannot cut the matcher out of "
                              f"app.js: {e}")
+    if tags:
+        matcher += (f"\nwindow.GR_BILLMATCH.setTagWords({json.dumps(tags.get('tags') or [])},"
+                    f"{json.dumps(tags.get('tag_words') or {})});\n")
     # The header's copy hands back the functions it calls. The table and the
     # pattern a term is matched with are read from the same script, by the
     # same line.
@@ -2754,7 +2759,18 @@ def _search_cases_real(BP):
                         "(build_search_index.py writes it)")
     others = sorted(f for f in own.parent.glob("*.json")
                     if re.fullmatch(r"\d{4}-\d{4}", f.stem) and f != own)
-    got = _search_cases_node(BP, [own, *others], "site/sidx")
+    # WITH THE SITE'S TAGS WHERE IT HAS THEM (17 November 2026): a tag's words
+    # list its bills on /bills (app.js tagGroups), so the cases are asked of the
+    # search as the site publishes it. Measured that day on the cases' own 426
+    # bills, Draft 7 of the registry as it stood broke ten of them -- a bill a
+    # search must never list ("right to work", "vaccine mandate", "birth
+    # control") and four pairs of sides' words that would list different bills
+    # -- so the registry is to be put right before it is put in force, and this
+    # is where it would be seen.
+    meta_ = json.loads(Path("site/meta.json").read_text(encoding="utf-8")) \
+        if Path("site/meta.json").exists() else {}
+    got = _search_cases_node(BP, [own, *others], "site/sidx",
+                             tags=meta_ if meta_.get("tags") else None)
     assert not got["fails"], "search, on the real index: " + _search_cases_said(got["fails"])
     assert not got["whole"] or (got["across"] >= 11 and got["apart"] >= 4), (
         f"over every term, {got['across']} searches were held to bills of "
