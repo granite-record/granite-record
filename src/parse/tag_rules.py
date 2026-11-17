@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.8
+# GRANITE_VERSION: 2026-11-12.9
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
@@ -44,9 +44,32 @@ THE RULE, by what each kind of evidence may claim (design 2.3):
                          ("CHAPTER 76-A INCOME TAX", "[Art.] 5-c [Income Tax
                          Prohibited.]"): for a tag that is about one provision of
                          law and not about words, which may have no other tier
+    duties            R  an office the bill gives a duty or a power: a phrase that
+                         ends the subject of a "shall" or a "may" in the title or
+                         the text ("the attorney general shall"), or the one a
+                         title or analysis "requires", "authorizes" or "directs"
+                         to act; `not` phrases are blanked from what was found
+                         first ("shall print the question", every CACR's)
 
 The committee and the full text NEVER attach a tag, but for what the text says it
-amends: the chapters, and the headings of the chapters and articles it writes.
+amends -- the chapters, and the headings of the chapters and articles it writes --
+and whom it gives a duty or a power.
+
+THE DUTIES (17 Nov 2026, the owner: "having tags for the position like attorney
+general, secretary of state, governor, etc for positions that are referenced in
+the bill text like an obligation that the role must do"). A bill that merely
+names an office is not about it; one whose text says "the secretary of state
+shall" or "may" gives that office something to do. duties() reads each "shall"
+and "may" (lower case: "May" is a month) back to the start of its clause, sets
+aside an aside between commas (", with the consent of the council,") and a
+designee, keeps the last six words of the subject and the four words after the
+verb, and says nothing where the office is the object of the verb ("shall be
+appointed", "shall be subject to"). A subject joined by "and" is read whole and
+in its parts, so "the governor and council may" gives both. The drafters'
+"requires the secretary of state to", "authorizing the governor to" in a title
+or an analysis count as a "shall" and a "may". The text kept is what the bill
+prints, amended sections in full, so an office's duty restated beside the change
+counts too: the owner's "referenced in the bill text".
 
 THE PROVISIONS (17 Nov 2026, the owner: a state income tax tag "only for bills
 that change that particular provision of law -- whether adding an income tax or
@@ -233,6 +256,85 @@ def provisions(text):
     return list(dict.fromkeys(out))
 
 
+# THE DUTIES (in the docstring). A "shall" or "may" in lower case, or "is required to" and its kind; what a
+# title or an analysis "requires" or "authorizes" someone to do; an aside between commas and a designee before
+# the verb; a verb whose subject is acted on rather than acting ("shall be appointed", "shall be subject to"),
+# but for the passives that give a duty or a power ("shall be responsible for", "shall be authorized to").
+_MODAL = re.compile(r"(?<![A-Za-z])(?:(shall|may)|(?:is|are)\s+(?:hereby\s+)?(required|directed|authorized|permitted|"
+                    r"allowed|empowered)\s+to)(?![A-Za-z])")
+_GRANT = re.compile(r"(?<![A-Za-z])(requir(?:e|es|ed|ing)|direct(?:s|ed|ing)?|authoriz(?:e|es|ed|ing)|"
+                    r"permit(?:s|ted|ting)?|allow(?:s|ed|ing)?|enabl(?:e|es|ed|ing)|empower(?:s|ed|ing)?)\s+"
+                    r"((?:the|a|an|each|every|any|all|town|city|county|state)\s[^.;:,()]{1,80}?)\s+to\s+(?!the\s)[a-z]",
+                    re.I)
+_MAY = {"authorized", "permitted", "allowed", "empowered", "authoriz", "permit", "allow", "enabl", "empower"}
+_PASSIVE = re.compile(r"\s*(?:not\s+)?be\s+(?:(?!responsible|authorized|empowered|required|permitted|allowed|"
+                      r"directed|entitled)[a-z]+(?:ed|en)|subject|liable|guilty|deemed|exempt|eligible)(?![a-z])")
+_CLAUSE = re.compile(r"[.;:!?()\[\]\"“”]")
+_ASIDE = re.compile(r"\s*,[^,]{1,100},\s*$")
+_DESIGNEE = re.compile(r",?\s*(?:or|and)\s+(?:(?:his or her|his|her|its|their|the)\s+)?(?:designees?|delegates?|"
+                       r"deputy|deputies|agents?)\s*,?\s*$", re.I)
+# A word after which an office is the object of a phrase, not the subject: "a report to the governor shall".
+# "of" is not one: "secretary of state", "register of deeds", "commissioner of the department of safety".
+_PREPOSITIONS = {"to", "by", "with", "from", "for", "upon", "on", "at", "under", "in", "into", "against", "about",
+                 "than", "through", "within", "without", "before", "after", "between", "among", "whom", "which",
+                 "who", "that", "whether", "if", "when", "unless"}
+
+
+def _subject(before):
+    """The subject a "shall" or "may" ends, from the words `before` it: its last six, lower case, after the
+    clause boundary, the asides and the designee are set aside, and before any preposition that would make an
+    office its object ("" where none is left)."""
+    w = " ".join(_CLAUSE.split(before)[-1].split())
+    while True:
+        cut = _ASIDE.sub("", _DESIGNEE.sub("", w))
+        if cut == w:
+            break
+        w = cut
+    words = w.rsplit(",", 1)[-1].split()
+    at = [i for i, x in enumerate(words) if x.lower() in _PREPOSITIONS]
+    if at:
+        words = words[:at[0]] if at[0] else words[at[-1] + 1:]
+    return " ".join(words[-6:]).lower()
+
+
+def _parts(subject):
+    """A subject whole and, where "and" or "or" joins it, each part: "the governor and council" gives itself,
+    "the governor" and "council"."""
+    parts = [p.strip() for p in re.split(r"\s+(?:and/or|and|or)\s+", subject) if p.strip()]
+    return [subject] + (parts if len(parts) > 1 else [])
+
+
+def duties(text):
+    """Whom a bill gives a duty or a power, in its order: "the attorney general shall investigate any alleged
+    violation", "the governor and council may", each a subject, its verb ("shall" or "may") and the four words
+    after it (THE DUTIES, in the docstring). [] for a text that gives none."""
+    t = " ".join((text or "").split())
+    out = []
+    for m in _MODAL.finditer(t):
+        after = t[m.end():m.end() + 60]
+        if m.group(1) and _PASSIVE.match(after):
+            continue
+        verb = m.group(1) or ("may" if m.group(2) in _MAY else "shall")
+        subject = _subject(t[max(0, m.start() - 200):m.start()])
+        if not subject:
+            continue
+        tail = " ".join(re.split(r"[,.;:!?()\[\]]", after)[0].split()[:4]).lower()
+        out += [f"{s} {verb} {tail}".rstrip() for s in _parts(subject)]
+    for m in _GRANT.finditer(t):
+        verb = "may" if any(m.group(1).lower().startswith(k) for k in _MAY) else "shall"
+        subject = " ".join(m.group(2).split()[-6:]).lower()
+        out += [f"{s} {verb}" for s in _parts(subject)]
+    return list(dict.fromkeys(out))
+
+
+def duty_phrase(p):
+    """A registry's duty phrase as a regular expression: the phrase ending the subject of a "shall" or a
+    "may" in one of duties()'s answers ("attorney general" finds "the attorney general shall", and never "a
+    report to the attorney general shall", which duties() does not give)."""
+    rx = compile_phrase(p)
+    return re.compile(rx.pattern + r"\s+(?:shall|may)(?![A-Za-z])", rx.flags)
+
+
 class Rule:
     """One tag's compiled rule."""
 
@@ -252,6 +354,7 @@ class Rule:
         self.nots = [compile_phrase(p) for p in r.get("not", [])]
         self.not_bill = [compile_phrase(p) for p in r.get("not_bill", [])]
         self.provisions = [(p, compile_phrase(p)) for p in r.get("provisions", [])]
+        self.duties = [(p, duty_phrase(p)) for p in r.get("duties", [])]
         self.same_as_topic = {t.strip().lower() for t in entry.get("same_as_topic", [])}
         hand = entry.get("hand") or {}
         self.attach = dict(hand.get("attach") or {})
@@ -294,6 +397,11 @@ class Rule:
             hit = next((h for h in bill.get("provisions") or [] for _p, rx in self.provisions if rx.search(h)), None)
             if hit:
                 out["R"] = f"R:{hit}"
+        if "R" not in out and self.duties:
+            hit = next((m.group(0) for d in bill.get("duties") or [] for _p, rx in self.duties
+                        for m in [rx.search(self.blank(d))] if m), None)
+            if hit:
+                out["R"] = f"R:{hit.strip()}"
         support = [c for c in chapters if any(chapter_matches(r, c) for r in self.support)]
         return out, support
 
@@ -408,10 +516,10 @@ def validate(reg, topics=None, synonyms=None):
                 bad.append(f"{tid}: the definition carries {w!r}, which argues")
         r = e.get("rule")
         if not isinstance(r, dict) or not (r.get("title") or r.get("analysis") or r.get("chapters_alone")
-                                           or r.get("provisions")):
-            bad.append(f"{tid}: a rule needs a title, analysis, chapters_alone or provisions list")
+                                           or r.get("provisions") or r.get("duties")):
+            bad.append(f"{tid}: a rule needs a title, analysis, chapters_alone, provisions or duties list")
             continue
-        for key in ("title", "analysis", "not", "not_bill", "provisions"):
+        for key in ("title", "analysis", "not", "not_bill", "provisions", "duties"):
             for p in r.get(key, []):
                 try:
                     compile_phrase(p)
@@ -497,7 +605,7 @@ def tag_bill(rules, bill, topic=None):
 
 def load_bills(root=None):
     """Every bill of every term as the engine reads it, newest term first:
-    {term, bill, title, analysis, chapters, topic, provisions}. From data/bills.json, the two
+    {term, bill, title, analysis, chapters, topic, provisions, duties}. From data/bills.json, the two
     text files (bill_text.json wins over archive_text.json, as topic_model reads
     them) and topics_assigned.json; the analysis and the chapters the bill amends
     are found as topic_model finds them."""
@@ -518,7 +626,7 @@ def load_bills(root=None):
             topic = rec.get("subject") or (assigned.get(term, {}).get(bid) or {}).get("subject") or ""
             out.append({"term": term, "bill": bid, "title": title, "analysis": TM.analysis_of(text).strip(),
                         "chapters": sorted(norm_chapter(c) for c in ch), "topic": topic,
-                        "provisions": provisions(text)})
+                        "provisions": provisions(text), "duties": duties(f"{title}. {text}")})
     return out
 
 
@@ -553,6 +661,8 @@ def explain(rules, bill):
     print(f"  chapters: {', '.join(bill['chapters']) or '-'}")
     if bill.get("provisions"):
         print(f"  writes:   {'; '.join(bill['provisions'])}")
+    if bill.get("duties"):
+        print(f"  duties:   {'; '.join(bill['duties'][:12])}" + (" ..." if len(bill["duties"]) > 12 else ""))
     for tid, v in r["tags"].items():
         print(f"  TAG {tid:30} {v['tier']}  {v['why']}   (fired: {', '.join(v['fired'])})")
     for tid, why in r["dropped"].items():

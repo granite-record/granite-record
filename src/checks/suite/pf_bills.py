@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -10304,3 +10304,87 @@ def _tag_provisions(TR):
         "tags"], "a chapter that is no income tax attached"
     return "ok", ("a new chapter's heading, a constitution article's with its Part, nothing for an amended section; "
                   "a provisions rule attaches by the heading and never by the title's words")
+
+
+@check("code", "an office's tag can rest on a duty or a power the bill gives the office -- \"the attorney general "
+               "shall\", \"requiring the secretary of state to\" -- and never on a mention of it",
+       needs=("tag_rules",))
+def _tag_duties(TR):
+    """tag_rules.duties (17 November 2026; the owner: tags "for the position like attorney general, secretary
+    of state, governor, etc for positions that are referenced in the bill text like an obligation that the role
+    must do"). On the real wording of bills' texts: the subject of a "shall" or a "may" back to its clause, an
+    aside between commas and a designee set aside (2025-2026 SB 627's commissioner acts "with the approval of
+    the governor and council", which gives the governor nothing); an office that is acted on gives nothing
+    ("shall be subject to", "may be removed"), nor one after a preposition ("the commission after consultation
+    with the attorney general may"); "and" read whole and in parts; the drafters' "requiring the secretary of
+    state to" and "is hereby authorized to"; load_bills carries them. A rule of duties alone is well formed and
+    attaches as R by the duty; the same title and analysis with no duty attach nothing; a `not` phrase blanks
+    every CACR's "the secretary of state shall print the question"."""
+    d = TR.duties
+    assert d("Upon receipt of a properly completed election law complaint form, the attorney general may "
+             "investigate the complaint") == ["the attorney general may investigate the complaint"], "2025-2026 HB 1462"
+    sb627 = d("I. The commissioner of transportation, with the approval of the governor and council, shall establish "
+              "toll rates")
+    assert sb627 == ["the commissioner of transportation shall establish toll rates"], sb627
+    assert d("657:30 Voter Notification and Education. I. The secretary of state shall notify all registered") == [
+        "the secretary of state shall notify all registered"], "2025-2026 HB 1382"
+    assert d("II. An intentional violation of this section in connection with a filing with the secretary of state "
+             "shall be subject to a penalty") == [], "an office acted on, 2025-2026 HB 406"
+    assert d("Any member appointed by the governor with the consent of the executive council may be removed from "
+             "office") == [], "2025-2026 SB 302"
+    assert d("Notwithstanding the provisions of RSA 181:15, the commission after consultation with the attorney "
+             "general may in its discretion") == ["the commission may in its discretion"], "a preposition's object"
+    hb639 = d("II. The governor, with the consent of the executive council, may appoint the first presiding judge")
+    assert hb639 == ["the governor may appoint the first presiding"], hb639
+    both = d("such terms and conditions as the authority and the governor and council may impose")
+    assert {"the governor may impose", "council may impose", "authority and the governor and council may impose"} <= \
+        set(both), both
+    assert d("AN ACT requiring the secretary of state to create and maintain a uniform") == [
+        "the secretary of state shall"], "2025-2026 HB 1163's title"
+    assert d("The attorney general is hereby authorized to hire an assistant attorney general") == [
+        "the attorney general may hire an assistant attorney"], "is hereby authorized to"
+    assert d("The commissioner or designee shall approve or disapprove of the") == [
+        "the commissioner shall approve or disapprove of"], "a designee, 2025-2026"
+    assert d("3 Effective Date. This act shall take effect May 1, 2026.") == ["this act shall take effect may 1"], (
+        "the month of May read as a may")
+    assert d("the attorney general's office") == [] and d("") == [], "a mention read as a duty"
+    reg = {"office-attorney-general": {"name": "Attorney General", "definition": "Bills that give the attorney "
+                                       "general a duty or a power.", "rule": {"duties": ["attorney general"]}},
+           "office-secretary-of-state": {"name": "Secretary of State", "definition": "Bills that give the secretary "
+                                         "of state a duty or a power.",
+                                         "rule": {"duties": ["secretary of state"],
+                                                  "not": ["shall print the question"]}}}
+    assert not TR.validate(reg), TR.validate(reg)
+    assert TR.validate({"x": {"name": "X", "definition": "Bills.", "rule": {"duties": ["re:("]}}}), (
+        "a duties phrase that does not compile passed")
+    rules = TR.compile_registry(reg)
+
+    def tags(title, analysis, text):
+        b = {"term": "t", "bill": "HB9", "title": title, "analysis": analysis, "chapters": [],
+             "duties": d(f"{title}. {text}")}
+        return {k: v["why"] for k, v in TR.tag_bill(rules, b)["tags"].items()}
+    assert tags("relative to election law complaints.", "This bill involves the attorney general.",
+                "Upon receipt of a complaint form, the attorney general may investigate the complaint") == {
+        "office-attorney-general": "R:attorney general may"}
+    assert tags("relative to the attorney general.", "This bill names the attorney general and the secretary of "
+                "state.", "The commission after consultation with the attorney general may act.") == {}, (
+        "a mention attached an office")
+    assert tags("relative to cannabis.", "", "V. That the secretary of state shall print the question to be "
+                "submitted to the voters") == {}, "every CACR's boilerplate gave the secretary of state a tag"
+    assert tags("requiring the secretary of state to create a uniform form.", "", "") == {
+        "office-secretary-of-state": "R:secretary of state shall"}
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "data").mkdir()
+        (root / "data" / "bills.json").write_text(json.dumps({"2025-2026": {"HB1462": {
+            "title": "relative to election law complaints."}}}), encoding="utf-8")
+        (root / "bill_text.json").write_text(json.dumps({"2025-2026": {"HB1462": {
+            "text": "1 New Section. Upon receipt of a properly completed election law complaint form, the attorney "
+                    "general may investigate the complaint."}}}), encoding="utf-8")
+        got = TR.load_bills(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got and got[0].get("duties") == ["the attorney general may investigate the complaint"], got
+    return "ok", ("a duty's subject read to its clause, asides, designees, objects and passives set aside, parts of "
+                  "an \"and\", the drafters' \"requiring ... to\"; a duties rule attaches by the duty, never by a "
+                  "mention, and load_bills carries them")
