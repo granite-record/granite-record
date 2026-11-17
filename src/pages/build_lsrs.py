@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.22
+# GRANITE_VERSION: 2026-09-18.23
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -118,7 +118,7 @@ def _fold(s):
     return re.sub(r"[^a-z]", "", str(s or "").lower())
 
 
-def roster(site):
+def roster(site, collected="collected"):
     """{folded name: (label, slug)} for the sitting members.
 
     The source names a sponsor "Ellen Read" and nothing more. The roster has
@@ -165,7 +165,42 @@ def roster(site):
             party = f" ({p['party']})" if p.get("party") else ""
             out[key] = None if (key in out or key in gone) else (
                 f"{p.get('name')}{party}", p.get("slug"), p.get("chamber"))
+    # AND, ONCE THE ROSTER IS THE NEW TERM'S, THE MEMBERS OF THE TERM BEFORE
+    # WHO ARE NOT ON IT (departed; the rehearsal of 17 November 2026). Their
+    # requests were the old roster's to match until the New term run; after
+    # it the roster no longer has them, a withdrawn request of theirs matched
+    # nobody, and not_returning, which decides by slug, kept it as
+    # "Withdrawn". Matched as a sitting member is -- the same folded name, and
+    # nobody else of it -- and drawn by name and party, never the seat they
+    # left (person_chip's rule for a former member). A name a sitting member
+    # or a member-elect already has is theirs, as it was before the turn.
+    seen = set()
+    for m in departed(site, collected):
+        key = _fold(first_last(m.get("name")))
+        if not key or key in out and key not in seen:
+            continue
+        party = f" ({m['party_code']})" if len(str(m.get("party_code") or "")) == 1 else ""
+        out[key] = None if key in seen else (f"{first_last(m.get('name'))}{party}", m.get("slug"))
+        seen.add(key)
     return out
+
+
+def departed(site, collected="collected"):
+    """The members of the term the newest election ended who are not on the
+    roster, once the roster is the new term's (election_races says when):
+    site/former.json's rows whose record holds that term, each with its page.
+    [] before the turn, or where no results say which term is coming."""
+    _races, turned, term, _why = election_races(site, collected)
+    if not turned:
+        return []
+    import build_members_elect as BME
+    before = BME.term_before(term)
+    fj, lp = site / "former.json", site / "legislators.json"
+    sitting = {m.get("slug") for m in (json.loads(lp.read_text(encoding="utf-8"))
+                                       if lp.exists() else [])}
+    return [m for m in (json.loads(fj.read_text(encoding="utf-8")) if fj.exists() else [])
+            if m.get("slug") and m["slug"] not in sitting
+            and before in ((m.get("served") or {}).get("terms") or [])]
 
 
 # "Rep. " or "Sen. " before a name, which a label carries and a name does not.
@@ -366,7 +401,11 @@ def load_winners(site, collected):
         f = Path(site) / n
         return json.loads(f.read_text(encoding="utf-8")) if f.exists() else default
     people = (rd("legislators.json", []) or []) + (rd("former.json", []) or [])
-    ws = election_winners(results, (rd("members_elect.json", {}) or {}).get("races") or {},
+    # The races as the members-elect file has them, and from Organization Day,
+    # when it retires, as election_races works them out again: a winner the
+    # file linked keeps that link on 2 December.
+    drawn, _turned, _term, _why = election_races(site, collected)
+    ws = election_winners(results, drawn or {},
                           (rd("elect_pages.json", {}) or {}).get("pages") or [], people)
     return ws, f"{len(ws)} winners of {path.name} to match a sponsor to, where the roster has nobody"
 
@@ -746,7 +785,57 @@ def retire(rows, year, today):
     return n
 
 
-def not_returning(site):
+def election_races(site, collected="collected", hand_path=None):
+    """(races, turned, term, why) for the newest general election: its races
+    as the members-elect step draws them ("races" of site/members_elect.json),
+    whether the roster is the term it elected, that term, and what to say
+    where it cannot be read.
+
+    THE FILE RETIRES ON ORGANIZATION DAY (the rehearsal of 17 November 2026).
+    members_elect.json is written only until 2 December 2026, and the night
+    of 2 December brought back every withdrawn request of a member not
+    returning as "Withdrawn", against the owner's rule of 12 November
+    (not_returning). So while the file is there its races are read; from
+    Organization Day, while the roster is still the term the election ended,
+    the same races are worked out again from the same results, hand file and
+    roster (build_members_elect.members_elect, as build_elect_pages calls it
+    outside the window); and once the roster is the new term's (site/
+    meta.json's newest term is the results' own) there are none to read --
+    `turned`, and the roster itself says who came back (departed)."""
+    import build_date
+    import build_members_elect as BME
+    site = Path(site)
+
+    def rd(name, default):
+        p = site / name
+        return json.loads(p.read_text(encoding="utf-8")) if p.is_file() else default
+    try:
+        path = BME.newest_results(collected)
+        results = BME.read_results(path) if path else None
+        term = str((results or {}).get("term") or "")
+        terms = (rd("meta.json", {}) or {}).get("terms") or []
+        if term and terms and terms[0] == term:
+            return None, True, term, ""
+        if (site / "members_elect.json").is_file():
+            doc = rd("members_elect.json", {}) or {}
+            return doc.get("races") or {}, False, str(doc.get("term") or term), ""
+        if not results or not terms or terms[0] != BME.term_before(term):
+            return None, False, term, ""
+        today = build_date.today()
+        if today <= datetime.date.fromisoformat(results["election"]):
+            return None, False, term, ""
+        hand, _note = BME.read_hand(Path(hand_path or BME.HAND_DEFAULT), results["election"])
+        races, _report = BME.members_elect(results, rd("legislators.json", []),
+                                           rd("former.json", []), rd("districts.json", {}),
+                                           hand, today.isoformat())
+        return races, False, term, ""
+    except (BME.Refused, OSError, ValueError, KeyError) as e:
+        return None, False, "", (f"WARNING: the newest election's races could not be read "
+                                 f"({type(e).__name__}: {e}): no withdrawn request is dropped "
+                                 "as a member's not returning")
+
+
+def not_returning(site, collected="collected", hand_path=None):
     """({slug: why}, {slug: why not decided}) for the sitting members, from
     the 2026 election's results (site/members_elect.json, build_members_elect).
 
@@ -764,11 +853,22 @@ def not_returning(site):
     flags 169 standing requests falsely (nicknames, spellings), so none is
     made here. A member whose race is not decided, or is in no race the file
     lists, is not decided: the second dict, and their requests are left as
-    they are."""
-    ep, lp = site / "members_elect.json", site / "legislators.json"
-    if not (ep.exists() and lp.exists()):
+    they are.
+
+    AND FROM ORGANIZATION DAY, WHEN THE FILE RETIRES (election_races; the
+    rehearsal of 17 November 2026): the same races, worked out again, while
+    the roster is still the term the election ended; and once the roster is
+    the new term's, each member of the term before who is not on it
+    (departed), by their page's slug -- the roster is then the record of who
+    came back, and every race is decided."""
+    lp = site / "legislators.json"
+    if not lp.exists():
         return {}, {}
-    races = (json.loads(ep.read_text(encoding="utf-8")).get("races")) or {}
+    races, turned, term, _why = election_races(site, collected, hand_path)
+    if turned:
+        return {m["slug"]: f"not on the {term} roster" for m in departed(site, collected)}, {}
+    if races is None:
+        return {}, {}
     won = {e.get("s") for r in races.values() for e in r.get("elected") or []
            if e.get("s")}
     gone, open_ = {}, {}
@@ -853,12 +953,15 @@ def main():
     winners, said = load_winners(site, a.collected)
     print(f"  {said}")
     meta0 = json.loads((site / "meta.json").read_text(encoding="utf-8")) if (site / "meta.json").exists() else {}
-    rows, unmatched = rows_from(lsrs, roster(site), became, year, winners,
+    rows, unmatched = rows_from(lsrs, roster(site, a.collected), became, year, winners,
                                 earlier_bills(site, meta0.get("terms")), days)
     assert rows, "no request survived shaping, though the source had some"
     with_sponsor_names(rows, page_names(site))
     with_topics(rows, bills)
-    gone, undecided = not_returning(site)
+    _r, turned, _t, why = election_races(site, a.collected)
+    if why:
+        print(f"  {why}")
+    gone, undecided = not_returning(site, a.collected)
     rows, dropped = drop_unreturned(rows, gone)
     assert rows, "every request was dropped as a not-returning member's"
     import build_date
@@ -915,7 +1018,9 @@ def main():
               "the list, found by either name: " + ", ".join(who[:6]) + (" ..." if len(who) > 6 else ""))
     if dropped:
         print(f"  {len(dropped)} withdrawn request(s) of members not returning dropped, "
-              "forwarding to the list: " + ", ".join(r["n"] for r in dropped))
+              "forwarding to the list"
+              + (" (the roster says who came back)" if turned else "")
+              + ": " + ", ".join(r["n"] for r in dropped))
     stuck = [r["n"] for r in rows if r["withdrawn"] and not r["sponsor_slug"]]
     stuck += [r["n"] for r in rows if r["withdrawn"] and r["sponsor_slug"] in undecided]
     if stuck:

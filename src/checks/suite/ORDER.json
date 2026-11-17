@@ -318,6 +318,7 @@
 "_request_page_summary",
 "_request_sponsor_winner",
 "_requests_not_returning",
+"_requests_not_returning_from_organization_day",
 "_lsr_sponsors_split",
 "_lsr_sponsor_names_are_names",
 "_elect_provisional",
