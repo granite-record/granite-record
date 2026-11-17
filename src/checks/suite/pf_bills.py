@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.10
+# GRANITE_VERSION: 2026-11-16.11
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1403,7 +1403,10 @@ def _request_pages():
     # The row's label carries no seat, as every real sitting row's does (the
     # roster's "Rep. Ellen Read (D)"); the page draws the seat from the roster.
     who = {"jodinelson": ("Rep. Jodi Nelson (R)", "jodi-nelson-rock-13")}
-    rows, _ = L.rows_from(lsrs, who, {"2027-0003": "HB 45"}, 2027)
+    # Filed as HB 45 and introduced (17 November 2026: a request filed and not
+    # yet introduced keeps its page, _request_stays_until_introduced).
+    rows, _ = L.rows_from(lsrs, who, {"2027-0003": "HB 45"}, 2027,
+                          introduced_on={"2027-0003": "2027-01-06"})
     by = {r["n"]: r for r in rows}
     assert by["LSR 2027-0001"]["address"] == "request/2027-0001" \
         and "moved_to" not in by["LSR 2027-0001"], by["LSR 2027-0001"]
@@ -8225,8 +8228,8 @@ def _request_filed_day(build_lsrs):
     Requested, which no source gives a day for. The page's rail
     (build_request_pages.rail_of) and the card's (app.js lsrCardHtml) draw
     the day under Filed and say it, and nothing under Requested. A request
-    that is a bill has no page of its own (its address forwards to the
-    bill's), so its card is where a reader sees the day."""
+    filed as a bill keeps its page until the bill is introduced
+    (_request_stays_until_introduced), so the page shows the day too."""
     import build_request_pages as RP
     L = build_lsrs
     req = lambda n, **k: {"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB", "title": f"t{n}",
@@ -8290,6 +8293,160 @@ def _request_filed_day(build_lsrs):
     return "ok", ("Filed carries the day the bill was made one on the row, the page's rail and the "
                   "card, and none where the bill gives none or another term's bill shares the "
                   "number; Requested is never dated")
+
+
+@check("build", "a bill request stays a request until its bill is introduced: filed, it keeps its page and "
+       "card, says the bill it was filed as and follows it, and has a Bill Text tab once the night has read "
+       "its text, which its file in the data API carries; introduced, it reads Introduced and forwards",
+       needs=("build_lsrs", "build_request_pages", "build_pages", "api_records"))
+def _request_stays_until_introduced(L, RP, BPG, AR):
+    """The owner, 17 November 2026: "Officially LSRs do not become bills until the first session in
+    January when they are introduced and referred to committees ... the bill text shows as a PDF on
+    the lsr search page along with the co-sponsors". Until then a request forwarded to its bill's page
+    the night its bill was on file, weeks before the bill was introduced, and no text of a request
+    reached the site. Held on build_lsrs.py run as the build runs it, two nights of a fixture:
+
+      - 20 December 2026: HB 45, made a bill on 19 December, its own rail's Introduced stop dated 6
+        January 2027, is Filed, keeps its page, which says "Filed As HB 45" linked to the bill's page
+        and follows bill:2027/HB45; SB 7, whose rail has an undated Introduced (a "To Be Introduced"
+        plan), is Filed; a request whose text the list links and the night has read is Filed, with a
+        Bill Text tab after the Summary holding the text with its margin off, said to be read by
+        machine, the PDF linked, and the text in its API file and not in its row; one filed and not
+        read says so; meta.json counts none introduced;
+      - 7 January 2027: HB 45's request reads Introduced, its rail's last stop reached and dated 6
+        January, its page gone and its address a 301 to the bill's; SB 7's is still Filed.
+
+    And the card, in node: the same tabs, the text fetched once from the request's API file, and the
+    bill it was filed as on its Summary."""
+    import contextlib
+    import io
+    tmp = Path(tempfile.mkdtemp(prefix="gr-request-stays-"))
+    saved = L.REQUEST_TEXTS
+    pdf = "https://gc.nh.gov/x/2027-0003.pdf"
+    req = lambda n, **k: {"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB", "title": f"relative to {n}.",
+                          "sponsor": "Ann Lee", "cosponsors": [], "withdrawn": False, **k}
+
+    def night(day):
+        r = _sealed_run([sys.executable, _paths.script("build_lsrs.py"), "--site", "site"], cwd=str(tmp),
+                        capture_output=True, text=True, timeout=120,
+                        env=dict(os.environ, GRANITE_BUILD_DATE=day))
+        assert r.returncode == 0, (r.stderr or r.stdout)[-400:]
+        rows = json.loads((tmp / "site" / "idx" / "2027-requests.json").read_text(encoding="utf-8"))
+        meta = json.loads((tmp / "site" / "meta.json").read_text(encoding="utf-8"))["requests"]
+        return {x["n"]: x for x in rows}, meta, r.stdout
+
+    def stops(x):
+        return [(s["stop"], s["mark"], s.get("date")) for s in x["rail"]]
+    try:
+        site = tmp / "site"
+        (site / "idx").mkdir(parents=True)
+        (tmp / "data").mkdir()
+        (tmp / "archive" / "lsr_text").mkdir(parents=True)
+        (site / "meta.json").write_text(json.dumps({"terms": ["2027-2028", "2025-2026"]}), encoding="utf-8")
+        (site / "idx" / "2027-2028.json").write_text(json.dumps([
+            {"id": "HB45", "rail": [["Ip", "2027-01-06"], ["Ho"]]}, {"id": "SB7", "rail": [["Ip"], ["So"]]}]),
+            encoding="utf-8")
+        (tmp / "data" / "bills.json").write_text(json.dumps({"2027-2028": {
+            "HB45": {"lsr_year": "2027", "lsr_num": "1", "made_bill": "2026-12-19"},
+            "SB7": {"lsr_year": "2027", "lsr_num": "2"}}}), encoding="utf-8")
+        (tmp / "lsrs.json").write_text(json.dumps([req(1), req(2, body="SB"), req(3, text_pdf=pdf), req(4),
+                                                   req(5, text_pdf=pdf.replace("0003", "0005"))]),
+                                       encoding="utf-8")
+        (tmp / "archive" / "lsr_text" / "2027-0003.txt").write_text(
+            "      HB 1 - AS INTRODUCED\n\n\n      AN ACT relative to 3.\f\n      1 Section one.   \n",
+            encoding="utf-8")
+        by, meta, said = night("2026-12-20")
+        one, two, three, four, five = (by[f"LSR 2027-000{i}"] for i in (1, 2, 3, 4, 5))
+        assert one["status"] == "Filed" and "moved_to" not in one and one.get("introduced") == "HB 45" \
+            and one.get("bill_at") == "bill/2027/hb45" and stops(one) == [
+                ("Requested", "p", None), ("Filed", "p", "2026-12-19"), ("Introduced", "-", None)], (
+            f"a request filed as HB 45 and not yet introduced: {one}")
+        assert two["status"] == "Filed" and "moved_to" not in two and "introduced_on" not in two, (
+            f"a bill whose introduction is only planned forwarded its request: {two}")
+        assert three["status"] == "Filed" and three.get("filed") is True and three.get("text_pdf") == pdf \
+            and three.get("text_on_file") is True and stops(three)[1] == ("Filed", "p", None), three
+        assert five["status"] == "Filed" and "text_on_file" not in five, five
+        assert four["status"] == "Requested" and "text_on_file" not in four and "text_pdf" not in four, four
+        assert meta.get("introduced") == 0, meta
+        text = L.request_text("2027-0003", tmp / "archive" / "lsr_text")
+        assert text == "HB 1 - AS INTRODUCED\n\nAN ACT relative to 3.\n\n1 Section one.", repr(text)
+        # The pages, the text read where the night put it.
+        L.REQUEST_TEXTS = tmp / "archive" / "lsr_text"
+        (site / "bills.html").write_text(_source("src/pages/bills.html"), encoding="utf-8")
+        req_meta = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027}
+        (site / "meta.json").write_text(json.dumps({"terms": ["2027-2028"], "requests": req_meta}),
+                                        encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            n, _gone, moved = RP.write(site, "https://x")
+        assert n == 5 and moved == 0, (n, moved)
+        page = lambda k: (site / "request" / f"2027-000{k}.html").read_text(encoding="utf-8")
+        tabs = lambda html: re.findall(r'<button[^>]*role="tab"[^>]*>([^<]*)<', html)
+        p1, p3, p5 = page(1), page(3), page(5)
+        assert '<dt>Filed As</dt><dd><a href="bill/2027/hb45">HB 45</a></dd>' in p1 \
+            and 'window.GR_FOLLOW="bill:2027/HB45";' in p1, "a filed request's page does not say its bill"
+        assert tabs(p3) == ["Summary", "Bill Text"] and 'id="pane_LSR20270003_6"' in p3 \
+            and '<pre class="vtext" translate="no">HB 1 - AS INTRODUCED\n\nAN ACT relative to 3.' in p3 \
+            and "read by machine" in p3 and f'href="{pdf}"' in p3 and "Not public yet" not in p3, (
+            f"a request whose text is in has no Bill Text tab with it: {tabs(p3)}")
+        assert tabs(p5) == ["Summary"] and "<b>Filed.</b> Its text is public, and is added here once this " \
+            "site has read it." in p5, "a filed request whose text is not read does not say so"
+        assert "Not public yet" in page(4) and 'window.GR_FOLLOW="lsr:2027-0004";' in page(4), \
+            "a request still requested lost its Summary's note or its own Follow"
+        row3, rec3 = AR.request_record(three, "2027-0003", 2027)
+        _row, rec4 = AR.request_record(four, "2027-0004", 2027)
+        assert rec3["text"] == text and rec3["text_pdf"] == pdf and "text" not in row3 \
+            and rec4["text"] is None and rec4["text_pdf"] == "", (row3, rec3, rec4)
+        # The card: the same tabs, the text fetched once from the API file, the bill it was filed as.
+        L.REQUEST_TEXTS = saved
+        # The answer arrives only when go() says, as a fetch's does later: a tab drawn again while it
+        # is on its way asks nothing more.
+        js = ("(() => { const asked = [], pend = [];"
+              " const later = () => { let cbs = [], val, done = false; const p = {then(f) {"
+              " const q = later(); cbs.push(v => q.resolve(f(v))); if (done) flush(); return q.p; },"
+              " catch() { return p; }}; const flush = () => { const c = cbs; cbs = []; c.forEach(f => f(val)); };"
+              " return {p, resolve(v) { val = v; done = true; flush(); }}; };"
+              " globalThis.fetch = u => { asked.push(u); const d = later(); pend.push(() => d.resolve({ok: true,"
+              " json: () => ({text: " + json.dumps(text) + "})})); return d.p; };"
+              " const b = " + json.dumps(three) + ";"
+              " const first = scope.lsrPane(b, '6'), again = scope.lsrPane(b, '6');"
+              " pend.splice(0).forEach(f => f());"
+              " const second = scope.lsrPane(b, '6');"
+              " return {tabs: scope.lsrTabs(b), first, again, second, asked, plain: scope.lsrTabs("
+              + json.dumps(four) + "), summary: scope.lsrPane(" + json.dumps(one) + ", '0'),"
+              " status: Object.keys(scope.REQ_STATUS)}; })()")
+        card = _app_js(js, names=("lsrPane", "lsrTabs", "REQ_STATUS"))
+        if card is not None:
+            assert card["tabs"] == [["0", "Summary", 0], ["6", "Bill Text", 0]] \
+                and card["plain"] == [["0", "Summary", 0]], card["tabs"]
+            assert "Loading the text" in card["first"] and "Loading the text" in card["again"] \
+                and len(card["asked"]) == 1 \
+                and card["asked"][0].endswith("/api/requests/2027/0003.json") \
+                and '<pre class="vtext" translate="no">HB 1 - AS INTRODUCED' in card["second"] \
+                and "read by machine" in card["second"] and pdf in card["second"], card
+            assert '<b>Filed As:</b> <a href="bill/2027/hb45">HB 45</a>' in card["summary"], card["summary"]
+            assert card["status"] == ["Requested", "Filed", "Introduced", "Withdrawn"], card["status"]
+        # Introduced: the request says so, its rail reaches the stop, and its address forwards.
+        (site / "meta.json").write_text(json.dumps({"terms": ["2027-2028", "2025-2026"]}), encoding="utf-8")
+        by, meta, said = night("2027-01-07")
+        one, two = by["LSR 2027-0001"], by["LSR 2027-0002"]
+        assert one["status"] == "Introduced" and one.get("introduced_on") == "2027-01-06" \
+            and one.get("moved_to") == "bill/2027/hb45" and stops(one)[2] == ("Introduced", "p", "2027-01-06"), one
+        assert two["status"] == "Filed" and "moved_to" not in two, two
+        assert meta.get("introduced") == 1, meta
+        (site / "meta.json").write_text(json.dumps({"terms": ["2027-2028"], "requests": req_meta}),
+                                        encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            n, gone, moved = RP.write(site, "https://x")
+        assert n == 4 and moved == 1 and gone == 1 and not (site / "request" / "2027-0001.html").exists(), \
+            (n, gone, moved)
+        assert "/request/2027-0001 /bill/2027/hb45 301\n" in BPG.moved_requests(site), BPG.moved_requests(site)
+    finally:
+        L.REQUEST_TEXTS = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("filed and not introduced: its page and card, Filed As HB 45, the bill's Follow, a Bill "
+                  "Text tab with the text read (in the API file, not the row); introduced: Introduced, "
+                  "dated, forwarding; an undated introduction is not one" + ("" if card is not None else
+                                                                             "; node not here for the card"))
 
 
 @check("build", "a bill request's status is Requested or Filed (or Withdrawn); its History is the earlier "

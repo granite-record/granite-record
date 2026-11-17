@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -147,6 +147,12 @@ def _class_collisions():
         # the bill search's picked filters (app.js alone), one flex row that
         # both want; the sponsors' row is the bill page's own use of it.
         "spcount", "sech", "sechn", "spgrp", "chosen",
+        # THE BILL TEXT TAB, a request's as a bill's (17 November 2026): the
+        # line saying what the text is and the block of a text, which app.js
+        # draws for a bill (billTextSection, renderVersions) and for a
+        # request's card (lsrTextPane), and build_request_pages for a
+        # request's own page (text_pane).
+        "btwhat", "vtext",
         # Your town's slot: a builder writes the empty box where an example
         # from the reader's own town belongs, and find.js fills it (the My
         # Town card, 14 October 2026).

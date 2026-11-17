@@ -1103,6 +1103,7 @@
 "_calendar_meetings_kept",
 "_request_became_bill",
 "_request_filed_day",
+"_request_stays_until_introduced",
 "_request_cards_like_bills",
 "_requests_year_their_own",
 "_sponsor_filing",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.13
+# GRANITE_VERSION: 2026-11-08.14
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -23,6 +23,14 @@ build_pages writes into _redirects (moved_requests). So no night leaves a
 page and a redirect at one address -- and a page an earlier night wrote for a
 request that has since moved is taken away here, as is one for a request no
 longer listed.
+
+A REQUEST STAYS A REQUEST UNTIL IT IS INTRODUCED (the owner, 17 November
+2026; build_lsrs): filed as a numbered bill, its page stays, saying the bill
+it was filed as (the row's "introduced" and "bill_at"), its Follow the
+bill's, where its follow has moved; and once the night has read its text
+("text_on_file"), a Bill Text tab shows it (text_pane), read by machine from
+the General Court's PDF, which it links. It forwards only once the bill is
+introduced.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -162,6 +170,12 @@ def head(r, req, who_of, path, base):
         facts.append(["Co-Sponsors" if len(cos) > 1 else "Co-Sponsor", " ".join(cos)])
     if r.get("body_label"):
         facts.append(["Kind", E(r["body_label"])])
+    # THE BILL IT WAS FILED AS (the owner, 17 November 2026: "Drafted and filed
+    # as HB123 sounds fine"), linked to the bill's page, while it is still a
+    # request: once introduced it forwards there.
+    if r.get("introduced"):
+        num = E(r["introduced"])
+        facts.append(["Filed As", f'<a href="{E(r["bill_at"])}">{num}</a>' if r.get("bill_at") else num])
     # THE TOPIC AS A BILL'S PAGE GIVES ITS SUBJECT (the owner, 14 November
     # 2026: "remove the topic from title label"): the name alone, under the
     # bill page's label, and none for the Miscellaneous of a request
@@ -200,10 +214,33 @@ def text_note(r, year):
     if r.get("withdrawn"):
         return ("<b>Withdrawn.</b> This request was withdrawn before it was filed as a bill, "
                 "so it has no text.")
+    # FILED, ITS TEXT NOT READ HERE YET (17 November 2026): the night reads it
+    # a few a night, and until then the Summary says where it is.
+    if (r.get("filed") or r.get("introduced")) and not r.get("text_on_file"):
+        pdf = (f' <a href="{E(r["text_pdf"])}" target="_blank" rel="noopener">The PDF at the '
+               "General Court</a>.") if r.get("text_pdf") else ""
+        return ("<b>Filed.</b> Its text is public, and is added here once this site has read it."
+                + pdf)
     if r.get("filed") or r.get("introduced"):
         return ""
     return ("<b>Not public yet.</b> This request is still being drafted into a bill. Its text "
             f"will be public when it is filed as a numbered {E(str(year))} bill.")
+
+
+def text_pane(r):
+    """THE BILL TEXT TAB, ONCE THE TEXT IS IN (the owner, 17 November 2026: "a
+    link that says View the text that shows the granite record tab once we've
+    imported the text"): what the night read off the PDF the General Court's
+    request list links (build_lsrs.request_text), in the bill page's block for
+    a text (.vtext), said to be read by machine, with the PDF itself linked."""
+    import build_lsrs
+    num = str(r.get("address") or "").rsplit("/", 1)[-1]
+    text = build_lsrs.request_text(num)
+    pdf = (f'<p class="src"><a href="{E(r["text_pdf"])}" target="_blank" rel="noopener">The PDF '
+           "at the General Court</a></p>") if r.get("text_pdf") else ""
+    return ('<p class="btwhat">The text as the General Court publishes it with this request, read '
+            "by machine from its PDF: the PDF is the document.</p>"
+            f'<pre class="vtext" translate="no">{E(text)}</pre>{pdf}')
 
 
 def summary(r, req):
@@ -279,11 +316,23 @@ def body(r, req, who_of, path, base):
     """One request's page: a bill's, with what a request has drawn and the
     rest left quiet."""
     panes = [("0", "Summary", 0, summary(r, req))]
+    # Second, as on a bill's page; keyed 6 as a bill's Bill Text tab is.
+    if r.get("text_on_file"):
+        panes.append(("6", "Bill Text", 0, text_pane(r)))
     if r.get("cosponsors"):
         panes.append(("4", "Sponsors", len(r["cosponsors"]) + 1, sponsors_pane(r, who_of)))
     if r.get("history"):
         panes.append(("7", "History", len(r["history"]), history_pane(r)))
     return head(r, req, who_of, path, base) + tabs(r.get("id") or "", path, panes)
+
+
+def follow_key(r, num):
+    """What the page's Follow follows: the request ("lsr:2027-0001") until it
+    is filed as a bill, and from then the bill it was filed as, where its
+    follow has moved (build_feeds, BILL REQUESTS) -- "bill:2027/HB45", the
+    key of the bill's page the row gives (bill_at, "bill/2027/hb45")."""
+    m = re.fullmatch(r"bill/(\d{4})/([a-z]+\d+)", str(r.get("bill_at") or ""))
+    return f"bill:{m.group(1)}/{m.group(2).upper()}" if m else f"lsr:{num}"
 
 
 def write(site, base):
@@ -316,7 +365,7 @@ def write(site, base):
         # committee's page does.
         g = {"GR_STATIC": True, "GR_REQUEST": num, "GR_REPORT": f"request:{num}"}
         if not r.get("withdrawn"):
-            g["GR_FOLLOW"] = f"lsr:{num}"
+            g["GR_FOLLOW"] = follow_key(r, num)
         page = S.page(t, path=path, base=base, title=f"{title} | Granite Record",
                       og_title=r.get("n") or "", og_image="og-bill.png",
                       og_alt="Granite Record: the New Hampshire General Court's bills",

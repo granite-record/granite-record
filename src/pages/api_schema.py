@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.9
+# GRANITE_VERSION: 2026-10-30.10
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -693,9 +693,21 @@ API_REQUEST = {
     "sponsor": ("string", "The prime sponsor, as the General Court's list names them.", S),
     "cosponsors": ("array", "Its co-sponsors, as the list names them; empty where it names none.", S),
     "body": ("string", "The kind of bill it would be: HB, SB, HR, HCR, SCR, CACR and the like.", S),
-    "status": ("string", "Requested, Filed or Withdrawn.", S),
+    "status": ("string", "Requested, Filed (its text public), Introduced (its bill introduced) or "
+                         "Withdrawn.", S),
     "withdrawn": ("boolean", "True where it was withdrawn before it became a bill.", S),
     "bill": ("string", "The bill it became, term/bill, once it is one; empty until then.", S),
+}
+# A REQUEST'S TEXT, ONCE IT IS PUBLIC (the owner, 17 November 2026: the text
+# "shows as a PDF on the lsr search page"): in its own file alone, as a bill's
+# text is, the rows staying short. Read by machine off that PDF by the night
+# (fetch_lsrs.py --read-texts, build_lsrs.request_text): the PDF is the document.
+API_REQUEST_RECORD = {
+    **API_REQUEST,
+    "text": ("string", "Its text as this site read it by machine from the PDF the General Court's "
+                       "request list links; null until this site has read it.", S),
+    "text_pdf": ("string", "The address of that PDF on the General Court's site; empty until the "
+                           "list links one.", S),
 }
 
 API_LAW_ROW = {
@@ -820,7 +832,7 @@ API_RESOURCES = (
                 _rows_file({"year": ("integer", "The session these are requests for.", S)},
                            "requests", "Each request's row, by number.")),
                ("record", "/api/requests/{year}/{number}.json", "the session the site lists",
-                {**API_FORMAT, **API_REQUEST})),
+                {**API_FORMAT, **API_REQUEST_RECORD})),
      "inside": {"requests": API_REQUEST}},
     {"name": "laws", "key": "chapter",
      "what": "Every chapter of the statutes: each section's heading and text, as this site's Laws "

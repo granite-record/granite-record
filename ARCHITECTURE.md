@@ -2384,10 +2384,19 @@ which a bill's statutes and title decide, a request's title decides alone.
 
 Each request has a page of its own at its row's `address`, `/request/<number>`
 (`src/pages/build_request_pages.py`), until the row carries a `moved_to` --
-the bill's page once it becomes a numbered bill or, from the day filing for
+the bill's page once that bill is introduced or, from the day filing for
 the session is complete (`build_lsrs.retire`), its prime sponsor's page, or the
-requests' search where the sponsor has none; a withdrawn request keeps its
-page -- and the address forwards there. The requests' list in the directory
+requests' search where the sponsor has none and it was never filed; a withdrawn
+request keeps its page -- and the address forwards there. A request stays a
+request until it is introduced (the owner, 17 November 2026: requests "do not
+become bills until the first session in January when they are introduced"):
+filed as a numbered bill it keeps its page and its card, which say the bill
+it was filed as ("Filed As", the row's `introduced` and `bill_at`), its page's
+Follow now the bill's, where its follow has moved; it reads Introduced, its
+rail's last stop reached and dated, and forwards, once the bill's own rail in
+the bill search's rows dates its Introduced stop on or before the build's day
+(`build_lsrs.introduced_days`: the day the bill's introduction row states,
+which a docket's "To Be Introduced" plan does not give). The requests' list in the directory
 links each row's number to its `moved_to`, else its `address`
 (`build_indexes.request_target`). On a request's page a sitting member keeps
 the roster's chip, with the seat they hold, and a new member-elect the chip of
@@ -2407,10 +2416,9 @@ reads into `bill_status.json`, `build_data.fill_from_status` puts on the
 bill's own term's record in `data/bills.json`, and `build_lsrs.filed_days`
 reads off the bill `became_bills` names (the owner's approval of 15 November
 2026, as the day the text was published). A bill with no such day leaves
-Filed reached and undated. A request that is a bill has no page of its own,
-its address forwarding to the bill's, so its card is where the day shows.
-Requested carries none, since neither the list nor the General Court's public
-database gives the day a request was made. Next session's bills reach
+Filed reached and undated, and so does a request whose text the list links
+before any bill of it is on file. Requested carries none, since neither the
+list nor the General Court's public database gives the day a request was made. Next session's bills reach
 `data/bills.json` only once the New term run has turned the installed files,
 so no request is Filed before then.
 The card has no Follow: a request is followed from its page, after Cite, as a
@@ -2424,8 +2432,17 @@ page and card and a request's card draw theirs), the Summary's tab drawn even
 where it is the only one. Its Summary says what the row says of the text
 (`build_request_pages.text_note`): not public yet while the request is drafted,
 and public once it is filed as a numbered bill; or withdrawn before it was
-filed; and nothing of the kind once it is filed. The page is built with every
-pane on it, so it reads with no script: the strip is hidden and each pane
+filed; and, filed, that its text is public and is added once this site has
+read it, with the General Court's PDF linked. The night fetches each text the
+request list links, a few a night, and reads it with pdftotext -layout
+(`fetch_lsrs.py --texts`, `--read-texts`; `nightly.take_lsr_texts`) into
+`archive/lsr_text/`, which the kit carries; from then the request's page and
+card have a Bill Text tab, keyed 6 as a bill's, with what was read, said to be
+read by machine, and the PDF linked (`build_lsrs.request_text`, the one reader;
+`build_request_pages.text_pane`, `app.js` `lsrTextPane`, which fetches the
+text from the request's file in the data API, `api/requests/<year>/<number>.json`,
+whose `text` and `text_pdf` the rows file leaves out). The page is built with
+every pane on it, so it reads with no script: the strip is hidden and each pane
 stands under its own heading.
 
 ## Town websites and staff (November 2026)

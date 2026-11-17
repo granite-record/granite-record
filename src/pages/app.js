@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.335
+// GRANITE_VERSION: 2026-09-07.336
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -185,9 +185,11 @@ function catOfChip(c){
   return "";
 }
 // A bill request's status words, which are its categories (Requested: no bill
-// yet; Filed: its bill exists; Withdrawn). Nothing else is one.
+// yet; Filed: its text is public; Introduced: its bill was introduced, and the
+// request forwards to it -- the owner's third stage, 17 November 2026;
+// Withdrawn). Nothing else is one.
 const REQ_STATUS=Object.assign(Object.create(null),{Requested:"Requested",Filed:"Filed",
-  Withdrawn:"Withdrawn"});
+  Introduced:"Introduced",Withdrawn:"Withdrawn"});
 // A request's own word, and "" for a row with no chip that is not a request.
 function statusCat(b){
   const c=b&&b.chip;
@@ -8288,8 +8290,9 @@ const termOfYear=y=>{
 /* A BILL REQUEST'S CARD, a bill card (lsrCardHtml, below) drawn from the
    request's row alone: a request has a number, a title, a prime sponsor, the
    body it will be filed in and, once they accept, its co-sponsors -- no
-   committee, hearing, vote or text yet -- so its card opens onto Summary,
-   Sponsors and History, and its rail has three stops of its own. */
+   committee, hearing or vote yet, and its text only once filed -- so its card
+   opens onto Summary, Bill Text once the night has read it, Sponsors and
+   History, and its rail has three stops of its own. */
 // A BILL REQUEST CAN BE FOLLOWED BY EMAIL (the person, 22 October 2026):
 // until it is drafted, when the follow moves onto its bill (build_feeds,
 // BILL REQUESTS). Its Follow is on its own page, after Cite, as a bill's is
@@ -8313,16 +8316,44 @@ function followUp(){
 const lsrChip=c=>pchip({display_full:c.label||c.name||"",
   party:c.party||(/\(([A-Z])\b/.exec(c.label||"")||[])[1]||"",slug:c.slug||""});
 // The tabs a request has (the numbers are a bill's own, which a tab's
-// identity is): Summary; Sponsors, where co-sponsors have accepted; History,
-// where an earlier bill has the same title.
+// identity is): Summary; Bill Text, once the night has read its text (17
+// November 2026); Sponsors, where co-sponsors have accepted; History, where an
+// earlier bill has the same title.
 function lsrTabs(b){
   const hist=b.history||[],cos=b.cosponsors||[];
-  return [["0","Summary",0]].concat(cos.length?[["4","Sponsors",cos.length+1]]:[],
+  return [["0","Summary",0]].concat(b.text_on_file?[["6","Bill Text",0]]:[],
+    cos.length?[["4","Sponsors",cos.length+1]]:[],
     hist.length?[["7","History",hist.length]]:[]);
+}
+// A REQUEST'S TEXT ON ITS CARD (the owner, 17 November 2026: "View the text
+// that shows the granite record tab once we've imported the text"): what the
+// night read off the PDF the request list links. The row does not carry it --
+// a text is long and the list is not -- so the card fetches it once, from the
+// request's own file in the data API (api_records: /api/requests/<year>/
+// <number>.json, its "text"), when it draws the tab, and fills the tab when it
+// comes. The words and the block are the request page's (build_request_pages.
+// text_pane).
+const LSRTEXT=new Map();
+function lsrTextPane(b){
+  const num=String(b.address||"").split("/").pop(),got=LSRTEXT.get(num);
+  const pdf=b.text_pdf?`<p class="src"><a href="${esc(b.text_pdf)}" target="_blank" rel="noopener">The PDF at the General Court</a></p>`:"";
+  const head=`<p class="btwhat">The text as the General Court publishes it with this request, read by machine from its PDF: the PDF is the document.</p>`;
+  if(typeof got==="string")return head+(got?`<pre class="vtext" translate="no">${esc(got)}</pre>`
+    :`<p class="note">The text could not be loaded here.</p>`)+pdf;
+  const m=/^(\d{4})-(\d+)$/.exec(num);
+  if(!got&&m&&typeof fetch==="function"){
+    // Asked for once (true until it comes); the tab drawn again when it does.
+    const fill=t=>{LSRTEXT.set(num,t);const p=document.getElementById(`pane_${b.id}_6`);if(p)p.innerHTML=lsrTextPane(b);};
+    LSRTEXT.set(num,true);
+    fetch(DATA(`api/requests/${m[1]}/${m[2]}.json`)).then(r=>r.ok?r.json():null)
+      .then(j=>fill(String((j&&j.text)||""))).catch(()=>fill(""));
+  }
+  return head+`<p class="src">Loading the text&hellip;</p>`+pdf;
 }
 function lsrPane(b,t){
   const cos=b.cosponsors||[],hist=b.history||[],sp=cardSponsor(b);
   const prime=sp?pchip(Object.assign({},sp,{prime:false,role:""})):"";
+  if(t==="6")return lsrTextPane(b);
   if(t==="4"){
     return `<p class="spcount">${cos.length+1} Sponsors</p>
       ${prime?`<h2 class="sech spgrp">Prime Sponsor</h2><div class="chosen">${prime}</div>`:""}
@@ -8339,7 +8370,10 @@ function lsrPane(b,t){
   // pages speak for themselves"): the chip has the status, the byline the kind,
   // the prime sponsor and the topic; what is left is the co-sponsors and the way
   // on to the request's own page.
+  // And the bill it was filed as, while it is still a request (the owner, 17
+  // November 2026: "Drafted and filed as HB123 sounds fine").
   return `${cos.length?`<p><b>${cos.length>1?"Co-Sponsors":"Co-Sponsor"}:</b> ${cos.map(lsrChip).join(" ")}</p>`:""}
+    ${b.introduced&&!b.moved_to?`<p><b>Filed As:</b> ${b.bill_at?`<a href="${esc(b.bill_at)}">${esc(b.introduced)}</a>`:esc(b.introduced)}</p>`:""}
     ${b.address?`<p><a href="${esc(b.moved_to||b.address)}">${b.moved_to?"Read the bill":"Open the request’s own page"}</a></p>`:""}`;
 }
 // WHAT A REQUEST'S CARD OPENS ONTO: the bill card's tab strip and panes, from
