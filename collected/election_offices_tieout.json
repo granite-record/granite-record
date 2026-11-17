@@ -1,0 +1,227 @@
+{
+ "2016": {
+  "checks": {
+   "a column's places sum to the file's Totals": {
+    "held": 273,
+    "disagree": 0
+   },
+   "a county's row in the summary is its block's Totals": {
+    "held": 86,
+    "disagree": 0
+   },
+   "a race's count is its places' sum": {
+    "held": 119,
+    "disagree": 0
+   }
+  },
+  "disagreements": []
+ },
+ "2018": {
+  "checks": {
+   "a column's places sum to the file's Totals": {
+    "held": 251,
+    "disagree": 1
+   },
+   "a county's row in the summary is its block's Totals": {
+    "held": 40,
+    "disagree": 0
+   },
+   "a race's count is its places' sum": {
+    "held": 133,
+    "disagree": 0
+   }
+  },
+  "disagreements": [
+   {
+    "check": "a column's places sum to the file's Totals",
+    "what": "register-of-deeds|Cheshire Totals: write_ins_scattered, the places add up to 50, the file's Totals say 49",
+    "where": "2018-ge-county-cheshire.xls, sheet 'cheshire county offices', row 32"
+   }
+  ]
+ },
+ "2020": {
+  "checks": {
+   "a column's places sum to the file's Totals": {
+    "held": 292,
+    "disagree": 0
+   },
+   "a county's row in the summary is its block's Totals": {
+    "held": 80,
+    "disagree": 0
+   },
+   "a race's count is its places' sum": {
+    "held": 133,
+    "disagree": 0
+   }
+  },
+  "disagreements": []
+ },
+ "2022": {
+  "checks": {
+   "a column's places sum to the file's Totals": {
+    "held": 286,
+    "disagree": 2
+   },
+   "a county's row in the summary is its block's Totals": {
+    "held": 90,
+    "disagree": 0
+   },
+   "a race's count is its places' sum": {
+    "held": 121,
+    "disagree": 0
+   }
+  },
+  "disagreements": [
+   {
+    "check": "a column's places sum to the file's Totals",
+    "what": "county-commissioner|Coos|1 Totals: Theberge, r, the places add up to 2,683, the file's Totals say 2,783",
+    "where": "2022-ge-coos-county.xls, sheet 'rcoos', row 143"
+   },
+   {
+    "check": "a column's places sum to the file's Totals",
+    "what": "county-commissioner|Coos|1 Totals: write_ins_scattered, the places add up to 25, the file's Totals say 26",
+    "where": "2022-ge-coos-county.xls, sheet 'rcoos', row 143"
+   }
+  ]
+ },
+ "2024": {
+  "checks": {
+   "a column's places sum to the file's Totals": {
+    "held": 413,
+    "disagree": 0
+   },
+   "a county's row in the summary is its block's Totals": {
+    "held": 60,
+    "disagree": 0
+   },
+   "a race's count is its places' sum": {
+    "held": 120,
+    "disagree": 0
+   }
+  },
+  "disagreements": []
+ },
+ "2026": {
+  "checks": {
+   "a column's places sum to the file's Totals": {
+    "held": 282,
+    "disagree": 0
+   },
+   "a county's row in the summary is its block's Totals": {
+    "held": 80,
+    "disagree": 15
+   },
+   "a race's count is its places' sum": {
+    "held": 125,
+    "disagree": 6
+   }
+  },
+  "disagreements": [
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "governor Belknap: Cinde Warmington, d, the summary prints 11,091, the county's Totals say 11,152",
+    "where": "2026-ge-governor-summary.xlsx, sheet 'summary gov', row 4; 2026-ge-governor-belknap.xlsx, sheet 'belknap gov', row 20"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "governor Belknap: Kelly Ayotte, r, the summary prints 18,748, the county's Totals say 18,836",
+    "where": "2026-ge-governor-summary.xlsx, sheet 'summary gov', row 4; 2026-ge-governor-belknap.xlsx, sheet 'belknap gov', row 20"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "governor Belknap: Stephen Villee, l, the summary prints 485, the county's Totals say 486",
+    "where": "2026-ge-governor-summary.xlsx, sheet 'summary gov', row 4; 2026-ge-governor-belknap.xlsx, sheet 'belknap gov', row 20"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "governor Carroll: Kelly Ayotte, r, the summary prints 15,724, the county's Totals say 15,524",
+    "where": "2026-ge-governor-summary.xlsx, sheet 'summary gov', row 5; 2026-ge-governor-carroll.xlsx, sheet 'carroll gov', row 23"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "governor Hillsborough: write_ins_scattered, the summary prints 217, the county's Totals say 230",
+    "where": "2026-ge-governor-summary.xlsx, sheet 'summary gov', row 9; 2026-ge-governor-hillsborough.xlsx, sheet 'hillsborough gov', row 54"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "governor Strafford: write_ins_scattered, the summary prints 57, the county's Totals say 59",
+    "where": "2026-ge-governor-summary.xlsx, sheet 'summary gov', row 12; 2026-ge-governor-strafford.xlsx, sheet 'strafford gov', row 31"
+   },
+   {
+    "check": "a race's count is its places' sum",
+    "what": "governor: Cinde Warmington, d, the places add up to 296,834, the race's count is 296,773",
+    "where": "2026-ge-governor-summary.xlsx, sheet 'summary gov', row 14"
+   },
+   {
+    "check": "a race's count is its places' sum",
+    "what": "governor: Kelly Ayotte, r, the places add up to 324,734, the race's count is 324,846",
+    "where": "2026-ge-governor-summary.xlsx, sheet 'summary gov', row 14"
+   },
+   {
+    "check": "a race's count is its places' sum",
+    "what": "governor: Stephen Villee, l, the places add up to 9,630, the race's count is 9,629",
+    "where": "2026-ge-governor-summary.xlsx, sheet 'summary gov', row 14"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "us-senate Belknap: Chris Pappas, d, the summary prints 14,806, the county's Totals say 14,884",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 4; 2026-ge-us-senator-belknap.xlsx, sheet 'belknap', row 20"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "us-senate Belknap: John E. Sununu, r, the summary prints 15,794, the county's Totals say 15,867",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 4; 2026-ge-us-senator-belknap.xlsx, sheet 'belknap', row 20"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "us-senate Belknap: Edmond Laplante, c, the summary prints 622, the county's Totals say 623",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 4; 2026-ge-us-senator-belknap.xlsx, sheet 'belknap', row 20"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "us-senate Belknap: write_ins_scattered, the summary prints 23, the county's Totals say 22",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 4; 2026-ge-us-senator-belknap.xlsx, sheet 'belknap', row 20"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "us-senate Grafton: Chris Pappas, d, the summary prints 27,735, the county's Totals say 28,185",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 8; 2026-ge-us-senator-grafton.xlsx, sheet 'grafton', row 46"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "us-senate Hillsborough: John E. Sununu, r, the summary prints 74,162, the county's Totals say 74,212",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 9; 2026-ge-us-senator-hillsborough.xlsx, sheet 'hillsborough', row 54"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "us-senate Hillsborough: Edmond Laplante, c, the summary prints 3,431, the county's Totals say 3,422",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 9; 2026-ge-us-senator-hillsborough.xlsx, sheet 'hillsborough', row 54"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "us-senate Hillsborough: write_ins_scattered, the summary prints 242, the county's Totals say 257",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 9; 2026-ge-us-senator-hillsborough.xlsx, sheet 'hillsborough', row 54"
+   },
+   {
+    "check": "a county's row in the summary is its block's Totals",
+    "what": "us-senate Merrimack: Chris Pappas, d, the summary prints 41,830, the county's Totals say 41,829",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 10; 2026-ge-us-senator-merrimack.xlsx, sheet 'merrimack', row 42"
+   },
+   {
+    "check": "a race's count is its places' sum",
+    "what": "us-senate: Chris Pappas, d, the places add up to 356,425, the race's count is 355,898",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 14"
+   },
+   {
+    "check": "a race's count is its places' sum",
+    "what": "us-senate: John E. Sununu, r, the places add up to 268,682, the race's count is 268,559",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 14"
+   },
+   {
+    "check": "a race's count is its places' sum",
+    "what": "us-senate: Edmond Laplante, c, the places add up to 12,081, the race's count is 12,089",
+    "where": "2026-ge-us-senator-summary.xlsx, sheet 'summary', row 14"
+   }
+  ]
+ }
+}
