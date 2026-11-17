@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.9
+# GRANITE_VERSION: 2026-10-17.10
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -1029,8 +1029,15 @@ def recount_under_town(rows, i, cur, at):
             if not m:
                 raise Refused(f"{here}: {v!r} in column {c + 1} among RECOUNT cells")
             if "name" not in e:
-                raise Refused(f"{here}: {v!r} in column {c + 1}, which is not a candidate's "
-                              "column in the block above")
+                # THE COUNT'S OWN LABEL (17 November 2026; 2026 Rockingham 13, Derry):
+                # "RECOUNT Write-Ins" over the write-ins column the header labelled is
+                # that column's recount, as a bare RECOUNT is. Only the label of the
+                # count that column holds; any other words there are refused.
+                if "meta" not in e or META.get(m.group("who").strip().lower()) != e["meta"]:
+                    raise Refused(f"{here}: {v!r} in column {c + 1}, which is not a candidate's "
+                                  "column in the block above")
+                labelled.add(c)
+                continue
             named = entities([None, m.group("who").strip()], 1, here)[0]
             if (named.get("name"), named.get("party"), bool(named.get("write_in"))) != (
                     e["name"], e["party"], bool(e["write_in"])):

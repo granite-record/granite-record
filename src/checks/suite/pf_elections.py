@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of members-elect and election results.
 
@@ -2678,8 +2678,32 @@ def _elect_reader_recount_under_town(PSR):
     apart.insert(3 + 2, [N] * 7)
     refused("a RECOUNT row that is not directly under the town row", apart,
             "does not sit directly under the one town")
+
+    # THE COUNT'S OWN LABEL (17 November 2026; 2026 Rockingham 13, Derry): the
+    # first block's write-ins recounted under a cell "RECOUNT Write-Ins", and no
+    # write-ins after it. Read as that column's recount; another count's label
+    # over it, or the label over a candidate's column, is refused.
+    named = dict(t1=["Salem", 10, 20, 30, 40, N, 3],
+                 r1=[N, "RECOUNT  Ann Ames, d", "RECOUNT Bo Bell, d", "RECOUNT    Cy Cole, r",
+                     "RECOUNT  Di Dunn, r", N, "RECOUNT Write-Ins"],
+                 f1=[N, 11, 21, 31, 41, N, 4],
+                 t2=["Salem", 50, 60, N, N, N, N], r2=[N, "RECOUNT Ed Eld, r", "RECOUNT   Flo Fox, r",
+                                                      N, N, N, N],
+                 f2=[N, 51, 61, N, N, N, N])
+    seats, flo, d = read(sheet(**named))[25]
+    got = {c["name"]: c["votes"] for c in d["candidates"]}
+    assert got == {"Ann Ames": 11, "Bo Bell": 21, "Cy Cole": 31, "Di Dunn": 41, "Ed Eld": 51,
+                   "Flo Fox": 61}, got
+    assert d["recounted"] is True and d["scatter"] == 4, d
+    assert not any("WRITE" in c["name"].upper() for c in d["candidates"]), d["candidates"]
+    refused("another count's label over the write-ins",
+            sheet(**dict(named, r1=named["r1"][:6] + ["RECOUNT Undervotes"])),
+            "not a candidate's column", "row 6")
+    refused("the write-ins label over a candidate's column",
+            sheet(**dict(named, r1=[N, "RECOUNT Write-Ins"] + named["r1"][2:])), "row 6")
     return "ok", ("a row of RECOUNT names and a row of figures read as the recount of the "
-                  "candidates above, never as new candidates; each way to mis-tie it refused")
+                  "candidates above, never as new candidates; a RECOUNT naming the write-ins "
+                  "read only over the write-ins; each way to mis-tie it refused")
 
 
 @check("build", "members-elect: the Senate is read whole (2024's one file) or in parts (2026's "
