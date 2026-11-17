@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -5936,7 +5936,7 @@ def _tags_published_only_with_a_registry(BP):
     said = []
     defined = re.compile(r"\bfunction\s+([A-Za-z_$][\w$]*)|\b(?:let|const)\s+([A-Za-z_$][\w$]*)\s*=|class=\"([\w-]+)"
                          r"|^\s*\.([\w-]+)[\s{:,.\[>]", re.M)
-    for name in ("app.js", "app.css"):
+    for name in ("app.js", "find.js", "app.css"):
         src = _source(f"src/pages/{name}")
         regions = re.findall(r"(?:// |/\* )TAGS:BEGIN.*?\n(.*?)\n[^\n]*TAGS:END", src.replace("\r\n", "\n"), re.S)
         assert regions, f"{name} has no TAGS region: the tags would be drawn by nothing"
@@ -5945,7 +5945,7 @@ def _tags_published_only_with_a_registry(BP):
         names = {n for r in regions for m in defined.finditer(r) for n in m.groups() if n}
         names = {n for n in names if not re.search(r"(?<![\w$-])" + re.escape(n) + r"(?![\w$-])", cut)}
         names |= {"setTagWords"} if name.endswith(".js") else set()
-        assert len(names) >= {"app.js": 10, "app.css": 3}[name], (
+        assert len(names) >= {"app.js": 10, "find.js": 1, "app.css": 3}[name], (
             f"{name}'s TAGS regions define only {sorted(names)}")
         if name == "app.css":
             on, off = BP.strip_css(src), BP.strip_css(cut)

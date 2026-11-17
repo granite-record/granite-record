@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.64
+// GRANITE_VERSION: 2026-09-16.65
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -747,6 +747,10 @@ function findBillsLoad(){
       FBILLS.term=FBILLS.terms[0]||"";
       // Next session's bill requests, which no term holds (FREQ, below).
       FBILLS.requests=(m&&m.requests)||null;
+      // TAGS:BEGIN
+      // The tags and the words that lead to them (app.js setTagWords).
+      FBILLS.tags=m?{list:m.tags,words:m.tag_words}:null;
+      // TAGS:END
       if(!FBILLS.term)throw new Error("meta.json names no term");
       return _fjson("idx/"+encodeURIComponent(FBILLS.term)+".json");
     })
@@ -761,6 +765,12 @@ function findBillsLoad(){
     // The matcher reads "2027-0002" and "LSR 27-0002" as a request's number
     // only for the requests' own year (app.js, requestNumber).
     if(api.setRequestYear)api.setRequestYear(FBILLS.requests?(FBILLS.requests.year||String(FBILLS.requests.term||"").slice(0,4)):"");
+    // TAGS:BEGIN
+    // A tag's word lists its bills here as on /bills: the matcher this page
+    // loaded (GR_BILLMATCH), or app.js's own where the page runs it.
+    {const set=api.setTagWords||(typeof setTagWords==="function"?setTagWords:null);
+     if(set&&FBILLS.tags)set(FBILLS.tags.list,FBILLS.tags.words);}
+    // TAGS:END
     return _ftext(FBILLS.term).then(()=>true);
   }).catch(()=>{FBILLS.failed=true;return false;});
   return FBILLS.loading;

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.339
+// GRANITE_VERSION: 2026-09-07.340
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -1307,6 +1307,10 @@ function queryGroups(raw){
     before=c?null:g;
     out.push(g);
   });
+  // TAGS:BEGIN
+  // A tag's word, or a topic's, the whole search or one part of it (tagGroups).
+  tagGroups(out,asTyped);
+  // TAGS:END
   // The search as typed, the skipped words still in it: a title that says
   // "medical bills" in those words is the one a reader of them wants first
   // (matchScore, below).
@@ -1685,6 +1689,36 @@ function setTagWords(tags,words){
 const tagIdsOf=b=>(b&&Array.isArray(b.tags)?b.tags:[]).map(i=>TAGLIST[i]&&TAGLIST[i].id).filter(Boolean);
 const tagOf=id=>TAGLIST.find(t=>t.id===id)||null;
 // TAGS:END
+// TAGS:BEGIN
+// Whether a bill is where a word leads: a tag it carries, or its topic.
+function tagLeads(b,to){
+  const s=String(to||""),i=s.indexOf(":"),k=s.slice(0,i),v=s.slice(i+1);
+  return k==="tag"?tagIdsOf(b).includes(v):k==="topic"?String(b.topic||"")===v:false;
+}
+/* A TAG'S WORD, OR A TOPIC'S, LISTS ITS BILLS (design 6.1; the owner, 17
+   November 2026: tags "may replace the synonym matching system by having
+   those sorts of synonyms built in but not displayed"). A part of the
+   search that is a tag's name or one of the words that lead to it (the
+   registry's asks and synonyms) carries where it leads, `to`, and fitAlone
+   lists that tag's bills, or that topic's, at the level of a topic's own
+   name: below a bill whose title has the word, above one whose text alone
+   does. A topic is said on the card as ever ("topic: Cannabis"); a tag, and
+   the words that led to it, never are (whyListed). The whole word or
+   phrase only, never the start of one, so a large tag is not listed for a
+   few letters. A whole search of several words that is one such phrase
+   ("attorney general", "gravel tax") is read as that phrase, one part,
+   where it was a part a word; in a longer search a tag stands for one word,
+   and only where the title has every other part, as a topic does. */
+function tagGroups(out,typed){
+  if(!TAGLIST.length||!TAGWORDS.size)return;
+  const whole=tagKey(typed);
+  if(out.length>1&&whole.includes(" ")&&TAGWORDS.has(whole)){
+    const w=String(typed).trim();
+    out.splice(0,out.length,{word:w,alts:[w]});
+  }
+  for(const g of out){const to=TAGWORDS.get(tagKey(g.word));if(to)g.to=to;}
+}
+// TAGS:END
 // The topic's name as searched: what stands before " - ", and nothing at all
 // where that names more than one subject.
 const topicHay=b=>{
@@ -1772,6 +1806,13 @@ function fitAlone(b,g){
        &&(g.solo||(g.rest&&!/\S\s+\S/.test(t)
           &&g.rest.every(alts=>alts.some(a=>altRx(a).test(b.hayT)))))){d=0.5;why=["topic"];}
   }
+  // TAGS:BEGIN
+  // Where a tag's word or a topic's leads (tagGroups), at the topic's level.
+  // The tag's id third, where no word found is: nothing is "found" in it.
+  if(d>0.5&&g.to&&tagLeads(b,g.to)
+     &&(g.solo||(g.rest&&g.rest.every(alts=>alts.some(a=>altRx(a).test(b.hayT)))))){
+    d=0.5;why=/^tag:/.test(g.to)?["tag","",g.to.slice(4)]:["topic"];}
+  // TAGS:END
   if(d>0.6&&b.term){
     const m=textHits(g,b.term),h=m&&m.get(b.id);
     if(h&&h[0]<d&&!(out&&h[3])){d=h[0];why=[h[1]?"analysis":"text",h[3]?h[2]:""];}
@@ -2007,6 +2048,11 @@ function whyListed(b,gs){
     if(!f)continue;
     const y=f[1],z=f[2];
     if(!y)continue;
+    // TAGS:BEGIN
+    // A bill a tag listed says nothing of it on its card (the owner, 17
+    // November 2026: tags are a search tool, built in and not displayed).
+    if(y[0]==="tag")continue;
+    // TAGS:END
     let s=y[0]==="topic"?"topic: "+b.topic
       :y[1]?y[0]+" says: "+y[1]:"in the bill's "+y[0];
     if(z)s+=y[1]&&z[0]===y[0]?" and "+z[1]:", "+z[0]+" says: "+z[1];
@@ -2562,6 +2608,9 @@ function billOffers(q){
       // "House No Committee Assignment" is a filter, and no committee.
       {key:"committee",values:vals("committee").filter(x=>!/\bno committee\b/i.test(x[0])),
        say:v=>`All bills referred to the <b>${esc(v)}</b> committee`}]);
+    // TAGS:BEGIN
+    tagOffers(q,offers,vals);
+    // TAGS:END
     for(const o of offers){
       const was=query;
       query=o.rest;sel[o.key].add(o.v);
@@ -2571,6 +2620,29 @@ function billOffers(q){
     return offers;
   }finally{term=own;}
 }
+// TAGS:BEGIN
+/* THE TAGS' OFFERS (design 6.1): "All bills tagged Attorney General" for a
+   tag whose name the words typed begin, as a topic or a committee is
+   offered; and first, where the whole search is a word that leads to a tag
+   or a topic ("weed": the topic Cannabis), that one, standing for all of
+   it. `offers` is billOffers' list, which this adds to, and `vals` its
+   reading of a filter's values in the term. */
+function tagOffers(q,offers,vals){
+  if(!TAGLIST.length)return;
+  const named=t=>`All bills tagged <b>${esc(t)}</b>`;
+  const tv=vals("tag").map(([v,_n,c])=>[v,(tagOf(v)||{}).name||v,c]);
+  const byName=filterOffers(q,[{key:"tag",values:tv,say:named}]);
+  const to=TAGWORDS.get(tagKey(q))||"",at=to.indexOf(":"),k=to.slice(0,at),v=to.slice(at+1);
+  const first=[];
+  if(k==="tag"&&tv.some(x=>x[0]===v)&&!byName.some(o=>o.v===v))
+    first.push({key:"tag",v,name:tagOf(v).name,n:0,how:0,html:named(tagOf(v).name),rest:""});
+  if(k==="topic"&&vals("topic").some(x=>x[0]===v)&&!offers.some(o=>o.key==="topic"&&o.v===v))
+    first.push({key:"topic",v,name:v,n:0,how:0,html:`All bills with the topic <b>${esc(v)}</b>`,rest:""});
+  offers.unshift(...first);
+  offers.push(...byName);
+  offers.splice(FO_MOST);
+}
+// TAGS:END
 // An offer taken, as ticking it in the list would be. Off the list -- a
 // bill's own page, a member's, a committee's -- it is taken where the list
 // is: /bills with the filter in its address, which /bills reads.

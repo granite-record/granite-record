@@ -920,6 +920,19 @@ which is never shown; the Topic box finds a topic the same way ("weed",
 Cannabis). `?tag=` ticks a tag by its id; two are either, a tag and a topic
 both.
 
+The search reads a tag's words, built in and never displayed: where the
+whole search, or one word of it, is a tag's name or one of the words that
+lead to it (`meta.json`'s `tag_words`), the tag's bills -- or the topic's,
+for a word whose subject is a topic -- are listed at the level of a topic's
+own name, below the bills whose titles say the words (`tagGroups`,
+`fitAlone`); a whole search that is such a phrase ("attorney general",
+"gravel tax") is read as that phrase. A card says nothing of a tag that
+listed it, and the line under the box no word that led there. The offers
+add "All bills tagged ...". `find.js` hands the same words to the header
+search's matcher (`billmatch.js`, `setTagWords`), so its counts are
+`/bills`'s. `CONCEPTS` is untouched: it maps a word to the bills' wording,
+which a tag does not replace until the measure in the tags report says so.
+
 ## The bill search, and what it reads
 
 One matcher, in `app.js` between its `BILLMATCH` marks. `/bills` runs it

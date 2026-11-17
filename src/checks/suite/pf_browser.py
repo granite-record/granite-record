@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -10246,3 +10246,103 @@ def _tags_on_the_bill_page_and_filter():
     return "ok", ("the bill's own page ends with its 3 searches (or History does), name and definition only; no "
                   "card, head or untagged bill shows one; the Tags group by name with counts, found by a word it "
                   "never shows, a ticked tag kept and badged; weed finds Cannabis; ?tag= read and written")
+
+
+@check("frontend", "a tag's words find its bills, built in and never shown: the whole search or one word of it that "
+                   "a tag's name, ask or synonym leads to lists that tag's bills (or a topic's) below the bills "
+                   "whose titles say it; the offers name the tag; the header search's matcher does the same",
+       needs=("build_pages",))
+def _tags_in_search(BP):
+    """The owner, 17 November 2026: tags "may replace the synonym matching system by having those sorts of synonyms
+    built in but not displayed or at least minimally intrusive". On the harness's tags, with the search box's own
+    reading (groupsFor, matches, whyListed, sortRows, searchHint, billOffers): "weed" lists the bill filed under
+    Cannabis, and says so as a topic is said; "gravel tax" the bill tagged Excavation tax whose title says "removal
+    of earth"; "attorney general", one phrase, the bill whose title says it first and the two tagged bills after
+    it, their cards saying nothing of the tag and the line under the box no word that led there; "regulating ai"
+    the tagged bill whose title has the other word, and no other. The offers say "All bills tagged Attorney
+    General" and "All bills with the topic Cannabis", counted. With no tags in meta.json none of these finds more
+    than the words do. And billmatch.js published with tags hands find.js setTagWords, after which the header
+    search reads "gravel tax" as the tag's phrase."""
+    got = _app_js("(() => {" + _TAGS_HARNESS + """
+  scope.setState("2025-2026", META_T, ROWS);
+  const out = {};
+  const run = q => { scope.setQ(q); scope.setSort("best"); const gs = scope.groupsFor(q);
+    return {ids: scope.sortRows(ROWS.filter(b => scope.matches(b))).map(b => b.id),
+            why: ROWS.filter(b => scope.matches(b)).map(b => scope.whyListed(b, gs)).filter(Boolean),
+            hint: scope.searchHint(gs, ROWS)}; };
+  out.off = {weed: run("weed").ids, ag: run("attorney general").ids, gravel: run("gravel tax").ids};
+  scope.setTagWords(TAGS, WORDS);
+  for (const q of ["weed", "gravel tax", "attorney general", "regulating ai", "ai", "excavat", "ai commerce"])
+    out[q] = run(q);
+  const offer = q => scope.billOffers(q).map(o => [o.key, o.v, o.n, o.html]);
+  out.offAg = offer("attorney general"); out.offWeed = offer("weed"); out.offExc = offer("excavat");
+  return out;
+})()""", names=_TAGS_NAMES + ("groupsFor", "whyListed", "sortRows", "searchHint", "billOffers",
+                              "setSort: (s) => { sortBy = s; }"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert got["weed"]["ids"] == ["HB2"] and got["weed"]["why"] == ["topic: Cannabis"], (
+        f"'weed': {got['weed']}")
+    assert got["gravel tax"]["ids"] == ["HB5"] and got["gravel tax"]["why"] == [], f"'gravel tax': {got['gravel tax']}"
+    ag = got["attorney general"]
+    assert ag["ids"] == ["HB4", "HB1", "HB3"], f"'attorney general' lists {ag['ids']}: the title's first, then the tag's"
+    assert ag["why"] == [] and not re.search(r"attorney|tag", ag["hint"], re.I), (
+        f"a card or the line under the box says what led to a tag: {ag['why']} / {ag['hint']!r}")
+    assert got["regulating ai"]["ids"] == ["HB3"], f"'regulating ai': {got['regulating ai']['ids']}"
+    assert got["ai"]["ids"] == ["HB3"], f"'ai': {got['ai']['ids']}"
+    assert got["excavat"]["ids"] == [], f"the start of a tag's word lists its bills: {got['excavat']['ids']}"
+    assert got["ai commerce"]["ids"] == [], (
+        f"'ai commerce' lists {got['ai commerce']['ids']}: a tag stands for a word only where the title has the rest")
+    assert got["off"] == {"weed": [], "ag": ["HB4"], "gravel": []}, f"with no tags the words find {got['off']}"
+    assert ["tag", "office-attorney-general", 2, "All bills tagged <b>Attorney General</b>"] in got["offAg"], (
+        f"'attorney general' offers {got['offAg']}")
+    assert ["topic", "Cannabis", 1, "All bills with the topic <b>Cannabis</b>"] in got["offWeed"], (
+        f"'weed' offers {got['offWeed']}")
+    assert any(o[:2] == ["tag", "excavation-tax"] for o in got["offExc"]), f"'excavat' offers {got['offExc']}"
+    # The header search's matcher, as billmatch.js carries it on a site with tags.
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "ok", "the bill search reads a tag's words; node is not here for the header's matcher"
+    src = BP.bill_matcher_js(_source("src/pages/app.js"), tags=True)
+    prog = ("globalThis.window=globalThis;\n" + src + "\nconst A=window.GR_BILLMATCH;\n"
+            "const g0=A.queryGroups('gravel tax').map(g=>[g.word,g.to||'']);\n"
+            "A.setTagWords([{id:'excavation-tax',name:'Excavation tax',definition:'x.'}],"
+            "{'gravel tax':'tag:excavation-tax'});\n"
+            "const g1=A.queryGroups('gravel tax').map(g=>[g.word,g.to||'']);\n"
+            "console.log('@@'+JSON.stringify({g0,g1}));\n")
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0 and "@@" in r.stdout, "billmatch.js with tags: " + (r.stderr or r.stdout)[-300:]
+    hm = json.loads(r.stdout.rsplit("@@", 1)[1])
+    assert hm["g0"] == [["gravel", ""], ["tax", ""]] and hm["g1"] == [["gravel tax", "tag:excavation-tax"]], (
+        f"the header's matcher: before {hm['g0']}, after setTagWords {hm['g1']}")
+    # And find.js hands it meta.json's words, as a page without app.js loads the two.
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "page.js").write_text(_with_components(src + "\n" + _source("src/pages/find.js")), encoding="utf-8")
+        files = {"/meta.json": {"terms": ["2025-2026"], "topics": [],
+                                "tags": [{"id": "excavation-tax", "name": "Excavation tax", "definition": "x."}],
+                                "tag_words": {"gravel tax": "tag:excavation-tax"}},
+                 "/idx/2025-2026.json": [{"id": "HB5", "n": "HB 5", "year": 2025, "term": "2025-2026",
+                                          "title": "relative to removal of earth", "tags": [0]}]}
+        (root / "files.json").write_text(json.dumps(files), encoding="utf-8")
+        (root / "go.js").write_text(
+            'require("./stub.js");\nconst fs = require("fs"), vm = require("vm");\n'
+            'const files = JSON.parse(fs.readFileSync("./files.json", "utf8"));\n'
+            'globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathname);\n'
+            '  return p in files ? {ok: true, status: 200, json: async () => files[p]}\n'
+            '    : {ok: false, status: 404, json: async () => { throw new Error("404"); }}; };\n'
+            'vm.runInThisContext(fs.readFileSync("./page.js", "utf8"), {filename: "page.js"});\n'
+            '(async () => { await vm.runInThisContext("findBillsLoad")();\n'
+            '  const A = vm.runInThisContext("FBILLS").api;\n'
+            '  console.log("@@" + JSON.stringify(A.queryGroups("gravel tax").map(g => [g.word, g.to || ""])));\n'
+            '})().catch(e => { console.log("RUN " + (e && e.stack || e)); process.exit(1); });\n', encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=120)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert r.returncode == 0 and "@@" in r.stdout, "find.js with tags: " + (r.stdout + r.stderr)[-300:]
+    fj = json.loads(r.stdout.rsplit("@@", 1)[1])
+    assert fj == [["gravel tax", "tag:excavation-tax"]], f"find.js does not hand the header its tag words: {fj}"
+    return "ok", ("weed -> the Cannabis topic's bill; gravel tax -> the tagged bill; attorney general -> the title's "
+                  "bill, then the tag's two, nothing said of the tag; offers name and count it; none of it without "
+                  "tags; the header's matcher reads the tag's phrase once find.js hands it the words")
