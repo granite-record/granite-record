@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.339
+// GRANITE_VERSION: 2026-09-07.342
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7146,6 +7146,10 @@ function renderVersions(b,d){
 // Fetch whatever the current view needs and redraw when it lands. Everything
 // already here is used from the cache; nothing is asked for twice.
 function needVersions(b){
+  // A BILL REQUEST HAS NO VERSIONS FILE: its Bill Text tab is its own
+  // (lsrTextPane), and since every request has one (17 November 2026) a
+  // press on it asked /versions/<year>/LSR....json, which no build writes.
+  if(b&&b.lsr)return;
   const key=verKey(b);
   // The record is the authority, when it has arrived. On a bill's own page it
   // is inline and this is answered before the first paint; reached from the
@@ -8301,8 +8305,8 @@ const termOfYear=y=>{
    request's row alone: a request has a number, a title, a prime sponsor, the
    body it will be filed in and, once they accept, its co-sponsors -- no
    committee, hearing or vote yet, and its text only once filed -- so its card
-   opens onto Summary, Bill Text once the night has read it, Sponsors and
-   History, and its rail has three stops of its own. */
+   opens onto Summary, Bill Text (saying where the text stands until the night
+   has read it), Sponsors and History, and its rail has three stops of its own. */
 // A BILL REQUEST CAN BE FOLLOWED BY EMAIL (the person, 22 October 2026):
 // until it is drafted, when the follow moves onto its bill (build_feeds,
 // BILL REQUESTS). Its Follow is on its own page, after Cite, as a bill's is
@@ -8326,14 +8330,26 @@ function followUp(){
 const lsrChip=c=>pchip({display_full:c.label||c.name||"",
   party:c.party||(/\(([A-Z])\b/.exec(c.label||"")||[])[1]||"",slug:c.slug||""});
 // The tabs a request has (the numbers are a bill's own, which a tab's
-// identity is): Summary; Bill Text, once the night has read its text (17
-// November 2026); Sponsors, where co-sponsors have accepted; History, where an
-// earlier bill has the same title.
+// identity is): Summary; Bill Text, always (the owner, 17 November 2026: "move
+// the text about the bill text into a bill text tab and just list it as 0
+// until the text is published"), its count 1 once the night has read the text
+// and until then the text "0", which recordTabs draws as "(0)" where the
+// number 0 draws no count (build_request_pages.text_count); Sponsors, where
+// co-sponsors have accepted; History, where an earlier bill has the same title.
 function lsrTabs(b){
   const hist=b.history||[],cos=b.cosponsors||[];
-  return [["0","Summary",0]].concat(b.text_on_file?[["6","Bill Text",0]]:[],
+  return [["0","Summary",0],["6","Bill Text",b.text_on_file?1:"0"]].concat(
     cos.length?[["4","Sponsors",cos.length+1]]:[],
     hist.length?[["7","History",hist.length]]:[]);
+}
+// What the Bill Text tab says while the text is not here, by what the row
+// says: build_request_pages.text_note's words, the page's.
+function lsrTextNote(b){
+  if(b.withdrawn)return "<b>Withdrawn.</b> This request was withdrawn before it was filed as a bill, so it has no text.";
+  if(b.filed||b.introduced)return "<b>Filed.</b> Its text is public, and is added here once this site has read it."
+    +(b.text_pdf?` <a href="${esc(b.text_pdf)}" target="_blank" rel="noopener">The PDF at the General Court</a>.`:"");
+  return `<b>Not public yet.</b> This request is still being drafted into a bill. Its text will be public when it is filed as a numbered ${
+    esc(String(b.year||reqYear()))} bill.`;
 }
 // A REQUEST'S TEXT ON ITS CARD (the owner, 17 November 2026: "View the text
 // that shows the granite record tab once we've imported the text"): what the
@@ -8342,9 +8358,11 @@ function lsrTabs(b){
 // request's own file in the data API (api_records: /api/requests/<year>/
 // <number>.json, its "text"), when it draws the tab, and fills the tab when it
 // comes. The words and the block are the request page's (build_request_pages.
-// text_pane).
+// text_pane). Until the night has read it, the tab says where the text
+// stands (lsrTextNote) and asks for nothing.
 const LSRTEXT=new Map();
 function lsrTextPane(b){
+  if(!b.text_on_file)return `<p>${lsrTextNote(b)}</p>`;
   const num=String(b.address||"").split("/").pop(),got=LSRTEXT.get(num);
   const pdf=b.text_pdf?`<p class="src"><a href="${esc(b.text_pdf)}" target="_blank" rel="noopener">The PDF at the General Court</a></p>`:"";
   const head=`<p class="btwhat">The text as the General Court publishes it with this request, read by machine from its PDF: the PDF is the document.</p>`;
@@ -8359,6 +8377,18 @@ function lsrTextPane(b){
       .then(j=>fill(String((j&&j.text)||""))).catch(()=>fill(""));
   }
   return head+`<p class="src">Loading the text&hellip;</p>`+pdf;
+}
+// WHAT A REQUEST IS, ON ITS CARD'S SUMMARY (the owner, 17 November 2026:
+// "make it so that opening the LSR pages shows the same summary of what LSRs
+// are that the full page does since right now it just shows the link to the
+// page and almost doesn't look like the card has expanded"): the request
+// page's About Requests, in its words (build_request_pages.explain) -- the
+// request's year, and what the number's abbreviation stands for from
+// meta.requests's abbr -- with no id, since a list opens many cards.
+function lsrAbout(b){
+  const year=String(b.year||reqYear()),abbr=(META.requests||{}).abbr||{};
+  return section("About Requests",`<p class="lsrnote"><b>Requests, not bills yet.</b> Each is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered ${
+    esc(year)} bill. Some are withdrawn first.${Object.entries(abbr).map(([k,v])=>` ${esc(k)} stands for ${esc(v)}.`).join("")}</p>`);
 }
 function lsrPane(b,t){
   const cos=b.cosponsors||[],hist=b.history||[],sp=cardSponsor(b);
@@ -8381,9 +8411,11 @@ function lsrPane(b,t){
   // the prime sponsor and the topic; what is left is the co-sponsors and the way
   // on to the request's own page.
   // And the bill it was filed as, while it is still a request (the owner, 17
-  // November 2026: "Drafted and filed as HB123 sounds fine").
+  // November 2026: "Drafted and filed as HB123 sounds fine"). Then what a
+  // request is, as its own page's Summary says it (lsrAbout).
   return `${cos.length?`<p><b>${cos.length>1?"Co-Sponsors":"Co-Sponsor"}:</b> ${cos.map(lsrChip).join(" ")}</p>`:""}
     ${b.introduced&&!b.moved_to?`<p><b>Filed As:</b> ${b.bill_at?`<a href="${esc(b.bill_at)}">${esc(b.introduced)}</a>`:esc(b.introduced)}</p>`:""}
+    ${lsrAbout(b)}
     ${b.address?`<p><a href="${esc(b.moved_to||b.address)}">${b.moved_to?"Read the bill":"Open the request’s own page"}</a></p>`:""}`;
 }
 // WHAT A REQUEST'S CARD OPENS ONTO: the bill card's tab strip and panes, from
@@ -8392,9 +8424,8 @@ function lsrPane(b,t){
 function lsrBody(b){
   const tabs=lsrTabs(b),want=openTab[b.id]||"0",t=tabs.some(x=>x[0]===want)?want:"0";
   const pane=([k])=>`<div class="pane" role="tabpanel" id="pane_${esc(b.id)}_${k}" aria-labelledby="tab_${esc(b.id)}_${k}" tabindex="0" data-t="${k}"${k===t?"":" hidden"}>${lsrPane(b,k)}</div>`;
-  // Summary alone is no choice to make: no strip, and a pane with no tab to answer to.
-  if(tabs.length<2)return `<div class="pane" data-t="0">${lsrPane(b,"0")}</div>`;
-  // The bill's strip (components.recordTabs).
+  // The bill's strip (components.recordTabs): Summary and Bill Text at least
+  // (lsrTabs), so always a choice to make.
   return recordTabs(b.id,tabs,t)+tabs.map(pane).join("");
 }
 // `cls`: a class beside "card lsr" (a paged list's "unshown").

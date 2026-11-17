@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.17
+# GRANITE_VERSION: 2026-11-16.22
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1495,10 +1495,12 @@ def _request_pages():
         for no in ("Testify", "data-print", 'id="tab_LSR20270001_1"', "Committee</dt>"):
             assert no not in page, f"a request's page carries {no!r}, which a request has not"
         # THE SUMMARY TAB A BILL'S PAGE HAS (the owner, 16 November 2026: "LSR
-        # pages should at least show the summary tab on the full page"): the
-        # strip with the Summary alone, where until then there was none.
-        assert re.findall(r'<button[^>]*role="tab"[^>]*>([^<]*)<', page) == ["Summary"], (
-            "a request's page with only a Summary draws no Summary tab, as a bill's page has")
+        # pages should at least show the summary tab on the full page"), where
+        # until then there was no strip; and since 17 November 2026 the Bill
+        # Text tab beside it on every request (_request_bill_text_tab).
+        assert re.findall(r'<button[^>]*role="tab"[^>]*>([^<]*)<', page) == ["Summary", "Bill Text"], (
+            "a request's page with no co-sponsor and no History does not draw Summary and Bill Text, "
+            "as a bill's page has them")
         wd = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
         assert ">Withdrawn</span>" in wd and "Status:" not in wd \
             and "window.GR_FOLLOW" not in wd, (
@@ -1587,8 +1589,8 @@ def _request_pages():
 
 
 @check("build", "a request page's tabs switch: its pane ids are its own and unique on the page, each tab's "
-       "aria-controls names its own pane, a Summary alone draws its strip on the page and none on the "
-       "card, and the card and the page do not say twice what the chip and the byline say",
+       "aria-controls names its own pane, Summary and Bill Text at least on the page and the card, and "
+       "the card and the page do not say twice what the chip and the byline say",
        needs=("build_lsrs",))
 def _request_tabs_switch(build_lsrs):
     """The review of 14 November 2026: on /request/2027-0001 History was
@@ -1596,12 +1598,13 @@ def _request_tabs_switch(build_lsrs):
     id="summary" and bills.html already carries <p class="count"
     id="summary">; app.js's ssPaneOf finds a pane by getElementById, found the
     <p>, and never took data-on off the pane. The panes are a bill's,
-    pane_<id>_<key> (0 Summary, 4 Sponsors, 7 History) since 16 November
-    2026. And the owner's "just let the pages speak for themselves": no strip
-    where Summary is the only tab on the card, and no Status, Kind, Prime
-    Sponsor or Topic said again in the Summary under the chip and the byline.
-    The page draws the Summary's tab alone (the owner, 16 November 2026: "LSR
-    pages should at least show the summary tab on the full page")."""
+    pane_<id>_<key> (0 Summary, 6 Bill Text, 4 Sponsors, 7 History) since 16
+    November 2026. And the owner's "just let the pages speak for themselves":
+    no Status, Kind, Prime Sponsor or Topic said again in the Summary under the
+    chip and the byline. Every request has a Bill Text tab beside its Summary
+    since 17 November 2026 (_request_bill_text_tab), so the page and the card
+    always draw a strip; before then a lone Summary drew its tab on the page
+    and no strip on the card."""
     import collections
     import tempfile
     import build_request_pages as RP
@@ -1642,7 +1645,7 @@ def _request_tabs_switch(build_lsrs):
         dup = sorted(i for i, c in collections.Counter(ids).items() if c > 1)
         assert not dup, f"a request page ({label}) carries an id twice: {dup}"
     tabs = re.findall(r'<button[^>]*role="tab"[^>]*aria-controls="([^"]+)"', many)
-    assert tabs == ["pane_LSR20270001_0", "pane_LSR20270001_4", "pane_LSR20270001_7"], (
+    assert tabs == ["pane_LSR20270001_0", "pane_LSR20270001_6", "pane_LSR20270001_4", "pane_LSR20270001_7"], (
         f"a request page with co-sponsors and a History has tabs controlling {tabs}")
     for t in tabs:
         own = re.findall(r'<div class="pane sspane"[^>]*\sid="%s"' % re.escape(t), many)
@@ -1652,10 +1655,12 @@ def _request_tabs_switch(build_lsrs):
     assert many.count(" data-on") == 1 and re.search(
         r'<div class="pane sspane"[^>]*id="pane_LSR20270001_0"[^>]*data-on', many), (
         "a request page opens on more than its Summary, or not on it")
-    assert re.findall(r'<button[^>]*role="tab"[^>]*aria-controls="([^"]+)"', one) == ["pane_LSR20270002_0"] \
+    assert re.findall(r'<button[^>]*role="tab"[^>]*aria-controls="([^"]+)"', one) == [
+        "pane_LSR20270002_0", "pane_LSR20270002_6"] \
         and one.count('role="tablist"') == 1 and one.count(" data-on") == 1 \
         and re.search(r'<div class="pane sspane"[^>]*id="pane_LSR20270002_0"[^>]*data-on', one), (
-        "a request page whose Summary is the only tab draws no strip with its tab, or its pane is not chosen")
+        "a request page with no co-sponsor and no History does not draw Summary and Bill Text, or its Summary "
+        "is not chosen")
     for html in (many, one):
         assert "Status:" not in html and "The Request" not in html, (
             "a request page says its status again under the chip")
@@ -1675,12 +1680,84 @@ def _request_tabs_switch(build_lsrs):
             assert bad not in html, f"a request's card says {bad!r} again under its chip and byline"
     for c in re.findall(r'aria-controls="([^"]+)"', got["many"]):
         assert got["many"].count('id="%s"' % c) == 1, f"a card tab controls {c!r}, which is not one pane"
-    assert 'role="tablist"' not in got["one"] and 'role="tab"' not in got["one"], (
-        "a request's card whose Summary is the only tab draws a strip")
-    assert got["many"].count('role="tab"') == 3, "a request's card with co-sponsors and a History lost a tab"
-    return "ok", ("a request page's three panes have their own ids, unique on the page, each tab pointing at "
-                  "its pane; a Summary alone has its tab on the page and no strip on the card; the Summary "
+    for c in re.findall(r'aria-controls="([^"]+)"', got["one"]):
+        assert got["one"].count('id="%s"' % c) == 1, f"a card tab controls {c!r}, which is not one pane"
+    assert got["one"].count('role="tablist"') == 1 and got["one"].count('role="tab"') == 2, (
+        "a request's card with no co-sponsor and no History does not draw Summary and Bill Text")
+    assert got["many"].count('role="tab"') == 4, "a request's card with co-sponsors and a History lost a tab"
+    return "ok", ("a request page's four panes have their own ids, unique on the page, each tab pointing at "
+                  "its pane, on the page and the card; Summary and Bill Text at least on both; the Summary "
                   "does not repeat the chip or the byline")
+
+
+@check("build", "a request's card, opened, says what a request is as its own page's Summary does: About "
+                "Requests in the page's words, after the co-sponsors and the bill it was filed as and "
+                "before the way on to the page", needs=("build_lsrs",))
+def _request_card_summary_explains(build_lsrs):
+    """The owner, 17 November 2026: "Can you make it so that opening the LSR
+    pages shows the same summary of what LSRs are that the full page does
+    since right now it just shows the link to the page and almost doesn't
+    look like the card has expanded?" Held on build_lsrs' rows for a request
+    with a co-sponsor, a withdrawn one and one filed as a bill: the page
+    build_request_pages writes for each carries About Requests in its
+    Summary (explain, with what LSR stands for), and the card app.js draws
+    for the same row, opened, carries that section in its Summary's pane
+    byte for byte but for the page's id, once, after the co-sponsor and the
+    Filed As line and before the link to the page (app.js lsrAbout)."""
+    import tempfile
+    import components as C
+    import build_request_pages as RP
+    L = build_lsrs
+    lsrs = [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "relative to dunes.", "sponsor": "Ann Lee",
+             "cosponsors": ["Bob Roe"]},
+            {"lsr": "2027-0002", "session": 2027, "body": "SB", "title": "relative to coves.", "sponsor": "Ann Lee",
+             "withdrawn": True},
+            {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "relative to capes.", "sponsor": "Ann Lee"}]
+    rows, _ = L.rows_from(lsrs, {}, {"2027-0003": "HB 5"}, 2027, None, {})
+    by = {r["n"][4:]: r for r in rows}
+    assert [by[n]["status"] for n in ("2027-0001", "2027-0002", "2027-0003")] == ["Requested", "Withdrawn", "Filed"] \
+        and by["2027-0001"].get("cosponsors") and by["2027-0003"].get("introduced") == "HB 5", (
+        "the fixture's three requests are not what they were")
+    req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "abbr": L.ABBR}
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "idx").mkdir()
+        (site / "bills.html").write_text(_source("src/pages/bills.html"), encoding="utf-8")
+        (site / "meta.json").write_text(json.dumps({"requests": req}), encoding="utf-8")
+        (site / "idx" / "2027-requests.json").write_text(json.dumps(rows), encoding="utf-8")
+        RP.write(site, "https://x")
+        pages = {n: (site / "request" / f"{n}.html").read_text(encoding="utf-8") for n in by}
+    words = f'<p class="lsrnote">{RP.explain(2027, L.ABBR)}</p>'
+    assert "LSR stands for Legislative Service Request." in words, words
+    about, on_page = C.section("About Requests", words), C.section("About Requests", words, "about")
+    for n, page in pages.items():
+        summary = page[page.index(f'id="pane_{by[n]["id"]}_0"'):]
+        nxt = summary.find('<div class="pane sspane"')
+        assert on_page in (summary[:nxt] if nxt >= 0 else summary), (
+            f"/request/{n}'s Summary does not carry About Requests in explain's words")
+    js = ("(() => { scope.setMeta({requests: " + json.dumps(req) + "}); const rows = "
+          + json.dumps([by[n] for n in sorted(by)]) + "; rows.forEach(r => scope.openCards.add(r.id));"
+          " return rows.map(r => scope.lsrCardHtml(r, '')); })()")
+    got = _app_js(js, names=("lsrCardHtml", "openCards", "setMeta: x => (META = x)"))
+    if got is None:
+        return "skip", "the pages carry About Requests; node, app.js or the stub is not here for the card"
+    for n, card in zip(sorted(by), got):
+        start = re.search(r'<div class="pane"[^>]*data-t="0"[^>]*>', card)
+        assert start and 'aria-expanded="true"' in card, f"{n}'s card did not open onto a Summary: {card[:400]!r}"
+        pane = card[start.end():]
+        pane = pane[:pane.find('<div class="pane"')] if '<div class="pane"' in pane else pane
+        assert card.count(about) == 1 and about in pane, (
+            f"{n}'s opened card does not say what a request is as its page does, in its Summary: {pane[:900]!r}")
+        link = pane.find("Open the request’s own page")
+        assert 0 <= pane.find(about) < link, f"{n}'s card puts About Requests after the link to its page"
+        for said in ("<b>Co-Sponsor:</b>", "<b>Filed As:</b>"):
+            assert said not in pane or pane.find(said) < pane.find(about), (
+                f"{n}'s card puts {said!r} under About Requests")
+    assert "<b>Co-Sponsor:</b>" in got[0] and "<b>Filed As:</b>" in got[2], (
+        "the card lost its co-sponsor or the bill it was filed as")
+    return "ok", ("three requests' pages (requested with a co-sponsor, withdrawn, filed as HB 5) carry About "
+                  "Requests in their Summary, and each one's opened card the same section in its Summary, "
+                  "byte for byte, after the co-sponsor and Filed As and before the link to the page")
 
 
 @check("frontend", "a bill's page and card and a request's card draw their tabs with the record's one "
@@ -1726,8 +1803,8 @@ def _one_record_tab_strip():
     want = {"bill": C.record_tabs("HB1", [["0", "Summary", 0], ["1", "Votes", 1]] + rest, "0"),
             "texted": C.record_tabs("HB1", [["0", "Summary", 0], ["6", "Bill Text", 0], ["1", "Votes", 0]]
                                     + rest, "0"),
-            "card": C.record_tabs("LSR20279999", [["0", "Summary", 0], ["4", "Sponsors", 3],
-                                                  ["7", "History", 1]], "7")}
+            "card": C.record_tabs("LSR20279999", [["0", "Summary", 0], ["6", "Bill Text", "0"],
+                                                  ["4", "Sponsors", 3], ["7", "History", 1]], "7")}
     for k, w in want.items():
         assert w in got[k], f"the {k} strip is not record_tabs' answer: {got[k][:500]!r}, not {w!r}"
     assert got["bill"].startswith(want["bill"]) and got["texted"].startswith(want["texted"]), (
@@ -1737,8 +1814,9 @@ def _one_record_tab_strip():
 
 
 @check("build", "a request's page has a bill page's Summary tab, drawn by the record's strip, its Summary "
-                "saying the text is not public yet while the request is drafted, that a withdrawn one was "
-                "withdrawn, and nothing of the kind once it is filed; readable with no script",
+                "About Requests alone and its Bill Text tab saying the text is not public yet while the "
+                "request is drafted, that a withdrawn one was withdrawn, and that a filed one's is public; "
+                "readable with no script",
        needs=("build_lsrs",))
 def _request_page_summary(build_lsrs):
     """The owner, 16 November 2026: a request's full page ended after the
@@ -1748,12 +1826,14 @@ def _request_page_summary(build_lsrs):
     drafted so that the format doesn't look cut off." Held on pages
     build_request_pages writes from build_lsrs' rows: every page's strip is
     components.record_tabs' for its tabs at its own address, byte for byte,
-    the Summary's alone where it has no other -- the strip a bill's page
-    draws (_one_record_tab_strip); a request still requested says its text
-    "will be public when it is filed as a numbered 2027 bill", ahead of the
-    requests' explanation; a withdrawn one says it was withdrawn before it was
-    filed and nothing of drafting; one filed says neither, as its page said
-    before. With no script, app.css hides the strip and shows every pane, and
+    the strip a bill's page draws (_one_record_tab_strip); a request still
+    requested says its text "will be public when it is filed as a numbered
+    2027 bill"; a withdrawn one says it was withdrawn before it was filed and
+    nothing of drafting; one filed says neither. Since 17 November 2026 (the
+    owner: "move the text about the bill text into a bill text tab ... and
+    leave the summary as the about section") that is said in the Bill Text
+    tab, and the Summary is About Requests and nothing else, its words
+    explain's. With no script, app.css hides the strip and shows every pane, and
     each pane carries its own heading and no hidden; the pane sits under the
     strip's rule as a bill's does."""
     import tempfile
@@ -1787,7 +1867,8 @@ def _request_page_summary(build_lsrs):
     gone = "<b>Withdrawn.</b> This request was withdrawn before it was filed as a bill, so it has no text."
     for n, page in pages.items():
         r = by[n]
-        tabs = [["0", "Summary", 0]] + ([["7", "History", len(r["history"])]] if r.get("history") else [])
+        tabs = [["0", "Summary", 0], ["6", "Bill Text", "0"]] + (
+            [["7", "History", len(r["history"])]] if r.get("history") else [])
         strip = C.record_tabs(r["id"], tabs, "0", f"/request/{n}")
         assert strip in page and page.count('role="tablist"') == 1, (
             f"/request/{n} does not draw the record's strip for {[t[1] for t in tabs]}: "
@@ -1797,12 +1878,14 @@ def _request_page_summary(build_lsrs):
         assert len(panes) == len(tabs) and not any(" hidden" in p for p in panes) \
             and page.count('<h2 class="ssph">') == len(tabs), (
             f"/request/{n}'s panes are not each on the page under a heading of its own: {panes}")
-        summary = page[page.index(f'id="pane_{r["id"]}_0"'):]
-        about = summary.index('<h2 class="w4h">About Requests</h2>')
+        own = {re.search(r'data-t="(\d)"', s).group(1): s for s in page.split('<div class="pane sspane"')[1:]}
+        about = C.section("About Requests", f'<p class="lsrnote">{RP.explain(2027, L.ABBR)}</p>', "about")
+        assert own["0"].endswith(f'<h2 class="ssph">Summary</h2>{about}</div>'), (
+            f"/request/{n}'s Summary is not About Requests alone: {own['0'][:600]!r}")
         want = {"2027-0001": drafting, "2027-0002": drafting, "2027-0003": gone, "2027-0004": None}[n]
         if want:
-            assert summary.find(want) in range(0, about), (
-                f"/request/{n} ({r['status']}) does not say {want!r} in its Summary ahead of About Requests")
+            assert want in own["6"] and want not in own["0"], (
+                f"/request/{n} ({r['status']}) does not say {want!r} in its Bill Text tab alone")
         for other in {drafting, gone} - {want}:
             assert other not in page, f"/request/{n} ({r['status']}) says {other!r}"
         assert "still being drafted" not in page or want == drafting, f"/request/{n} says it is being drafted"
@@ -1812,9 +1895,140 @@ def _request_page_summary(build_lsrs):
     under = re.search(r"\.card\.focus\.rec > \.cbody > \.tabs,\.rhead\.rh-bill ~ \.tabs\{([^}]*)\}", css)
     assert under and "margin-bottom:0" in under.group(1), (
         "a request page's pane does not sit under its strip's rule in the bill page's own rule")
-    return "ok", ("four requests' pages: the record's strip, the Summary's tab alone or with History; drafted, "
-                  "withdrawn and filed each say what their row says of the text, and nothing else; every pane "
-                  "on the page under its heading with no script, and under the rule with one")
+    return "ok", ("four requests' pages: the record's strip, Summary and Bill Text alone or with History; the "
+                  "Summary About Requests alone; drafted, withdrawn and filed each say what their row says of "
+                  "the text in the Bill Text tab, and nothing else; every pane on the page under its heading "
+                  "with no script, and under the rule with one")
+
+
+@check("build", "every request has a Bill Text tab, second, on its page and its card: (0) and \"Not public "
+                "yet\" while it is drafted, the withdrawn note when withdrawn, where it is when filed and not "
+                "read, and the text with (1) once read; the card's words the page's",
+       needs=("build_lsrs",))
+def _request_bill_text_tab(build_lsrs):
+    """The owner, 17 November 2026: "You can also move the text about the
+    bill text into a bill text tab and just list it as 0 until the text is
+    published and leave the summary as the about section: Bill Text / Not
+    public yet. This request is still being drafted into a bill. Its text
+    will be public when it is filed as a numbered 2027 bill." Held on four
+    requests from build_lsrs' rows -- one requested, one withdrawn, one filed
+    whose text the night has read and one filed whose text it has not -- on
+    the page build_request_pages writes and the card app.js draws: the
+    strip is components.record_tabs' with Bill Text second, keyed 6, its
+    count the text "0", drawn "(0)", until the text is read and 1 once it
+    is; the tab says the owner's sentence exactly for the one requested,
+    the withdrawn note for the withdrawn one and that the text is public,
+    with the PDF, for the one filed and not read -- the card's pane the
+    page's byte for byte -- and the text in its block for the one read."""
+    import tempfile
+    import components as C
+    import build_request_pages as RP
+    L = build_lsrs
+    pdf = "https://gc.nh.gov/x/2027-000%d.pdf"
+    lsrs = [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "relative to dunes.", "sponsor": "Ann Lee"},
+            {"lsr": "2027-0002", "session": 2027, "body": "SB", "title": "relative to coves.", "sponsor": "Ann Lee",
+             "withdrawn": True},
+            {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "relative to capes.", "sponsor": "Ann Lee"},
+            {"lsr": "2027-0004", "session": 2027, "body": "HB", "title": "relative to bays.", "sponsor": "Ann Lee"}]
+    rows, _ = L.rows_from(lsrs, {}, {"2027-0003": "HB 5", "2027-0004": "HB 6"}, 2027, None, {})
+    by = {r["n"][4:]: r for r in rows}
+    # What the night adds once the list links a request's text, and once it has read it (build_lsrs).
+    by["2027-0003"].update(text_pdf=pdf % 3, text_on_file=True)
+    by["2027-0004"].update(text_pdf=pdf % 4)
+    assert [by[n]["status"] for n in sorted(by)] == ["Requested", "Withdrawn", "Filed", "Filed"], (
+        "the fixture's four requests are not what they were")
+    saved = L.REQUEST_TEXTS
+    req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "abbr": L.ABBR}
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            site = Path(d)
+            (site / "idx").mkdir()
+            L.REQUEST_TEXTS = site / "lsr_text"
+            L.REQUEST_TEXTS.mkdir()
+            (L.REQUEST_TEXTS / "2027-0003.txt").write_text("  HB 5 - AS INTRODUCED\n\n  AN ACT relative to capes.\n",
+                                                           encoding="utf-8")
+            (site / "bills.html").write_text(_source("src/pages/bills.html"), encoding="utf-8")
+            (site / "meta.json").write_text(json.dumps({"requests": req}), encoding="utf-8")
+            (site / "idx" / "2027-requests.json").write_text(json.dumps(rows), encoding="utf-8")
+            RP.write(site, "https://x")
+            pages = {n: (site / "request" / f"{n}.html").read_text(encoding="utf-8") for n in by}
+            bodies = {n: RP.text_pane(by[n], 2027) for n in by}
+    finally:
+        L.REQUEST_TEXTS = saved
+    said = {"2027-0001": "Not public yet. This request is still being drafted into a bill. Its text will be public "
+                         "when it is filed as a numbered 2027 bill.",
+            "2027-0002": "Withdrawn. This request was withdrawn before it was filed as a bill, so it has no text.",
+            "2027-0004": "Filed. Its text is public, and is added here once this site has read it. The PDF at the "
+                         "General Court."}
+    plain = lambda h: re.sub(r"<[^>]+>", "", h).strip()
+    for n, page in pages.items():
+        r = by[n]
+        count = 1 if n == "2027-0003" else "0"
+        strip = C.record_tabs(r["id"], [["0", "Summary", 0], ["6", "Bill Text", count]], "0", f"/request/{n}")
+        assert strip in page, (f"/request/{n} does not draw Summary and Bill Text ({count}) as the record's strip: "
+                               + (re.search(r'<div class="tabs[^"]*" role="tablist".*?</div>', page) or [""])[0][:500])
+        assert f'Bill Text<span class="tn"><span class="tnp"> (</span>{count}<span class="tnp">)</span></span>' in strip, (
+            f"the Bill Text tab of /request/{n} does not show ({count})")
+        assert f'data-t="6"><h2 class="ssph">Bill Text</h2>{bodies[n]}</div>' in page, (
+            f"/request/{n}'s Bill Text pane is not text_pane's")
+        if n in said:
+            assert plain(bodies[n]) == said[n] and "vtext" not in bodies[n], (
+                f"/request/{n}'s Bill Text tab says {plain(bodies[n])!r}, not {said[n]!r}")
+    assert '<pre class="vtext" translate="no">HB 5 - AS INTRODUCED\n\nAN ACT relative to capes.</pre>' in bodies["2027-0003"] \
+        and "read by machine" in bodies["2027-0003"] and f'href="{pdf % 3}"' in bodies["2027-0003"] \
+        and "Not public yet" not in pages["2027-0003"], "the request whose text is read does not show it"
+    assert f'href="{pdf % 4}"' in bodies["2027-0004"], "the filed request's tab does not link its PDF"
+    # THE CARD, in node: the same strip and, for the three with no text here, the page's pane.
+    js = ("(() => { globalThis.fetch = () => new Promise(() => {}); scope.setMeta({requests: " + json.dumps(req)
+          + "}); const rows = " + json.dumps([by[n] for n in sorted(by)]) + "; return rows.map(r => {"
+          " scope.openCards.add(r.id); scope.openTab[r.id] = '6'; return {tabs: scope.lsrTabs(r),"
+          " card: scope.lsrCardHtml(r, '')}; }); })()")
+    got = _app_js(js, names=("lsrCardHtml", "lsrTabs", "openCards", "openTab", "setMeta: x => (META = x)"))
+    if got is None:
+        return "skip", "the pages hold; node, app.js or the stub is not here for the card"
+    for n, x in zip(sorted(by), got):
+        count = 1 if n == "2027-0003" else "0"
+        assert x["tabs"][:2] == [["0", "Summary", 0], ["6", "Bill Text", count]], (
+            f"{n}'s card's tabs are {x['tabs']}")
+        assert C.record_tabs(by[n]["id"], x["tabs"], "6") in x["card"], f"{n}'s card does not draw its strip"
+        summ = x["card"][x["card"].index(f'id="pane_{by[n]["id"]}_0"'):x["card"].index(f'id="pane_{by[n]["id"]}_6"')]
+        assert not [w for w in ("Not public yet", "<b>Withdrawn.</b>", "<b>Filed.</b>", "vtext") if w in summ], (
+            f"{n}'s card's Summary says something of the text")
+        if n in said:
+            assert f'data-t="6">{bodies[n]}</div>' in x["card"], (
+                f"{n}'s card's Bill Text pane is not its page's: {x['card'][x['card'].find('data-t=' + chr(34) + '6' + chr(34) + '>'):][:500]!r}")
+    assert "Loading the text" in got[2]["card"] and pdf % 3 in got[2]["card"], (
+        "the card of the request whose text is read does not fetch it into its tab")
+    return "ok", ("requested, withdrawn, filed and read, filed and not read: Bill Text second on the page and "
+                  "the card, (0) until read and (1) after; the owner's sentence, the withdrawn note and the "
+                  "filed note each exact, the card's pane the page's; the read text in its block")
+
+
+@check("frontend", "a request's Bill Text tab asks for no versions file, which no build writes for a request; "
+                   "a bill's still does")
+def _request_text_tab_asks_no_versions():
+    """17 November 2026: once every request had a Bill Text tab, keyed 6 as a
+    bill's, a press on it in the bill search ran the bill's path for that
+    tab (app.js's tab handler calls needVersions for tab 6) and asked
+    /versions/2027/LSR20270001.json, which answered 404 for every request
+    -- seen in the screenshots' server log, four 404s for each request whose
+    card was turned to Bill Text. needVersions now asks nothing for a row
+    that is a request (`lsr`). Held in node: needVersions on a request's row
+    makes no request and leaves nothing in the cache; on a bill's row with
+    no record yet it asks /versions/2026/HB1.json, as before."""
+    js = ("(() => { const asked = []; globalThis.fetch = u => { asked.push(String(u));"
+          " return new Promise(() => {}); };"
+          " scope.needVersions({id: 'LSR20270001', n: 'LSR 2027-0001', year: 2027, term: '2027-requests', lsr: true});"
+          " const lsr = asked.slice();"
+          " scope.needVersions({id: 'HB1', n: 'HB 1', year: 2026, term: '2025-2026'});"
+          " return {lsr, bill: asked.slice(lsr.length)}; })()")
+    got = _app_js(js, names=("needVersions",))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    assert got["lsr"] == [], f"a request's Bill Text tab asks {got['lsr']}"
+    assert len(got["bill"]) == 1 and got["bill"][0].endswith("versions/2026/HB1.json"), (
+        f"a bill's Bill Text tab no longer asks its versions file: {got['bill']}")
+    return "ok", "a request's row asks nothing; a bill's asks versions/2026/HB1.json"
 
 
 @check("build", "a request's sponsor the roster misses is matched to a winner of the election only where certain: "
@@ -8668,7 +8882,7 @@ def _request_stays_until_introduced(L, RP, BPG, AR):
             and '<pre class="vtext" translate="no">HB 1 - AS INTRODUCED\n\nAN ACT relative to 3.' in p3 \
             and "read by machine" in p3 and f'href="{pdf}"' in p3 and "Not public yet" not in p3, (
             f"a request whose text is in has no Bill Text tab with it: {tabs(p3)}")
-        assert tabs(p5) == ["Summary"] and "<b>Filed.</b> Its text is public, and is added here once this " \
+        assert tabs(p5) == ["Summary", "Bill Text"] and "<b>Filed.</b> Its text is public, and is added here once this " \
             "site has read it." in p5, "a filed request whose text is not read does not say so"
         assert "Not public yet" in page(4) and 'window.GR_FOLLOW="lsr:2027-0004";' in page(4), \
             "a request still requested lost its Summary's note or its own Follow"
@@ -8696,8 +8910,8 @@ def _request_stays_until_introduced(L, RP, BPG, AR):
               " status: Object.keys(scope.REQ_STATUS)}; })()")
         card = _app_js(js, names=("lsrPane", "lsrTabs", "REQ_STATUS"))
         if card is not None:
-            assert card["tabs"] == [["0", "Summary", 0], ["6", "Bill Text", 0]] \
-                and card["plain"] == [["0", "Summary", 0]], card["tabs"]
+            assert card["tabs"] == [["0", "Summary", 0], ["6", "Bill Text", 1]] \
+                and card["plain"] == [["0", "Summary", 0], ["6", "Bill Text", "0"]], card["tabs"]
             assert "Loading the text" in card["first"] and "Loading the text" in card["again"] \
                 and len(card["asked"]) == 1 \
                 and card["asked"][0].endswith("/api/requests/2027/0003.json") \
@@ -8917,8 +9131,10 @@ def _request_cards_like_bills(build_lsrs):
     assert 'class="mchip p-D"' in shut \
         and 'class="ctitle"' in shut and 'aria-expanded="false"' in shut and "<div class=\"cbody\" hidden>" in shut, (
         f"a request's card is not a bill card with a person chip: {shut[:600]!r}")
+    # The card's head, that is: opened, its Summary says what LSR stands for in About Requests, as
+    # the page's does (the owner, 17 November 2026; _request_card_summary_explains).
     assert '<a href="request/2027-0001">LSR 2027-0001</a></span>' in shut and "<abbr" not in shut \
-        and "Legislative Service Request" not in shut, (
+        and "Legislative Service Request" not in shut[:shut.index('class="cbody"')], (
         f"a request's card links its number with a tooltip, or not plainly: {shut[:600]!r}")
     assert "Education - General" in shut and "(from the title)" not in shut, (
         "a request's card does not print its topic by name alone")
@@ -8930,7 +9146,7 @@ def _request_cards_like_bills(build_lsrs):
         and 'id="pane_LSR20270001_7" aria-labelledby="tab_LSR20270001_7" tabindex="0" data-t="7">' in op \
         and 'href="bill/2024/hb7"' in op and 'class="mchip p-R"' in op, (
         "the open card does not show its History tab and the co-sponsors' chips")
-    assert 'data-t="7"' not in pl and 'data-t="4"' not in pl, "a plain request has only a Summary tab"
+    assert 'data-t="7"' not in pl and 'data-t="4"' not in pl, "a plain request has a Sponsors or a History tab"
     return "ok", ("Requested/Filed/Withdrawn by the bill's existence; History by exact title and an earlier "
                   "session; co-sponsors as chips on the card and the page; LSR explained on the page by the "
                   "glossary's popover, the card's number a plain link; the topic by name, Miscellaneous "
