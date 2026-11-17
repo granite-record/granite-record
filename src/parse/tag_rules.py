@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.10
+# GRANITE_VERSION: 2026-11-12.11
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
@@ -45,7 +45,7 @@ THE RULE, by what each kind of evidence may claim (design 2.3):
                          Prohibited.]"): for a tag that is about one provision of
                          law and not about words, which may have no other tier
     duties            R  an office the bill gives a duty or a power: a phrase that
-                         ends the subject of a "shall" or a "may" in the title or
+                         is the subject of a "shall" or a "may" in the title or
                          the text ("the attorney general shall"), or the one a
                          title or analysis "requires", "authorizes" or "directs"
                          to act; `not` phrases are blanked from what was found
@@ -63,13 +63,18 @@ shall" or "may" gives that office something to do. duties() reads each "shall"
 and "may" (lower case: "May" is a month) back to the start of its clause, sets
 aside an aside between commas (", with the consent of the council,") and a
 designee, keeps the last six words of the subject and the four words after the
-verb, and says nothing where the office is the object of the verb ("shall be
-appointed", "shall be subject to"). A subject joined by "and" is read whole and
-in its parts, so "the governor and council may" gives both. The drafters'
+verb, and says nothing for a "shall be" or "may be", whose subject is acted on
+or described ("shall be appointed", "shall be paid", "shall be the same"), but
+"shall be responsible", "authorized", "required" and their kind. A subject
+joined by "and" is read whole, in its parts and from each joint on, so "the
+governor and council may" gives both. A rule's phrase must be the whole subject
+but for "the", "each" and their kind and "deputy" or "acting": "the
+representatives of the governor shall" gives the governor nothing. The drafters'
 "requires the secretary of state to", "authorizing the governor to" in a title
 or an analysis count as a "shall" and a "may". The text kept is what the bill
 prints, amended sections in full, so an office's duty restated beside the change
-counts too: the owner's "referenced in the bill text".
+counts too: the owner's "referenced in the bill text"; a rule's `not` phrases
+take out the boilerplate ("the governor is authorized to draw a warrant").
 
 THE PROVISIONS (17 Nov 2026, the owner: a state income tax tag "only for bills
 that change that particular provision of law -- whether adding an income tax or
@@ -259,8 +264,9 @@ def provisions(text):
 
 # THE DUTIES (in the docstring). A "shall" or "may" in lower case, or "is required to" and its kind; what a
 # title or an analysis "requires" or "authorizes" someone to do; an aside between commas and a designee before
-# the verb; a verb whose subject is acted on rather than acting ("shall be appointed", "shall be subject to"),
-# but for the passives that give a duty or a power ("shall be responsible for", "shall be authorized to").
+# the verb; a "shall be" or "may be", whose subject is acted on or described rather than acting ("shall be
+# appointed", "shall be paid", "shall be subject to", "shall be the same"), but for the few that give a duty or
+# a power ("shall be responsible for", "shall be authorized to").
 _MODAL = re.compile(r"(?<![A-Za-z])(?:(shall|may)|(?:is|are)\s+(?:hereby\s+)?(required|directed|authorized|permitted|"
                     r"allowed|empowered)\s+to)(?![A-Za-z])")
 _GRANT = re.compile(r"(?<![A-Za-z])(requir(?:e|es|ed|ing)|direct(?:s|ed|ing)?|authoriz(?:e|es|ed|ing)|"
@@ -268,8 +274,8 @@ _GRANT = re.compile(r"(?<![A-Za-z])(requir(?:e|es|ed|ing)|direct(?:s|ed|ing)?|au
                     r"((?:the|a|an|each|every|any|all|town|city|county|state)\s[^.;:,()]{1,80}?)\s+to\s+(?!the\s)[a-z]",
                     re.I)
 _MAY = {"authorized", "permitted", "allowed", "empowered", "authoriz", "permit", "allow", "enabl", "empower"}
-_PASSIVE = re.compile(r"\s*(?:not\s+)?be\s+(?:(?!responsible|authorized|empowered|required|permitted|allowed|"
-                      r"directed|entitled)[a-z]+(?:ed|en)|subject|liable|guilty|deemed|exempt|eligible)(?![a-z])")
+_PASSIVE = re.compile(r"\s*(?:not\s+)?be(?![A-Za-z])(?!\s+(?:responsible|authorized|empowered|required|permitted|"
+                      r"allowed|directed|entitled|charged)(?![a-z]))")
 _CLAUSE = re.compile(r"[.;:!?()\[\]\"“”]")
 _ASIDE = re.compile(r"\s*,[^,]{1,100},\s*$")
 _DESIGNEE = re.compile(r",?\s*(?:or|and)\s+(?:(?:his or her|his|her|its|their|the)\s+)?(?:designees?|delegates?|"
@@ -299,10 +305,14 @@ def _subject(before):
 
 
 def _parts(subject):
-    """A subject whole and, where "and" or "or" joins it, each part: "the governor and council" gives itself,
-    "the governor" and "council"."""
+    """A subject whole and, where "and" or "or" joins it, each part and what follows each joint: "the
+    authority and the governor and council" gives itself, "the authority", "the governor", "council" and "the
+    governor and council"."""
+    joints = list(re.finditer(r"\s+(?:and/or|and|or)\s+", subject))
+    if not joints:
+        return [subject]
     parts = [p.strip() for p in re.split(r"\s+(?:and/or|and|or)\s+", subject) if p.strip()]
-    return [subject] + (parts if len(parts) > 1 else [])
+    return list(dict.fromkeys([subject] + parts + [subject[j.end():] for j in joints[:-1]]))
 
 
 def duties(text):
@@ -329,11 +339,13 @@ def duties(text):
 
 
 def duty_phrase(p):
-    """A registry's duty phrase as a regular expression: the phrase ending the subject of a "shall" or a
-    "may" in one of duties()'s answers ("attorney general" finds "the attorney general shall", and never "a
-    report to the attorney general shall", which duties() does not give)."""
+    """A registry's duty phrase as a regular expression: the phrase that is the whole subject of a "shall" or
+    a "may" in one of duties()'s answers, after "the", "each" and their kind and "deputy" or "acting"
+    ("attorney general" finds "the attorney general shall", and never "the representatives of the governor
+    shall" nor "a report to the attorney general shall", which duties() does not give)."""
     rx = compile_phrase(p)
-    return re.compile(rx.pattern + r"\s+(?:shall|may)(?![A-Za-z])", rx.flags)
+    return re.compile(r"^\s*(?:(?:the|a|an|each|any|every|no|such|said)\s+)?(?:(?:deputy|acting|interim)\s+)?"
+                      + rx.pattern + r"\s+(?:shall|may)(?![A-Za-z])", rx.flags)
 
 
 class Rule:

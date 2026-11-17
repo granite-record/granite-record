@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.15
+# GRANITE_VERSION: 2026-11-16.16
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -10432,12 +10432,14 @@ def _tag_duties(TR):
     of state, governor, etc for positions that are referenced in the bill text like an obligation that the role
     must do"). On the real wording of bills' texts: the subject of a "shall" or a "may" back to its clause, an
     aside between commas and a designee set aside (2025-2026 SB 627's commissioner acts "with the approval of
-    the governor and council", which gives the governor nothing); an office that is acted on gives nothing
-    ("shall be subject to", "may be removed"), nor one after a preposition ("the commission after consultation
-    with the attorney general may"); "and" read whole and in parts; the drafters' "requiring the secretary of
-    state to" and "is hereby authorized to"; load_bills carries them. A rule of duties alone is well formed and
-    attaches as R by the duty; the same title and analysis with no duty attach nothing; a `not` phrase blanks
-    every CACR's "the secretary of state shall print the question"."""
+    the governor and council", which gives the governor nothing); a "shall be" gives nothing ("shall be subject
+    to", "may be removed", "shall be paid", "shall be the same") but "shall be responsible", nor an office after
+    a preposition ("the commission after consultation with the attorney general may"); "and" read whole, in
+    parts and from each joint; the drafters' "requiring the secretary of state to" and "is hereby authorized
+    to"; load_bills carries them. A rule of duties alone is well formed and attaches as R when its phrase is
+    the whole subject ("the deputy attorney general shall", never "the representatives of the governor shall");
+    the same title and analysis with no duty attach nothing; a `not` phrase blanks every CACR's "the secretary
+    of state shall print the question" and an appropriation's "the governor is authorized to draw a warrant"."""
     d = TR.duties
     assert d("Upon receipt of a properly completed election law complaint form, the attorney general may "
              "investigate the complaint") == ["the attorney general may investigate the complaint"], "2025-2026 HB 1462"
@@ -10455,8 +10457,13 @@ def _tag_duties(TR):
     hb639 = d("II. The governor, with the consent of the executive council, may appoint the first presiding judge")
     assert hb639 == ["the governor may appoint the first presiding"], hb639
     both = d("such terms and conditions as the authority and the governor and council may impose")
-    assert {"the governor may impose", "council may impose", "authority and the governor and council may impose"} <= \
-        set(both), both
+    assert {"the governor may impose", "council may impose", "authority and the governor and council may impose",
+            "the governor and council may impose"} <= set(both), both
+    assert d("Each member of the board shall be paid $50 a day") == [], "a shall be paid read as a duty"
+    assert d("the qualifications of electors of the governor shall be the same as those") == [], (
+        "a shall be the same read as a duty")
+    assert d("III. The sheriff shall be responsible for the custody") == [
+        "the sheriff shall be responsible for the"], "shall be responsible is a duty"
     assert d("AN ACT requiring the secretary of state to create and maintain a uniform") == [
         "the secretary of state shall"], "2025-2026 HB 1163's title"
     assert d("The attorney general is hereby authorized to hire an assistant attorney general") == [
@@ -10471,7 +10478,9 @@ def _tag_duties(TR):
            "office-secretary-of-state": {"name": "Secretary of State", "definition": "Bills that give the secretary "
                                          "of state a duty or a power.",
                                          "rule": {"duties": ["secretary of state"],
-                                                  "not": ["shall print the question"]}}}
+                                                  "not": ["shall print the question"]}},
+           "office-governor": {"name": "Governor", "definition": "Bills that give the governor a duty or a power.",
+                               "rule": {"duties": ["governor"], "not": ["may draw", "shall draw"]}}}
     assert not TR.validate(reg), TR.validate(reg)
     assert TR.validate({"x": {"name": "X", "definition": "Bills.", "rule": {"duties": ["re:("]}}}), (
         "a duties phrase that does not compile passed")
@@ -10483,14 +10492,20 @@ def _tag_duties(TR):
         return {k: v["why"] for k, v in TR.tag_bill(rules, b)["tags"].items()}
     assert tags("relative to election law complaints.", "This bill involves the attorney general.",
                 "Upon receipt of a complaint form, the attorney general may investigate the complaint") == {
-        "office-attorney-general": "R:attorney general may"}
+        "office-attorney-general": "R:the attorney general may"}
     assert tags("relative to the attorney general.", "This bill names the attorney general and the secretary of "
                 "state.", "The commission after consultation with the attorney general may act.") == {}, (
         "a mention attached an office")
+    assert tags("relative to commissions.", "", "the representatives of the governor shall serve for the balance of "
+                "their elected terms") == {}, "an office ending the subject, not being it, attached (2025-2026)"
+    assert tags("relative to the deputy.", "", "The deputy attorney general shall act") == {
+        "office-attorney-general": "R:the deputy attorney general shall"}
+    assert tags("relative to the governor.", "", "the governor is authorized to draw a warrant for said sum") == {}, (
+        "the appropriation's boilerplate gave the governor a tag")
     assert tags("relative to cannabis.", "", "V. That the secretary of state shall print the question to be "
                 "submitted to the voters") == {}, "every CACR's boilerplate gave the secretary of state a tag"
     assert tags("requiring the secretary of state to create a uniform form.", "", "") == {
-        "office-secretary-of-state": "R:secretary of state shall"}
+        "office-secretary-of-state": "R:the secretary of state shall"}
     root = Path(tempfile.mkdtemp())
     try:
         (root / "data").mkdir()
