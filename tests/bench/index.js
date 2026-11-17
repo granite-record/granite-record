@@ -6,3 +6,4 @@
 
 import "./store.test.js";
 import "./functions.test.js";
+import "./page.test.js";
