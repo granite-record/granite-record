@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.13
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1381,8 +1381,8 @@ def _former_movers_one_page(build_site_v2, build_pages):
                   "ahead of the tab rules, tabs included")
 
 
-@check("build", "each bill request has a page of its own, noindex, until it is a bill or filing is "
-                "complete, and from then its address forwards; never a page and a 301 at once")
+@check("build", "each bill request has a page of its own, noindex, until its bill is introduced or filing "
+                "is complete, and from then its address forwards; never a page and a 301 at once")
 def _request_pages():
     """Alice, 8 November 2026: a page for each request of the session the
     site lists, to share; noindex, out of the sitemap; once a request is a

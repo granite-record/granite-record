@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.15
+# GRANITE_VERSION: 2026-11-08.16
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -329,10 +329,11 @@ def body(r, req, who_of, path, base):
 def text_address(r):
     """The address of a request's Bill Text tab on its own page, its pane
     named by the place the strip opens on (app.js's ssWanted reads "#<pane
-    id>"): "/request/2027-0001#pane_LSR20270001_6" -- "" for a request whose
-    text is not read, which has no such tab. The follow email's "View the
-    text" (build_feeds, follow_changes.ending; the owner, 17 November 2026).
-    Once the request forwards to its bill, the page there opens as it does."""
+    id>"): "/<address>#pane_<id>_6", from the row's own address and id --
+    "" for a request whose text is not read, which has no such tab. The
+    follow email's "View the text" (build_feeds, follow_changes.ending; the
+    owner, 17 November 2026). Once the request forwards to its bill, the page
+    there opens as it does."""
     if not (r.get("text_on_file") and r.get("address") and r.get("id")):
         return ""
     return f"/{r['address']}#pane_{r['id']}_6"

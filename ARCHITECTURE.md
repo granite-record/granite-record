@@ -2459,7 +2459,8 @@ and public once it is filed as a numbered bill; or withdrawn before it was
 filed; and, filed, that its text is public and is added once this site has
 read it, with the General Court's PDF linked. The night fetches each text the
 request list links, a few a night, and reads it with pdftotext -layout
-(`fetch_lsrs.py --texts`, `--read-texts`; `nightly.take_lsr_texts`) into
+(`python3 src/fetch/gc_web/fetch_lsrs.py --texts` and `--read-texts`;
+`nightly.take_lsr_texts`) into
 `archive/lsr_text/`, which the kit carries; from then the request's page and
 card have a Bill Text tab, keyed 6 as a bill's, with what was read, said to be
 read by machine, and the PDF linked (`build_lsrs.request_text`, the one reader;
