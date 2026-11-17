@@ -956,6 +956,7 @@
 "_nightly_guards",
 "_nightly_reports_loud",
 "_nightly_runner",
+"_lsrs_filed_not_withdrawn",
 "_nightly_publishes_its_commit",
 "_nightly_review_says",
 "_nightly_review_new_term",

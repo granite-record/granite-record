@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.98
+# GRANITE_VERSION: 2026-09-04.99
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -4199,8 +4199,20 @@ def take_lsrs():
     rc = run(["fetch_lsrs.py"], "next session's bill requests, from the General Court")
     EXITS["fetch_lsrs.py"] = rc
     new = load_json(LSRS)
-    gone = [r for r in (new if isinstance(new, list) else [])
+    # A REQUEST THAT LEFT THE LIST AS A BILL IS NO WITHDRAWAL (the rehearsal of
+    # 17 November 2026). fetch_lsrs marks every request gone from the list
+    # withdrawn, the list being unable to tell a withdrawal from a request
+    # filed as a bill (build_lsrs.became_bills tells them apart from the
+    # bills). Counted here as withdrawals, a day the General Court files more
+    # than a tenth of the standing requests as bills -- 48 House bills on 23
+    # December 2024 -- would refuse the list, and every night after it, since
+    # each compares with the list kept: no new request and no withdrawal
+    # taken for the rest of the season. So a request whose year and number
+    # the installed docket files a bill under is not counted.
+    billed = billed_lsrs()
+    left = [r for r in (new if isinstance(new, list) else [])
             if isinstance(r, dict) and r.get("withdrawn") and r.get("lsr") in standing]
+    gone = [r for r in left if r.get("lsr") not in billed]
     why = ""
     if rc != 0:
         why = f"the fetch did not complete (exit {rc})"
@@ -4219,8 +4231,27 @@ def take_lsrs():
         return (f"not taken: {why}; "
                 + (f"the earlier {len(standing)} kept" if before is not None else "none on file"))
     active = sum(1 for r in new if isinstance(r, dict) and not r.get("withdrawn"))
+    filed = len(left) - len(gone)
     return (f"installed, {active} requests (was {len(standing)})"
+            + (f"; {filed} filed as bills" if filed else "")
             + (f"; {len(gone)} newly withdrawn" if gone else ""))
+
+
+def billed_lsrs(docket=Path("Docket.txt")):
+    """{"2027-0001", ...}: each request number the installed docket files a
+    bill under -- its session year and LSR, columns 0 and 1, the LSR as a
+    request's number writes it, four digits -- for take_lsrs. Empty where no
+    docket is installed."""
+    out = set()
+    try:
+        with open(docket, encoding="utf-8-sig", errors="replace") as fh:
+            for ln in fh:
+                f = ln.split("|")
+                if len(f) > 3 and f[0].strip().isdigit() and f[1].strip().isdigit() and f[3].strip():
+                    out.add(f"{f[0].strip()}-{int(f[1]):04d}")
+    except OSError:
+        pass
+    return out
 
 
 def take_documents(v=None):
