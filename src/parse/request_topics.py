@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.4
+# GRANITE_VERSION: 2026-11-12.5
 """
 An initial topic for a bill request, from its title.
 
@@ -81,8 +81,15 @@ Housing, as they are for every bill.
 
 THE SITE'S CATEGORY, NEVER A NEW ONE. The model answers in the General Court's
 own names; build_site_v2.vocabulary_of turns each into the category the site
-shows (the folds, the two renamed names), the one path every term's topics take.
-A name the site retired comes out as None and the request is Miscellaneous.
+shows (the folds, the renamed name, the two split in two), the one path every
+term's topics take. A name the site retired comes out as None and the request is
+Miscellaneous. THE TWO SPLIT IN TWO (17 November 2026, topic_model.SPLITS) are
+split for a request by the title half of their rule, a request having no text
+to say which statutes it changes: a Crimes answer whose title names prisons,
+jails, inmates, prisoners, parole, probation or corrections is Corrections, and
+a Property answer whose title names personal property, unclaimed property and
+the like is Personal Property. Nothing here is retrained for them: the model
+answers the General Court's name, as it always has, and is measured in it.
 
 WHAT IS WRITTEN. `topic` and `topic_by = "title"` on the row of every request
 not yet a bill: the topic its title gives, or Miscellaneous. The card and the

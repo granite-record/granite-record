@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.11
+# GRANITE_VERSION: 2026-09-16.12
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 src/parse/topic_model.py --apply              # write topics_assigned.json
@@ -276,6 +276,132 @@ def is_study(title):
     t = NEWTITLE.sub("", title or "")
     m = STUDY_RE.search(t)
     return bool(m) and m.start() <= STUDY_WITHIN
+
+# ------------------------------------------------------ two topics split in two
+#
+# TWO OF THE GENERAL COURT'S TOPICS ARE EACH TWO OF THE SITE'S (the owner, 16
+# November 2026: "Split up Crimes, Criminal Procedure and Corrections into
+# Crimes and Criminal Procedure (Classifying new crimes, changing the penalty
+# for crimes, etc), and Corrections separately (Corrections facilities,
+# related policy)"; and "Property - Real and Personal is a bit of a confusing
+# topic since I don't really understand if that covers real estate, or things
+# like personal property"). A bill the General Court -- or this model --
+# files under CCP or PRP is filed by the site under one of the two, by the
+# statutes the bill says it changes and then its title, one sentence each:
+#
+#   CORRECTIONS        it changes a chapter on prisons, jails, probation or
+#                      parole (RSA 21-H, 30-B, 504 and 504-A, 619 to 623-C,
+#                      651-A) and none of the criminal code or criminal
+#                      procedure (RSA Titles LVIII, LIX and LXII, but 651-A
+#                      and 651, Sentences, which serves both), or, where its
+#                      chapters do not settle it, its title names prisons,
+#                      jails, inmates, prisoners, parole, probation or
+#                      corrections; every other CCP bill is CRIMES AND
+#                      CRIMINAL PROCEDURE.
+#   PERSONAL PROPERTY  it changes a chapter on liens on goods, lost or
+#                      unclaimed property, secured transactions, trustee
+#                      process, levies on or replevin of goods, forfeitures or
+#                      vehicle titles (RSA Title XLI but 447 and 447-A, which
+#                      are liens on real estate; 382-A, 471 to 471-D, 512,
+#                      528, 536 and 536-A, 617, 261), or its title names
+#                      personal property, abandoned or unclaimed property, a
+#                      gift certificate, a security interest, a storage lien,
+#                      a forfeiture, trustee process, DNA or personal digital
+#                      information; every other PRP bill is REAL ESTATE.
+#
+# The chapters are rsa_citations.json's "changes" (what the bill's own
+# instructions say it amends); a request, which has no text yet, is split by
+# its title alone. The chapter ranges are the General Court's own table
+# (db/NH_RSA.psv): Title LVIII Public Justice is 570 to 591, LIX Proceedings
+# in Criminal Cases 592 to 614, LX Correction and Punishment 615 to 623-C --
+# 616 to 618 are penalties, fines and forfeitures, which stay with the crimes
+# -- and LXII the Criminal Code 625 to 651-F.
+#
+# APPLIED AFTER THE MODEL, AS TOPIC_WORDS IS (build_site_v2.vocabulary_of).
+# The model is measured in the General Court's 46 names and still answers in
+# them; remap_gold, fit and new_vocabulary do not split, so no answer of the
+# model changes, only the name the site files it under. Measured on the
+# record of 7 November 2026 (1,795 bills of the first topic, 100 of the
+# second): 1,568 Crimes and Criminal Procedure and 227 Corrections; 73 Real
+# Estate and 27 Personal Property. The title alone, which is all a request
+# has, gives the same half for 1,762 of the 1,795 and 94 of the 100.
+CCP_NAME = "Crimes, Crim.Proc. & Corr."
+PRP_NAME = "Property - Real and Personal"
+CRIMES = "Crimes and Criminal Procedure"
+CORRECTIONS = "Corrections"
+REAL_ESTATE = "Real Estate"
+PERSONAL_PROPERTY = "Personal Property"
+SPLITS = {CCP_NAME: (CRIMES, CORRECTIONS), PRP_NAME: (REAL_ESTATE, PERSONAL_PROPERTY)}
+
+_CHAPTER = re.compile(r"(\d{1,3})(?:-([A-Z]{1,2}))?")
+# "Making technical corrections" is no prison, and "mandatory prison
+# sentences" and "minimum prison terms" are penalties: blanked before the
+# title is read, as a tag's "not" phrases are.
+CORRECTIONS_NOT = re.compile(r"(?<![a-z])(?:technical corrections?|prison (?:sentences?|terms?))(?![a-z])", re.I)
+CORRECTIONS_RE = re.compile(
+    r"(?<![a-z])(?:prisons?|prisoners?|inmates?|jails?|parol(?:e|ed|ees?)|probation(?:ers?)?"
+    r"|corrections|correctional|houses? of correction|youth (?:development|services) center"
+    r"|solitary confinement|secure psychiatric unit|work release|halfway houses?|re-?entry)(?![a-z])", re.I)
+PERSONAL_RE = re.compile(
+    r"(?<![a-z])(?:personal property|abandoned (?:personal )?(?:property|materials)|unclaimed|escheats?"
+    r"|gift (?:certificates?|cards?)|security interests?|self-?service storage|storage facilit(?:y|ies)"
+    r"|liens? on personal|forfeitures?|trustee process|DNA|personal digital|digital information"
+    r"|historical objects)(?![a-z])", re.I)
+
+
+def _chapter_key(ch):
+    """("651", "A") for "651-A" or "651-A:2"; None for what is no chapter."""
+    m = _CHAPTER.fullmatch(str(ch).split(":")[0].upper().replace("‑", "-").strip())
+    return (int(m.group(1)), m.group(2) or "") if m else None
+
+
+def is_corrections_chapter(ch):
+    k = _chapter_key(ch)
+    return bool(k) and (k in {(21, "H"), (30, "B"), (504, ""), (504, "A"), (651, "A")} or 619 <= k[0] <= 623)
+
+
+def is_criminal_chapter(ch):
+    """A chapter of Title LVIII, LIX or LXII, but 651 and 651-A (the comment above)."""
+    k = _chapter_key(ch)
+    return bool(k) and k not in {(651, ""), (651, "A")} and (570 <= k[0] <= 614 or 625 <= k[0] <= 651)
+
+
+def is_personal_property_chapter(ch):
+    k = _chapter_key(ch)
+    return bool(k) and ((444 <= k[0] <= 454 and k[0] != 447) or k[0] == 471
+                        or k in {(382, "A"), (512, ""), (528, ""), (536, ""), (536, "A"), (617, ""), (261, "")})
+
+
+def corrections_title(title):
+    return bool(CORRECTIONS_RE.search(CORRECTIONS_NOT.sub(" ", NEWTITLE.sub("", title or ""))))
+
+
+def split_rule(name, title, chapters=()):
+    """(the site's topic, what decided it) for a bill filed under `name`: one of
+    SPLITS' two for CCP and PRP, by the chapters it changes and then its title
+    (the comment above); any other name as it is, decided by nothing."""
+    if name == CCP_NAME:
+        corr = any(is_corrections_chapter(c) for c in chapters)
+        crim = any(is_criminal_chapter(c) for c in chapters)
+        if corr != crim:
+            return (CORRECTIONS if corr else CRIMES), "chapters"
+        return (CORRECTIONS if corrections_title(title) else CRIMES), "title"
+    if name == PRP_NAME:
+        if any(is_personal_property_chapter(c) for c in chapters):
+            return PERSONAL_PROPERTY, "chapters"
+        if PERSONAL_RE.search(NEWTITLE.sub("", title or "")):
+            return PERSONAL_PROPERTY, "title"
+        return REAL_ESTATE, "title"
+    return name, ""
+
+
+def split_topic(name, title, chapters=()):
+    return split_rule(name, title, chapters)[0]
+
+
+def split_names():
+    """The four names the two split topics are filed under."""
+    return {n for pair in SPLITS.values() for n in pair}
 
 # ---------------------------------------------------------------- title rules
 #
