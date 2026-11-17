@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.14
+# GRANITE_VERSION: 2026-10-07.15
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -478,11 +478,15 @@ def ending(key, label, *, term_turned, old_term, hints):
     kind, _, ref = key.partition(":")
     h = hints.get(key) or {}
     if kind == "lsr":
-        # Drafted and introduced: the follow moves to the bill ("becomes",
-        # which the sender reads); withdrawn, or gone without a word, it ends.
+        # Drafted and filed as a bill: the follow moves to the bill
+        # ("becomes", which the sender reads); withdrawn, or gone without a
+        # word, it ends. FILED, NOT INTRODUCED (the rehearsal of 17 November
+        # 2026): a request becomes a numbered bill the day its text is
+        # public -- the owner's "Filed", build_lsrs' status for it -- and is
+        # introduced in January; the email of 18 December said "introduced".
         if h.get("becomes") and key_ok(h["becomes"]):
             return {"how": "drafted", "becomes": h["becomes"],
-                    "summary": f"{label} has been drafted and introduced as {h.get('bill') or 'a bill'}.",
+                    "summary": f"{label} has been drafted and filed as {h.get('bill') or 'a bill'}.",
                     "guid": f"{key}:ended:drafted"}
         how = "withdrawn" if h.get("withdrawn") else "left"
         said = (f"{label} was withdrawn before it was drafted." if h.get("withdrawn")

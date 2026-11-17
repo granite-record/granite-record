@@ -25,7 +25,7 @@ function site(w) {
   w.net.site.set("/changes/2026-10-06.json", { format: 1, date: "2026-10-06",
     built: "2026-10-06T09:00:00Z", sitting_term: "2025-2026", new_by: "first-seen",
     refs: { "lsr:2027-0001": { ended: { how: "drafted", becomes: "bill:2026/HB9901",
-      summary: "LSR 2027-0001 has been drafted and introduced as HB 9901.",
+      summary: "LSR 2027-0001 has been drafted and filed as HB 9901.",
       date: "2026-10-06", guid: "lsr:2027-0001:ended:drafted" } } } });
 }
 
@@ -53,7 +53,7 @@ test("the request's follower is told, the follow moves onto the bill, and the ad
     const r = await run(w.env, w.now);
     assert.equal(r.sent, 1);
     const mail = w.net.outbox[0];
-    assert.match(mail.text, /LSR 2027-0001 has been drafted and introduced as HB 9901\. You now follow/);
+    assert.match(mail.text, /LSR 2027-0001 has been drafted and filed as HB 9901\. You now follow/);
     assert.match(mail.text, /BILL REQUESTS YOU FOLLOW/);
     assert.equal(w.d1.rows("subscribers").length, 1, "the address is kept: its follow moved, not ended");
     assert.deepEqual(await followKeys(w.d1, w.env), [`${s.id} bill:2026/HB9901`]);

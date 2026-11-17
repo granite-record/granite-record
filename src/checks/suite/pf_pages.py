@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -6525,8 +6525,10 @@ def _follow_lsr_endings(FC):
     assert FC.key_ok("lsr:2027-0001") and not FC.key_ok("lsr:27-1") and "lsr" in FC.ENDS
     e = FC.ending("lsr:2027-0001", "LSR 2027-0001", term_turned=False, old_term="2025-2026",
                   hints={"lsr:2027-0001": {"becomes": "bill:2027/HB45", "bill": "HB 45"}})
+    # Filed, the stage the request's rail and status say, not "introduced",
+    # which comes in January (the rehearsal of 17 November 2026).
     assert e["how"] == "drafted" and e["becomes"] == "bill:2027/HB45" \
-        and "introduced as HB 45" in e["summary"], e
+        and "drafted and filed as HB 45." in e["summary"] and "introduced" not in e["summary"], e
     w = FC.ending("lsr:2027-0002", "LSR 2027-0002", term_turned=True, old_term="2025-2026",
                   hints={"lsr:2027-0002": {"withdrawn": True}})
     assert w["how"] == "withdrawn" and "becomes" not in w, w
