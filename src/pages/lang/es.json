@@ -1872,6 +1872,11 @@
    "es": "¿Quiso decir {words}?",
    "state": "draft"
   },
+  "find.enter_opens": {
+   "en": "Press Enter to open {name}.",
+   "es": "Presione Enter para abrir {name}.",
+   "state": "draft"
+  },
   "find.every_match": {
    "en": "every member, committee, town and subject that matches, and the bills of every term",
    "es": "cada miembro, comité, municipio y tema que coincida, y los proyectos de ley de todos los períodos",

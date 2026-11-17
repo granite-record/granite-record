@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.287
+# GRANITE_VERSION: 2026-09-04.288
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -4072,9 +4072,10 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, static_s
      search box like the header search: bills, legislators, towns, committees
      and the rest from the same box, with a dropdown of the top results (no
      separate legislator finder)"). find.js draws the top results into the
-     box's own dropdown, the header panel's rows; Return takes the first, as
-     in the header, and Search opens every result. Without script, Search
-     opens the bill search, as it did.
+     box's own dropdown, the header panel's rows; Return opens the first
+     where it is the one clear destination (find.js, findClear), as in the
+     header, and every result where it is not, and Search opens every result.
+     Without script, Search opens the bill search, as it did.
      ITS WORDS SAY WHAT TO TYPE AND WHERE IT LEADS (the owner, 24 October
      2026: "The homepage searchbar should be phrased a bit better so folks
      know what they should be searching for and where the searchbar can take
@@ -4429,7 +4430,14 @@ document.addEventListener("click",e=>{
 // number, which opens the bill (find.js's findBill: the person's rule of 12
 // October). A row is still one tap away. The header's box opens /search
 // for a bill number too since 8 November 2026, and this one since 9 November
-// (Alice: "Home search opens results"): Return is the Search button, always.
+// (Alice: "Home search opens results"): Return was the Search button, always.
+// UNTIL THERE IS ONE CLEAR DESTINATION (the owner, 17 November 2026): Return
+// opens the row find.js's findClear finds certain -- this term's bill for its
+// number, a member, a town, a seat, a how-to guide -- which the dropdown
+// marks and its status line names, as the header's box does (findGo), while
+// the dropdown is open; and every result for anything else. The Search
+// button is every result, always. The arrows choose a row (findArrow), and
+// Return there opens that row.
 const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};
 const hq=document.getElementById("hq"),hqout=document.getElementById("hqout");
 // ABOVE THE KEYBOARD. On a phone this box stands most of the way down the
@@ -4456,10 +4464,12 @@ hq.addEventListener("input",hqDraw);
 hq.addEventListener("focus",()=>{if(hq.value.trim())hqDraw();});
 hq.addEventListener("keydown",e=>{
   if(e.key==="Escape"){hqout.hidden=true;return;}
+  if(typeof findArrow==="function"&&findArrow(e,hq,hqout))return;
   if(e.key!=="Enter")return;
   e.preventDefault();
-  location.href=hqAddr(hq.value);
+  location.href=(!hqout.hidden&&typeof findGo==="function"&&findGo(hq.value,HQ))||hqAddr(hq.value);
 });
+hqout.addEventListener("keydown",e=>{if(typeof findArrow==="function")findArrow(e,hq,hqout);});
 document.getElementById("hgo").addEventListener("click",()=>{location.href=hqAddr(hq.value);});
 // Away from the box, the dropdown closes; "Did you mean" searches again here.
 document.addEventListener("click",e=>{

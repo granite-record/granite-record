@@ -1291,7 +1291,12 @@ and close when focus goes somewhere else in the page; focus that goes nowhere
 drawn. A search that asks how -- a question, or a guide's own task words
 (`guides.ASKED`, the sixth field of a guide's row in `find.json`) -- lists
 its guides above the bills (`findAsks`); one that names a subject keeps the
-bills first.
+bills first. Return in its box, and in the home page's, opens the row
+`findClear` finds certain -- this term's bill for its number, a request or a
+statute by its number, the only answer, a person, a town or a page by its
+whole name, the one guide a how-to search finds, the one member of a seat --
+which the panel marks (`data-go`) and the status line names, and `/search`
+for anything else; the arrows move the focus through the rows (`findArrow`).
 
 **A ring is drawn inside a control that fills a clipping box** (a card's
 header, Play, a filter group's head), and **a text box's edge is `--edge`**.
