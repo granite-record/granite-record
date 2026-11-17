@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -4455,6 +4455,82 @@ def _find_members_elect(BI, BP):
                   "member's row inside theirs, back on the day they take office by the reader's day, "
                   f"a member's for the new by the build's; found by {len(queries) + len(seats)} "
                   "searches, first in the panel, in Spanish words, and under their chamber on /search")
+
+
+_FIND_SWAP_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+// No bill can be had: the matcher's script fails to load, so the panel offers the name alone.
+document.head.appendChild = (s) => { if (s.onerror) s.onerror(); };
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findDraw, findSuggest, findBillsLoad, _fdist})");
+F.FIND.rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+(async () => {
+  const out = { suggest: {}, dist: {} };
+  for (const q of ["denier", "deinre", "concrod", "bailye", "ebike", "comittee", "litchfeild", "edinre"])
+    out.suggest[q] = F.findSuggest(q);
+  for (const [a, b, m] of [["denier", "deiner", 2], ["ab", "ba", 1], ["kitten", "sitting", 3],
+                           ["abcdef", "badcfe", 2], ["deiner", "deiner", 2], ["ax", "xb", 2]])
+    out.dist[a + "/" + b] = F._fdist(a, b, m);
+  await F.findBillsLoad();
+  F.findDraw("denier");
+  out.panel = document.getElementById("findout").innerHTML;
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + (e && e.stack || e)); process.exit(1); });
+"""
+
+
+@check("frontend", "the header's box offers a name with two neighbouring letters swapped, a slip "
+                   "of one: 'denier' is offered Deiner's name", needs=("build_pages",))
+def _find_swapped_letters(BP):
+    """The owner's own search, 16 November 2026: "Denier" for Heather Deiner, a member-elect.
+    find.js's "Did you mean" counted two letters swapped as two edits, and a word under seven
+    letters is offered a name one edit away, so "denier" was offered nothing of hers (the
+    panel said "No matching results.", or a word of the bills). A swap of neighbouring letters
+    is one edit now, as the not-found page's town finder counts it. Held: "denier" and "deinre"
+    are offered "deiner", "concrod" "concord", "bailye" "bailey"; the old answers are as they
+    were -- "ebike" nothing, "comittee" "committees", "litchfeild" "litchfield" -- two swaps
+    are two ("edinre" nothing), and a letter that matches on one side only is no swap ("ax"
+    and "xb" are two apart); the distance's early stop still answers past the bound (three
+    swaps at a bound of two); and the panel offers the name for "denier"."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    rows = [["elect", "Rep. “Elect” Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
+             "legislator/heather-deiner-hills-25", "Hillsborough"],
+            ["legislator", "Rep. Glenn Bailey (R - Straf 2)", "House · Straf 2 · Republican",
+             "legislator/glenn-bailey-straf-2", "Bailey Glenn Strafford"],
+            ["town", "Concord", "Merrimack County", "town/concord", "Merrimack"],
+            ["town", "Litchfield", "Hillsborough County", "town/litchfield", "Hillsborough"],
+            ["page", "Committees", "Every committee", "committees", ""],
+            ["former", "Former Rep. Mike Smith", "House · Rock 1 · 2001–2002", "legislator/mike-smith",
+             "Rockingham", 2002]]
+    root = Path(tempfile.mkdtemp(prefix="gr-findswap-"))
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_with_components(_source("src/pages/find.js")), encoding="utf-8")
+        (root / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_SWAP_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + said[-300:]
+        got = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    want = {"denier": "deiner", "deinre": "deiner", "concrod": "concord", "bailye": "bailey",
+            "ebike": "", "comittee": "committees", "litchfeild": "litchfield", "edinre": ""}
+    assert got["suggest"] == want, f"the names offered are {got['suggest']}, not {want}"
+    assert got["dist"] == {"denier/deiner": 1, "ab/ba": 1, "kitten/sitting": 3, "abcdef/badcfe": 3,
+                           "deiner/deiner": 0, "ax/xb": 2}, f"find.js's _fdist answers {got['dist']}"
+    assert re.search(r'Did you mean <button type="button" class="fdym" data-find="deiner">deiner</button>\?',
+                     got["panel"]), f"the panel offers {got['panel'][-300:]!r} for 'denier'"
+    return "ok", ("'denier' and 'deinre' offered 'deiner', 'concrod' 'concord', 'bailye' 'bailey'; "
+                  "'ebike', 'comittee' and 'litchfeild' answered as before, two swaps two; the panel "
+                  "offers Deiner's name for 'denier'")
 
 
 @check("build", "the search index builder stops, and writes nothing, when a "

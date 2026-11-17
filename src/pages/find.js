@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.61
+// GRANITE_VERSION: 2026-09-16.62
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -559,21 +559,31 @@ function findMatch(q,limit){
    cell already exceeds the bound cannot come back under it -- so a long word
    costs almost nothing. Two edits rather than one because "firarms" is one
    deletion from "firearms" but "comittee" is two from "committee", and a
-   reader who has mistyped twice needs the offer more, not less. */
+   reader who has mistyped twice needs the offer more, not less.
+
+   TWO LETTERS SWAPPED ARE ONE SLIP, NOT TWO (the owner's own search, 16
+   November 2026: "Denier" for Heather Deiner, a member-elect). Counted as
+   two, a swap in a word under seven letters was never offered -- "denier"
+   was offered nothing of hers -- so a swap of two neighbouring letters is
+   one edit, as the not-found page's town finder counts it. The early stop
+   still holds: a swap reaches back two rows, and a row past the bound has
+   the one before it at the bound or past it. */
 function _fdist(a,b,max){
   if(Math.abs(a.length-b.length)>max)return max+1;
-  let prev=Array.from({length:b.length+1},(_,i)=>i);
+  let back=null,prev=Array.from({length:b.length+1},(_,i)=>i);
   for(let i=1;i<=a.length;i++){
     const cur=[i];
     let best=i;
     for(let j=1;j<=b.length;j++){
-      const v=Math.min(prev[j]+1,cur[j-1]+1,
+      let v=Math.min(prev[j]+1,cur[j-1]+1,
         prev[j-1]+(a.charCodeAt(i-1)===b.charCodeAt(j-1)?0:1));
+      if(back&&j>1&&a.charCodeAt(i-1)===b.charCodeAt(j-2)&&a.charCodeAt(i-2)===b.charCodeAt(j-1))
+        v=Math.min(v,back[j-2]+1);
       cur[j]=v;
       if(v<best)best=v;
     }
     if(best>max)return max+1;
-    prev=cur;
+    back=prev;prev=cur;
   }
   return prev[b.length];
 }

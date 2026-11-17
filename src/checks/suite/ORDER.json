@@ -236,6 +236,7 @@
 "_find_study_committees_rank",
 "_find_details",
 "_find_members_elect",
+"_find_swapped_letters",
 "_search_index_main",
 "_check_live_reads_what_it_checks",
 "_check_live_reads_the_last_rule",
