@@ -872,6 +872,34 @@ run by the owner on the laptop after every note has passed
 
 `workers/bench/README.md` has the routes, the limits and the commands.
 
+## Topics as tags, switched off until the registry is in force (17 November 2026)
+
+A bill keeps its one topic and may carry several tags, each a subject the
+registry names, defines and gives a rule for (`reports/topics-as-tags-design-2026-11.md`;
+the engine is `src/parse/tag_rules.py`). The registry is the owner's file,
+`corrections/tags.json`, and her copying an approved list there is the
+switch: `tag_rules.in_force()` reads that file under the folder the build
+runs in and nothing else -- never the committed fixture, never
+`GRANITE_TAGS` -- and a registry `validate()` finds a problem with stops the
+build. Without it `build_site_v2.site_tagging()` answers `{}` and the site
+is the site built before tags, byte for byte. With it, every bill is read
+by the engine as it stands (its title, its text, the topic the site's
+vocabulary gave it), each answer kept in `.build_cache/bill_tags.json.gz`
+by its inputs, the registry's bytes and the engine's code, since the rules
+take about 13 ms a bill (seven minutes over the record cold); then
+
+- the bill's record (`bills/<year>/<id>.json`) carries `tags`, each
+  `{id, name, why}` in the registry's order, `why` the evidence that
+  attached it (`"T:mental health"`), which no page prints;
+- its index row carries `tags` as places in meta.json's list;
+- `meta.json` gains `tags`, the tags some bill carries, each
+  `{id, name, group, definition}` in the registry's own words and no
+  others, and `tag_words`, what a reader may type and where it leads
+  (`"tag:ID"`, or `"topic:Name"` for a topic of the site), from the
+  registry's names, asks and synonyms (`tag_rules.site_meta`);
+- the no-script record ends with "Related searches", each tag to the bill
+  search on All Terms with it ticked.
+
 ## The bill search, and what it reads
 
 One matcher, in `app.js` between its `BILLMATCH` marks. `/bills` runs it

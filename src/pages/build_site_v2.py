@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.280
+# GRANITE_VERSION: 2026-09-05.281
 """
 Generate the faceted site from real General Court data.
 
@@ -11772,6 +11772,51 @@ def add_same_number(out, index, notes):
     return n_bills
 
 
+def site_tagging(bills, bill_texts, registry=None):
+    """The bills' tags, as build_bills and meta.json take them: {} where no
+    registry is in force, else {"bills": {(term, bill): {id: why}}, "at":
+    {id: its place in meta.json's list}, "names": {id: name}, "meta": the
+    keys meta.json gains}.
+
+    TOPICS AS TAGS, STAGES 3 AND 4 (reports/topics-as-tags-design-2026-11.md,
+    sections 2.2, 5 and 6), SWITCHED OFF UNTIL THE OWNER APPROVES THE LIST.
+    The registry is hers, corrections/tags.json (tag_rules.in_force), which
+    she puts in force by copying a draft there. Without it this answers {},
+    and the site is the site that was built before tags, byte for byte: no
+    bill's record or index row and no key of meta.json changes, and
+    build_pages publishes the scripts and app.css without their TAGS regions.
+    With it, each bill is read by the engine as it stands (tag_rules), from
+    its title, its text (the archived page's where that is all there is) and
+    the topic it is filed under, after the site's vocabulary has named that.
+    `registry` is the file to read in place of corrections/tags.json, for a
+    check.
+    """
+    import tag_rules as TR
+    doc = TR.in_force(registry)
+    if not doc:
+        return {}
+    current = max(bills) if bills else ""
+    rows = ((term, bid, rec.get("title") or "",
+             ((P.per_term(bill_texts, term, current).get(bid) or {}).get("text") or ""),
+             rec.get("subject") or "")
+            for term, byb in bills.items() for bid, rec in byb.items())
+    tagged = TR.site_tags(rows, doc)
+    meta = TR.site_meta(doc, tagged, {r.get("subject") for byb in bills.values()
+                                      for r in byb.values() if r.get("subject")})
+    at = {t["id"]: i for i, t in enumerate(meta.get("tags") or [])}
+    names = {t["id"]: t["name"] for t in meta.get("tags") or []}
+    n_bills = sum(len(byb) for byb in bills.values())
+    print(f"tags: {len(at)} of the registry's {len(doc['tags'])} on {len(tagged):,} of "
+          f"{n_bills:,} bills (corrections/tags.json); {len((meta or {}).get('tag_words') or {}):,} "
+          "words a reader may type lead to a tag or a topic")
+    if not tagged:
+        # SILENCE IS NOT SUCCESS: a registry in force that tags nothing
+        # publishes a site with no tags, which looks like no registry at all.
+        print("WARNING: corrections/tags.json is in force and no bill carries one of its tags: "
+              "check its rules with python3 src/parse/tag_rules.py --bill TERM BILL")
+    return {"bills": tagged, "at": at, "names": names, "meta": meta}
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
@@ -11779,7 +11824,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 chapters=None, seats=None, session_over="", former=None,
                 links=None, hearing_reports=None, ballots=None, term_rosters=None,
                 rc_cards=None, moments=None, numbers=None, record_chambers=None,
-                id_parties=None):
+                id_parties=None, tagging=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -11797,6 +11842,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     disagree (early_party). None gives no 1989-1998 sponsor a party, as
     before 15 November 2026: main passes None where the Manual's seat list
     is not on this disk.
+
+    `tagging` is site_tagging's answer: each tagged bill's row gains "tags"
+    and its record "tags", and nothing changes where it is empty or None.
 
     Returns (index, years, unnamed, sponsored) -- unnamed being the member
     ids the roll calls reference that the roster cannot name, and sponsored
@@ -12195,6 +12243,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             dates = action_dates([e for e in ev if not any(e is u for u in unenrolled)])
             row["last_action"] = dates[-1] if dates else ""
             row["carried"] = bool(row["carried"]) and carried_over(dates, intro)
+        # THE BILL'S TAGS, as their places in meta.json's list (site_tagging),
+        # only on a bill that has one: the up-front index grows by a few
+        # digits a tagged bill, and by nothing without a registry.
+        bill_tags_ = ((tagging or {}).get("bills") or {}).get((term, bid))
+        if bill_tags_:
+            row["tags"] = [tagging["at"][t_] for t_ in bill_tags_]
         index.append(row)
         # THE RAIL'S ENDINGS (the person, 8 and 9 October 2026): a bill that
         # died on the table is the pause where it was tabled and the cross at
@@ -12656,6 +12710,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # about nine in ten of the text's claims). Only on a bill a note
             # names, and only where the statute pages are built.
             **({"changed": ch} if (ch := statutes_enacted(term, bid)) else {}),
+            # THE TAGS (tag_rules.site_tags), in the registry's order, each by
+            # its id and its name as the registry words it, and the evidence
+            # that attached it ("T:mental health", the rule's phrase in the
+            # title): in the record, for the page's source data and the
+            # downloads, and never printed on the page. Only where there are any.
+            **({"tags": [{"id": t_, "name": tagging["names"][t_], "why": w_}
+                         for t_, w_ in bill_tags_.items()]} if bill_tags_ else {}),
         }), encoding="utf-8")
 
     if status_pages:
@@ -13117,6 +13178,7 @@ def main():
     _at = AT.merge_into(bill_texts)
     if _at:
         print(f"  {_at:,} more from their archived pages (archive_text.json)")
+    tagging = site_tagging(bills, bill_texts)
     # Journal and calendar URLs, so every docket line can cite its source.
     sources = {**load("calendars.json", {}), **load("journals.json", {})}
     # Every calendar the drain fetched, under its own year, where the files
@@ -13380,7 +13442,8 @@ def main():
                                    max(bills) if bills else ""),
                                ballots=load_ballots(BALLOTS, bills),
                                rc_cards=rc_cards, moments=floor_moments,
-                               record_chambers=record_chambers, id_parties=id_parties)
+                               record_chambers=record_chambers, id_parties=id_parties,
+                               tagging=tagging)
     add_related(out, index)
     add_same_number(out, index, notes)
     # NO index.json (retired 5 October 2026). It was every row below in one
@@ -13678,6 +13741,9 @@ def main():
             "topics": sorted({b["topic"] for b in index if b["topic"]}),
             "sponsors": sorted({b["sponsor"] for b in index if b["sponsor"]}),
             "votedays": sorted({d for b in index for d in b["votedays"]}, reverse=True)}
+    # The tags' list and the words that lead to them, only where a bill
+    # carries one (site_tagging), so meta.json is as it was without them.
+    meta.update(tagging.get("meta") or {})
     (out / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
     print(f"facets: {len(meta['committees'])} committees, {len(meta['topics'])} topics, "
           f"{len(meta['sponsors'])} sponsors, {len(meta['votedays'])} vote days")

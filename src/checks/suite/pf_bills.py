@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -22,7 +22,7 @@ from pathlib import Path
 import _paths
 
 from pf_core import (_in_suite, _parsed, _run, _sealed_run, _source, check, imp)
-from pf_fixture import (CHAIN_NEEDS, _fixture_site_shared, _site_fixture)
+from pf_fixture import (CHAIN_NEEDS, _fixture_site_shared, _fixture_site_v2, _site_fixture)
 from pf_harness import (_app_js, _node_app, _with_components)
 from pf_shared import (LSR_LISTLIKE, _BALLOTPEDIA, _CHIP_FINISHED, _CHIP_LIVE,
                        _DOCKET_OVERTAKEN, _MANUAL_1993, _MANUAL_1999, _RAIL_FACE, _SOS_2024,
@@ -10521,3 +10521,147 @@ def _tag_duties(TR):
     return "ok", ("a duty's subject read to its clause, asides, designees, objects and passives set aside, parts of "
                   "an \"and\", the drafters' \"requiring ... to\"; a duties rule attaches by the duty, never by a "
                   "mention, and load_bills carries them")
+
+
+@check("code", "the site's tags are switched on by corrections/tags.json alone (never the fixture, never GRANITE_TAGS), "
+               "each bill read by the engine as it stands and kept in the build's cache by its inputs, meta.json's "
+               "list in the registry's own words; with no registry no record, index row or meta.json key changes",
+       needs=("tag_rules", "build_site_v2", "build_bill_pages"))
+def _tag_site_data(TR, B, BBP):
+    """Topics as tags, stages 3 and 4, the data (17 November 2026; reports/topics-as-tags-design-2026-11.md
+    sections 2.2 and 7.1), switched off until the owner approves the list. tag_rules.in_force reads
+    corrections/tags.json under the folder the build runs in and nothing else: absent, or holding no tag, it
+    answers None, whatever GRANITE_TAGS says and with the fixture beside it; a registry with a problem stops the
+    build and names it. site_tags answers what tag_bill answers for each bill, from the cache on a second run
+    and afresh once the registry moves. site_meta lists only the tags some bill carries, each by the registry's
+    own name and definition and nothing else, and leads a word only to such a tag or to a topic of the site.
+    build_site_v2 over the fixture with a registry puts the tags in the bill's record (id, name, evidence), its
+    index row (places in meta.json's list) and meta.json; without one, the shared build of the fixture carries
+    none of them, and site_tagging answers {}. The no-script record lists them last, as searches."""
+    fx = json.loads(_source("tests/tags_fixture.json"))
+    reg, syn = fx["registry"], fx["synonyms"]
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        # ---- in_force: corrections/tags.json under the build's folder, and only it.
+        here = str(Path(".").resolve())
+        prog = ("import sys; sys.path.insert(0, %r); import _paths, tag_rules as T; d = T.in_force(); "
+                "print('NONE' if d is None else len(d['tags']))" % here)
+        env = {**os.environ, "GRANITE_TAGS": str(Path("tests/tags_fixture.json").resolve())}
+        said = []
+        for what, doc in (("absent", None), ("empty", {"tags": {}, "synonyms": {}}),
+                          ("in force", {"about": "x", "tags": reg, "synonyms": syn})):
+            folder = tmp / what.replace(" ", "_")
+            (folder / "corrections").mkdir(parents=True)
+            if doc is not None:
+                (folder / "corrections" / "tags.json").write_text(json.dumps(doc), encoding="utf-8")
+            r = _run([sys.executable, "-c", prog], cwd=folder, capture_output=True, text=True, timeout=120, env=env)
+            assert r.returncode == 0, f"in_force with the registry {what}: {(r.stderr or r.stdout)[-300:]}"
+            said.append(r.stdout.strip().splitlines()[-1])
+        assert said == ["NONE", "NONE", str(len(reg))], (
+            f"in_force read absent / empty / in force as {said}: only corrections/tags.json, with a tag in it, "
+            "puts tags on the pages -- never GRANITE_TAGS, never the fixture")
+        bad_reg = tmp / "bad.json"
+        bad_reg.write_text(json.dumps({"tags": {"Bad Id": {"name": "x", "definition": "x.", "rule": {"title": ["x"]}}}}),
+                           encoding="utf-8")
+        try:
+            TR.in_force(bad_reg)
+            raise AssertionError("a registry with a malformed id was put in force")
+        except SystemExit as e:
+            assert "Bad Id" in str(e), f"the build's refusal does not name the problem: {e}"
+
+        # ---- site_tags: the engine's answer, kept by its inputs.
+        reg_path = tmp / "reg.json"
+        reg_path.write_text(json.dumps({"tags": reg, "synonyms": syn}), encoding="utf-8")
+        doc = TR.in_force(reg_path)
+        rules = TR.compile_registry(reg)
+        rows = [(b["term"], b["bill"], b["title"], "", b.get("topic") or "") for b in fx["bills"]]
+        want = {}
+        for term, bid, title, text, topic in rows:
+            got = TR.tag_bill(rules, TR.engine_bill(term, bid, title, text, topic))["tags"]
+            if got:
+                want[(term, bid)] = {t: v["why"] for t, v in got.items()}
+        cache = tmp / "cache"
+        cold = TR.site_tags(rows, doc, folder=cache)
+        assert cold == want and list(cold) == list(want), "site_tags is not tag_bill's answer, bill by bill"
+        assert len(want) >= 5, f"the fixture's titles attach only {len(want)} bills: the check proves little"
+        real_tag = TR.tag_bill
+        TR.tag_bill = lambda *a, **k: (_ for _ in ()).throw(AssertionError("worked out again"))
+        try:
+            warm = TR.site_tags(rows, doc, folder=cache)
+            moved = dict(doc, digest="0" * 64)
+            try:
+                TR.site_tags(rows, moved, folder=cache)
+                raise AssertionError("a registry that moved was answered from the cache")
+            except AssertionError as e:
+                assert "worked out again" in str(e), str(e)
+        finally:
+            TR.tag_bill = real_tag
+        assert warm == cold, "the cache's answer is not the engine's"
+
+        # ---- site_meta: the registry's words, the carried tags, words that lead somewhere real.
+        topics = {"Public and Mental Health", "Elections"}
+        meta = TR.site_meta(doc, cold, topics)
+        carried = {t for v in cold.values() for t in v}
+        assert [t["id"] for t in meta["tags"]] == [t for t in reg if t in carried], (
+            "meta.json's tags are not the carried ones in the registry's order")
+        for t in meta["tags"]:
+            e = reg[t["id"]]
+            assert t == {"id": t["id"], "name": e["name"], "group": e.get("group") or "",
+                         "definition": e["definition"]}, f"{t['id']}: not the registry's own words, or more than them"
+        assert all((to[4:] in carried) if to.startswith("tag:") else (to[6:] in topics)
+                   for to in meta["tag_words"].values()), "a word leads to a tag no bill carries or to no topic"
+        assert meta["tag_words"].get("absentee ballot") == "topic:Elections", "a synonym to a topic is lost"
+        assert "absentee ballot" not in TR.site_meta(doc, cold, set())["tag_words"], (
+            "a word leads to a topic the site does not have")
+        assert TR.site_meta(doc, {}, topics) == {}, "meta.json gains keys where no bill carries a tag"
+        assert B.site_tagging({}, {}, registry=tmp / "none.json") == {}, "no registry, and site_tagging answers"
+
+        # ---- build_site_v2 over the fixture, with a registry and (shared) without.
+        root = tmp / "with"
+        _site_fixture(root)
+        (root / "corrections").mkdir(exist_ok=True)
+        (root / "corrections" / "tags.json").write_text(json.dumps({"tags": {
+            "insurance-cover": {"name": "Insurance coverage", "definition": "Bills about insurance coverage.",
+                                "rule": {"title": ["insurance coverage"]}},
+            "school-materials": {"name": "School materials", "definition": "Bills about what schools use.",
+                                 "rule": {"title": ["school materials"]}},
+            "nothing": {"name": "Nothing", "definition": "Bills about nothing.", "rule": {"title": ["zzzz"]}}},
+            "synonyms": {"school books": "tag:school-materials", "coverage": "topic:Insurance",
+                         "lost": "topic:No Such Topic"}}), encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data", "--out", "site",
+                  "--segments", "work"], cwd=root, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, "build_site_v2 with a registry: " + (r.stderr or r.stdout)[-400:]
+        m = json.loads((root / "site" / "meta.json").read_text(encoding="utf-8"))
+        assert [t["id"] for t in m.get("tags", [])] == ["insurance-cover", "school-materials"], (
+            f"meta.json's tags: {m.get('tags')}")
+        assert m.get("tag_words") == {"coverage": "topic:Insurance", "insurance coverage": "tag:insurance-cover",
+                                      "school books": "tag:school-materials",
+                                      "school materials": "tag:school-materials"}, f"tag_words: {m.get('tag_words')}"
+        rows_ = {b["id"]: b for f in (root / "site" / "idx").glob("2*.json")
+                 for b in json.loads(f.read_text(encoding="utf-8"))}
+        assert rows_["HB1442"].get("tags") == [0] and rows_["SB434"].get("tags") == [1], (
+            f"index rows: HB1442 {rows_['HB1442'].get('tags')}, SB434 {rows_['SB434'].get('tags')}")
+        assert "tags" not in rows_["HR10"], "a bill no tag attaches to carries a tags field"
+        rec = json.loads(next((root / "site" / "bills").rglob("HB1442.json")).read_text(encoding="utf-8"))
+        assert rec.get("tags") == [{"id": "insurance-cover", "name": "Insurance coverage",
+                                    "why": "T:insurance coverage"}], f"HB1442's record: {rec.get('tags')}"
+        page = BBP.static_record(rows_["HB1442"], rec)
+        assert ('<h2>Related searches</h2><ul><li><a href="/bills?term=all&amp;tag=insurance-cover">'
+                'Insurance coverage</a></li></ul></div>') in page, "the no-script record does not list the tag last"
+        assert "Related searches" not in BBP.static_record(rows_["HR10"], {}), "a bill with no tag lists searches"
+        # Without: the run's one build of the fixture, which has no registry.
+        plain = tmp / "without"
+        plain.mkdir()
+        r = _fixture_site_v2(plain)
+        assert r.returncode == 0, "the fixture's build: " + (r.stderr or r.stdout)[-300:]
+        m = json.loads((plain / "site" / "meta.json").read_text(encoding="utf-8"))
+        assert "tags" not in m and "tag_words" not in m, "meta.json gains a tags key with no registry"
+        held = [f.name for f in (plain / "site").rglob("*.json")
+                if f.parent.name in ("idx",) or f.parent.parent.name == "bills"
+                if '"tags"' in f.read_text(encoding="utf-8")]
+        assert not held, f"with no registry these carry a tags field: {held}"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"in force by corrections/tags.json alone; {len(want)} fixture bills tagged as the engine tags them, "
+                  "warm from the cache and afresh once the registry moves; meta.json in the registry's words; the "
+                  "fixture built with a registry carries the tags in record, row and meta.json, and without one none")

@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.11
+# GRANITE_VERSION: 2026-11-12.12
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
     python3 src/parse/tag_rules.py --check                   # read the registry, report problems
 
 STAGE 1 OF THE TOPICS-AS-TAGS DESIGN (reports/topics-as-tags-design-2026-11.md,
-sections 2 to 4). NOTHING IN THE BUILD READS THIS YET: no page, no index and no
-export shows a tag until the owner has copied a registry into corrections/ and
-a later stage reads this module. It asks no network and writes no file.
+sections 2 to 4), AND WHAT THE SITE READS OF IT (stages 3 and 4, 17 November
+2026): in_force(), site_tags() and site_meta(), at the end of this file, which
+build_site_v2.py calls. It asks no network and writes no file but the build's
+cache (.build_cache/bill_tags.json.gz, build_cache.py).
 
 THE REGISTRY is a person's file, corrections/tags.json, which no generator
 writes. Where it is absent the committed fixture (tests/tags_fixture.json, key
-"registry") is read instead, so that a build and a check always have one, and a
-clone shows no real tag. GRANITE_TAGS names another file (the owner's draft, in
-reports/) for the bench and the counts; an explicit path argument wins over it.
+"registry") is read instead, so that a check always has one, and a clone shows
+no real tag. GRANITE_TAGS names another file (the owner's draft, in reports/)
+for the bench and the counts; an explicit path argument wins over it.
+
+THE SITE READS corrections/tags.json AND NOTHING ELSE (in_force): not the
+fixture, not GRANITE_TAGS, so the owner's copying a draft there is what puts
+tags on the pages. Absent, or holding no tag, the build is as it was before
+tags, byte for byte: no field in a bill's record or index row, no key in
+meta.json, and the scripts and stylesheet published without their TAGS
+regions (build_pages.without_tags).
 The file is {"tags": {id: entry}} or a bare {id: entry}; an entry is
 
     name, group, definition (one neutral sentence), asks (the words readers use,
@@ -622,7 +630,6 @@ def load_bills(root=None):
     text files (bill_text.json wins over archive_text.json, as topic_model reads
     them) and topics_assigned.json; the analysis and the chapters the bill amends
     are found as topic_model finds them."""
-    import topic_model as TM
     root = Path(root) if root else ROOT
     bills = json.loads((root / "data" / "bills.json").read_text(encoding="utf-8"))
     texts = load_texts(root)
@@ -631,16 +638,24 @@ def load_bills(root=None):
     out = []
     for term in sorted(bills, reverse=True):
         for bid, rec in bills[term].items():
-            text = texts.get(term, {}).get(bid, "")
-            ch = TM.operative_chapters(text)
-            if not ch:
-                ch = TM.rsa_chapters(text)[0]
-            title = TM.NEWTITLE.sub("", rec.get("title") or "")
             topic = rec.get("subject") or (assigned.get(term, {}).get(bid) or {}).get("subject") or ""
-            out.append({"term": term, "bill": bid, "title": title, "analysis": TM.analysis_of(text).strip(),
-                        "chapters": sorted(norm_chapter(c) for c in ch), "topic": topic,
-                        "provisions": provisions(text), "duties": duties(f"{title}. {text}")})
+            out.append(engine_bill(term, bid, rec.get("title"), texts.get(term, {}).get(bid, ""), topic))
     return out
+
+
+def engine_bill(term, bid, title, text, topic):
+    """One bill as the engine reads it, from its title, its text and its topic: {term, bill, title,
+    analysis, chapters, topic, provisions, duties}, the analysis and the chapters it amends found as
+    topic_model finds them. load_bills and site_tags both read a bill through this."""
+    import topic_model as TM
+    text = text or ""
+    ch = TM.operative_chapters(text)
+    if not ch:
+        ch = TM.rsa_chapters(text)[0]
+    title = TM.NEWTITLE.sub("", title or "")
+    return {"term": term, "bill": bid, "title": title, "analysis": TM.analysis_of(text).strip(),
+            "chapters": sorted(norm_chapter(c) for c in ch), "topic": topic or "",
+            "provisions": provisions(text), "duties": duties(f"{title}. {text}")}
 
 
 def load_texts(root=None):
@@ -662,6 +677,99 @@ def load_texts(root=None):
 def tag_all(rules, bills):
     """{term/bill: result of tag_bill} over `bills`, in their order."""
     return {f"{b['term']}/{b['bill']}": tag_bill(rules, b) for b in bills}
+
+
+# ------------------------------------------------------------------ the site
+#
+# WHAT THE PAGES SHOW (stages 3 and 4 of the design, 17 November 2026), and
+# ONLY ONCE THE OWNER HAS APPROVED THE LIST: the switch is her copying a
+# registry to corrections/tags.json. build_site_v2 asks in_force() and, where
+# it answers, puts each bill's tags in its record ("tags": [{id, name, why}])
+# and its index row (positions in meta.json's list), and meta.json the list
+# and the words that lead to it (site_meta). A tag's name and definition are
+# the registry's words and the page adds none of its own (design 6.3).
+
+SITE_CACHE = "bill_tags"
+
+
+def in_force(path=None):
+    """The registry the site shows: {"tags": {id: entry}, "synonyms": {word: target}, "digest": sha256
+    of the file}, or None where corrections/tags.json -- under the folder the build runs in -- is not
+    there or holds no tag. Never the fixture and never GRANITE_TAGS. A registry validate() finds a
+    problem with stops the build, saying each, rather than putting half a list on the pages."""
+    import hashlib
+    p = Path(path) if path else REGISTRY
+    if not p.is_file():
+        return None
+    raw = p.read_bytes()
+    try:
+        d = json.loads(raw.decode("utf-8"))
+    except ValueError as e:
+        raise SystemExit(f"{p} is not JSON: {e}")
+    if not isinstance(d, dict):
+        raise SystemExit(f"{p}: a registry is a JSON object of tags")
+    if "tags" in d:
+        reg, syn = d.get("tags") or {}, d.get("synonyms") or {}
+    else:
+        reg, syn = {k: v for k, v in d.items() if isinstance(v, dict)}, {}
+    if not isinstance(reg, dict) or not isinstance(syn, dict):
+        raise SystemExit(f"{p}: \"tags\" and \"synonyms\" are each a JSON object")
+    if not reg:
+        return None
+    bad = validate(reg, None, syn)
+    if bad:
+        raise SystemExit(f"{p} has {len(bad)} problem(s), and no tag is put on a page until it has "
+                         "none: " + "; ".join(bad[:10]) + (" ..." if len(bad) > 10 else ""))
+    return {"tags": reg, "synonyms": syn, "digest": hashlib.sha256(raw).hexdigest()}
+
+
+def site_tags(bills, doc, folder=None):
+    """{(term, bill): {id: why}}, in the registry's order, for every bill a tag attaches to (tag_bill):
+    `bills` gives (term, bill, title, text, topic) for each, `doc` is in_force()'s.
+
+    Each bill's answer is kept in the build's cache (build_cache.py) by the registry's bytes, the
+    bill's title, text and topic, and this code, since the rules read every bill's text: about 13 ms
+    a bill on the laptop, seven minutes over the record cold, and a night on which neither the
+    registry nor a bill moved works out none. `folder` is the cache's (None: the build's own)."""
+    import build_cache as BC
+    sig = BC.signature("tag_rules.py")
+    kept = BC.load(SITE_CACHE, sig, folder)
+    rules = compile_registry(doc["tags"])
+    used, out = {}, {}
+    for term, bid, title, text, topic in bills:
+        key = BC.digest(sig, doc["digest"], term, bid, title or "", text or "", topic or "")
+        got = kept.get(key)
+        if not isinstance(got, dict):
+            r = tag_bill(rules, engine_bill(term, bid, title, text, topic))
+            got = {tid: v["why"] for tid, v in r["tags"].items()}
+        used[key] = got
+        if got:
+            out[(term, bid)] = got
+    BC.save(SITE_CACHE, sig, used, folder)
+    return out
+
+
+def site_meta(doc, tagged, topics):
+    """meta.json's keys for the tags: {} where no bill carries one, else
+
+        "tags"       the registry's tags some bill carries, in its order, each {id, name, group,
+                     definition} in the registry's words and no others;
+        "tag_words"  what a reader may type and where it leads (synonym_table): a tag of that list,
+                     "tag:ID", or one of `topics`, "topic:Name". A word leading anywhere else is
+                     left out.
+
+    `tagged` is site_tags()'s answer."""
+    reg = doc["tags"]
+    carried = {t for got in tagged.values() for t in got}
+    tags = [{"id": t, "name": e["name"], "group": e.get("group") or "", "definition": e["definition"]}
+            for t, e in reg.items() if t in carried]
+    if not tags:
+        return {}
+    ids, topics = {t["id"] for t in tags}, set(topics)
+    table, _conflicts = synonym_table(reg, doc.get("synonyms"))
+    words = {w: to for w, to in sorted(table.items())
+             if (to.startswith("tag:") and to[4:] in ids) or (to.startswith("topic:") and to[6:] in topics)}
+    return {"tags": tags, "tag_words": words}
 
 
 # ------------------------------------------------------------------ the command
