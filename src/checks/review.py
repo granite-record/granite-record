@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.26
+# GRANITE_VERSION: 2026-09-09.27
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -31,6 +31,18 @@ rather than a replacement. Nothing here rewrites ground_truth.csv either --
 that file is a person's, and preflight fails if a generator opens it for
 writing. This writes its own file and probe_alignment.py can read both.
 
+It will not answer for you. No verdict is chosen before you choose one, and
+a Save with none chosen records nothing and draws the same item again. From
+the bench's first day (9 September 2026) until 16 November the first answer
+of every form was checked in advance, so Save alone recorded "correct" --
+"yes" for a tag -- and a judgment saved that way cannot be told from one
+meant.
+
+Whose a line is, and which line of an item counts, is bench_ledger.py's to
+say (src/lib/): the owner's line beats a contributor's merged from the hosted
+bench, whatever the order, and a withdrawn link's lines are read by no one.
+judged() and every report here read the ledger through it.
+
 THE KINDS
 
 Each kind knows how to pick an item nobody has judged, how to show it, and
@@ -56,6 +68,7 @@ import webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+import bench_ledger as BL
 import site_read as SR
 
 OUT = Path("review")
@@ -66,28 +79,23 @@ E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
 # ------------------------------------------------------------------ storage
 
 def judged():
-    """Every key already judged, and how many times."""
-    seen = {}
-    if not LEDGER.exists():
-        return seen
-    for line in LEDGER.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            d = json.loads(line)
-        except ValueError:
-            continue
-        seen.setdefault((d.get("kind"), d.get("key")), []).append(d)
-    return seen
+    """Every key already judged, and its judgments: {(kind, key): [lines]},
+    the line that counts last (bench_ledger.judged: the owner's beats a
+    contributor's, and a withdrawn link's lines are left out)."""
+    return BL.judged(LEDGER)
 
 
 def record(entry):
     """APPEND. Never rewrite: a judgment is evidence, and a later look at the
     same item is a second piece of evidence rather than a correction of the
-    first. Which one to believe is a question for whoever reads the file."""
+    first. Which one to believe is a question for whoever reads the file.
+
+    The moment is now, unless the entry carries the moment it was made in
+    "at": bench_pull.py appends a hosted judgment with the time it was given,
+    not the time it was merged."""
     OUT.mkdir(exist_ok=True)
-    entry["at"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    if not entry.get("at"):
+        entry["at"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     with LEDGER.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
@@ -1095,6 +1103,10 @@ def tag_report(seen):
     from collections import defaultdict
     per = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
     hard = {}
+    # Whose each counted answer is (decision 11 of the shared bench, 17
+    # November 2026): a contributor's merged answer counts toward a tag's 27
+    # of 30, and the line says how many of the counted are theirs.
+    theirs = defaultdict(int)
     for (kind, key), entries in seen.items():
         if kind != "tag":
             continue
@@ -1102,6 +1114,8 @@ def tag_report(seen):
         e = entries[-1]
         per[tid][sample][e.get("verdict")] += 1
         hard[tid] = bool((e.get("shown") or {}).get("hard"))
+        if BL.who(e) == "link":
+            theirs[tid] += 1
     if not per:
         return
     print()
@@ -1122,7 +1136,8 @@ def tag_report(seen):
                  "does not pass: tighten the rule and redraw")
         print(f"    {tid:30} title {t_ok}/{t_n}  analysis-or-chapter {o_ok}/{o_n}  "
               f"missed {m['yes'] + m['partly']}/{m_n}  pair {'yes' if p['yes'] else 'no' if p['no'] else '-'}  "
-              f"{total_ok}/{total_n} of {need} -- {state}")
+              f"{total_ok}/{total_n} of {need} -- {state}"
+              + (f" (contributors' answers among them: {theirs[tid]})" if theirs[tid] else ""))
 
 
 KINDS = {
@@ -1392,6 +1407,8 @@ button.ghost{background:#fff;color:var(--ink-2);border-color:var(--rule)}
 .empty{color:var(--ink-2)}
 .saved{background:var(--pine-soft);color:var(--pine);border-radius:6px;
  padding:8px 12px;font-size:14px;margin:0 0 12px}
+.unsaved{background:#f6e7e3;color:var(--rust);border-radius:6px;
+ padding:8px 12px;font-size:14px;margin:0 0 12px}
 </style>
 <script>
 // THE RECORDING IN THE PAGE. Loaded only when a sample has one, so the other
@@ -1515,9 +1532,23 @@ def collected_fields(kind, get):
     return out
 
 
+# The answers a kind offers when it names none of its own.
+VERDICTS = [("correct", "Correct as published"), ("wrong", "Wrong"), ("unsure", "Cannot tell")]
+
+
+def verdicts(kind):
+    """[(value, label)]: the answers the form offers for `kind`, and the only
+    verdicts a Save records for it."""
+    return KINDS[kind].get("verdicts") or VERDICTS
+
+
 def form_html(kind, item):
     k = KINDS[kind]
     fields = "".join(_field_html(spec) for spec in k["fields"])
+    # NO ANSWER IS CHOSEN FOR YOU (16 November 2026). The first was checked
+    # in advance, so a Save pressed without reading recorded "correct". Each
+    # is required now, so the browser asks for one, and do_POST records
+    # nothing where none came.
     return (
         f'<form method="post" action="/save">'
         f'<input type="hidden" name="kind" value="{E(kind)}">'
@@ -1525,11 +1556,8 @@ def form_html(kind, item):
         f'<input type="hidden" name="shown" value="{E(json.dumps(item))}">'
         + k["show"](item)
         + '<div class="verdicts">'
-        + "".join(f'<label><input type="radio" name="verdict" value="{E(v)}"'
-                  f'{" checked" if i == 0 else ""}>{E(lab)}</label>'
-                  for i, (v, lab) in enumerate(k.get("verdicts") or [
-                      ("correct", "Correct as published"), ("wrong", "Wrong"),
-                      ("unsure", "Cannot tell")]))
+        + "".join(f'<label><input type="radio" name="verdict" value="{E(v)}" required>'
+                  f'{E(lab)}</label>' for v, lab in verdicts(kind))
         + '</div>'
         + fields
         + '<label class="f">Notes'
@@ -1541,6 +1569,10 @@ def form_html(kind, item):
           '<button type="submit" name="action" value="skip" class="ghost">'
           'Skip &mdash; I cannot identify this one</button>'
           '</div></form>')
+
+
+NOT_SAVED = ('<p class="unsaved">Nothing was saved: choose an answer first, '
+             'or Skip.</p>')
 
 
 class Bench(BaseHTTPRequestHandler):
@@ -1566,7 +1598,9 @@ class Bench(BaseHTTPRequestHandler):
         saved = "<p class=\"saved\">Saved.</p>" if q.get("saved") else ""
         self._send(self.render(kind, saved))
 
-    def render(self, kind, saved=""):
+    def render(self, kind, saved="", item=None):
+        """The page for `kind`: `item` where one is named and not judged yet
+        (a Save that recorded nothing draws its item again), else one drawn."""
         k = KINDS[kind]
         if kind not in self.pool:
             self.pool[kind] = pool_for(kind)
@@ -1577,7 +1611,9 @@ class Bench(BaseHTTPRequestHandler):
         opts = "".join(
             f'<option value="{E(n)}"{" selected" if n == kind else ""}>'
             f'{E(v["label"])}</option>' for n, v in KINDS.items())
-        if not items:
+        if item and item.get("key") and (kind, item["key"]) not in seen:
+            body = form_html(kind, item)
+        elif not items:
             body = ('<p class="empty">Nothing to judge here yet. This kind '
                     'reads a file that is not built on this disk.</p>')
         elif not left:
@@ -1618,6 +1654,13 @@ class Bench(BaseHTTPRequestHandler):
             entry["shown"] = json.loads(g("shown") or "{}")
         except ValueError:
             entry["shown"] = {}
+        # A SAVE WITH NO ANSWER RECORDS NOTHING, whatever else the form held,
+        # and the same item is drawn again with the reason. A skip is an
+        # answer of its own ("I cannot identify this one").
+        if action != "skip" and entry["verdict"] not in {v for v, _lab in verdicts(kind)}:
+            item = entry["shown"] if isinstance(entry["shown"], dict) else {}
+            self._send(self.render(kind, NOT_SAVED, item=item), 400)
+            return
         record(entry)
         self.send_response(303)
         self.send_header("Location", f"/?kind={kind}&saved=1")
@@ -1632,17 +1675,28 @@ def report():
     from collections import Counter
     per = Counter()
     verd = Counter()
+    # THE POOLS APART (the shared bench, 17 November 2026): where any item's
+    # counting line is a contributor's, how many are, beside the owner's. Said
+    # only then, so a ledger of the owner's lines alone reads as it always has.
+    theirs = Counter()
     for (kind, key), entries in seen.items():
         per[kind] += 1
         verd[(kind, entries[-1].get("verdict"))] += 1
+        if BL.who(entries[-1]) == "link":
+            theirs[kind] += 1
     print(f"{sum(per.values()):,} items judged, "
           f"{sum(len(v) for v in seen.values()):,} judgments in total")
+    if theirs:
+        print(f"  yours {sum(per.values()) - sum(theirs.values()):,}, contributors "
+              f"{sum(theirs.values()):,} (by the line that counts: yours, where you "
+              "judged it too)")
     for kind in KINDS:
         if not per[kind]:
             continue
         bits = ", ".join(f"{v} {w}" for (k, w), v in sorted(verd.items())
                          if k == kind)
-        print(f"  {KINDS[kind]['label']:32} {per[kind]:5,}   {bits}")
+        print(f"  {KINDS[kind]['label']:32} {per[kind]:5,}   {bits}"
+              + (f"   (contributors {theirs[kind]:,})" if theirs[kind] else ""))
 
     # RELATED BILLS, STRATUM BY STRATUM (RELATED_BILLS.md decision 2): a
     # stratum ships if at most two of its thirty are judged wrong; a wrong

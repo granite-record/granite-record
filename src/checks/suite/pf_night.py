@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -4320,24 +4320,34 @@ def _night_functions_probe(NI):
         kind = by_kind.get(path) or by_kind["/api/live/votes/{day}"]
         out = (answers or {}).get(path) or good[kind]
         return (*out, "")
-    fx = NI.functions_probe("https://x.example", "preview", day="2026-11-16", ask=fake, wait=waited.append)
+
+    def fake_in(env):
+        """fake, but where `env` binds no database for a Function -- the shared bench's
+        BENCH_DB, until the owner binds it -- that Function answers its own 404, as deployed."""
+        have = NI.wrangler_bindings(env) or set()
+        unbound = {p.format(day="2026-11-16"): (404, T, "", "Not found\n")
+                   for p, n, _k in NI.FUNCTION_PROBES if n and n not in have}
+        return lambda url, answers=None: fake(url, {**unbound, **(answers or {})})
+    fx = NI.functions_probe("https://x.example", "preview", day="2026-11-16", ask=fake_in("preview"),
+                            wait=waited.append)
     assert asked == ["https://x.example" + p.format(day="2026-11-16") for p, _n, _k in NI.FUNCTION_PROBES] \
         and waited == [NI.FUNCTIONS_GAP] * (len(asked) - 1) and NI.FUNCTIONS_GAP >= 1, (asked, waited)
     assert fx["failed"] == 0 and fx["line"] == (f"The site's {len(asked)} Functions answered as deployed "
                                                "at https://x.example."), fx
     del asked[:]
     bad = NI.functions_probe("https://x.example", "production", day="2026-11-16", wait=waited.append,
-                             ask=lambda url: fake(url, {"/api/follow/count": (404, T, "", "Not found\n"),
-                                                        "/api/report": (404, H, "", "<html>")}))
+                             ask=lambda url: fake_in("production")(
+                                 url, {"/api/follow/count": (404, T, "", "Not found\n"),
+                                       "/api/report": (404, H, "", "<html>")}))
     warned = NI.functions_warned(bad)
-    assert bad["failed"] == 2 and "2 of the site's 9 Functions did not answer" in bad["line"] and \
+    assert bad["failed"] == 2 and "2 of the site's 15 Functions did not answer" in bad["line"] and \
         "/api/report the site's own not-found page" in bad["line"] and \
         [k for k, _s in warned] == [NI.KIND_FUNCTIONS] and "The deploy stands" in warned[0][1] and \
         NI.warning_reasons(warned, [], ()) == [] and \
         warned[0][1] in NI.warns_of({"preview": {"functions": bad}}), (bad["line"], warned)
     assert NI.functions_warned(fx) == [] and NI.functions_warned(None) == []
-    # An environment that binds only DB: the Functions that need FOLLOW_DB or LIVE are
-    # expected to answer their own 404 there, and a deployed one of them a failure.
+    # An environment that binds only DB: the Functions that need FOLLOW_DB, LIVE or BENCH_DB
+    # are expected to answer their own 404 there, and a deployed one of them a failure.
     own404 = {p.format(day="2026-11-16"): (404, T, "", "Not found\n") for p, n, _k in NI.FUNCTION_PROBES if n}
     real_bindings = NI.wrangler_bindings
     try:
@@ -4348,7 +4358,7 @@ def _night_functions_probe(NI):
                                   ask=fake)
     finally:
         NI.wrangler_bindings = real_bindings
-    assert bare["failed"] == 0 and full["failed"] == len(own404) == 8, (
+    assert bare["failed"] == 0 and full["failed"] == len(own404) == 14, (
         "the probes do not follow what wrangler.toml binds in the environment: "
         f"{bare['line']} | {full['line']}")
 

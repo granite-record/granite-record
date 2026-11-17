@@ -28,6 +28,11 @@ them in, which was the one file's. `pf_entities.py` holds the checks of the
 model of people, offices, terms, districts and elections
 (`src/lib/entities.py`), which reads several areas' files and is no one
 area's; its checks are not in `ORDER.json`, and run after those it lists.
+`pf_bench.py` holds the checks of the bench -- the ledger of a person's
+judgments and its readers, and the shared bench's database, Functions, page
+and laptop tools (approved 17 November 2026) -- one feature across four
+folders; its checks are not in `ORDER.json` either, and run after those it
+lists.
 They were cut out of `preflight.py` as they stood, with the comments above
 each (the refactor's stage 1, step 4, 16 November 2026); the next step moves
 the checks here, by area, as `pf_<area>.py`, keeping the order a run takes

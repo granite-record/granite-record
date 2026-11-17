@@ -54,6 +54,11 @@ Shared by every stage:
   views that give today's files back from it -- which `parse/build_entities.py`
   writes to `data/entities/` every night and nothing reads yet; what is the
   state's in it is `state_settings.json`'s;
+- `bench_ledger`: the bench's ledger, `review/checked.jsonl`, read one way by
+  every reader (`checks/review.py`, `hearings/probe_alignment.py`): whose a
+  line is (the owner's `hand`, or a contributor's `link:<id>` merged from the
+  hosted bench), the owner's line beating a contributor's whatever the order,
+  and a withdrawn link's lines read by no one. Reads one file, writes nothing;
 - `gr_ids`: Granite Record's own ids, `gr-` and a serial, for a person the
   record names and the General Court gives no number, kept in their own field
   (`granite_id`) and never in `gc_employee_number`: the register's reader and

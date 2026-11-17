@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.66
+# GRANITE_VERSION: 2026-09-05.67
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -1073,9 +1073,12 @@ def read_marks(path):
 
 
 BENCH = Path("review") / "checked.jsonl"
+# Where a contributor's mark is said to come from, beside the owner's
+# ("checked.jsonl"), so _by_source prints the two pools apart.
+BENCH_THEIRS = ", contributors"
 
 
-def read_bench(path=BENCH):
+def read_bench(path=BENCH, hand_only=False, pools=False):
     """The bench's timings, in the shape read_marks returns.
 
     review.py appends one line per judgment and never rewrites one, so this
@@ -1094,25 +1097,30 @@ def read_bench(path=BENCH):
 
     A LAST LOOK SUPERSEDES AN EARLIER ONE. The ledger is append-only, so a
     second judgment of the same proceeding is a second line rather than a
-    replacement, and the last line is the one that counts.
+    replacement, and the last line is the one that counts -- BUT THE OWNER'S
+    LINE BEATS A CONTRIBUTOR'S, whatever the order (bench_ledger.py, the
+    shared bench of 17 November 2026): a contributor's mark merged after hers
+    never replaces hers, and a withdrawn link's lines are read by no one.
+    `hand_only` leaves the contributors' out altogether (--hand-only), and
+    a contributor's mark carries "who": "link" and comes from
+    "checked.jsonl, contributors", so the pools are scored apart as well as
+    together.
 
     Returns (marks, confirmed), where confirmed counts the proceedings a
     person looked at and accepted without timing. Those are real evidence but
     they are NOT marks: "the published time is right" is a weaker claim than
     a stopwatch, and folding it in as an error of zero would flatter every
-    method scored here. They are reported on their own line instead.
+    method scored here. They are reported on their own line instead. With
+    `pools`, a third: {"hand": n, "link": n}, how many of those
+    confirmations are the owner's and how many the contributors'.
     """
+    import bench_ledger as BL
     p = Path(path)
     if not p.exists():
-        return [], 0
+        return ([], 0, {"hand": 0, "link": 0}) if pools else ([], 0)
     last = {}
-    for line in p.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            e = json.loads(line)
-        except ValueError:
+    for e in BL.judgments(BL.read(p)):
+        if hand_only and BL.who(e) != "hand":
             continue
         # "late" is a proceeding on a recording whose captions run an hour
         # behind it, timed with no published time to anchor on. A stopwatch
@@ -1127,11 +1135,13 @@ def read_bench(path=BENCH):
                str(shown.get("proceeding") or "").lower())
         if not key[0]:
             continue
-        last[key] = e
-    marks, confirmed = [], 0
+        if BL.supersedes(e, last.get(key)):
+            last[key] = e
+    marks, confirmed, split = [], 0, {"hand": 0, "link": 0}
     for (vid, bill, kind), e in last.items():
         f = e.get("fields") or {}
         shown = e.get("shown") or {}
+        whose = BL.who(e)
         obs = _sec(f.get("observed_start"))
         if obs is None:
             # Nothing timed. An accepted time is a confirmation, counted
@@ -1140,14 +1150,16 @@ def read_bench(path=BENCH):
             # about where the truth is, so it is not evidence of a number.
             if e.get("verdict") == "correct" and shown.get("start") is not None:
                 confirmed += 1
+                split[whose] += 1
             continue
         marks.append({"bill": bill, "video": vid, "kind": kind,
                       "committee": shown.get("committee") or "",
                       "sched": None, "obs": obs,
                       "end": _sec(f.get("observed_end")),
-                      "src": p.name})
+                      "src": p.name + (BENCH_THEIRS if whose == "link" else ""),
+                      "who": whose})
     marks.sort(key=lambda m: (m["video"], m["bill"], m["kind"]))
-    return marks, confirmed
+    return (marks, confirmed, split) if pools else (marks, confirmed)
 
 
 def _merge_bench(marks, bench):
@@ -1645,19 +1657,30 @@ def load_candidate(path, marks):
     return got
 
 
-def ground_truth(manifest, site=None, candidate=None, bench=True):
+def ground_truth(manifest, site=None, candidate=None, bench=True, hand_only=False):
     marks = read_marks(manifest)
     n_file, added, clash, confirmed = len(marks), [], [], 0
+    split = {"hand": 0, "link": 0}
     if bench:
-        bmarks, confirmed = read_bench()
+        bmarks, confirmed, split = read_bench(hand_only=hand_only, pools=True)
         marks, added, clash = _merge_bench(marks, bmarks)
         if added:
             _join_schedule(added)
     print(f"{'=' * 74}\nGROUND TRUTH: {len(marks)} proceedings a person timed by "
           f"hand\n{'=' * 74}")
+    # THE POOLS APART (the shared bench, 17 November 2026): where the bench
+    # holds a contributor's merged mark or confirmation, the file's, yours
+    # and theirs are counted on their own; and --hand-only scores without
+    # theirs. Said only then, so a ledger of the owner's lines alone prints
+    # what it always has.
+    theirs = sum(1 for m in added if m.get("who") == "link")
     if added or confirmed or clash:
         print(f"  {n_file} from {Path(manifest).name}, {len(added)} from the "
               f"bench ({BENCH})")
+        if theirs or split["link"]:
+            print(f"  ground truth {n_file}, yours {len(added) - theirs}, contributors {theirs}"
+                  + (f"; of the {confirmed} accepted without timing, contributors' "
+                     f"{split['link']}" if split["link"] else ""))
         if confirmed:
             print(f"  {confirmed} more were looked at and accepted without "
                   "being timed. Those say\n  the published time is right, "
@@ -1670,6 +1693,9 @@ def ground_truth(manifest, site=None, candidate=None, bench=True):
         print("  --no-bench scores against " + Path(manifest).name
               + " alone, which is what every\n  number recorded before "
                 "9 September was measured on.")
+    if hand_only:
+        print("  --hand-only: the bench's contributors are left out; yours and the "
+              "file's alone.")
     vids = {}
     for m in marks:
         vids.setdefault(m["video"], []).append(m)
@@ -1869,6 +1895,10 @@ def main():
                     help="score against the truth file alone, leaving out "
                          "review/checked.jsonl. Use it to compare with a "
                          "number recorded before the bench was read here.")
+    ap.add_argument("--hand-only", action="store_true",
+                    help="read the bench's own lines alone: the owner's, "
+                         "leaving out the contributors' merged from the "
+                         "hosted bench (each pool is printed apart either way)")
     ap.add_argument("--score-out", nargs="?", const="generated/alignment_score.json",
                     help="with --truth, write the scoreboard as JSON. "
                          "about_figures.py reads it so the accuracy about.html "
@@ -1929,7 +1959,7 @@ def main():
 
     if a.truth:
         ground_truth(a.truth, a.site, a.candidate,
-                     bench=not a.no_bench)
+                     bench=not a.no_bench, hand_only=a.hand_only)
         if a.score_out:
             # The date is the run's, taken here rather than inside score(), so
             # every method in one file carries the same one. A page that
@@ -1937,6 +1967,7 @@ def main():
             from datetime import date as _date
             out = {"measured": _date.today().isoformat(),
                    "bench": not a.no_bench,
+                   **({"hand_only": True} if a.hand_only else {}),
                    # Not "candidate": SCOREBOARD spreads a key of that name
                    # and would silently replace the path with the scoreboard.
                    "candidate_file": a.candidate or "",
