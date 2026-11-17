@@ -2232,6 +2232,22 @@ other: a `RECOUNT` column beside a count, a second whole district headed
 `RECOUNT <name>` cells directly under that one town with one row of figures
 under it (`recount_under_town`), accepted only where each cell names the
 candidate above it in that column.
+The other offices' results are read by `src/parse/parse_sos_offices.py`
+into `collected/election_offices_<year>.json`, one file a year beside the
+House reader's, and nothing on the site reads them yet (preflight's
+`_offices_read_by_nothing`). For Governor and United States Senator it reads
+the summary of the counties and each county's block of towns -- one workbook
+in 2016-2024, a summary file and ten county files in 2026 -- matching a
+county's columns to the summary's by name and party, because the county
+blocks of 2016-2022 print a surname and 2022's US Senator prints them in
+another order. A race's count is the summary's Totals, and the reader
+refuses a race that any other printed figure would give to someone else.
+Every Totals row against the places under it, every county's row in the
+summary against its block's Totals and every race against its places' sum
+are tied out into `collected/election_offices_tieout.json`, each
+disagreement with its file, sheet and row and none corrected: in 2026 the
+summary files disagree with the county files in fifteen cells of the two
+races. `_offices_read_again` holds the committed files to the saved ones.
 `src/parse/score_members_elect.py` replays the rule on 2024 as of Election
 Day -- sitting and former members from the roll calls before it, each at the
 seat its term's bills printed -- and holds every link to the 2025-2026 roll
