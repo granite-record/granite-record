@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of build checks with no module under test, for a person to sort.
 
@@ -2412,6 +2412,8 @@ def _offline_modes_ask_nobody():
     import time as _time
     here = Path(".").resolve()
     runs = [("fetch_lsrs.py", ["--parse"], []),
+            # The request texts (17 November 2026): reading the PDFs asks nobody, the drain does.
+            ("fetch_lsrs.py", ["--read-texts"], ["--texts"]),
             ("fetch_members.py", ["--reparse"], []),
             ("fetch_session.py", ["--year", "2020", "--reparse", "--max-lsr", "3"],
              ["--year", "2020", "--max-lsr", "3"]),

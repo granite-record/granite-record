@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2147,6 +2147,216 @@ def _lsr_sponsors_split():
     assert not any(LSR_LISTLIKE.search(n) for p, co in got.values() for n in [p, *co] if n), (
         f"a name kept a separator or its role mark: {got}")
     return "ok", "one name; a prime and co-sponsors, in either order; no mark; no name keeps a separator"
+
+
+@check("build", "a request's text is read from the list where it links one: a link column of the CSV, "
+                "or a link in the request's own row of the page of every request, the General Court's "
+                "own address only; and co-sponsors parted by commas or with the role first are split")
+def _lsr_text_links():
+    """The owner, 17 November 2026: "the bill text shows as a PDF on the lsr search page along with
+    the co-sponsors". Until then fetch_lsrs read no link at all: the CSV's four columns carry none,
+    and the results page was read only where the CSV failed. Nobody has seen the link yet, so both
+    places are read and nothing is constructed (fetch_lsrs, THE TEXT, ONCE IT IS PUBLIC). Held, on a
+    page made here in the shape the fallback's reader was written from (a table row a request):
+    a row with one link that names the text gives it -- by its address (billText.aspx with
+    txtFormat=pdf) or its words (Bill Text) -- and a sponsor's link in the same row is not one; a
+    row with no link gives none; another host's PDF is not taken; a row with two such links, or
+    naming two requests, gives none. The search page's own link to the page of every request is
+    the one asked for (on the page saved on 18 September where it is here), never the withdrawn
+    list's. A CSV with a link column carries it, the General Court's alone. And the Sponsors forms
+    nobody has seen: commas after a role mark, a Jr. kept with its name, the role before the
+    name; a comma with no role mark parts nothing."""
+    FL = imp("fetch_lsrs")
+    row = "<tr><td>{n}</td><td>HB</td><td>Title: t. Sponsors: (Prime) {who}{links}</td></tr>"
+    me = '<a href="/house/members/member.aspx?member=1">Ellen Read</a>'
+    # Words before the table naming another request belong to no row.
+    page = "<p>The newest request is 2027-0312.</p><table>" + "".join([
+        row.format(n="2027-0001", who=me, links=' <a href="/lsr_search/billText.aspx?sy=2027&amp;id=11'
+                                              '&amp;txtFormat=pdf&amp;v=current">View</a>'),
+        row.format(n="2027-0002", who="Bob Roe", links=' <a href="view.aspx?lsr=2027-0002">Bill Text</a>'),
+        row.format(n="2027-0003", who="Bob Roe", links=""),
+        row.format(n="2027-0004", who="Bob Roe", links=' <a href="https://example.org/x.pdf">PDF</a>'),
+        row.format(n="2027-0005", who="Bob Roe", links=' <a href="/a.pdf">PDF</a> <a href="/b.pdf">PDF</a>'),
+        row.format(n="2027-0006 and 2027-0007", who="Bob Roe", links=' <a href="/c.pdf">PDF</a>'),
+        row.format(n="2027-0008", who="Bob Roe", links=' <a href="javascript:__doPostBack(&#39;x&#39;)">PDF</a>'),
+    ]) + "</table>"
+    links, twice = FL.text_links(page, "https://gc.nh.gov/lsr_search/LSR_Results.aspx")
+    assert links == {
+        "2027-0001": "https://gc.nh.gov/lsr_search/billText.aspx?sy=2027&id=11&txtFormat=pdf&v=current",
+        "2027-0002": "https://gc.nh.gov/lsr_search/view.aspx?lsr=2027-0002"}, f"text_links read {links}"
+    assert twice == ["2027-0005"], f"a row with two links to a text was not set aside: {twice}"
+    assert FL.text_links("<p>2027-0001 <a href='/a.pdf'>PDF</a></p>")[0] == {}, \
+        "a page with no table rows gave a link"
+    search = ('<a href="LSR_Results.aspx" class="link-primary">Click here</a> to see all Bill Requests | '
+              '<a href="lsr_results.aspx?i=1">View Withdrawn LSRs</a>')
+    assert FL.results_link(search) == "https://gc.nh.gov/lsr_search/LSR_Results.aspx", \
+        FL.results_link(search)
+    assert FL.results_link('<a href="lsr_results.aspx?i=1">View Withdrawn LSRs</a>') is None, \
+        "the withdrawn list was taken for the page of every request"
+    saved = Path("archive/lsr_search.html")
+    real = ""
+    if saved.is_file():
+        assert FL.results_link(saved.read_text(encoding="utf-8", errors="replace")) == \
+            "https://gc.nh.gov/lsr_search/LSR_Results.aspx", "the saved search page's own link is not found"
+        real = "; the saved search page's own link found"
+    csv_text = ("LSR Number,Bill Type,LSR Title,Sponsors,Bill Text PDF\n"
+                "2027-0001,HB,t.,Ellen Read (Prime),https://gc.nh.gov/x/1.pdf\n"
+                "2027-0002,HB,u.,Bob Roe (Prime),\n"
+                "2027-0003,HB,v.,Bob Roe (Prime),https://example.org/y.pdf\n")
+    got = {r["lsr"]: r.get("text_pdf", "") for r in FL.parse_csv(csv_text)}
+    assert got == {"2027-0001": "https://gc.nh.gov/x/1.pdf", "2027-0002": "", "2027-0003": ""}, got
+    four = FL.parse_csv("LSR Number,Bill Type,LSR Title,Sponsors\n2027-0001,HB,t.,Ellen Read (Prime)\n")
+    assert "text_pdf" not in four[0], f"the CSV of four columns gave a link: {four}"
+    cases = {"Ellen Read (Prime), Bob Roe, Jane Doe": ("Ellen Read", ["Bob Roe", "Jane Doe"]),
+             "Ellen Read (Prime), Bob Roe, Jr., Jane Doe (Co-sponsor)": ("Ellen Read", ["Bob Roe Jr.", "Jane Doe"]),
+             "(Prime) Ellen Read; (Co) Bob Roe": ("Ellen Read", ["Bob Roe"]),
+             "(Co) Bob Roe; (Prime) Ellen Read": ("Ellen Read", ["Bob Roe"]),
+             "Roe, Bob (Prime)": ("Roe, Bob", [])}
+    split = {k: FL.split_sponsors(k) for k in cases}
+    bad = {k: v for k, v in split.items() if (v[0], list(v[1])) != (cases[k][0], list(cases[k][1]))}
+    assert not bad, f"split_sponsors reads {bad}"
+    return "ok", ("a row's one link to its text taken, by its address or its words; none for a row without, "
+                  "another host, two links or two requests; the page of every request is the search page's "
+                  f"own link{real}; a CSV link column read; commas after a role mark and a role first split")
+
+
+@check("build", "the request texts' drain asks for what the list links and this disk has not settled, "
+                "--budget at most, paced, under the lock, a refusal or two dropped connections ending it; "
+                "--read-texts writes each text beside its PDF and asks nobody",
+       needs=("fetch_lsrs", "extract_calendar_text"))
+def _lsr_text_drain(FL, ET):
+    """fetch_lsrs.py --texts (THE TEXT, ONCE IT IS PUBLIC), driven through main() in a throwaway
+    folder on fake answers, as _calendar_drain drives the calendars' drain: so refusal.check() and
+    refusal.hold() are the ones the night meets, and nothing asks the network (urlopen raises).
+
+      - three linked, a budget of two: two asked, in order, each saved with its address in the
+        record, the third left for tomorrow; the run after asks the third alone;
+      - a text held at the address the list gives is not asked again, and is at a new one;
+      - a 404 is "gone" and not asked again; something not a PDF is an attempt, and the third
+        attempt leaves it ("failed");
+      - one 403, the block page served with HTTP 200, and two dropped connections each end the run
+        with status 2 and the refusal recorded; somebody else's lock is status 3 with nothing asked;
+      - --read-texts writes the text beside each PDF held, records a PDF with none as "none", and
+        asks nobody, a refusal on file or not.
+    """
+    import contextlib
+    import http.client
+    import io
+    import time
+    import types
+    import urllib.error
+    import urllib.request
+    import refusal
+    here = os.getcwd()
+    saved = (refusal.MARK, refusal.LOCK, FL._fetch, FL.time, sys.argv, urllib.request.urlopen,
+             ET.extract)
+    PDF = b"%PDF-1.4 a bill"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lsrtexts-"))
+
+    def lsrs(n, url=lambda i: f"https://gc.nh.gov/t/{i}.pdf"):
+        Path("lsrs.json").write_text(json.dumps([
+            {"lsr": f"2027-{i:04d}", "session": 2027, "body": "HB", "title": "t.", "sponsor": "A B",
+             "cosponsors": [], "withdrawn": False, **({"text_pdf": url(i)} if url(i) else {})}
+            for i in range(1, n + 1)]), encoding="utf-8")
+
+    def run(answers, budget=2, lock=None, args=("--texts",)):
+        refusal.LOCK.unlink(missing_ok=True)
+        if lock is not None:
+            refusal.LOCK.write_text(str(lock), encoding="utf-8")
+        answers, asked = iter(answers), []
+
+        def fake(url, timeout=60):
+            asked.append(url)
+            a = next(answers)
+            if isinstance(a, BaseException):
+                raise a
+            return a
+        FL._fetch = fake
+        sys.argv = ["fetch_lsrs.py", *args, "--budget", str(budget), "--delay", "1"]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                rc = FL.main()
+            except SystemExit as e:
+                rc = e.code if isinstance(e.code, int) else 1
+        return rc, asked, FL.load_state()
+
+    def raiser(*a, **k):
+        raise AssertionError("the request texts' drain opened a connection")
+    try:
+        os.chdir(tmp)
+        Path("archive").mkdir()
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        FL.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time, strftime=time.strftime)
+        urllib.request.urlopen = raiser
+        lsrs(3)
+        rc, asked, st = run([PDF, PDF])
+        assert rc == 0 and asked == ["https://gc.nh.gov/t/1.pdf", "https://gc.nh.gov/t/2.pdf"], (rc, asked)
+        assert [st[k]["state"] for k in sorted(st)] == ["held", "held"] and \
+            st["2027-0001"]["url"] == "https://gc.nh.gov/t/1.pdf", st
+        assert (FL.TEXTS / "2027-0001.pdf").read_bytes() == PDF, "the PDF was not saved at its request"
+        assert FL.texts_wanted() == [("2027-0003", "https://gc.nh.gov/t/3.pdf")], FL.texts_wanted()
+        rc, asked, st = run([PDF])
+        assert rc == 0 and asked == ["https://gc.nh.gov/t/3.pdf"], (rc, asked)
+        rc, asked, st = run([])
+        assert rc == 0 and not asked, f"a text held at its address was asked again: {asked}"
+        lsrs(1, url=lambda i: "https://gc.nh.gov/t/1-revised.pdf")
+        rc, asked, st = run([PDF])
+        assert asked == ["https://gc.nh.gov/t/1-revised.pdf"] and st["2027-0001"]["state"] == "held", (asked, st)
+        # Not served, and not a PDF three times.
+        shutil.rmtree("archive/lsr_text")
+        Path(FL.TEXT_STATE).unlink()
+        lsrs(2)
+        nf = urllib.error.HTTPError("u", 404, "Not Found", http.client.HTTPMessage(), io.BytesIO(b""))
+        rc, asked, st = run([nf, b"<html>a page</html>"])
+        assert rc == 0 and st["2027-0001"]["state"] == "gone" and \
+            st["2027-0002"]["state"] == "wanted" and st["2027-0002"]["attempts"] == 1, (rc, st)
+        for n in (2, 3):
+            rc, asked, st = run([b"<html>a page</html>"])
+            assert asked == ["https://gc.nh.gov/t/2.pdf"], asked
+        assert st["2027-0002"]["state"] == "failed" and st["2027-0002"]["attempts"] == 3, st
+        rc, asked, st = run([])
+        assert not asked, f"a text left after three attempts, or one not served, was asked again: {asked}"
+        # The refusals, and somebody else's lock.
+        for what, answers, n in (
+                ("a 403", [urllib.error.HTTPError("u", 403, "Forbidden", http.client.HTTPMessage(),
+                                                  io.BytesIO(b"")), PDF], 1),
+                ("the block page", [b"<h1>Web Page Blocked</h1> Attack ID: 9", PDF], 1),
+                ("two dropped connections", [urllib.error.URLError(ConnectionResetError(10054, "r")),
+                                             http.client.RemoteDisconnected("x"), PDF], 2)):
+            shutil.rmtree("archive/lsr_text", ignore_errors=True)
+            Path(FL.TEXT_STATE).unlink(missing_ok=True)
+            refusal.MARK.unlink(missing_ok=True)
+            lsrs(3)
+            rc, asked, st = run(answers, budget=3)
+            assert rc == 2 and len(asked) == n and refusal.MARK.exists(), (what, rc, asked)
+        rc, asked, st = run([PDF], budget=3)
+        assert rc == 2 and not asked, f"with a refusal on file the drain ran: {rc} {asked}"
+        refusal.MARK.unlink()
+        rc, asked, st = run([PDF], lock=99999999)
+        assert rc == 3 and not asked and refusal.LOCK.read_text().strip() == "99999999", (rc, asked)
+        refusal.LOCK.unlink()
+        # The text, beside each PDF held; a PDF with none recorded so. Asks nobody, refusal or none.
+        rc, asked, st = run([PDF, PDF, PDF], budget=3)
+        assert rc == 0 and len(asked) == 3, (rc, asked)
+        refusal.MARK.write_text(json.dumps({"at": "2026-12-01T09:00:00Z", "where": "x", "why": "y"}),
+                                encoding="utf-8")
+        ET.extract = lambda pdf, layout_only=False: (("AN ACT relative to things.\n", "pdftotext -layout")
+                                                     if Path(pdf).stem != "2027-0002" else (None, "no text"))
+        rc, asked, st = run([], args=("--read-texts",))
+        assert rc == 0 and not asked, (rc, asked)
+        assert (FL.TEXTS / "2027-0001.txt").read_text(encoding="utf-8").startswith("AN ACT"), \
+            "--read-texts wrote no text beside the PDF"
+        assert st["2027-0001"]["text"] == "pdftotext -layout" and st["2027-0002"]["text"] == "none" \
+            and not (FL.TEXTS / "2027-0002.txt").exists(), st
+    finally:
+        os.chdir(here)
+        (refusal.MARK, refusal.LOCK, FL._fetch, FL.time, sys.argv, urllib.request.urlopen,
+         ET.extract) = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("two of three asked on a budget of two and the third the night after; a held text not "
+                  "asked again, a new link asked; a 404 gone, three bad answers failed; a 403, the block "
+                  "page and two drops each end it with status 2; another's lock 3; --read-texts writes "
+                  "the text and asks nobody")
 
 
 @check("frontend", "the stream date is one constant, and a sitting with no recording is never offered one",

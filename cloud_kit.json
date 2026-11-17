@@ -21,6 +21,13 @@
       "paths": ["lsrs.json"]
     },
     {
+      "what": "Those requests' texts, once the General Court's list links them (the owner, 17 November 2026): the text the night reads off each PDF (fetch_lsrs.py --texts and --read-texts, nightly.take_lsr_texts), not the PDF, and the record of what was asked for each and how it ended. build_lsrs.py reads the text onto the request's page, its card and its file in the data API. Optional: none exists before the list links a text.",
+      "owner": "night",
+      "optional": true,
+      "paths": ["archive/lsr_texts.json"],
+      "globs": ["archive/lsr_text/*.txt"]
+    },
+    {
       "what": "Each day's copy of those files: what gc_changes.py compares the night's with. Never held: it is the archive of what the General Court served that day, which cannot be asked for again, and neither the build nor the shrink rule reads it.",
       "owner": "night",
       "held": false,
