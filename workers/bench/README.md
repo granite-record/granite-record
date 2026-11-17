@@ -61,6 +61,17 @@ once (`HELD_MOST`); 500 answers a day for a contributor's link
 contributor is given is one the owner judged already (`CALIB_EVERY`), never
 one that link has answered, and its answer is never merged.
 
+## What is asked: a pack
+
+`python3 src/checks/bench_pack.py --preview` (or without `--preview` for
+production's) draws what contributors are asked next from `review.py`'s own
+pools -- hearing timings a year a group, placed topics a term a group, a
+tag's single-bill samples a tag a group -- leaving out every key the ledger
+holds and every key an earlier pack for that database holds, with the
+owner's own judgments for calibration. It writes
+`reports/bench/packs/<preview|production>/<date>.sql` and prints the one
+wrangler command that loads it; the owner runs that.
+
 ## The database
 
 Two, made by the owner, never by an assistant or the night:

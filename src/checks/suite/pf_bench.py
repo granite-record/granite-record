@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -230,6 +230,168 @@ def _bench_hand_beats_link(RV, PA, BL):
                   "judged, a contributor's alone counts as theirs, a withdrawn link and a line no "
                   "one's are read by no reader (judged, read_bench, --report, the tag gate); the "
                   "pools printed apart, and not a word of them on the owner's lines alone")
+
+
+# ---- a pack -----------------------------------------------------------------------
+
+def _pack_fixture():
+    """(pools, ledger, info): three pools, a ledger and the bills' words, small, with
+    every case bench_pack must tell apart: judged by the owner, by a contributor,
+    by a withdrawn link; packed before; Miscellaneous; a tag's pair; a timing
+    before 2025; a calibration item and a line that is no calibration item."""
+    def timing(i, year, end=True):
+        return {"key": f"V{i}|HB{i}|public hearing", "bill": f"HB{i}", "year": year, "video_id": f"VID{i:08d}",
+                "committee": "Election Law", "date": f"{year}-02-03", "proceeding": "public hearing",
+                "title": "", "start": 600.0 + i, "end": (900.0 + i) if end else None, "state": "stated"}
+    timings = [timing(i, "2026") for i in range(1, 8)] + [timing(i, "2025") for i in range(10, 14)] + \
+        [timing(i, "2024", end=False) for i in range(20, 23)]
+    timings.append({**timing(30, "2026"), "key": "V30|HB30|floor debate", "proceeding": "floor debate"})
+
+    def topic(i, term, t="Education - General"):
+        return {"key": f"topic|{term}|HB{i}", "kind": "topic", "term": term, "bill": f"HB{i}",
+                "title": f"relative to {i}.", "committee": "Education", "topic": t, "margin": 0.9,
+                "why": ["CMTE:Education", "school"]}
+    topics = [topic(i, "2023-2024") for i in range(100, 106)] + [topic(i, "2021-2022") for i in range(110, 113)] + \
+        [topic(120, "2023-2024", "Miscellaneous")]
+
+    def tag(i, tid, sample, order):
+        return {"kind": "tag", "tag": tid, "order": order, "tag_name": tid.title(), "definition": "Bills about it.",
+                "hard": False, "term": "2025-2026", "bill": f"SB{i}", "title": f"relative to {tid}.",
+                "topic": "Health", "analysis": "" if i % 2 else "This bill does a thing.", "chapters": ["126-A"],
+                "tier": "T", "why": "T:" + tid, "sample": sample, "key": f"tag|{tid}|{sample}|2025-2026/SB{i}"}
+    tags = [tag(i, "medicaid", s, 0) for i, s in ((1, "title"), (2, "other"), (3, "miss"), (4, "title"))] + \
+        [tag(9, "housing", "title", 1),
+         {"kind": "tag", "tag": "housing", "order": 1, "sample": "pair", "key": "tag|housing|pair",
+          "tag_name": "Housing", "a": {}, "b": {}},
+         {"kind": "tag", "tag": "medicaid", "order": 0, "sample": "pair", "key": "tag|medicaid|pair",
+          "tag_name": "Medicaid", "a": {}, "b": {}}]
+    hand, theirs = "hand", "link:ab12"
+    ledger = [
+        {"kind": "timestamp", "key": "V1|HB1|public hearing", "verdict": "correct", "by": hand,
+         "shown": timings[0]},                                                  # judged; calibration (yes)
+        {"kind": "timestamp", "key": "V2|HB2|public hearing", "verdict": "wrong", "by": hand,
+         "shown": {**timings[1], "start": None}},                               # judged; graded on the schedule
+        {"kind": "topic", "key": "topic|2023-2024|HB100", "verdict": "wrong", "by": hand,
+         "shown": topics[0]},                                                   # judged; calibration (no)
+        {"kind": "topic", "key": "topic|2023-2024|HB101", "verdict": "correct", "by": theirs,
+         "shown": topics[1]},                                                   # judged by a contributor
+        {"kind": "topic", "key": "topic|2023-2024|HB102", "verdict": "correct", "by": "link:gone12",
+         "shown": topics[2]},                                                   # a withdrawn link's: not judged
+        {"kind": "withdraw", "by": hand, "link": "gone12"},
+        {"kind": "tag", "key": tags[0]["key"], "verdict": "partly", "by": hand, "shown": tags[0]},  # calibration (yes)
+        {"kind": "tag", "key": "tag|medicaid|pair", "verdict": "yes", "by": hand, "shown": tags[-1]},
+        {"kind": "timestamp", "key": "V11|HB11|public hearing", "verdict": "wrong", "by": hand,
+         "fields": {"observed_start": "0:10:00"}, "shown": timings[8]},         # judged since it was packed
+    ]
+
+    class Info:
+        def title(self, term, bill):
+            return f"the title of {bill} ({term})"
+
+        def analysis(self, term, bill):
+            return f"The analysis of {bill}."
+
+        def options(self):
+            return ["Education - General", "Employment", "Miscellaneous"]
+    return {"timestamp": timings, "topic": topics, "tag": tags}, ledger, Info()
+
+
+@check("build", "a pack for the shared bench: seeded groups that leave out everything judged or packed "
+                "before, timings split as the ledger keeps them, topics placed and tags asked blind, the "
+                "owner's own judgments as calibration, and SQL the bench's schema loads and serves",
+       needs=("bench_pack", "bench_ledger"))
+def _bench_pack(BP, BL):
+    """src/checks/bench_pack.py (step 5 of the shared bench, approved 17 November 2026), on a
+    fixture of three pools, a ledger and the bills' words. Held: no item is a key the ledger
+    holds -- the owner's, a contributor's -- nor one an earlier pack holds, but a withdrawn
+    link's key is asked again; a timing before 2025 goes as "older" and after as
+    "timestamp", a year a group, newest first, at most 50; a floor debate is asked as "taken
+    up"; no topic is Miscellaneous, a term a group; a tag's pair is never asked, and a tag's
+    card says nothing of how the rule attached it; the same seed draws the same pack and
+    another seed another; calibration is every item of hers a card can show (not one graded
+    on the schedule, not a pair), with which way she went; a packed key judged on the laptop
+    since is marked elsewhere; how far along counts each whole pool; the keys line reads
+    back; a statement D1 would refuse is refused here; and the SQL, loaded into the bench's
+    own schema in node (tests/bench/apply_pack.js), serves every queue and keeps an answer."""
+    import subprocess
+    pools, ledger, info = _pack_fixture()
+    packed = {"timestamp\tV11|HB11|public hearing", "timestamp\tV12|HB12|public hearing"}
+    pack = BP.draw(pools, ledger, info, packed, seed=7, groups=3, per={"timing": 4}, as_of="2026-11-20T10:00:00Z")
+    keys = [r["key"] for r in pack["items"]]
+    judged = {d["key"] for d in BL.judgments(ledger)}
+    assert not set(keys) & judged, f"a key the ledger holds was packed: {sorted(set(keys) & judged)}"
+    assert "topic|2023-2024|HB102" in keys, "a withdrawn link's key was not asked again"
+    assert not {k.split(chr(9))[1] for k in packed} & set(keys), "a key an earlier pack holds was packed"
+    by = {r["key"]: r for r in pack["items"]}
+    kinds = {r["kind"] for r in pack["items"] if r["queue"] == "timing"}
+    assert kinds == {"older", "timestamp"} and all(
+        r["kind"] == ("older" if r["shown"]["date"] < "2025" else "timestamp")
+        for r in pack["items"] if r["queue"] == "timing"), f"a timing's kind is not the ledger's: {kinds}"
+    groups = [(g["queue"], g["label"]) for g in pack["groups"]]
+    assert groups == [("timing", "2026 recordings"), ("timing", "2025 recordings"), ("timing", "2024 recordings"),
+                      ("topic", "Bills of 2023-2024"), ("topic", "Bills of 2021-2022"), ("tag", "Medicaid"),
+                      ("tag", "Housing")], groups
+    assert sum(1 for r in pack["items"] if r["grp"] == "timing|2026") == 4, "a group over its size"
+    floor = BP.moment_card(pools["timestamp"][-1], "t")
+    assert floor["steps"][0]["q"] == "Is HB 30 taken up at {t}?" and floor["head"] == "HB 30 · floor debate", floor
+    one = by["V3|HB3|public hearing"]["card"] if "V3|HB3|public hearing" in by else \
+        next(r["card"] for r in pack["items"] if r["queue"] == "timing" and "floor" not in r["key"])
+    assert one["type"] == "moment" and one["words"] == {"yes": "correct", "no": "wrong", "unsure": "unsure"} and \
+        one["player"]["host"] == "youtube" and [s["field"] for s in one["steps"]] == ["start", "end"] and \
+        one["title"].startswith("the title of HB"), one
+    assert not [r for r in pack["items"] if r["queue"] == "topic" and r["card"]["claim"] == "Miscellaneous"]
+    assert all(r["card"]["better"]["field"] == "better_topic" for r in pack["items"] if r["queue"] == "topic")
+    tags = [r for r in pack["items"] if r["queue"] == "tag"]
+    assert tags and not [r for r in tags if r["key"].endswith("|pair")], "a tag's pair was asked"
+    for r in tags:
+        words = json.dumps(r["card"]).lower()
+        assert not re.search(r'"(sample|why|tier|attached)"|\b(title tier|the rule|attached|missed)\b', words), (
+            "a tag's card says how the rule attached it: " + words[:200])
+        assert r["card"]["words"] == {"yes": "yes", "no": "no", "unsure": "unsure"}
+    no_analysis = [r["card"] for r in tags if not r["shown"]["analysis"]]
+    assert no_analysis and all(c["label"] == "The laws it amends" and c["body"] == "RSA 126-A" for c in no_analysis)
+    again = BP.draw(pools, ledger, info, packed, seed=7, groups=3, per={"timing": 4}, as_of="2026-11-20T10:00:00Z")
+    assert again == pack, "the same seed drew another pack"
+    other = BP.draw(pools, ledger, info, packed, seed=8, groups=3, per={"timing": 4}, as_of="2026-11-20T10:00:00Z")
+    assert [r["key"] for r in other["items"]] != keys, "another seed drew the same pack"
+    cal = {(c["kind"], c["key"]): c["hers"] for c in pack["calib"]}
+    assert cal == {("timestamp", "V1|HB1|public hearing"): "yes", ("topic", "topic|2023-2024|HB100"): "no",
+                   ("tag", pools["tag"][0]["key"]): "yes", ("timestamp", "V11|HB11|public hearing"): "no"}, cal
+    assert pack["elsewhere"] == [("timestamp", "V11|HB11|public hearing")], pack["elsewhere"]
+    assert [(r["queue"], r["pool"], r["judged"]) for r in pack["queues"]] == [
+        ("timing", 15, 3), ("topic", 10, 2), ("tag", 7, 2)], pack["queues"]
+    assert pack["queues"][1]["options"] == info.options() and pack["queues"][0]["options"] is None
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-pack-"))
+    try:
+        path = tmp / "2026-11-20.sql"
+        sql = BP.to_sql(pack, path.stem, "graniterecord-bench-preview", path, 7, "a fixture")
+        path.write_text(sql, encoding="utf-8")
+        assert BP.packed_keys(tmp) == set(pack["keys"]), "the keys line does not read back"
+        assert "npx wrangler d1 execute graniterecord-bench-preview --remote --file" in sql
+        big = {**pack, "items": [{**pack["items"][0], "card": {"body": "x" * 95_000}}], "calib": [], "elsewhere": []}
+        try:
+            BP.to_sql(big, "x", "db", path, 7, "")
+        except SystemExit as e:
+            assert "D1 refuses" in str(e)
+        else:
+            raise AssertionError("a statement over D1's limit was written")
+        node = shutil.which("node") or shutil.which("node.exe")
+        if not node:
+            return "skip", "node is not on PATH: the pack was drawn and written, and not loaded"
+        r = _run([node, "--disable-warning=ExperimentalWarning", "tests/bench/apply_pack.js", str(path)],
+                 capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
+        got = json.loads(r.stdout.strip().splitlines()[-1])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert got["items"] == len(pack["items"]) and got["groups"] == len(pack["groups"]) and \
+        got["calib"] == len(pack["calib"]), got
+    assert got["given"] == {"timing": ["timing", "timing"], "topic": ["topic", "topic"], "tag": ["tag", "tag"]} and \
+        got["owner"] == 2 and got["kept"] and got["kept"]["ok"], got
+    return "ok", (f"{len(pack['items'])} items in {len(pack['groups'])} groups drawn from a fixture, nothing "
+                  f"judged or packed before, {len(pack['calib'])} calibration items, one marked elsewhere; the "
+                  "same seed the same pack; the SQL loaded into the bench's schema and served every queue")
 
 
 # ---- the shared bench's own tests -------------------------------------------------
