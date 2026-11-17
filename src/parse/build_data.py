@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.65
+# GRANITE_VERSION: 2026-09-04.66
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1452,6 +1452,60 @@ def status_for_session(raw, bills):
 STATUS_FILLS = ("committee_code", "chapter", "text_pdf", "made_bill")
 
 
+REQUEST_SOURCE = "the request list"
+
+
+def sponsors_from_requests(bills, sponsors, path, roster):
+    """A NEW BILL CARRIES ITS REQUEST'S SPONSORS UNTIL THE SPONSOR FILES CARRY
+    IT (the owner, 17 November 2026: once signed off, "the bill text shows as
+    a PDF on the lsr search page along with the co-sponsors"). A request is
+    numbered as a bill weeks before LsrsOnly.txt and LsrSponsors.txt hold its
+    session year -- each holds one, and they turn in January -- so a 2027 bill
+    on the docket in December had no sponsor at all (the rehearsal of 17
+    November 2026). Where no sponsor file and no status page gave a bill any
+    sponsor, the request of its year and LSR number in the night's lsrs.json
+    (fetch_lsrs.py) gives its prime sponsor and its co-sponsors, in the list's
+    order: each the one member of `roster` (the term's, by member id) whose
+    first and last name it is, folded, and nobody else of it -- else the name
+    as the list prints it, with no member. The day the files carry the bill,
+    its own rows are read and this gives nothing. Mutates `sponsors`; returns
+    how many bills it filled."""
+    try:
+        reqs = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 0
+    want = {}
+    for r in reqs if isinstance(reqs, list) else []:
+        m = re.match(r"^(\d{4})-(\d+)$", str((r or {}).get("lsr") or "").strip())
+        if m and str(r.get("sponsor") or "").strip():
+            want[(m.group(1), int(m.group(2)))] = r
+    if not want:
+        return 0
+    fold = lambda s: re.sub(r"[^a-z]", "", str(s or "").lower())
+    by_name = defaultdict(list)
+    for m in (roster or {}).values():
+        by_name[fold(f"{m.get('first') or ''}{m.get('last') or ''}")].append(m)
+    filled = 0
+    for bid, rec in bills.items():
+        n = str(rec.get("lsr_num") or "")
+        r = want.get((str(rec.get("lsr_year") or ""), int(n))) if n.isdigit() else None
+        if r is None or sponsors.get(bid):
+            continue
+        names = [str(r["sponsor"]).strip()] + [str(c).strip() for c in r.get("cosponsors") or []
+                                               if str(c or "").strip()]
+        out = []
+        for i, name in enumerate(names):
+            hits = by_name.get(fold(name)) or []
+            m = hits[0] if len(hits) == 1 else {}
+            out.append({"member_id": m.get("id", ""), "name": m.get("name") or name,
+                        "party": m.get("party_code", ""), "chamber": m.get("chamber", ""),
+                        "label": m.get("label") or name, "sequence": i, "prime": i == 0,
+                        "role": "Prime" if i == 0 else "Sponsor", "source": REQUEST_SOURCE})
+        sponsors[bid] = out
+        filled += 1
+    return filled
+
+
 def fill_from_status(bills, st):
     """Each bill's record filled from its status record: `st` is
     status_for_session's {bill: record}, so each bill reads its own term's. The
@@ -2360,6 +2414,16 @@ def main():
                           "current session only. Prime is the first listed there; "
                           "the page does not mark the field.")
 
+    # A NEW BILL CARRIES ITS REQUEST'S SPONSORS UNTIL THE SPONSOR FILES CARRY IT
+    # (17 November 2026; sponsors_from_requests). Not for a frozen term's build.
+    if not frozen:
+        took = sponsors_from_requests(bills, sponsors, Path("lsrs.json"), term_legs)
+        if took:
+            print(f"sponsors: {took:,} bill(s) no sponsor file names yet took their request's "
+                  "prime sponsor and co-sponsors, from lsrs.json")
+            report.append(f"{took:,} bills took their sponsors from their request on the "
+                          "request list (lsrs.json): LsrsOnly.txt and LsrSponsors.txt do not "
+                          "carry them yet.")
     nosp = [b for b in bills if b not in sponsors]
     if nosp:
         report.append(f"{len(nosp)} bills still have no sponsor in either file "

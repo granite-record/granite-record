@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.13
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1381,8 +1381,8 @@ def _former_movers_one_page(build_site_v2, build_pages):
                   "ahead of the tab rules, tabs included")
 
 
-@check("build", "each bill request has a page of its own, noindex, until it is a bill or filing is "
-                "complete, and from then its address forwards; never a page and a 301 at once")
+@check("build", "each bill request has a page of its own, noindex, until its bill is introduced or filing "
+                "is complete, and from then its address forwards; never a page and a 301 at once")
 def _request_pages():
     """Alice, 8 November 2026: a page for each request of the session the
     site lists, to share; noindex, out of the sitemap; once a request is a
@@ -1403,7 +1403,10 @@ def _request_pages():
     # The row's label carries no seat, as every real sitting row's does (the
     # roster's "Rep. Ellen Read (D)"); the page draws the seat from the roster.
     who = {"jodinelson": ("Rep. Jodi Nelson (R)", "jodi-nelson-rock-13")}
-    rows, _ = L.rows_from(lsrs, who, {"2027-0003": "HB 45"}, 2027)
+    # Filed as HB 45 and introduced (17 November 2026: a request filed and not
+    # yet introduced keeps its page, _request_stays_until_introduced).
+    rows, _ = L.rows_from(lsrs, who, {"2027-0003": "HB 45"}, 2027,
+                          introduced_on={"2027-0003": "2027-01-06"})
     by = {r["n"]: r for r in rows}
     assert by["LSR 2027-0001"]["address"] == "request/2027-0001" \
         and "moved_to" not in by["LSR 2027-0001"], by["LSR 2027-0001"]
@@ -2147,6 +2150,216 @@ def _lsr_sponsors_split():
     assert not any(LSR_LISTLIKE.search(n) for p, co in got.values() for n in [p, *co] if n), (
         f"a name kept a separator or its role mark: {got}")
     return "ok", "one name; a prime and co-sponsors, in either order; no mark; no name keeps a separator"
+
+
+@check("build", "a request's text is read from the list where it links one: a link column of the CSV, "
+                "or a link in the request's own row of the page of every request, the General Court's "
+                "own address only; and co-sponsors parted by commas or with the role first are split")
+def _lsr_text_links():
+    """The owner, 17 November 2026: "the bill text shows as a PDF on the lsr search page along with
+    the co-sponsors". Until then fetch_lsrs read no link at all: the CSV's four columns carry none,
+    and the results page was read only where the CSV failed. Nobody has seen the link yet, so both
+    places are read and nothing is constructed (fetch_lsrs, THE TEXT, ONCE IT IS PUBLIC). Held, on a
+    page made here in the shape the fallback's reader was written from (a table row a request):
+    a row with one link that names the text gives it -- by its address (billText.aspx with
+    txtFormat=pdf) or its words (Bill Text) -- and a sponsor's link in the same row is not one; a
+    row with no link gives none; another host's PDF is not taken; a row with two such links, or
+    naming two requests, gives none. The search page's own link to the page of every request is
+    the one asked for (on the page saved on 18 September where it is here), never the withdrawn
+    list's. A CSV with a link column carries it, the General Court's alone. And the Sponsors forms
+    nobody has seen: commas after a role mark, a Jr. kept with its name, the role before the
+    name; a comma with no role mark parts nothing."""
+    FL = imp("fetch_lsrs")
+    row = "<tr><td>{n}</td><td>HB</td><td>Title: t. Sponsors: (Prime) {who}{links}</td></tr>"
+    me = '<a href="/house/members/member.aspx?member=1">Ellen Read</a>'
+    # Words before the table naming another request belong to no row.
+    page = "<p>The newest request is 2027-0312.</p><table>" + "".join([
+        row.format(n="2027-0001", who=me, links=' <a href="/lsr_search/billText.aspx?sy=2027&amp;id=11'
+                                              '&amp;txtFormat=pdf&amp;v=current">View</a>'),
+        row.format(n="2027-0002", who="Bob Roe", links=' <a href="view.aspx?lsr=2027-0002">Bill Text</a>'),
+        row.format(n="2027-0003", who="Bob Roe", links=""),
+        row.format(n="2027-0004", who="Bob Roe", links=' <a href="https://example.org/x.pdf">PDF</a>'),
+        row.format(n="2027-0005", who="Bob Roe", links=' <a href="/a.pdf">PDF</a> <a href="/b.pdf">PDF</a>'),
+        row.format(n="2027-0006 and 2027-0007", who="Bob Roe", links=' <a href="/c.pdf">PDF</a>'),
+        row.format(n="2027-0008", who="Bob Roe", links=' <a href="javascript:__doPostBack(&#39;x&#39;)">PDF</a>'),
+    ]) + "</table>"
+    links, twice = FL.text_links(page, "https://gc.nh.gov/lsr_search/LSR_Results.aspx")
+    assert links == {
+        "2027-0001": "https://gc.nh.gov/lsr_search/billText.aspx?sy=2027&id=11&txtFormat=pdf&v=current",
+        "2027-0002": "https://gc.nh.gov/lsr_search/view.aspx?lsr=2027-0002"}, f"text_links read {links}"
+    assert twice == ["2027-0005"], f"a row with two links to a text was not set aside: {twice}"
+    assert FL.text_links("<p>2027-0001 <a href='/a.pdf'>PDF</a></p>")[0] == {}, \
+        "a page with no table rows gave a link"
+    search = ('<a href="LSR_Results.aspx" class="link-primary">Click here</a> to see all Bill Requests | '
+              '<a href="lsr_results.aspx?i=1">View Withdrawn LSRs</a>')
+    assert FL.results_link(search) == "https://gc.nh.gov/lsr_search/LSR_Results.aspx", \
+        FL.results_link(search)
+    assert FL.results_link('<a href="lsr_results.aspx?i=1">View Withdrawn LSRs</a>') is None, \
+        "the withdrawn list was taken for the page of every request"
+    saved = Path("archive/lsr_search.html")
+    real = ""
+    if saved.is_file():
+        assert FL.results_link(saved.read_text(encoding="utf-8", errors="replace")) == \
+            "https://gc.nh.gov/lsr_search/LSR_Results.aspx", "the saved search page's own link is not found"
+        real = "; the saved search page's own link found"
+    csv_text = ("LSR Number,Bill Type,LSR Title,Sponsors,Bill Text PDF\n"
+                "2027-0001,HB,t.,Ellen Read (Prime),https://gc.nh.gov/x/1.pdf\n"
+                "2027-0002,HB,u.,Bob Roe (Prime),\n"
+                "2027-0003,HB,v.,Bob Roe (Prime),https://example.org/y.pdf\n")
+    got = {r["lsr"]: r.get("text_pdf", "") for r in FL.parse_csv(csv_text)}
+    assert got == {"2027-0001": "https://gc.nh.gov/x/1.pdf", "2027-0002": "", "2027-0003": ""}, got
+    four = FL.parse_csv("LSR Number,Bill Type,LSR Title,Sponsors\n2027-0001,HB,t.,Ellen Read (Prime)\n")
+    assert "text_pdf" not in four[0], f"the CSV of four columns gave a link: {four}"
+    cases = {"Ellen Read (Prime), Bob Roe, Jane Doe": ("Ellen Read", ["Bob Roe", "Jane Doe"]),
+             "Ellen Read (Prime), Bob Roe, Jr., Jane Doe (Co-sponsor)": ("Ellen Read", ["Bob Roe Jr.", "Jane Doe"]),
+             "(Prime) Ellen Read; (Co) Bob Roe": ("Ellen Read", ["Bob Roe"]),
+             "(Co) Bob Roe; (Prime) Ellen Read": ("Ellen Read", ["Bob Roe"]),
+             "Roe, Bob (Prime)": ("Roe, Bob", [])}
+    split = {k: FL.split_sponsors(k) for k in cases}
+    bad = {k: v for k, v in split.items() if (v[0], list(v[1])) != (cases[k][0], list(cases[k][1]))}
+    assert not bad, f"split_sponsors reads {bad}"
+    return "ok", ("a row's one link to its text taken, by its address or its words; none for a row without, "
+                  "another host, two links or two requests; the page of every request is the search page's "
+                  f"own link{real}; a CSV link column read; commas after a role mark and a role first split")
+
+
+@check("build", "the request texts' drain asks for what the list links and this disk has not settled, "
+                "--budget at most, paced, under the lock, a refusal or two dropped connections ending it; "
+                "--read-texts writes each text beside its PDF and asks nobody",
+       needs=("fetch_lsrs", "extract_calendar_text"))
+def _lsr_text_drain(FL, ET):
+    """fetch_lsrs.py --texts (THE TEXT, ONCE IT IS PUBLIC), driven through main() in a throwaway
+    folder on fake answers, as _calendar_drain drives the calendars' drain: so refusal.check() and
+    refusal.hold() are the ones the night meets, and nothing asks the network (urlopen raises).
+
+      - three linked, a budget of two: two asked, in order, each saved with its address in the
+        record, the third left for tomorrow; the run after asks the third alone;
+      - a text held at the address the list gives is not asked again, and is at a new one;
+      - a 404 is "gone" and not asked again; something not a PDF is an attempt, and the third
+        attempt leaves it ("failed");
+      - one 403, the block page served with HTTP 200, and two dropped connections each end the run
+        with status 2 and the refusal recorded; somebody else's lock is status 3 with nothing asked;
+      - --read-texts writes the text beside each PDF held, records a PDF with none as "none", and
+        asks nobody, a refusal on file or not.
+    """
+    import contextlib
+    import http.client
+    import io
+    import time
+    import types
+    import urllib.error
+    import urllib.request
+    import refusal
+    here = os.getcwd()
+    saved = (refusal.MARK, refusal.LOCK, FL._fetch, FL.time, sys.argv, urllib.request.urlopen,
+             ET.extract)
+    PDF = b"%PDF-1.4 a bill"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lsrtexts-"))
+
+    def lsrs(n, url=lambda i: f"https://gc.nh.gov/t/{i}.pdf"):
+        Path("lsrs.json").write_text(json.dumps([
+            {"lsr": f"2027-{i:04d}", "session": 2027, "body": "HB", "title": "t.", "sponsor": "A B",
+             "cosponsors": [], "withdrawn": False, **({"text_pdf": url(i)} if url(i) else {})}
+            for i in range(1, n + 1)]), encoding="utf-8")
+
+    def run(answers, budget=2, lock=None, args=("--texts",)):
+        refusal.LOCK.unlink(missing_ok=True)
+        if lock is not None:
+            refusal.LOCK.write_text(str(lock), encoding="utf-8")
+        answers, asked = iter(answers), []
+
+        def fake(url, timeout=60):
+            asked.append(url)
+            a = next(answers)
+            if isinstance(a, BaseException):
+                raise a
+            return a
+        FL._fetch = fake
+        sys.argv = ["fetch_lsrs.py", *args, "--budget", str(budget), "--delay", "1"]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                rc = FL.main()
+            except SystemExit as e:
+                rc = e.code if isinstance(e.code, int) else 1
+        return rc, asked, FL.load_state()
+
+    def raiser(*a, **k):
+        raise AssertionError("the request texts' drain opened a connection")
+    try:
+        os.chdir(tmp)
+        Path("archive").mkdir()
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        FL.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time, strftime=time.strftime)
+        urllib.request.urlopen = raiser
+        lsrs(3)
+        rc, asked, st = run([PDF, PDF])
+        assert rc == 0 and asked == ["https://gc.nh.gov/t/1.pdf", "https://gc.nh.gov/t/2.pdf"], (rc, asked)
+        assert [st[k]["state"] for k in sorted(st)] == ["held", "held"] and \
+            st["2027-0001"]["url"] == "https://gc.nh.gov/t/1.pdf", st
+        assert (FL.TEXTS / "2027-0001.pdf").read_bytes() == PDF, "the PDF was not saved at its request"
+        assert FL.texts_wanted() == [("2027-0003", "https://gc.nh.gov/t/3.pdf")], FL.texts_wanted()
+        rc, asked, st = run([PDF])
+        assert rc == 0 and asked == ["https://gc.nh.gov/t/3.pdf"], (rc, asked)
+        rc, asked, st = run([])
+        assert rc == 0 and not asked, f"a text held at its address was asked again: {asked}"
+        lsrs(1, url=lambda i: "https://gc.nh.gov/t/1-revised.pdf")
+        rc, asked, st = run([PDF])
+        assert asked == ["https://gc.nh.gov/t/1-revised.pdf"] and st["2027-0001"]["state"] == "held", (asked, st)
+        # Not served, and not a PDF three times.
+        shutil.rmtree("archive/lsr_text")
+        Path(FL.TEXT_STATE).unlink()
+        lsrs(2)
+        nf = urllib.error.HTTPError("u", 404, "Not Found", http.client.HTTPMessage(), io.BytesIO(b""))
+        rc, asked, st = run([nf, b"<html>a page</html>"])
+        assert rc == 0 and st["2027-0001"]["state"] == "gone" and \
+            st["2027-0002"]["state"] == "wanted" and st["2027-0002"]["attempts"] == 1, (rc, st)
+        for n in (2, 3):
+            rc, asked, st = run([b"<html>a page</html>"])
+            assert asked == ["https://gc.nh.gov/t/2.pdf"], asked
+        assert st["2027-0002"]["state"] == "failed" and st["2027-0002"]["attempts"] == 3, st
+        rc, asked, st = run([])
+        assert not asked, f"a text left after three attempts, or one not served, was asked again: {asked}"
+        # The refusals, and somebody else's lock.
+        for what, answers, n in (
+                ("a 403", [urllib.error.HTTPError("u", 403, "Forbidden", http.client.HTTPMessage(),
+                                                  io.BytesIO(b"")), PDF], 1),
+                ("the block page", [b"<h1>Web Page Blocked</h1> Attack ID: 9", PDF], 1),
+                ("two dropped connections", [urllib.error.URLError(ConnectionResetError(10054, "r")),
+                                             http.client.RemoteDisconnected("x"), PDF], 2)):
+            shutil.rmtree("archive/lsr_text", ignore_errors=True)
+            Path(FL.TEXT_STATE).unlink(missing_ok=True)
+            refusal.MARK.unlink(missing_ok=True)
+            lsrs(3)
+            rc, asked, st = run(answers, budget=3)
+            assert rc == 2 and len(asked) == n and refusal.MARK.exists(), (what, rc, asked)
+        rc, asked, st = run([PDF], budget=3)
+        assert rc == 2 and not asked, f"with a refusal on file the drain ran: {rc} {asked}"
+        refusal.MARK.unlink()
+        rc, asked, st = run([PDF], lock=99999999)
+        assert rc == 3 and not asked and refusal.LOCK.read_text().strip() == "99999999", (rc, asked)
+        refusal.LOCK.unlink()
+        # The text, beside each PDF held; a PDF with none recorded so. Asks nobody, refusal or none.
+        rc, asked, st = run([PDF, PDF, PDF], budget=3)
+        assert rc == 0 and len(asked) == 3, (rc, asked)
+        refusal.MARK.write_text(json.dumps({"at": "2026-12-01T09:00:00Z", "where": "x", "why": "y"}),
+                                encoding="utf-8")
+        ET.extract = lambda pdf, layout_only=False: (("AN ACT relative to things.\n", "pdftotext -layout")
+                                                     if Path(pdf).stem != "2027-0002" else (None, "no text"))
+        rc, asked, st = run([], args=("--read-texts",))
+        assert rc == 0 and not asked, (rc, asked)
+        assert (FL.TEXTS / "2027-0001.txt").read_text(encoding="utf-8").startswith("AN ACT"), \
+            "--read-texts wrote no text beside the PDF"
+        assert st["2027-0001"]["text"] == "pdftotext -layout" and st["2027-0002"]["text"] == "none" \
+            and not (FL.TEXTS / "2027-0002.txt").exists(), st
+    finally:
+        os.chdir(here)
+        (refusal.MARK, refusal.LOCK, FL._fetch, FL.time, sys.argv, urllib.request.urlopen,
+         ET.extract) = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("two of three asked on a budget of two and the third the night after; a held text not "
+                  "asked again, a new link asked; a 404 gone, three bad answers failed; a 403, the block "
+                  "page and two drops each end it with status 2; another's lock 3; --read-texts writes "
+                  "the text and asks nobody")
 
 
 @check("frontend", "the stream date is one constant, and a sitting with no recording is never offered one",
@@ -8015,8 +8228,8 @@ def _request_filed_day(build_lsrs):
     Requested, which no source gives a day for. The page's rail
     (build_request_pages.rail_of) and the card's (app.js lsrCardHtml) draw
     the day under Filed and say it, and nothing under Requested. A request
-    that is a bill has no page of its own (its address forwards to the
-    bill's), so its card is where a reader sees the day."""
+    filed as a bill keeps its page until the bill is introduced
+    (_request_stays_until_introduced), so the page shows the day too."""
     import build_request_pages as RP
     L = build_lsrs
     req = lambda n, **k: {"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB", "title": f"t{n}",
@@ -8080,6 +8293,212 @@ def _request_filed_day(build_lsrs):
     return "ok", ("Filed carries the day the bill was made one on the row, the page's rail and the "
                   "card, and none where the bill gives none or another term's bill shares the "
                   "number; Requested is never dated")
+
+
+@check("build", "a bill request stays a request until its bill is introduced: filed, it keeps its page and "
+       "card, says the bill it was filed as and follows it, and has a Bill Text tab once the night has read "
+       "its text, which its file in the data API carries; introduced, it reads Introduced and forwards",
+       needs=("build_lsrs", "build_request_pages", "build_pages", "api_records"))
+def _request_stays_until_introduced(L, RP, BPG, AR):
+    """The owner, 17 November 2026: "Officially LSRs do not become bills until the first session in
+    January when they are introduced and referred to committees ... the bill text shows as a PDF on
+    the lsr search page along with the co-sponsors". Until then a request forwarded to its bill's page
+    the night its bill was on file, weeks before the bill was introduced, and no text of a request
+    reached the site. Held on build_lsrs.py run as the build runs it, two nights of a fixture:
+
+      - 20 December 2026: HB 45, made a bill on 19 December, its own rail's Introduced stop dated 6
+        January 2027, is Filed, keeps its page, which says "Filed As HB 45" linked to the bill's page
+        and follows bill:2027/HB45; SB 7, whose rail has an undated Introduced (a "To Be Introduced"
+        plan), is Filed; a request whose text the list links and the night has read is Filed, with a
+        Bill Text tab after the Summary holding the text with its margin off, said to be read by
+        machine, the PDF linked, and the text in its API file and not in its row; one filed and not
+        read says so; meta.json counts none introduced;
+      - 7 January 2027: HB 45's request reads Introduced, its rail's last stop reached and dated 6
+        January, its page gone and its address a 301 to the bill's; SB 7's is still Filed.
+
+    And the card, in node: the same tabs, the text fetched once from the request's API file, and the
+    bill it was filed as on its Summary."""
+    import contextlib
+    import io
+    tmp = Path(tempfile.mkdtemp(prefix="gr-request-stays-"))
+    saved = L.REQUEST_TEXTS
+    pdf = "https://gc.nh.gov/x/2027-0003.pdf"
+    req = lambda n, **k: {"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB", "title": f"relative to {n}.",
+                          "sponsor": "Ann Lee", "cosponsors": [], "withdrawn": False, **k}
+
+    def night(day):
+        r = _sealed_run([sys.executable, _paths.script("build_lsrs.py"), "--site", "site"], cwd=str(tmp),
+                        capture_output=True, text=True, timeout=120,
+                        env=dict(os.environ, GRANITE_BUILD_DATE=day))
+        assert r.returncode == 0, (r.stderr or r.stdout)[-400:]
+        rows = json.loads((tmp / "site" / "idx" / "2027-requests.json").read_text(encoding="utf-8"))
+        meta = json.loads((tmp / "site" / "meta.json").read_text(encoding="utf-8"))["requests"]
+        return {x["n"]: x for x in rows}, meta, r.stdout
+
+    def stops(x):
+        return [(s["stop"], s["mark"], s.get("date")) for s in x["rail"]]
+    try:
+        site = tmp / "site"
+        (site / "idx").mkdir(parents=True)
+        (tmp / "data").mkdir()
+        (tmp / "archive" / "lsr_text").mkdir(parents=True)
+        (site / "meta.json").write_text(json.dumps({"terms": ["2027-2028", "2025-2026"]}), encoding="utf-8")
+        (site / "idx" / "2027-2028.json").write_text(json.dumps([
+            {"id": "HB45", "rail": [["Ip", "2027-01-06"], ["Ho"]]}, {"id": "SB7", "rail": [["Ip"], ["So"]]}]),
+            encoding="utf-8")
+        (tmp / "data" / "bills.json").write_text(json.dumps({"2027-2028": {
+            "HB45": {"lsr_year": "2027", "lsr_num": "1", "made_bill": "2026-12-19"},
+            "SB7": {"lsr_year": "2027", "lsr_num": "2"}}}), encoding="utf-8")
+        (tmp / "lsrs.json").write_text(json.dumps([req(1), req(2, body="SB"), req(3, text_pdf=pdf), req(4),
+                                                   req(5, text_pdf=pdf.replace("0003", "0005"))]),
+                                       encoding="utf-8")
+        (tmp / "archive" / "lsr_text" / "2027-0003.txt").write_text(
+            "      HB 1 - AS INTRODUCED\n\n\n      AN ACT relative to 3.\f\n      1 Section one.   \n",
+            encoding="utf-8")
+        by, meta, said = night("2026-12-20")
+        one, two, three, four, five = (by[f"LSR 2027-000{i}"] for i in (1, 2, 3, 4, 5))
+        assert one["status"] == "Filed" and "moved_to" not in one and one.get("introduced") == "HB 45" \
+            and one.get("bill_at") == "bill/2027/hb45" and stops(one) == [
+                ("Requested", "p", None), ("Filed", "p", "2026-12-19"), ("Introduced", "-", None)], (
+            f"a request filed as HB 45 and not yet introduced: {one}")
+        assert two["status"] == "Filed" and "moved_to" not in two and "introduced_on" not in two, (
+            f"a bill whose introduction is only planned forwarded its request: {two}")
+        assert three["status"] == "Filed" and three.get("filed") is True and three.get("text_pdf") == pdf \
+            and three.get("text_on_file") is True and stops(three)[1] == ("Filed", "p", None), three
+        assert five["status"] == "Filed" and "text_on_file" not in five, five
+        assert four["status"] == "Requested" and "text_on_file" not in four and "text_pdf" not in four, four
+        assert meta.get("introduced") == 0, meta
+        text = L.request_text("2027-0003", tmp / "archive" / "lsr_text")
+        assert text == "HB 1 - AS INTRODUCED\n\nAN ACT relative to 3.\n\n1 Section one.", repr(text)
+        # The pages, the text read where the night put it.
+        L.REQUEST_TEXTS = tmp / "archive" / "lsr_text"
+        (site / "bills.html").write_text(_source("src/pages/bills.html"), encoding="utf-8")
+        req_meta = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027}
+        (site / "meta.json").write_text(json.dumps({"terms": ["2027-2028"], "requests": req_meta}),
+                                        encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            n, _gone, moved = RP.write(site, "https://x")
+        assert n == 5 and moved == 0, (n, moved)
+        page = lambda k: (site / "request" / f"2027-000{k}.html").read_text(encoding="utf-8")
+        tabs = lambda html: re.findall(r'<button[^>]*role="tab"[^>]*>([^<]*)<', html)
+        p1, p3, p5 = page(1), page(3), page(5)
+        assert '<dt>Filed As</dt><dd><a href="bill/2027/hb45">HB 45</a></dd>' in p1 \
+            and 'window.GR_FOLLOW="bill:2027/HB45";' in p1, "a filed request's page does not say its bill"
+        assert tabs(p3) == ["Summary", "Bill Text"] and 'id="pane_LSR20270003_6"' in p3 \
+            and '<pre class="vtext" translate="no">HB 1 - AS INTRODUCED\n\nAN ACT relative to 3.' in p3 \
+            and "read by machine" in p3 and f'href="{pdf}"' in p3 and "Not public yet" not in p3, (
+            f"a request whose text is in has no Bill Text tab with it: {tabs(p3)}")
+        assert tabs(p5) == ["Summary"] and "<b>Filed.</b> Its text is public, and is added here once this " \
+            "site has read it." in p5, "a filed request whose text is not read does not say so"
+        assert "Not public yet" in page(4) and 'window.GR_FOLLOW="lsr:2027-0004";' in page(4), \
+            "a request still requested lost its Summary's note or its own Follow"
+        row3, rec3 = AR.request_record(three, "2027-0003", 2027)
+        _row, rec4 = AR.request_record(four, "2027-0004", 2027)
+        assert rec3["text"] == text and rec3["text_pdf"] == pdf and "text" not in row3 \
+            and rec4["text"] is None and rec4["text_pdf"] == "", (row3, rec3, rec4)
+        # The card: the same tabs, the text fetched once from the API file, the bill it was filed as.
+        L.REQUEST_TEXTS = saved
+        # The answer arrives only when go() says, as a fetch's does later: a tab drawn again while it
+        # is on its way asks nothing more.
+        js = ("(() => { const asked = [], pend = [];"
+              " const later = () => { let cbs = [], val, done = false; const p = {then(f) {"
+              " const q = later(); cbs.push(v => q.resolve(f(v))); if (done) flush(); return q.p; },"
+              " catch() { return p; }}; const flush = () => { const c = cbs; cbs = []; c.forEach(f => f(val)); };"
+              " return {p, resolve(v) { val = v; done = true; flush(); }}; };"
+              " globalThis.fetch = u => { asked.push(u); const d = later(); pend.push(() => d.resolve({ok: true,"
+              " json: () => ({text: " + json.dumps(text) + "})})); return d.p; };"
+              " const b = " + json.dumps(three) + ";"
+              " const first = scope.lsrPane(b, '6'), again = scope.lsrPane(b, '6');"
+              " pend.splice(0).forEach(f => f());"
+              " const second = scope.lsrPane(b, '6');"
+              " return {tabs: scope.lsrTabs(b), first, again, second, asked, plain: scope.lsrTabs("
+              + json.dumps(four) + "), summary: scope.lsrPane(" + json.dumps(one) + ", '0'),"
+              " status: Object.keys(scope.REQ_STATUS)}; })()")
+        card = _app_js(js, names=("lsrPane", "lsrTabs", "REQ_STATUS"))
+        if card is not None:
+            assert card["tabs"] == [["0", "Summary", 0], ["6", "Bill Text", 0]] \
+                and card["plain"] == [["0", "Summary", 0]], card["tabs"]
+            assert "Loading the text" in card["first"] and "Loading the text" in card["again"] \
+                and len(card["asked"]) == 1 \
+                and card["asked"][0].endswith("/api/requests/2027/0003.json") \
+                and '<pre class="vtext" translate="no">HB 1 - AS INTRODUCED' in card["second"] \
+                and "read by machine" in card["second"] and pdf in card["second"], card
+            assert '<b>Filed As:</b> <a href="bill/2027/hb45">HB 45</a>' in card["summary"], card["summary"]
+            assert card["status"] == ["Requested", "Filed", "Introduced", "Withdrawn"], card["status"]
+        # Introduced: the request says so, its rail reaches the stop, and its address forwards.
+        (site / "meta.json").write_text(json.dumps({"terms": ["2027-2028", "2025-2026"]}), encoding="utf-8")
+        by, meta, said = night("2027-01-07")
+        one, two = by["LSR 2027-0001"], by["LSR 2027-0002"]
+        assert one["status"] == "Introduced" and one.get("introduced_on") == "2027-01-06" \
+            and one.get("moved_to") == "bill/2027/hb45" and stops(one)[2] == ("Introduced", "p", "2027-01-06"), one
+        assert two["status"] == "Filed" and "moved_to" not in two, two
+        assert meta.get("introduced") == 1, meta
+        (site / "meta.json").write_text(json.dumps({"terms": ["2027-2028"], "requests": req_meta}),
+                                        encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            n, gone, moved = RP.write(site, "https://x")
+        assert n == 4 and moved == 1 and gone == 1 and not (site / "request" / "2027-0001.html").exists(), \
+            (n, gone, moved)
+        assert "/request/2027-0001 /bill/2027/hb45 301\n" in BPG.moved_requests(site), BPG.moved_requests(site)
+    finally:
+        L.REQUEST_TEXTS = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("filed and not introduced: its page and card, Filed As HB 45, the bill's Follow, a Bill "
+                  "Text tab with the text read (in the API file, not the row); introduced: Introduced, "
+                  "dated, forwarding; an undated introduction is not one" + ("" if card is not None else
+                                                                             "; node not here for the card"))
+
+
+@check("build", "meta.json counts the requests introduced on a day of their own year apart from those "
+       "introduced before it, and the bill search opens on the requests until one of the first is",
+       needs=("build_lsrs",))
+def _requests_first_until_introduced(L):
+    """The owner, 17 November 2026: requests "do not become bills until the first session in January
+    when they are introduced and referred to committees", read by the manager as: the bill search
+    keeps opening on the 2027 requests through December, until bills are introduced in January.
+    build_lsrs.py, run as the build runs it on a fixture: an Organization Day resolution introduced
+    and adopted on 2 December 2026 and a bill introduced on 6 January 2027, each a request's.
+    On 5 December meta.requests counts one introduced and none in the session, and app.js's
+    requestsFirst opens the search on the requests though 2027-2028 is published; on 7 January it
+    counts two and one, and the search opens on 2027-2028."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-requests-first-"))
+    req = lambda n, body: {"lsr": f"2027-{n:04d}", "session": 2027, "body": body, "title": f"t{n}.",
+                           "sponsor": "Ann Lee", "cosponsors": [], "withdrawn": False}
+    metas = {}
+    try:
+        (tmp / "site" / "idx").mkdir(parents=True)
+        (tmp / "data").mkdir()
+        (tmp / "site" / "idx" / "2027-2028.json").write_text(json.dumps([
+            {"id": "HR1", "rail": [["Ip", "2026-12-02"], ["Hp", "2026-12-02"]]},
+            {"id": "HB45", "rail": [["Ip", "2027-01-06"], ["Ho"]]}]), encoding="utf-8")
+        (tmp / "data" / "bills.json").write_text(json.dumps({"2027-2028": {
+            "HR1": {"lsr_year": "2027", "lsr_num": "1"}, "HB45": {"lsr_year": "2027", "lsr_num": "2"}}}),
+            encoding="utf-8")
+        (tmp / "lsrs.json").write_text(json.dumps([req(1, "HR"), req(2, "HB"), req(3, "HB")]),
+                                       encoding="utf-8")
+        for day in ("2026-12-05", "2027-01-07"):
+            (tmp / "site" / "meta.json").write_text(json.dumps({"terms": ["2027-2028", "2025-2026"]}),
+                                                    encoding="utf-8")
+            r = _sealed_run([sys.executable, _paths.script("build_lsrs.py"), "--site", "site"], cwd=str(tmp),
+                            capture_output=True, text=True, timeout=120,
+                            env=dict(os.environ, GRANITE_BUILD_DATE=day))
+            assert r.returncode == 0, (r.stderr or r.stdout)[-400:]
+            metas[day] = json.loads((tmp / "site" / "meta.json").read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    dec, jan = (metas[d]["requests"] for d in ("2026-12-05", "2027-01-07"))
+    assert (dec.get("introduced"), dec.get("introduced_in_session")) == (1, 0), dec
+    assert (jan.get("introduced"), jan.get("introduced_in_session")) == (2, 1), jan
+    js = ("(() => [" + ", ".join(
+        f"scope.defaultTerm({json.dumps(metas[d])}, new Date('{d}T17:00:00Z'))" for d in metas) + "])()")
+    got = _app_js(js, names=("defaultTerm", "requestsFirst", "electionDayOf", "nhDay"))
+    if got is None:
+        return "skip", "meta.json's counts hold; node, app.js or the stub is not here for the search"
+    assert got == ["2027-requests", "2027-2028"], (
+        f"the search opens on {got[0]} on 5 December and {got[1]} on 7 January")
+    return "ok", ("an Organization Day resolution introduced on 2 December counts as introduced and not "
+                  "in the session, and the search stays on the requests; a bill introduced on 6 January "
+                  "counts in it, and the search opens on 2027-2028")
 
 
 @check("build", "a bill request's status is Requested or Filed (or Withdrawn); its History is the earlier "

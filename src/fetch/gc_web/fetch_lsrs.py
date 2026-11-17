@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.8
+# GRANITE_VERSION: 2026-09-18.9
 """
 Next session's bill requests, before any of them is a bill.
 
@@ -43,6 +43,46 @@ GITHUB'S NIGHTLY RUNS IT NOW (30 September 2026). nightly.take_lsrs() runs it
 every night, keeps the list whole, and lsrs.json is the night's file in the
 kit rather than one committed to git. On a laptop that has stood down it
 refuses; --parse, which asks nobody, still works.
+
+THE TEXT, ONCE IT IS PUBLIC (the owner, 17 November 2026: "Once the
+co-sponsors and sponsor have signed off, the bill text shows as a PDF on the
+lsr search page along with the co-sponsors"). Until then nothing here took
+a text: the CSV's four columns -- LSR Number, Bill Type, LSR Title, Sponsors,
+as it was saved on 18 September -- carry no link, and the results page, read
+only when the CSV could not be had, was read for those four fields alone.
+Nobody here has yet seen a request with a text, so where the link will be is
+not known [a guess, written down as one]. Two places are read for it, and
+neither constructs an address:
+
+  the CSV          a column whose header names a PDF, a text, a link or an
+                   address, if the list grows one (parse_csv)
+  the results page the page the search page links as "see all Bill
+                   Requests" (results_link), one request more a night, read
+                   for a link in each request's own row of its table that
+                   names a PDF or the text (text_links). A row that names two
+                   requests, or two such links, gives none: a text on the
+                   wrong request is a wrong fact. Only the General Court's own
+                   addresses are taken
+
+The address goes on the request in lsrs.json as "text_pdf". --texts is the
+night's drain of them (nightly.take_lsr_texts, on GitHub only): the PDFs this
+disk does not hold, a few a night, as the calendars' drain asks for its
+documents -- the refusal check first, the lock, 15 seconds apart with jitter
+and as long before the first, one refusal or two dropped connections ending
+the run, a document asked for three times before it is left. Each lands at
+archive/lsr_text/<request>.pdf, with what was asked and how it ended in
+archive/lsr_texts.json. --read-texts, which asks nobody, writes the text of
+each beside it (<request>.txt) with pdftotext -layout, the program the
+calendars' texts come from; the kit carries the text and the record, never
+the PDF.
+
+AND THE CO-SPONSORS (split_sponsors). The Sponsors column is read as a list
+the day it becomes one: names parted by semicolons, or by commas where a role
+mark shows the list is written that way ("Ellen Read (Prime), Bob Roe"), and
+a role before a name as well as after it ("(Prime) Ellen Read", as the
+results page prints the prime). Which form the General Court will use is not
+known either; preflight's data check says on the night when a name still
+reads as a list.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -53,8 +93,11 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import csv
+import html as _html
 import io
 import json
+import os
+import random
 import re
 import refusal
 import time
@@ -91,6 +134,81 @@ ROW = re.compile(
 
 # "2027-0001", the shape of a request number, and the session it belongs to.
 LSR_NO = re.compile(r"^\s*(\d{4})-(\d{3,4})\s*$")
+
+# THE TEXT, ONCE IT IS PUBLIC (the docstring). Where each PDF and its text are
+# kept, the record of what was asked for each, and the drain's pace and budget.
+# build_lsrs.REQUEST_TEXTS reads the same folder; preflight holds the two equal.
+TEXTS = Path("archive/lsr_text")
+TEXT_STATE = Path("archive/lsr_texts.json")
+TEXT_PAUSE = 15.0
+TEXT_BUDGET = 10
+# The General Court's own hosts: a link anywhere else is not taken.
+GC_HOSTS = ("gc.nh.gov", "www.gc.nh.gov", "gencourt.state.nh.us", "www.gencourt.state.nh.us")
+# A request's number inside a row of the results page, and a link in it.
+LSR_IN = re.compile(r"(?<![\d-])(\d{4}-\d{3,4})(?![\d-])")
+ANCHOR = re.compile(r"<a\b[^>]*?\bhref\s*=\s*([\"'])(.*?)\1[^>]*>(.*?)</a\s*>", re.I | re.S)
+# A link that names the text: "pdf" or "text" in its address (billText.aspx,
+# txtFormat=pdf, a .pdf), or "PDF", "Text" or "Bill Text" in its words.
+TEXT_ADDRESS = re.compile(r"pdf|text", re.I)
+TEXT_WORDS = re.compile(r"\b(?:pdf|bill\s+text|text)\b", re.I)
+
+
+def gc_url(href, base=SEARCH):
+    """An address the page gives, made whole against `base`, where it is the
+    General Court's own (GC_HOSTS) over http or https; "" for anything else."""
+    href = _html.unescape(str(href or "")).strip()
+    if not href or href.lower().startswith(("javascript:", "mailto:", "#")):
+        return ""
+    url = urllib.parse.urljoin(base, href)
+    p = urllib.parse.urlsplit(url)
+    return url if p.scheme in ("http", "https") and p.hostname in GC_HOSTS else ""
+
+
+def results_link(html, base=SEARCH):
+    """The address of the page of every request, as the search page links it
+    ("Click here to see all Bill Requests": LSR_Results.aspx, no query), or
+    None where the page offers none -- then it is not asked for."""
+    for _q, href, _label in ANCHOR.findall(html or ""):
+        url = gc_url(href, base)
+        p = urllib.parse.urlsplit(url)
+        if url and not p.query and p.path.lower().endswith("/lsr_results.aspx"):
+            return url
+    return None
+
+
+def text_links(html, base=RESULTS):
+    """({request: the address of its text}, [requests whose row gave two]).
+
+    The results page is read a row of its table at a time (</tr>), because
+    nobody has seen where a text's link will sit [a guess]: a row naming one
+    request, and one link in it that names a PDF or the text (TEXT_WORDS, in
+    its address or its words), gives that request its link. A row naming two
+    requests gives none, and a row with two such links is listed, not read.
+    A page with no table rows gives nothing."""
+    out, twice = {}, []
+    for row in re.split(r"</tr\s*>", html or "", flags=re.I):
+        # From the row's own opening tag: what stands between rows is no row's.
+        start = row.lower().rfind("<tr")
+        if start < 0:
+            continue
+        row = row[start:]
+        nums = set(LSR_IN.findall(re.sub(r"<[^>]+>", " ", row)))
+        if len(nums) != 1:
+            continue
+        num = nums.pop()
+        links = set()
+        for _q, href, label in ANCHOR.findall(row):
+            url = gc_url(href, base)
+            p = urllib.parse.urlsplit(url)
+            words = _html.unescape(re.sub(r"<[^>]+>", " ", label))
+            if url and (TEXT_ADDRESS.search(urllib.parse.unquote(f"{p.path}?{p.query}"))
+                        or TEXT_WORDS.search(words)):
+                links.add(url)
+        if len(links) == 1:
+            out[num] = links.pop()
+        elif links:
+            twice.append(num)
+    return out, sorted(twice)
 
 
 def refused(why):
@@ -215,6 +333,11 @@ def parse_csv(text):
             f"  the CSV has no column for {', '.join(missing)}.\n"
             f"  Its headers are: {rows[0]}\n"
             "  Match them in parse_csv rather than reading by position.")
+    # A LINK TO THE TEXT, if the list grows a column for one (THE TEXT, ONCE
+    # IT IS PUBLIC): the first header not read above that names a PDF, a
+    # text, a link or an address. Only the General Court's own addresses.
+    tcol = next((i for i, h in enumerate(head) if i not in ix.values()
+                 and re.search(r"pdf|text|link|url|document", h)), None)
 
     out = []
     for r in rows[1:]:
@@ -228,6 +351,7 @@ def parse_csv(text):
         if not m:
             continue
         prime, co = split_sponsors(g("sponsor"))
+        link = gc_url(r[tcol].strip(), SEARCH) if tcol is not None and tcol < len(r) else ""
         out.append({"lsr": num, "session": int(m.group(1)),
                     # NOT truncated. The column carries CACR and HCR as well as
                     # HB and HR, and a two-character slice turned those into
@@ -235,6 +359,7 @@ def parse_csv(text):
                     "body": g("body").strip().upper(),
                     "title": " ".join(g("title").split()),
                     "sponsor": prime, "cosponsors": co,
+                    **({"text_pdf": link} if link else {}),
                     "withdrawn": False})
     if not out:
         raise SystemExit(
@@ -244,6 +369,8 @@ def parse_csv(text):
 
 
 ROLE = re.compile(r"\s*\(([^)]*)\)\s*$")
+# The role before the name, as the results page prints the prime: "(Prime) Ellen Read".
+LEAD_ROLE = re.compile(r"^\s*\(([^)]*)\)\s*")
 
 
 def split_sponsors(field):
@@ -258,14 +385,31 @@ def split_sponsors(field):
     The role marker is dropped from the name: "(Prime)" describes the row, and
     printing it beside every name would put the word on the page 241 times to
     say what the field already means.
+
+    AND THE FORMS NOT SEEN YET (17 November 2026; the docstring's THE
+    CO-SPONSORS): a part parted by commas where a role mark is followed by
+    one ("Ellen Read (Prime), Bob Roe, Jane Doe"), a Jr. or a numeral set off
+    by a comma kept with its name ("Bob Roe Jr."); and the role before the
+    name ("(Prime) Ellen Read"). Without a role mark a comma parts nothing:
+    "Roe, Bob" is one name.
     """
     prime, co = "", []
+    parts = []
     for part in re.split(r"\s*;\s*", (field or "").strip()):
+        if not re.search(r"\)\s*,", part):
+            parts.append(part)
+            continue
+        for bit in (b.strip() for b in part.split(",")):
+            if parts and bit and re.fullmatch(r"(?:jr|sr|ii|iii|iv)\.?", bit, re.I):
+                parts[-1] = f"{parts[-1]} {bit}"
+            else:
+                parts.append(bit)
+    for part in parts:
         if not part:
             continue
-        m = ROLE.search(part)
+        m = ROLE.search(part) or LEAD_ROLE.match(part)
         role = (m.group(1) if m else "").strip().lower()
-        name = " ".join(ROLE.sub("", part).split())
+        name = " ".join(LEAD_ROLE.sub("", ROLE.sub("", part)).split())
         if not name:
             continue
         if "prime" in role and not prime:
@@ -306,14 +450,215 @@ def merge(new):
     return [merged[k] for k in sorted(merged)], gone
 
 
+def with_text_links(rows, page):
+    """Give each row the link the results page `page` holds for its text
+    (text_links), and say how many have one. A row keeps a link it already
+    has (the CSV's, or an earlier night's through merge)."""
+    links, twice = text_links(page or "")
+    for r in rows:
+        if r.get("lsr") in links and not r.get("text_pdf"):
+            r["text_pdf"] = links[r["lsr"]]
+    n = sum(1 for r in rows if r.get("text_pdf"))
+    print(f"  {n} of {len(rows)} requests link their text"
+          + (f"; {len(twice)} row(s) with two links left unread: {', '.join(twice[:6])}"
+             if twice else ""))
+    return n
+
+
+# ---- the texts: the night's drain (THE TEXT, ONCE IT IS PUBLIC) ----------------
+
+def load_rows():
+    """lsrs.json's rows, or [] where it is not here or will not read."""
+    try:
+        rows = json.loads(OUT.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else []
+
+
+def load_state():
+    """archive/lsr_texts.json: {request: {"url", "state", "attempts", "error",
+    "bytes", "fetched", "text"}}, {} where there is none yet."""
+    try:
+        d = json.loads(TEXT_STATE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {k: v for k, v in d.items() if isinstance(v, dict)} if isinstance(d, dict) else {}
+
+
+def save_state(state):
+    TEXT_STATE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = TEXT_STATE.with_name(TEXT_STATE.name + ".part")
+    tmp.write_text(json.dumps(dict(sorted(state.items())), indent=1), encoding="utf-8")
+    os.replace(tmp, TEXT_STATE)
+
+
+def texts_wanted(rows=None, state=None):
+    """[(request, address)] the list links a text for and this disk has not
+    settled: never asked for, or asked for at another address (a new link is
+    a new document), or still to be asked again. A text fetched (held), not
+    served (gone) or asked for three times (failed) at the address the list
+    gives now is not asked for again."""
+    rows = load_rows() if rows is None else rows
+    state = load_state() if state is None else state
+    out = []
+    for r in rows:
+        num, url = str(r.get("lsr") or ""), str(r.get("text_pdf") or "")
+        if not (LSR_NO.match(num) and url):
+            continue
+        s = state.get(num) or {}
+        if s.get("url") == url and s.get("state") in ("held", "gone", "failed"):
+            continue
+        out.append((num, url))
+    return sorted(out)
+
+
+def _fetch(url, timeout=60):
+    """One document, identified, its bytes."""
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
+        return r.read()
+
+
+def drain_texts(a, held):
+    """Up to --budget of texts_wanted(), fetched. 0 done, 1 stopped, 2 refused:
+    the calendars' drain's rules (fetch_calendar_archive.drain), so the lane
+    and the night read its status as they read that one's."""
+    state, stopped = load_state(), ""
+    todo = texts_wanted(load_rows(), state)
+    n = min(len(todo), a.budget)
+    print(f"{len(todo):,} request text(s) wanted, taking {n:,} this run about {a.delay:g}s apart")
+    got = fail = run = dropped = 0
+    try:
+        for i, (num, url) in enumerate(todo[:a.budget], 1):
+            if a.night or i > 1:
+                # Paced, with jitter; and on the night a pause before the first
+                # too, because the night asked this address a moment before.
+                time.sleep(a.delay * random.uniform(0.75, 1.25))
+            # Immediately before the request: a refusal another process met, or
+            # a lane gone, while this one waited, stops it here.
+            if refusal.MARK.exists():
+                stopped = "refused"
+                print("\narchive/refused.json is on file. Stopping.")
+                break
+            if not held.still():
+                stopped = "the lane"
+                print("\nThe lane holding archive/.lock is gone. Stopping.")
+                break
+            s = state.setdefault(num, {})
+            if s.get("url") != url:
+                s.clear()
+                s["url"] = url
+            try:
+                blob = _fetch(url)
+                kind = refusal.classify(body=blob[:4000].decode("utf-8", "replace"))
+                why = "the firewall's block page, served as 200" if kind else ""
+                if not kind and not blob.startswith(b"%PDF"):
+                    kind, why = "failed", f"not a PDF ({len(blob):,} bytes)"
+            except Exception as e:                          # noqa: BLE001
+                kind, why = refusal.classify(e) or "failed", f"{type(e).__name__}: {e}"
+            if kind:
+                s["attempts"] = int(s.get("attempts") or 0) + 1
+                s["error"] = why[:180]
+                fail += 1
+                print(f"  [{i}] {num}: {kind}: {s['error'][:80]}", flush=True)
+                if kind == "refused":
+                    refusal.note("fetch_lsrs", s["error"])
+                    stopped = "refused"
+                    print("\nRefused. Stopping and not coming back today.\npython3 netcheck.py "
+                          "says what kind of refusal it is without making it worse.")
+                    break
+                if kind == "missing":
+                    # Linked by the list and not served: the list is out of date,
+                    # and asking again would not change that.
+                    s["state"] = "gone"
+                    continue
+                s["state"] = "failed" if s["attempts"] >= 3 else "wanted"
+                run += 1
+                if kind == "dropped":
+                    dropped += 1
+                    if dropped >= 2:
+                        refusal.note("fetch_lsrs", s["error"])
+                        stopped = "refused"
+                        print("\nTwo dropped connections this run. Stopping and not coming "
+                              "back today.")
+                        break
+                if run >= 2:
+                    stopped = "two in a row"
+                    print("\nTwo in a row. Stopping.")
+                    break
+                time.sleep(120 if kind == "dropped" else a.delay * 3)
+                continue
+            run = 0
+            TEXTS.mkdir(parents=True, exist_ok=True)
+            pdf = TEXTS / f"{num}.pdf"
+            # A part file, then a rename; and the text of an earlier address
+            # goes, so --read-texts reads this one.
+            tmp = pdf.with_name(pdf.name + ".part")
+            tmp.write_bytes(blob)
+            os.replace(tmp, pdf)
+            pdf.with_suffix(".txt").unlink(missing_ok=True)
+            s.update(state="held", bytes=len(blob), error="",
+                     fetched=time.strftime("%Y-%m-%dT%H:%M:%S"))
+            s.pop("text", None)
+            got += 1
+    finally:
+        save_state(state)
+    print(f"\n{got:,} fetched, {fail} failed")
+    if stopped == "refused":
+        return 2
+    return 1 if stopped else 0
+
+
+def read_texts():
+    """The text of each PDF fetched, beside it, by pdftotext -layout
+    (extract_calendar_text.extract, the calendars' own reading): asks nobody.
+    A PDF that gives no text is recorded so ("text": "none"), and is not
+    fetched again for it. Returns how many were read."""
+    import extract_calendar_text as ET
+    state, n, none = load_state(), 0, []
+    for num, s in sorted(state.items()):
+        pdf = TEXTS / f"{num}.pdf"
+        txt = pdf.with_suffix(".txt")
+        if s.get("state") != "held" or not pdf.is_file() or (txt.is_file() and txt.stat().st_size):
+            continue
+        text, how = ET.extract(pdf, layout_only=True)
+        if text and text.strip():
+            tmp = txt.with_name(txt.name + ".part")
+            tmp.write_text(text, encoding="utf-8")
+            os.replace(tmp, txt)
+            s["text"] = how
+            n += 1
+        else:
+            s["text"] = "none"
+            none.append(f"{num} ({how})")
+    save_state(state)
+    print(f"  the text of {n} request PDF(s) read" + (f"; none in {', '.join(none)}" if none else ""))
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe", action="store_true",
                     help="load the search page and report what it offers; save nothing")
     ap.add_argument("--parse", action="store_true",
                     help="re-read the saved CSV; touches no network")
+    ap.add_argument("--texts", action="store_true",
+                    help="fetch the request texts the list links and this disk does not hold: "
+                         "the night's drain (nightly.take_lsr_texts)")
+    ap.add_argument("--read-texts", action="store_true",
+                    help="the text of each request PDF fetched, beside it; touches no network")
+    ap.add_argument("--budget", type=int, default=TEXT_BUDGET,
+                    help=f"(--texts) texts this run, then stop (default {TEXT_BUDGET})")
+    ap.add_argument("--delay", type=float, default=TEXT_PAUSE,
+                    help=f"(--texts) seconds between requests, jittered (default {TEXT_PAUSE:g})")
+    ap.add_argument("--night", action="store_true",
+                    help="(--texts) the night's: a pause before the first request as well")
     a = ap.parse_args()
 
+    # --read-texts asks nobody, as --parse does: before the check.
+    if a.read_texts:
+        read_texts()
+        return 0
     # --parse asks nobody, so neither a refusal nor GitHub's night stops it:
     # the check comes after it, as fetch_legislation.py's does.
     if a.parse:
@@ -330,6 +675,9 @@ def main():
     refusal.stand_down("The LSR fetch", "GitHub's nightly takes next session's bill "
                        "requests now, and lsrs.json reaches this machine from R2.")
     refusal.check("The LSR fetch")
+    if a.texts:
+        with refusal.hold("the request texts") as held:
+            return drain_texts(a, held)
 
     print(f"asking {SEARCH} for the page that offers the file")
     body, enc = get(SEARCH)
@@ -359,6 +707,7 @@ def main():
     body_text = raw.decode(enc2, "replace")
     looks_csv = ("csv" in ctype.lower() or "csv" in disp.lower()
                  or ("," in body_text[:400] and "<html" not in body_text[:400].lower()))
+    page = None
     if looks_csv:
         RAW_CSV.write_bytes(raw)
         print(f"  {len(raw):,} bytes of CSV -> {RAW_CSV}")
@@ -371,12 +720,27 @@ def main():
         time.sleep(PAUSE)
         raw2, enc3 = get(RESULTS)
         RAW_PAGE.with_name("lsr_results.html").write_bytes(raw2)
-        rows = parse_results_html(raw2.decode(enc3, "replace"))
+        page = raw2.decode(enc3, "replace")
+        rows = parse_results_html(page)
         if not rows:
             raise SystemExit(
                 "  the results page yielded no requests either. Both are saved "
                 "under archive/; read them before asking again.")
         print(f"  {len(rows)} requests read from the results page")
+    # THE LINKS TO THE TEXTS (THE TEXT, ONCE IT IS PUBLIC): the CSV's own,
+    # where it carries a column for them; else the results page's, the page
+    # the search page links for every request, one request more. Never a
+    # constructed address: where the search page links no such page, none.
+    if page is None and not any(r.get("text_pdf") for r in rows):
+        addr = results_link(html)
+        if addr:
+            time.sleep(PAUSE)
+            raw3, enc4 = get(addr)
+            RAW_PAGE.with_name("lsr_results.html").write_bytes(raw3)
+            page = raw3.decode(enc4, "replace")
+        else:
+            print("  the search page links no page of every request: no text link is read")
+    with_text_links(rows, page)
     merged, gone = merge(rows)
     OUT.write_text(json.dumps(merged, indent=1), encoding="utf-8")
     sessions = sorted({r["session"] for r in rows})

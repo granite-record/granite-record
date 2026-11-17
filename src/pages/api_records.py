@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 The data API's records, a file each, under /api/.
 
@@ -589,6 +589,26 @@ class Out:
         return gone
 
 
+def request_record(r, num, year):
+    """(its row, its own file's fields) for one row of the bill search's file
+    of requests, `num` its number ("2027-0001"), `year` the session the site
+    lists. The file is the row and, since 17 November 2026, its text
+    (api_schema.API_REQUEST_RECORD; the owner: the text "shows as a PDF on the
+    lsr search page"): what its page's Bill Text tab shows, read through the
+    one reader the page reads it through (build_lsrs.request_text), null until
+    the night has read it, and the PDF's address. The card fetches it here."""
+    from build_lsrs import request_text
+    from terms import term_of_year
+    ry = _int(r.get("year")) or year
+    intro = str(r.get("introduced") or "").replace(" ", "")
+    row = {"lsr": num, "year": ry, "title": r.get("title", ""), "sponsor": r.get("sponsor", ""),
+           "cosponsors": list(r.get("cosp") or []), "body": r.get("body", ""),
+           "status": r.get("status", ""), "withdrawn": bool(r.get("withdrawn")),
+           "bill": f"{term_of_year(ry)}/{intro}" if intro else ""}
+    text = request_text(num) if r.get("text_on_file") else ""
+    return row, {**row, "text": text or None, "text_pdf": str(r.get("text_pdf") or "")}
+
+
 def _named(key, what, said):
     """Whether a record's key makes a file's name; said where it does not."""
     if NAME.fullmatch(str(key or "")):
@@ -728,7 +748,6 @@ def write(site, out, rec, *, people=None, person_of=None, base="https://graniter
         year = None
         said.append(f"  {'api/requests/':<28} not written: the site lists no bill requests")
     else:
-        from terms import term_of_year
         rows = []
         for r in reqs:
             # Its number is its own page's (build_lsrs, REQUEST_ADDRESS), as
@@ -737,15 +756,14 @@ def write(site, out, rec, *, people=None, person_of=None, base="https://graniter
             nnnn = num.rsplit("-", 1)[-1]
             if not (_named(num, "the request", said) and _named(nnnn, "the request", said)):
                 continue
-            ry = _int(r.get("year")) or year
-            intro = str(r.get("introduced") or "").replace(" ", "")
-            row = {"lsr": num, "year": ry, "title": r.get("title", ""), "sponsor": r.get("sponsor", ""),
-                   "cosponsors": list(r.get("cosp") or []), "body": r.get("body", ""),
-                   "status": r.get("status", ""), "withdrawn": bool(r.get("withdrawn")),
-                   "bill": f"{term_of_year(ry)}/{intro}" if intro else ""}
+            row, rec = request_record(r, num, year)
             rows.append(row)
-            o.put("requests", "record", f"requests/{year}/{nnnn}.json", {"format": FORMAT, **row})
-            hashes["requests"][num] = record_hash("requests", row)
+            o.put("requests", "record", f"requests/{year}/{nnnn}.json", {"format": FORMAT, **rec})
+            # Hashed without the two while they are empty, so a request is
+            # changed in the feed the night its text arrives, and not every
+            # request the night the fields were added.
+            hashes["requests"][num] = record_hash("requests", {
+                k: v for k, v in rec.items() if v or k not in ("text", "text_pdf")})
         o.put("requests", "rows", f"requests/{year}/index.json",
               {"format": FORMAT, "year": year, "requests": rows})
         said.append(f"  {'api/requests/':<28} {len(rows):>9,} requests for {year}, a file each")

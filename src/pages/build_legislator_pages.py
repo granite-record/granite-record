@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.42
+# GRANITE_VERSION: 2026-09-04.43
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -327,8 +327,13 @@ def elect_mode(m, info):
                    member-elect's, in the form of a new member-elect's, with
                    their earlier service kept below it;
       "chamber"    a sitting member elected to the other chamber (Rep. for
-                   Hills 30, elected Senator): still titled by the seat they
-                   hold now, with the election shown beside it;
+                   Hills 30, elected Senator): headed as that chamber's
+                   member-elect, "Senator “Elect” James Creighton (R)" (the
+                   owner, 17 November 2026: 'link the new member pages as
+                   Sen. "Elect" Laura Telerski for the title but connect it
+                   to their house record as well'), the page their record,
+                   the seat they hold now and its towns on the line, with
+                   the election shown beside it;
       ""           anyone else, the re-elected: the page as it was, with the
                    one line.
 
@@ -703,8 +708,9 @@ def static_record(m, rec, elected="", places=None, back=None, until=""):
     {town: address}, each town in it a link to its page. `back` is
     elect_back's, for a former member elected again or a member elected to the
     other chamber: the first is headed as a new member-elect's page is, its
-    earlier seat kept below; the second keeps its heading and says the
-    election beside it. `until` is components.until_attrs for the day they
+    earlier seat kept below; the second is headed as that chamber's
+    member-elect (17 November 2026), its record below as it was, and says
+    the election beside it. `until` is components.until_attrs for the day they
     take office, which a fact drawn only while the members-elect file lasts
     carries beside data-elect."""
     rec = rec or {}
@@ -723,10 +729,15 @@ def static_record(m, rec, elected="", places=None, back=None, until=""):
             out.append(elected)
         out.append(f"<p>Earlier seat: {E(m.get('display_full') or m.get('display') or '')}</p>")
         elected = ""
+    elif back.get("mode") == "chamber":
+        # Headed as the other chamber's member-elect, the seat held now said
+        # beside it, as app.js's renderMemberHead draws the page (its line).
+        out = ['<div class="static-rec" id="static-rec">',
+               f"<h1>{E(elect_heading(back.get('title'), back['name'], back.get('party')))}</h1>",
+               f"<p>{E(back['where'])}</p>",
+               f"<p>Serving now: {E(m.get('display_full') or m.get('display') or '')}</p>"]
     else:
         out = ['<div class="static-rec" id="static-rec">', f"<h1>{E(head_name(m))}</h1>"]
-        if back.get("mode") == "chamber":
-            out.append(f"<p>{E(back['where'])}</p>")
     # Not on a returning member-elect's page: "not a current directory entry"
     # contradicts its heading, and comes back with the former-member form. The
     # years it carried are the On record fact below there.

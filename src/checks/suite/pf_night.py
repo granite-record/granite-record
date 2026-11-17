@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -5752,6 +5752,136 @@ def _lsrs_filed_not_withdrawn(NI):
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("20 of 60 requests gone from the list as bills the docket files: taken, said as "
                   "filed; the same 20 with no docket naming them: refused, the earlier list kept")
+
+
+@check("build", "the night fetches the request texts the list links and this disk does not hold, at "
+                "most LSR_TEXTS_MOST, only after every request of the address tonight completed and "
+                "where pdftotext is, reads their text, and says what came of it in one line",
+       needs=("nightly", "fetch_lsrs", "extract_calendar_text"))
+def _lsr_texts_night(NI, FL, ET):
+    """nightly.take_lsr_texts (NEXT SESSION'S BILL REQUESTS' TEXTS; the owner, 17 November 2026:
+    the text "shows as a PDF on the lsr search page"), in a throwaway folder with the drain and the
+    reading answered here as fetch_lsrs.py --texts and --read-texts answer: asks nothing where the
+    list was not read tonight or a later request of the address did not complete; says when the
+    list links no text yet, or every one it links is here; warns where there is no pdftotext; asks
+    for LSR_TEXTS_MOST (LSR_TEXTS_DRY_MOST on a dry run) after a pause, then reads the text; and
+    says a fetch that stopped, a refusal, a text not served, one that could not be fetched and one
+    that could not be read, the warning in the night's warnings and the line on the run's page."""
+    import types
+    import refusal
+    here = os.getcwd()
+    saved = (NI.run, NI.say, refusal.MARK, ET.pdftotext, dict(NI.EXITS))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lsrtexts-night-"))
+    calls, knob = [], {}
+
+    def fake(args, label, cwd=None, env=None, root=None):
+        calls.append(list(args))
+        if args[:2] == ["fetch_lsrs.py", "--texts"]:
+            budget, state = int(args[args.index("--budget") + 1]), FL.load_state()
+            for i, (num, url) in enumerate(FL.texts_wanted()[:budget]):
+                how = knob.get(num, "pdf")
+                s = state.setdefault(num, {"url": url})
+                if how in ("pdf", "notext"):
+                    FL.TEXTS.mkdir(parents=True, exist_ok=True)
+                    (FL.TEXTS / f"{num}.pdf").write_bytes(b"%PDF-1.4 x")
+                    s.update(state="held", bytes=10)
+                elif how == "gone":
+                    s.update(state="gone", attempts=1, error="HTTPError: 404")
+                else:
+                    s.update(state="wanted", attempts=int(s.get("attempts") or 0) + 1, error="not a PDF")
+            FL.save_state(state)
+            return knob.get("rc", 0)
+        if args[:2] == ["fetch_lsrs.py", "--read-texts"]:
+            state = FL.load_state()
+            for num, s in state.items():
+                if s.get("state") == "held" and not (FL.TEXTS / f"{num}.txt").exists():
+                    if knob.get(num) == "notext":
+                        s["text"] = "none"
+                    else:
+                        (FL.TEXTS / f"{num}.txt").write_text("AN ACT\n", encoding="utf-8")
+                        s["text"] = "pdftotext -layout"
+            FL.save_state(state)
+        return 0
+
+    def take(n, exits=(("fetch_lsrs.py", 0),), tool="pdftotext", dry=False, linked=True, mark=False,
+             **kw):
+        shutil.rmtree("archive", ignore_errors=True)
+        Path("archive").mkdir()
+        if mark:
+            refusal.MARK.write_text("{}", encoding="utf-8")
+        Path("lsrs.json").write_text(json.dumps([
+            {"lsr": f"2027-{i:04d}", "session": 2027, "body": "HB", "title": "t.", "sponsor": "A B",
+             "withdrawn": False, **({"text_pdf": f"https://gc.nh.gov/t/{i}.pdf"} if linked else {})}
+            for i in range(1, n + 1)]), encoding="utf-8")
+        knob.clear()
+        knob.update(kw)
+        NI.EXITS.clear()
+        NI.EXITS.update(dict(exits))
+        ET.pdftotext = lambda: tool
+        del calls[:]
+        return NI.take_lsr_texts(dry_run=dry)
+
+    def asked():
+        return [c[1] for c in calls]
+    try:
+        os.chdir(tmp)
+        refusal.MARK = tmp / "archive" / "refused.json"
+        NI.run, NI.say = fake, lambda *a, **k: None
+        got = take(3, exits=())
+        assert not calls and got["said"] == "not asked for: the request list was not read tonight" \
+            and not got["warn"], (calls, got)
+        got = take(3, exits=(("fetch_lsrs.py", 0), ("fetch_calendar_archive.py", 0),
+                             ("fetch_calendar_archive.py --night", 1)))
+        assert not calls and got["said"] == (
+            "not asked for: fetch_calendar_archive.py --night (exit 1) did not complete tonight, so "
+            "nothing more is asked of the address") and not got["warn"], (calls, got)
+        got = take(3, linked=False)
+        assert not calls and got["said"] == "none waits: the list links no request's text yet", got
+        got = take(2, tool=None)
+        assert not calls and got["warn"] == ("not asked for: 2 wait, and this machine has no "
+                                             "pdftotext to read them with"), got
+        got = take(12)
+        assert asked() == ["--texts", "--read-texts"] and calls[0][2:] == ["--night", "--budget",
+                                                                           str(NI.LSR_TEXTS_MOST)], calls
+        assert got["fetched"] == NI.LSR_TEXTS_MOST and got["remain"] == 12 - NI.LSR_TEXTS_MOST \
+            and got["said"] == f"{NI.LSR_TEXTS_MOST} fetched; 2 still to fetch" and not got["warn"], got
+        assert (FL.TEXTS / "2027-0001.txt").is_file(), "the text was not read after the fetch"
+        again = NI.take_lsr_texts()
+        assert again["said"].startswith("2 fetched; 0 still to fetch"), again
+        calls.clear()
+        again = NI.take_lsr_texts()
+        assert not calls and again["said"] == "none waits: every one of the 12 the list links is on this disk", again
+        got = take(3, dry=True)
+        assert calls[0][-1] == str(NI.LSR_TEXTS_DRY_MOST) and got["said"] == (
+            f"{NI.LSR_TEXTS_DRY_MOST} fetched, at most {NI.LSR_TEXTS_DRY_MOST} on a dry run, whose "
+            "fetches are not kept; 1 still to fetch"), got
+        got = take(3, rc=1, **{"2027-0002": "fail", "2027-0003": "fail"})
+        assert got["warn"].startswith("the fetch stopped after 1 (exit 1): it is asked again tomorrow"), got
+        got = take(2, rc=2, mark=True, **{"2027-0001": "fail", "2027-0002": "fail"})
+        assert got["warn"].startswith("the General Court refused a request after 0 were fetched"), got
+        refusal.MARK.unlink()
+        got = take(3, **{"2027-0002": "gone", "2027-0003": "fail"})
+        assert got["warn"].startswith("1 could not be fetched tonight (2027-0003)") and \
+            "1 linked and not served (2027-0002)" in got["said"], got
+        got = take(2, **{"2027-0001": "notext"})
+        assert got["warn"].startswith("the text of 1 fetched tonight could not be read (2027-0001), so "
+                                      "no page shows it"), got
+        mine = [w for w in NI.Night.warned(types.SimpleNamespace(v={"lsr_texts": got}))
+                if w[1].startswith(NI.KIND_LSR_TEXTS)]
+        assert mine == [(NI.KIND_LSR_TEXTS + NI.kind_of(got["warn"]), NI.KIND_LSR_TEXTS + got["warn"])], mine
+        import inspect
+        assert "{KIND_LSR_TEXTS}{v['lsr_texts']['said']}" in inspect.getsource(NI.Night.finish), \
+            "the run's page no longer says what came of the request texts"
+    finally:
+        os.chdir(here)
+        (NI.run, NI.say, refusal.MARK, ET.pdftotext, exits) = saved
+        NI.EXITS.clear()
+        NI.EXITS.update(exits)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{NI.LSR_TEXTS_MOST} of 12 asked, the rest the night after, then none; nothing asked "
+                  "after a request that did not complete, without a list or without pdftotext; a dry "
+                  "run's budget; a stop, a refusal, a text not served, not fetched and not read each "
+                  "said, the warning the night's")
 
 
 # ---- the gate: which nights wait for a person (6 October 2026) -------------------

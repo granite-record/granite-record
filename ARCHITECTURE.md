@@ -126,7 +126,10 @@ looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 refusal is on file; since 16 November 2026, after its list of calendars and
 journals, those documents the kit does not hold, 25 a night at most, their
 text, and the House committees' reports, the amendments and the meetings read
-off it again where it changed (`nightly.take_document_files`); the rebuild,
+off it again where it changed (`nightly.take_document_files`); since 17
+November 2026, after those, the bill requests' texts the request list links and
+the kit does not hold, 10 a night at most, and their text
+(`nightly.take_lsr_texts`); the rebuild,
 `build_all.py --local --no-captions`, since
 that machine holds no caption files; and the gates -- `preflight.py --code`
 (since 16 November 2026 a job of its own beside the night, `checks`, from the
@@ -1502,6 +1505,11 @@ term's sponsors from it -- a member now in the Senate under a new id reads as
 the Representative they were -- for a finished term as for the session's.
 `freeze_term --session` refuses a roster whose members sponsored and voted
 nothing in the term, and keeps the freeze's roster over one that has turned.
+And the new term's first bills, numbered in December before `LsrsOnly.txt` and
+`LsrSponsors.txt` carry their year, take their request's prime sponsor and
+co-sponsors from `lsrs.json` where no sponsor file or status page names any
+(`build_data.sponsors_from_requests`, 17 November 2026): each the one member of
+the term's roster of that name, else the name as the list prints it.
 The rows of a finished term a night's files still carry go on the run's page
 (`data/left_out.json`). The New term run lets only the feeds fall, and asks for
 a freeze only while the installed files are in the last session of their term,
@@ -2238,10 +2246,15 @@ From Organization Day it says they took office, and it gives way to their
 regular page when the General Court numbers them. Only a former member elected again is
 re-headed: their own page is headed as a new member-elect's is, the
 member-elect of the new seat, with the earlier seat kept below. A sitting
-member elected to the other chamber keeps the heading of the seat they hold,
-with the member-elect sentence beside it (`build_legislator_pages.elect_mode`,
-whose word `app.js` reads from `GR_ELECT`). Both end on the day they take
-office, by the build's day and the reader's clock.
+member elected to the other chamber is headed as that chamber's member-elect,
+"Senator “Elect” Laura Telerski (D)" (the owner, 17 November 2026: 'link the
+new member pages as Sen. "Elect" Laura Telerski for the title but connect it to
+their house record as well'), on the page of the record they sit under now,
+the seat they hold named by its office on the line ("Representative for
+Hillsborough District 11"), with the member-elect sentence beside it
+(`build_legislator_pages.elect_mode`, whose word `app.js` reads from
+`GR_ELECT`). Both end on the day they take office, by the build's day and the
+reader's clock.
 
 The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
 gives `find.json` a row of the kind `elect` for each new member-elect with a
@@ -2250,9 +2263,12 @@ Members-Elect tab's title and the seat they were elected to -- "Rep. “Elect”
 Heather Deiner (D - Hills 25)" -- and leading to their own page. `find.js`
 finds and ranks it as a member's row, by the words of the name, the seat and
 the county, in the header's box and the home page's alike, and `/search` lists
-it under Senators-Elect or Representatives-Elect. A sitting member keeps their
-own row. A former member elected again stands in for their "Former Rep." row,
-which their row carries and which is theirs again on the day they take
+it under Senators-Elect or Representatives-Elect. A sitting member re-elected,
+or elected within their own chamber, keeps their own row. A former member
+elected again stands in for their "Former Rep." row, and a sitting member
+elected to the other chamber, "Sen. “Elect” Laura Telerski (D - SD13)" leading
+to her House page, for their member's row, the seat they hold among its words:
+the row stood in for is carried and is theirs again on the day they take
 office, by the reader's clock as well as the build's (`find.js`, `findNow`);
 a new member's row becomes a member's from that day with their page, by the
 build's day.
@@ -2344,7 +2360,12 @@ to that, on the night's `preflight.py --built`.
 
 ## Next session's bill requests (November 2026)
 
-`src/pages/build_lsrs.py` makes the requests term the bill search opens. A
+`src/pages/build_lsrs.py` makes the requests term the bill search opens, from
+the day after the general election until the requests' bills are introduced
+in January (`app.js` `requestsFirst`; since 17 November 2026 not when the new
+term's first bills are published, in December: `meta.requests`'
+`introduced_in_session` counts the requests introduced on a day of their own
+year, which Organization Day's resolutions are not). A
 request has a title and a prime sponsor, so the search finds it by the
 sponsor's name (prime or co-sponsor; sitting, member-elect or former) and the
 Sponsor filter lists each with their party, where the roster or the results
@@ -2381,10 +2402,19 @@ which a bill's statutes and title decide, a request's title decides alone.
 
 Each request has a page of its own at its row's `address`, `/request/<number>`
 (`src/pages/build_request_pages.py`), until the row carries a `moved_to` --
-the bill's page once it becomes a numbered bill or, from the day filing for
+the bill's page once that bill is introduced or, from the day filing for
 the session is complete (`build_lsrs.retire`), its prime sponsor's page, or the
-requests' search where the sponsor has none; a withdrawn request keeps its
-page -- and the address forwards there. The requests' list in the directory
+requests' search where the sponsor has none and it was never filed; a withdrawn
+request keeps its page -- and the address forwards there. A request stays a
+request until it is introduced (the owner, 17 November 2026: requests "do not
+become bills until the first session in January when they are introduced"):
+filed as a numbered bill it keeps its page and its card, which say the bill
+it was filed as ("Filed As", the row's `introduced` and `bill_at`), its page's
+Follow now the bill's, where its follow has moved; it reads Introduced, its
+rail's last stop reached and dated, and forwards, once the bill's own rail in
+the bill search's rows dates its Introduced stop on or before the build's day
+(`build_lsrs.introduced_days`: the day the bill's introduction row states,
+which a docket's "To Be Introduced" plan does not give). The requests' list in the directory
 links each row's number to its `moved_to`, else its `address`
 (`build_indexes.request_target`). On a request's page a sitting member keeps
 the roster's chip, with the seat they hold, and a new member-elect the chip of
@@ -2404,14 +2434,19 @@ reads into `bill_status.json`, `build_data.fill_from_status` puts on the
 bill's own term's record in `data/bills.json`, and `build_lsrs.filed_days`
 reads off the bill `became_bills` names (the owner's approval of 15 November
 2026, as the day the text was published). A bill with no such day leaves
-Filed reached and undated. A request that is a bill has no page of its own,
-its address forwarding to the bill's, so its card is where the day shows.
-Requested carries none, since neither the list nor the General Court's public
-database gives the day a request was made. Next session's bills reach
+Filed reached and undated, and so does a request whose text the list links
+before any bill of it is on file. Requested carries none, since neither the
+list nor the General Court's public database gives the day a request was made. Next session's bills reach
 `data/bills.json` only once the New term run has turned the installed files,
-so no request is Filed before then.
+so no request is Filed by its bill before then, though one whose text the list
+links is Filed by that.
 The card has no Follow: a request is followed from its page, after Cite, as a
-bill is. The page's number marks LSR for the site's term popover
+bill is, and from the night it is filed as a bill the page's Follow is the
+bill's, where the follow has moved. The email that tells the follower so says
+it "has been drafted and filed as HB 45" (`follow_changes.ending`) and, where
+the site has read the text, links "View the text" to the page's Bill Text tab
+(the ending's `url`, `build_request_pages.text_address`: the page's address
+with its pane, which the page's script opens). The page's number marks LSR for the site's term popover
 (`components.term_mark`, glossary.json's entry), the mechanism a bill number's
 FN uses.
 
@@ -2421,8 +2456,18 @@ page and card and a request's card draw theirs), the Summary's tab drawn even
 where it is the only one. Its Summary says what the row says of the text
 (`build_request_pages.text_note`): not public yet while the request is drafted,
 and public once it is filed as a numbered bill; or withdrawn before it was
-filed; and nothing of the kind once it is filed. The page is built with every
-pane on it, so it reads with no script: the strip is hidden and each pane
+filed; and, filed, that its text is public and is added once this site has
+read it, with the General Court's PDF linked. The night fetches each text the
+request list links, a few a night, and reads it with pdftotext -layout
+(`python3 src/fetch/gc_web/fetch_lsrs.py --texts` and `--read-texts`;
+`nightly.take_lsr_texts`) into
+`archive/lsr_text/`, which the kit carries; from then the request's page and
+card have a Bill Text tab, keyed 6 as a bill's, with what was read, said to be
+read by machine, and the PDF linked (`build_lsrs.request_text`, the one reader;
+`build_request_pages.text_pane`, `app.js` `lsrTextPane`, which fetches the
+text from the request's file in the data API, `api/requests/<year>/<number>.json`,
+whose `text` and `text_pdf` the rows file leaves out). The page is built with
+every pane on it, so it reads with no script: the strip is hidden and each pane
 stands under its own heading.
 
 ## Town websites and staff (November 2026)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.33
+# GRANITE_VERSION: 2026-09-13.34
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -559,11 +559,23 @@ def elect_rows(site, rows, people):
         as the build's (app.js renderMemberHead), and so does the row
         (find.js, findNow).
 
-    A sitting member keeps their own row and title, re-elected or elected to
-    another seat: they are a member. A member-elect with no page of their
-    own has no row, there being nowhere to lead. `rows` are the rows so far,
-    whose former members' rows are found by address; `people` is former.json
-    by the same address."""
+      a SITTING MEMBER ELECTED TO THE OTHER CHAMBER (the owner, 17 November
+        2026: 'link the new member pages as Sen. "Elect" Laura Telerski for
+        the title but connect it to their house record as well'), from the
+        same file: "Sen. “Elect” Laura Telerski (D - SD13)", leading to the
+        page of the record they sit under now, which their page heads the
+        same way while the file lasts. It stands in for their member's row
+        and carries it whole, with the day they take office, as a former
+        member's does, the words of the seat they hold now among its own,
+        until the General Court numbers them in the chamber they were
+        elected to.
+
+    A sitting member re-elected, or elected to another seat of their own
+    chamber, keeps their own row and title: they are a member there. A
+    member-elect with no page of their own has no row, there being nowhere
+    to lead. `rows` are the rows so far, whose former and sitting members'
+    rows are found by address; `people` is former.json by the same address.
+    The addresses returned are of the rows stood in for, of either kind."""
     import build_members_elect as BME
     from build_site_v2 import HONORIFIC, district_tag
     today = build_date.today().isoformat()
@@ -598,12 +610,28 @@ def elect_rows(site, rows, people):
                                  "" if took else ELECT_WORDS[ch]) if x)]))
     elect, taken = BME.for_pages(site), set()
     was = {r[3]: r for r in rows if r and r[0] == "former"}
+    sat = {r[3]: r for r in rows if r and r[0] == "legislator"}
     for key, race in sorted(((elect or {}).get("races") or {}).items(), key=lambda kv: order(kv[0])):
         m = BME.KEY_RE.match(key)
         ch = "S" if m.group(3) else "H"
         tag = district_tag(ch, m.group(3) or m.group(2), county=m.group(1))
         for e in race.get("elected") or []:
             addr = S.canon(f"legislator/{e.get('s')}.html")
+            own = sat.get(addr)
+            # Elected to the other chamber: their row's line names the chamber
+            # they sit in now ("House · Hills 11 · Democrat").
+            if e.get("k") == "sitting" and e.get("id") and e.get("s") and own \
+                    and own[2].split(" · ")[0] != ("Senate" if ch == "S" else "House"):
+                party = str(e.get("p") or "")
+                name = BLP.elect_member_name({"display_full": own[1]}) or str(e.get("n") or "")
+                now = " ".join(own[2].split(" · ")[1:2])
+                out.append((order(key), [
+                    "elect", f"{BLP.elect_title(ch)} {name}{seat(party, tag)}",
+                    elect_line(ch, tag, party), addr,
+                    " ".join(x for x in (str(e.get("n") or ""), own[4], now, ELECT_WORDS[ch]) if x),
+                    elect["takes_office"], own]))
+                taken.add(addr)
+                continue
             if e.get("k") != "former" or not (e.get("id") and e.get("s")) or addr not in was:
                 continue
             party = str(e.get("p") or "")
@@ -774,11 +802,12 @@ def find_index(site, legs, towns):
                               if x),
                      int(last.group(1)) if last else 0])
     # THE MEMBERS-ELECT (elect_rows), after the sitting members: a former
-    # member elected again in place of their row above, which their own row
-    # carries for the day they take office.
+    # member elected again, and a sitting member elected to the other
+    # chamber, in place of their row above, which their own row carries for
+    # the day they take office.
     elect, taken = elect_rows(site, rows, people)
-    rows = rows[:seated] + elect + [r for r in rows[seated:]
-                                    if not (r[0] == "former" and r[3] in taken)]
+    rows = ([r for r in rows[:seated] if not (r[0] == "legislator" and r[3] in taken)] + elect
+            + [r for r in rows[seated:] if not (r[0] == "former" and r[3] in taken)])
     # The subjects the bill search facets by, so that typing one arrives at
     # the bills rather than at nothing. meta.json is where the bill search
     # reads them from, so there is one list and it cannot drift.

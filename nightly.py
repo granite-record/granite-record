@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.99
+# GRANITE_VERSION: 2026-09-04.100
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -525,6 +525,15 @@ runs. take_document_files, after the listing and under the same lock:
                       refusal is, and like any failure here it is a warning
                       and never a failed night
 
+AND THE BILL REQUESTS' TEXTS (17 November 2026; the owner: the text "shows as
+a PDF on the lsr search page along with the co-sponsors"). The list's fetch
+reads each request's link to its text where the list gives one
+(fetch_lsrs.py, THE TEXT, ONCE IT IS PUBLIC); take_lsr_texts, after the
+calendars and journals and under the same lock, fetches the texts this disk
+does not hold the same way, LSR_TEXTS_MOST a night, and reads each with
+pdftotext -layout. Only after every request of the address tonight
+completed; said on the run's page (lsr_texts), a failure a warning.
+
 THE GATE, IN SHADOW (6 October 2026)
 
 Every night that passes its checks waits for approval in GitHub's "production"
@@ -801,6 +810,21 @@ EXITS = {}
 DOCS_MOST = 25
 DOCS_DRY_MOST = 3
 KIND_DOC_FILES = "the calendars and journals themselves: "
+
+# NEXT SESSION'S BILL REQUESTS' TEXTS (the owner, 17 November 2026: "Once the
+# co-sponsors and sponsor have signed off, the bill text shows as a PDF on the
+# lsr search page"). take_lsr_texts, after the calendars and journals and
+# under the same lock: the texts the request list links that this disk does
+# not hold, with fetch_lsrs.py --texts --night (its docstring, THE TEXT, ONCE
+# IT IS PUBLIC), at most LSR_TEXTS_MOST a night and LSR_TEXTS_DRY_MOST on a
+# dry run; then their text, read by fetch_lsrs.py --read-texts, which asks
+# nobody. Only where every request the night made of the address tonight
+# completed (EXITS), and where this machine has pdftotext. The text and the
+# record (archive/lsr_text/*.txt, archive/lsr_texts.json) are the night's in
+# the kit; a failure is a warning, never a failed night.
+LSR_TEXTS_MOST = 10
+LSR_TEXTS_DRY_MOST = 2
+KIND_LSR_TEXTS = "next session's bill requests' texts: "
 
 # RECORDINGS WAITING FOR THEIR START TIMES (30 September 2026; the night's own
 # since 10 October 2026). The night's livestream step captions the new
@@ -1945,6 +1969,10 @@ def main():
                                 if not refusal.MARK.exists():
                                     night.v["document_files"] = take_document_files(
                                         dry_run=a.dry_run)
+                                # And the bill requests' texts the list links
+                                # (NEXT SESSION'S BILL REQUESTS' TEXTS).
+                                if not refusal.MARK.exists():
+                                    night.v["lsr_texts"] = take_lsr_texts(dry_run=a.dry_run)
                 except SystemExit as e:
                     rc = e.code if isinstance(e.code, int) else 3
                     say(f"  the lock was taken by someone else first (exit {rc})")
@@ -4515,6 +4543,93 @@ def take_document_files(dry_run=False):
     return out
 
 
+def take_lsr_texts(dry_run=False):
+    """The texts next session's bill requests link that this disk does not
+    hold, fetched and read (NEXT SESSION'S BILL REQUESTS' TEXTS). A record for
+    the verdict's "lsr_texts", as take_document_files' is: wanted, fetched,
+    remain, said, warn.
+
+    NOT ASKED AFTER A REQUEST TONIGHT THAT DID NOT COMPLETE. The list, the
+    calendars' listing and their drain ask the same address before this
+    (EXITS); where any of them did not complete, or the list was not asked
+    for, nothing more is asked tonight, and that step's own warning says why.
+    Nor where this machine has no pdftotext: a text fetched and not read is a
+    request for nothing."""
+    import fetch_lsrs as FL
+    import extract_calendar_text as ET
+    out = {"wanted": 0, "fetched": 0, "remain": 0, "said": "", "warn": ""}
+
+    def done(said, warn=False):
+        out["said"], out["warn"] = said, (said if warn else "")
+        say(f"  {KIND_LSR_TEXTS}{said}")
+        return out
+
+    if EXITS.get("fetch_lsrs.py") != 0:
+        return done("not asked for: the request list was not read tonight")
+    stopped = [f"{k} (exit {rc})" for k, rc in EXITS.items() if rc]
+    if stopped:
+        return done(f"not asked for: {stopped[0]} did not complete tonight, so nothing more is "
+                    "asked of the address")
+    try:
+        want = FL.texts_wanted()
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  {type(e).__name__}: {e}", echo=False)
+        return done("not asked for: the request list or its record of texts could not be read",
+                    warn=True)
+    out["wanted"] = out["remain"] = len(want)
+    if not want:
+        linked = sum(1 for r in FL.load_rows() if r.get("text_pdf"))
+        return done(f"none waits: every one of the {linked} the list links is on this disk"
+                    if linked else "none waits: the list links no request's text yet")
+    if not ET.pdftotext():
+        return done(f"not asked for: {len(want)} wait, and this machine has no pdftotext to read "
+                    "them with", warn=True)
+    most = LSR_TEXTS_DRY_MOST if dry_run else LSR_TEXTS_MOST
+    was = FL.load_state()
+    tried = {n: int((was.get(n) or {}).get("attempts") or 0)
+             if (was.get(n) or {}).get("url") == u else 0 for n, u in want}
+    rc = run(["fetch_lsrs.py", "--texts", "--night", "--budget", str(most)],
+             "next session's bill requests' texts, from the General Court")
+    EXITS["fetch_lsrs.py --texts"] = rc
+    run(["fetch_lsrs.py", "--read-texts"], "the text of the bill requests' PDFs fetched tonight")
+    try:
+        state, after = FL.load_state(), FL.texts_wanted()
+    except Exception as e:                                      # noqa: BLE001
+        say(f"  {type(e).__name__}: {e}", echo=False)
+        state, after = {}, want
+    now = {n: state.get(n) or {} for n, _u in want}
+    got = [n for n, u in want if now[n].get("state") == "held" and now[n].get("url") == u]
+    unread = [n for n in got if now[n].get("text") == "none" or not (FL.TEXTS / f"{n}.txt").is_file()]
+    gone = [n for n, _u in want if now[n].get("state") == "gone"]
+    failed = [n for n, _u in want if now[n].get("state") in ("wanted", "failed")
+              and int(now[n].get("attempts") or 0) > tried[n]]
+    out.update(fetched=len(got), remain=len(after))
+    said = (f"{len(got)} fetched" + (f", at most {most} on a dry run, whose fetches are not kept"
+                                     if dry_run else "") + f"; {len(after)} still to fetch")
+    warn = ""
+    if rc == 2 and refusal.MARK.exists():
+        warn = (f"the General Court refused a request after {len(got)} "
+                f"{'was' if len(got) == 1 else 'were'} fetched: it is recorded, and every fetch "
+                "waits for a person")
+    elif rc != 0:
+        warn = f"the fetch stopped after {len(got)} (exit {rc}): it is asked again tomorrow"
+    elif failed:
+        warn = (f"{len(failed)} could not be fetched tonight ({', '.join(failed[:4])}); a text "
+                "is asked for three times before it is left")
+    elif not got and not gone:
+        warn = f"none of the {len(want)} waiting was fetched, though the fetch says it finished"
+    if gone:
+        said += f"; {len(gone)} linked and not served ({', '.join(gone[:4])})"
+    if unread:
+        said += f"; the text of {len(unread)} could not be read"
+        warn = warn or (f"the text of {len(unread)} fetched tonight could not be read "
+                        f"({', '.join(unread[:4])}), so no page shows it")
+    out["said"] = (warn + "; " + said) if warn else said
+    out["warn"] = out["said"] if warn else ""
+    say(f"  {KIND_LSR_TEXTS}{out['said']}")
+    return out
+
+
 def take_views(views, label, shrink=SWAP_SHRINK, not_again=False, together=False):
     """The study committees' views from the database, whole or not at all.
 
@@ -7032,6 +7147,10 @@ class Night:
         if isinstance(files, dict) and files.get("warn"):
             out.append((KIND_DOC_FILES + kind_of(files["warn"]),
                         KIND_DOC_FILES + str(files["warn"])))
+        texts = self.v.get("lsr_texts")
+        if isinstance(texts, dict) and texts.get("warn"):
+            out.append((KIND_LSR_TEXTS + kind_of(texts["warn"]),
+                        KIND_LSR_TEXTS + str(texts["warn"])))
         # The recordings waiting for their start times, and why: the night's
         # own caption step since 10 October 2026, so the words name what
         # stopped it rather than a laptop job. The kind is the one this
@@ -7221,6 +7340,9 @@ class Night:
                    + ([f"- {KIND_DOC_FILES}{v['document_files']['said']}"]
                       if isinstance(v.get("document_files"), dict)
                       and v["document_files"].get("said") else [])
+                   + ([f"- {KIND_LSR_TEXTS}{v['lsr_texts']['said']}"]
+                      if isinstance(v.get("lsr_texts"), dict)
+                      and v["lsr_texts"].get("said") else [])
                    + [f"- {w}" for w in why[:8]]
                    + [f"- warning: {w}" for w in v["warnings"]]
                    + ((["- the sources, one line each:"] + [f"  - {r['line']}" for r in v["sources"]])

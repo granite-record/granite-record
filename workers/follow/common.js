@@ -261,7 +261,9 @@ export function oneLine(s, max = 300) {
 // A path on the site, made a whole address. Anything that is not a plain
 // path -- another site, a scheme, a protocol-relative "//" -- becomes the
 // site's front page instead of a link somewhere else.
-const PATH = /^\/(?!\/)[A-Za-z0-9\-._~/?=&%+]*$/;
+// And a place on the page after it ("#pane_LSR20270001_6", 17 November 2026),
+// as changes.js's PATH allows one.
+const PATH = /^\/(?!\/)[A-Za-z0-9\-._~/?=&%+]*(?:#[A-Za-z0-9_-]{1,80})?$/;
 export function siteUrl(origin, path) {
   return PATH.test(String(path ?? "")) ? origin + path : origin + "/";
 }

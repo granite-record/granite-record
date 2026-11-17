@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.49
+# GRANITE_VERSION: 2026-09-04.50
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -1307,7 +1307,13 @@ def main():
             hints[key] = {"withdrawn": True}
             continue
         if becomes and becomes in followable:
-            hints[key] = {"becomes": becomes, "bill": intro}
+            # AND WHERE ITS TEXT IS, once the night has read it (the owner, 17
+            # November 2026: "maybe include a link that says View the text
+            # that shows the granite record tab once we've imported the
+            # text"): its page's Bill Text tab, which the ending links.
+            import build_request_pages as RP
+            text = RP.text_address(r)
+            hints[key] = {"becomes": becomes, "bill": intro, **({"text": text} if text else {})}
             continue
         followable[key] = {"label": FC.line(f"LSR {num}", 120),
                            "title": FC.line(r.get("title") or "", 300),

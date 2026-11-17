@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.24
+# GRANITE_VERSION: 2026-09-18.26
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -55,12 +55,23 @@ show as the option simply not being there.
 
 The rows carry no committee and no status kind, because an LSR has neither,
 so the Committee facet is correct to show nothing for this term. The Status
-facet is not empty: a request's status is its own word (Requested, Filed or
-Withdrawn, REQUESTED/FILED/WITHDRAWN below), which app.js's REQ_STATUS takes
-as a category. Every request not yet a bill carries a topic (`topic_by`
-"title", with_topics below): the one request_topics reads from its title, or
-Miscellaneous where the title does not say enough (the owner, 14 November
-2026), which the Topic facet lists and a card does not print.
+facet is not empty: a request's status is its own word (Requested, Filed,
+Introduced or Withdrawn, REQUESTED/FILED/INTRODUCED/WITHDRAWN below), which
+app.js's REQ_STATUS takes as a category. Every request not yet a bill carries
+a topic (`topic_by` "title", with_topics below): the one request_topics reads
+from its title, or Miscellaneous where the title does not say enough (the
+owner, 14 November 2026), which the Topic facet lists and a card does not
+print.
+
+A REQUEST STAYS A REQUEST UNTIL IT IS INTRODUCED (the owner, 17 November 2026:
+"Officially LSRs do not become bills until the first session in January when
+they are introduced and referred to committees ... Text and co-sponsors are
+gradually added"). Filed -- its text public, which is when its bill is
+numbered -- it keeps its own page and its card, now with its text where the
+night has read it (request_text: the Bill Text tab, its card's, and its file in
+the data API), and says the number it was filed as; only once its bill's
+docket says it was introduced (introduced_days) does it read Introduced, its
+rail's last stop reached, and its address forward to the bill's page.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -474,6 +485,34 @@ def request_bills(bills, lsrs):
 ISO_DAY = re.compile(r"^\d{4}-\d\d-\d\d$")
 
 
+def introduced_days(site, bills_of, year, today):
+    """{request number: "YYYY-MM-DD"} for the requests whose bill was
+    introduced on or before `today` (A REQUEST STAYS A REQUEST UNTIL IT IS
+    INTRODUCED): the Introduced stop of the bill's own rail in the bill
+    search's rows for the requests' term (site/idx/<term>.json, which
+    build_site_v2 writes before this runs: index_rail's ["Ip", day], the day
+    the bill's introduction row states, _j_introduced), where it carries a day
+    and that day has come. A bill whose docket only plans it -- "To Be
+    Introduced 01/06/2027 and referred to ...", which no introduction reader
+    takes -- has no day there, and is not introduced yet. `bills_of` is
+    {request number: (bill, record)} (request_bills)."""
+    from terms import term_of_year
+    f = Path(site) / "idx" / f"{term_of_year(int(year))}.json"
+    try:
+        rows = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else []
+    except (OSError, ValueError):
+        rows = []
+    rail = {r.get("id"): r.get("rail") for r in rows if isinstance(r, dict)}
+    out = {}
+    for num, (bid, _rec) in (bills_of or {}).items():
+        stops = rail.get(bid) or []
+        first = stops[0] if stops and isinstance(stops[0], (list, tuple)) else []
+        day = str(first[1]) if len(first) > 1 and str(first[0]) == "Ip" else ""
+        if ISO_DAY.match(day) and day <= str(today):
+            out[num] = day
+    return out
+
+
 def filed_days(bills, lsrs):
     """{request number: "YYYY-MM-DD"} for the requests that are bills now
     whose bill's record gives the day it was made one: "made_bill", the
@@ -528,7 +567,42 @@ def route(body):
 # fact there is (or the source's own "filed", once it gives one). Withdrawn:
 # as the source says. The words are the owner's, and the card, the filter and
 # the request page's rail all use them.
-REQUESTED, FILED, WITHDRAWN = "Requested", "Filed", "Withdrawn"
+# AND INTRODUCED (the owner, 17 November 2026: requests "do not become bills
+# until the first session in January when they are introduced"): the third of
+# her stages (14 November: "requested, filed, and introduced"), reached when
+# the request's bill's docket says it was introduced (introduced_days). Filed
+# is also the request whose text the list links before any bill of it is on
+# file: the text is public.
+REQUESTED, FILED, INTRODUCED, WITHDRAWN = "Requested", "Filed", "Introduced", "Withdrawn"
+
+# THE TEXT, ONCE IT IS PUBLIC (the owner, 17 November 2026: "Once the
+# co-sponsors and sponsor have signed off, the bill text shows as a PDF on the
+# lsr search page"). The night fetches each text the list links and reads it
+# (fetch_lsrs.py --texts and --read-texts) into this folder, a .txt a request;
+# the request's page and card and its file in the data API read it through
+# request_text. fetch_lsrs.TEXTS names the same folder.
+REQUEST_TEXTS = Path("archive/lsr_text")
+
+
+def request_text(num, folder=None):
+    """The text the night read off request `num`'s PDF ("2027-0001"), as
+    pdftotext -layout set it, with the margin every line shares taken off,
+    trailing spaces and page breaks gone and no two blank lines in a row; ""
+    where none is on file. Read by machine: the PDF is the document."""
+    try:
+        raw = (Path(folder or REQUEST_TEXTS) / f"{num}.txt").read_text(encoding="utf-8",
+                                                                        errors="replace")
+    except OSError:
+        return ""
+    lines = [ln.rstrip() for ln in raw.replace("\f", "\n").splitlines()]
+    pad = min((len(ln) - len(ln.lstrip()) for ln in lines if ln.strip()), default=0)
+    out = []
+    for ln in lines:
+        if ln.strip():
+            out.append(ln[pad:])
+        elif out and out[-1]:
+            out.append("")
+    return "\n".join(out).strip()
 
 # WHAT AN ABBREVIATION IN A REQUEST'S NUMBER STANDS FOR (the owner, 13
 # November 2026: "LSR stands for Legislative service request if you can add
@@ -550,9 +624,8 @@ def rail_stops(r):
     requested (the owner, the same morning: "Request being withdrawn should
     still show request as green but filed as red"); Filed, reached once the
     bill's text is public, and the cross where the request was withdrawn
-    instead; Introduced, which a request reaches by becoming a numbered bill,
-    when its address forwards to the bill's page and the bill's own rail takes
-    over -- so it is never reached here.
+    instead; Introduced, which a request reaches when its bill is introduced,
+    the day its address starts to forward to the bill's page (below).
 
     THE DAYS. Filed carries the day the text became public where the row has
     it ("filed", "YYYY-MM-DD"): the day the request's bill was made one, which
@@ -561,10 +634,17 @@ def rail_stops(r):
     November 2026), or the source row's own "filed" once the source gives one.
     Requested carries none: the list gives no day a request was made, and the
     General Court's public database gives "True" where the day it was entered
-    would be (DateLSREntered). A stop with no day shows none, never a guess."""
+    would be (DateLSREntered). A stop with no day shows none, never a guess.
+
+    INTRODUCED IS REACHED NOW (the owner, 17 November 2026; A REQUEST STAYS A
+    REQUEST UNTIL IT IS INTRODUCED): a request stays one until its bill is
+    introduced, so its card and its page show the stop reached, dated by the
+    day its bill's introduction row states ("introduced_on", introduced_days),
+    the day its address starts to forward to the bill's page."""
     gone = bool(r.get("withdrawn"))
     filed = r.get("filed") and not gone
     day = r["filed"] if filed and isinstance(r["filed"], str) and r["filed"][:1].isdigit() else ""
+    intro = "" if gone else str(r.get("introduced_on") or "")
     # WHAT THE RAIL SAYS TO A READER WHO HEARS IT, OR HOVERS (its aria-label and
     # title): a stop not reached yet is "not yet" -- the bill rail's "never
     # reached" is said of a stop a finished bill never got to, and a request is
@@ -574,7 +654,8 @@ def rail_stops(r):
         {"stop": FILED, "mark": "x" if gone else ("p" if filed else "-"),
          **({"date": day} if day else {}),
          "say": "Withdrawn" if gone else ("Text public" if filed else "not yet")},
-        {"stop": "Introduced", "mark": "-", "say": "never reached" if gone else "not yet"}]
+        {"stop": INTRODUCED, "mark": "p" if intro else "-", **({"date": intro} if intro else {}),
+         "say": INTRODUCED if intro else "never reached" if gone else "not yet"}]
 
 
 def title_key(title):
@@ -627,13 +708,18 @@ def history_of(title, year, earlier):
             if str(b.get("term") or "")[:4].isdigit() and int(str(b["term"])[:4]) < int(year)]
 
 
-def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, filed_on=None):
+def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, filed_on=None,
+              introduced_on=None, texts=None):
     """The rows of idx/<year>-requests.json and the sponsor names that matched
     nobody. `became` (became_bills) names each request's bill; `year` is the
     session they are listed under (newest_session); `winners`
     (election_winners) settle a sponsor the roster did not; `earlier`
     (earlier_bills) is what a request's History is read from; `filed_on`
-    (filed_days) is the day each request's bill was made one."""
+    (filed_days) is the day each request's bill was made one;
+    `introduced_on` (introduced_days) the day its bill was introduced, the
+    one thing that forwards its address to the bill's page; `texts` the
+    requests whose text the night has read (request_text), which carry
+    "text_on_file" for their card's and their page's Bill Text tab."""
     year = year or newest_session(lsrs)[0]
     find = winner_finder(winners) if winners else (lambda name, body: None)
     term, _label = requests_term(year)
@@ -645,6 +731,11 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
         m = LSR_NO.match(num)
         key = f"{m.group(1)}-{int(m.group(2)):04d}" if m else num
         bill = (became or {}).get(key, "")
+        # Introduced only as a bill: the day its bill's docket says so.
+        intro = (introduced_on or {}).get(key, "") if bill else ""
+        # The text the list links, where it is the General Court's own (fetch_lsrs.gc_url).
+        pdf = str(r.get("text_pdf") or "")
+        pdf = pdf if pdf.startswith(("https://", "http://")) else ""
         body = str(r.get("body") or "").upper()
         name = str(r.get("sponsor") or "").strip()
         hit = who.get(_fold(name))
@@ -695,21 +786,32 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
             # names. The word on the card is the one fact there is about where
             # it stands.
             "kind": "",
-            "status": (FILED if bill else WITHDRAWN if r.get("withdrawn")
-                       else FILED if r.get("filed") else REQUESTED),
+            "status": (INTRODUCED if intro else FILED if bill else WITHDRAWN if r.get("withdrawn")
+                       else FILED if r.get("filed") or pdf else REQUESTED),
             "status_stated": True,
             "withdrawn": bool(r.get("withdrawn")) and not bill,
             "term": term, "carried": False, "passage": "",
             "last_action": "", "nrc": 0, "votedays": [],
             "lsr": True,
-            **({"introduced": bill} if bill else {}),
+            # "introduced" is the number of the bill the request was filed as
+            # (the key's name is older than A REQUEST STAYS A REQUEST UNTIL IT
+            # IS INTRODUCED); "introduced_on" the day that bill was introduced.
+            **({"introduced": bill, "bill_at": bill_address(bill, session_of(r) or year)}
+               if bill else {}),
+            **({"introduced_on": intro} if intro else {}),
             # "filed": the text is public (true, or its day) -- the stop Filed
             # on the request's rail. The list carries nothing of the kind
             # yet; this passes it on when the source gives it. Else, once the
             # request is a bill, the day the bill was made one where its
-            # record gives it (filed_on), and true where it does not.
+            # record gives it (filed_on), and true where it does not; and
+            # true where the list links its text (THE TEXT, ONCE IT IS PUBLIC).
             **({"filed": r["filed"]} if r.get("filed") else
-               {"filed": (filed_on or {}).get(key) or True} if bill else {}),
+               {"filed": (filed_on or {}).get(key) or True} if bill else
+               {"filed": True} if pdf and not r.get("withdrawn") else {}),
+            # The General Court's PDF of its text, and whether the night has
+            # read it (the Bill Text tab of its card and its page).
+            **({"text_pdf": pdf} if pdf else {}),
+            **({"text_on_file": True} if key in (texts or ()) else {}),
             # HISTORY (the owner, 13 November 2026): an earlier bill, of any
             # term on the site, whose title is this request's.
             **({"history": h} if (h := history_of(r.get("title"), session_of(r) or year,
@@ -718,8 +820,10 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
             # the number this source gives it -- New Hampshire's shape stays
             # here, and the page writer reads only "address" and "moved_to".
             "address": REQUEST_ADDRESS.format(num=num),
-            # Once it is a bill, its address forwards to the bill's page.
-            **({"moved_to": bill_address(bill, session_of(r) or year)} if bill else {}),
+            # Once its bill is introduced, its address forwards to the bill's
+            # page; filed and not yet introduced, it keeps its own (A REQUEST
+            # STAYS A REQUEST UNTIL IT IS INTRODUCED).
+            **({"moved_to": bill_address(bill, session_of(r) or year)} if intro else {}),
         })
     for row in rows:
         row["rail"] = rail_stops(row)
@@ -782,7 +886,9 @@ def retire(rows, year, today):
         return 0
     n = 0
     for r in rows:
-        if not r.get("moved_to") and not r.get("withdrawn"):
+        # Not one filed (its bill numbered or its text public): it stays a
+        # request until its bill is introduced, when it forwards to the bill.
+        if not r.get("moved_to") and not r.get("withdrawn") and not r.get("filed"):
             r["moved_to"] = (f"legislator/{r['sponsor_slug']}" if r.get("sponsor_slug")
                              else f"bills?term={r['term']}")
             n += 1
@@ -955,11 +1061,19 @@ def main():
     bp = Path(a.bills)
     bills = json.loads(bp.read_text(encoding="utf-8")) if bp.exists() else {}
     became, days = became_bills(bills, lsrs), filed_days(bills, lsrs)
+    import build_date
+    today = build_date.today().isoformat()
+    intro = introduced_days(site, request_bills(bills, lsrs), year, today)
+    # The requests whose text the night has read, by the number as rows_from
+    # keys it; the file is under the number as the list writes it.
+    texts = {f"{m.group(1)}-{int(m.group(2)):04d}" for r in lsrs
+             if (m := LSR_NO.match(str(r.get("lsr") or "").strip()))
+             and request_text(str(r["lsr"]).strip())}
     winners, said = load_winners(site, a.collected)
     print(f"  {said}")
     meta0 = json.loads((site / "meta.json").read_text(encoding="utf-8")) if (site / "meta.json").exists() else {}
     rows, unmatched = rows_from(lsrs, roster(site, a.collected, year), became, year, winners,
-                                earlier_bills(site, meta0.get("terms")), days)
+                                earlier_bills(site, meta0.get("terms")), days, intro, texts)
     assert rows, "no request survived shaping, though the source had some"
     with_sponsor_names(rows, page_names(site))
     with_topics(rows, bills)
@@ -969,8 +1083,7 @@ def main():
     gone, undecided = not_returning(site, a.collected, year=year)
     rows, dropped = drop_unreturned(rows, gone)
     assert rows, "every request was dropped as a not-returning member's"
-    import build_date
-    retired = retire(rows, year, build_date.today().isoformat())
+    retired = retire(rows, year, today)
     idx = site / "idx"
     idx.mkdir(parents=True, exist_ok=True)
     # The previous session's file, if this is the night a new session's
@@ -996,6 +1109,17 @@ def main():
     meta["requests"] = {"term": term, "label": label, "year": year, "n": len(rows),
                         "abbr": ABBR,
                         "withdrawn": sum(1 for r in rows if r["withdrawn"]),
+                        # How many are bills introduced, and so forward to them.
+                        "introduced": sum(1 for r in rows if r.get("introduced_on")),
+                        # AND HOW MANY IN THE SESSION ITSELF, on a day of the
+                        # requests' own year -- not Organization Day's
+                        # resolutions, introduced and adopted the December
+                        # before: the bill search opens on the requests until
+                        # one is (app.js requestsFirst; the owner, 17 November
+                        # 2026: bills "are introduced and referred to
+                        # committees" at "the first session in January").
+                        "introduced_in_session": sum(
+                            1 for r in rows if str(r.get("introduced_on") or "")[:4] == str(year)),
                         "dropped": sorted(r["address"] for r in dropped),
                         "by_slug": dict(sorted(by_slug.items()))}
     mj.write_text(json.dumps(meta), encoding="utf-8")
@@ -1032,9 +1156,13 @@ def main():
         print(f"  {len(stuck)} withdrawn request(s) kept, the sponsor not identified or "
               "their race not decided: " + ", ".join(stuck))
     if became:
-        print(f"  {len(became)} introduced as bills, each marked with its bill, its page "
-              f"forwarding to the bill's; {len(days)} with the day the bill was made one, "
-              "on Filed")
+        print(f"  {len(became)} filed as bills, each marked with its bill; {len(days)} with the "
+              f"day the bill was made one, on Filed; {len(intro)} introduced, its page forwarding "
+              "to the bill's, the rest still requests until they are")
+    linked = sum(1 for r in rows if r.get("text_pdf"))
+    if linked or texts:
+        print(f"  {linked} link their text on the General Court's list; {len(texts)} with the text "
+              "read, for their Bill Text tab")
     if retired:
         print(f"  filing is complete: {retired} request page(s) retired, each forwarding to "
               "its prime sponsor's page")

@@ -78,3 +78,45 @@ test("a reader already following the bill keeps one follow of it", async () => {
     assert.deepEqual(await followKeys(w.d1, w.env), [`${s.id} bill:2026/HB9901`]);
   } finally { w.close(); }
 });
+
+// "View the text" (the owner, 17 November 2026: "maybe include a link that
+// says View the text that shows the granite record tab once we've imported
+// the text"): the ending's url, the request page's Bill Text tab, where the
+// build gives one -- and nothing where it gives none or what is no path.
+test("a drafted request whose text is on the site links it as View the text", async () => {
+  const where = "/request/2027-0001#pane_LSR20270001_6";
+  const night = { format: 1, date: "2026-10-06", built: "2026-10-06T09:00:00Z",
+    sitting_term: "2025-2026", new_by: "first-seen", refs: {
+      "lsr:2027-0001": { ended: { how: "drafted", becomes: "bill:2026/HB9901", summary: "x",
+                                  date: "2026-10-06", guid: "g", url: where } },
+      "lsr:2027-0002": { ended: { how: "drafted", becomes: "bill:2026/HB9902", summary: "x",
+                                  date: "2026-10-06", guid: "g2", url: "https://example.org/x" } } } };
+  const r = checkNight(night, "2026-10-06");
+  assert.equal(r.value.refs.get("lsr:2027-0001").ended.url, where);
+  assert.equal(r.value.refs.get("lsr:2027-0002").ended.url, undefined);
+  assert.ok(r.notes.some(n => n.includes("url is not a path on the site")));
+  const w = makeWorld();
+  try {
+    site(w);
+    const day = w.net.site.get("/changes/2026-10-06.json");
+    day.refs["lsr:2027-0001"].ended.url = where;
+    await insertSubscriber(w.d1, w.env, w.address("lsr.text"), {
+      follows: ["lsr:2027-0001"], lastSentOn: "2026-10-05", sentDate: "2026-10-05",
+      sentBuilt: "2026-10-05T09:00:00Z" });
+    w.now = new Date("2026-10-06T12:00:00Z");
+    assert.equal((await run(w.env, w.now)).sent, 1);
+    const mail = w.net.outbox[0];
+    assert.match(mail.text, /drafted and filed as HB 9901\. You now follow[^\n]*\n {2}View the text: https?:\/\/[^\s]*\/request\/2027-0001#pane_LSR20270001_6/);
+    assert.match(mail.html, /<a href="https?:\/\/[^"]*\/request\/2027-0001#pane_LSR20270001_6"[^>]*>View the text<\/a>/);
+  } finally { w.close(); }
+  const v = makeWorld();
+  try {
+    site(v);
+    await insertSubscriber(v.d1, v.env, v.address("lsr.notext"), {
+      follows: ["lsr:2027-0001"], lastSentOn: "2026-10-05", sentDate: "2026-10-05",
+      sentBuilt: "2026-10-05T09:00:00Z" });
+    v.now = new Date("2026-10-06T12:00:00Z");
+    await run(v.env, v.now);
+    assert.doesNotMatch(v.net.outbox[0].text + v.net.outbox[0].html, /View the text/);
+  } finally { v.close(); }
+});

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the General Court's database and day files, and the fetchers' parsers.
 
@@ -5623,6 +5623,55 @@ def _stub_titles_from_legislation(BD):
     assert not any(r["title"] for r in other.values()), other
     return "ok", ("HB 422 and HB 664 of 2025, as stubs, titled from the view; a stub's own title, a "
                   "bill LSRs.txt carries and another LSR's or term's row left as they were")
+
+
+@check("build", "a new bill no sponsor file names yet carries its request's prime sponsor and co-sponsors, "
+                "each the one member of the term's roster of that name, else the name as listed; a bill "
+                "the files name, and another year's, are left as they are", needs=("build_data",))
+def _new_bill_takes_request_sponsors(BD):
+    """The rehearsal of 17 November 2026 built 2027's HB 1 with no sponsor: a request is numbered as a
+    bill weeks before LsrsOnly.txt and LsrSponsors.txt hold its year (they hold one, and turn in
+    January). The owner, the same day: once signed off, "the bill text shows as a PDF on the lsr
+    search page along with the co-sponsors". build_data.sponsors_from_requests gives such a bill its
+    request's prime sponsor and co-sponsors from the night's lsrs.json, in the list's order, by the
+    year and the LSR number, each the one member of the term's roster whose first and last name it is
+    (two of a name are neither), else the name as the list prints it with no member; a bill a sponsor
+    file names keeps its own, and a bill of another year with the same LSR number takes nothing. And
+    build_data's own run asks it, for the session's build and not a frozen term's."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-request-sponsors-"))
+    roster = {k: {"id": k, "first": f, "last": l, "name": f"{l}, {f}", "party_code": p, "chamber": "H",
+                  "label": f"Rep. {f} {l} ({p} - Rock {k[-1]})"}
+              for k, f, l, p in (("9001", "Ellen", "Read", "D"), ("9002", "Bob", "Roe", "R"),
+                                 ("9003", "Jane", "Doe", "D"), ("9004", "Jane", "Doe", "R"))}
+    try:
+        path = tmp / "lsrs.json"
+        path.write_text(json.dumps([
+            {"lsr": "2027-0001", "session": 2027, "body": "HB", "sponsor": "Ellen Read",
+             "cosponsors": ["Bob Roe", "Jane Doe", "Dee New"], "withdrawn": True},
+            {"lsr": "2027-0002", "session": 2027, "body": "SB", "sponsor": "Bob Roe", "cosponsors": []}]),
+            encoding="utf-8")
+        own = [{"member_id": "9002", "name": "Roe, Bob", "prime": True, "sequence": 0}]
+        sponsors = {"SB7": list(own)}
+        bills = {"HB45": {"lsr_year": "2027", "lsr_num": "1"}, "SB7": {"lsr_year": "2027", "lsr_num": "0002"},
+                 "HB1001": {"lsr_year": "2026", "lsr_num": "1"}}
+        took = BD.sponsors_from_requests(bills, sponsors, path, roster)
+        got = [(s["member_id"], s["label"], s["prime"], s["sequence"], s["source"])
+               for s in sponsors.get("HB45") or []]
+        assert took == 1 and got == [
+            ("9001", "Rep. Ellen Read (D - Rock 1)", True, 0, BD.REQUEST_SOURCE),
+            ("9002", "Rep. Bob Roe (R - Rock 2)", False, 1, BD.REQUEST_SOURCE),
+            ("", "Jane Doe", False, 2, BD.REQUEST_SOURCE), ("", "Dee New", False, 3, BD.REQUEST_SOURCE)], (
+            took, got)
+        assert sponsors["SB7"] == own, f"a bill a sponsor file names was given its request's: {sponsors['SB7']}"
+        assert "HB1001" not in sponsors, "a bill of another year took a request's sponsors by its number"
+        assert BD.sponsors_from_requests(bills, {}, tmp / "none.json", roster) == 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    src = _source(_paths.locate("build_data.py"))
+    assert re.search(r"if not frozen:\s+took = sponsors_from_requests\(bills, sponsors, Path\(\"lsrs\.json\"\), "
+                     r"term_legs\)", src), "build_data's run no longer asks its requests for a new bill's sponsors"
+    return "ok", ("HB 45 of 2027 took Ellen Read (prime), Bob Roe and two names as listed (one shared by two "
+                  "members, one nobody's); SB 7, which a file names, and HB 1001 of 2026 kept their own")
 
 
 # The heads of four saved bill pages, as fetch_legislation.py saved them --

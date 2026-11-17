@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.335
+// GRANITE_VERSION: 2026-09-07.338
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -185,9 +185,11 @@ function catOfChip(c){
   return "";
 }
 // A bill request's status words, which are its categories (Requested: no bill
-// yet; Filed: its bill exists; Withdrawn). Nothing else is one.
+// yet; Filed: its text is public; Introduced: its bill was introduced, and the
+// request forwards to it -- the owner's third stage, 17 November 2026;
+// Withdrawn). Nothing else is one.
 const REQ_STATUS=Object.assign(Object.create(null),{Requested:"Requested",Filed:"Filed",
-  Withdrawn:"Withdrawn"});
+  Introduced:"Introduced",Withdrawn:"Withdrawn"});
 // A request's own word, and "" for a row with no chip that is not a request.
 function statusCat(b){
   const c=b&&b.chip;
@@ -3277,12 +3279,19 @@ function wantedTerm(m,now=new Date()){
 // THE SEARCH OPENS ON NEXT SESSION'S BILL REQUESTS AFTER THE ELECTION (the
 // owner, 11 November 2026): from the day after the general election -- the
 // Tuesday after the first Monday in November of the year before the
-// requests' own -- until the new term's bills are published, when the
-// newest term in meta.json is the requests' own session and the rule stops
-// by itself, with no date to keep. Before the election the search opens on
-// the current term as it always has. The day is Concord's (nhDay), as a
-// deadline's is; the build's day is in what meta.json lists (its terms, the
-// requests and how many stand). An address that names a term is read first.
+// requests' own -- until the new term's bills are introduced, with no date to
+// keep. THROUGH DECEMBER, NOT TO THE FIRST BILL (the owner, 17 November 2026:
+// requests "do not become bills until the first session in January when they
+// are introduced and referred to committees"): the new term's first bills are
+// in meta.json from Organization Day, numbered as their texts are signed off,
+// and until then the rule stopped there; it now holds while the newest term
+// is the requests' own and none of them has been introduced on a day of
+// their own year (meta.requests.introduced_in_session, build_lsrs; the
+// resolutions Organization Day adopts are the December before). Before the
+// election the search opens on the current term as it always has. The day is
+// Concord's (nhDay), as a deadline's is; the build's day is in what meta.json
+// lists (its terms, the requests and how many stand). An address that names a
+// term is read first.
 function electionDayOf(y){
   const dow=new Date(Date.UTC(y,10,1)).getUTCDay();
   return `${y}-11-${String(2+(8-dow)%7).padStart(2,"0")}`;
@@ -3295,8 +3304,8 @@ function defaultTerm(m,now=new Date()){
 function requestsFirst(m,now=new Date()){
   const R=m&&m.requests, terms=(m&&m.terms)||[];
   if(!R||!R.term||!terms.length||!((+R.n||0)-(+R.withdrawn||0)>0))return false;
-  const ry=+(R.year||String(R.term).slice(0,4));
-  if(!(ry>+String(terms[0]).slice(0,4)))return false;
+  const ry=+(R.year||String(R.term).slice(0,4)),t0=+String(terms[0]).slice(0,4);
+  if(ry<t0||(ry===t0&&(+R.introduced_in_session||0)>0))return false;
   return nhDay(now)>electionDayOf(ry-1);
 }
 // A term already in IDX is never fetched again. All terms is every one of
@@ -8288,8 +8297,9 @@ const termOfYear=y=>{
 /* A BILL REQUEST'S CARD, a bill card (lsrCardHtml, below) drawn from the
    request's row alone: a request has a number, a title, a prime sponsor, the
    body it will be filed in and, once they accept, its co-sponsors -- no
-   committee, hearing, vote or text yet -- so its card opens onto Summary,
-   Sponsors and History, and its rail has three stops of its own. */
+   committee, hearing or vote yet, and its text only once filed -- so its card
+   opens onto Summary, Bill Text once the night has read it, Sponsors and
+   History, and its rail has three stops of its own. */
 // A BILL REQUEST CAN BE FOLLOWED BY EMAIL (the person, 22 October 2026):
 // until it is drafted, when the follow moves onto its bill (build_feeds,
 // BILL REQUESTS). Its Follow is on its own page, after Cite, as a bill's is
@@ -8313,16 +8323,44 @@ function followUp(){
 const lsrChip=c=>pchip({display_full:c.label||c.name||"",
   party:c.party||(/\(([A-Z])\b/.exec(c.label||"")||[])[1]||"",slug:c.slug||""});
 // The tabs a request has (the numbers are a bill's own, which a tab's
-// identity is): Summary; Sponsors, where co-sponsors have accepted; History,
-// where an earlier bill has the same title.
+// identity is): Summary; Bill Text, once the night has read its text (17
+// November 2026); Sponsors, where co-sponsors have accepted; History, where an
+// earlier bill has the same title.
 function lsrTabs(b){
   const hist=b.history||[],cos=b.cosponsors||[];
-  return [["0","Summary",0]].concat(cos.length?[["4","Sponsors",cos.length+1]]:[],
+  return [["0","Summary",0]].concat(b.text_on_file?[["6","Bill Text",0]]:[],
+    cos.length?[["4","Sponsors",cos.length+1]]:[],
     hist.length?[["7","History",hist.length]]:[]);
+}
+// A REQUEST'S TEXT ON ITS CARD (the owner, 17 November 2026: "View the text
+// that shows the granite record tab once we've imported the text"): what the
+// night read off the PDF the request list links. The row does not carry it --
+// a text is long and the list is not -- so the card fetches it once, from the
+// request's own file in the data API (api_records: /api/requests/<year>/
+// <number>.json, its "text"), when it draws the tab, and fills the tab when it
+// comes. The words and the block are the request page's (build_request_pages.
+// text_pane).
+const LSRTEXT=new Map();
+function lsrTextPane(b){
+  const num=String(b.address||"").split("/").pop(),got=LSRTEXT.get(num);
+  const pdf=b.text_pdf?`<p class="src"><a href="${esc(b.text_pdf)}" target="_blank" rel="noopener">The PDF at the General Court</a></p>`:"";
+  const head=`<p class="btwhat">The text as the General Court publishes it with this request, read by machine from its PDF: the PDF is the document.</p>`;
+  if(typeof got==="string")return head+(got?`<pre class="vtext" translate="no">${esc(got)}</pre>`
+    :`<p class="note">The text could not be loaded here.</p>`)+pdf;
+  const m=/^(\d{4})-(\d+)$/.exec(num);
+  if(!got&&m&&typeof fetch==="function"){
+    // Asked for once (true until it comes); the tab drawn again when it does.
+    const fill=t=>{LSRTEXT.set(num,t);const p=document.getElementById(`pane_${b.id}_6`);if(p)p.innerHTML=lsrTextPane(b);};
+    LSRTEXT.set(num,true);
+    fetch(DATA(`api/requests/${m[1]}/${m[2]}.json`)).then(r=>r.ok?r.json():null)
+      .then(j=>fill(String((j&&j.text)||""))).catch(()=>fill(""));
+  }
+  return head+`<p class="src">Loading the text&hellip;</p>`+pdf;
 }
 function lsrPane(b,t){
   const cos=b.cosponsors||[],hist=b.history||[],sp=cardSponsor(b);
   const prime=sp?pchip(Object.assign({},sp,{prime:false,role:""})):"";
+  if(t==="6")return lsrTextPane(b);
   if(t==="4"){
     return `<p class="spcount">${cos.length+1} Sponsors</p>
       ${prime?`<h2 class="sech spgrp">Prime Sponsor</h2><div class="chosen">${prime}</div>`:""}
@@ -8339,7 +8377,10 @@ function lsrPane(b,t){
   // pages speak for themselves"): the chip has the status, the byline the kind,
   // the prime sponsor and the topic; what is left is the co-sponsors and the way
   // on to the request's own page.
+  // And the bill it was filed as, while it is still a request (the owner, 17
+  // November 2026: "Drafted and filed as HB123 sounds fine").
   return `${cos.length?`<p><b>${cos.length>1?"Co-Sponsors":"Co-Sponsor"}:</b> ${cos.map(lsrChip).join(" ")}</p>`:""}
+    ${b.introduced&&!b.moved_to?`<p><b>Filed As:</b> ${b.bill_at?`<a href="${esc(b.bill_at)}">${esc(b.introduced)}</a>`:esc(b.introduced)}</p>`:""}
     ${b.address?`<p><a href="${esc(b.moved_to||b.address)}">${b.moved_to?"Read the bill":"Open the request’s own page"}</a></p>`:""}`;
 }
 // WHAT A REQUEST'S CARD OPENS ONTO: the bill card's tab strip and panes, from
@@ -9498,8 +9539,12 @@ function renderMemberHead(m){
   //     member-elect's page is ("Benjamin Baroody (D)", "Member-elect of the
   //     New Hampshire House of Representatives, Hillsborough 16.", the
   //     election's line), the earlier seat kept in the facts below;
-  //   chamber -- a sitting member elected to the other chamber: still headed
-  //     by the seat they hold now, with the same sentence beside it.
+  //   chamber -- a sitting member elected to the other chamber: headed as
+  //     that chamber's member-elect, "Senator “Elect” Laura Telerski (D)"
+  //     (the owner, 17 November 2026: 'link the new member pages as Sen.
+  //     "Elect" Laura Telerski for the title but connect it to their house
+  //     record as well'), the page their House record, its line the seat
+  //     they hold now, named by its office, with the same sentence beside it.
   // Both end on the day they take office, by the reader's own clock as well
   // as the build's (components.js's untilAttrs): from then on the page is
   // the member's as before.
@@ -9512,7 +9557,7 @@ function renderMemberHead(m){
   // TITLED AS A MEMBER-ELECT (the owner, 16 November 2026): GR_ELECT's title,
   // "Rep. “Elect”", which fullTitle spells out, as build_legislator_pages.
   // elect_heading heads a new member-elect's page.
-  const named=retPage?(EG.title?String(EG.title)+" ":"")+String(EG.name||plain)+(EG.party?` (${EG.party})`:"")
+  const named=(retPage||chamPage)?(EG.title?String(EG.title)+" ":"")+String(EG.name||plain)+(EG.party?` (${EG.party})`:"")
     :former&&/^(Rep|Sen)\. /.test(plain)?"Former "+plain:plain;
   // The party from the record's own label where the file names none: "(R -
   // Rock 16)" is a Republican's. ON A RETURNING MEMBER'S PAGE, THE ELECTION'S
@@ -9530,9 +9575,14 @@ function renderMemberHead(m){
   // and a place the roster spells otherwise than the district maps stays words.
   const tp=window.GR_TOWNS||{};
   const place=t=>tp[t]?`<a href="${esc(tp[t])}">${esc(t)}</a>`:esc(t);
+  // A member elected to the other chamber: the seat they hold now named by its
+  // office, as the record they are joined to has it ("Representative for
+  // Hillsborough District 11"), since the heading names the other chamber.
+  const nowOffice=chamPage?(m.chamber==="S"?"Senator for ":"Representative for "):"";
   const line=(retPage?[esc(EG.where)]:[m.office?`<b>${esc(m.office)}</b>`:"",esc(PARTY_WORD[code]||m.party||""),
     // The seat's number held to its name: "Senate District" over "14" at 768px.
-    esc(seatName(m)).replace(/ (?=\S+$)/,"&nbsp;"),former?"":joinList(towns.map(place),"and"),
+    (seatName(m)?esc(nowOffice):"")+esc(seatName(m)).replace(/ (?=\S+$)/,"&nbsp;"),
+    former?"":joinList(towns.map(place),"and"),
     chamPage?esc(EG.where):""])
     .filter(Boolean)
     // Each dot holds to the words before it, so a wrapped line never opens on

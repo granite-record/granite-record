@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of build checks with no module under test, for a person to sort.
 
@@ -457,10 +457,13 @@ def _api_records(AR, AS, AP, SR, RSA, BR):
                                    {"key": "2027-2028/HB1", "prime": True}], m
         assert made["members/101.json"] == {"format": 1, "person": "101", "replaced_by": "100",
                                             "sponsored": []}, made["members/101.json"]
+        # Its text, in its own file alone, null until the night has read it (17 November 2026).
         assert made["requests/2027/0001.json"] == {
             "format": 1, "lsr": "2027-0001", "year": 2027, "title": "a request", "sponsor": "A Member",
             "cosponsors": ["B. Two"], "body": "HB", "status": "Filed", "withdrawn": False,
-            "bill": "2027-2028/HB1"}, made["requests/2027/0001.json"]
+            "bill": "2027-2028/HB1", "text": None, "text_pdf": ""}, made["requests/2027/0001.json"]
+        assert "text" not in made["requests/2027/index.json"]["requests"][0], \
+            "the rows of the requests carry their text"
         assert made["index.json"]["sitting_term"] == "2027-2028" and \
             made["index.json"]["requests_year"] == 2027, made["index.json"]
         assert any("api/laws/" in s and "not written" in s for s in said), said
@@ -2412,6 +2415,8 @@ def _offline_modes_ask_nobody():
     import time as _time
     here = Path(".").resolve()
     runs = [("fetch_lsrs.py", ["--parse"], []),
+            # The request texts (17 November 2026): reading the PDFs asks nobody, the drain does.
+            ("fetch_lsrs.py", ["--read-texts"], ["--texts"]),
             ("fetch_members.py", ["--reparse"], []),
             ("fetch_session.py", ["--year", "2020", "--reparse", "--max-lsr", "3"],
              ["--year", "2020", "--max-lsr", "3"]),
