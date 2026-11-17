@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.62
+// GRANITE_VERSION: 2026-09-16.64
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -44,7 +44,7 @@
 
    The control is built here rather than in the two files that write the
    header, so there is one of it. */
-const FIND={rows:null,loading:null,words:null};
+const FIND={rows:null,loading:null,words:null,go:{}};
 /* THE PAGE'S WORDS (i18n.py): components.js's tr(), which every page loads
    before this file. Where it is not there -- a harness that runs this file
    alone -- the English, with {name} filled. */
@@ -255,9 +255,10 @@ function findBill(q){
    number in the searchbar will pull up the bill number from this term that
    matches like the legislators do when you type their name rather than first
    taking you to the general page"). The bill of this term with the number
-   typed is the first row, one click to its page -- Return opens /search,
-   which lists the number in every term, since 8 November 2026 -- and the numbers that
-   start with it follow as the reader types -- "HB 14" offers HB 14, then
+   typed is the first row, one click to its page -- and Return's again
+   since 17 November 2026 (ONE CLEAR DESTINATION, findClear), where from 8
+   November it opened /search, which lists the number in every term -- and
+   the numbers that start with it follow as the reader types -- "HB 14" offers HB 14, then
    HB 140 to HB 149 and on -- the way a name is offered from its first
    letters. It reads the current term's index, which a number used to cost
    nothing; a number this term does not have is answered by the rows below
@@ -972,12 +973,14 @@ function findOffers(q,allTerms){
 // title can run past 600 characters, and a row is read at a glance. `dated`
 // names the year as the bill's own page does -- "SB 412 (2000)" -- for a
 // list that crosses terms, where the number alone names nineteen bills.
-function findBillRow(b,q,dated,why){
+// `go`, the panel's alone: the name the row is announced by where it is the
+// one Return opens (findClear, _fgoAttr).
+function findBillRow(b,q,dated,why,go){
   const y=String(b.year||String(b.term||"").slice(0,4));
   let t=String(b.title||"");
   const cut=t.length>160;
   if(cut)t=t.slice(0,157).replace(/\s+\S*$/,"");
-  return `<a href="/bill/${encodeURIComponent(y)}/${encodeURIComponent(String(b.id).toLowerCase())}">
+  return `<a href="/bill/${encodeURIComponent(y)}/${encodeURIComponent(String(b.id).toLowerCase())}"${_fgoAttr(go)}>
     <span class="fl1"><span class="fname">${_fesc(b.n||b.id)}${dated&&y?` (${_fesc(y)})`:""}</span>
     ${chip(tr("find.kind.bill","Bill"),"fkind")}</span>
     ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}
@@ -997,8 +1000,9 @@ function findIsRequest(s){
   return A&&A.requestNumber?!!A.requestNumber(s,false):FLSR.test(s);
 }
 // A request's row, drawn as a bill's: its number, its kind, its title. It
-// links the request's own page, or the bill's once it is one.
-function findRequestRow(b,term,q){
+// links the request's own page, or the bill's once it is one. `go` as a
+// bill's row has it.
+function findRequestRow(b,term,q,go){
   let t=String(b.title||"");
   const cut=t.length>160;
   if(cut)t=t.slice(0,157).replace(/\s+\S*$/,"");
@@ -1009,7 +1013,7 @@ function findRequestRow(b,term,q){
   const to=b.moved_to||b.address||"request/"+String(b.n||b.id).replace(/^LSR\s*/i,"");
   // Its sponsor beside the title, as a card on /bills has it.
   const who=String(b.sponsor_label||b.sponsor||"");
-  return `<a href="/${_fesc(to)}">
+  return `<a href="/${_fesc(to)}"${_fgoAttr(go)}>
     <span class="fl1"><span class="fname">${_fesc(b.n||b.id)}</span>
     ${chip(tr("find.kind.request","Bill Request"),"fkind")}</span>
     ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}
@@ -1069,6 +1073,155 @@ function _ffold(rows,s){
   return rows.filter(r=>r[0]!=="ward"||!cities.has(String(r[1]).replace(/, Ward \S+$/,"")));
 }
 
+/* A HOW-TO SEARCH PUTS ITS GUIDES FIRST (the owner, 17 November 2026: "if
+   they type things like how to vote, it should link them to the guides first
+   as a higher priority than bills that are generally about voting"). A
+   search asks how to do a guide's task when the guide has every word of it
+   as a whole word of its name (_fwhole), and it is put
+     - as a question: its first word is how, where, who, what, when, which,
+       why or can -- "how to vote", "where do i vote", "who represents me";
+     - or as the task, in the guide's own words: find.json's sixth field for
+       a guide, its task and the phrases guides.ASKED says ask for it
+       (build_indexes, guides.asked_words). It is one of them -- "testify",
+       "register to vote", "vote" -- or it starts as one of them starts and
+       every word of it is a whole word of the guide's title or of those
+       phrases: "contact my representative", "report a pothole", "get a
+       fishing license". "a", "the", "my" and the like are no part of the
+       comparison: "renew license" is "renew my license".
+   A search that names a subject asks nothing -- "minimum wage", "property
+   tax", "absentee ballot", "voting" -- and keeps the bills first (Alice, 8
+   November 2026: "minimum wage" led with a guide above its seven bills); so
+   does one word that only begins a task, "report" or "work", a subject as
+   often as not, and "report card", whose "card" is a gift card's. The panel
+   draws the guides a search asks for above the bills, after the members,
+   towns, committees, subjects and pages whose name it is (findDraw); /search
+   lists them as it did. */
+const FASK=new Set(["how","where","who","what","when","which","why","can"]);
+const FFILL=new Set(["a","an","the","my","your","our"]);
+function findAsks(r,s){
+  if(!r||r[0]!=="guide"||!_fwhole(r,s))return false;
+  const words=_fwords(s);
+  if(FASK.has(words[0]))return true;
+  const bare=w=>w.filter(x=>!FFILL.has(x));
+  const said=String(r[5]||"").split(" · ").map(p=>bare(_fwords(p))).filter(p=>p.length);
+  const q=bare(words);
+  if(!q.length)return false;
+  if(said.some(p=>p.length===q.length&&p.every((w,i)=>w===q[i])))return true;
+  if(q.length<2||!said.some(p=>p[0]===q[0]))return false;
+  const own=_ftitled(_fboth(`${_fbare(r[1])} ${r[5]||""}`.toLowerCase()));
+  return words.every(w=>_fisword(own,w));
+}
+
+/* ONE CLEAR DESTINATION, AND RETURN OPENS IT (the owner, 17 November 2026:
+   "if there is only one result matching their search like if they type in a
+   bill number and it shows that bill from the most recent term as the top
+   result, then pressing enter would take you right to that page. Same goes
+   for if they typed in an official's name with only one result, a district,
+   town, etc."). Return in the header's box and the home page's opens the
+   panel's first row where the search names it with certainty, and /search,
+   every result, where it does not, as it always did from 8 November 2026.
+   Certain is one of five things, and the row is the one the panel draws
+   first:
+     1. A NUMBER THAT NAMES ONE RECORD: a bill number the newest term has
+        ("hb 1" is HB 1 of 2025-2026, which the panel already put first), a
+        bill request's number one request has, a statute's number the Laws
+        pages have ("RSA 91-A:4").
+     2. THE ONLY ANSWER: everything counted -- the bills at none, no request,
+        the Laws pages' titles looked through -- and one row found, a city's
+        wards folded into it as the panel folds them: "alice wade",
+        "shaheen", "glossary".
+     3. A PERSON, A PLACE OR A PAGE BY ITS WHOLE NAME: what was typed is the
+        whole name of the first row -- a member's, a member-elect's or a
+        former member's without the title and the seat, a town's, a ward's, a
+        page of this site's -- and no other row has every word typed as a
+        whole word of its name (_fwhole). "concord" is the city, whatever
+        bills name it, and "sharon carson" the senator; "litchfield" is not,
+        for Rep. Melissa Litchfield has the word too, nor "hampton", for
+        North Hampton has it.
+     4. A HOW-TO SEARCH ONE GUIDE ANSWERS (findAsks): "how to vote".
+     5. A SEAT ONE MEMBER HOLDS: "sd22", "straf 15" -- the sitting member or
+        member-elect whose seat it is, where there is one; those who held it
+        before are its history, not other answers.
+   Anything else has more than one answer and opens /search: "housing" (a
+   committee, a subject and the bills), "carson" (the senator and two former
+   members), "minimum wage". A committee or a subject by its whole name is
+   not certain: committees are named for subjects, and "housing" opened the
+   House Housing Committee for a reader who wanted the bills (16 October
+   2026). Nor is a search whose rows, bills or requests are still on their
+   way: what is not yet known is not certain.
+   {bill}, {req} or {row}, the bill, the request or find.json's row, or
+   null. */
+function findClear(s,num,N,R,B,found,named,asked,after,rest){
+  const id=x=>String(x||"").replace(/\s+/g,"").toUpperCase();
+  if(num)return N&&N.state==="ready"&&N.top.length&&id(N.top[0].id)===id(num)?{bill:N.top[0]}:null;
+  if(R&&(R.state!=="ready"||R.top.length))return R.state==="ready"&&R.n===1?{req:R.top[0]}:null;
+  if(!FIND.rows)return null;
+  const none=!B||(B.state==="ready"&&!B.n);
+  const first=named[0]||asked[0]||(none?after[0]||rest[0]:null);
+  if(!first)return null;
+  if(first[0]==="law"&&!findLawIsTitle(first))return {row:first};
+  if(none&&!findLawsWanted(s)&&found.length===1)return {row:first};
+  if(/^(legislator|elect|former|town|ward|page)$/.test(first[0])&&_fsame(first,s)
+     &&!found.some(r=>r!==first&&_fwhole(r,s)))return {row:first};
+  if(asked.length===1&&first===asked[0])return {row:first};
+  const seat=_fseat(first);
+  if(seat&&seat===_fapos(s).toLowerCase().replace(/\s+/g,"")
+     &&!found.some(r=>r!==first&&_fseat(r)===seat))return {row:first};
+  return null;
+}
+// The words of a row's whole name as a reader types it: a member's without
+// the title or the seat, a former member's without "Former"; a town's, a
+// ward's or a page's as they are. Twice where an apostrophe is in it, left
+// out and read as a space, as findMatch reads a name (_fboth).
+const FTITLE_WORDS=new Set(["former","rep","sen","elect"]);
+function _fnameWords(r){
+  let n=_fbare(String(r[1]||""));
+  if(/^(legislator|elect|former)$/.test(r[0]))n=n.replace(/\s*\([^()]*\)\s*$/,"");
+  const cut=w=>{while(w.length&&FTITLE_WORDS.has(w[0]))w.shift();return w.join(" ");};
+  return [cut(_fwords(n)),cut(_fwords(n.replace(/['‘’ʼ]/g," ")))];
+}
+// Whether what was typed is the row's whole name: "sharon carson", "sen.
+// sharon carson" and "senator sharon carson" are Sen. Sharon Carson's;
+// "carson" is not.
+function _fsame(r,s){
+  const w=_fwords(s);
+  while(w.length&&FTITLE_WORDS.has(w[0]))w.shift();
+  return !!w.length&&_fnameWords(r).includes(w.join(" "));
+}
+// The seat in a sitting member's or a member-elect's row, as one word: "SD22"
+// is "sd22", "Hills 29" "hills29"; "" for any other row.
+function _fseat(r){
+  const m=r&&(r[0]==="legislator"||r[0]==="elect")?/\([^()]* - ([^()]+)\)\s*$/.exec(String(r[1]||"")):null;
+  return m?m[1].toLowerCase().replace(/\s+/g,""):"";
+}
+// The row Return opens, marked with the name it is announced by (findSay),
+// which the stylesheet marks too.
+const _fgoAttr=go=>go?` data-go="${_fesc(go)}"`:"";
+const _funesc=s=>String(s).replace(/&(amp|lt|gt|quot);/g,(m,e)=>({amp:"&",lt:"<",gt:">",quot:'"'})[e]);
+// Where Return in a box goes: the address of the row its last drawing found
+// certain (findClear), while the box holds what was drawn; "" where none,
+// which is /search.
+function findGo(q,ids){
+  const g=FIND.go[(ids||FIND_IDS).out];
+  return g&&g.q===String(q||"").trim()?g.href:"";
+}
+/* THE ARROWS CHOOSE A ROW (17 November 2026). Down from the box goes to the
+   first row, and down and up go through the rows and back up to the box: the
+   focus itself moves, so a screen reader says the row it is on, and Return
+   there is the link's own, opening that row whatever the box would open.
+   Both boxes: the header's (findMount) and the home page's (build_pages,
+   HOME_JS). true where it moved the focus. */
+function findArrow(e,box,out){
+  if(!box||!out||out.hidden||(e.key!=="ArrowDown"&&e.key!=="ArrowUp"))return false;
+  const rows=Array.from(out.querySelectorAll("a[href],button"));
+  const at=rows.indexOf(document.activeElement);
+  const to=at<0?(e.key==="ArrowDown"&&document.activeElement===box?rows[0]:null)
+    :e.key==="ArrowDown"?rows[at+1]||rows[at]:rows[at-1]||box;
+  if(!to)return false;
+  e.preventDefault();to.focus();
+  return true;
+}
+
 function findDraw(q,ids){
   ids=ids||FIND_IDS;
   const out=document.getElementById(ids.out);
@@ -1076,11 +1229,15 @@ function findDraw(q,ids){
   const s=(q||"").trim();
   const clr=ids.clear?document.getElementById(ids.clear):null;
   if(clr)clr.hidden=!s;
+  // Where Return goes from this box: nowhere of its own until this drawing
+  // finds the one clear destination (findClear, findGo).
+  FIND.go[ids.out]=null;
   if(!s){out.innerHTML=`<p class="fnote">${tr("find.type","Type a legislator, a committee, a town, a subject, a bill number or words from a bill&rsquo;s title.")}</p>`;
     findSay("",ids);return;}
   const num=findBill(s);
-  // The panel's eight, a city's wards folded into it (_ffold).
-  const rows=_ffold(findMatch(s,Infinity),s).slice(0,8);
+  // The panel's eight, a city's wards folded into it (_ffold), from every
+  // row found, which says whether Return has one to open (findClear).
+  const found=_ffold(findMatch(s,Infinity),s),rows=found.slice(0,8);
   // A statute's number: the Laws pages' list of chapters, once, and the
   // panel drawn again with its row when it is here (findLawRow).
   const law=findLawRow(s);
@@ -1117,7 +1274,9 @@ function findDraw(q,ids){
   const all=num?`<a class="fall" href="/bills?q=${encodeURIComponent(num)}">
     <span class="fl1"><span class="fname">${_fesc(num)}</span></span>
     <span class="fwhat">${tr("find.open_number","open this bill number in the bill search")}</span></a>`:every;
-  const row=r=>`<a href="${_fesc(_froot(r[3]))}">
+  // The row Return opens, where there is one (findClear): marked.
+  let go=null;
+  const row=r=>`<a href="${_fesc(_froot(r[3]))}"${_fgoAttr(go&&go.row===r?findName(r):"")}>
       <span class="fl1"><span class="fname">${_fmark(findName(r),s)}</span>
       ${chip(findKind(r),"fkind")}</span>
       ${findWhat(r,s)?`<span class="fwhat">${_fesc(findWhat(r,s))}</span>`:""}</a>`;
@@ -1151,12 +1310,15 @@ function findDraw(q,ids){
   // straight after the bills, where there are any, and leads where there are
   // none ("renew my license"); the members, committees, towns and subjects
   // keep their place above the bills.
+  // BUT A SEARCH THAT ASKS HOW PUTS ITS GUIDES ABOVE THE BILLS (the owner,
+  // 17 November 2026; findAsks): "how to vote", "register to vote",
+  // "testify", under the names typed and above the bills on the subject.
   const howto=r=>r[0]==="guide"||r[0]==="learn";
   const whole=r=>!_fgone(r)&&_fwhole(r,s);
   const named=rows.filter(r=>(r[0]==="law"&&!findLawIsTitle(r))||(!howto(r)&&!findLawIsTitle(r)&&whole(r)));
-  const after=rows.filter(r=>howto(r)&&whole(r));
-  const list=named.map(row).join("")+bills+after.map(row).join("")
-    +rows.filter(r=>!named.includes(r)&&!after.includes(r)).map(row).join("");
+  const asked=rows.filter(r=>r[0]==="guide"&&whole(r)&&findAsks(r,s));
+  const after=rows.filter(r=>howto(r)&&whole(r)&&!asked.includes(r));
+  const rest=rows.filter(r=>!named.includes(r)&&!asked.includes(r)&&!after.includes(r));
   // "No matching results." -- the person's words -- only when nothing here
   // and no bill matches; "Did you mean" only when no bill does either
   // ("voting" was offered "zoning" over 141 bills). Its guesses are a name
@@ -1176,7 +1338,10 @@ function findDraw(q,ids){
       const box=document.getElementById(ids.box);
       if(box)findDraw(box.value,ids);});
   }
-  const req=R&&R.state==="ready"?R.top.map(b=>findRequestRow(b,R.term,s)).join(""):"";
+  go=findClear(s,num,N,R,B,found,named,asked,after,rest);
+  const list=named.map(row).join("")+asked.map(row).join("")+bills+after.map(row).join("")
+    +rest.map(row).join("");
+  const req=R&&R.state==="ready"?R.top.map(b=>findRequestRow(b,R.term,s,go&&go.req===b?b.n||b.id:"")).join(""):"";
   let tail="";
   if(!rows.length&&!num&&!req&&!(R&&R.state==="loading")&&!(law&&law.loading)
      &&(!B||(counted&&!B.n)||B.state==="failed")){
@@ -1195,8 +1360,13 @@ function findDraw(q,ids){
     if(none||did.length)tail=`<p class="fnote"${none?" data-none":""}>${none}${did.length
       ?`${none?" ":""}${tr("find.did_you_mean","Did you mean {words}?",{words:did.join(" "+tr("find.or","or")+" ")})}`:""}</p>`;
   }
-  const own=N&&N.state==="ready"?N.top.map(b=>findBillRow(b,s,false)).join(""):"";
-  out.innerHTML=num?own+all+list+every+votes+tail:req+list+all+votes+tail;
+  const own=N&&N.state==="ready"?N.top.map(b=>findBillRow(b,s,false,null,go&&go.bill===b?b.n||b.id:"")).join(""):"";
+  const html=num?own+all+list+every+votes+tail:req+list+all+votes+tail;
+  out.innerHTML=html;
+  // Where Return goes from this box while it holds what was typed: the
+  // marked row's address.
+  const at=/<a href="([^"]*)" data-go="/.exec(html);
+  FIND.go[ids.out]=at?{q:s,href:_funesc(at[1])}:null;
   findSay(out.innerHTML,ids);
 }
 
@@ -1209,6 +1379,9 @@ function findDraw(q,ids){
 // result, and is not counted; while the bills are still being counted and
 // nothing else matches, nothing is said. Read off the markup just written,
 // which is the list as the reader has it.
+// AND THE ROW RETURN OPENS, BY ITS NAME (findClear, 17 November 2026): "2
+// results. Press Enter to open HB 1-A.", so that Return does not take a
+// reader who cannot see the panel anywhere they were not told of.
 function findSay(html,ids){
   const say=document.getElementById((ids||FIND_IDS).say);
   if(!say)return;
@@ -1216,8 +1389,10 @@ function findSay(html,ids){
   // The doors that leave the panel (every result, the votes) are not results.
   const doors=(html.match(/data-every/g)||[]).length||(/See all search results for/.test(html)?1:0);
   const n=(html.match(/<a\s/g)||[]).length-doors;
-  const text=n>0?(n===1?tr("find.one_result","1 result"):tr("find.n_results","{n} results",{n}))
-    :/data-none|No matching results/.test(html)?tr("find.none","No matching results."):"";
+  const go=/\sdata-go="([^"]*)"/.exec(html);
+  const text=(n>0?(n===1?tr("find.one_result","1 result"):tr("find.n_results","{n} results",{n}))
+    :/data-none|No matching results/.test(html)?tr("find.none","No matching results."):"")
+    +(n>0&&go?". "+tr("find.enter_opens","Press Enter to open {name}.",{name:_funesc(go[1])}):"");
   if(say.textContent!==text)say.textContent=text;
 }
 
@@ -1307,16 +1482,22 @@ function findMount(){
     e.stopPropagation();
     box.value=d.dataset.find||"";findDraw(box.value);box.focus();
   });
+  const list=panel.querySelector("#findout");
   box.addEventListener("keydown",e=>{
     if(e.key==="Escape"){shut();btn.focus();}
-    // RETURN OPENS EVERY RESULT (Alice, 8 November 2026): /search on what
-    // was typed, a bill number too, which /search lists in every term. It
-    // took the first row, and the first row for "minimum wage" was a guide.
-    // A row is opened by clicking it, or by Tab to it and Return there,
-    // which is the link's own; the panel has no row chosen by the arrows.
+    if(findArrow(e,box,list))return;
+    // RETURN OPENS THE ONE CLEAR DESTINATION, OR EVERY RESULT (the owner, 17
+    // November 2026): the row findClear found certain, which the panel
+    // marks and its status line names -- this term's bill for its number, a
+    // member, a town, a seat, a how-to guide -- and /search on what was
+    // typed for anything else, as since 8 November 2026 (Alice: Return took
+    // the first row, and the first row for "minimum wage" was a guide). A
+    // row chosen with the arrows (findArrow), or by Tab, is opened by
+    // Return there, which is the link's own.
     if(e.key==="Enter"){const q=box.value.trim();
-      if(q){e.preventDefault();location.href=((window.GR_HREFS||{})["search.html"]||"/search")+"?q="+_fenc(q);}}
+      if(q){e.preventDefault();location.href=findGo(q)||((window.GR_HREFS||{})["search.html"]||"/search")+"?q="+_fenc(q);}}
   });
+  if(list)list.addEventListener("keydown",e=>findArrow(e,box,list));
   // A WAY OUT THAT IS NOT THE SCRIM. On a phone the sheet covers the page and
   // the only way back was to tap the dimmed strip above it or press Escape --
   // neither of which a thumb goes looking for. Shown only at sheet widths; on

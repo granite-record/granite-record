@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of Learn, the guides, civics and the numbers pages.
 
@@ -153,7 +153,9 @@ def _find_guides(G, civics, BP):
     (_fnamed), so a reader typing "renew my license" or "testify" meets the
     guide first among the names (findMatch). Since 8 November 2026 the panel
     and /search draw the guides straight after the bills (Alice: "minimum
-    wage" led with a guide above its seven bills), which _search_polish holds;
+    wage" led with a guide above its seven bills), which _search_polish holds,
+    but for a search that asks how, whose guides the panel puts above the
+    bills since 17 November 2026 (the owner; _search_how_to);
     /search's group of them is drawn with the bills. Here the
     cases of tests/search_cases.json's "find" run through find.js over rows
     made the same way, with a member, a town, a subject, the Learn pages and

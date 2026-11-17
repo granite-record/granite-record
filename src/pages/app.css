@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.396 */
+/* GRANITE_VERSION: 2026-09-07.397 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1091,6 +1091,12 @@ border-radius:var(--r-in);color:var(--ink);text-decoration:none;
 border-bottom:1px solid var(--rule)}
 .findout a:last-child{border-bottom:0}
 .findout a:hover,.findout a:focus-visible{background:var(--wash)}
+/* THE ROW RETURN OPENS (the owner, 17 November 2026): the one clear
+   destination find.js marks (findClear, data-go) is drawn as a row under the
+   pointer is, while the box Return is pressed in has the focus -- the
+   header's, and the home page's -- so that where Return goes can be seen. A
+   row the arrows choose has the focus itself, and Return there is its own. */
+:is(.findin:has(#findq:focus),.searchbig:has(#hq:focus)) .findout a[data-go]{background:var(--wash)}
 .findout .fl1{display:flex;align-items:baseline;gap:var(--sp-3);
 flex-wrap:wrap;min-width:0}
 /* The kind, after the name and on its baseline: the neutral chip (SHARED,

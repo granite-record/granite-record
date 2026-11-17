@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.10
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -1841,7 +1841,9 @@ def _search_reads_typed(BP):
     # Its row opens the request's own page, /request/2027-0002 (11 November
     # 2026), in every way the number is typed; a bare "0002", a year that is
     # not the requests' and a number too short for a two-digit year are none.
-    row = '<a href="/request/2027-0002">'
+    # The row is the one Return opens, and marked so since 17 November 2026
+    # (data-go, _search_enter).
+    row = '<a href="/request/2027-0002"'
     for q in ("LSR 2027-0002", "2027-0002", "LSR 27-0002", "27-0002", "LSR2027-0002",
               "lsr 2027 0002"):
         h = P["panel"][q]
@@ -3366,8 +3368,9 @@ def _css_media_blocks(css):
 
 @check("frontend", "the bill search on All Terms runs a term at a time under the term's heading by "
        "best match, and opens on the newest action with no words; Oldest action is Most recent "
-       "action reversed; the guides follow the bills in the header's panel and on /search; "
-       "Return opens /search; the requests' note is Alice's; and a phone puts the box first",
+       "action reversed; the guides follow a subject's bills in the header's panel and on "
+       "/search; Return opens /search on a search of more than one answer; the requests' note "
+       "is Alice's; and a phone puts the box first",
        needs=("build_pages",))
 def _search_polish(BP):
     """Alice's answers of 8 November 2026, five changes and one more:
@@ -3383,6 +3386,11 @@ def _search_polish(BP):
        wage" led with the guide to rights at work above its seven bills.
     3. Return in the header's box opens /search on what was typed, a bill's
        number too, and not the panel's first row.
+    Since 17 November 2026 (the owner) a search that asks how lists its
+    guides above the bills in the panel (_search_how_to), and Return opens
+    the panel's first row where it is the one clear destination
+    (_search_enter); the searches here are a subject's, and Return opens
+    /search on each.
     4. On a phone the box first, then the term picker and the Sort in equal
        halves, the count on one line and what the search read under it; the
        pickers' shorter words there (fitPickers); a desktop unchanged.
@@ -3618,8 +3626,390 @@ def _search_polish(BP):
     assert not bad, "; ".join(bad)
     return "ok", ("All Terms by best match a term at a time under counted headings, the same list "
                   "as /search's; no words on All Terms opens on the newest action; Oldest action "
-                  "reversed; guides after the bills in the panel and on /search; Return opens "
-                  "/search; the note in Alice's words; a phone's row box-first with fitted pickers")
+                  "reversed; guides after a subject's bills in the panel and on /search; Return "
+                  "opens /search on these; the note in Alice's words; a phone's row box-first with "
+                  "fitted pickers")
+
+
+
+# THE HEADER'S PANEL OVER A FIXTURE (17 November 2026): find.js in node, as a
+# page without app.js loads it, over find.json's rows, a term's bills, the
+# requests and a Laws chapter, served as the site serves them.
+def _find_panel_run(BP, harness, rows, extra=None):
+    """Run a harness of the search's boxes over a fixture: the page's scripts
+    (components.js, billmatch.js and find.js, as a page without app.js loads
+    them), HOME_JS's search handlers, find.json's `rows`, a term's bills, the
+    requests and a Laws chapter (_search_how_to, _search_enter). The parsed
+    last line of its output."""
+    term = "2025-2026"
+
+    def bill(bid, n, title):
+        return {"id": bid, "n": n, "title": title, "year": 2025, "term": term, "kind": "",
+                "status": "In Committee", "chip": "", "committees": [], "committee": "",
+                "topic": "", "sponsor": "Ann Lee", "passage": "", "votedays": [], "nrc": 0,
+                "last_action": "2025-03-01"}
+    # No number but HB 1 starts with 1, and HB 900 is the only one that starts with 90.
+    bills = [bill("HB1", "HB 1-A", "making appropriations for the expenses of certain departments"),
+             bill("HB900", "HB 900", "relative to kites"),
+             bill("HB21", "HB 21", "relative to the water supply of the city of Concord"),
+             bill("HB22", "HB 22", "relative to the school calendar"),
+             bill("HB23", "HB 23", "relative to the minimum wage"),
+             bill("HB24", "HB 24", "relative to how to vote by absentee ballot"),
+             bill("HB25", "HB 25", "relative to housing"),
+             bill("HB26", "HB 26", "relative to the right to register to vote"),
+             bill("HB27", "HB 27", "requiring witnesses to testify before committees"),
+             bill("HB28", "HB 28", "relative to property tax abatements"),
+             bill("HB29", "HB 29", "relative to school report cards"),
+             bill("HB30", "HB 30", "requiring a report on road conditions"),
+             bill("HB31", "HB 31", "relative to voting machines"),
+             bill("HB35", "HB 35", "relative to the judiciary"),
+             bill("HB36", "HB 36", "establishing Alexander Hamilton day")]
+    bills += (extra or {}).get("bills", [])
+    requests = [{"id": "LSR20270002", "n": "LSR 2027-0002", "year": 2027, "term": "2027-requests",
+                 "title": "establishing a moratorium on data centers", "sponsor": "Ann Lee",
+                 "address": "request/2027-0002", "committees": [], "committee": "", "topic": "",
+                 "status": "Requested", "lsr": True}]
+    files = {"/find.json": rows,
+             "/meta.json": {"terms": [term], "topics": [],
+                            "requests": {"term": "2027-requests", "label": "2027 Bill Requests",
+                                         "year": 2027}},
+             f"/idx/{term}.json": bills, "/idx/2027-requests.json": requests,
+             "/laws/chapters.json": {"91-A": ["Access to Governmental Records and Meetings", "VI", 22,
+                                              False, ["right-to-know law"], ["Right to Know"], 0]}}
+    m = re.search(r"(const HQ=.*?)\n</script>", BP.HOME_JS, re.S)
+    assert m, "build_pages.HOME_JS no longer holds the home box's search handlers (const HQ=)"
+    root = Path(tempfile.mkdtemp(prefix="gr-enter-"))
+    try:
+        page = BP.bill_matcher_js(_source("src/pages/app.js")) + "\n" + _source("src/pages/find.js")
+        for name, text in {"stub.js": _source("tests/dom_stub.js"), "page.js": _with_components(page),
+                           "home.js": m.group(1), "go.js": harness}.items():
+            (root / name).write_text(text, encoding="utf-8")
+        (root / "go.json").write_text(json.dumps(dict({"files": files}, **(extra or {}).get("go", {}))),
+                                      encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=120)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + said[-400:]
+        return json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# A HOW-TO SEARCH (17 November 2026): the header's panel over every guide as
+# build_indexes writes its row -- its title, line, words and the words that
+# ask how (guides.asked_words) -- beside a member, a subject, the Officials
+# page and the Learn pages, and a term's bills on each subject asked about.
+_SEARCH_HOW_TO_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathname);
+  if (!(p in go.files)) return { ok: false, status: 404, json: async () => { throw new Error("404 " + p); } };
+  return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(go.files[p])) }; };
+vm.runInThisContext(fs.readFileSync("./page.js", "utf8"), { filename: "page.js" });
+const F = vm.runInThisContext("({findDraw, findRows, findBillsLoad, findLawsLoad})");
+const order = (h) => (h.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+  a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+(async () => {
+  await F.findRows(); await F.findBillsLoad(); await F.findLawsLoad();
+  const out = {};
+  for (const q of go.queries) { F.findDraw(q); out[q] = order(document.getElementById("findout").innerHTML); }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + (e && e.stack || e)); process.exit(1); });
+"""
+
+
+@check("frontend", "a search that asks how -- a question, or a guide's own task words -- lists "
+                   "the guides above the bills in the header's panel, and a search that names a "
+                   "subject keeps the bills first; find.json carries each guide's task words",
+       needs=("guides", "civics", "build_pages"))
+def _search_how_to(G, civics, BP):
+    """The owner, 17 November 2026: "if they type things like how to vote, it
+    should link them to the guides first as a higher priority than bills that
+    are generally about voting." find.js's findAsks (its comment, A HOW-TO
+    SEARCH PUTS ITS GUIDES FIRST) reads a search as asking how when a guide
+    has its every word as a whole word and it is a question, or is one of the
+    guide's task words -- its task and guides.ASKED, find.json's sixth field
+    for a guide -- or starts as one of them starts with every word in the
+    guide's title or task words. Held over every guide as build_indexes
+    writes its row: "how to vote", "where do i vote", "register to vote",
+    "testify", "contact my representative", "renew license" and "vote" list
+    their guides above the bills; "minimum wage", "property tax", "absentee
+    ballot", "voting", "report card" and "report" keep the bills first, the
+    guide after them, as Alice put it on 8 November 2026; and "who is my
+    state rep" leads with the Officials page, whose name it is, and then the
+    guide. And the data: each ASKED phrase is one of its guide's WORDS and the
+    guide has a task; asked_words is the task and those phrases;
+    build_indexes writes it as the sixth field; /search does not read it."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    import build_civics as BC
+    bad = []
+    tasks = {t["slug"]: t for _g, ts in G.TASKS for t in ts}
+    for slug, said in G.ASKED.items():
+        if slug not in tasks:
+            bad.append(f"guides.ASKED names {slug}, which no task names")
+        for p in said:
+            if p not in G.WORDS.get(slug, ()):
+                bad.append(f"guides.ASKED's {p!r} is not one of {slug}'s WORDS, so it does not find the guide")
+        if G.asked_words(slug).split(" · ")[1:] != list(said) \
+                or G.asked_words(slug).split(" · ")[0] != G.search_words(slug).split(" · ")[0]:
+            bad.append(f"asked_words({slug!r}) is {G.asked_words(slug)!r}: the task, then ASKED's words")
+    bi = _source("src/pages/build_indexes.py")
+    if 'asks = G.asked_words(p.stem) if kind == "guide" else ""' not in bi \
+            or 'S.canon(f"{folder}/{p.name}"), words] + ([asks] if asks else []))' not in bi:
+        bad.append("build_indexes no longer gives a guide's row in find.json its task words, sixth")
+    if "findAsks" in BP.SEARCH_JS:
+        bad.append("/search reads a how-to search, which stays the panel's alone")
+    assert not bad, "; ".join(bad[:4])
+    rows = []
+    for g in G.GUIDES:
+        rows.append(["guide", g["title"].replace("&rsquo;", "'"), g["blurb"], f"guides/{g['slug']}",
+                     G.search_words(g["slug"])] + ([G.asked_words(g["slug"])] if G.asked_words(g["slug"]) else []))
+    for t in civics.TOPICS:
+        kind = "guide" if t["slug"] in civics.HOW_TO else "learn"
+        r = [kind, t["title"], t["blurb"], BC.article_href(t["slug"])[:-5],
+             G.search_words(t["slug"]) if kind == "guide" else ""]
+        rows.append(r + ([G.asked_words(t["slug"])] if kind == "guide" and G.asked_words(t["slug"]) else []))
+    rows += [["legislator", "Rep. Alice Voter (D - Straf 15)", "House · Straf 15 · D", "legislator/a", ""],
+             ["topic", "Elections", "Bills on this subject", "bills?topic=Elections", ""],
+             ["page", "Officials", "Who represents your town, and the sitting roster", "officials",
+              "my senator · my representative · my rep · state rep · who is my"]]
+    first = {"how to vote": ["/guides/how-to-vote"], "where do i vote": ["/guides/how-to-vote"],
+             "register to vote": ["/guides/how-to-vote", "/guides/new-to-new-hampshire"],
+             "testify": ["/guides/attend-a-hearing", "/guides/submit-testimony", "/guides/testifying"],
+             "contact my representative": ["/guides/contact-your-legislators"],
+             "renew license": ["/guides/renew-drivers-license"], "vote": ["/guides/how-to-vote"]}
+    after = {"minimum wage": "/guides/wage-rights", "property tax": "/guides/property-tax-abatement",
+             "absentee ballot": "/guides/how-to-vote", "voting": "/guides/how-to-vote",
+             "report card": None, "report": None}
+    extra = {"bills": [{"id": "HB33", "n": "HB 33", "title": "relative to contacting a state representative",
+                        "year": 2025, "term": "2025-2026", "committees": [], "committee": "", "topic": "",
+                        "sponsor": "Ann Lee", "status": "In Committee", "kind": ""},
+                       {"id": "HB34", "n": "HB 34", "title": "relative to the renewal of a driver license",
+                        "year": 2025, "term": "2025-2026", "committees": [], "committee": "", "topic": "",
+                        "sponsor": "Ann Lee", "status": "In Committee", "kind": ""}],
+             "go": {"queries": list(first) + list(after) + ["who is my state rep"]}}
+    got = _find_panel_run(BP, _SEARCH_HOW_TO_JS, rows, extra)
+    for q, guides in first.items():
+        p = got.get(q) or []
+        bills = p.index("BILLS") if "BILLS" in p else len(p)
+        if p[:len(guides)] != guides and sorted(p[:len(guides)]) != sorted(guides):
+            bad.append(f"the panel for {q!r} runs {p[:6]}: {guides} first")
+        elif any(p.index(g) > bills for g in guides):
+            bad.append(f"the panel for {q!r} puts the bills above its guides: {p[:6]}")
+    for q, guide in after.items():
+        p = got.get(q) or []
+        if not p or p[0] != "BILLS":
+            bad.append(f"the panel for {q!r}, a subject, runs {p[:6]}: the bills first")
+        elif guide and (guide not in p or p.index(guide) < p.index("BILLS")):
+            bad.append(f"the panel for {q!r} does not list {guide} after the bills: {p[:6]}")
+    p = got.get("who is my state rep") or []
+    if p[:2] != ["/officials", "/guides/your-representatives"]:
+        bad.append(f"the panel for 'who is my state rep' runs {p[:4]}: the Officials page, then the guide")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", (f"{len(first)} searches that ask how list their guides above the bills, "
+                  f"{len(after)} that name a subject keep the bills first, a page whose name was "
+                  f"typed leads its guide; {sum(map(len, G.ASKED.values()))} task phrases of "
+                  f"{len(G.ASKED)} guides, each one of its guide's words, carried in find.json")
+
+
+# RETURN AND THE ONE CLEAR DESTINATION (17 November 2026): find.js and the
+# home page's own handlers in node, over find.json's rows, a term's bills, the
+# requests and the Laws pages' chapters as the site serves them, with the
+# bill matcher as billmatch.js carries it. Each box's Return is fired as its
+# keydown listeners hear it, and where it sent the reader is read back.
+_SEARCH_ENTER_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathname);
+  if (!(p in go.files)) return { ok: false, status: 404, json: async () => { throw new Error("404 " + p); } };
+  return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(go.files[p])) }; };
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+// The focus as a browser keeps it: on what was focused last.
+const focusable = (e) => { e.focus = () => { document.activeElement = e; }; return e; };
+// The panel's box and its list, kept: find.js asks the panel for each once and listens on them.
+const made = [], ce = document.createElement.bind(document);
+document.createElement = (t) => { const e = ce(t), kept = {};
+  e.querySelector = (q) => (kept[q] ||= focusable(ce("input"))); made.push(e); return e; };
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+vm.runInThisContext(fs.readFileSync("./page.js", "utf8"), { filename: "page.js" });
+const F = vm.runInThisContext("({findDraw, findRows, findBillsLoad, findLawsLoad, findRequestsLoad})");
+const panel = made.find(e => e.id === "findpanel");
+const box = panel.querySelector("#findq"), list = panel.querySelector("#findout");
+const say = byId("findsay"), out = byId("findout");
+const key = (el, k) => { let stopped = false; location.href = "(unchanged)";
+  for (const f of (el._on.keydown || []))
+    f({ key: k, target: el, preventDefault() { stopped = true; }, stopPropagation() {} });
+  return [location.href, stopped]; };
+const enter = (q) => { box.value = q; F.findDraw(q); const [href] = key(box, "Enter");
+  return { href, said: say.textContent, marked: (out.innerHTML.match(/ data-go="/g) || []).length }; };
+(async () => {
+  const res = { header: {}, home: {} };
+  // Before anything has come, nothing is certain.
+  res.cold = { number: enter("hb 1").href, name: enter("sharon carson").href };
+  await F.findRows(); await F.findBillsLoad(); await F.findLawsLoad(); await F.findRequestsLoad();
+  await ticks(20);
+  for (const q of go.queries) res.header[q] = enter(q);
+  // What was drawn is Return's only while the box still holds it.
+  F.findDraw("hb 1"); box.value = "hb 1 relative"; res.stale = key(box, "Enter")[0];
+  box.value = "   "; res.blank = key(box, "Enter");
+  // The arrows: down from the box to the first row, on through them, and up to the box.
+  const rows = [0, 1, 2].map(() => focusable(ce("a")));
+  list.querySelectorAll = () => rows;
+  F.findDraw("concord"); box.focus();
+  const at = () => document.activeElement === box ? "box" : rows.indexOf(document.activeElement);
+  const arrow = (el, k) => { const stopped = key(el, k)[1]; return [at(), stopped]; };
+  res.arrows = [arrow(box, "ArrowDown"), arrow(list, "ArrowDown"), arrow(list, "ArrowDown"),
+    arrow(list, "ArrowDown"), arrow(list, "ArrowUp"), arrow(list, "ArrowUp"), arrow(list, "ArrowUp"),
+    arrow(box, "ArrowLeft")];
+  // Return on a row is the link's own: the list's listener lets it be.
+  rows[1].focus(); res.rowEnter = key(list, "Enter");
+  // The home page's box, with HOME_JS's own handlers.
+  vm.runInThisContext(fs.readFileSync("./home.js", "utf8"), { filename: "home.js" });
+  const hq = focusable(byId("hq")), hqout = byId("hqout"), hgo = byId("hgo");
+  const home = (q, hidden) => { hq.value = q; hq.fire("input"); if (hidden) hqout.hidden = true;
+    const [enterTo] = key(hq, "Enter"); hqout.hidden = false;
+    location.href = "(unchanged)"; (hgo._on.click || []).forEach(f => f({ target: hgo }));
+    return { enter: enterTo, button: location.href, said: byId("hqsay").textContent }; };
+  for (const q of go.home) res.home[q] = home(q);
+  res.home.hidden = home("hb 1", true);
+  hqout.querySelectorAll = () => rows; hq.value = "concord"; hq.fire("input"); hq.focus();
+  res.home.arrow = [key(hq, "ArrowDown")[1], document.activeElement === rows[0]];
+  console.log(JSON.stringify(res));
+})().catch(e => { console.log("RUN " + (e && e.stack || e)); process.exit(1); });
+"""
+
+
+@check("frontend", "Return in the header's box and the home page's opens the one clear "
+                   "destination -- this term's bill for its number, the one request or statute "
+                   "with it, the only answer, a person, a town or a page by its whole name, the "
+                   "one guide a how-to search finds, the one member of a seat -- marked and named "
+                   "to a screen reader, and /search for anything else; the arrows choose a row",
+       needs=("build_pages",))
+def _search_enter(BP):
+    """The owner, 17 November 2026: "if there is only one result matching
+    their search like if they type in a bill number and it shows that bill
+    from the most recent term as the top result, then pressing enter would
+    take you right to that page. Same goes for if they typed in an official's
+    name with only one result, a district, town, etc." find.js's findClear
+    says what is certain (its comment, ONE CLEAR DESTINATION, has the five
+    rules), findDraw marks that row, findSay names it on the status line, and
+    findGo is where Return goes; HOME_JS asks the same of it. Held, in node,
+    for the header's box over a fixture with both kinds of answer for each
+    rule: "hb 1" and "H.B. 1" open this term's HB 1 and "hb 90", whose first
+    row is HB 900, opens /search; "LSR 2027-0002" opens the request and "RSA
+    91-A" the Laws page; "wade" (the only answer) and "heather deiner" (a
+    member-elect) their pages; "concord" the city though a bill names it,
+    "calendar" the page though a bill does, and "sharon carson" the senator;
+    "litchfield" (a town and a member) and "carson" (a senator and a former
+    member) /search; "sd22" its senator, though a former senator of the seat
+    is listed, and "hills 29", with two members, /search; "how to vote" the
+    guide; "housing", "judiciary" (a committee by its whole name, which a
+    bill names too), "alexander" (a member and a bill) and "minimum wage"
+    /search. Before the rows and the bills
+    have come nothing is certain, and a value drawn and then changed is not;
+    the status line ends "Press Enter to open HB 1-A." where a row is marked
+    and says no such thing where none is; the arrows move the focus from the
+    box through the rows and back, and leave Return on a row to the row. The
+    home page's box: Return opens the same, and /search where the dropdown is
+    shut; its Search button is every result, always; and its arrows choose as
+    the header's do. And the row is seen: app.css draws it as a row under the
+    pointer is while the box Return is pressed in has the focus."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    rows = [["legislator", "Sen. Sharon Carson (R - SD14)", "Senate · SD14 · Republican",
+             "legislator/sharon-carson-sd-14", "Carson Sharon Rockingham"],
+            ["former", "Former Rep. Clyde Carson", "House · Merr 7 · 1999–2004",
+             "legislator/clyde-carson-merr-7", "Merr R", 2004],
+            ["legislator", "Sen. Daryl Abbas (R - SD22)", "Senate · SD22 · Republican",
+             "legislator/daryl-abbas-sd-22", "Abbas Daryl Rockingham"],
+            ["former", "Former Sen. Chuck Morse", "Senate · SD22 · 2001–2024",
+             "legislator/chuck-morse-sd-22", "Rock R", 2024],
+            ["legislator", "Rep. Joe Alexander (R - Hills 29)", "House · Hills 29 · Republican",
+             "legislator/joe-alexander-hills-29", "Alexander Joe Hillsborough"],
+            ["legislator", "Rep. Henry Giasson (R - Hills 29)", "House · Hills 29 · Republican",
+             "legislator/henry-giasson-hills-29", "Giasson Henry Hillsborough"],
+            ["legislator", "Rep. Melissa Litchfield (R - Rock 32)", "House · Rock 32 · Republican",
+             "legislator/melissa-litchfield-rock-32", "Litchfield Melissa Rockingham"],
+            ["legislator", "Rep. Alice Wade (D - Straf 15)", "House · Straf 15 · Democrat",
+             "legislator/alice-wade-straf-15", "Wade Alice Strafford"],
+            ["elect", "Rep. “Elect” Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
+             "legislator/heather-deiner-hills-25", "Hillsborough"],
+            ["committee", "Housing", "House committee", "committee/H64", ""],
+            ["committee", "Judiciary", "House committee", "committee/H07", ""],
+            ["town", "Concord", "10 wards · Merrimack County", "officials?town=Concord", "Merrimack"],
+            ["ward", "Concord, Ward 4", "Merrimack County", "town/concord-ward-4", "Merrimack"],
+            ["town", "Litchfield", "Hillsborough County", "town/litchfield", "Hillsborough"],
+            ["topic", "Housing", "Bills on this subject", "bills?topic=Housing", ""],
+            ["guide", "How to Vote in New Hampshire", "Checking that you are registered, and where to vote.",
+             "guides/how-to-vote", "Vote · voting · register to vote · polling place · absentee ballot · "
+             "where do i vote · election", "Vote · register to vote · where do i vote"],
+            ["guide", "Your Rights at Work: Getting Paid in New Hampshire", "Pay, breaks and overtime.",
+             "guides/wage-rights", "Get paid what you are owed at work · wages · overtime · minimum wage",
+             "Get paid what you are owed at work · not paid"],
+            ["page", "Calendar", "Hearings and sessions, day by day", "calendar", ""]]
+    want = {"hb 1": "/bill/2025/hb1", "H.B. 1": "/bill/2025/hb1", "hb 90": "/search?q=hb%2090",
+            "LSR 2027-0002": "/request/2027-0002", "RSA 91-A": "/laws/91-a",
+            "wade": "/legislator/alice-wade-straf-15",
+            "heather deiner": "/legislator/heather-deiner-hills-25",
+            "concord": "/officials?town=Concord", "concord ward 4": "/town/concord-ward-4",
+            "calendar": "/calendar", "sharon carson": "/legislator/sharon-carson-sd-14",
+            "sen. sharon carson": "/legislator/sharon-carson-sd-14",
+            "litchfield": "/search?q=litchfield", "carson": "/search?q=carson",
+            "sd22": "/legislator/daryl-abbas-sd-22", "hills 29": "/search?q=hills%2029",
+            "how to vote": "/guides/how-to-vote", "housing": "/search?q=housing",
+            "judiciary": "/search?q=judiciary", "alexander": "/search?q=alexander",
+            "minimum wage": "/search?q=minimum%20wage"}
+    home = {"hb 1": ["/bill/2025/hb1", "/search?q=hb%201"],
+            "housing": ["/search?q=housing", "/search?q=housing"],
+            "concord": ["/officials?town=Concord", "/search?q=concord"], "": ["/bills", "/bills"]}
+    got = _find_panel_run(BP, _SEARCH_ENTER_JS, rows, {"go": {"queries": list(want), "home": list(home)}})
+    bad = []
+    for q, to in want.items():
+        h = got["header"].get(q) or {}
+        if h.get("href") != to:
+            bad.append(f"Return on {q!r} opens {h.get('href')!r}, not {to!r}")
+        certain = not to.startswith("/search?")
+        if h.get("marked") != (1 if certain else 0) or certain != ("Press Enter to open" in h.get("said", "")):
+            bad.append(f"{q!r}: {h.get('marked')} row marked, and the status line says {h.get('said')!r}")
+    if not got["header"]["hb 1"]["said"].endswith("results. Press Enter to open HB 1-A."):
+        bad.append(f"the status line for 'hb 1' says {got['header']['hb 1']['said']!r}")
+    if got["cold"] != {"number": "/search?q=hb%201", "name": "/search?q=sharon%20carson"}:
+        bad.append(f"before the bills and the rows have come, Return opens {got['cold']}")
+    if got["stale"] != "/search?q=hb%201%20relative" or got["blank"] != ["(unchanged)", False]:
+        bad.append(f"a box changed since it was drawn opens {got['stale']!r}; one of spaces "
+                   f"{got['blank']}")
+    if got["arrows"] != [[0, True], [1, True], [2, True], [2, True], [1, True], [0, True],
+                         ["box", True], ["box", False]] or got["rowEnter"] != ["(unchanged)", False]:
+        bad.append(f"the arrows move the focus {got['arrows']}, and Return on a row "
+                   f"{got['rowEnter']}: down from the box to the first row, on to the last, up "
+                   "to the box, and Return there left to the row")
+    for q, (to, button) in home.items():
+        h = got["home"].get(q) or {}
+        if [h.get("enter"), h.get("button")] != [to, button]:
+            bad.append(f"the home box on {q!r}: Return opens {h.get('enter')!r} and Search "
+                       f"{h.get('button')!r}, not {to!r} and {button!r}")
+    if "Press Enter to open HB 1-A." not in got["home"]["hb 1"]["said"]:
+        bad.append(f"the home box's status line for 'hb 1' says {got['home']['hb 1']['said']!r}")
+    if got["home"]["hidden"]["enter"] != "/search?q=hb%201" or got["home"]["arrow"] != [True, True]:
+        bad.append(f"the home box with its dropdown shut opens {got['home']['hidden']['enter']!r}, "
+                   f"and its arrow down {got['home']['arrow']}")
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
+    if (":is(.findin:has(#findq:focus),.searchbig:has(#hq:focus)) .findout a[data-go]"
+            "{background:var(--wash)}") not in css:
+        bad.append("app.css does not draw the row Return opens, in either box, while the box has "
+                   "the focus")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"{len(want)} searches in the header's box: Return opens the one clear destination "
+                  f"for {sum(not v.startswith('/search?') for v in want.values())} (a bill, a "
+                  "request, a statute, the only answer, a whole name, a how-to guide, a seat) and "
+                  "/search for the rest, never before the answers have come; the row marked, drawn "
+                  "and named on the status line; the arrows through the rows and back; the home box "
+                  "the same, its Search button every result")
 
 
 # The site search over find.json as build_indexes writes it (25 October 2026):
@@ -13216,12 +13606,18 @@ def _home_finder_suggests_towns():
     assert 'const HQ={out:"hqout",box:"hq",clear:"",say:"hqsay"};' in js \
         and "findDraw(v,HQ)" in js and 'id="hqsay"' in page, (
             "the home box does not draw with find.js's findDraw into its own ids")
-    # GO IS SEARCH (16 October 2026): Return does what the box's Search button
-    # does -- and since 9 November 2026 for a bill number too, as the header's
-    # box has since the 8th (Alice: "Home search opens results").
-    assert "location.href=hqAddr(hq.value);" in js \
+    # GO IS SEARCH (16 October 2026): Return did what the box's Search button
+    # does -- since 9 November 2026 for a bill number too, as the header's box
+    # had since the 8th (Alice: "Home search opens results") -- until the
+    # owner's word of 17 November 2026: Return opens the one clear destination
+    # find.js finds (findGo), as the header's box does, and every result
+    # otherwise, and the Search button is every result, always. _search_enter
+    # runs both.
+    assert 'document.getElementById("hgo").addEventListener("click",()=>{location.href=hqAddr(hq.value);});' \
+        in js and "findGo(hq.value,HQ))||hqAddr(hq.value);" in js \
         and "findBill(hq.value)" not in js and "first.href" not in js, (
-            "the home box's Return opens a row or a bill, where the reader asked for results")
+            "the home box's Return does not ask find.js for its one clear destination and open "
+            "every result otherwise, or its Search button opens something other than every result")
     assert "if(opening)hqLift();" in js, "the home box's rows open under a phone's keyboard again"
     fj = _source("src/pages/find.js").replace("\r\n", "\n")
     assert 'const FIND_IDS={out:"findout",box:"findq",clear:"findclear",say:"findsay"};' in fj \
