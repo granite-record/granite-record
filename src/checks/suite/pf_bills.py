@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.19
+# GRANITE_VERSION: 2026-11-16.20
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1812,8 +1812,9 @@ def _one_record_tab_strip():
 
 
 @check("build", "a request's page has a bill page's Summary tab, drawn by the record's strip, its Summary "
-                "saying the text is not public yet while the request is drafted, that a withdrawn one was "
-                "withdrawn, and nothing of the kind once it is filed; readable with no script",
+                "About Requests alone and its Bill Text tab saying the text is not public yet while the "
+                "request is drafted, that a withdrawn one was withdrawn, and that a filed one's is public; "
+                "readable with no script",
        needs=("build_lsrs",))
 def _request_page_summary(build_lsrs):
     """The owner, 16 November 2026: a request's full page ended after the
@@ -1823,12 +1824,14 @@ def _request_page_summary(build_lsrs):
     drafted so that the format doesn't look cut off." Held on pages
     build_request_pages writes from build_lsrs' rows: every page's strip is
     components.record_tabs' for its tabs at its own address, byte for byte,
-    the Summary's alone where it has no other -- the strip a bill's page
-    draws (_one_record_tab_strip); a request still requested says its text
-    "will be public when it is filed as a numbered 2027 bill", ahead of the
-    requests' explanation; a withdrawn one says it was withdrawn before it was
-    filed and nothing of drafting; one filed says neither, as its page said
-    before. With no script, app.css hides the strip and shows every pane, and
+    the strip a bill's page draws (_one_record_tab_strip); a request still
+    requested says its text "will be public when it is filed as a numbered
+    2027 bill"; a withdrawn one says it was withdrawn before it was filed and
+    nothing of drafting; one filed says neither. Since 17 November 2026 (the
+    owner: "move the text about the bill text into a bill text tab ... and
+    leave the summary as the about section") that is said in the Bill Text
+    tab, and the Summary is About Requests and nothing else, its words
+    explain's. With no script, app.css hides the strip and shows every pane, and
     each pane carries its own heading and no hidden; the pane sits under the
     strip's rule as a bill's does."""
     import tempfile
@@ -1873,12 +1876,14 @@ def _request_page_summary(build_lsrs):
         assert len(panes) == len(tabs) and not any(" hidden" in p for p in panes) \
             and page.count('<h2 class="ssph">') == len(tabs), (
             f"/request/{n}'s panes are not each on the page under a heading of its own: {panes}")
-        summary = page[page.index(f'id="pane_{r["id"]}_0"'):]
-        about = summary.index('<h2 class="w4h">About Requests</h2>')
+        own = {re.search(r'data-t="(\d)"', s).group(1): s for s in page.split('<div class="pane sspane"')[1:]}
+        about = C.section("About Requests", f'<p class="lsrnote">{RP.explain(2027, L.ABBR)}</p>', "about")
+        assert own["0"].endswith(f'<h2 class="ssph">Summary</h2>{about}</div>'), (
+            f"/request/{n}'s Summary is not About Requests alone: {own['0'][:600]!r}")
         want = {"2027-0001": drafting, "2027-0002": drafting, "2027-0003": gone, "2027-0004": None}[n]
         if want:
-            assert summary.find(want) in range(0, about), (
-                f"/request/{n} ({r['status']}) does not say {want!r} in its Summary ahead of About Requests")
+            assert want in own["6"] and want not in own["0"], (
+                f"/request/{n} ({r['status']}) does not say {want!r} in its Bill Text tab alone")
         for other in {drafting, gone} - {want}:
             assert other not in page, f"/request/{n} ({r['status']}) says {other!r}"
         assert "still being drafted" not in page or want == drafting, f"/request/{n} says it is being drafted"
@@ -1888,9 +1893,10 @@ def _request_page_summary(build_lsrs):
     under = re.search(r"\.card\.focus\.rec > \.cbody > \.tabs,\.rhead\.rh-bill ~ \.tabs\{([^}]*)\}", css)
     assert under and "margin-bottom:0" in under.group(1), (
         "a request page's pane does not sit under its strip's rule in the bill page's own rule")
-    return "ok", ("four requests' pages: the record's strip, Summary and Bill Text alone or with History; drafted, "
-                  "withdrawn and filed each say what their row says of the text, and nothing else; every pane "
-                  "on the page under its heading with no script, and under the rule with one")
+    return "ok", ("four requests' pages: the record's strip, Summary and Bill Text alone or with History; the "
+                  "Summary About Requests alone; drafted, withdrawn and filed each say what their row says of "
+                  "the text in the Bill Text tab, and nothing else; every pane on the page under its heading "
+                  "with no script, and under the rule with one")
 
 
 @check("build", "every request has a Bill Text tab, second, on its page and its card: (0) and \"Not public "
@@ -1983,6 +1989,9 @@ def _request_bill_text_tab(build_lsrs):
         assert x["tabs"][:2] == [["0", "Summary", 0], ["6", "Bill Text", count]], (
             f"{n}'s card's tabs are {x['tabs']}")
         assert C.record_tabs(by[n]["id"], x["tabs"], "6") in x["card"], f"{n}'s card does not draw its strip"
+        summ = x["card"][x["card"].index(f'id="pane_{by[n]["id"]}_0"'):x["card"].index(f'id="pane_{by[n]["id"]}_6"')]
+        assert not [w for w in ("Not public yet", "<b>Withdrawn.</b>", "<b>Filed.</b>", "vtext") if w in summ], (
+            f"{n}'s card's Summary says something of the text")
         if n in said:
             assert f'data-t="6">{bodies[n]}</div>' in x["card"], (
                 f"{n}'s card's Bill Text pane is not its page's: {x['card'][x['card'].find('data-t=' + chr(34) + '6' + chr(34) + '>'):][:500]!r}")

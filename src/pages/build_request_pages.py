@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.19
+# GRANITE_VERSION: 2026-11-08.20
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -10,8 +10,9 @@ Alice, 8 November 2026. Each page is /request/<number> (build_lsrs.py's
 "address"); noindex and out of the sitemap, as the provisional members-elect
 pages are; it shows what a request has -- its number, title, prime sponsor
 (the chip as everywhere), what kind of request it is and where it stands --
-under a bill's tab strip (16 November 2026), its Summary saying what the
-record says of its text, and the requests' own explanation. Nothing here
+under a bill's tab strip (16 November 2026), its Summary the requests' own
+explanation and its Bill Text tab what the record says of its text (17
+November 2026). Nothing here
 knows how a state numbers its requests or where they come from:
 build_lsrs.py, the source's reader, gives each row its "address" and, once
 the request is a bill or filing is complete, its "moved_to".
@@ -213,26 +214,27 @@ def head(r, req, who_of, path, base):
 
 
 def text_note(r, year):
-    """What the Summary says of the request's text, by what its row says
-    (the owner, 16 November 2026: "the summary should explain that the bill
-    text is not yet available as it is still being drafted so that the
-    format doesn't look cut off"): a request still requested is being
-    drafted, and its text is public once it is filed as a numbered bill (the
-    rail's Filed, "Text public"); a withdrawn one was withdrawn before it was
-    filed, as its rail's crossed Filed says; one already filed or introduced
-    says nothing of the kind ("" -- its Summary is what it was)."""
+    """What the Bill Text tab says of a request's text the night has not
+    read, by what its row says (the owner, 16 November 2026: "the summary
+    should explain that the bill text is not yet available as it is still
+    being drafted so that the format doesn't look cut off"; and 17 November
+    2026, which moved it from the Summary to the tab: "move the text about
+    the bill text into a bill text tab ... and leave the summary as the
+    about section"): a request still requested is being drafted, and its
+    text is public once it is filed as a numbered bill (the rail's Filed,
+    "Text public"); a withdrawn one was withdrawn before it was filed, as its
+    rail's crossed Filed says; one filed or introduced has its text public,
+    which is added here once read. app.js's lsrTextNote says the same."""
     if r.get("withdrawn"):
         return ("<b>Withdrawn.</b> This request was withdrawn before it was filed as a bill, "
                 "so it has no text.")
     # FILED, ITS TEXT NOT READ HERE YET (17 November 2026): the night reads it
-    # a few a night, and until then the Summary says where it is.
-    if (r.get("filed") or r.get("introduced")) and not r.get("text_on_file"):
+    # a few a night, and until then the tab says where it is.
+    if r.get("filed") or r.get("introduced"):
         pdf = (f' <a href="{E(r["text_pdf"])}" target="_blank" rel="noopener">The PDF at the '
                "General Court</a>.") if r.get("text_pdf") else ""
         return ("<b>Filed.</b> Its text is public, and is added here once this site has read it."
                 + pdf)
-    if r.get("filed") or r.get("introduced"):
-        return ""
     return ("<b>Not public yet.</b> This request is still being drafted into a bill. Its text "
             f"will be public when it is filed as a numbered {E(str(year))} bill.")
 
@@ -270,16 +272,14 @@ def text_pane(r, year):
 
 
 def summary(r, req):
-    """The Summary tab: what the record says of the request's text
-    (text_note), as a bill's Summary leads with what its text says, and the
-    requests' explanation. The facts of this one are the head's (the status
-    chip, the field grid): not said twice (the owner, 14 November 2026: "just
-    let the pages speak for themselves")."""
+    """The Summary tab: the requests' explanation, About Requests, alone (the
+    owner, 17 November 2026: "leave the summary as the about section"). What
+    the record says of the request's text is the Bill Text tab's (text_pane),
+    which it led the Summary with until then. The facts of this one are the
+    head's (the status chip, the field grid): not said twice (the owner, 14
+    November 2026: "just let the pages speak for themselves")."""
     year = r.get("year") or req.get("year")
-    note = text_note(r, year)
-    return ((C.section("Bill Text", f"<p>{note}</p>", "text") if note else "")
-            + C.section("About Requests", f'<p class="lsrnote">{explain(year, req.get("abbr"))}</p>',
-                        "about"))
+    return C.section("About Requests", f'<p class="lsrnote">{explain(year, req.get("abbr"))}</p>', "about")
 
 
 def sponsors_pane(r, who_of):
