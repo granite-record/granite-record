@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -26,7 +26,7 @@ from pathlib import Path
 
 import _paths
 
-from pf_core import _run, _source, check
+from pf_core import _in_suite, _run, _source, check
 from pf_shared import _tap_failures
 
 
@@ -524,6 +524,252 @@ def _bench_pull(PL, BP, BL, RV):
                   "--approve appended Sam's 3 as link:sam234 once (not the calibration answer) and marked "
                   "them merged, never the preview's, hers as hand; a withdrawal honoured; the owner's "
                   "link sent as a hash")
+
+
+# ---- what keeps the bench off, unlisted, and keeping nothing ---------------------------
+
+# The bench's routes: the page, and every endpoint under functions/api/bench/.
+BENCH_PAGE = "functions/bench.js"
+BENCH_API = "functions/api/bench"
+# The bench's two databases, and the environment each belongs to (workers/bench/README.md).
+BENCH_DBS = {"production": "graniterecord-bench", "preview": "graniterecord-bench-preview"}
+
+
+def _bench_routes(root=None):
+    """{route: path} of every Function of the bench."""
+    root = Path(root) if root else _paths.ROOT
+    out = {}
+    if (root / BENCH_PAGE).is_file():
+        out["/bench"] = root / BENCH_PAGE
+    for p in sorted((root / BENCH_API).glob("*.js")) if (root / BENCH_API).is_dir() else []:
+        out[f"/api/bench/{p.stem}"] = p
+    return out
+
+
+def _switch_problems(src, route):
+    """What is wrong with one bench Function's start: it must refuse, with notHere(), wherever
+    BENCH_DB is not bound and before it reads a request's method or awaits anything; answer
+    through workers/bench/common.js alone (no Response of its own, no console); and a post
+    route refuse a GET with 405 "POST only" as the night's probe expects."""
+    bad = []
+    body = src[src.find("export async function onRequest"):]
+    if not body:
+        return [f"{route} has no onRequest"]
+    gate = body.find("!env.BENCH_DB")
+    first = min([i for i in (body.find("request.method"), body.find("await ")) if i >= 0] or [len(body)])
+    if gate < 0 or gate > first or "notHere()" not in body[gate:body.find("\n", gate)]:
+        bad.append(f"{route} does not answer notHere() without BENCH_DB before anything else")
+    if "new Response(" in src or "console." in src:
+        bad.append(f"{route} answers or logs other than through workers/bench/common.js")
+    if route != "/bench" and not re.search(r'request\.method !== "POST"\)\s*return plain\(405, "POST only', body):
+        bad.append(f"{route} does not refuse a GET with 405 POST only")
+    return bad
+
+
+@check("build", "every route of the shared bench answers 404 until BENCH_DB is bound: each Function asks "
+                "for it before anything else, the night's probe knows each route as it answers, and "
+                "wrangler.toml binds BENCH_DB to the bench's own database alone",
+       needs=("nightly",))
+def _bench_switch(NI):
+    """THE BINDING IS THE SWITCH (the design of 17 November 2026, decision 1: "off until its
+    database is bound"). Code deployed without BENCH_DB changes nothing a reader can reach, so
+    long as every route of the bench -- functions/bench.js and every file of
+    functions/api/bench/ -- refuses, with workers/bench/common.js's notHere(), before it reads
+    the request or awaits anything, wherever env.BENCH_DB is absent. Held, for each: that
+    start; no Response or console of its own; a post route's 405 to a GET; the night's
+    FUNCTION_PROBES naming it with BENCH_DB and the kind it answers as (the page a page, the
+    rest posts -- a kind _night_functions_probe does not hold); and wrangler.toml binding
+    BENCH_DB, wherever it does, to that environment's own bench database and to no
+    database of the reports' or the follows', and no bench database under another name."""
+    import tomllib
+    routes = _bench_routes()
+    if not routes:
+        return "skip", "no functions/bench.js or functions/api/bench/ here"
+    sample = ('export async function onRequest({ request, env }) {\n'
+              '  if (!env.BENCH_DB || !rightPlace(request, env, PATH)) return notHere();\n'
+              '  if (request.method !== "POST") return plain(405, "POST only\\n", { Allow: "POST" });\n')
+    assert not _switch_problems(sample, "/api/bench/x"), _switch_problems(sample, "/api/bench/x")
+    for planted, words in ((sample.replace("!env.BENCH_DB || ", ""), "without BENCH_DB"),
+                           (sample.replace("  if (!env.BENCH_DB", "  const b = await request.json();\n"
+                                           "  if (!env.BENCH_DB"), "without BENCH_DB"),
+                           (sample + "  return new Response('x');\n", "other than through"),
+                           (sample.replace('"POST only', '"Not this'), "405 POST only")):
+        got = _switch_problems(planted, "/api/bench/x")
+        assert any(words in g for g in got), f"the reader of a bench Function's start missed: {words} ({got})"
+    bad = []
+    for route, p in routes.items():
+        bad += _switch_problems(_source(p), route)
+    probes = {p: (needs, kind) for p, needs, kind in NI.FUNCTION_PROBES if p == "/bench" or p.startswith("/api/bench/")}
+    want = {r: ("BENCH_DB", "page" if r == "/bench" else "post") for r in routes}
+    if probes != want:
+        bad.append(f"the night's FUNCTION_PROBES give the bench's routes {probes}, not {want}")
+    conf = tomllib.loads(_source(_paths.ROOT / "wrangler.toml"))
+    envs = [("top level", conf)] + [(n, e) for n, e in (conf.get("env") or {}).items()]
+    bound = []
+    others = {"graniterecord-reports", "graniterecord-reports-preview", "graniterecord-follow",
+              "graniterecord-follow-preview"}
+    for name, e in envs:
+        for d in e.get("d1_databases") or []:
+            if d.get("binding") == "BENCH_DB":
+                bound.append(name)
+                if d.get("database_name") != BENCH_DBS.get(name) or d.get("database_name") in others:
+                    bad.append(f"wrangler.toml's {name} binds BENCH_DB to {d.get('database_name')}, not "
+                               f"{BENCH_DBS.get(name, 'the bench database of an environment that has one')}")
+            elif d.get("database_name") in BENCH_DBS.values():
+                bad.append(f"wrangler.toml's {name} binds the bench's {d.get('database_name')} as {d.get('binding')}")
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(routes)} routes of the bench, each a 404 of its own until BENCH_DB is bound, before "
+                  "anything else; the night asks each as it answers; BENCH_DB "
+                  + (f"bound in {', '.join(bound)}, to the bench's own database" if bound else
+                     "bound nowhere yet, so every route answers 404"))
+
+
+# The columns of the bench's database, as the design keeps them: of a person, the link's name
+# and two days. A column added here is a decision about the page's promise ("nothing else
+# about you is"), and is made in the schema and here together.
+BENCH_COLUMNS = {
+    "links": ["id", "name", "token_hash", "role", "queues", "state", "made_on", "last_on", "daily_cap"],
+    "queues": ["queue", "label", "pool", "judged", "as_of", "options", "ord"],
+    "groups": ["grp", "queue", "label", "ord"],
+    "items": ["kind", "key", "queue", "pack", "grp", "ord", "card", "shown", "state", "held_by", "held_until"],
+    "calib": ["kind", "key", "queue", "card", "hers", "ord"],
+    "calib_holds": ["link", "kind", "key", "held_until"],
+    "judgments": ["id", "kind", "key", "link", "verdict", "fields", "note", "hidden", "side", "at", "calib", "state"],
+    "link_days": ["link", "day", "n"],
+}
+_PERSON = re.compile(r"(^|_)(ip|email|e_?mail|mail|address|addr|cookie|agent|device|browser|referr?er|"
+                     r"session|phone|token|user|person|who)(_|$)")
+
+
+def _schema_columns(text):
+    """{table: [column]} of a schema's CREATE TABLE statements, in order."""
+    out = {}
+    for m in re.finditer(r"CREATE TABLE IF NOT EXISTS (\w+) \((.*?)\n\);", text, re.S):
+        cols = []
+        for line in m.group(2).splitlines():
+            line = line.split("--")[0].strip()
+            w = re.match(r"^(\w+)\s+(TEXT|INTEGER|REAL|BLOB)\b", line)
+            if w:
+                cols.append(w.group(1))
+        out[m.group(1)] = cols
+    return out
+
+
+@check("build", "the shared bench keeps of a person the link's name and two days, and nothing else: "
+                "every column of its schema is the design's, and none is an address, a device or a token")
+def _bench_keeps_nothing():
+    """The design's promise, which the page prints under every item: "Your answers are kept
+    with this link, and nothing else about you is." Held on workers/bench/schema.sql, read
+    here without node: every table and column is BENCH_COLUMNS's, in order; "name" is a
+    column of links alone; no column is named for an IP, an email or an address, a cookie,
+    a device or a browser, a referrer, a session, a phone, a user or a token (a token's
+    hash is token_hash, and the token itself is never kept)."""
+    p = _paths.ROOT / "workers" / "bench" / "schema.sql"
+    if not p.is_file():
+        return "skip", "no workers/bench/schema.sql here"
+    planted = _schema_columns("CREATE TABLE IF NOT EXISTS t (\n  a  TEXT,\n  ip_hash TEXT -- x\n);")
+    assert planted == {"t": ["a", "ip_hash"]}, planted
+    assert all(_PERSON.search(c) for c in ("ip_hash", "email", "user_agent", "device", "referer", "token")) and \
+        not any(_PERSON.search(c) for c in ("made_on", "link", "held_by", "hidden", "key")), (
+            "the reader of a column about a person reads a name wrongly")
+    cols = _schema_columns(_source(p))
+    assert cols == BENCH_COLUMNS, f"the bench's schema has {cols}, and the design keeps {BENCH_COLUMNS}"
+    names = [t for t, cs in cols.items() if "name" in cs]
+    assert names == ["links"], f"a name is kept in {names}"
+    person = [f"{t}.{c}" for t, cs in cols.items() for c in cs if c != "token_hash" and _PERSON.search(c)]
+    assert not person, "a column about a person: " + ", ".join(person)
+    return "ok", (f"{len(cols)} tables, {sum(len(c) for c in cols.values())} columns, every one the design's; "
+                  "of a person, links.name and the days made and last used")
+
+
+@check("build", "the shared bench is linked from nowhere and answers unindexed and uncached: no page or "
+                "builder names /bench, no built site holds it or lists it, and every answer says noindex "
+                "and no-store")
+def _bench_unlisted():
+    """The design's address (decision 3): /bench#<token>, "unlisted: linked from nowhere, not in
+    the sitemap, noindex, and not named in robots.txt, which would advertise it", and
+    answered by a Function, so that site/ is the same with the bench as without it. Held: no
+    file under src/pages/ -- every page, the sitemap and robots.txt are written there -- names
+    /bench; workers/bench/common.js heads every answer no-store and noindex and the page also
+    frame-ancestors 'none'; the page carries <meta name="robots" content="noindex">; and, where a
+    built site is here, it holds no bench file and its sitemap and robots.txt do not name it
+    (a data check: a bare clone has no site/)."""
+    pages = _paths.ROOT / "src" / "pages"
+    if not pages.is_dir():
+        return "skip", "no src/pages here"
+    named = sorted(p.relative_to(_paths.ROOT).as_posix() for p in pages.rglob("*")
+                   if p.is_file() and p.suffix in (".py", ".js", ".html", ".css", ".json", ".txt")
+                   and re.search(r"/bench\b", _source(p, errors="replace")))
+    assert not named, "these name the bench, which is linked from nowhere: " + ", ".join(named)
+    common = _source(_paths.ROOT / "workers" / "bench" / "common.js")
+    base = re.search(r"const BASE = \{(.*?)\};", common, re.S)
+    assert base and '"Cache-Control": "no-store"' in base.group(1) and '"X-Robots-Tag": "noindex"' in base.group(1), (
+        "workers/bench/common.js's answers are not all no-store and noindex")
+    assert re.search(r"pageResponse\(status, body, nonce\) \{\s*return new Response\(body, \{ status, headers: \{\s*"
+                     r"\.\.\.BASE", common) and "frame-ancestors 'none'" in common, (
+        "the bench's page is not headed as every other answer, or may be framed")
+    assert '<meta name="robots" content="noindex">' in _source(_paths.ROOT / "workers" / "bench" / "page.js")
+    site = _paths.ROOT / "site"
+    if not (site / "index.html").is_file():
+        return "ok", ("no page or builder names /bench, and every answer is no-store and noindex; no built "
+                      "site here to read")
+    held = [p.name for p in site.glob("bench*")]
+    listed = [n for n in ("sitemap.xml", "robots.txt") if (site / n).is_file()
+              and re.search(r"/bench\b", (site / n).read_text(encoding="utf-8", errors="replace"))]
+    assert not held and not listed, f"the built site holds {held} and lists the bench in {listed}"
+    return "ok", ("no page or builder names /bench, every answer is no-store and noindex, and the built site "
+                  "neither holds nor lists it")
+
+
+# The ledger's writers: the laptop's bench, and the merge of the hosted bench's answers.
+LEDGER_WRITERS = {"src/checks/review.py", "src/checks/bench_pull.py"}
+_RECORDS = re.compile(r"\b(?:review|RV)\.record\s*\(")
+_OPENS = re.compile(r"open\s*\([^)\n]*checked\.jsonl[^)\n]*[\"'][aw]")
+_NAMED = re.compile(r"^[ \t]*([A-Za-z_]\w*)[ \t]*=[^=\n]*[\"']checked\.jsonl[\"']", re.M)
+
+
+def _writes_ledger(src):
+    """Whether a script writes review/checked.jsonl: through review's record(); by opening the
+    file's name for writing; or through a name a line of its own gives that file (LEDGER =
+    OUT / "checked.jsonl", then LEDGER.open("a")). Another file's LEDGER -- compile_reports'
+    handled.jsonl -- is not it, and a script that only names the file is not a writer."""
+    if _RECORDS.search(src) or _OPENS.search(src):
+        return True
+    for name in set(_NAMED.findall(src)):
+        n = re.escape(name)
+        if re.search(rf"\b{n}\s*\.\s*(?:open\s*\(\s*(?:mode\s*=\s*)?[\"'][aw]|write_text\s*\(|write_bytes\s*\()"
+                     rf"|\bopen\s*\(\s*{n}\s*,\s*(?:mode\s*=\s*)?[\"'][aw]", src):
+            return True
+    return False
+
+
+@check("files", "the bench's ledger has two writers, review.py and bench_pull.py: no other script "
+                "appends to review/checked.jsonl or calls review.record")
+def _bench_ledger_writers():
+    """review/checked.jsonl is the owner's (corrections/ and review/ are a person's, and
+    _record_untouched holds no build_ or fetch_ script names it). Since the shared bench
+    there are two ways a line arrives: her own judgment on the laptop's bench (review.py,
+    which defines record()), and her approval of answers from the hosted bench (bench_pull.py,
+    which appends through that record()). Held over every code file but the suite's: none
+    else calls review.record, opens the ledger's name for writing, or appends through a
+    LEDGER it names -- bench_pack.py reads it and writes SQL, and the Functions never see
+    it."""
+    for text, writes in (('import review\nreview.record({"kind": "x"})', True),
+                         ('import review as RV\nRV.record(e)', True),
+                         ('open("review/checked.jsonl", "a")', True),
+                         ('LEDGER = OUT / "checked.jsonl"\nwith LEDGER.open("a", encoding="utf-8") as fh:', True),
+                         ('LEDGER = OUT / "handled.jsonl"\nwith LEDGER.open("a", encoding="utf-8") as fh:', False),
+                         ('lines = BL.read(BL.LEDGER)', False),
+                         ('"""Each tells review/checked.jsonl what it said."""\nOUT.write_text(t)', False),
+                         ('BENCH = Path("review") / "checked.jsonl"\nPath("x.json").write_text(t)', False),
+                         ('p = Path("review") / "checked.jsonl"\nfor line in p.read_text().splitlines():', False)):
+        assert _writes_ledger(text) == writes, f"the reader of the ledger's writers reads {text!r} wrongly"
+    files = [f for f in _paths.code_files("*.py") if not _in_suite(f)]
+    found = sorted(f.relative_to(_paths.ROOT).as_posix() for f in files
+                   if _writes_ledger(_source(f, errors="replace")))
+    assert set(found) <= LEDGER_WRITERS, "these write the bench's ledger: " + ", ".join(sorted(set(found) - LEDGER_WRITERS))
+    assert set(found) == LEDGER_WRITERS, f"the ledger's writers are {found}: the reader no longer finds them"
+    return "ok", f"{len(files)} code files read: the ledger's writers are {', '.join(found)} alone"
 
 
 # ---- the shared bench's own tests -------------------------------------------------

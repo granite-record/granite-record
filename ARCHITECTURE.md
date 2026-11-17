@@ -822,6 +822,42 @@ live on every page.
 
 Those four commands are the check on a change of this kind.
 
+## The bench and its ledger (17 November 2026)
+
+`review/checked.jsonl` is the record of what a person judged, append-only,
+and every reader reads it through `src/lib/bench_ledger.py`: a line is the
+owner's (`"by": "hand"`) or a contributor's (`"by": "link:<id>"`, merged by
+her from the shared bench), her line counts over a contributor's whatever
+the order, and a withdrawal (`{"kind": "withdraw", "link": <id>}`) takes a
+link's lines out of every reader. `review.py --report`, the tag gates and
+`probe_alignment.py --truth` print the pools apart wherever a contributor's
+line counts; `--hand-only` scores without them. Two scripts write the
+ledger, and preflight holds there are no more: `review.py`, the laptop's
+bench, which chooses no answer for anyone, and `bench_pull.py`, the merge.
+
+The shared bench (approved 17 November 2026) puts the questions whose
+evidence fits a phone in front of people the owner invites: hearing
+timings, placed topics and tags, one item at a time, from
+`/bench#<token>`. It is off until its own D1 database is bound as `BENCH_DB`
+in `wrangler.toml` -- every route answers 404 without it -- and it is a
+Function's answer, never a file in `site/`, linked from nowhere.
+
+    bench_pack.py  --SQL-->  BENCH_DB  <--  functions/bench.js, functions/api/bench/
+    (pools, ledger)          (items, links,     (workers/bench/: schema, store,
+                              judgments)          view, page)
+    bench_pull.py  <--wrangler--  BENCH_DB      --approve -->  review/checked.jsonl
+
+A pack (`bench_pack.py`) is a seeded draw from `review.py`'s own pools that
+leaves out every key the ledger or an earlier pack holds, with the owner's
+own judgments for calibration (one item in 25 a contributor is given). An
+item is claimed by one statement and held ten minutes, renewed while the
+page is open; an answer is kept in the ledger's words with its item marked
+judged in one batch; the page is told an item's opaque reference, queue and
+card, never its key. Nothing reaches the ledger but through
+`bench_pull.py --approve`, run by the owner on the laptop, after every
+note has passed `compile_reports.screen`. `workers/bench/README.md` has the
+routes, the limits and the commands.
+
 ## The bill search, and what it reads
 
 One matcher, in `app.js` between its `BILLMATCH` marks. `/bills` runs it
