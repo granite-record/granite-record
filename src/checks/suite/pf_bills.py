@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -9692,3 +9692,57 @@ def _tag_plural_y(TR):
         assert cp(p).pattern == old(p).pattern, f"{p!r} changed, but its last word is open, no -y word or none"
     return "ok", (f"{len(hits)} plural pairs found, {len(misses)} non-pairs not; a regular expression as written; "
                   f"{len(phrases)} phrases over {len(texts)} texts find everything they found before")
+
+
+@check("code", "a tag can rest on the provision of law a bill writes -- the heading of a new chapter of the RSA or "
+               "of an article of the constitution -- and never on a title's words alone",
+       needs=("tag_rules",))
+def _tag_provisions(TR):
+    """tag_rules.provisions (17 November 2026; the owner: a state income tax tag "only for bills that change
+    that particular provision of law -- whether adding an income tax or banning one", by "the statute chapter
+    or the Constitution article such bills amend", "never by title words alone"). On the real wording of
+    2007-2008 HB 1373 (CHAPTER 76-A INCOME TAX), 2005-2006 CACR 13 (Part II, [Art.] 5-c [Income Tax
+    Prohibited.]) and 1997-1998 HB 1668, whose first new chapter 76-A is a school property tax and whose
+    second, 76-B, the personal income tax: a chapter's heading is read up to its own first section, the
+    Part is the one the text names, a section 76-A:10 is no first section, a text that only amends an
+    existing chapter writes nothing; a rule of provisions alone is well formed and attaches as R by the
+    heading, and the same title and analysis with no such provision attach nothing."""
+    hb1373 = ("AN ACT establishing an income tax. Be it Enacted by the Senate and House of Representatives in General "
+              "Court convened: 1 New Chapter; Income. Amend RSA by inserting after chapter 76 the following new "
+              "chapters: CHAPTER 76-A INCOME TAX 76-A:1 Definitions. In this chapter: I. \"Consumer price index\" "
+              "means the consumer price index. 76-A:10 Rate.")
+    cacr13 = ("that the Constitution of New Hampshire be amended as follows: I. That the second part of the "
+              "constitution be amended by inserting after article 5-B the following new article: [Art.] 5-c "
+              "[Income Tax Prohibited.] No tax shall be levied, directly or indirectly, upon a person's income")
+    hb1668 = ("2 New Chapters; Proportional Statewide School Property Tax; Personal Income Tax. Amend RSA by "
+              "inserting after chapter 76 the following new chapters: CHAPTER 76-A PROPORTIONAL STATEWIDE SCHOOL "
+              "PROPERTY TAX 76-A:1 Definitions. I. \"Assessing official\" means x. CHAPTER 76-B PERSONAL INCOME TAX "
+              "76-B:1 Definitions.")
+    assert TR.provisions(hb1373) == ["RSA 76-A Income Tax"], TR.provisions(hb1373)
+    assert TR.provisions(cacr13) == ["Part II, Art. 5-c Income Tax Prohibited"], TR.provisions(cacr13)
+    assert TR.provisions(hb1668) == ["RSA 76-A Proportional Statewide School Property Tax",
+                                     "RSA 76-B Personal Income Tax"], TR.provisions(hb1668)
+    assert TR.provisions("Amend RSA 77:4 to read as follows: 77:4 Taxation of Incomes.") == []
+    assert TR.provisions("CHAPTER 76-A INCOME TAX 76-A:10 Rate.") == [], "a later section read as a chapter's first"
+    reg = {"state-income-tax": {"name": "State income tax", "definition": "Bills that would establish or prohibit "
+                                "a state tax on personal income.",
+                                "rule": {"provisions": ["income tax", "personal income"]}}}
+    assert not TR.validate(reg), TR.validate(reg)
+    assert TR.validate({"x": {"name": "X", "definition": "Bills.", "rule": {"provisions": ["re:("]}}}), (
+        "a provisions phrase that does not compile passed")
+    rules = TR.compile_registry(reg)
+    title = "establishing an income tax."
+    got = {}
+    for key, text in (("HB1373", hb1373), ("CACR13", cacr13), ("HB1668", hb1668)):
+        b = {"term": "t", "bill": key, "title": title, "analysis": "This bill establishes an income tax.",
+             "chapters": [], "provisions": TR.provisions(text)}
+        got[key] = TR.tag_bill(rules, b)["tags"].get("state-income-tax", {}).get("why")
+    assert got == {"HB1373": "R:RSA 76-A Income Tax", "CACR13": "R:Part II, Art. 5-c Income Tax Prohibited",
+                   "HB1668": "R:RSA 76-B Personal Income Tax"}, got
+    bare = {"term": "t", "bill": "HB9", "title": title, "analysis": "This bill establishes an income tax.",
+            "chapters": [], "provisions": []}
+    assert not TR.tag_bill(rules, bare)["tags"], "the title's words alone attached a provisions tag"
+    assert not TR.tag_bill(rules, {**bare, "provisions": ["RSA 76-A Proportional Statewide School Property Tax"]})[
+        "tags"], "a chapter that is no income tax attached"
+    return "ok", ("a new chapter's heading, a constitution article's with its Part, nothing for an amended section; "
+                  "a provisions rule attaches by the heading and never by the title's words")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.7
+# GRANITE_VERSION: 2026-11-12.8
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
@@ -39,8 +39,26 @@ THE RULE, by what each kind of evidence may claim (design 2.3):
                          any is looked for: "hemp rope" is no cannabis bill, and
                          the rest of the text still counts
     not_bill          phrases that take the whole tag away if the title has one
+    provisions        R  a phrase in the heading of a new chapter of the RSA, or of
+                         an article of the constitution, that the bill's text writes
+                         ("CHAPTER 76-A INCOME TAX", "[Art.] 5-c [Income Tax
+                         Prohibited.]"): for a tag that is about one provision of
+                         law and not about words, which may have no other tier
 
-The committee and the full text NEVER attach a tag.
+The committee and the full text NEVER attach a tag, but for what the text says it
+amends: the chapters, and the headings of the chapters and articles it writes.
+
+THE PROVISIONS (17 Nov 2026, the owner: a state income tax tag "only for bills
+that change that particular provision of law -- whether adding an income tax or
+banning one", by "the statute chapter or the Constitution article such bills
+amend", "never by title words alone"). A bill that would add an income tax
+writes it as a new chapter, CHAPTER 76-A INCOME TAX in 2008 and CHAPTER 77-H in
+2018, whose number is the next free one and so says nothing; a CACR that would
+ban one writes a new article of Part II, [Art.] 5-c or 6-c or 18-b [Income Tax
+Prohibited.]. Each says what it is in its heading, and the heading is what this
+reads: a chapter's heading in capitals followed by its own first section (76-A:1),
+and an article's in the brackets that follow "[Art.]", with the Part the text
+names ("the second part of the constitution").
 
 BY HAND, beside the rule (16 Nov 2026): an entry's "hand" holds the bills a
 person decided on the bench that no phrase or chapter can reach, each by its
@@ -195,6 +213,26 @@ def norm_chapter(c):
     return str(c).upper().replace("‑", "-").strip()
 
 
+# A new chapter's heading, in capitals, as the text prints it before the chapter's own first section
+# ("CHAPTER 76-A INCOME TAX 76-A:1 Definitions."); an article's, in the brackets after "[Art.]"
+# ("[Art.] 5-c [Income Tax Prohibited.]"), and the Part the text says it amends.
+_NEW_CHAPTER = re.compile(r"\bCHAPTER\s+(\d{1,3}-[A-Z]{1,2})\s+([A-Z][A-Z0-9 ,;'’&().\-]{2,120}?)\s+(?=\1:1(?![0-9]))")
+_ARTICLE = re.compile(r"\[Art\.\]\s*(\d{1,3}(?:-[a-zA-Z])?)\.?\s*\[([^\]]{3,160})\]")
+_PART = re.compile(r"\b(first|second)\s+part\s+of\s+the\s+constitution", re.I)
+
+
+def provisions(text):
+    """The headings of the chapters of the RSA and the articles of the constitution a bill's text
+    writes, in their order: "RSA 76-A Income Tax", "Part II, Art. 5-c Income Tax Prohibited"
+    (THE PROVISIONS, in the docstring). [] for a text that writes none."""
+    t = " ".join((text or "").split())
+    out = [f"RSA {m.group(1)} {m.group(2).strip().title()}" for m in _NEW_CHAPTER.finditer(t)]
+    part = _PART.search(t)
+    where = {"first": "Part I, ", "second": "Part II, "}.get(part.group(1).lower(), "") if part else ""
+    out += [f"{where}Art. {m.group(1)} {m.group(2).strip().rstrip('.')}" for m in _ARTICLE.finditer(t)]
+    return list(dict.fromkeys(out))
+
+
 class Rule:
     """One tag's compiled rule."""
 
@@ -213,6 +251,7 @@ class Rule:
         self.max_chapters = int(r.get("max_chapters", 3))
         self.nots = [compile_phrase(p) for p in r.get("not", [])]
         self.not_bill = [compile_phrase(p) for p in r.get("not_bill", [])]
+        self.provisions = [(p, compile_phrase(p)) for p in r.get("provisions", [])]
         self.same_as_topic = {t.strip().lower() for t in entry.get("same_as_topic", [])}
         hand = entry.get("hand") or {}
         self.attach = dict(hand.get("attach") or {})
@@ -251,6 +290,10 @@ class Rule:
                 hit = next((c for c in chapters for r in self.with_chapters if chapter_matches(r, c)), None)
                 if hit and any(rx.search(t) or rx.search(a) for _p, rx in self.with_words):
                     out["R"] = f"R:RSA {hit} with a word"
+        if "R" not in out and self.provisions:
+            hit = next((h for h in bill.get("provisions") or [] for _p, rx in self.provisions if rx.search(h)), None)
+            if hit:
+                out["R"] = f"R:{hit}"
         support = [c for c in chapters if any(chapter_matches(r, c) for r in self.support)]
         return out, support
 
@@ -364,10 +407,11 @@ def validate(reg, topics=None, synonyms=None):
             if w not in ok and re.search(r"(?<![a-z])" + STANCE_NAME[w], dfn.lower()):
                 bad.append(f"{tid}: the definition carries {w!r}, which argues")
         r = e.get("rule")
-        if not isinstance(r, dict) or not (r.get("title") or r.get("analysis") or r.get("chapters_alone")):
-            bad.append(f"{tid}: a rule needs a title, analysis or chapters_alone list")
+        if not isinstance(r, dict) or not (r.get("title") or r.get("analysis") or r.get("chapters_alone")
+                                           or r.get("provisions")):
+            bad.append(f"{tid}: a rule needs a title, analysis, chapters_alone or provisions list")
             continue
-        for key in ("title", "analysis", "not", "not_bill"):
+        for key in ("title", "analysis", "not", "not_bill", "provisions"):
             for p in r.get(key, []):
                 try:
                     compile_phrase(p)
@@ -453,7 +497,7 @@ def tag_bill(rules, bill, topic=None):
 
 def load_bills(root=None):
     """Every bill of every term as the engine reads it, newest term first:
-    {term, bill, title, analysis, chapters, topic}. From data/bills.json, the two
+    {term, bill, title, analysis, chapters, topic, provisions}. From data/bills.json, the two
     text files (bill_text.json wins over archive_text.json, as topic_model reads
     them) and topics_assigned.json; the analysis and the chapters the bill amends
     are found as topic_model finds them."""
@@ -473,7 +517,8 @@ def load_bills(root=None):
             title = TM.NEWTITLE.sub("", rec.get("title") or "")
             topic = rec.get("subject") or (assigned.get(term, {}).get(bid) or {}).get("subject") or ""
             out.append({"term": term, "bill": bid, "title": title, "analysis": TM.analysis_of(text).strip(),
-                        "chapters": sorted(norm_chapter(c) for c in ch), "topic": topic})
+                        "chapters": sorted(norm_chapter(c) for c in ch), "topic": topic,
+                        "provisions": provisions(text)})
     return out
 
 
@@ -506,6 +551,8 @@ def explain(rules, bill):
     print(f"  title:    {bill['title']}")
     print(f"  analysis: {(bill['analysis'] or '-')[:300]}")
     print(f"  chapters: {', '.join(bill['chapters']) or '-'}")
+    if bill.get("provisions"):
+        print(f"  writes:   {'; '.join(bill['provisions'])}")
     for tid, v in r["tags"].items():
         print(f"  TAG {tid:30} {v['tier']}  {v['why']}   (fired: {', '.join(v['fired'])})")
     for tid, why in r["dropped"].items():
