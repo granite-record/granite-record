@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of sponsors, members and officials.
 
@@ -505,7 +505,8 @@ def _elect_returning_pages(OT, LP, BME):
       and whose row is former.json's; "chamber" for a sitting member elected to
       the other chamber; nothing for the re-elected;
     - app.js's renderMemberHead on each: the returning member headed as a new
-      member-elect is (name and party, the sentence, the election's line with no
+      member-elect is (name and party under the title, "Representative “Elect”
+      Michael Vose (R)", the sentence, the election's line with no
       "for <district>"), the earlier seat kept in the facts and no "Former
       Representative"; the new-chamber member keeps the seat they hold with the
       sentence beside it; both gone once the reader's day is the day they take
@@ -555,7 +556,7 @@ def _elect_returning_pages(OT, LP, BME):
                    "returning, chamber and none wanted")
     elif back["vose"]["head"] != "Michael Vose (R), member-elect" or back["vose"]["where"] != (
             "Member-elect of the New Hampshire House of Representatives, Rockingham 6.") \
-            or back["creighton"]["where"] != "Member-elect of the New Hampshire Senate, Senate District 8.":
+            or back["creighton"]["where"] != "Member-elect of the New Hampshire Senate, Senate District 8."             or (back["vose"].get("title"), back["creighton"].get("title")) != ("Rep. “Elect”", "Sen. “Elect”"):
         bad.append(f"elect_back words: {back['vose']} {back['creighton']}")
     if LP.elect_back(dict(vose, former=False), infos["vose"]) is not None:
         bad.append("a file's former member drawn on a record that is not former.json's gets the "
@@ -566,7 +567,7 @@ def _elect_returning_pages(OT, LP, BME):
         # The reader's clock is the real one: a day far ahead is "before they
         # take office", a day long past is "after".
         d = {"id": mem["id"], "key": infos[name]["key"], **base,
-             **{k: back[name][k] for k in ("mode", "name", "party", "where")}}
+             **{k: back[name][k] for k in ("mode", "name", "party", "where", "title")}}
         return dict(d, takes_office="2999-01-01" if far else "2000-01-01")
     line = "Elected November 3, 2026. Takes office December 2, 2026."
     exprs = [
@@ -607,6 +608,12 @@ def _elect_returning_pages(OT, LP, BME):
                  and "Rep. Michael Vose (R - Rock 5)" in ret),
                 ("the returning page is not titled Former Representative",
                  "Former Representative" not in ret and "Michael Vose (R)" in ret),
+                # TITLED AS A MEMBER-ELECT (the owner, 16 November 2026: "use their title as
+                # Rep. "Elect" Heather Denier instead of just their first name"), spelled out
+                # as a member's page spells its title.
+                ("the returning page is headed with the member-elect's title",
+                 '<h1 class="rh1">Representative “Elect” Michael Vose (R)</h1>' in ret
+                 and '<h1 class="rh1">Former Representative Michael Vose' in gone),
                 ("the returning page is Member-elect in its trail", "Member-elect" in ret),
                 ("once the day is theirs the page is the former member's as before",
                  said not in gone and "Former Representative Michael Vose" in gone),
@@ -629,7 +636,7 @@ def _elect_returning_pages(OT, LP, BME):
                 # The heading says the party she was elected under, and its bar is that
                 # party's ink; the earlier seat keeps the record's own label.
                 ("a returning member elected under another party is drawn in its ink",
-                 "Maria Perez (D)" in pret and "rh-pD" in pret and "rh-pI" not in pret
+                 "Representative “Elect” Maria Perez (D)" in pret and "rh-pD" in pret and "rh-pI" not in pret
                  and "Rep. Maria Perez (I - Hills 43)" in pret),
                 ("without the election her page keeps the record's party",
                  "rh-pI" in pplain and "rh-pD" not in pplain)):
@@ -640,7 +647,7 @@ def _elect_returning_pages(OT, LP, BME):
     until = LP.until_attrs("2026-12-02", "2026-11-20")
     plain_html = LP.static_record(vose, vose, LP.elect_line(None, "2026-11-03", "2026-12-02",
                                                            "2026-11-20"), {}, back["vose"], until)
-    for want in ("<h1>Michael Vose (R)</h1>", f"<p>{back['vose']['where']}</p>", line,
+    for want in ("<h1>Representative “Elect” Michael Vose (R)</h1>", f"<p>{back['vose']['where']}</p>", line,
                  "<p>Earlier seat: Rep. Michael Vose (R - Rock 5)</p>",
                  "<li><b>On record:</b> House, 2017–2018</li>"):
         if want not in plain_html:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -9343,7 +9343,8 @@ def _elect_pages_link_own():
     district 6, where his former seat was 5), and on no other page: not on
     the other John Smith's (900003), nor on any sitting member's the list
     does not name. app.js draws the same line from GR_ELECT, and only for
-    the member it names. And a place's "e" is its own races."""
+    the member it names, and heads a returning member's page with the title
+    GR_ELECT gives, "Rep. “Elect”". And a place's "e" is its own races."""
     absent = _elect_absent()
     if absent:
         return "skip", "not here: " + ", ".join(absent)
@@ -9419,6 +9420,8 @@ def _elect_pages_link_own():
         if slug in ("michael-vose-rock-5", "john-smith-rock-3"):
             ok = (line == ["Elected November 3, 2026. Takes office December 2, 2026."]
                   and len(g) == 1 and g[0].get("mode") == "returning"
+                  # The title the page is headed with (16 November 2026).
+                  and g[0].get("title") == "Rep. “Elect”"
                   and g[0].get("where") == "Member-elect of the New Hampshire House of "
                   f"Representatives, {words.get(key).replace(' district', '')}."
                   and {k: v for k, v in g[0].items() if k in ("id", "key", "election", "takes_office")}

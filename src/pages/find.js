@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.60
+// GRANITE_VERSION: 2026-09-16.62
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -7,7 +7,8 @@
    The bill search is a page; this is the box on every page for the things that
    are not bills. It reads site/find.json -- 406 sitting members, the 1,785
    who have left, every committee, every town and ward, the 43 subjects and
-   the fixed pages: 322 KB, 58 KB over the wire -- fetched once, the first
+   the fixed pages, and after an election the members-elect (A MEMBER-ELECT,
+   below): 322 KB, 58 KB over the wire -- fetched once, the first
    time somebody opens the box, so no page pays for it up front. Bills are not
    in that file on purpose: 33,683 rows is more than a megabyte. A bill NUMBER
    is recognised here and offered as the first answer, because that is the
@@ -76,6 +77,7 @@ const _fesc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>(
    "House Special Committee on Housing"; "Senate Special Committee on
    Redistricting" already names both and stays as it is. */
 function findName(r){
+  if(r&&r[0]==="elect")return findElectName(r);
   if(!r||r[0]!=="committee")return r?r[1]:"";
   const name=String(r[1]||""), ch=(/^(House|Senate)\b/.exec(String(r[2]||""))||[])[1]||"";
   const named=/\bcommittee\b/i.test(name)?name:`${name} Committee`;
@@ -106,6 +108,42 @@ function findKind(r){
 FKIND.statutory=tr("find.kind.statutory","Statutory Committee");
 FKIND.study=tr("find.kind.study","Study Committee");
 const _fstudy=r=>!!r&&(r[0]==="statutory"||r[0]==="study");
+/* A MEMBER-ELECT, TITLED AS ONE (the owner, 16 November 2026: "Add members
+   elect to the header and homepage search and use their title as Rep.
+   "Elect" Heather Denier instead of just their first name"). find.json
+   gives each new member-elect, and each former member elected again, a row
+   of the kind "elect" (build_indexes.elect_rows), named with the title the
+   Officials page's Members-Elect tab gives them and the seat they were
+   elected to, "Rep. “Elect” Heather Deiner (D - Hills 25)", and leading to
+   their own page. It is a "Member-Elect", found and ranked as a sitting
+   member's row is -- above the bills on a whole word of the name -- and on
+   /search listed under its chamber's own heading. Its title is drawn in the
+   page's language, as the tab draws it; the matcher reads find.json's. A
+   sitting member keeps their own row: they are a member. */
+FKIND.elect=tr("find.kind.elect","Member-Elect");
+const FELECT_TITLE=/^(Rep|Sen)\. “Elect”(?= )/;
+function findElectName(r){
+  return String(r[1]||"").replace(FELECT_TITLE,(m,h)=>h==="Sen"
+    ?tr("elect.title_sen","Sen. “Elect”"):tr("elect.title_rep","Rep. “Elect”"));
+}
+/* AND ONLY UNTIL THEY TAKE OFFICE. A former member elected again is a
+   member-elect while the members-elect file lasts, and their own page is
+   headed so until the day they take office, by the reader's clock as well
+   as the build's (app.js, renderMemberHead): from that day it is the former
+   member's page again until the General Court numbers them. Their row says
+   the same. It carries that day, r[5], and the row it stands in for, r[6]
+   -- "Former Rep. ..." -- which is the row from the day on, as a page
+   built on 1 December and read on the 3rd shows it. A new member-elect's row
+   carries neither: their own page changes with the build, and so does the
+   row. Done once, as find.json arrives (findRows). `day` is "YYYY-MM-DD",
+   the reader's own date where none is given. */
+function findNow(rows,day){
+  const d=new Date(),t=day||d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"
+    +String(d.getDate()).padStart(2,"0");
+  const live=u=>/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(u)&&t<u;
+  return (Array.isArray(rows)?rows:[]).map(r=>Array.isArray(r)&&r[0]==="elect"&&Array.isArray(r[6])
+    &&!live(String(r[5]||""))?r[6]:r);
+}
 /* FORMERLY, WHEN AN OLD NAME IS WHAT MATCHED (the person, 16 October 2026: "A
    committee should say formerly if it's an old name"). A committee's earlier
    names are search words, so "housing" finds Criminal Justice and Public
@@ -154,8 +192,9 @@ const _fenc=s=>encodeURIComponent(_fwell(s));
 
 function findRows(){
   if(FIND.rows)return Promise.resolve(FIND.rows);
+  // A member-elect's row as it stands on the reader's day (findNow).
   if(!FIND.loading)FIND.loading=fetch(new URL("find.json",location.origin+"/").href)
-    .then(r=>r.json()).then(rows=>(FIND.rows=rows)).catch(()=>(FIND.rows=[]));
+    .then(r=>r.json()).then(rows=>(FIND.rows=findNow(rows))).catch(()=>(FIND.rows=[]));
   return FIND.loading;
 }
 
@@ -520,30 +559,41 @@ function findMatch(q,limit){
    cell already exceeds the bound cannot come back under it -- so a long word
    costs almost nothing. Two edits rather than one because "firarms" is one
    deletion from "firearms" but "comittee" is two from "committee", and a
-   reader who has mistyped twice needs the offer more, not less. */
+   reader who has mistyped twice needs the offer more, not less.
+
+   TWO LETTERS SWAPPED ARE ONE SLIP, NOT TWO (the owner's own search, 16
+   November 2026: "Denier" for Heather Deiner, a member-elect). Counted as
+   two, a swap in a word under seven letters was never offered -- "denier"
+   was offered nothing of hers -- so a swap of two neighbouring letters is
+   one edit, as the not-found page's town finder counts it. The early stop
+   still holds: a swap reaches back two rows, and a row past the bound has
+   the one before it at the bound or past it. */
 function _fdist(a,b,max){
   if(Math.abs(a.length-b.length)>max)return max+1;
-  let prev=Array.from({length:b.length+1},(_,i)=>i);
+  let back=null,prev=Array.from({length:b.length+1},(_,i)=>i);
   for(let i=1;i<=a.length;i++){
     const cur=[i];
     let best=i;
     for(let j=1;j<=b.length;j++){
-      const v=Math.min(prev[j]+1,cur[j-1]+1,
+      let v=Math.min(prev[j]+1,cur[j-1]+1,
         prev[j-1]+(a.charCodeAt(i-1)===b.charCodeAt(j-1)?0:1));
+      if(back&&j>1&&a.charCodeAt(i-1)===b.charCodeAt(j-2)&&a.charCodeAt(i-2)===b.charCodeAt(j-1))
+        v=Math.min(v,back[j-2]+1);
       cur[j]=v;
       if(v<best)best=v;
     }
     if(best>max)return max+1;
-    prev=cur;
+    back=prev;prev=cur;
   }
   return prev[b.length];
 }
 
 // Built once. "Former" and the titles are left out: they are our words on
 // every one of 1,785 rows, so they would be offered for anything vaguely
-// like them and mean nothing when followed.
+// like them and mean nothing when followed. "Elect" likewise, a member-elect's
+// title (findElectName).
 const FSTOP=new Set(["former","rep.","sen.","rep","sen","house","senate",
-  "county","ward","committee","the","and","for"]);
+  "county","ward","committee","the","and","for","elect"]);
 function findWords(){
   if(FIND.words)return FIND.words;
   const w=new Set();

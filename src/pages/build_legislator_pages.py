@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.40
+# GRANITE_VERSION: 2026-09-04.42
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -351,12 +351,43 @@ def elect_member_name(m):
     return re.sub(r"^(Rep|Sen)\. ", "", plain).strip()
 
 
+def elect_title(chamber):
+    """A member-elect's title, by the chamber they were elected to: "Rep.
+    “Elect”" for the House, "Sen. “Elect”" for the Senate -- the words the
+    Officials page's Members-Elect tab gives them (officials_tabs.elect_chip,
+    the owner's walk of dry run 8, 8 November 2026), which the owner asked
+    for in the search as well on 16 November 2026: 'use their title as Rep.
+    "Elect" Heather Denier instead of just their first name'. The search's
+    rows carry it (build_indexes.elect_rows), and the head of their own page
+    spells it out (elect_heading). Ends with the members-elect, on the day
+    they take office."""
+    import i18n
+    return (i18n.say("en", "elect.title_sen", "Sen. “Elect”") if chamber == "S"
+            else i18n.say("en", "elect.title_rep", "Rep. “Elect”"))
+
+
+def elect_heading(title, name, party=""):
+    """The heading at the top of a member-elect's own page: their title with
+    the honorific in full, as head_name spells a member's ("Representative
+    James Spillane"), then the name and the party -- "Representative “Elect”
+    Heather Deiner (D)" for `title` "Rep. “Elect”" (elect_title), and from
+    the day they take office a member's, "Representative Heather Deiner (D)"
+    for "Rep.". It was the name and party alone, "Heather Deiner (D)", until
+    the owner asked for the title on 16 November 2026. app.js's
+    renderMemberHead heads a returning member-elect's page the same way,
+    from GR_ELECT's title (fullTitle)."""
+    full = re.sub(r"^(Rep\.|Sen\.)", lambda g: HONORIFIC_FULL[g.group(1)], str(title or ""))
+    return " ".join(x for x in (full, str(name or "")) if x) + (f" ({party})" if party else "")
+
+
 def elect_back(m, info):
     """What a member-elect's own page is told besides the line, or None where
-    it is drawn as before: {"mode", "name", "party", "where", "head"}. `where`
-    is the sentence a provisional page says ("Member-elect of the New
-    Hampshire House of Representatives, Hillsborough 16."), `head` the page's
-    title ("Benjamin Baroody (D), member-elect")."""
+    it is drawn as before: {"mode", "name", "party", "where", "head",
+    "title"}. `where` is the sentence a provisional page says ("Member-elect
+    of the New Hampshire House of Representatives, Hillsborough 16."), `head`
+    the page's title ("Benjamin Baroody (D), member-elect"), and `title` the
+    one they are headed with, by the chamber they were elected to
+    (elect_title)."""
     mode = elect_mode(m, info)
     if not mode:
         return None
@@ -364,7 +395,8 @@ def elect_back(m, info):
     return {"mode": mode, "name": name, "party": info["p"],
             "where": f"Member-elect of the {CHAMBER_WORDS[info['key'].split('|')[0]]}, "
                      f"{elect_where(info['key'])}.",
-            "head": f"{name} ({info['p']}), member-elect" if info["p"] else f"{name}, member-elect"}
+            "head": f"{name} ({info['p']}), member-elect" if info["p"] else f"{name}, member-elect",
+            "title": elect_title(info["key"].split("|")[0])}
 
 
 def town_pages(site):
@@ -525,7 +557,8 @@ def elect_body(p, doc, reqs, req_meta, places, today, path="", base=""):
 
       the record's head, as a returning member-elect's own page is headed
         (app.js renderMemberHead): the trail ending "Member-elect", their
-        name as the ballot prints it with the party it prints, the bar in
+        name as the ballot prints it, titled (elect_heading: "Representative
+        “Elect” Heather Deiner"), with the party it prints, the bar in
         that party's ink, the line saying what they were elected to and the
         towns of the district, each to its page, and the earlier service the
         person confirmed, where there is any; Cite this page and Share;
@@ -551,7 +584,9 @@ def elect_body(p, doc, reqs, req_meta, places, today, path="", base=""):
     ch = p.get("chamber")
     party = p.get("party") or ""
     code = party if len(party) == 1 else "X"
-    name = C.esc(p["name"]) + (f" ({C.esc(party)})" if party else "")
+    # THEIR TITLE, A MEMBER'S FROM THE DAY THEY TAKE OFFICE (elect_heading).
+    name = C.esc(elect_heading(("Sen." if ch == "S" else "Rep.") if took else elect_title(ch),
+                               p["name"], party))
     towns = p.get("towns") or []
     places = places or {}
     where = (f"{'Member' if took else 'Member-elect'} of the "
@@ -678,11 +713,12 @@ def static_record(m, rec, elected="", places=None, back=None, until=""):
     back = back or {}
     returning = back.get("mode") == "returning"
     if returning:
-        # Word for word the new member-elect's page (elect_body): the name and
-        # party, "Member-elect of the ..., district.", the election's line.
+        # Word for word the new member-elect's page (elect_body): the name,
+        # titled (elect_heading), and party, "Member-elect of the ...,
+        # district.", the election's line.
         out = ['<div class="static-rec" id="static-rec">',
-               f"<h1>{E(back['name'])}" + (f" ({E(back['party'])})" if back.get("party") else "")
-               + "</h1>", f"<p>{E(back['where'])}</p>"]
+               f"<h1>{E(elect_heading(back.get('title'), back['name'], back.get('party')))}</h1>",
+               f"<p>{E(back['where'])}</p>"]
         if elected:
             out.append(elected)
         out.append(f"<p>Earlier seat: {E(m.get('display_full') or m.get('display') or '')}</p>")
@@ -851,7 +887,7 @@ def main():
                            elect["takes_office"], today) if race else "")
         also = ({"GR_ELECT": {"id": mid, "key": race, "election": elect["election"],
                               "takes_office": elect["takes_office"],
-                              **({k: back[k] for k in ("mode", "name", "party", "where")}
+                              **({k: back[k] for k in ("mode", "name", "party", "where", "title")}
                                  if back else {})}} if race else {})
         if returning:
             who = back["head"]

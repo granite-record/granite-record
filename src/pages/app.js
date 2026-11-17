@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.334
+// GRANITE_VERSION: 2026-09-07.335
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9509,7 +9509,10 @@ function renderMemberHead(m){
       +String(d.getDate()).padStart(2,"0");
     return t<String(EG.takes_office||"").slice(0,10);})());
   const retPage=electLive&&EG.mode==="returning", chamPage=electLive&&EG.mode==="chamber";
-  const named=retPage?String(EG.name||plain)+(EG.party?` (${EG.party})`:"")
+  // TITLED AS A MEMBER-ELECT (the owner, 16 November 2026): GR_ELECT's title,
+  // "Rep. “Elect”", which fullTitle spells out, as build_legislator_pages.
+  // elect_heading heads a new member-elect's page.
+  const named=retPage?(EG.title?String(EG.title)+" ":"")+String(EG.name||plain)+(EG.party?` (${EG.party})`:"")
     :former&&/^(Rep|Sen)\. /.test(plain)?"Former "+plain:plain;
   // The party from the record's own label where the file names none: "(R -
   // Rock 16)" is a Republican's. ON A RETURNING MEMBER'S PAGE, THE ELECTION'S

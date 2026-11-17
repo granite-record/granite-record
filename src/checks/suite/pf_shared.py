@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 The definitions preflight's checks share across areas, and those no check reaches
 by name (the _DOCKET_* rows _journey_clauses_kept reads by their prefix among them).
@@ -4006,7 +4006,9 @@ def _elect_part(out, title):
 
 _ELECT_BASE = "https://graniterecord.org"
 # The builders that draw a member-elect, in build_all's order. build_indexes
-# and build_committees follow the step too (_elect_step_order) but draw none.
+# and build_committees follow the step too (_elect_step_order) but draw no page
+# of one: build_indexes gives the search its rows (find.json, elect_rows, held by
+# _find_members_elect).
 _ELECT_PAGES = (("build_pages.py", ["--out", "site"]),
                 ("build_legislator_pages.py", ["--site", "site", "--base", _ELECT_BASE]),
                 ("build_town_pages.py", ["--site", "site", "--base", _ELECT_BASE]),

@@ -2227,7 +2227,10 @@ card and its map (`build_elections.with_pages`). Since 16 November 2026 the
 page is a member's in the member-elect's form, built ahead in Python from
 the components the member page draws with: the head a returning
 member-elect's page has (the trail ending Member-elect, the name and party
-the results print), the district's towns, the election's line, a tab of
+the results print under their title spelled out, "Representative “Elect”
+Heather Deiner (D)" -- `build_legislator_pages.elect_heading`, and `GR_ELECT`'s
+title in `app.js` -- since the owner asked for it on 16 November 2026), the
+district's towns, the election's line, a tab of
 their requests as a member's page lists them (or that none is filed yet) and
 a tab of the race as the Elections tab draws it (`build_member_elections.race_row`),
 with any seats not final and the day the race's results file was saved.
@@ -2239,6 +2242,20 @@ member elected to the other chamber keeps the heading of the seat they hold,
 with the member-elect sentence beside it (`build_legislator_pages.elect_mode`,
 whose word `app.js` reads from `GR_ELECT`). Both end on the day they take
 office, by the build's day and the reader's clock.
+
+The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
+gives `find.json` a row of the kind `elect` for each new member-elect with a
+provisional page and each former member elected again, named with the
+Members-Elect tab's title and the seat they were elected to -- "Rep. “Elect”
+Heather Deiner (D - Hills 25)" -- and leading to their own page. `find.js`
+finds and ranks it as a member's row, by the words of the name, the seat and
+the county, in the header's box and the home page's alike, and `/search` lists
+it under Senators-Elect or Representatives-Elect. A sitting member keeps their
+own row. A former member elected again stands in for their "Former Rep." row,
+which their row carries and which is theirs again on the day they take
+office, by the reader's clock as well as the build's (`find.js`, `findNow`);
+a new member's row becomes a member's from that day with their page, by the
+build's day.
 
 ## Sponsors before 1999 (13 November 2026)
 
