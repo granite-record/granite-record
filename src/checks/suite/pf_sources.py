@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the General Court's database and day files, and the fetchers' parsers.
 
@@ -5518,6 +5518,164 @@ def _past_flags(BD):
                   "where the bill's own saved page prints another designation")
 
 
+# Saved pages of 1992, cut to what page_titles reads (legislation/1992/HB1318.html and
+# CACR0030.html, flattened), and the titles the archive stores for them and five more bills.
+_WHOLE_TITLE_PAGES = {
+    "HB1318": ("1992", "2536", "HB 1318 3/31/92....5509s 3830L 92-2536 08 HOUSE BILL - FINAL VERSION "
+               "1992 SESSION HOUSE BILL NO. 1318-FN (CHAPTER 135, LAWS OF 1992) INTRODUCED BY: Rep. "
+               "Fields of Hillsborough Dist. 13 REFERRED TO: Commerce, Small Business and Consumer "
+               "Affairs AN ACT repealing a provision of the business corporations act concerning "
+               "application for reinstatement of charters, relative to the annual reports of beverage "
+               "vendors and beverage vendor importers, and reinstating the charter of Rosetta Stone "
+               "Associates, Inc. AMENDED ANALYSIS This bill repeals an applicability section of the "
+               "business corporations law that conflicts with other sections of the law."),
+    "CACR30": ("1992", "2662", "CACR 0030 2/20/92...5076s 4283L 92-2662 04 CACR AMENDED BY THE SENATE "
+               "1992 SESSION CONSTITUTIONAL AMENDMENT CONCURRENT RESOLUTION NO. 30 INTRODUCED BY: Sen. "
+               "Humphrey of Dist. 17 REFERRED TO: Public Affairs RELATING TO: election of federal and "
+               "state representatives. PROVIDING THAT: the terms of office for the members of the "
+               "United States Congress from New Hampshire and for the members of the New Hampshire "
+               "house and senate shall be limited to 12 years. AMENDED ANALYSIS This constitutional "
+               "amendment concurrent resolution limits the number of terms which a United States "
+               "Senator and a United States Representative may serve.")}
+_WHOLE_TITLE_STORED = {
+    ("1991-1992", "HB1318"): "(New Title) repealing a provision of the business corporations act "
+    "concerning application for reinstatement of charters, relative to the annual reports of beverage "
+    "vendors and beverage vendor importers, and reinstating the charter of Rosetta Stone Associa",
+    ("1991-1992", "CACR30"): "(New Title) relating to election of federal and state representatives. "
+    "providing that the terms of office for the members of the United States Congress from New "
+    "Hampshire and for the members of the New Hampshire house and senate shall be limited to 12 yea",
+    ("1993-1994", "CACR34"): "relating to the membership of the senate and house of representatives. "
+    "Providing that beginning with the general election in 2002, membership of the senate shall be "
+    "increased by 25 percent, and membership of the house of representatives shall be decrease",
+    ("1993-1994", "CACR1"): "relating to establishing a constitutional revenue stabilization fund. "
+    "providing that ten percent of all undesignated general fund revenues shall be deposited into a "
+    "revenue stabilization fund, which may be withdrawn by the legislature, subject to certainc",
+    ("1989-1990", "CACR10"): "relating to a limit on spending increases of 5 percent at all levels of "
+    "government. state agency, city, town, school district, village district, water district, sewer "
+    "district, couty or other governmental entity shall increase its total spending by more t",
+    ("1995-1996", "HB594"): "(New Title) requiring employers to report to the department of employment "
+    "security the names of individuals hired or rehired, which information is used by the division of "
+    "human services in child support enforcement and making an appropriation therefor.",
+    ("1989-1990", "HB1106"): "(New Title) clarifying the applicability of post-licensing provisions to "
+    "issuer-dealers, the applicability of examination fees to all security issues, and the form of "
+    "required legend with respect to public and private",
+    ("1991-1992", "HR29"): "the members of the New Hampshire House declare that service in the New "
+    "Hampshire House is a privilege and a duty of the citizens of the State, and not a job or mode of "
+    "employment, and that except for the purposes of the Internal Revenue Service mileage re",
+    ("1989-1990", "HB1162"): "(2nd New Title) relative to abandoning and disposing of rail properties, "
+    "relative to the railroad banking program and making an appropriation therefor, and relative to "
+    "suspension and revocation of licenses for certain motor vehicle offenses and creating a"}
+
+
+@check("build", "an archived title of 1989-1998 cut at 255 characters takes the whole title its own "
+                "saved page prints, and only where that title begins with the stored one",
+       needs=("build_data",))
+def _whole_titles(BD):
+    """The search page and the database the archive's records of 1989-1998 come from hold a
+    title in 255 characters, and 167 of those terms' titles stop at the 253rd to 255th, many
+    mid-word: HB 1318 of 1992 "... Rosetta Stone Associa", CACR 34 of 1993 "... shall be
+    decrease". build_data.full_titles gives a record at the cut the title its own saved page
+    prints (page_titles), where that title begins with the stored one, spacing and capitals
+    aside, and is longer: the stored "(New Title)" or "(2nd New Title)" before it (HB 1162
+    of 1990, one of 47 an ordinal marks), the stored "Providing that"
+    as it is written, the page's "certain conditions" for the stored "certainc" (CACR 1 of
+    1993: a space the database lost). It keeps the cut where the page prints other words
+    (CACR 10 of 1989 stores "couty" for "county", and HB 594 of 1995 "therefor." for its
+    page's "therefore"), where there is no page (HR 29 of 1991), and leaves alone a title
+    not at the cut that its page goes on from (HB 1106 of 1990, 217 characters), a term from
+    1999 and a record that is not archived. page_titles, on two real pages of 1992: the
+    words after AN ACT and a CACR's labels, without the AMENDED of AMENDED ANALYSIS and with
+    the full stop of "Inc."; nothing from a page that prints another LSR."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-whole-titles-"))
+    try:
+        read = {}
+        for bid, (year, lsr, text) in _WHOLE_TITLE_PAGES.items():
+            f = tmp / f"{bid}.html"
+            f.write_text(f"<html><body><p>{text}</p></body></html>", encoding="utf-8")
+            read[bid] = BD.page_titles(f, {"lsr_year": year, "lsr_num": lsr})
+        other = BD.page_titles(tmp / "HB1318.html", {"lsr_year": "1992", "lsr_num": "2537"})
+        none = BD.page_titles(tmp / "HB9999.html", {"lsr_year": "1992", "lsr_num": "2536"})
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    act = ("repealing a provision of the business corporations act concerning application for "
+           "reinstatement of charters, relative to the annual reports of beverage vendors and beverage "
+           "vendor importers, and reinstating the charter of Rosetta Stone Associates, Inc.")
+    cacr = ("relating to election of federal and state representatives. providing that the terms of "
+            "office for the members of the United States Congress from New Hampshire and for the "
+            "members of the New Hampshire house and senate shall be limited to 12 years")
+    assert read["HB1318"] == [act], f"the act's title read off its page: {read['HB1318']}"
+    assert read["CACR30"] == [cacr], f"the amendment's title read off its page: {read['CACR30']}"
+    assert other == [] and none == [], "a page of another LSR, or none, gave a title"
+
+    st = _WHOLE_TITLE_STORED
+    page = {
+        ("1991-1992", "HB1318"): [act], ("1991-1992", "CACR30"): [cacr],
+        ("1993-1994", "CACR34"): [
+            "relating to the membership of the senate and house of representatives. providing that "
+            "beginning with the general election in 2002, membership of the senate shall be increased "
+            "by 25 percent, and membership of the house of representatives shall be decreased by 25 "
+            "percent"],
+        ("1993-1994", "CACR1"): [
+            "relating to establishing a constitutional revenue stabilization fund. providing that ten "
+            "percent of all undesignated general fund revenues shall be deposited into a revenue "
+            "stabilization fund, which may be withdrawn by the legislature, subject to certain "
+            "conditions"],
+        ("1989-1990", "CACR10"): [
+            "relating to a limit on spending increases of 5 percent at all levels of government. "
+            "providing that no government entity including the state, any state agency, city, town, "
+            "school district, village district, water district, sewer district, county or other "
+            "governmental entity shall increase its total spending by more than 5 percent per year, "
+            "unless approved by a 2/3 vote of those members of the legislative body present and voting"],
+        ("1995-1996", "HB594"): [st[("1995-1996", "HB594")][12:-1] + "e"],
+        ("1989-1990", "HB1106"): [st[("1989-1990", "HB1106")][12:] + " offerings"],
+        ("1989-1990", "HB1162"): [st[("1989-1990", "HB1162")][16:] + " supplemental fund"],
+        ("2003-2004", "HB516"): ["x" * 300], ("1991-1992", "HB1"): ["x" * 300]}
+    by_term = {}
+    for (t, b), title in st.items():
+        by_term.setdefault(t, {})[b] = {"title": title, "archived": True}
+    by_term.setdefault("2003-2004", {})["HB516"] = {"title": "y" * 255, "archived": True}
+    by_term["1991-1992"]["HB1"] = {"title": "x" * 255}
+    was = json.loads(json.dumps(by_term))
+    asked = []
+
+    def titles(term, bid, rec):
+        asked.append((term, bid))
+        return page.get((term, bid))
+    n = BD.full_titles(by_term, titles=titles)
+    now = {(t, b): r["title"] for t, bb in by_term.items() for b, r in bb.items()}
+    want = {("1991-1992", "HB1318"): "(New Title) " + act,
+            ("1991-1992", "CACR30"): "(New Title) " + cacr,
+            ("1993-1994", "CACR34"): page[("1993-1994", "CACR34")][0].replace(
+                " providing that ", " Providing that "),
+            ("1993-1994", "CACR1"): page[("1993-1994", "CACR1")][0],
+            ("1989-1990", "HB1162"): st[("1989-1990", "HB1162")] + " supplemental fund"}
+    bad = [f"{t} {b}: {now[(t, b)]!r}" for (t, b), w in want.items() if now[(t, b)] != w]
+    assert not bad, "a title at the cut did not take its page's whole title: " + "; ".join(bad)
+    left = {k: v for k, v in now.items() if k not in want}
+    assert left == {(t, b): r["title"] for t, bb in was.items() for b, r in bb.items()
+                    if (t, b) not in want}, "a title other than the five cut ones changed"
+    assert n == 5 and [x[:2] for x in BD.FULL_TITLES] == list(want), BD.FULL_TITLES
+    assert sorted(BD.CUT_TITLES_KEPT) == [
+        ("1989-1990", "CACR10", "its page prints no title that begins with it"),
+        ("1991-1992", "HR29", "no saved page"),
+        ("1995-1996", "HB594", "its page prints no title that begins with it")], BD.CUT_TITLES_KEPT
+    assert not {("1989-1990", "HB1106"), ("2003-2004", "HB516"), ("1991-1992", "HB1")} & set(asked), (
+        "a title not at the cut, a term from 1999 or a record not archived was looked up")
+    # In build_data.main: once every record and flag is in, and before bills.json is written.
+    import inspect
+    src = inspect.getsource(BD.main)
+    at = [src.find(x) for x in ("past_flags(by_term", "full_titles(by_term", '"bills.json").write_text')]
+    assert all(x >= 0 for x in at) and at == sorted(at), (
+        f"build_data.main no longer gives the cut titles their whole title after the flags and "
+        f"before it writes bills.json: {at}")
+    return "ok", ("HB 1318 and CACR 30 of 1992 read off their pages; five titles cut at 255 take "
+                  "the whole one, (New Title), (2nd New Title) and Providing that kept as stored and "
+                  "the page's "
+                  "spacing taken; other words (CACR 10 of 1989, HB 594 of 1995) and no page (HR 29) "
+                  "kept and said; a title not at the cut, a term from 1999 and a record not archived "
+                  "untouched")
+
+
 # db/Legislation.psv's rows for HB 422, HB 664, HB 138 and SB 131 of 2025 and
 # HB 1442 of 2026, as dumped on 8 September 2026, cut after column 26 (the
 # Senate committee): the fill reads no further.
@@ -6149,6 +6307,41 @@ def _past_flags_data(BD, J):
                         f"printed designation on {n['all']:,} of {n['compared']:,} "
                         f"measures (fiscal note {n['fn']:,}, appropriation {n['a']:,}, "
                         f"local {n['local']:,})")
+
+
+@check("data", "no archived title of 1989-1998 is left cut at 255 characters where its own saved "
+               "page prints the whole of it", needs=("build_data",))
+def _whole_titles_data(BD):
+    """The data side of _whole_titles. On the laptop's data/ of 7 November, 127 titles of
+    1989-1998 stopped at the archive's 255 characters where the bill's own saved page prints
+    the whole title, and begins with the stored words: CACR 34 of 1993 "... shall be
+    decrease", SB 62 of 1997 "... to move the election day of t". build_data.full_titles, run
+    again over what was built, must find nothing left to write. The titles it keeps as
+    stored, with no page or with other words on the page, are counted."""
+    import contextlib
+    import copy
+    import io
+    bp = Path("data/bills.json")
+    if not bp.exists():
+        return "skip", "no data/bills.json here; run build_data.py"
+    if not BD.PAGES.is_dir():
+        return "skip", f"no {BD.PAGES}/ here, the bills' saved pages"
+    bills = json.loads(bp.read_text(encoding="utf-8"))
+    early = {t: copy.deepcopy(bb) for t, bb in bills.items() if t[:4] < BD.TITLE_CUT_BEFORE}
+    if not early:
+        return "skip", "data/bills.json holds no term before 1999"
+    with contextlib.redirect_stdout(io.StringIO()):
+        left = BD.full_titles(early)
+    assert not left, (f"{left:,} archived title(s) of 1989-1998 still stop at {BD.TITLE_CUT} "
+                      "characters where the bill's own saved page prints the whole title, e.g. "
+                      + "; ".join(f"{b} of {t} ends {s[-30:]!r}" for t, b, s, _ in BD.FULL_TITLES[:4])
+                      + ". Rebuild with python3 src/parse/build_data.py --dir . --out data")
+    whole = sum(1 for bb in early.values() for r in bb.values()
+                if len(r.get("title") or "") > BD.TITLE_CUT and r.get("archived"))
+    gone = [f"{b} of {t}" for t, b, why in BD.CUT_TITLES_KEPT if why == "no saved page"]
+    return "ok", (f"no title of 1989-1998 left cut where its page prints the whole ({whole:,} "
+                  f"longer than {BD.TITLE_CUT}); {len(BD.CUT_TITLES_KEPT):,} at the cut kept as "
+                  f"stored, {len(gone)} with no saved page")
 
 
 @check("data", "the bound House Journal of 1992 prints HR 69's title as the record has it",

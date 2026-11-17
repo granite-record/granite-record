@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.67
+# GRANITE_VERSION: 2026-09-04.68
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1207,6 +1207,127 @@ def past_flags(by_term, past, current="", printed=None):
             rec["designation"] = (des or re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid)) + suffix
             done[suffix] += 1
     return done
+
+
+# THE WHOLE TITLE, WHERE THE ARCHIVE CUT IT (17 November 2026). The search page
+# the archived records of 1989-1998 come from (archive_bills.json), and the
+# database's PastLegislation behind it, hold a title in 255 characters: 110 of
+# those terms' titles end at the 255th, 52 at the 254th and 5 at the 253rd,
+# where the page had closed up a double space, and many stop mid-word -- CACR
+# 34 of 1993 ends "shall be decrease". No later term shows that step. The
+# bill's own saved page (legislation/<year>/<KIND><0000>.html, fetch_legislation
+# .py) prints the whole of it. So an archived record of those terms whose title
+# is at the cut (TITLE_CUT_FROM to TITLE_CUT characters) takes its page's title
+# where that title begins with the stored one -- the same words and marks,
+# spacing and capitals aside, and longer -- with the stored "(New Title)" kept
+# before it. Anything else keeps what it has, and is said: no saved page, or a
+# page whose title is other words (CACR 10 of 1989 stores "couty" for the
+# page's "county", and leaves out "no government entity including the state,
+# any"; HB 594 of 1995 stores "therefor." where its page prints "therefore").
+TITLE_CUT = 255
+TITLE_CUT_FROM = 250
+TITLE_CUT_BEFORE = "1999"
+# What the last run of full_titles did, for the log and for preflight:
+# [(term, bill, the stored title, the whole one)] and [(term, bill, why)].
+FULL_TITLES = []
+CUT_TITLES_KEPT = []
+_NEW_TITLE = re.compile(r"^\((?:\w+ )?New Title\)\s*", re.I)
+# A constitutional amendment's page prints a subject and what it provides, each
+# under its label, and the stored title writes them "relating to X. providing
+# that Y". The labels are upper case; the analysis follows, "AMENDED ANALYSIS"
+# on an amended one.
+_CACR_TITLE = re.compile(
+    r"RELATING TO:\s*(.+?)\s*(?:PROVIDING THAT:\s*(.+?)\s*)?"
+    r"(?=SPONSORS?:|COMMITTEE:|(?:AMENDED )?ANALYSIS\b|EXPLANATION\b|STATEMENT OF INTENT\b|$)")
+_ABBREVIATION_END = re.compile(r"\b(?:Inc|Co|Corp|Ltd|Jr|Sr|St|Mt|Dr|No)\.$")
+
+
+def page_titles(path, rec=None):
+    """The titles the saved page at `path` prints for its bill, written as the
+    stored titles write them: the words after AN ACT, AN ORDER or RESOLUTION
+    (fetch_legislation.TITLE_RE's first pattern, without its parser's 400-
+    character cap: CACR 32 of 1993 runs to 566), and a constitutional
+    amendment's "relating to X. providing that Y". [] where the page is not
+    there, or prints an LSR that is not `rec`'s (fetch_legislation.same_bill)."""
+    import fetch_legislation as FL
+    try:
+        flat = FL.flatten(FL.decode(Path(path).read_bytes()))
+    except OSError:
+        return []
+    if rec is not None and FL.same_bill(flat, rec) is False:
+        return []
+    got = []
+    m = FL.TITLE_RE[0].search(flat)
+    if m:
+        got.append(m.group(1))
+    m = _CACR_TITLE.search(flat)
+    if m:
+        got.append("relating to " + m.group(1)
+                   + (" providing that " + m.group(2) if m.group(2) else ""))
+    # "AMENDED" is the first word of the heading AMENDED ANALYSIS, which the
+    # act's pattern stops short of; the full stop goes, as the stored titles
+    # leave it off, except the one of an abbreviation ("Associates, Inc.").
+    out = []
+    for t in got:
+        t = re.sub(r"\s+AMENDED$", "", t.strip()).rstrip(" ,")
+        if t.endswith(".") and not _ABBREVIATION_END.search(t):
+            t = t[:-1].rstrip(" ,")
+        if 3 < len(t) < 1000:
+            out.append(t)
+    return out
+
+
+def full_titles(by_term, titles=None):
+    """The whole title on each archived record of a term before
+    TITLE_CUT_BEFORE whose stored title is at the cut, from the bill's own
+    saved page, where the page's title begins with the stored one (THE WHOLE
+    TITLE, above). Returns how many were written; FULL_TITLES and
+    CUT_TITLES_KEPT say which. `titles(term, bill, record)` gives the page's
+    titles, or None where there is no page; preflight's fixtures stand in for
+    it, and the default reads legislation/<year>/<KIND><0000>.html."""
+    del FULL_TITLES[:], CUT_TITLES_KEPT[:]
+
+    def on_page(term, bid, rec):
+        m = re.match(r"^([A-Z]+)(\d+)$", bid)
+        if not m:
+            return None
+        year = str(rec.get("lsr_year") or "")[:4]
+        for name in (f"{m.group(1)}{int(m.group(2)):04d}", bid):
+            for ext in ("html", "htm"):
+                f = PAGES / year / f"{name}.{ext}"
+                if f.exists():
+                    return page_titles(f, rec)
+        return None
+    titles = titles or on_page
+
+    def key(s):
+        return re.sub(r"\s+", "", s or "").casefold()
+    for term, byb in by_term.items():
+        if not term or term[:4] >= TITLE_CUT_BEFORE:
+            continue
+        for bid, rec in byb.items():
+            stored = rec.get("title") or ""
+            if not rec.get("archived") or not TITLE_CUT_FROM <= len(stored) <= TITLE_CUT:
+                continue
+            got = titles(term, bid, rec)
+            if got is None:
+                CUT_TITLES_KEPT.append((term, bid, "no saved page"))
+                continue
+            m = _NEW_TITLE.match(stored)
+            mark = m.group(0) if m else ""
+            body = key(stored[len(mark):])
+            if any(key(t) == body for t in got):
+                continue    # the page's title is the stored one: it was not cut
+            full = next((t for t in got if key(t).startswith(body) and len(key(t)) > len(body)),
+                        None)
+            if not full:
+                CUT_TITLES_KEPT.append((term, bid, "its page prints no title that begins with it"))
+                continue
+            if "Providing that" in stored:
+                full = full.replace(" providing that ", " Providing that ", 1)
+            rec["title"] = mark + full
+            FULL_TITLES.append((term, bid, stored, rec["title"]))
+    return len(FULL_TITLES)
 
 
 def _official_committees(by_term):
@@ -3225,6 +3346,19 @@ def main():
         elif _flagged and not PAGES.is_dir():
             print(f"  designations: NO {PAGES}/ HERE, so no flag was held to the "
                   "designation a bill's own page prints (133 differed on 1 October 2026)")
+    # The whole title where the archive cut it at 255 characters, from each
+    # bill's own saved page (THE WHOLE TITLE): last of the records' own
+    # fields, so the measures just added take theirs too.
+    if PAGES.is_dir():
+        _whole = full_titles(by_term)
+        _gone = [f"{b} of {t}" for t, b, why in CUT_TITLES_KEPT if why == "no saved page"]
+        print(f"  titles: {_whole:,} archived titles of 1989-1998 cut at {TITLE_CUT} characters "
+              f"given the whole title their own saved page prints; {len(CUT_TITLES_KEPT):,} at "
+              f"the cut kept as stored, {len(_gone)} with no saved page"
+              + (f" ({', '.join(_gone[:8])}{', ...' if len(_gone) > 8 else ''})" if _gone else ""))
+    else:
+        print(f"  titles: NO {PAGES}/ HERE, so the archived titles cut at {TITLE_CUT} characters "
+              "keep the cut (127 had their whole title on 17 November 2026)")
     # One name per committee, the one it had at the time: see
     # _official_committees. Said out loud, because a table that stopped
     # matching would otherwise just quietly put the extra spellings back.
