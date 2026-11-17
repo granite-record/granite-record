@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 The bench's ledger, review/checked.jsonl, read one way by every reader.
 
@@ -115,10 +115,15 @@ def supersedes(new, old):
     return old is None or who(new) == "hand" or who(old) == "link"
 
 
-def judged(path=LEDGER):
-    """{(kind, key): [lines]} for every item judged, each list ranked() so
-    that its last line is the one that counts."""
+def by_item(lines):
+    """{(kind, key): [lines]} for every item `lines` judge, each list ranked()
+    so that its last line is the one that counts."""
     seen = {}
-    for d in judgments(read(path)):
+    for d in judgments(lines):
         seen.setdefault((d.get("kind"), d.get("key")), []).append(d)
     return {k: ranked(v) for k, v in seen.items()}
+
+
+def judged(path=LEDGER):
+    """by_item() of the ledger at `path`."""
+    return by_item(read(path))

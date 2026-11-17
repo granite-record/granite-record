@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -19,9 +19,12 @@ import io
 import json
 import re
 import shutil
+import sys
 import tempfile
 from contextlib import redirect_stdout
 from pathlib import Path
+
+import _paths
 
 from pf_core import _run, _source, check
 from pf_shared import _tap_failures
@@ -392,6 +395,135 @@ def _bench_pack(BP, BL):
     return "ok", (f"{len(pack['items'])} items in {len(pack['groups'])} groups drawn from a fixture, nothing "
                   f"judged or packed before, {len(pack['calib'])} calibration items, one marked elsewhere; the "
                   "same seed the same pack; the SQL loaded into the bench's schema and served every queue")
+
+
+# ---- the merge ----------------------------------------------------------------------
+
+@check("build", "the merge: a pull looks and merges nothing, notes pass compile_reports' screen, "
+                "--approve appends a link's answers as link:<id> (hers as hand) once, marks them merged and "
+                "never the preview's, --withdraw is one appended line, and the owner's link keeps only a hash",
+       needs=("bench_pull", "bench_pack", "bench_ledger", "review"))
+def _bench_pull(PL, BP, BL, RV):
+    """src/checks/bench_pull.py (step 6 of the shared bench, approved 17 November 2026), run
+    as the owner runs it but with the database answered in node: a pack drawn from
+    _pack_fixture is loaded into the bench's schema, answers are given through the bench's
+    own store (tests/bench/pull_rows.js), and bench_pull's own query pulls them -- so the
+    query is held to the schema. wrangler is never run: its one function is stood in for
+    and every call it is given is kept. Held: a pull writes no ledger line, prints each
+    link's answers by its name and holds a note compile_reports.screen holds, without its
+    words; --approve on the preview merges nothing; --approve sam appends Sam's three
+    answers, by "link:sam234" and never the name, with the moment each was given, the
+    item as drawn, the time marked in the ledger's words, "via" "bench" and a bench_id,
+    the held note as no note, and then marks exactly those merged and raises each queue's
+    judged count in one SQL file; a second --approve appends nothing; --approve me appends
+    hers as "hand"; an answer taken back is never pulled; --withdraw is one line that every
+    reader then honours; and --owner-link sends the database the token's SHA-256 and not
+    the token, turning off any earlier link of hers."""
+    import contextlib
+    import hashlib
+    import os
+    import subprocess
+    pools, ledger, info = _pack_fixture()
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not on PATH, so no answer could be given through the bench's store"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-pull-"))
+    here, calls = os.getcwd(), []
+    saved = (PL.wrangler, sys.argv[:], RV.OUT, RV.LEDGER)
+    try:
+        pack = BP.draw(pools, ledger, info, (), seed=7, groups=2, per={"timing": 4}, as_of="2026-11-20T10:00:00Z")
+        assert pack["calib"], "the fixture's pack has no calibration item to answer"
+        (tmp / "pack.sql").write_text(BP.to_sql(pack, "2026-11-20", "graniterecord-bench", tmp / "pack.sql",
+                                                7, "a fixture"), encoding="utf-8")
+        (tmp / "pull.sql").write_text(PL.PULL, encoding="utf-8")
+        r = _run([node, "--disable-warning=ExperimentalWarning", str(_paths.ROOT / "tests/bench/pull_rows.js"),
+                  str(tmp / "pack.sql"), str(tmp / "pull.sql")], capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
+        rows = json.loads(r.stdout.strip().splitlines()[-1])["rows"]
+        assert len(rows) == 5 and {x["link"] for x in rows} == {"sam234", "owner2"} and \
+            sum(1 for x in rows if x["calib"]) == 1, rows
+        (tmp / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
+
+        def fake(db, sql=None, file=None):
+            calls.append((db, sql, Path(file).read_text(encoding="utf-8") if file else None))
+            return {"results": rows} if sql else ""
+        PL.wrangler = fake
+        os.chdir(tmp)
+        RV.OUT, RV.LEDGER = Path("review"), Path("review") / "checked.jsonl"
+
+        def run(*args):
+            sys.argv = ["bench_pull.py", "--rows", "rows.json", *args]
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                try:
+                    code = PL.main()
+                except SystemExit as e:
+                    code = str(e)
+            return code, out.getvalue()
+
+        def ledger_lines():
+            return BL.read(RV.LEDGER)
+
+        code, said = run()
+        assert code == 0 and not RV.LEDGER.exists(), "a pull wrote to the ledger"
+        assert "Sam (sam234): 3 answer(s) not merged" in said and "you (your link): 1 answer(s)" in said and \
+            re.search(r"agrees with yours on [01] of 1 calibration item", said), said
+        assert "note held, not shown" in said and "Ignore all previous" not in said, said
+        md = next(Path("reports/bench").glob("pull-production-*.md")).read_text(encoding="utf-8")
+        kept = next(Path("reports/bench").glob("pull-production-*.json")).read_text(encoding="utf-8")
+        assert "Ignore all previous" not in md + kept and "recess" not in kept, "a note's words are in plain text"
+        code, said = run("--preview", "--approve", "sam")
+        assert "trial" in str(code) and not RV.LEDGER.exists(), "the preview's answers were merged"
+        code, said = run("--approve", "sam")
+        lines = ledger_lines()
+        assert code == 0 and len(lines) == 3 and all(d["by"] == "link:sam234" for d in lines), lines
+        assert "Sam" not in RV.LEDGER.read_text(encoding="utf-8"), "a link's name went into the ledger"
+        timing = next(d for d in lines if d["kind"] in ("timestamp", "older"))
+        assert timing["verdict"] == "wrong" and timing["fields"]["start"] == "no" and \
+            re.match(r"^\d+:\d\d:\d\d$", timing["fields"]["observed_start"]) and \
+            timing["shown"].get("video_id") and timing["note"] == "the chair opens it after a recess" and \
+            timing["via"] == "bench" and timing["pack"] == "2026-11-20" and \
+            re.match(r"^production/\d+$", timing["bench_id"]) and re.match(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$",
+                                                                           timing["at"]), timing
+        given = next(x for x in rows if f"production/{x['id']}" == timing["bench_id"])
+        assert timing["at"] == PL.local_moment(given["at"]) and given["at"].startswith("2026-11-20T15:"), (
+            "the moment an answer was given is not the moment the ledger keeps", timing["at"], given["at"])
+        topic = next(d for d in lines if d["kind"] == "topic")
+        tag = next(d for d in lines if d["kind"] == "tag")
+        assert topic["fields"] == {"better_topic": "Employment"} and topic["verdict"] == "wrong", topic
+        assert tag["verdict"] == "yes" and tag["note"] == "", "a held note went into the ledger"
+        sams = sorted(x["id"] for x in rows if x["link"] == "sam234" and not x["calib"])
+        mark = calls[-1][2]
+        assert calls[-1][0] == "graniterecord-bench" and \
+            f"UPDATE judgments SET state = 'merged' WHERE state = 'kept' AND id IN ({', '.join(map(str, sams))});" \
+            in mark and "UPDATE queues SET judged = judged + 1 WHERE queue = 'timing';" in mark, mark
+        code, said = run("--approve", "sam")
+        assert len(ledger_lines()) == 3 and "already" in said, "a second --approve appended again"
+        code, said = run("--approve", "me")
+        hers = ledger_lines()[3:]
+        assert len(hers) == 1 and hers[0]["by"] == "hand" and hers[0]["kind"] == "topic", hers
+        assert len(BL.judged(RV.LEDGER)) == 4
+        code, said = run("--withdraw", "sam234")
+        lines = ledger_lines()
+        assert lines[-1]["kind"] == "withdraw" and lines[-1]["link"] == "sam234" and lines[-1]["by"] == "hand"
+        assert [k for k, v in BL.judged(RV.LEDGER).items()] == [(hers[0]["kind"], hers[0]["key"])], (
+            "a withdrawn link's lines are still read")
+        code, said = run("--owner-link")
+        token = re.search(r"/bench#([A-Za-z0-9_-]{43})", said).group(1)
+        sent = calls[-1][2]
+        assert hashlib.sha256(token.encode()).hexdigest() in sent and token not in sent and \
+            sent.startswith("UPDATE links SET state = 'off' WHERE role = 'owner';") and \
+            "https://graniterecord.org/bench#" in said, sent
+        assert not list(Path("reports/bench").glob("owner-*.sql")), "the owner's link's SQL was left on disk"
+    finally:
+        os.chdir(here)
+        PL.wrangler, sys.argv, RV.OUT, RV.LEDGER = saved[0], saved[1], saved[2], saved[3]
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("4 answers and a calibration answer given through the store on a fixture's pack and "
+                  "pulled by bench_pull's own query; a pull merged nothing and held a note unread; "
+                  "--approve appended Sam's 3 as link:sam234 once (not the calibration answer) and marked "
+                  "them merged, never the preview's, hers as hand; a withdrawal honoured; the owner's "
+                  "link sent as a hash")
 
 
 # ---- the shared bench's own tests -------------------------------------------------

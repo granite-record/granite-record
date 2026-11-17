@@ -22,9 +22,11 @@ Scripts that write no record and no page, only a verdict or a report:
   page's scripts in node against `tests/dom_stub.js`), so that two builds
   meant to look the same are compared by what a reader is shown;
 - the bench (`review.py`), where a person judges one sample at a time and
-  `review/checked.jsonl` grows; and the shared bench's laptop tool for a
+  `review/checked.jsonl` grows; and the shared bench's two laptop tools: a
   pack of what its contributors are asked next, drawn from `review.py`'s own
-  pools and written as SQL for the owner to load (`bench_pack`);
+  pools and written as SQL for the owner to load (`bench_pack`), and what
+  they answered, pulled, screened and, on her word, merged into the ledger
+  (`bench_pull`, the one writer of the ledger but `review.py`);
 - a built site against the kept manifest of a commit's build
   (`site_manifest`: `record` after a build, `compare` after a change), so a
   "nothing moved" proof builds its baseline once a commit;

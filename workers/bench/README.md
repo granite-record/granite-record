@@ -72,6 +72,19 @@ owner's own judgments for calibration. It writes
 `reports/bench/packs/<preview|production>/<date>.sql` and prints the one
 wrangler command that loads it; the owner runs that.
 
+## What was answered: the merge
+
+`python3 src/checks/bench_pull.py` (the owner's, on the laptop) pulls every
+answer not merged yet, screens every note with `compile_reports.screen`
+(a contributor's note is untrusted, like a reader's report; one it holds is
+not printed or merged, and `--show ID` prints its words for her), and
+prints each link's answers, its agreement with hers on calibration items,
+and any clash with an answer of hers. `--approve <name or id>` appends that
+link's answers to `review/checked.jsonl` through `review.record`, as
+`"by": "link:<id>"` (hers as `"hand"`), each once, and marks them merged;
+only production's. `--withdraw <id>` is one appended line every reader
+honours. `--owner-link` makes her own link, shown once.
+
 ## The database
 
 Two, made by the owner, never by an assistant or the night:
