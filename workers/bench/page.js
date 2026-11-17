@@ -2,8 +2,9 @@
  * The bench's one page, /bench, answered by functions/bench.js: no file in
  * site/, no link from any page, not in the sitemap, noindex. Its address is
  * /bench#<token>; the token never leaves the browser but in the body of the
- * page's own requests, and stays in the address so the page can be opened
- * again from the same link.
+ * page's own requests. It is taken out of the address bar as soon as the page
+ * reads it -- YouTube's player API sends the page's whole address to YouTube
+ * -- and kept for the tab alone (sessionStorage), so a reload still works.
  *
  * WHAT IT IS (the design of 17 November 2026 and its mockups): one item, and
  * only its evidence. A timing: the bill, the proceeding, the day, and the
@@ -217,7 +218,14 @@ const KEPT = "Your answers are kept with this link, and nothing else about you i
 // the foot of the screen.
 export const SCRIPT = String.raw`(function(){
 "use strict";
+// THE TOKEN LEAVES THE ADDRESS AT ONCE. YouTube's player API sends the page's whole
+// address to YouTube when it makes the player (its forigin), and the address held the
+// token after "#" (seen on 17 November 2026). So it is read, taken out of the address
+// bar before anything else runs, and kept for this tab alone, so a reload of the tab
+// still works; nowhere else, and never sent but in a request's body.
 var T=(location.hash||"").replace(/^#(t=)?/,"");
+try{if(T)sessionStorage.setItem("bench",T);else T=sessionStorage.getItem("bench")||"";}catch(e){}
+if(location.hash){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}}
 var $=function(id){return document.getElementById(id);};
 var E={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return E[c];});}
@@ -394,7 +402,7 @@ if(Math.abs(dx)>SWIPE&&Math.abs(dx)>2*Math.abs(dy))answer(dx>0?"yes":"no");},{pa
 setInterval(function(){if(S.item&&!document.hidden)api("/api/bench/hold",{});},HOLD_EVERY);
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&S.item)api("/api/bench/hold",{});});
 // Another link opened in this tab changes only what follows "#", which loads nothing: read it afresh.
-window.addEventListener("hashchange",function(){location.reload();});
+window.addEventListener("hashchange",function(){if(location.hash)location.reload();});
 
 // ---- the owner's Links tab ---------------------------------------------------------
 function tab(t){S.tab=t;if(t==="links")return links({action:"list"});draw();}

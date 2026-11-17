@@ -26,6 +26,18 @@ test("the page's script is one function that parses, and nothing in the page cho
   assert.match(SCRIPT, /\nstart\(\);\}\)\(\);$/, "the script ends by asking the bench, and nothing after");
 });
 
+test("the token leaves the address before anything else runs, so YouTube's player is never told it", () => {
+  // The player API sends the page's whole address to YouTube (its forigin): seen on
+  // 17 November 2026 carrying the token after "#".
+  const strip = SCRIPT.indexOf('history.replaceState(null,"",location.pathname+location.search)');
+  assert.ok(strip > 0, "the address keeps the token");
+  for (const later of ["function api(", "function ytLoad(", "YT.Player(", "\nstart();"])
+    assert.ok(SCRIPT.indexOf(later) > strip, `${later} comes before the token leaves the address`);
+  assert.match(SCRIPT, /sessionStorage\.setItem\("bench",T\);else T=sessionStorage\.getItem\("bench"\)/,
+               "the token is kept for the tab alone, so a reload still works");
+  assert.doesNotMatch(SCRIPT, /localStorage|document\.cookie/, "kept nowhere longer than the tab");
+});
+
 test("the keys: left No, down Not sure, right Yes, Z undo, N note, Space play, J and L ten seconds", () => {
   const keys = SCRIPT.slice(SCRIPT.indexOf('document.addEventListener("keydown"'));
   assert.match(keys, /k==="ArrowRight"\)answer\(S\.mode==="mark"\?"mark":S\.mode==="better"\?"saveno":"yes"\)/);
