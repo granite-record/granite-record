@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -3620,6 +3620,188 @@ def _search_polish(BP):
                   "as /search's; no words on All Terms opens on the newest action; Oldest action "
                   "reversed; guides after the bills in the panel and on /search; Return opens "
                   "/search; the note in Alice's words; a phone's row box-first with fitted pickers")
+
+
+# THE HEADER'S PANEL OVER A FIXTURE (17 November 2026): find.js in node, as a
+# page without app.js loads it, over find.json's rows, a term's bills, the
+# requests and a Laws chapter, served as the site serves them.
+def _find_panel_run(BP, harness, rows, extra=None):
+    """Run a harness of the search's boxes over a fixture: the page's scripts
+    (components.js, billmatch.js and find.js, as a page without app.js loads
+    them), HOME_JS's search handlers, find.json's `rows`, a term's bills, the
+    requests and a Laws chapter (_search_how_to, _search_enter). The parsed
+    last line of its output."""
+    term = "2025-2026"
+
+    def bill(bid, n, title):
+        return {"id": bid, "n": n, "title": title, "year": 2025, "term": term, "kind": "",
+                "status": "In Committee", "chip": "", "committees": [], "committee": "",
+                "topic": "", "sponsor": "Ann Lee", "passage": "", "votedays": [], "nrc": 0,
+                "last_action": "2025-03-01"}
+    # No number but HB 1 starts with 1, and HB 900 is the only one that starts with 90.
+    bills = [bill("HB1", "HB 1-A", "making appropriations for the expenses of certain departments"),
+             bill("HB900", "HB 900", "relative to kites"),
+             bill("HB21", "HB 21", "relative to the water supply of the city of Concord"),
+             bill("HB22", "HB 22", "relative to the school calendar"),
+             bill("HB23", "HB 23", "relative to the minimum wage"),
+             bill("HB24", "HB 24", "relative to how to vote by absentee ballot"),
+             bill("HB25", "HB 25", "relative to housing"),
+             bill("HB26", "HB 26", "relative to the right to register to vote"),
+             bill("HB27", "HB 27", "requiring witnesses to testify before committees"),
+             bill("HB28", "HB 28", "relative to property tax abatements"),
+             bill("HB29", "HB 29", "relative to school report cards"),
+             bill("HB30", "HB 30", "requiring a report on road conditions"),
+             bill("HB31", "HB 31", "relative to voting machines"),
+             bill("HB35", "HB 35", "relative to the judiciary"),
+             bill("HB36", "HB 36", "establishing Alexander Hamilton day")]
+    bills += (extra or {}).get("bills", [])
+    requests = [{"id": "LSR20270002", "n": "LSR 2027-0002", "year": 2027, "term": "2027-requests",
+                 "title": "establishing a moratorium on data centers", "sponsor": "Ann Lee",
+                 "address": "request/2027-0002", "committees": [], "committee": "", "topic": "",
+                 "status": "Requested", "lsr": True}]
+    files = {"/find.json": rows,
+             "/meta.json": {"terms": [term], "topics": [],
+                            "requests": {"term": "2027-requests", "label": "2027 Bill Requests",
+                                         "year": 2027}},
+             f"/idx/{term}.json": bills, "/idx/2027-requests.json": requests,
+             "/laws/chapters.json": {"91-A": ["Access to Governmental Records and Meetings", "VI", 22,
+                                              False, ["right-to-know law"], ["Right to Know"], 0]}}
+    m = re.search(r"(const HQ=.*?)\n</script>", BP.HOME_JS, re.S)
+    assert m, "build_pages.HOME_JS no longer holds the home box's search handlers (const HQ=)"
+    root = Path(tempfile.mkdtemp(prefix="gr-enter-"))
+    try:
+        page = BP.bill_matcher_js(_source("src/pages/app.js")) + "\n" + _source("src/pages/find.js")
+        for name, text in {"stub.js": _source("tests/dom_stub.js"), "page.js": _with_components(page),
+                           "home.js": m.group(1), "go.js": harness}.items():
+            (root / name).write_text(text, encoding="utf-8")
+        (root / "go.json").write_text(json.dumps(dict({"files": files}, **(extra or {}).get("go", {}))),
+                                      encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=120)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + said[-400:]
+        return json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# A HOW-TO SEARCH (17 November 2026): the header's panel over every guide as
+# build_indexes writes its row -- its title, line, words and the words that
+# ask how (guides.asked_words) -- beside a member, a subject, the Officials
+# page and the Learn pages, and a term's bills on each subject asked about.
+_SEARCH_HOW_TO_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const go = JSON.parse(fs.readFileSync("./go.json", "utf8"));
+globalThis.fetch = async (u) => { const p = decodeURIComponent(new URL(u).pathname);
+  if (!(p in go.files)) return { ok: false, status: 404, json: async () => { throw new Error("404 " + p); } };
+  return { ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(go.files[p])) }; };
+vm.runInThisContext(fs.readFileSync("./page.js", "utf8"), { filename: "page.js" });
+const F = vm.runInThisContext("({findDraw, findRows, findBillsLoad, findLawsLoad})");
+const order = (h) => (h.match(/<a class="fbills"|<a href="[^"]*"/g) || []).map(a =>
+  a.startsWith('<a class="fbills"') ? "BILLS" : a.slice(9, -1));
+(async () => {
+  await F.findRows(); await F.findBillsLoad(); await F.findLawsLoad();
+  const out = {};
+  for (const q of go.queries) { F.findDraw(q); out[q] = order(document.getElementById("findout").innerHTML); }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + (e && e.stack || e)); process.exit(1); });
+"""
+
+
+@check("frontend", "a search that asks how -- a question, or a guide's own task words -- lists "
+                   "the guides above the bills in the header's panel, and a search that names a "
+                   "subject keeps the bills first; find.json carries each guide's task words",
+       needs=("guides", "civics", "build_pages"))
+def _search_how_to(G, civics, BP):
+    """The owner, 17 November 2026: "if they type things like how to vote, it
+    should link them to the guides first as a higher priority than bills that
+    are generally about voting." find.js's findAsks (its comment, A HOW-TO
+    SEARCH PUTS ITS GUIDES FIRST) reads a search as asking how when a guide
+    has its every word as a whole word and it is a question, or is one of the
+    guide's task words -- its task and guides.ASKED, find.json's sixth field
+    for a guide -- or starts as one of them starts with every word in the
+    guide's title or task words. Held over every guide as build_indexes
+    writes its row: "how to vote", "where do i vote", "register to vote",
+    "testify", "contact my representative", "renew license" and "vote" list
+    their guides above the bills; "minimum wage", "property tax", "absentee
+    ballot", "voting", "report card" and "report" keep the bills first, the
+    guide after them, as Alice put it on 8 November 2026; and "who is my
+    state rep" leads with the Officials page, whose name it is, and then the
+    guide. And the data: each ASKED phrase is one of its guide's WORDS and the
+    guide has a task; asked_words is the task and those phrases;
+    build_indexes writes it as the sixth field; /search does not read it."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    import build_civics as BC
+    bad = []
+    tasks = {t["slug"]: t for _g, ts in G.TASKS for t in ts}
+    for slug, said in G.ASKED.items():
+        if slug not in tasks:
+            bad.append(f"guides.ASKED names {slug}, which no task names")
+        for p in said:
+            if p not in G.WORDS.get(slug, ()):
+                bad.append(f"guides.ASKED's {p!r} is not one of {slug}'s WORDS, so it does not find the guide")
+        if G.asked_words(slug).split(" · ")[1:] != list(said) \
+                or G.asked_words(slug).split(" · ")[0] != G.search_words(slug).split(" · ")[0]:
+            bad.append(f"asked_words({slug!r}) is {G.asked_words(slug)!r}: the task, then ASKED's words")
+    bi = _source("src/pages/build_indexes.py")
+    if 'asks = G.asked_words(p.stem) if kind == "guide" else ""' not in bi \
+            or 'S.canon(f"{folder}/{p.name}"), words] + ([asks] if asks else []))' not in bi:
+        bad.append("build_indexes no longer gives a guide's row in find.json its task words, sixth")
+    if "findAsks" in BP.SEARCH_JS:
+        bad.append("/search reads a how-to search, which stays the panel's alone")
+    assert not bad, "; ".join(bad[:4])
+    rows = []
+    for g in G.GUIDES:
+        rows.append(["guide", g["title"].replace("&rsquo;", "'"), g["blurb"], f"guides/{g['slug']}",
+                     G.search_words(g["slug"])] + ([G.asked_words(g["slug"])] if G.asked_words(g["slug"]) else []))
+    for t in civics.TOPICS:
+        kind = "guide" if t["slug"] in civics.HOW_TO else "learn"
+        r = [kind, t["title"], t["blurb"], BC.article_href(t["slug"])[:-5],
+             G.search_words(t["slug"]) if kind == "guide" else ""]
+        rows.append(r + ([G.asked_words(t["slug"])] if kind == "guide" and G.asked_words(t["slug"]) else []))
+    rows += [["legislator", "Rep. Alice Voter (D - Straf 15)", "House · Straf 15 · D", "legislator/a", ""],
+             ["topic", "Elections", "Bills on this subject", "bills?topic=Elections", ""],
+             ["page", "Officials", "Who represents your town, and the sitting roster", "officials",
+              "my senator · my representative · my rep · state rep · who is my"]]
+    first = {"how to vote": ["/guides/how-to-vote"], "where do i vote": ["/guides/how-to-vote"],
+             "register to vote": ["/guides/how-to-vote", "/guides/new-to-new-hampshire"],
+             "testify": ["/guides/attend-a-hearing", "/guides/submit-testimony", "/guides/testifying"],
+             "contact my representative": ["/guides/contact-your-legislators"],
+             "renew license": ["/guides/renew-drivers-license"], "vote": ["/guides/how-to-vote"]}
+    after = {"minimum wage": "/guides/wage-rights", "property tax": "/guides/property-tax-abatement",
+             "absentee ballot": "/guides/how-to-vote", "voting": "/guides/how-to-vote",
+             "report card": None, "report": None}
+    extra = {"bills": [{"id": "HB33", "n": "HB 33", "title": "relative to contacting a state representative",
+                        "year": 2025, "term": "2025-2026", "committees": [], "committee": "", "topic": "",
+                        "sponsor": "Ann Lee", "status": "In Committee", "kind": ""},
+                       {"id": "HB34", "n": "HB 34", "title": "relative to the renewal of a driver license",
+                        "year": 2025, "term": "2025-2026", "committees": [], "committee": "", "topic": "",
+                        "sponsor": "Ann Lee", "status": "In Committee", "kind": ""}],
+             "go": {"queries": list(first) + list(after) + ["who is my state rep"]}}
+    got = _find_panel_run(BP, _SEARCH_HOW_TO_JS, rows, extra)
+    for q, guides in first.items():
+        p = got.get(q) or []
+        bills = p.index("BILLS") if "BILLS" in p else len(p)
+        if p[:len(guides)] != guides and sorted(p[:len(guides)]) != sorted(guides):
+            bad.append(f"the panel for {q!r} runs {p[:6]}: {guides} first")
+        elif any(p.index(g) > bills for g in guides):
+            bad.append(f"the panel for {q!r} puts the bills above its guides: {p[:6]}")
+    for q, guide in after.items():
+        p = got.get(q) or []
+        if not p or p[0] != "BILLS":
+            bad.append(f"the panel for {q!r}, a subject, runs {p[:6]}: the bills first")
+        elif guide and (guide not in p or p.index(guide) < p.index("BILLS")):
+            bad.append(f"the panel for {q!r} does not list {guide} after the bills: {p[:6]}")
+    p = got.get("who is my state rep") or []
+    if p[:2] != ["/officials", "/guides/your-representatives"]:
+        bad.append(f"the panel for 'who is my state rep' runs {p[:4]}: the Officials page, then the guide")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", (f"{len(first)} searches that ask how list their guides above the bills, "
+                  f"{len(after)} that name a subject keep the bills first, a page whose name was "
+                  f"typed leads its guide; {sum(map(len, G.ASKED.values()))} task phrases of "
+                  f"{len(G.ASKED)} guides, each one of its guide's words, carried in find.json")
 
 
 # The site search over find.json as build_indexes writes it (25 October 2026):

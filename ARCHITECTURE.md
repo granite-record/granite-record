@@ -1288,7 +1288,10 @@ is not the newest.
 and close when focus goes somewhere else in the page; focus that goes nowhere
 (the window losing it) closes nothing. The search panel has one
 `role="status"` line, written by `findSay` from the markup `findDraw` has just
-drawn.
+drawn. A search that asks how -- a question, or a guide's own task words
+(`guides.ASKED`, the sixth field of a guide's row in `find.json`) -- lists
+its guides above the bills (`findAsks`); one that names a subject keeps the
+bills first.
 
 **A ring is drawn inside a control that fills a clipping box** (a card's
 header, Play, a filter group's head), and **a text box's edge is `--edge`**.

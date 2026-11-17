@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.33
+# GRANITE_VERSION: 2026-09-13.34
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -640,6 +640,9 @@ def find_index(site, legs, towns):
     member-elect's row is of the kind "elect" (elect_rows), and a former
     member elected again carries two more: the day they take office, and
     the row they had as a former member, which is theirs again from that day.
+    A how-to guide's row carries a sixth: its task and the words that ask how
+    to do it (guides.asked_words), which find.js reads to put the guide above
+    the bills for a search that asks how (findAsks).
 
     FORMER MEMBERS AND SUBJECTS ARE IN IT, asked for on 18 September in these
     words: "Search bar should also list former legislators in the results, but
@@ -810,8 +813,11 @@ def find_index(site, legs, towns):
             # and the plain words it declares (guides.search_words), which
             # find.js reads as part of its name.
             words = G.search_words(p.stem) if kind == "guide" else ""
+            # AND THE WORDS THAT ASK HOW TO DO IT (the owner, 17 November
+            # 2026): its sixth field, guides.asked_words.
+            asks = G.asked_words(p.stem) if kind == "guide" else ""
             rows.append([kind, name, _h.unescape(dsc.group(1)) if dsc else "",
-                         S.canon(f"{folder}/{p.name}"), words])
+                         S.canon(f"{folder}/{p.name}"), words] + ([asks] if asks else []))
     # A PAGE'S WORDS, after its line: what a reader types for it, read as
     # part of its name (find.js, _fnamed), so that these lead the bills. The
     # Officials page is what a reader asking for their own member types (the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.69
+# GRANITE_VERSION: 2026-10-11.70
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -10565,18 +10565,74 @@ WORDS = {
 }
 
 
+# THE WORDS THAT ASK HOW (the owner, 17 November 2026: "if they type things
+# like how to vote, it should link them to the guides first as a higher
+# priority than bills that are generally about voting"). Of each guide's
+# WORDS, the ones a reader types to ask how to do its task -- a thing to do
+# or a question, "register to vote", "who represents me", "testify",
+# "evicted" -- and not the ones that name its subject, "voting", "absentee
+# ballot", "minimum wage", on which the bills come first (Alice, 8 November
+# 2026: "minimum wage" led with a guide above its seven bills). find.json
+# carries them after the guide's task, as its sixth field (asked_words), and
+# find.js reads a search that is one of them, or begins as one of them
+# begins, as a how-to search, which puts the guide above the bills
+# (findAsks). Each is one of the guide's WORDS, so that the guide is found
+# by it; preflight holds that. A phrase added here moves the guide above the
+# bills for every reader who types it: add only what asks for the task.
+ASKED = {
+    "your-representatives": ("who represents me", "who is my state rep"),
+    "who-to-contact": ("who do i contact",),
+    "contact-your-legislators": ("email my representative", "call my senator",
+                                 "write my legislator", "contact"),
+    "attend-a-hearing": ("testify", "speak on a bill", "attend"),
+    "submit-testimony": ("testify", "sign in", "support or oppose a bill", "comment on a bill"),
+    "testifying": ("testify", "attend"),
+    "using-this-site": ("follow a bill", "report an error"),
+    "how-to-vote": ("register to vote", "where do i vote"),
+    "run-for-office": ("file for office",),
+    "renew-drivers-license": ("renew my license", "update my license"),
+    "register-a-car": ("register my car",),
+    "new-to-new-hampshire": ("moving to new hampshire", "register my car", "register to vote"),
+    "file-for-unemployment": ("laid off", "lost my job"),
+    "wage-rights": ("not paid",),
+    "homelessness-help": ("evicted",),
+    "tenant-rights": ("evicted", "locked out"),
+    "landlord-duties": ("evict a tenant",),
+    "consumer-rights": ("cancel a sale",),
+    "medicare-and-social-security": ("turning 65",),
+    "passport": ("renew my passport", "travel abroad"),
+    "discrimination": ("discriminated",),
+    "tour-the-state-house": ("tour", "visit the state house"),
+}
+
+
+def _task_does(t):
+    """A task's words as the reader sees them: markup and entities read."""
+    import html as _html
+    return _html.unescape(re.sub(r"<[^>]+>", "", t["does"])).replace("’", "'")
+
+
 def search_words(slug):
     """What find.json carries for the guide beyond its title and line (its
     fifth field, build_indexes.find_index): the task in a reader's words and
     the words above, "Renew your driver's license · license · dmv", with
     any markup and entity read as the reader sees it. "" for a guide no task
     names."""
-    import html as _html
     _g, t = task_of(slug)
     if not t:
         return ""
-    does = _html.unescape(re.sub(r"<[^>]+>", "", t["does"])).replace("’", "'")
-    return " · ".join([does, *WORDS.get(slug, ())])
+    return " · ".join([_task_does(t), *WORDS.get(slug, ())])
+
+
+def asked_words(slug):
+    """find.json's sixth field for the guide (build_indexes.find_index): its
+    task and the words ASKED says ask how to do it, "Vote · register to vote
+    · where do i vote", read as search_words reads the task. "" for a guide
+    no task names."""
+    _g, t = task_of(slug)
+    if not t:
+        return ""
+    return " · ".join([_task_does(t), *ASKED.get(slug, ())])
 
 
 def task_of(slug):

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.62
+// GRANITE_VERSION: 2026-09-16.63
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1069,6 +1069,45 @@ function _ffold(rows,s){
   return rows.filter(r=>r[0]!=="ward"||!cities.has(String(r[1]).replace(/, Ward \S+$/,"")));
 }
 
+/* A HOW-TO SEARCH PUTS ITS GUIDES FIRST (the owner, 17 November 2026: "if
+   they type things like how to vote, it should link them to the guides first
+   as a higher priority than bills that are generally about voting"). A
+   search asks how to do a guide's task when the guide has every word of it
+   as a whole word of its name (_fwhole), and it is put
+     - as a question: its first word is how, where, who, what, when, which,
+       why or can -- "how to vote", "where do i vote", "who represents me";
+     - or as the task, in the guide's own words: find.json's sixth field for
+       a guide, its task and the phrases guides.ASKED says ask for it
+       (build_indexes, guides.asked_words). It is one of them -- "testify",
+       "register to vote", "vote" -- or it starts as one of them starts and
+       every word of it is a whole word of the guide's title or of those
+       phrases: "contact my representative", "report a pothole", "get a
+       fishing license". "a", "the", "my" and the like are no part of the
+       comparison: "renew license" is "renew my license".
+   A search that names a subject asks nothing -- "minimum wage", "property
+   tax", "absentee ballot", "voting" -- and keeps the bills first (Alice, 8
+   November 2026: "minimum wage" led with a guide above its seven bills); so
+   does one word that only begins a task, "report" or "work", a subject as
+   often as not, and "report card", whose "card" is a gift card's. The panel
+   draws the guides a search asks for above the bills, after the members,
+   towns, committees, subjects and pages whose name it is (findDraw); /search
+   lists them as it did. */
+const FASK=new Set(["how","where","who","what","when","which","why","can"]);
+const FFILL=new Set(["a","an","the","my","your","our"]);
+function findAsks(r,s){
+  if(!r||r[0]!=="guide"||!_fwhole(r,s))return false;
+  const words=_fwords(s);
+  if(FASK.has(words[0]))return true;
+  const bare=w=>w.filter(x=>!FFILL.has(x));
+  const said=String(r[5]||"").split(" · ").map(p=>bare(_fwords(p))).filter(p=>p.length);
+  const q=bare(words);
+  if(!q.length)return false;
+  if(said.some(p=>p.length===q.length&&p.every((w,i)=>w===q[i])))return true;
+  if(q.length<2||!said.some(p=>p[0]===q[0]))return false;
+  const own=_ftitled(_fboth(`${_fbare(r[1])} ${r[5]||""}`.toLowerCase()));
+  return words.every(w=>_fisword(own,w));
+}
+
 function findDraw(q,ids){
   ids=ids||FIND_IDS;
   const out=document.getElementById(ids.out);
@@ -1151,12 +1190,17 @@ function findDraw(q,ids){
   // straight after the bills, where there are any, and leads where there are
   // none ("renew my license"); the members, committees, towns and subjects
   // keep their place above the bills.
+  // BUT A SEARCH THAT ASKS HOW PUTS ITS GUIDES ABOVE THE BILLS (the owner,
+  // 17 November 2026; findAsks): "how to vote", "register to vote",
+  // "testify", under the names typed and above the bills on the subject.
   const howto=r=>r[0]==="guide"||r[0]==="learn";
   const whole=r=>!_fgone(r)&&_fwhole(r,s);
   const named=rows.filter(r=>(r[0]==="law"&&!findLawIsTitle(r))||(!howto(r)&&!findLawIsTitle(r)&&whole(r)));
-  const after=rows.filter(r=>howto(r)&&whole(r));
-  const list=named.map(row).join("")+bills+after.map(row).join("")
-    +rows.filter(r=>!named.includes(r)&&!after.includes(r)).map(row).join("");
+  const asked=rows.filter(r=>r[0]==="guide"&&whole(r)&&findAsks(r,s));
+  const after=rows.filter(r=>howto(r)&&whole(r)&&!asked.includes(r));
+  const rest=rows.filter(r=>!named.includes(r)&&!asked.includes(r)&&!after.includes(r));
+  const list=named.map(row).join("")+asked.map(row).join("")+bills+after.map(row).join("")
+    +rest.map(row).join("");
   // "No matching results." -- the person's words -- only when nothing here
   // and no bill matches; "Did you mean" only when no bill does either
   // ("voting" was offered "zoning" over 141 bills). Its guesses are a name
