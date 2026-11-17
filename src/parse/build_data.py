@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.66
+# GRANITE_VERSION: 2026-09-04.67
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2685,6 +2685,19 @@ def main():
     # rows write it. Only the rest take `former`'s: members who have left, and
     # a member a bill names in the chamber they sat in before -- 2025's HB 123
     # lists Rep. Rochefort, a senator now, and he keeps Grafton 1.
+    #
+    # AND THE ROSTER'S ID (17 November 2026). The same loop gave a row with no
+    # id the employee number of that same record of the same name, and kept
+    # the status page's own: every senator's row from the status page, which
+    # links no senator, took an employee number -- the House one for the 17
+    # who had sat there, Sen. McGough's 376150 on 49 rows where the roster
+    # says 11460 -- and every representative's kept the page's, a House
+    # employee number too, so none of those rows joined legislators.csv on
+    # member_id as sponsors.csv says a sitting member's row does: 4,400 rows of
+    # 2025-2026 on 833 bills in the laptop's data of 7 November (1,545 of 24
+    # senators, 2,855 of 300 representatives). A row
+    # seated from the roster carries the roster's id; the person column, which
+    # people.json gives every one of a member's numbers, was right and stays.
     _term_roster = sess_roster or legs
     sitting_by_name = defaultdict(list)
     for _m in _term_roster.values():
@@ -2709,6 +2722,7 @@ def main():
                 _d = str(seat.get("district") or "")
                 _s["county"] = seat.get("county_abbr", "")
                 _s["district"] = _d.zfill(2) if _d.isdigit() else _d
+                _s["member_id"] = str(seat.get("id") or "") or _s.get("member_id")
                 seated += 1
             if not hit:
                 continue

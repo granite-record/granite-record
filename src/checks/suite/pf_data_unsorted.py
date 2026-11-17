@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of data checks with no module under test, for a person to sort.
 
@@ -1573,6 +1573,66 @@ def _sponsor_seats_data():
                        + ". Rebuild with python3 src/parse/build_data.py --dir . --out data")
     return "ok", (f"{newest}: {rows:,} sponsor rows of {members} sitting members, each with the "
                   "district and county the term's roster gives them")
+
+
+@check("data", "every sponsor row of the session's term whose member sits in its chamber carries the "
+       "id the term's roster gives them, so that it joins legislators.csv")
+def _sponsor_ids_data():
+    """The data side of _sitting_sponsors_take_the_roster_seat's ids. sponsors.csv says member_id
+    "joins legislators.csv for a sitting member", and on the laptop's data/ of 7 November 4,400
+    rows of 2025-2026 did not: every senator's row the bill status page gave carried an employee
+    number build_data matched by name -- the House one for the 17 who had sat there, Sen. Tim
+    McGough's 376150 on 49 rows where the roster says 11460 -- and every representative's the
+    House number the page links. The person column was right throughout.
+
+    For the newest term: every row whose member sits in the row's chamber -- by the roster's
+    id, or by first and last name among that chamber's members where one alone answers, as
+    build_data seats them -- carries the roster's id. The roster is the term's own, as
+    _sponsor_seats_data reads it."""
+    sp, lg = Path("data/sponsors.json"), Path("data/legislators.json")
+    if not (sp.exists() and lg.exists()):
+        return "skip", "data/sponsors.json or data/legislators.json not here"
+    sponsors = json.loads(sp.read_text(encoding="utf-8"))
+    if not sponsors or not all(re.match(r"^\d{4}-\d{4}$", k) for k in sponsors):
+        return "skip", "data/sponsors.json is not keyed on the term yet"
+    newest = max(sponsors)
+    own = Path("data/frozen") / newest / "legislators.json"
+    roster = {str(m.get("id")): m for m in json.loads((own if own.exists() else lg).read_text(
+        encoding="utf-8"))}
+
+    def first_last(name):
+        # build_data's _first_last, as _sponsor_seats_data reads it.
+        n = (name or "").strip()
+        if "," in n:
+            last, first = [x.strip() for x in n.split(",", 1)]
+            n = f"{first} {last}"
+        w = re.sub(r"[^A-Za-z ]", " ", n).lower().split()
+        return (w[0], w[-1]) if len(w) >= 2 else None
+    by_name = {}
+    for m in roster.values():
+        by_name.setdefault((first_last(m.get("name")), m.get("chamber")), []).append(m)
+    rows, wrong, chambers = 0, Counter(), Counter()
+    for people in (sponsors.get(newest) or {}).values():
+        for x in people or []:
+            ch = (x.get("chamber") or "")[:1]
+            m = roster.get(str(x.get("member_id") or ""))
+            if not (m and m.get("chamber") == ch):
+                got = by_name.get((first_last(x.get("name")), ch)) or []
+                m = got[0] if len(got) == 1 else None
+            if m is None:
+                continue
+            rows += 1
+            if str(x.get("member_id") or "") != str(m["id"]):
+                wrong[f"{m.get('name')} ({m['id']}) as {x.get('member_id') or 'no id'}"] += 1
+                chambers[ch] += 1
+    assert rows, f"no sponsor row of {newest} is a sitting member's"
+    assert not wrong, (f"{sum(wrong.values()):,} sponsor row(s) of {newest} ({chambers['S']:,} of "
+                       f"senators, {chambers['H']:,} of representatives) carry another number than "
+                       f"the roster's id for {len(wrong)} sitting member(s): "
+                       + "; ".join(f"{k} on {n:,} row(s)" for k, n in wrong.most_common(4))
+                       + ". Rebuild with python3 src/parse/build_data.py --dir . --out data")
+    return "ok", (f"{newest}: {rows:,} sponsor rows of sitting members, each under the id the "
+                  "term's roster gives them")
 
 
 @check("data", "every voter in the record is one person, with a party")

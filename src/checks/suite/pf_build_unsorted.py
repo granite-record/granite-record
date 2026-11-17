@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of build checks with no module under test, for a person to sort.
 
@@ -3901,12 +3901,17 @@ _SITTING_SEATS = {
                      {"name": "David Rochefort", "party": "R", "web_member_id": "",
                       "senate_district": "", "chamber": "", "url": "", "no_member_page": True},
                      {"name": "Pat Adams", "party": "R", "web_member_id": "",
-                      "senate_district": "", "chamber": "", "url": "", "no_member_page": True}]}}},
+                      "senate_district": "", "chamber": "", "url": "", "no_member_page": True},
+                     # Made up for the id (17 November 2026): a sitting representative as the
+                     # status page links one, by the House employee number its address carries.
+                     {"name": "Linda McGrath", "party": "R", "web_member_id": "409266",
+                      "senate_district": "", "chamber": "H", "url": ""}]}}},
 }
 
 
-@check("build", "a sitting member's sponsor row carries the seat the term's roster gives them, "
-       "not a seat of another term the General Court's list gives the same name, built on real rows")
+@check("build", "a sitting member's sponsor row carries the seat and the id the term's roster gives "
+       "them, not a seat or number of another term the General Court's list gives the same name, "
+       "built on real rows")
 def _sitting_sponsors_take_the_roster_seat():
     """build_data gave every sponsor row without a district the seat of whichever record in
     `former` shares its first and last name, and `former` holds everyone who has served:
@@ -3924,7 +3929,15 @@ def _sitting_sponsors_take_the_roster_seat():
     chamber (a representative, build_data reads it) and who sits in the Senate now, keeps
     Grafton 1, the House seat the General Court's list gives him: a member a bill names in the
     chamber they sat in before takes no seat from the chamber they sit in now. His numbers are
-    the same in both chambers, so the made-up Pat Adams holds that rule: Belknap 3, not 7."""
+    the same in both chambers, so the made-up Pat Adams holds that rule: Belknap 3, not 7.
+
+    AND THE ID (17 November 2026). The same loop gave a status-page row with no id the
+    employee number of that record of the same name, and kept the page's own, also an employee
+    number: Sen. Pearl's row carried 408383, his House number, where the roster says 10604, and
+    a representative's the number the page links, so none joined legislators.csv on member_id.
+    A seated row carries the roster's id -- Pearl 10604, and the made-up status-page row of Rep.
+    McGrath, linked by her House number 409266, her PersonID 11421 -- and a row not seated keeps
+    the number of the seat it names (Rochefort 409162, Adams 419999)."""
     here = Path(".").resolve()
     tmp = Path(tempfile.mkdtemp(prefix="gr-sitting-seats-"))
     env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONDONTWRITEBYTECODE="1",
@@ -3966,23 +3979,27 @@ def _sitting_sponsors_take_the_roster_seat():
         shutil.rmtree(tmp, ignore_errors=True)
 
     def seat(bill, who):
-        got = [(x.get("chamber"), x.get("county"), x.get("district"), x.get("label"))
+        got = [(x.get("chamber"), x.get("county"), x.get("district"), x.get("label"),
+                str(x.get("member_id") or ""))
                for x in sp.get(bill) or [] if who in (x.get("member_id"), x.get("name"))]
         return got[0] if len(got) == 1 else got
-    want = {("HB1449", "11460"): ("S", "Hills", "11", "Sen. Tim McGough (R - SD11)"),
-            ("HB1449", "11421"): ("H", "Rock", "40", "Rep. Linda McGrath (R - Rock 40)"),
-            ("HB1449", "9866"): ("H", "Belk", "07", "Rep. Paul Terry (R - Belk 7)"),
-            ("HB123", "Howard Pearl"): ("S", "Merr", "17", "Howard Pearl (R)"),
-            ("HB123", "David Rochefort"): ("H", "Graf", "01", "David Rochefort (R)"),
-            ("HB123", "Pat Adams"): ("H", "Belk", "03", "Pat Adams (R)")}
+    want = {("HB1449", "11460"): ("S", "Hills", "11", "Sen. Tim McGough (R - SD11)", "11460"),
+            ("HB1449", "11421"): ("H", "Rock", "40", "Rep. Linda McGrath (R - Rock 40)", "11421"),
+            ("HB1449", "9866"): ("H", "Belk", "07", "Rep. Paul Terry (R - Belk 7)", "9866"),
+            ("HB123", "Howard Pearl"): ("S", "Merr", "17", "Howard Pearl (R)", "10604"),
+            ("HB123", "David Rochefort"): ("H", "Graf", "01", "David Rochefort (R)", "409162"),
+            ("HB123", "Pat Adams"): ("H", "Belk", "03", "Pat Adams (R)", "419999"),
+            ("HB123", "Linda McGrath"): ("H", "Rock", "40", "Linda McGrath (R)", "11421")}
     bad = [f"{b} {who}: {seat(b, who)}, not {w}" for (b, who), w in want.items() if seat(b, who) != w]
-    assert not bad, ("a sponsor row's seat is not the one the record gives the member in that "
-                     "chamber that term:\n  " + "\n  ".join(bad))
+    assert not bad, ("a sponsor row's seat or id is not the one the record gives the member in "
+                     "that chamber that term:\n  " + "\n  ".join(bad))
     return "ok", ("Sen. McGough on HB 1449 sits for District 11, not the Hills 12 of his House "
                   "record, and Sen. Pearl on HB 123's status-page list for District 17, not "
-                  "Merrimack 26; Reps. McGrath and Terry keep their seats, and Rep. Rochefort, "
-                  "a senator now, keeps Grafton 1 on the bill that names him a representative "
-                  "(and the made-up Rep. Adams Belknap 3, not his Senate 7)")
+                  "Merrimack 26, under the roster's id 10604, not his House number 408383, as "
+                  "Rep. McGrath's status-page row is under 11421, not 409266; Reps. McGrath and "
+                  "Terry keep their seats, and Rep. Rochefort, a senator now, keeps Grafton 1 and "
+                  "its number on the bill that names him a representative (and the made-up Rep. "
+                  "Adams Belknap 3, not his Senate 7)")
 
 
 @check("build", "a chapter is read in every form the clerks wrote it, and a clash is withheld")
