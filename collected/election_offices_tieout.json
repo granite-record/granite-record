@@ -2,7 +2,7 @@
  "2016": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 122,
+    "held": 273,
     "disagree": 0
    },
    "a county's row in the summary is its block's Totals": {
@@ -10,7 +10,7 @@
     "disagree": 0
    },
    "a race's count is its places' sum": {
-    "held": 25,
+    "held": 119,
     "disagree": 0
    }
   },
@@ -19,24 +19,30 @@
  "2018": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 67,
-    "disagree": 0
+    "held": 251,
+    "disagree": 1
    },
    "a county's row in the summary is its block's Totals": {
     "held": 40,
     "disagree": 0
    },
    "a race's count is its places' sum": {
-    "held": 20,
+    "held": 133,
     "disagree": 0
    }
   },
-  "disagreements": []
+  "disagreements": [
+   {
+    "check": "a column's places sum to the file's Totals",
+    "what": "register-of-deeds|Cheshire Totals: write_ins_scattered, the places add up to 50, the file's Totals say 49",
+    "where": "2018-ge-county-cheshire.xls, sheet 'cheshire county offices', row 32"
+   }
+  ]
  },
  "2020": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 111,
+    "held": 292,
     "disagree": 0
    },
    "a county's row in the summary is its block's Totals": {
@@ -44,7 +50,7 @@
     "disagree": 0
    },
    "a race's count is its places' sum": {
-    "held": 22,
+    "held": 133,
     "disagree": 0
    }
   },
@@ -53,24 +59,35 @@
  "2022": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 120,
-    "disagree": 0
+    "held": 286,
+    "disagree": 2
    },
    "a county's row in the summary is its block's Totals": {
     "held": 90,
     "disagree": 0
    },
    "a race's count is its places' sum": {
-    "held": 21,
+    "held": 121,
     "disagree": 0
    }
   },
-  "disagreements": []
+  "disagreements": [
+   {
+    "check": "a column's places sum to the file's Totals",
+    "what": "county-commissioner|Coos|1 Totals: Theberge, r, the places add up to 2,683, the file's Totals say 2,783",
+    "where": "2022-ge-coos-county.xls, sheet 'rcoos', row 143"
+   },
+   {
+    "check": "a column's places sum to the file's Totals",
+    "what": "county-commissioner|Coos|1 Totals: write_ins_scattered, the places add up to 25, the file's Totals say 26",
+    "where": "2022-ge-coos-county.xls, sheet 'rcoos', row 143"
+   }
+  ]
  },
  "2024": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 101,
+    "held": 413,
     "disagree": 0
    },
    "a county's row in the summary is its block's Totals": {
@@ -78,7 +95,7 @@
     "disagree": 0
    },
    "a race's count is its places' sum": {
-    "held": 17,
+    "held": 120,
     "disagree": 0
    }
   },
@@ -87,7 +104,7 @@
  "2026": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 110,
+    "held": 282,
     "disagree": 0
    },
    "a county's row in the summary is its block's Totals": {
@@ -95,7 +112,7 @@
     "disagree": 15
    },
    "a race's count is its places' sum": {
-    "held": 21,
+    "held": 125,
     "disagree": 6
    }
   },

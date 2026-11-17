@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.10
+# GRANITE_VERSION: 2026-11-16.11
 """
 preflight's checks of members-elect and election results.
 
@@ -3322,6 +3322,119 @@ def _offices_district_logic(PSO):
                   "that disagrees recorded with its row, a recount's column read, another winner, "
                   "a district twice, another day and a stray count refused, a district with no "
                   "file listed")
+
+
+def _offices_county_book(path, fix1=None, fix2=None, county="BELKNAP"):
+    """A made-up 2026 county offices file: a sheet of Sheriff, Attorney and
+    commissioners at large side by side, and a sheet of commissioner
+    districts under their banner, district 3 marked No Election. `fix1` and
+    `fix2` change each sheet's rows."""
+    import openpyxl
+    title = [[None, "State of New Hampshire - 2026 STATE GENERAL ELECTION"],
+             [None, f"{county} County Offices"]]
+    one = title + [
+        ["NOVEMBER 03, 2026", "SHERIFF", None, "ATTORNEY", None, None, "County Commissioners"],
+        [None, "Ann Able, r&d", "Write-Ins", "Bob Baker, d", "Carl Cole, r", "Write-Ins",
+         "Gus Gray, d", "Hal Hart, d", "Write-Ins"],
+        ["Town A", 50, 1, 30, 20, 0, 40, 35, 1], ["Town B", 40, 0, 25, 22, 1, 30, 33, 0],
+        ["Town C", 20, 2, 9, 12, 0, 15, 14, 0],
+        ["TOTALS", 110, 3, 64, 54, 1, 85, 82, 1]]
+    two = title + [
+        [None, "County Commissioners"],
+        ["NOVEMBER 03, 2026", "District 1", None, None, "District 2", None, "District 3"],
+        [None, "Dan Dee, r", "Eve Eck, d", "Write-Ins", "Fay Fox, r", "Write-Ins", "No Election"],
+        ["Town A", 30, 25, 0, None, None, None], ["Town B", None, None, None, 41, 2, None],
+        ["Town C", 18, 20, 1, None, None, None], ["TOTALS", 48, 45, 1, 41, 2, 0]]
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    for name, rows, fix in (("Sheriff Attorney", one, fix1), ("Commissioner", two, fix2)):
+        ws = wb.create_sheet(name)
+        for r in (fix(rows) if fix else rows):
+            ws.append(r)
+    wb.save(path)
+
+
+@check("build", "other offices' results: the county reader splits a sheet of offices side by "
+                "side into races by their labels, reads a commissioner district's own towns, "
+                "lists a district marked No Election, keeps an at-large race's count with no "
+                "winner, and refuses a race it cannot settle alone",
+       needs=("parse_sos_offices",))
+def _offices_county_logic(PSO):
+    """The reader of the county offices, on a made-up 2026 file. Offices
+    printed side by side are one race each, by the label over their columns;
+    a commissioner district's race is the towns that print a count under it;
+    a district marked No Election is listed and read as no race; the
+    commissioners of an at-large race keep their count and no one is marked
+    elected, the file printing no number of seats. A Totals cell that
+    disagrees is recorded with its row; a race the reader cannot settle --
+    a write-in the file does not name who may have won, a place's empty cell
+    the Totals leave room for -- is refused alone and listed; a No Election
+    mark among a race's candidates, and a sheet titled for another county,
+    refuse the file."""
+    src = lambda tmp: Path(tmp) / "records" / "sources"  # noqa: E731
+
+    def doc_of(**kw):
+        with tempfile.TemporaryDirectory() as tmp:
+            src(tmp).mkdir(parents=True)
+            _offices_county_book(src(tmp) / "2026-ge-county-offices-belknap.xlsx", **kw)
+            return PSO.read_year(tmp, 2026)
+    doc = doc_of()
+    races = doc["races"]
+    assert sorted(races) == ["county-attorney|Belknap", "county-commissioner|Belknap",
+                             "county-commissioner|Belknap|1", "county-commissioner|Belknap|2",
+                             "sheriff|Belknap"], sorted(races)
+    assert [(c["name"], c["party"], c["votes"], c["elected"])
+            for c in races["county-attorney|Belknap"]["candidates"]] == [
+        ("Bob Baker", "d", 64, True), ("Carl Cole", "r", 54, False)], races["county-attorney|Belknap"]
+    d1 = races["county-commissioner|Belknap|1"]
+    assert [p[1] for p in d1["places"]] == ["Town A", "Town C"] and d1["seats"] == 1, d1
+    assert d1["contest"] == "2026-11-03.general.county-commissioner.belknap-1", d1["contest"]
+    assert [p[1] for p in races["county-commissioner|Belknap|2"]["places"]] == ["Town B"]
+    large = races["county-commissioner|Belknap"]
+    assert large["seats"] is None and all(c["elected"] is None for c in large["candidates"]), large
+    assert doc.get("_no_election") == [{"race": "county-commissioner|Belknap|3", "where": (
+        "2026-ge-county-offices-belknap.xlsx, sheet 'Commissioner', row 5"),
+        "says": "No Election"}], doc.get("_no_election")
+    assert "the county offices of Carroll, Cheshire, Coos, Grafton, Hillsborough, Merrimack, "\
+        "Rockingham, Strafford, Sullivan" in doc["_not_on_file"], doc["_not_on_file"]
+    assert not PSO.tie_out(PSO.plain(doc))["disagreements"]
+
+    def cell(sheet_row, col, value):
+        def fix(rows):
+            rows = [list(r) for r in rows]
+            rows[sheet_row][col] = value
+            return rows
+        return fix
+    tied = PSO.tie_out(PSO.plain(doc_of(fix2=cell(8, 1, 49))))
+    assert [d["where"] for d in tied["disagreements"]] == [
+        "2026-ge-county-offices-belknap.xlsx, sheet 'Commissioner', row 9"], tied["disagreements"]
+    alone = doc_of(fix1=cell(4, 2, 120))
+    assert [r["race"] for r in alone.get("_refused", [])] == ["sheriff|Belknap"] and \
+        "write-ins the file does not name" in alone["_refused"][0]["why"], alone.get("_refused")
+    assert "county-attorney|Belknap" in alone["races"], "a refused race took its neighbours"
+    room = doc_of(fix1=cell(5, 4, None))
+    assert [r["race"] for r in room.get("_refused", [])] == ["county-attorney|Belknap"] and \
+        "short of the Totals" in room["_refused"][0]["why"], room.get("_refused")
+    refused = {}
+    for name, kw in {"mark among candidates": {"fix2": cell(4, 2, "No Election")},
+                     "another county": {"county": "CARROLL"}}.items():
+        try:
+            doc_of(**kw)
+        except PSO.Refused as e:
+            refused[name] = str(e)
+    assert set(refused) == {"mark among candidates", "another county"}, refused
+    assert "No Election" in refused["mark among candidates"], refused
+    assert "CARROLL County Offices" in refused["another county"], refused
+    quiet = doc_of(fix2=cell(4, 6, None))
+    assert quiet["_no_election"][0]["says"] == "no candidate and no count", quiet["_no_election"]
+    # A lone 0 under a district the place is not in (2016's Rockingham, Hampton).
+    lone = doc_of(fix2=cell(6, 1, 0))
+    assert [p[1] for p in lone["races"]["county-commissioner|Belknap|1"]["places"]] == [
+        "Town A", "Town C"], lone["races"]["county-commissioner|Belknap|1"]["places"]
+    assert any("Town B prints only a 0" in n for n in lone["_notes"]), lone["_notes"]
+    return "ok", ("offices side by side split by their labels, a district's own towns read, No "
+                  "Election listed, an at-large race left unmarked, a Totals cell recorded, two "
+                  "races refused alone and a mark among candidates and another county refused")
 
 
 @check("data", "other offices' results: collected/election_offices_<year>.json is what the saved "

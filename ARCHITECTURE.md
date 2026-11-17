@@ -2250,8 +2250,14 @@ summary files disagree with the county files in fifteen cells of the two
 races. For Representative in Congress and Executive Councilor a sheet is one
 district (2016-2024's Council workbook holds five; 2026 has a file a
 district), a file must hold the districts its name says, and a race's count
-is its places' sum, as the House reader's is. `_offices_read_again` holds
-the committed files to the saved ones.
+is its places' sum, as the House reader's is. A county's offices are printed
+side by side under a row of labels, and a label opens a race that runs to
+the next; a commissioner district's race is the places that print a count
+under it, a district marked "No Election" is listed and read as no race,
+Strafford's at-large commissioners of 2016-2022 keep their count with no
+winner marked (the files print no number of seats), and a race the reader
+cannot settle is refused alone and listed in `_refused`.
+`_offices_read_again` holds the committed files to the saved ones.
 `src/parse/score_members_elect.py` replays the rule on 2024 as of Election
 Day -- sitting and former members from the roll calls before it, each at the
 seat its term's bills printed -- and holds every link to the 2025-2026 roll
