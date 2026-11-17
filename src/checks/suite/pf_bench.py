@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -11,17 +11,20 @@ the two laptop tools (src/checks/bench_pack.py, src/checks/bench_pull.py).
 
 A module of its own, because the bench is one feature written across four
 folders. Its checks are not in ORDER.json, and run after those it lists.
-This module uses pf_core and itself, and no other area's module.
+This module uses pf_core, pf_shared (_tap_failures, node's TAP read as the
+follow tests' check reads it) and itself, and no other area's module.
 """
 
 import io
 import json
+import re
 import shutil
 import tempfile
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from pf_core import check
+from pf_core import _run, _source, check
+from pf_shared import _tap_failures
 
 
 def _ledger(path, lines):
@@ -227,3 +230,51 @@ def _bench_hand_beats_link(RV, PA, BL):
                   "judged, a contributor's alone counts as theirs, a withdrawn link and a line no "
                   "one's are read by no reader (judged, read_bench, --report, the tag gate); the "
                   "pools printed apart, and not a word of them on the owner's lines alone")
+
+
+# ---- the shared bench's own tests -------------------------------------------------
+
+BENCH_TESTS = Path("tests/bench/index.js")
+
+
+@check("build", "the shared bench's own tests pass, every one: node --test runs tests/bench/index.js, "
+                "which imports every test file in tests/bench/")
+def _bench_tests():
+    """tests/bench/ is the shared bench's test suite (workers/bench/, the Functions
+    functions/bench.js and functions/api/bench/), standard library only, on the
+    follow tests' fake D1 (tests/follow/fake_d1.js) given the bench's own
+    schema. Run here whole, as _follow_tests runs tests/follow/: index.js by
+    name, every *.test.js of the folder imported there, the counts read off
+    TAP. What they hold, in their own words: an item served once and held two
+    at a time; holds that lapse unless renewed; an answer kept in the
+    ledger's words with its item judged in one batch; the cap, one answer a
+    second, undo, calibration one in twenty-five; the Links page's calls; and,
+    as the Functions and the page come, every route a 404 without BENCH_DB."""
+    index = BENCH_TESTS
+    if not index.is_file():
+        return "skip", "tests/bench/index.js is not here"
+    imported = re.findall(r'^import\s+"\./([^"]+)";', _source(index), re.M)
+    files = sorted(p.name for p in index.parent.glob("*.test.js"))
+    missing = [f for f in files if f not in imported]
+    assert not missing, (f"tests/bench/index.js does not import {', '.join(missing)}, so node --test "
+                         "never runs it: add an import line for each")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", f"node is not on PATH, so the {len(files)} test files in tests/bench/ did not run"
+    r = _run([node, "--disable-warning=ExperimentalWarning", "--test", "--test-reporter=tap",
+              index.as_posix()], capture_output=True, text=True, timeout=300)
+    out = (r.stdout or "") + (r.stderr or "")
+    count = {k: int(v) for k, v in re.findall(r"^# (tests|pass|fail|cancelled|skipped|todo) (\d+)$",
+                                               out, re.M)}
+    fails = _tap_failures(out)
+    assert not fails, (
+        f"tests/bench/ fails {len(fails)} of {count.get('tests', '?')}: "
+        + "; ".join(f"{n!r} ({s})" if s else repr(n) for n, s in fails[:6])
+        + (f" (+{len(fails) - 6} more)" if len(fails) > 6 else "")
+        + f". `node --test {index.as_posix()}` shows each in full")
+    assert r.returncode == 0 and count.get("pass", 0) > 0 and not count.get("fail") \
+        and not count.get("cancelled"), (
+        f"node --test {index.as_posix()} exited {r.returncode} with {count or 'no count'}: "
+        + out.strip()[-500:])
+    return "ok", (f"tests/bench: {count['pass']} passed of {count.get('tests')}, from "
+                  f"{len(files)} test files, every one imported by index.js")

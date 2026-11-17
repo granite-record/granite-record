@@ -20,5 +20,10 @@ the night.
   its switch. Deployed with `--env production`, the only configuration with a
   cron; its README says how, and preflight's `_live_layer` holds it.
 
+- `bench/`: no Worker of its own. The shared bench's database schema and the
+  code its Pages Functions share (approved by the person on 17 November
+  2026), kept outside `functions/` as `follow/`'s is so that none of it can
+  become a route; its README says what it keeps and how its database is made.
+
 Does not belong here: a page endpoint (`functions/`, which Cloudflare Pages
 requires at the root), anything the build runs (`src/`).

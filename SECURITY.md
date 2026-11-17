@@ -27,7 +27,7 @@ request, which is why a contact address on the page only resolves once a
 Cloudflare script has run. Those two are dashboard switches rather than
 anything this repository emits, and `src/checks/check_live.py` reports both.
 
-**In this project's own code there are four exceptions**, and each says so
+**In this project's own code there are six exceptions**, and each says so
 in its own header or README:
 
 - `functions/api/report.js`, the endpoint behind the "report a problem" box
@@ -64,8 +64,16 @@ in its own header or README:
   header). They can read the bucket and nothing else -- `_store.js` hands
   them `get` and `head` alone -- and every other object in it, the switch
   and the Worker's state among them, is unreachable from them.
+- **The shared bench** (approved 17 November 2026), where people the owner
+  invites check the site's work one item at a time: `workers/bench/` holds
+  its database's schema and the code its Pages Functions share, on a D1
+  database of its own. It is reached only through a private link the owner
+  sends, keeps of a person the name the owner gives the link and the day it
+  was last used, and answers 404 everywhere until that database is bound.
+  `workers/bench/README.md` says what it keeps and what each part does.
 
-If you are looking for something to attack, it is the first two.
+If you are looking for something to attack, it is the first two, and the
+bench once its database is bound.
 
 ## Things that look like bugs and are not
 

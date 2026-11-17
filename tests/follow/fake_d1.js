@@ -1,6 +1,8 @@
 // A D1 database for the tests: node:sqlite in memory, with the real schema
 // (workers/follow/schema.sql) applied, behind the part of D1's API the
 // follow code uses -- prepare, bind, first, all, run, raw, batch, exec.
+// `new FakeD1(path)` applies another schema instead: the shared bench's tests
+// (tests/bench/) use it with workers/bench/schema.sql.
 //
 // Faithful where it matters to the guarantees: bind() refuses undefined as D1
 // does, batch() is one transaction that rolls back whole, foreign keys are on
@@ -15,10 +17,10 @@ import { fileURLToPath } from "node:url";
 export const SCHEMA = fileURLToPath(new URL("../../workers/follow/schema.sql", import.meta.url));
 
 export class FakeD1 {
-  constructor() {
+  constructor(schema = SCHEMA) {
     this.sql = new DatabaseSync(":memory:");
     this.sql.exec("PRAGMA foreign_keys = ON");
-    this.sql.exec(readFileSync(SCHEMA, "utf8"));
+    this.sql.exec(readFileSync(schema, "utf8"));
     this.prepared = [];          // every statement's text, as written by the code
     this.failWhen = null;        // sql => Error | null
   }
