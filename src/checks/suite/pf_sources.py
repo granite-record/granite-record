@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the General Court's database and day files, and the fetchers' parsers.
 
@@ -5584,6 +5584,45 @@ def _first_year_designations(BD):
     return "ok", ("HB 422-FN, HB 664-A, HB 138-LOCAL and SB 131-FN-A from the view; HB "
                   "1442 of 2026 as LSRs.txt gave it; another LSR's or term's row fills "
                   "nothing")
+
+
+@check("build", "a bill the docket carries and LSRs.txt does not takes its title from the Legislation "
+                "view: a new term's first bills the morning their text is public, before the export's "
+                "request files carry their year", needs=("build_data",))
+def _stub_titles_from_legislation(BD):
+    """The rehearsal of 17 November 2026. A request becomes a bill the day
+    its text is public, and its first docket row comes that day (2025's HB 10:
+    made a bill on 19 December 2024, its text and its docket row 23 December).
+    LSRs.txt and LsrsOnly.txt hold one session year, so a bill of the next
+    year that the docket names before they turn is a stub, and the fixture
+    night of 18 December built 2027's HB 1 with no title: request 2027-0001's
+    page, which had one, forwarded to a page headed "HB 1" alone. The view
+    the night takes after the switch (nightly.TERM_VIEWS) gives LSRTitle,
+    the title LSRs.txt's field 2 gives. On real rows of 8 September: a stub
+    is titled; a stub with a title, a bill LSRs.txt carries, and a row of
+    another LSR or another term give none."""
+    def stub(bid, year, lsr, title=""):
+        return {"bill": bid, "lsr": f"{year}-{lsr}", "lsr_year": year, "lsr_num": lsr,
+                "title": title, "chamber": bid[0], "subject_code": "", "subject": "",
+                "house_committee": "", "senate_committee": "", "hearing": "",
+                "hearing_room": "", "stub": True}
+    bills = {"HB422": stub("HB422", "2025", "0182"), "HB664": stub("HB664", "2025", "0239"),
+             "HB138": stub("HB138", "2025", "0278", "a title the roll calls gave."),
+             "HB1442": {**stub("HB1442", "2026", "2729"), "stub": False}}
+    filled = BD.fill_from_legislation(bills, _LEGISLATION_2025_ROWS, {}, {})
+    assert bills["HB422"]["title"] == ("increasing penalties for violations of the shoreland and "
+                                       "water quality protection act.") and \
+        bills["HB664"]["title"] == "relative to childhood immunization requirements.", (
+        "a stub took no title from the view", bills["HB422"]["title"], bills["HB664"]["title"])
+    assert bills["HB138"]["title"] == "a title the roll calls gave.", bills["HB138"]["title"]
+    assert bills["HB1442"]["title"] == "", ("a bill LSRs.txt carries was given the view's title",
+                                            bills["HB1442"]["title"])
+    assert filled["title"] == 2, dict(filled)
+    other = {"HB422": stub("HB422", "2025", "0999"), "HB664": stub("HB664", "2023", "0239")}
+    BD.fill_from_legislation(other, _LEGISLATION_2025_ROWS, {}, {})
+    assert not any(r["title"] for r in other.values()), other
+    return "ok", ("HB 422 and HB 664 of 2025, as stubs, titled from the view; a stub's own title, a "
+                  "bill LSRs.txt carries and another LSR's or term's row left as they were")
 
 
 # The heads of four saved bill pages, as fetch_legislation.py saved them --
