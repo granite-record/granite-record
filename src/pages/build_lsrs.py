@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.23
+# GRANITE_VERSION: 2026-09-18.24
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -118,7 +118,7 @@ def _fold(s):
     return re.sub(r"[^a-z]", "", str(s or "").lower())
 
 
-def roster(site, collected="collected"):
+def roster(site, collected="collected", year=None):
     """{folded name: (label, slug)} for the sitting members.
 
     The source names a sponsor "Ellen Read" and nothing more. The roster has
@@ -175,7 +175,7 @@ def roster(site, collected="collected"):
     # left (person_chip's rule for a former member). A name a sitting member
     # or a member-elect already has is theirs, as it was before the turn.
     seen = set()
-    for m in departed(site, collected):
+    for m in departed(site, collected, year):
         key = _fold(first_last(m.get("name")))
         if not key or key in out and key not in seen:
             continue
@@ -185,13 +185,17 @@ def roster(site, collected="collected"):
     return out
 
 
-def departed(site, collected="collected"):
+def departed(site, collected="collected", year=None):
     """The members of the term the newest election ended who are not on the
     roster, once the roster is the new term's (election_races says when):
     site/former.json's rows whose record holds that term, each with its page.
-    [] before the turn, or where no results say which term is coming."""
+    [] before the turn, or where no results say which term is coming -- and
+    for requests of a session `year` other than the elected term's first:
+    the requests for 2028, filed from September 2027, are sitting members'
+    alone, and a name of theirs that only someone gone in 2026 shares must
+    not link to that person's page."""
     _races, turned, term, _why = election_races(site, collected)
-    if not turned:
+    if not turned or year is not None and str(year) != term[:4]:
         return []
     import build_members_elect as BME
     before = BME.term_before(term)
@@ -835,7 +839,7 @@ def election_races(site, collected="collected", hand_path=None):
                                  "as a member's not returning")
 
 
-def not_returning(site, collected="collected", hand_path=None):
+def not_returning(site, collected="collected", hand_path=None, year=None):
     """({slug: why}, {slug: why not decided}) for the sitting members, from
     the 2026 election's results (site/members_elect.json, build_members_elect).
 
@@ -866,7 +870,8 @@ def not_returning(site, collected="collected", hand_path=None):
         return {}, {}
     races, turned, term, _why = election_races(site, collected, hand_path)
     if turned:
-        return {m["slug"]: f"not on the {term} roster" for m in departed(site, collected)}, {}
+        return {m["slug"]: f"not on the {term} roster"
+                for m in departed(site, collected, year)}, {}
     if races is None:
         return {}, {}
     won = {e.get("s") for r in races.values() for e in r.get("elected") or []
@@ -953,7 +958,7 @@ def main():
     winners, said = load_winners(site, a.collected)
     print(f"  {said}")
     meta0 = json.loads((site / "meta.json").read_text(encoding="utf-8")) if (site / "meta.json").exists() else {}
-    rows, unmatched = rows_from(lsrs, roster(site, a.collected), became, year, winners,
+    rows, unmatched = rows_from(lsrs, roster(site, a.collected, year), became, year, winners,
                                 earlier_bills(site, meta0.get("terms")), days)
     assert rows, "no request survived shaping, though the source had some"
     with_sponsor_names(rows, page_names(site))
@@ -961,7 +966,7 @@ def main():
     _r, turned, _t, why = election_races(site, a.collected)
     if why:
         print(f"  {why}")
-    gone, undecided = not_returning(site, a.collected)
+    gone, undecided = not_returning(site, a.collected, year=year)
     rows, dropped = drop_unreturned(rows, gone)
     assert rows, "every request was dropped as a not-returning member's"
     import build_date

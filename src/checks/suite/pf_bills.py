@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2091,6 +2091,11 @@ def _requests_not_returning_from_organization_day(L, BME):
                                     **served),
                                 mem("14", "Seat", "Sy", "S", "", "1", "R", "sy-seat-sd-1", **served)])
             got["3 Dec"] = night("2026-12-03")
+            # Requests of the session after (2028's, filed from September 2027) are
+            # sitting members' alone: a name only a member gone in 2026 has links nobody.
+            got["2028"] = (sorted(L.not_returning(site, str(coll), year=2028)[0]),
+                           L._fold("Ann Lost") in L.roster(site, str(coll), 2028),
+                           L._fold("Ann Lost") in L.roster(site, str(coll), 2027))
         finally:
             os.chdir(was_cwd)
             if was_day is None:
@@ -2114,6 +2119,8 @@ def _requests_not_returning_from_organization_day(L, BME):
     assert standing["sponsor_slug"] == "ann-lost-belk-1" and standing["sponsor_label"] == "Ann Lost (R)", (
         "a departed member's standing request is not linked to their page, or names a seat they left",
         standing["sponsor_slug"], standing["sponsor_label"])
+    assert got["2028"] == ([], False, True), (
+        "a member gone in 2026 is matched to, or dropped from, the requests of 2028", got["2028"])
     return "ok", ("LSR 2027-0001 of a member who lost dropped on 1 December with the file, on 2 December "
                   "without it, and on 3 December by the new roster; the returning member's and the new "
                   "senator's withdrawn and the standing one kept, the last linked to the member who "
@@ -7809,7 +7816,7 @@ def _request_became_bill(build_lsrs):
     rows, _ = L.rows_from(lsrs[2:], {}, {})
     assert rows[0]["status"] == "Requested" and "introduced" not in rows[0], rows[0]
     src = _source(_paths.locate("build_lsrs.py"))
-    assert "rows_from(lsrs, roster(site, a.collected), became, year, winners," in src, \
+    assert "rows_from(lsrs, roster(site, a.collected, year), became, year, winners," in src, \
         "build_lsrs no longer gives rows_from the bills"
     return "ok", "a request a bill carries reads as that bill; one that only left the list is withdrawn"
 
