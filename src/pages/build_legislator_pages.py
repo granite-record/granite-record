@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.39
+# GRANITE_VERSION: 2026-09-04.40
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -23,6 +23,9 @@ split between members. Between a general election and Organization Day, a
 member the election sent back -- sitting or returning -- also has one line
 saying so under their name, from site/members_elect.json alone (the person's
 decisions of 16 October 2026); nobody else's page says anything about it.
+And each new member-elect has a page of their own from site/elect_pages.json
+until the General Court numbers them (write_elect_pages): a member's page in
+the member-elect's form, built ahead from the same components (elect_body).
 
 Writes site/legislator/<slug>.html and appends them to sitemap.xml. Each page
 names the member's feed in its head, on the test build_feeds writes it on.
@@ -40,10 +43,13 @@ import re
 import unicodedata
 
 import build_date
+import components as C
 import member_links as ML
 import shell as S
 import structured as LD
 from build_members_elect import for_pages as members_elect
+# A request's own page's Share, which a member-elect's provisional page has too.
+from build_request_pages import SHARE
 from components import ELECT_KEY, elect_line, term_words, until_attrs
 # A town page's slug and address, from the builder that writes them.
 from build_town_pages import slug as town_slug, town_path
@@ -391,60 +397,208 @@ def elect_district(p):
             else f"{p.get('county')} {p.get('district')}")
 
 
-def elect_body(p, doc, reqs, req_meta, places, today):
-    """A new member-elect's provisional page (build_elect_pages.py): the name
-    as the ballot prints it, party, district and towns, when they were
-    elected and take office, and their requests for the next session. No
-    contact detail, no votes, no seat and no committees: none is published
-    for them until the General Court numbers them, when this becomes their
-    regular page."""
+def join_and(items):
+    """"A, B and C", as app.js's joinList joins a member's towns."""
+    items = list(items)
+    return f"{', '.join(items[:-1])} and {items[-1]}" if len(items) > 1 else "".join(items)
+
+
+def elect_ord(n):
+    """"1st", "2nd", "3rd", "11th": app.js's electionOrd, in English."""
+    t = n % 100
+    return f"{n}{'th' if 11 <= t <= 13 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+def election_row_html(r):
+    """One row of a member's Elections tab as app.js's electionRow draws it --
+    the election day linked to its race's card on the elections page, the race
+    (electionRace), the result in the elections page's words (electionResult)
+    and the votes, with the share for a race of one seat -- from the row
+    build_member_elections.race_row writes."""
+    k = str(r.get("k") or "").split("|")
+    senate = k[0] == "S"
+    where = f"District {C.esc(k[1])}" if senate else f"{C.esc(k[1])} {C.esc(k[2] if len(k) > 2 else '')}"
+    seats = "1 seat" if r.get("s") == 1 else f"{C.esc(r.get('s'))} seats"
+    race = (f"{'Senate' if senate else 'House'}, {where}"
+            f' <span class="dim">({seats}{", floterial" if r.get("fl") else ""})</span>')
+    word = {"won": "Elected", "lost": "Not elected", "tie": "Tied for the last seat"}.get(
+        r.get("r"), "Result not final")
+    place = f", {elect_ord(r['pl'])} of {r['of']}" if r.get("pl") and r.get("of") else ""
+    result = (C.esc(word) + C.esc(place)
+              + (" &mdash; a recount was requested" if r.get("r") == "open" and r.get("rq") else "")
+              + (' <span class="dim">Recounted</span>' if r.get("rc") else ""))
+    share = f' <span class="dim">({r["sh"]:.1f}%)</span>' if r.get("sh") is not None else ""
+    href = f"/elections/{r.get('d')}-general#{r.get('a')}"
+    return (f'<tr>\n    <td class="d" data-l="Election"><a href="{C.esc(href)}">'
+            f'{C.esc(C.date_words(r.get("d")))}</a></td>\n'
+            f'    <td class="b" data-l="Race">{race}</td>\n'
+            f'    <td class="v" data-l="Result">{result}</td>\n'
+            f'    <td class="o" data-l="Votes">{r.get("v", 0):,}{share}</td></tr>')
+
+
+def request_card(r):
+    """A bill request as its card on a member's page (app.js lsrCardHtml) --
+    components.bill_card with the request's word as its chip, the title, the
+    sponsor's chip, the kind and the topic, and its rail -- drawn whole, for a
+    page built ahead, as a session day's cards are: its number goes to the
+    request's own page, or to the bill it became, where the rest is."""
+    ch = C.WORDBOOK["chips"]
+    word = r.get("chip") or r.get("status") or ""
+    cls = (ch["chip"].get(word) or ch.get("by_status", {}).get(r.get("status") or "")
+           or (ch.get("request", {}).get(word) if r.get("lsr") else "")
+           or ch["kind"].get(r.get("kind") or "") or "")
+    who = r.get("sponsor_label") or r.get("sponsor") or ""
+    party = r.get("sponsor_party") or (re.search(r"\(([A-Z])\b", who) or [None, ""])[1]
+    topic = "" if (r.get("topic") == "Miscellaneous"
+                   and r.get("topic_by") in ("granite record", "title")) else (r.get("topic") or "")
+    kind = " · ".join(x for x in (r.get("body_label"), topic) if x)
+    card = C.bill_card({
+        "id": r.get("id"), "href": "", "n": r.get("n"), "year": "", "word": word, "cls": cls,
+        "title": r.get("title"),
+        "byline": C.bill_byline({"display_full": who, "party": party, "slug": r.get("sponsor_slug") or ""}
+                                if who else None, [], kind, "", {}),
+        "rail": C.rail_html(r.get("rail") or []), "open": None, "body": None, "card": "lsr"})
+    num = f'<span class="cnum" translate="no">{C.esc(r.get("n"))}</span>'
+    to = r.get("moved_to") or r.get("address")
+    return card.replace(num, f'<span class="cnum" translate="no"><a href="{C.esc(to)}">{C.esc(r.get("n"))}</a></span>'
+                        if to else num, 1)
+
+
+def elect_requests_pane(reqs, req_meta):
+    """The requests tab: the member page's own words for a term of requests
+    (app.js renderMemberRequests) and their cards; or, where the requests'
+    list names none of theirs, that none is filed yet (the owner, 16 November
+    2026: "whether they have filed any LSRs yet")."""
+    year = C.esc((req_meta or {}).get("year") or "")
+    if not reqs:
+        return f'<p class="src">No bill requests filed for {year} yet.</p>'
+    left = sum(1 for r in reqs if r.get("withdrawn"))
+    # Alice's two sentences, as the bill search says them, and how many are theirs.
+    return ('<p class="src lsrnote"><b>Requests, not bills yet.</b> Each one, called an LSR '
+            "(Legislative Service Request), is a member&rsquo;s request to have a bill drafted: "
+            "a title and a sponsor, nothing more, until it is filed as a numbered "
+            f"{year} bill. Some are withdrawn first. {len(reqs):,} filed for {year}"
+            + (f", {left:,} of them withdrawn" if left else "") + ".</p>"
+            '<div class="cards">' + "".join(request_card(r) for r in reqs) + "</div>")
+
+
+def elect_elections_pane(p, doc):
+    """The Elections tab: the race that elected them, as a member's Elections
+    tab draws a race (election_row_html), the seats of the race still not
+    final where there are any, in the members-elect block's words, and the
+    source -- the Secretary of State's results, the day the race's file was
+    saved, and the elections page the row links to. "" where the list carries
+    no result (a page written before it did)."""
+    r = p.get("result")
+    if not r:
+        return ""
+    out = ['<p class="src">The election that sent them to the General Court, as the Secretary of '
+           "State counted it. A share is of every vote cast in the race, write-ins included; a "
+           "race for more than one seat gives none, because a voter could choose several.</p>",
+           '<table class="votes vfull"><thead><tr><th>Election</th>\n      <th>Race</th>'
+           "<th>Result</th>\n      <th>Votes</th></tr></thead>\n      <tbody>"
+           + election_row_html(r) + "</tbody></table>"]
+    nf = int(r.get("nf") or 0)
+    if nf:
+        # Their own seat is final: the winners with the fewest votes give way to
+        # the seats not final (build_members_elect), and this person is drawn.
+        out.append('<p class="elnf"><b>Result not final</b> for the last '
+                   + ("" if nf == 1 else f"{nf} ") + f"of the district&rsquo;s {C.esc(r.get('s'))} seats"
+                   + (" &mdash; a recount was requested" if r.get("rq") else "") + ".</p>")
+    src = p.get("source") or {}
+    files = (f'<a href="{C.esc(src["url"])}" rel="noopener">results file</a>' if src.get("url")
+             else "results file")
+    year = str(doc.get("election") or r.get("d") or "")[:4]
+    out.append('<p class="src">Source: the New Hampshire Secretary of State&rsquo;s official '
+               f"results, read from its {files}"
+               + (f" saved {C.esc(C.date_words(src['saved'], 'full'))}" if src.get("saved") else "")
+               + f', and shown on the elections pages: <a href="/elections/{C.esc(r.get("d"))}-general">'
+               f"{C.esc(year)} general election</a>. The row links to its race there.</p>")
+    return "".join(out)
+
+
+def elect_body(p, doc, reqs, req_meta, places, today, path="", base=""):
+    """A new member-elect's provisional page (build_elect_pages.py), in the
+    member page's own parts and words (the owner, 16 November 2026: "labeled
+    as such with whatever information that is possible to fill out like
+    district and whether they have filed any LSRs yet"):
+
+      the record's head, as a returning member-elect's own page is headed
+        (app.js renderMemberHead): the trail ending "Member-elect", their
+        name as the ballot prints it with the party it prints, the bar in
+        that party's ink, the line saying what they were elected to and the
+        towns of the district, each to its page, and the earlier service the
+        person confirmed, where there is any; Cite this page and Share;
+      the election's line, "Elected ... Takes office ...", and that their
+        seat, committees and record are added as the General Court
+        publishes them;
+      the record's tab strip, its panes built ahead (as a request's own
+        page has them): their requests for the next session, as a member's
+        page lists them, or that none is filed yet; and the race that
+        elected them, as a member's Elections tab draws it, with any seats
+        still not final and the source and its day.
+
+    No contact detail, no votes, no seat and no committees: none is
+    published for them until the General Court numbers them, when this
+    becomes their regular page. From the day they take office the trail
+    says Representative or Senator, the line a member of the chamber, and
+    the election's line that they took office (build_elect_pages, ON
+    ORGANIZATION DAY). `path` is the page's own, /legislator/<slug>.html
+    where none is given, and `base` the site's address."""
     took = today >= doc["takes_office"]
-    party = f" ({E(p['party'])})" if p.get("party") else ""
-    # The plain record's look, shown with script too ("shown"; app.css hides
-    # a .static-rec under html.js otherwise), and its own id: this page is
-    # GR_STATIC, and "static-rec" is the fallback plainRecord rewrites.
-    out = ['<div class="static-rec shown" id="elect-rec">',
-           f"<h1>{E(p['name'])}{party}</h1>",
-           # From the day they take office they are members, not members-elect.
-           f"<p>{'Member' if took else 'Member-elect'} of the "
-           f"{CHAMBER_WORDS.get(p.get('chamber'), 'General Court')}, {E(elect_district(p))}.</p>",
-           f"<p>Elected {E(S.date_words(doc['election'], 'full'))}. "
-           + (f"Took office {E(S.date_words(doc['takes_office'], 'full'))}."
-              if took else f"Takes office {E(S.date_words(doc['takes_office'], 'full'))}.")
-           + "</p>"]
+    path = path or f"/legislator/{p['slug']}.html"
+    base = base or "https://graniterecord.org"
+    ch = p.get("chamber")
+    party = p.get("party") or ""
+    code = party if len(party) == 1 else "X"
+    name = C.esc(p["name"]) + (f" ({C.esc(party)})" if party else "")
     towns = p.get("towns") or []
-    if towns:
-        out.append('<ul class="sx-facts"><li><b>Represents:</b> ' + ", ".join(
-            f'<a href="{E(places[t])}">{E(t)}</a>' if t in places else E(t) for t in towns)
-            + "</li></ul>")
+    places = places or {}
+    where = (f"{'Member' if took else 'Member-elect'} of the "
+             f"{CHAMBER_WORDS.get(ch, 'General Court')}, {elect_district(p)}")
+    # The line a member's page has: the seat, then its towns, each to its page,
+    # each dot held to the words before it.
+    line = "&nbsp;&middot; ".join(x for x in (
+        C.esc(where), join_and(f'<a href="{C.esc(places[t])}">{C.esc(t)}</a>' if t in places else C.esc(t)
+                           for t in towns)) if x)
+    facts = []
     # Earlier service the person confirmed by hand (hand "prior"): the seat as
     # it was labelled then and its terms, with no link, since no page of a
     # member is theirs. Each term as a reader sees one, "1993–1994" (term_words):
     # the hand file's keys keep the hyphen.
     pr = p.get("prior")
     if pr:
-        out.append('<ul class="sx-facts"><li><b>Earlier service:</b> ' + E(pr.get("seat") or "")
-                   + ", " + ", ".join(E(term_words(t)) for t in pr.get("terms") or [])
-                   + "</li></ul>")
-    out.append("<p>Their seat, committees and record are added here as the General Court "
-               "publishes them.</p>")
-    if reqs:
-        label = (req_meta or {}).get("label") or "Bill Requests"
-        out.append(f"<h2>{E(label)}</h2>"
-                   # Alice's two sentences, as the bill search says them.
-                   "<p><b>Requests, not bills yet.</b> Each one, called an LSR (Legislative Service Request), is a member&rsquo;s request to have "
-                   "a bill drafted: a title and a sponsor, nothing more, until it is filed as a "
-                   f"numbered {E(str((req_meta or {}).get('year') or ''))} bill. Some are "
-                   "withdrawn first.</p><ul>" + "".join(
-                       f"<li>{E(r.get('n'))}: {E(r.get('title'))} ({E(r.get('body_label') or '')})"
-                       f" &mdash; {E(r.get('status') or '')}</li>" for r in reqs) + "</ul>"
-                   + (f'<p><a href="/bills?term={E(req_meta["term"])}">All {E(label)}</a></p>'
-                      if (req_meta or {}).get("term") else ""))
-    srcs = doc.get("sources") or []
-    out.append("<h2>Sources</h2><ul><li>The election results: the New Hampshire Secretary of "
-               "State" + "".join(f', <a href="{E(u)}" rel="noopener">{E(u)}</a>' for u in srcs[:1])
-               + "</li></ul></div>")
-    return "".join(out)
+        facts.append(["Earlier service", C.esc(pr.get("seat") or "") + ", "
+                      + ", ".join(C.esc(term_words(t)) for t in pr.get("terms") or [])])
+    cite = S.cite_block(path, f"{p['name']}" + (f" ({party})" if party else "")
+                        + ("" if took else ", member-elect") + " | Granite Record", base, S.cited())
+    assert cite.endswith("</div>"), "the citation block no longer ends its row"
+    head = C.record_head({
+        "trail": [["Officials", "officials"],
+                  ["Member-elect" if not took else "Senator" if ch == "S" else "Representative", ""]],
+        "title": name, "line": line, "facts": facts,
+        "actions": cite[:-len("</div>")] + SHARE + "</div>", "kind": f"member rh-p{code}"})
+    day = C.esc(C.date_words(doc["takes_office"], "full"))
+    elected = (f'<p class="elline">Elected {C.esc(C.date_words(doc["election"], "full"))}. '
+               + (f"Took office {day}." if took else f"Takes office {day}.") + "</p>"
+               + '<p class="src">Their seat, committees and record are added here as the General '
+               "Court publishes them.</p>")
+    panes = []
+    if (req_meta or {}).get("term"):
+        panes.append(("requests", (req_meta or {}).get("label") or "Bill Requests", len(reqs),
+                      elect_requests_pane(reqs, req_meta)))
+    race = elect_elections_pane(p, doc)
+    if race:
+        panes.append(("elections", "Elections", 1, race))
+    rid = "elect"
+    # The strip carries the page's own address (app.js's ssTabs writes it as a tab is turned to):
+    # the clean one the host serves, as a request's own page's strip has it.
+    tabs = (C.record_tabs(rid, [[k, word, n] for k, word, n, _b in panes], panes[0][0], S.canon(path))
+            + "".join(f'<div class="pane sspane" role="tabpanel" id="pane_{rid}_{k}" '
+                      f'aria-labelledby="tab_{rid}_{k}" tabindex="0" data-t="{k}"'
+                      f'{" data-on" if i == 0 else ""}><h2 class="ssph">{C.esc(word)}</h2>{b}</div>'
+                      for i, (k, word, _n, b) in enumerate(panes))) if panes else ""
+    return head + elected + tabs
 
 
 def write_elect_pages(site, out, t, base, written_slugs, pages_of_towns, today):
@@ -472,16 +626,18 @@ def write_elect_pages(site, out, t, base, written_slugs, pages_of_towns, today):
         who = f"{p['name']}" + (f" ({p['party']})" if p.get("party") else "")
         if today < doc["takes_office"]:
             who += ", member-elect"
+        # The citation is in the head's actions, as a request's own page has it
+        # (elect_body), so the page writes none above the head.
         page = S.page(t, path=path, base=base, title=f"{who} | Granite Record",
                       og_title=who, og_image="og-legislator.png",
                       og_alt="Granite Record: legislators and their voting records",
                       description=(f"{p['name']}, elected to the {CHAMBER_WORDS.get(p.get('chamber'), 'General Court')} "
                                    f"for {elect_district(p)} on {S.date_words(doc['election'], 'full')}."),
-                      globals={"GR_STATIC": True}, noscript="",
+                      globals={"GR_STATIC": True}, noscript="", cite=False,
                       skip_label="Skip to this member-elect", nav_current="officials.html",
                       sr_title="")
-        page = page.replace('<div id="results"></div>',
-                            f'<div id="results">{elect_body(p, doc, reqs, req_meta, places, today)}</div>', 1)
+        body = elect_body(p, doc, reqs, req_meta, places, today, path, base)
+        page = page.replace('<div id="results"></div>', f'<div id="results">{body}</div>', 1)
         page = page.replace('<link rel="canonical"', ELECT_ROBOTS + '\n<link rel="canonical"', 1)
         assert ELECT_ROBOTS in page, f"{path}: the template has no canonical link to put noindex before"
         (out / f"{slug}.html").write_text(S.clean_links(page), encoding="utf-8")

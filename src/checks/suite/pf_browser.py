@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -186,6 +186,12 @@ def _class_collisions():
         # (build_nobill_votes, 23 October 2026) are the same table, stacked
         # into labelled blocks on a phone by the same rules
         "votes", "vfull", "b", "d", "o", "vch",
+        # AND THE ELECTIONS TAB'S ROW in that table, its result cell and the
+        # quiet asides in it ("(4 seats)", "Recounted", the share): app.js's
+        # electionRow on a member's page, and build_legislator_pages'
+        # election_row_html for the race on a new member-elect's provisional
+        # page, held to app.js's row by _elect_page_member_form (16 November 2026)
+        "v", "dim",
         # the feedback box
         "fbk", "fbknote",
         # a person chip's "(R - Rock 2)", which pchip writes in components.js
