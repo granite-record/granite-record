@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -5699,6 +5699,59 @@ def _nightly_runner(NI):
     return "ok", ("gates from archive/census.json, and none is no production; no late-caption "
                   "check, changed code or an unchanged site is no production; a refusal "
                   "stops the fetch; no reports; production only this night's build, from main")
+
+
+@check("build", "the night's request list counts a request that left it as a bill as filed, not "
+                "withdrawn: a night of many bills takes the list, a night of as many withdrawals "
+                "still keeps the old one", needs=("nightly",))
+def _lsrs_filed_not_withdrawn(NI):
+    """The rehearsal of 17 November 2026. fetch_lsrs marks every request gone
+    from the General Court's list withdrawn, and take_lsrs refuses a list that
+    would newly withdraw more than a tenth of the standing requests (and more
+    than five). A request filed as a bill leaves the list too, so a night of
+    many filings -- 48 House bills on 23 December 2024 -- would have refused
+    the list, and every night after it, each compared with the list kept.
+    Driven with the fetch answered here: 60 standing requests, 20 of them gone
+    from the list, which the installed docket files as bills (taken, said as
+    filed); the same 20 gone with no docket naming them (refused, the old list
+    kept, as before)."""
+    was, cwd = (NI.run, NI.say), os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lsrs-"))
+    old = [{"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB", "title": "t.",
+            "sponsor": "A Member", "withdrawn": False, "cosponsors": []} for n in range(1, 61)]
+
+    def fetch(args, label, cwd=None, env=None, root=None):
+        # fetch_lsrs's merge: the 20 the list no longer has are kept, marked withdrawn.
+        rows = [dict(r, withdrawn=int(r["lsr"][-4:]) <= 20) for r in old]
+        NI.LSRS.write_text(json.dumps(rows), encoding="utf-8")
+        return 0
+    try:
+        os.chdir(tmp)
+        NI.run, NI.say = fetch, lambda *a, **k: None
+        Path("lsrs.json").write_text(json.dumps(old), encoding="utf-8")
+        Path("Docket.txt").write_text("﻿" + "".join(
+            f"2027|{n:04d}|12/23/2026 3:15:08 PM|HB{n}|H|  Introduced 01/06/2027 and referred to "
+            f"Fixture Affairs  HJ 2  P. 3|12/23/2026 3:15:08 PM\r\n" for n in range(1, 21)),
+            encoding="utf-8")
+        assert NI.billed_lsrs() == {f"2027-{n:04d}" for n in range(1, 21)}, sorted(NI.billed_lsrs())[:3]
+        said = NI.take_lsrs()
+        took = json.loads(Path("lsrs.json").read_text(encoding="utf-8"))
+        assert said == "installed, 40 requests (was 60); 20 filed as bills", said
+        assert sum(1 for r in took if r["withdrawn"]) == 20, "the list fetched was not kept"
+        # The same night with no docket naming them: twenty withdrawals, refused.
+        Path("lsrs.json").write_text(json.dumps(old), encoding="utf-8")
+        Path("Docket.txt").write_text("﻿", encoding="utf-8")
+        said = NI.take_lsrs()
+        assert said == ("not taken: it would newly withdraw 20 of the 60 standing requests; the "
+                        "earlier 60 kept"), said
+        assert json.loads(Path("lsrs.json").read_text(encoding="utf-8")) == old, \
+            "a refused list did not put the earlier one back"
+    finally:
+        NI.run, NI.say = was
+        os.chdir(cwd)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("20 of 60 requests gone from the list as bills the docket files: taken, said as "
+                  "filed; the same 20 with no docket naming them: refused, the earlier list kept")
 
 
 # ---- the gate: which nights wait for a person (6 October 2026) -------------------

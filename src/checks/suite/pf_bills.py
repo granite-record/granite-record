@@ -1988,6 +1988,145 @@ def _requests_not_returning():
                   "an undecided race and an unidentified sponsor all kept")
 
 
+@check("build", "a withdrawn request of a member not returning stays dropped from Organization Day, when "
+                "the members-elect file retires: its races worked out again while the roster is the old "
+                "term's, and after the New term run the roster says who came back; a returning member's, "
+                "a member's moved to the Senate and a standing request are kept",
+       needs=("build_lsrs", "build_members_elect"))
+def _requests_not_returning_from_organization_day(L, BME):
+    """The rehearsal of 17 November 2026. build_members_elect retires
+    site/members_elect.json on Organization Day, 2 December 2026, and
+    not_returning read nothing else, so the night of 2 December published
+    every withdrawn request of a member not returning as "Withdrawn" again --
+    on the live site request/2027-0320 -- with its 301 to the list gone,
+    against the owner's rule of 12 November. Over a fixture election, as the
+    nights build it: 1 December with the file; 2 December with none and the
+    old roster (election_races works the races out again); 3 December after
+    the New term run, the new roster sitting and the member who lost, and the
+    representative now in the Senate under a new number, in former.json."""
+    import tempfile
+    mem = lambda i, last, first, ch, county, dist, party, slug, **k: {
+        "id": i, "name": f"{last}, {first}", "chamber": ch, "county": county, "district": dist,
+        "party": party, "party_code": party, "slug": slug,
+        "display": f"{'Rep.' if ch == 'H' else 'Sen.'} {first} {last} ({party})", **k}
+    cand = lambda n, p, won: {"name": n, "party": p, "votes": 100 if won else 90,
+                              "write_in": False, "elected": won}
+    results = {"_source": [{"url": "https://www.sos.nh.gov/elections/election-results",
+                            "saved": "2026-11-05"}],
+               "election": "2026-11-03", "term": "2027-2028", "races": {
+                   "H|Belknap|1": {"seats": 2, "floterial": False, "towns": ["Alton"], "scatter": 0,
+                                   "candidates": [cand("Bo Stays", "r", True),
+                                                  cand("Nan New", "d", True),
+                                                  cand("Ann Lost", "r", False)]},
+                   "H|Belknap|2": {"seats": 1, "floterial": False, "towns": ["Barnstead"],
+                                   "scatter": 0, "candidates": [cand("Dee Next", "d", True)]},
+                   "S|1": {"seats": 1, "floterial": False, "towns": ["Alton", "Barnstead"],
+                           "scatter": 0, "candidates": [cand("Cy Mover", "d", True),
+                                                        cand("Opp One", "r", False)]}}}
+    hand = {"2026-11-03": {"recount_deadline": "2026-11-13", "matches": {
+        "H|Belknap|1": {"Nan New": None}, "H|Belknap|2": {"Dee Next": None}}}}
+    old = [mem("11", "Lost", "Ann", "H", "Belknap", "1", "R", "ann-lost-belk-1"),
+           mem("12", "Stays", "Bo", "H", "Belknap", "1", "R", "bo-stays-belk-1"),
+           mem("13", "Mover", "Cy", "H", "Belknap", "2", "D", "cy-mover-belk-2"),
+           mem("14", "Seat", "Sy", "S", "", "1", "R", "sy-seat-sd-1")]
+    lsrs = [{"lsr": "2027-0001", "session": 2027, "body": "HB", "title": "a.", "sponsor": "Ann Lost",
+             "withdrawn": True},
+            {"lsr": "2027-0002", "session": 2027, "body": "HB", "title": "b.", "sponsor": "Bo Stays",
+             "withdrawn": True},
+            {"lsr": "2027-0003", "session": 2027, "body": "HB", "title": "c.", "sponsor": "Ann Lost",
+             "withdrawn": False},
+            {"lsr": "2027-0004", "session": 2027, "body": "SB", "title": "d.", "sponsor": "Cy Mover",
+             "withdrawn": True}]
+    was_day, was_cwd = os.environ.get("GRANITE_BUILD_DATE"), os.getcwd()
+    got = {}
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        site, coll = root / "site", root / "collected"
+        for p in (site, coll, root / "corrections"):
+            p.mkdir(parents=True)
+        (coll / "election_2026.json").write_text(json.dumps(results), encoding="utf-8")
+        (root / "corrections" / "members_elect.json").write_text(json.dumps(hand), encoding="utf-8")
+        town = lambda dist, seats: {"0": {"congress": 1, "council": 1, "senate": 1, "house": [
+            {"county": "Belknap", "district": dist, "floterial": False, "seats": seats}]}}
+        (site / "districts.json").write_text(json.dumps({"Alton": town(1, 2), "Barnstead": town(2, 1)}),
+                                             encoding="utf-8")
+
+        def put(name, obj):
+            (site / name).write_text(json.dumps(obj), encoding="utf-8")
+
+        def night(day):
+            os.environ["GRANITE_BUILD_DATE"] = day
+            gone, undecided = L.not_returning(site, str(coll))
+            rows, _ = L.rows_from(lsrs, L.roster(site, str(coll)), {}, 2027)
+            kept, dropped = L.drop_unreturned(rows, gone)
+            return sorted(gone), [r["n"] for r in dropped], {r["n"]: r for r in kept}
+        try:
+            os.chdir(root)
+            put("meta.json", {"terms": ["2025-2026"]})
+            put("legislators.json", old)
+            put("former.json", [])
+            # 1 December: the members-elect file as the step writes its races.
+            settled, _note = BME.read_hand(root / "corrections" / "members_elect.json", "2026-11-03")
+            races, _report = BME.members_elect(results, old, [], json.loads(
+                (site / "districts.json").read_text(encoding="utf-8")), settled, "2026-12-01")
+            put("members_elect.json", {"election": "2026-11-03", "takes_office": "2026-12-02",
+                                       "term": "2027-2028", "races": races})
+            got["1 Dec"] = night("2026-12-01")
+            # 2 December: the file retired, the roster still the old term's.
+            (site / "members_elect.json").unlink()
+            got["2 Dec"] = night("2026-12-02")
+            # 3 December: the New term run has seated the next House; Ann Lost and
+            # Cy Mover's House number are former members of 2025-2026.
+            put("meta.json", {"terms": ["2027-2028", "2025-2026"]})
+            put("legislators.json", [
+                mem("12", "Stays", "Bo", "H", "Belknap", "1", "R", "bo-stays-belk-1"),
+                mem("21", "New", "Nan", "H", "Belknap", "1", "D", "nan-new-belk-1"),
+                mem("22", "Next", "Dee", "H", "Belknap", "2", "D", "dee-next-belk-2"),
+                mem("31", "Mover", "Cy", "S", "", "1", "D", "cy-mover-sd-1")])
+            served = {"served": {"first": "1/8/2025", "last": "6/30/2026", "terms": ["2025-2026"]},
+                      "former": True}
+            put("former.json", [mem("11", "Lost", "Ann", "H", "Belknap", "1", "R", "ann-lost-belk-1",
+                                    **served),
+                                mem("13", "Mover", "Cy", "H", "Belknap", "2", "D", "cy-mover-belk-2",
+                                    **served),
+                                mem("14", "Seat", "Sy", "S", "", "1", "R", "sy-seat-sd-1", **served)])
+            got["3 Dec"] = night("2026-12-03")
+            # Requests of the session after (2028's, filed from September 2027) are
+            # sitting members' alone: a name only a member gone in 2026 has links nobody.
+            got["2028"] = (sorted(L.not_returning(site, str(coll), year=2028)[0]),
+                           L._fold("Ann Lost") in L.roster(site, str(coll), 2028),
+                           L._fold("Ann Lost") in L.roster(site, str(coll), 2027))
+        finally:
+            os.chdir(was_cwd)
+            if was_day is None:
+                os.environ.pop("GRANITE_BUILD_DATE", None)
+            else:
+                os.environ["GRANITE_BUILD_DATE"] = was_day
+    for day in ("1 Dec", "2 Dec"):
+        gone, dropped, kept = got[day]
+        assert gone == ["ann-lost-belk-1", "sy-seat-sd-1"], (day, "not returning", gone)
+        assert dropped == ["LSR 2027-0001"], (day, "dropped", dropped)
+        assert sorted(kept) == ["LSR 2027-0002", "LSR 2027-0003", "LSR 2027-0004"], (day, sorted(kept))
+    gone, dropped, kept = got["3 Dec"]
+    assert dropped == ["LSR 2027-0001"], ("after the New term run the withdrawn request of a member who "
+                                          "lost is not dropped", dropped, gone)
+    assert "ann-lost-belk-1" in gone and "cy-mover-sd-1" not in gone, gone
+    assert sorted(kept) == ["LSR 2027-0002", "LSR 2027-0003", "LSR 2027-0004"], sorted(kept)
+    assert kept["LSR 2027-0004"]["sponsor_slug"] == "cy-mover-sd-1", (
+        "the request of the representative now in the Senate is not his Senate page's",
+        kept["LSR 2027-0004"]["sponsor_slug"])
+    standing = kept["LSR 2027-0003"]
+    assert standing["sponsor_slug"] == "ann-lost-belk-1" and standing["sponsor_label"] == "Ann Lost (R)", (
+        "a departed member's standing request is not linked to their page, or names a seat they left",
+        standing["sponsor_slug"], standing["sponsor_label"])
+    assert got["2028"] == ([], False, True), (
+        "a member gone in 2026 is matched to, or dropped from, the requests of 2028", got["2028"])
+    return "ok", ("LSR 2027-0001 of a member who lost dropped on 1 December with the file, on 2 December "
+                  "without it, and on 3 December by the new roster; the returning member's and the new "
+                  "senator's withdrawn and the standing one kept, the last linked to the member who "
+                  "left by name and party")
+
+
 @check("build", "the request list's Sponsors column is read as a prime sponsor and co-sponsors: the one "
                 "marked Prime first, each other name a co-sponsor, wherever it stands")
 def _lsr_sponsors_split():
@@ -7855,7 +7994,7 @@ def _request_became_bill(build_lsrs):
     rows, _ = L.rows_from(lsrs[2:], {}, {})
     assert rows[0]["status"] == "Requested" and "introduced" not in rows[0], rows[0]
     src = _source(_paths.locate("build_lsrs.py"))
-    assert "rows_from(lsrs, roster(site), became, year, winners," in src, \
+    assert "rows_from(lsrs, roster(site, a.collected, year), became, year, winners," in src, \
         "build_lsrs no longer gives rows_from the bills"
     return "ok", "a request a bill carries reads as that bill; one that only left the list is withdrawn"
 

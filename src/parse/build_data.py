@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.64
+# GRANITE_VERSION: 2026-09-04.65
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1484,9 +1484,10 @@ def designation_of(bill, a, fn, local):
 
 def fill_from_legislation(bills, lines, committees, subjects):
     """Fill the session's bills that LSRs.txt does not carry from the
-    database's Legislation view, given as its lines: the House and Senate
-    committees, the subject, and the designation's flags, each only where the
-    bill has none, and only for the bill whose LSR and term the row names.
+    database's Legislation view, given as its lines: the title, the House and
+    Senate committees, the subject, and the designation's flags, each only
+    where the bill has none, and only for the bill whose LSR and term the row
+    names.
     Returns a Counter of what it filled.
 
     THE FLAGS (audit of 7 October 2026, cause 13). LSRs.txt lists session
@@ -1513,6 +1514,18 @@ def fill_from_legislation(bills, lines, committees, subjects):
             filled["another term's row, not taken"] += 1
             continue
         hc, sc, subj = f[18].strip(), f[26].strip(), f[12].strip()
+        # THE TITLE, of a stub that has none (the rehearsal of 17 November
+        # 2026). A new term's first bills are in the docket before LSRs.txt and
+        # LsrsOnly.txt carry their session year -- those files hold one -- so
+        # each was a stub with no title, and its request's page forwarded to a
+        # bill page headed by its number alone. LSRTitle (column 4) is the
+        # title LSRs.txt's field 2 gives: the same words on 2,228 of the 2,234
+        # bills of 2025-2026 both carry, the other six a final full stop. A
+        # bill LSRs.txt carries keeps the title it gave.
+        title = " ".join(f[4].split())
+        if title and rec.get("stub") and not rec.get("title"):
+            rec["title"] = title
+            filled["title"] += 1
         if hc and not rec.get("house_committee"):
             rec["house_committee"] = committees.get(hc, {}).get("name", hc)
             filled["House committee"] += 1
