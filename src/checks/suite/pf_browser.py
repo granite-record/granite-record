@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -10097,3 +10097,152 @@ def _topic_filter_search_box():
         f"a ticked topic leaves the list when it does not match: {topics(got['ticked'])}")
     assert topics(got["none"]) == [] and "No match" in got["none"], "a word no topic has is not said to match nothing"
     return "ok", "the box narrows the topics, counts hold, a ticked topic stays"
+
+
+
+# THE TAGS' HARNESS: four tags, five bills and the words that lead to them, as meta.json and the index rows
+# carry them (tag_rules.site_meta, build_site_v2.site_tagging), for the checks of the tags on the pages.
+_TAGS_HARNESS = r"""
+  const TAGS = [{id: "office-attorney-general", name: "Attorney General", group: "Offices",
+                 definition: "Bills whose text gives the Attorney General a duty or a power."},
+                {id: "artificial-intelligence", name: "Artificial intelligence and data centers", group: "Technology",
+                 definition: "Bills about artificial intelligence."},
+                {id: "mental-health", name: "Mental health", group: "Health", definition: "Bills about mental health."},
+                {id: "excavation-tax", name: "Excavation tax", group: "Taxes", definition: "Bills about the excavation tax."}];
+  const WORDS = {"attorney general": "tag:office-attorney-general", "ai": "tag:artificial-intelligence",
+                 "deepfake": "tag:artificial-intelligence", "mental health": "tag:mental-health",
+                 "gravel tax": "tag:excavation-tax", "excavation tax": "tag:excavation-tax",
+                 "weed": "topic:Cannabis", "pot": "topic:Cannabis"};
+  const META_T = {terms: ["2025-2026"], committee_codes: {}, topics: ["Cannabis", "Crimes", "Health"],
+                  tags: TAGS, tag_words: WORDS};
+  const norm = s => String(s || "").toLowerCase().replace(/-/g, " ");
+  const ROWS = [
+    {id: "HB1", n: "HB 1", year: 2025, term: "2025-2026", title: "relative to the consumer protection bureau",
+     topic: "Crimes", tags: [0], committee: "House Judiciary"},
+    {id: "HB2", n: "HB 2", year: 2025, term: "2025-2026", title: "relative to hemp products", topic: "Cannabis",
+     committee: "House Commerce"},
+    {id: "HB3", n: "HB 3", year: 2025, term: "2025-2026", title: "regulating chatbots", topic: "Crimes",
+     tags: [1, 0, 2], committee: "House Commerce"},
+    {id: "HB4", n: "HB 4", year: 2025, term: "2025-2026", title: "relative to the attorney general",
+     topic: "Crimes", committee: "House Judiciary"},
+    {id: "HB5", n: "HB 5", year: 2025, term: "2025-2026", title: "relative to removal of earth", topic: "Health",
+     tags: [3], committee: "House Ways and Means"}];
+  ROWS.forEach(b => { b.hayT = norm([b.id, b.n, b.title].join(" ")); b.hayC = norm(b.committee); });
+  const group = (h, k) => { const i = h.indexOf('data-g="' + k + '"'); if (i < 0) return null;
+    const j = h.indexOf('<div class="fgroup', i); return h.slice(i, j < 0 ? undefined : j); };
+  const opts = (h, k) => [...String(h || "").matchAll(new RegExp('data-f="' + k + '"\\s+value="([^"]*)"', "g"))].map(m => m[1]);
+"""
+_TAGS_NAMES = ("renderFacets", "sel", "matches", "cardHtml", "renderRelated", "setTagWords", "filtersFromAddress",
+               "addressList", "openGroups",
+               "setState: (t, m, rows) => { term = t; if (m) META = m; if (rows) IDX = rows; }",
+               "setTopic: (v) => { topicFilter = v; }", "setG: (v) => { tagFilter = v; }",
+               "setQ: (q) => { query = q; }", "setPlace: (p) => { TAGS_PLACE = p; }",
+               "setFocused: (f) => { focused = f; }")
+
+
+@check("frontend", "a bill's tags are searches on its own page alone -- at its foot, or at the end of its History "
+                   "tab, as TAGS_PLACE says -- and the Tags filter lists them with a box that finds one by its "
+                   "words; no card, list or head shows a tag")
+def _tags_on_the_bill_page_and_filter():
+    """The owner, 17 November 2026: "I don't want tags to be distracting to the layout as additional visual clutter
+    and more of a helpful search tool, so maybe they could be listed at the bottom of a page or in a certain section
+    tab like history". On the harness's tags (as meta.json carries them): the bill's own page ends with "Related
+    searches", each tag by the registry's name to /bills on All Terms with it ticked and its definition on the
+    hover, and nothing else said of it; with TAGS_PLACE "history" the History tab ends with them instead, on the
+    bill's own page and not on a card opened in a list; a list card, the head and an untagged bill show none. The
+    Tags group follows Topic, closed, every carried tag by name with its count; its box finds a tag by name or by
+    a word that leads to it (an ask it never shows); a ticked tag stays listed and is counted on the group's badge;
+    the Topic box finds a topic by a word that leads to it ("weed", Cannabis). Two tags are either, a tag and a topic
+    both. ?tag= ticks a tag meta.json has and opens the group, and the list writes it back. With no tags in meta.json
+    none of this draws anything."""
+    got = _app_js("(() => {" + _TAGS_HARNESS + """
+  scope.setState("2025-2026", META_T, ROWS);
+  scope.setTagWords(TAGS, WORDS);
+  const out = {};
+  const facets = () => { scope.renderFacets(); return document.querySelector("#facets").innerHTML; };
+  const all = facets();
+  out.order = [...all.matchAll(/data-g="(\\w+)"/g)].map(m => m[1]);
+  out.tags = opts(group(all, "tag"), "tag");
+  out.closed = /data-g="tag"\\s+aria-expanded="false"/.test(all) && /<div class="fbody" hidden><input class="sbox" id="gbox"/.test(group(all, "tag"));
+  out.counts = [...group(all, "tag").matchAll(/value="([^"]*)" ><span title="([^"]*)">([^<]*)<\\/span>\\s*<span class="c">(\\d+)/g)].map(m => m.slice(1));
+  scope.setG("INTELL"); out.byName = opts(group(facets(), "tag"), "tag");
+  scope.setG("deepf"); const ask = group(facets(), "tag"); out.byAsk = opts(ask, "tag"); out.askShown = /deepf/.test(ask.replace(/value="deepf"/, ""));
+  scope.setG("zzz"); out.none = group(facets(), "tag").includes("No match");
+  scope.sel.tag.add("excavation-tax"); scope.setG("intell"); const tk = group(facets(), "tag");
+  out.ticked = opts(tk, "tag"); out.badge = (tk.match(/<span class="badge">(\\d+)<\\/span>/) || [])[1] || "";
+  scope.setG(""); scope.sel.tag.clear();
+  scope.setTopic("weed"); out.topicWeed = opts(group(facets(), "topic"), "topic"); scope.setTopic("");
+  const ids = () => ROWS.filter(b => scope.matches(b)).map(b => b.id);
+  scope.sel.tag.add("office-attorney-general"); out.oneTag = ids();
+  scope.sel.tag.add("excavation-tax"); out.twoTags = ids();
+  scope.sel.topic.add("Health"); out.tagAndTopic = ids();
+  scope.sel.tag.clear(); scope.sel.topic.clear();
+  scope.filtersFromAddress(new URLSearchParams("tag=mental-health&tag=no-such-tag"));
+  out.address = [...scope.sel.tag]; out.opened = scope.openGroups.has("tag");
+  let wrote = ""; history.replaceState = (s, t, u) => { wrote = String(u); };
+  scope.addressList(); out.written = wrote;
+  scope.sel.tag.clear();
+  const rec = {term: "2025-2026", tags: [{id: "artificial-intelligence", name: "x", why: "T:chatbot"}]};
+  scope.setFocused("HB3");
+  out.foot = scope.cardHtml(ROWS[2], true);
+  out.footNone = scope.cardHtml(ROWS[3], true);
+  out.card = scope.cardHtml(ROWS[2], false);
+  scope.setPlace("history");
+  out.histPage = scope.renderRelated(ROWS[2], [], rec);
+  out.histFoot = scope.cardHtml(ROWS[2], true);
+  scope.setFocused(null);
+  out.histCard = scope.renderRelated(ROWS[2], [], rec);
+  scope.setPlace("foot");
+  scope.setTagWords([], {});
+  out.offFacets = facets();
+  scope.setFocused("HB3");
+  out.offFoot = scope.cardHtml(ROWS[2], true);
+  return out;
+})()""", names=_TAGS_NAMES)
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    ti = got["order"].index("topic") if "topic" in got["order"] else -1
+    assert ti >= 0 and got["order"][ti + 1:ti + 2] == ["tag"], f"the Tags group does not follow Topic: {got['order']}"
+    assert got["closed"], "the Tags group is not closed, with its box first, until it is opened"
+    assert got["tags"] == ["artificial-intelligence", "office-attorney-general", "excavation-tax", "mental-health"], (
+        f"the Tags group's options, by name: {got['tags']}")
+    want = {"office-attorney-general": "2", "artificial-intelligence": "1", "mental-health": "1", "excavation-tax": "1"}
+    for tid, title, name, n in got["counts"]:
+        reg = {"office-attorney-general": "Attorney General", "artificial-intelligence": "Artificial intelligence and data centers",
+               "mental-health": "Mental health", "excavation-tax": "Excavation tax"}
+        assert name == reg[tid] and title.startswith("Bills ") and n == want[tid], (
+            f"{tid} is drawn as {name!r} ({title!r}, {n}): the registry's name, its definition and its count")
+    assert got["byName"] == ["artificial-intelligence"], f"'INTELL' in the box lists {got['byName']}"
+    assert got["byAsk"] == ["artificial-intelligence"] and not got["askShown"], (
+        f"a word that leads to a tag lists it, and is never shown: {got['byAsk']}, shown {got['askShown']}")
+    assert got["none"], "a word that is no tag's does not say No match"
+    assert "excavation-tax" in got["ticked"] and got["badge"] == "1", (
+        f"a ticked tag leaves the list, or the badge does not count it: {got['ticked']}, badge {got['badge']!r}")
+    assert got["topicWeed"] == ["Cannabis"], f"'weed' in the Topic box lists {got['topicWeed']}"
+    assert got["oneTag"] == ["HB1", "HB3"] and got["twoTags"] == ["HB1", "HB3", "HB5"] and got["tagAndTopic"] == ["HB5"], (
+        f"one tag {got['oneTag']}, two {got['twoTags']}, a tag and a topic {got['tagAndTopic']}")
+    assert got["address"] == ["mental-health"] and got["opened"], f"?tag= ticks {got['address']}, opens {got['opened']}"
+    assert "tag=mental-health" in got["written"], f"the list's address leaves the tag out: {got['written']!r}"
+    foot = re.search(r'<section class="tagfoot" aria-label="Related searches"><h2 class="tagfh">Related searches</h2>'
+                     r'<ul class="taglinks">(.*?)</ul></section></article>$', got["foot"])
+    assert foot, "the bill's own page does not end with its tags as searches"
+    links = re.findall(r'<li><a href="([^"]*)" title="([^"]*)">([^<]*)</a></li>', foot.group(1))
+    assert [(h, n) for h, _t, n in links] == [
+        ("/bills?term=all&amp;tag=artificial-intelligence", "Artificial intelligence and data centers"),
+        ("/bills?term=all&amp;tag=office-attorney-general", "Attorney General"),
+        ("/bills?term=all&amp;tag=mental-health", "Mental health")], f"the searches: {links}"
+    assert re.sub(r'<li><a href="[^"]*" title="[^"]*">[^<]*</a></li>', "", foot.group(1)) == "", (
+        "the list says something of a tag beyond its name and its definition")
+    assert all(t.startswith("Bills ") for _h, t, _n in links), "a link's hover is not the registry's definition"
+    for what in ("footNone", "card"):
+        assert "tagfoot" not in got[what] and "Attorney General" not in got[what], f"{what} shows a tag"
+    assert "T:chatbot" not in got["histPage"], "the page prints the evidence that attached a tag"
+    assert got["histPage"].endswith('<section class="rl-g tagsec"><h2 class="sech">Related Searches</h2><ul class="taglinks">'
+                                    + foot.group(1) + "</ul></section>"), "History does not end with the searches"
+    assert "tagfoot" not in got["histFoot"] and "tagsec" not in got["histCard"], (
+        "with TAGS_PLACE history the foot still lists them, or a list's card does")
+    assert 'data-g="tag"' not in got["offFacets"] and "tagfoot" not in got["offFoot"], (
+        "with no tags in meta.json the filter or the page draws something")
+    return "ok", ("the bill's own page ends with its 3 searches (or History does), name and definition only; no "
+                  "card, head or untagged bill shows one; the Tags group by name with counts, found by a word it "
+                  "never shows, a ticked tag kept and badged; weed finds Cannabis; ?tag= read and written")

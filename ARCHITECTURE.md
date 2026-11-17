@@ -900,6 +900,26 @@ take about 13 ms a bill (seven minutes over the record cold); then
 - the no-script record ends with "Related searches", each tag to the bill
   search on All Terms with it ticked.
 
+What draws them is written in `app.js`, `find.js` and `app.css` between a
+line holding `TAGS:BEGIN` and the next holding `TAGS:END`, each region whole
+lines added beside the code it extends, and `build_pages.front_end`
+publishes those regions only where the site's `meta.json` lists a tag
+(`site_has_tags`, `without_tags`; `published_js` and `bill_matcher_js` cut
+them by default). The source runs as it stands -- `preflight`'s node
+harnesses run it -- and with no tags what the regions add does nothing.
+
+Tags are a search tool, not a label (the owner, 17 November 2026, in place
+of the design's 5.1 and 5.2): no card, list or record head shows one. A
+bill's own page lists them as "Related searches", each to `/bills` on All
+Terms with that tag ticked, by the registry's name with its definition on
+the hover: at the page's foot, below the tabs, or at the end of the History
+tab, as `TAGS_PLACE` in `app.js` says (`tagFoot`, `tagHistory`) -- the
+owner's choice. The bill search has a Tags group after Topic, closed until
+opened, whose box finds a tag by its name or by a word that leads to it,
+which is never shown; the Topic box finds a topic the same way ("weed",
+Cannabis). `?tag=` ticks a tag by its id; two are either, a tag and a topic
+both.
+
 ## The bill search, and what it reads
 
 One matcher, in `app.js` between its `BILLMATCH` marks. `/bills` runs it

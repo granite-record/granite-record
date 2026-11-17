@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.397 */
+/* GRANITE_VERSION: 2026-09-07.398 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -7762,6 +7762,22 @@ max-width:40em;text-wrap:pretty}
 color:var(--ink-2);margin:0 0 var(--sp-2)}
 .rfacts dd{margin:0;font:400 var(--t-ui)/1.45 var(--sans);color:var(--ink)}
 .rfacts dd small{display:block;font-size:var(--t-sm);color:var(--ink-2);margin-top:var(--sp-1)}
+/* TAGS:BEGIN -----------------------------------------------------------------
+   THE TAGS (topics as tags), published only where the site has them
+   (build_pages.without_tags). A search tool, not a label (the owner, 17
+   November 2026): a bill's own page lists them as searches, quiet and last
+   (app.js tagFoot, tagHistory) -- a small heading in the facts' own label
+   style and the names as plain links, one line where they fit, the text's
+   colour and underlined with dots so they do not compete with the record's
+   own links -- and no card or list shows one. */
+.tagfoot{margin:var(--sp-8) 0 0;padding:var(--sp-5) 0 0;border-top:1px solid var(--rule)}
+.tagfh{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.07em;text-transform:uppercase;
+color:var(--ink-2);margin:0 0 var(--sp-2)}
+.taglinks{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:var(--sp-2) 1.25rem;
+font:400 var(--t-ui)/1.45 var(--sans)}
+.taglinks a{color:var(--ink);text-decoration:underline dotted var(--edge);text-underline-offset:3px}
+.taglinks a:hover{text-decoration-style:solid}
+/* TAGS:END */
 .rrail{grid-area:rail;justify-self:center;width:100%;max-width:38.75rem;margin-top:var(--sp-7)}
 .rrail .rail.dated{margin:0 auto}
 .racts{grid-area:acts;align-self:start;justify-self:end;min-width:11.5rem;margin-top:var(--sp-4)}
