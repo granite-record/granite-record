@@ -2516,19 +2516,24 @@ FN uses.
 
 Under its head a request's page hangs a bill page's tab strip, the record's
 one (`components.record_tabs`, `recordTabs` in the browser, with which a bill's
-page and card and a request's card draw theirs), the Summary's tab drawn even
-where it is the only one. Its Summary ends with About Requests, what a request
-is (`build_request_pages.explain`), and an opened card's Summary says the same
-in the same words (`app.js` `lsrAbout`), so that a card visibly opens. Its Summary says what the row says of the text
-(`build_request_pages.text_note`): not public yet while the request is drafted,
+page and card and a request's card draw theirs): Summary and Bill Text on
+every request, then Sponsors and History where it has them. Its Summary ends
+with About Requests, what a request is (`build_request_pages.explain`), and an
+opened card's Summary says the same in the same words (`app.js` `lsrAbout`), so
+that a card visibly opens. Its Bill Text tab, second and keyed 6 as a bill's,
+is on every request's page and card (the owner, 17 November 2026), and until
+the text is read its count is "(0)" -- the text "0", which the strip draws
+where the number 0 draws nothing (`build_request_pages.text_count`) -- and it
+says what the row says of the text (`build_request_pages.text_note`, `app.js`
+`lsrTextNote`): not public yet while the request is drafted,
 and public once it is filed as a numbered bill; or withdrawn before it was
 filed; and, filed, that its text is public and is added once this site has
 read it, with the General Court's PDF linked. The night fetches each text the
 request list links, a few a night, and reads it with pdftotext -layout
 (`python3 src/fetch/gc_web/fetch_lsrs.py --texts` and `--read-texts`;
 `nightly.take_lsr_texts`) into
-`archive/lsr_text/`, which the kit carries; from then the request's page and
-card have a Bill Text tab, keyed 6 as a bill's, with what was read, said to be
+`archive/lsr_text/`, which the kit carries; from then the tab, its count
+"(1)", holds what was read, said to be
 read by machine, and the PDF linked (`build_lsrs.request_text`, the one reader;
 `build_request_pages.text_pane`, `app.js` `lsrTextPane`, which fetches the
 text from the request's file in the data API, `api/requests/<year>/<number>.json`,

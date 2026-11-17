@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.34
+# GRANITE_VERSION: 2026-10-09.35
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -745,7 +745,9 @@ def record_tabs(rid, tabs, on, base=""):
     record's id; `tabs` is [[key, word, count], ...] in their order, the key
     a tab's identity -- its pane is pane_<rid>_<key> and carries data-t="key",
     and a saved address restores by it -- and a count of 0 or none draws no
-    badge; `on` is the key chosen. `base`, the page's own address, is for a
+    badge, while one given as text is drawn as it is, "0" as "(0)" (a
+    request's Bill Text tab before its text is public, the owner's "list it
+    as 0", 17 November 2026); `on` is the key chosen. `base`, the page's own address, is for a
     page built ahead with every pane on it (a request's): the strip then
     carries app.js's ssTabs hooks -- sstabs, which app.css hides where no
     script runs, the address, and data-sstab on each tab -- and the script

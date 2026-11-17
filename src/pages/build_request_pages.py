@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.18
+# GRANITE_VERSION: 2026-11-08.19
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -27,10 +27,10 @@ longer listed.
 A REQUEST STAYS A REQUEST UNTIL IT IS INTRODUCED (the owner, 17 November
 2026; build_lsrs): filed as a numbered bill, its page stays, saying the bill
 it was filed as (the row's "introduced" and "bill_at"), its Follow the
-bill's, where its follow has moved; and once the night has read its text
-("text_on_file"), a Bill Text tab shows it (text_pane), read by machine from
-the General Court's PDF, which it links. It forwards only once the bill is
-introduced.
+bill's, where its follow has moved; and its Bill Text tab, which every
+request has (the owner, 17 November 2026), shows its text once the night has
+read it ("text_on_file"; text_pane), read by machine from the General
+Court's PDF, which it links. It forwards only once the bill is introduced.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -237,12 +237,28 @@ def text_note(r, year):
             f"will be public when it is filed as a numbered {E(str(year))} bill.")
 
 
-def text_pane(r):
-    """THE BILL TEXT TAB, ONCE THE TEXT IS IN (the owner, 17 November 2026: "a
-    link that says View the text that shows the granite record tab once we've
-    imported the text"): what the night read off the PDF the General Court's
-    request list links (build_lsrs.request_text), in the bill page's block for
-    a text (.vtext), said to be read by machine, with the PDF itself linked."""
+def text_count(r):
+    """THE BILL TEXT TAB'S COUNT (the owner, 17 November 2026: "just list it
+    as 0 until the text is published"): 1 once the night has read the
+    request's text, and until then the text "0", which the record's strip
+    (components.record_tabs) draws as "(0)" where the number 0 draws no
+    count. app.js's lsrTabs gives the card the same."""
+    return 1 if r.get("text_on_file") else "0"
+
+
+def text_pane(r, year):
+    """THE BILL TEXT TAB, ON EVERY REQUEST (the owner, 17 November 2026:
+    "move the text about the bill text into a bill text tab and just list it
+    as 0 until the text is published"), second, keyed 6 as a bill's. Until
+    the night has read the text, what text_note says of it. Once it has (the
+    owner, 17 November 2026: "a link that says View the text that shows the
+    granite record tab once we've imported the text"): what the night read
+    off the PDF the General Court's request list links
+    (build_lsrs.request_text), in the bill page's block for a text (.vtext),
+    said to be read by machine, with the PDF itself linked. app.js's
+    lsrTextPane draws the card's in the same words."""
+    if not r.get("text_on_file"):
+        return f"<p>{text_note(r, year)}</p>"
     import build_lsrs
     num = str(r.get("address") or "").rsplit("/", 1)[-1]
     text = build_lsrs.request_text(num)
@@ -304,9 +320,10 @@ def tabs(rid, path, panes):
     2026: a request's page "should at least show the summary tab"):
     the record's strip, components.record_tabs, as app.js's renderDetail
     draws a bill's -- the same component, its tabs keyed as a bill's (0
-    Summary, 4 Sponsors, 7 History, as the request's card keys them) -- and
-    drawn for the Summary alone too, which until then drew no strip and left
-    the page ending under the rail. `panes` is [(key, word, count, body)],
+    Summary, 6 Bill Text, 4 Sponsors, 7 History, as the request's card keys
+    them); before 16 November a request with a Summary alone drew no strip
+    and left the page ending under the rail, and since 17 November every
+    request has Summary and Bill Text at least. `panes` is [(key, word, count, body)],
     the first chosen. The page is built ahead with every pane on it, so the
     strip carries the page's address (`base`) for app.js's ssTabs, which
     turns the panes as on a study committee's page; every tab is at the
@@ -325,10 +342,9 @@ def tabs(rid, path, panes):
 def body(r, req, who_of, path, base):
     """One request's page: a bill's, with what a request has drawn and the
     rest left quiet."""
-    panes = [("0", "Summary", 0, summary(r, req))]
-    # Second, as on a bill's page; keyed 6 as a bill's Bill Text tab is.
-    if r.get("text_on_file"):
-        panes.append(("6", "Bill Text", 0, text_pane(r)))
+    # Bill Text second, as on a bill's page, and on every request (text_pane).
+    panes = [("0", "Summary", 0, summary(r, req)),
+             ("6", "Bill Text", text_count(r), text_pane(r, r.get("year") or req.get("year")))]
     if r.get("cosponsors"):
         panes.append(("4", "Sponsors", len(r["cosponsors"]) + 1, sponsors_pane(r, who_of)))
     if r.get("history"):
@@ -340,7 +356,8 @@ def text_address(r):
     """The address of a request's Bill Text tab on its own page, its pane
     named by the place the strip opens on (app.js's ssWanted reads "#<pane
     id>"): "/<address>#pane_<id>_6", from the row's own address and id --
-    "" for a request whose text is not read, which has no such tab. The
+    "" for a request whose text is not read, whose tab says only where the
+    text stands (text_pane), which is nothing to send a reader to. The
     follow email's "View the text" (build_feeds, follow_changes.ending; the
     owner, 17 November 2026). Once the request forwards to its bill, the page
     there opens as it does."""
