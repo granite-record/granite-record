@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.21
+# GRANITE_VERSION: 2026-11-16.22
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1495,10 +1495,12 @@ def _request_pages():
         for no in ("Testify", "data-print", 'id="tab_LSR20270001_1"', "Committee</dt>"):
             assert no not in page, f"a request's page carries {no!r}, which a request has not"
         # THE SUMMARY TAB A BILL'S PAGE HAS (the owner, 16 November 2026: "LSR
-        # pages should at least show the summary tab on the full page"): the
-        # strip with the Summary alone, where until then there was none.
-        assert re.findall(r'<button[^>]*role="tab"[^>]*>([^<]*)<', page) == ["Summary"], (
-            "a request's page with only a Summary draws no Summary tab, as a bill's page has")
+        # pages should at least show the summary tab on the full page"), where
+        # until then there was no strip; and since 17 November 2026 the Bill
+        # Text tab beside it on every request (_request_bill_text_tab).
+        assert re.findall(r'<button[^>]*role="tab"[^>]*>([^<]*)<', page) == ["Summary", "Bill Text"], (
+            "a request's page with no co-sponsor and no History does not draw Summary and Bill Text, "
+            "as a bill's page has them")
         wd = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
         assert ">Withdrawn</span>" in wd and "Status:" not in wd \
             and "window.GR_FOLLOW" not in wd, (
