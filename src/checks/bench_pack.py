@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 A pack for the shared bench: what its contributors are asked next, as SQL to
 load into its database with one wrangler command.
@@ -7,12 +7,15 @@ load into its database with one wrangler command.
     python3 src/checks/bench_pack.py --preview            # a pack for the preview's database
     python3 src/checks/bench_pack.py                       # ... for production's
     python3 src/checks/bench_pack.py --refresh --preview   # the three pools drawn again first
+    python3 src/checks/bench_pack.py --refresh --tags reports/tags.draft.json --preview
+                                                           # ... the tags from a draft registry
     python3 src/checks/bench_pack.py --groups 3 --seed 7   # more groups; another draw
 
 Writes reports/bench/packs/<preview|production>/<date>.sql and prints the
 wrangler command that loads it. Asks nobody and runs nothing: the owner loads
 it. Reads review.py's own sample pools (review/.pool-<kind>.json, cached; with
---refresh, review.pool_for draws them again from the data on disk), the
+--refresh, drawn again by review.py's own samplers from the data on disk, a
+draw that comes back empty leaving the cached pool as it was), the
 ledger (review/checked.jsonl, through bench_ledger), data/bills.json and the
 bills' texts (tag_rules.load_bills) for titles and the drafters' analyses,
 and data/subjects.json for the list a better topic is chosen from.
@@ -49,8 +52,8 @@ WHAT A PACK HOLDS (the design of 17 November 2026, approved):
   JUDGED ON THE LAPTOP SINCE: an item packed before and judged by her on the
   laptop's bench since is marked "elsewhere", and no longer asked.
 
-Writes the pack file and nothing else; never the ledger, never review/ but
-through review.pool_for's own cache when --refresh asks for it.
+Writes the pack file and nothing else; never the ledger, and in review/ only
+the pools' own cache, when --refresh draws a pool that is not empty.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -98,7 +101,8 @@ def long_date(day):
     return f"{int(m.group(3))} {MONTHS[int(m.group(2)) - 1]} {m.group(1)}" if m else str(day or "")
 
 
-def term_of(year):
+def bill_term(year):
+    """The term a bill's page year is in (terms.term_of_year, the one home of the rule), or ""."""
     import terms
     try:
         return terms.term_of_year(str(year))
@@ -210,7 +214,7 @@ def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of=""
         got = _sample(f"{seed}|timing|{year}", by_year[year], per["timing"])
         plans["timing"].append((f"timing|{year}", f"{year} recordings",
                                 [(timing_kind(it), it, moment_card(
-                                    it, info.title(term_of(it.get("year")), it.get("bill")))) for it in got]))
+                                    it, info.title(bill_term(it.get("year")), it.get("bill")))) for it in got]))
     by_term = {}
     for it in topic_pool:
         if (it.get("topic") or "Miscellaneous") == "Miscellaneous":
@@ -251,7 +255,7 @@ def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of=""
         if kind in ("timestamp", "older"):
             if verdict not in ("correct", "wrong") or shown.get("start") is None or not shown.get("video_id"):
                 continue
-            card = moment_card(shown, info.title(term_of(shown.get("year")), shown.get("bill")))
+            card = moment_card(shown, info.title(bill_term(shown.get("year")), shown.get("bill")))
             q = "timing"
         elif kind == "topic":
             if verdict not in ("correct", "wrong") or (shown.get("topic") or "Miscellaneous") == "Miscellaneous":
@@ -344,12 +348,24 @@ def packed_keys(folder):
 
 def read_pool(kind, refresh=False):
     """review.py's pool of `kind`: its cache, read and never written; with
-    `refresh`, review.pool_for draws it again (and keeps its cache, as the
-    laptop's bench does)."""
+    `refresh`, drawn again by review.py's own sampler and kept in that cache
+    as review.pool_for keeps it -- BUT A DRAW THAT COMES BACK EMPTY LEAVES THE
+    CACHE AS IT WAS. pool_for deletes the cache then, and the tag pool comes
+    back empty whenever the tag registry is not found: corrections/tags.json
+    is not on the laptop, and the owner draws tags from a draft named by
+    --tags (GRANITE_TAGS), so a refresh without it would have thrown her tag
+    pool away."""
     import review
-    if refresh:
-        return review.pool_for(kind, refresh=True)
     p = review.OUT / f".pool-{kind}.json"
+    if refresh:
+        items = review.KINDS[kind]["sample"]()
+        if items:
+            p.parent.mkdir(exist_ok=True)
+            p.write_text(json.dumps(items), encoding="utf-8")
+            return items
+        print(f"  {kind}: drawn again and empty"
+              + (" (no tag registry: pass --tags with the draft review.py --tags reads)" if kind == "tag" else "")
+              + "; the pool kept from before is used", file=sys.stderr)
     if not p.exists():
         raise SystemExit(f"{p.as_posix()} is not here: run with --refresh to draw the pools")
     return json.loads(p.read_text(encoding="utf-8"))
@@ -388,8 +404,13 @@ def main():
     ap.add_argument("--groups", type=int, default=2, help="groups of each queue (default 2)")
     ap.add_argument("--seed", type=int, default=SEED)
     ap.add_argument("--refresh", action="store_true", help="draw review.py's three pools again first")
+    ap.add_argument("--tags", help="the tag registry to draw tags from (a draft in reports/), as "
+                                   "review.py --tags takes it, where corrections/tags.json is not")
     ap.add_argument("--out", default=None, help="the folder for packs (default reports/bench/packs/<db>)")
     a = ap.parse_args()
+    if a.tags:
+        import os
+        os.environ["GRANITE_TAGS"] = a.tags
     which = "preview" if a.preview else "production"
     db = DB[which]
     folder = Path(a.out) if a.out else OUT / which

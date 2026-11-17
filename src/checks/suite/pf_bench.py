@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -21,7 +21,7 @@ import re
 import shutil
 import sys
 import tempfile
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import _paths
@@ -302,8 +302,8 @@ def _pack_fixture():
 @check("build", "a pack for the shared bench: seeded groups that leave out everything judged or packed "
                 "before, timings split as the ledger keeps them, topics placed and tags asked blind, the "
                 "owner's own judgments as calibration, and SQL the bench's schema loads and serves",
-       needs=("bench_pack", "bench_ledger"))
-def _bench_pack(BP, BL):
+       needs=("bench_pack", "bench_ledger", "review"))
+def _bench_pack(BP, BL, RV):
     """src/checks/bench_pack.py (step 5 of the shared bench, approved 17 November 2026), on a
     fixture of three pools, a ledger and the bills' words. Held: no item is a key the ledger
     holds -- the owner's, a contributor's -- nor one an earlier pack holds, but a withdrawn
@@ -364,6 +364,28 @@ def _bench_pack(BP, BL):
     assert [(r["queue"], r["pool"], r["judged"]) for r in pack["queues"]] == [
         ("timing", 15, 3), ("topic", 10, 2), ("tag", 7, 2)], pack["queues"]
     assert pack["queues"][1]["options"] == info.options() and pack["queues"][0]["options"] is None
+
+    # A REFRESH THAT COMES BACK EMPTY KEEPS THE POOL. The owner's tag pool is drawn from a
+    # draft registry (review.py --tags), and review.pool_for deletes a cache an empty draw
+    # leaves; a refresh without the draft would have thrown her pool away.
+    tmp = Path(tempfile.mkdtemp(prefix="gr-pack-"))
+    saved = (RV.OUT, RV.KINDS["tag"]["sample"])
+    try:
+        RV.OUT = tmp / "review"
+        RV.OUT.mkdir()
+        cache = RV.OUT / ".pool-tag.json"
+        cache.write_text(json.dumps([{"key": "kept"}]), encoding="utf-8")
+        RV.KINDS["tag"]["sample"] = lambda: []
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            got = BP.read_pool("tag", refresh=True)
+        assert got == [{"key": "kept"}] and cache.is_file(), "an empty refresh threw the cached pool away"
+        RV.KINDS["tag"]["sample"] = lambda: [{"key": "new"}]
+        assert BP.read_pool("tag", refresh=True) == [{"key": "new"}] and \
+            json.loads(cache.read_text(encoding="utf-8")) == [{"key": "new"}], "a refresh did not keep its draw"
+        assert BP.read_pool("tag") == [{"key": "new"}], "the cache is not what a pack reads"
+    finally:
+        RV.OUT, RV.KINDS["tag"]["sample"] = saved
+        shutil.rmtree(tmp, ignore_errors=True)
 
     tmp = Path(tempfile.mkdtemp(prefix="gr-pack-"))
     try:
