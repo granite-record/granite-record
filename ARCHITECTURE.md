@@ -829,11 +829,18 @@ and every reader reads it through `src/lib/bench_ledger.py`: a line is the
 owner's (`"by": "hand"`) or a contributor's (`"by": "link:<id>"`, merged by
 her from the shared bench), her line counts over a contributor's whatever
 the order, and a withdrawal (`{"kind": "withdraw", "link": <id>}`) takes a
-link's lines out of every reader. `review.py --report`, the tag gates and
-`probe_alignment.py --truth` print the pools apart wherever a contributor's
-line counts; `--hand-only` scores without them. Two scripts write the
-ledger, and preflight holds there are no more: `review.py`, the laptop's
-bench, which chooses no answer for anyone, and `bench_pull.py`, the merge.
+link's lines out of every reader. The bench's report, the tag gates and
+the timestamp scorer print the pools apart wherever a contributor's line
+counts:
+
+    python3 src/checks/review.py --report
+    python3 src/hearings/probe_alignment.py --truth
+    python3 src/hearings/probe_alignment.py --truth --hand-only
+
+the last scoring without the contributors' marks. Two scripts write the
+ledger, and preflight holds there are no more: `src/checks/review.py`, the
+laptop's bench, which chooses no answer for anyone, and
+`src/checks/bench_pull.py`, the merge.
 
 The shared bench (approved 17 November 2026) puts the questions whose
 evidence fits a phone in front of people the owner invites: hearing
@@ -853,10 +860,14 @@ own judgments for calibration (one item in 25 a contributor is given). An
 item is claimed by one statement and held ten minutes, renewed while the
 page is open; an answer is kept in the ledger's words with its item marked
 judged in one batch; the page is told an item's opaque reference, queue and
-card, never its key. Nothing reaches the ledger but through
-`bench_pull.py --approve`, run by the owner on the laptop, after every
-note has passed `compile_reports.screen`. `workers/bench/README.md` has the
-routes, the limits and the commands.
+card, never its key. Nothing reaches the ledger but through the merge,
+run by the owner on the laptop after every note has passed
+`compile_reports.screen`:
+
+    python3 src/checks/bench_pull.py
+    python3 src/checks/bench_pull.py --approve <name or id>
+
+`workers/bench/README.md` has the routes, the limits and the commands.
 
 ## The bill search, and what it reads
 
