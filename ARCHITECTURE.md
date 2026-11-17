@@ -2438,9 +2438,15 @@ Filed reached and undated, and so does a request whose text the list links
 before any bill of it is on file. Requested carries none, since neither the
 list nor the General Court's public database gives the day a request was made. Next session's bills reach
 `data/bills.json` only once the New term run has turned the installed files,
-so no request is Filed before then.
+so no request is Filed by its bill before then, though one whose text the list
+links is Filed by that.
 The card has no Follow: a request is followed from its page, after Cite, as a
-bill is. The page's number marks LSR for the site's term popover
+bill is, and from the night it is filed as a bill the page's Follow is the
+bill's, where the follow has moved. The email that tells the follower so says
+it "has been drafted and filed as HB 45" (`follow_changes.ending`) and, where
+the site has read the text, links "View the text" to the page's Bill Text tab
+(the ending's `url`, `build_request_pages.text_address`: the page's address
+with its pane, which the page's script opens). The page's number marks LSR for the site's term popover
 (`components.term_mark`, glossary.json's entry), the mechanism a bill number's
 FN uses.
 

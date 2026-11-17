@@ -308,7 +308,14 @@ night. Each value may have:
   night it leaves, its `ended` has `how` `drafted` and **`becomes`**, the
   bill's key (`bill:2027/HB45`): the sender tells the follower once and
   **moves the follow onto that bill** rather than ending it. Withdrawn, its
-  `how` is `withdrawn` and the follow ends as any other's.
+  `how` is `withdrawn` and the follow ends as any other's. Where the site has
+  read the request's text (17 November 2026), the ending also has **`url`**,
+  a path on the site with a place on its page, the request's Bill Text tab
+  (`/request/2027-0001#pane_LSR20270001_6`), which the email links as "View
+  the text"; with none, the email has no such link. `url` is allowed on an
+  `lsr`'s `ended` alone, and a path is a path on the site: `/`, then letters,
+  digits and `-._~/?=&%+`, then at most one `#` and a place of letters,
+  digits, `_` and `-`, here and on every item.
 
   **A member who sits on under another number** (16 November 2026): the
   General Court gives a member a new number when they move between the House

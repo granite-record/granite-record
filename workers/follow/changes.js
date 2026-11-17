@@ -18,7 +18,10 @@ const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const TERM = /^\d{4}-\d{4}$/;
 const TIME = /^\d{2}:\d{2}$/;
 const HOW = /^[a-z][a-z-]{0,30}$/;
-const PATH = /^\/(?!\/)[A-Za-z0-9\-._~/?=&%+]*$/;
+// A path on the site, and a place on its page after it (17 November 2026: a
+// request's Bill Text tab, "#pane_LSR20270001_6"); common.js and the build's
+// follow_changes.PATH hold the same.
+const PATH = /^\/(?!\/)[A-Za-z0-9\-._~/?=&%+]*(?:#[A-Za-z0-9_-]{1,80})?$/;
 export const ITEM_KINDS = new Set(["action", "hearing", "scheduled", "exec", "vote",
   "report", "sponsor", "sitting", "study"]);
 const BASES = new Set(["first-seen", "record-date"]);
@@ -272,6 +275,13 @@ export function checkNight(obj, expectDate) {
           if (b && BECOMES[key.kind] === b.kind && keyOf(b.kind, b.ref) !== keyOf(key.kind, key.ref))
             out.ended.becomes = keyOf(b.kind, b.ref);
           else notes.push(`${w}: becomes is not ${key.kind === "member" ? "a member" : "a bill"}'s key`);
+        }
+        // A bill request drafted, its text on the site (17 November 2026):
+        // where "View the text" leads, its page's Bill Text tab.
+        if (e.url !== undefined && e.url !== null) {
+          if (key.kind !== "lsr") notes.push(`${w}: url is a bill request's alone`);
+          else if (typeof e.url === "string" && PATH.test(e.url)) out.ended.url = e.url;
+          else notes.push(`${w}: url is not a path on the site`);
         }
         if (!DAY.test(e.date ?? "")) notes.push(`${w}: date is not YYYY-MM-DD`);
       }

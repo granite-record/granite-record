@@ -790,6 +790,10 @@ const ENDED_TAIL = "There will be no more updates on it, so it has been taken of
 // ... and a bill request drafted into a bill (22 October 2026), whose follow
 // moves onto the bill rather than ending.
 const MOVED_TAIL = "You now follow the bill in its place, and will hear of it as it moves.";
+// ... and, once the site has the text, a link to it (the owner, 17 November
+// 2026: "maybe include a link that says View the text that shows the granite
+// record tab once we've imported the text"): the ending's "url".
+const VIEW_TEXT = "View the text";
 // ... and a legislator who sits on under another number (16 November 2026):
 // a representative elected to the Senate is given a new one, and their
 // follow moves there. The build's sentence says where they sit now
@@ -1173,6 +1177,11 @@ export function digestEmail({ origin, frequency, date, sections: given, manage, 
           : s.kind === "member" ? MEMBER_MOVED_TAIL : MOVED_TAIL;
         text.push(`  ${how} ${tail}`);
         html += `<p style="margin:0 0 8px"><b>${link(how)}</b> ${esc(tail)}</p>`;
+        if (s.ended.url) {
+          const to = siteUrl(origin, s.ended.url);
+          text.push(`  ${VIEW_TEXT}: ${to}`);
+          html += `<p style="margin:0 0 8px">${a(to, VIEW_TEXT)}</p>`;
+        }
       }
       // The weekly's is in its week ahead, beside the hearing.
       const block = !!s.testify && !!TESTIFY_FORMS[s.testify.chamber] && !(weekly && ahead.length);

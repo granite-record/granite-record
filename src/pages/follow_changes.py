@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-07.15
+# GRANITE_VERSION: 2026-10-07.16
 """
 The nightly "what changed" files the email sender reads, and the first-seen
 ledger that decides what is new in them.
@@ -159,7 +159,10 @@ STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 TERM = re.compile(r"^\d{4}-\d{4}$")
 TIME = re.compile(r"^\d{2}:\d{2}$")
 HOW = re.compile(r"^[a-z][a-z-]{0,30}$")
-PATH = re.compile(r"^/(?!/)[A-Za-z0-9\-._~/?=&%+]*$")
+# A path on the site, and since 17 November 2026 a place on its page after it
+# ("#pane_LSR20270001_6", a request's Bill Text tab, which the ending's "url"
+# names): workers/follow/common.js and changes.js hold the same.
+PATH = re.compile(r"^/(?!/)[A-Za-z0-9\-._~/?=&%+]*(?:#[A-Za-z0-9_-]{1,80})?$")
 
 
 def key_ok(key):
@@ -484,10 +487,16 @@ def ending(key, label, *, term_turned, old_term, hints):
         # 2026): a request becomes a numbered bill the day its text is
         # public -- the owner's "Filed", build_lsrs' status for it -- and is
         # introduced in January; the email of 18 December said "introduced".
+        # AND "View the text" (the owner, 17 November 2026: "Drafted and filed
+        # as HB123 sounds fine, maybe include a link that says View the text
+        # that shows the granite record tab once we've imported the text"):
+        # "url", the request page's Bill Text tab, only where the night has
+        # read the text (build_feeds' hint "text"); the sender links it.
         if h.get("becomes") and key_ok(h["becomes"]):
             return {"how": "drafted", "becomes": h["becomes"],
                     "summary": f"{label} has been drafted and filed as {h.get('bill') or 'a bill'}.",
-                    "guid": f"{key}:ended:drafted"}
+                    "guid": f"{key}:ended:drafted",
+                    **({"url": h["text"]} if PATH.match(str(h.get("text") or "")) else {})}
         how = "withdrawn" if h.get("withdrawn") else "left"
         said = (f"{label} was withdrawn before it was drafted." if h.get("withdrawn")
                 else f"{label} is no longer among the bill requests on record.")
@@ -615,7 +624,7 @@ def decide(led, *, tonight, built, sitting_term, followable, lists, hints, elect
         for k in gone:
             e = ending(k, prev_follow[k], term_turned=turned, old_term=old_term, hints=hints)
             e.setdefault("date", tonight)
-            here["ended"][k] = {f: e[f] for f in ("how", "summary", "date", "guid", "becomes")
+            here["ended"][k] = {f: e[f] for f in ("how", "summary", "date", "guid", "becomes", "url")
                                 if e.get(f)}
             counts["ended"] += 1
         for n in nights.values():
@@ -1199,6 +1208,10 @@ def check_files(files):
                                 p.append(f"refs {k} ended: becomes is not "
                                          + ("a member's key" if kind_of_key(k) == "member"
                                             else "a bill's key"))
+                            if e.get("url") is not None and kind_of_key(k) != "lsr":
+                                p.append(f"refs {k} ended: url is a bill request's alone")
+                            elif e.get("url") is not None and not PATH.match(str(e["url"])):
+                                p.append(f"refs {k} ended: url is not a path on the site")
                 nights.append(obj)
         else:
             p.append("not a changes file's name")

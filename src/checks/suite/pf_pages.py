@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -6540,6 +6540,54 @@ def _follow_lsr_endings(FC):
     told = out["nights"]["2026-12-10"]["ended"]["lsr:2027-0001"]
     assert told["becomes"] == "bill:2027/HB45" and counts["ended"] == 1, told
     return "ok", "drafted names its bill, withdrawn ends, and the night's file carries becomes"
+
+
+@check("build", "a drafted request's follow email links \"View the text\" to its page's Bill Text tab once "
+       "the site has read the text, and only then; the changes contract carries the link on a request's "
+       "ending alone", needs=("follow_changes", "build_request_pages", "build_feeds"))
+def _follow_lsr_view_the_text(FC, RP, BF):
+    """The owner, 17 November 2026: "Drafted and filed as HB123 sounds fine, maybe include a link that
+    says View the text that shows the granite record tab once we've imported the text." The request's
+    page has the tab once the night has read its text (build_request_pages.text_pane, keyed 6), and
+    its address names the pane, which the page's script opens (app.js ssWanted reads "#<pane id>").
+    Held: text_address gives "/request/2027-0001#pane_LSR20270001_6" for a request whose text is on
+    file and "" for one whose is not; build_feeds hands it on as the hint "text"; FC.ending puts it on
+    the drafted ending as "url" where it is a path on the site, and nowhere else; FC.decide keeps it in
+    the night's file; FC.check_files takes it on a request's ending and refuses it on another's or
+    where it is no path; PATH takes a place on the page and no other kind of fragment. The sender's
+    side, which writes the link, is tests/follow/lsr.test.js's "View the text" case (_follow_tests)."""
+    row = {"id": "LSR20270001", "address": "request/2027-0001", "text_on_file": True}
+    where = "/request/2027-0001#pane_LSR20270001_6"
+    assert RP.text_address(row) == where and RP.text_address(dict(row, text_on_file=False)) == "", (
+        RP.text_address(row))
+    src = _source(_paths.locate("build_feeds.py"))
+    assert "text = RP.text_address(r)" in src and '**({"text": text} if text else {})' in src, \
+        "build_feeds no longer hands a request's text address to its ending"
+    hint = {"becomes": "bill:2027/HB45", "bill": "HB 45"}
+    end = lambda h: FC.ending("lsr:2027-0001", "LSR 2027-0001", term_turned=False, old_term="2025-2026",
+                              hints={"lsr:2027-0001": h})
+    assert end({**hint, "text": where}).get("url") == where, end({**hint, "text": where})
+    for no in ({}, {"text": ""}, {"text": "https://example.org/x"}, {"text": "/request/x#a b"}):
+        assert "url" not in end({**hint, **no}), (no, end({**hint, **no}))
+    out, _new_by, _counts = FC.decide(
+        {"followable": {"lsr:2027-0001": "LSR 2027-0001"}, "nights": {}, "carried": {}},
+        tonight="2026-12-10", built="2026-12-10T09:00:00Z", sitting_term="2027-2028", followable={},
+        lists={}, hints={"lsr:2027-0001": {**hint, "text": where}})
+    told = out["nights"]["2026-12-10"]["ended"]["lsr:2027-0001"]
+    assert told.get("url") == where and told["summary"] == "LSR 2027-0001 has been drafted and filed as HB 45.", told
+    night = lambda refs: {"2026-12-10.json": {"format": 1, "date": "2026-12-10", "built": "2026-12-10T09:00:00Z",
+                                              "sitting_term": "2027-2028", "new_by": "first-seen", "refs": refs}}
+    ok = FC.check_files(night({"lsr:2027-0001": {"ended": {**told}}}))
+    bad = FC.check_files(night({"lsr:2027-0001": {"ended": {**told, "url": "//example.org"}},
+                                "bill:2027/HB45": {"ended": {"how": "law", "summary": "x", "date": "2026-12-10",
+                                                             "guid": "g", "url": where}}}))
+    assert not [p for p in ok if "url" in p], ok
+    assert any("lsr:2027-0001 ended: url is not a path on the site" in p for p in bad) and \
+        any("bill:2027/HB45 ended: url is a bill request's alone" in p for p in bad), bad
+    assert FC.PATH.match(where) and FC.PATH.match("/bill/2027/hb45") and not FC.PATH.match("/x#a b") \
+        and not FC.PATH.match("/x#a#b") and not FC.PATH.match("//example.org"), "the site's path rule"
+    return "ok", ("the Bill Text tab's address handed on, on the drafted ending as url only where the text is "
+                  "read and it is a path, kept in the night's file; the contract refuses it elsewhere")
 
 
 @check("build", "a followed legislator who sits on under another number is told where, and the "
