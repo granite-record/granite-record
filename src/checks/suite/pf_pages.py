@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -5907,7 +5907,7 @@ def _published_scripts_stripped(BP, SJ):
             tagged = BP.site_has_tags(site)
             want = (BP.published_js(name, Path("src/pages/" + name).read_text(encoding="utf-8"), tags=tagged)
                     if name in BP.COPIED else
-                    BP.published_js(name, BP.bill_matcher_js(Path("src/pages/app.js").read_text(encoding="utf-8"),
+                    BP.published_js(name, BP.bill_matcher_js(_source("src/pages/app.js"),
                                                              tags=True), tags=True)
                     if name == "billmatch.js" and tagged else out[name].replace("\r\n", "\n"))
             assert built == want.replace("\r\n", "\n"), (
@@ -6985,8 +6985,10 @@ def _links_resolve():
         import struct as _st
         assert _st.unpack(">II", mm[16:24]) == (123, 192), (
             "mail-mark.png is not 41x64 at three times, the size mail.js draws it at")
+        # Less its TAGS region where the site has no tags (without_tags), as front_end publishes it.
+        css_src = (here / "src/pages/app.css").read_text(encoding="utf-8")
         assert (site / "app.css").read_text(encoding="utf-8") == BP.strip_css(
-                (here / "src/pages/app.css").read_text(encoding="utf-8")), (
+                css_src if BP.site_has_tags(site) else BP.without_tags(css_src, "app.css")), (
             "with the header mark placed, site/app.css is not app.css less its comments")
         for css in ("app.css",):
             assert f"url(/{BP.HEADER_MARK})" in (site / css).read_text(encoding="utf-8"), (

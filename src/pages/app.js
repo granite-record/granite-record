@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.343
+// GRANITE_VERSION: 2026-09-07.344
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -8854,7 +8854,7 @@ function cardHtml(b,focus,line,cls){
 // The bill's own page, and only it, ends with its tags as searches (tagFoot).
 cardHtml=(drawn=>function(b,focus,line,cls){
   const h=drawn(b,focus,line,cls);
-  return focus&&TAGS_PLACE==="foot"?h.replace(/<\/article>$/,()=>tagFoot(b,detail[dkey(b.id)])+"</article>"):h;
+  return focus&&TAGS_PLACE==="foot"?h.replace(/<\/article>$/,end=>tagFoot(b,detail[dkey(b.id)])+end):h;
 })(cardHtml);
 // TAGS:END
 
