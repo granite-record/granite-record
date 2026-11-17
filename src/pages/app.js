@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.336
+// GRANITE_VERSION: 2026-09-07.337
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3279,12 +3279,19 @@ function wantedTerm(m,now=new Date()){
 // THE SEARCH OPENS ON NEXT SESSION'S BILL REQUESTS AFTER THE ELECTION (the
 // owner, 11 November 2026): from the day after the general election -- the
 // Tuesday after the first Monday in November of the year before the
-// requests' own -- until the new term's bills are published, when the
-// newest term in meta.json is the requests' own session and the rule stops
-// by itself, with no date to keep. Before the election the search opens on
-// the current term as it always has. The day is Concord's (nhDay), as a
-// deadline's is; the build's day is in what meta.json lists (its terms, the
-// requests and how many stand). An address that names a term is read first.
+// requests' own -- until the new term's bills are introduced, with no date to
+// keep. THROUGH DECEMBER, NOT TO THE FIRST BILL (the owner, 17 November 2026:
+// requests "do not become bills until the first session in January when they
+// are introduced and referred to committees"): the new term's first bills are
+// in meta.json from Organization Day, numbered as their texts are signed off,
+// and until then the rule stopped there; it now holds while the newest term
+// is the requests' own and none of them has been introduced on a day of
+// their own year (meta.requests.introduced_in_session, build_lsrs; the
+// resolutions Organization Day adopts are the December before). Before the
+// election the search opens on the current term as it always has. The day is
+// Concord's (nhDay), as a deadline's is; the build's day is in what meta.json
+// lists (its terms, the requests and how many stand). An address that names a
+// term is read first.
 function electionDayOf(y){
   const dow=new Date(Date.UTC(y,10,1)).getUTCDay();
   return `${y}-11-${String(2+(8-dow)%7).padStart(2,"0")}`;
@@ -3297,8 +3304,8 @@ function defaultTerm(m,now=new Date()){
 function requestsFirst(m,now=new Date()){
   const R=m&&m.requests, terms=(m&&m.terms)||[];
   if(!R||!R.term||!terms.length||!((+R.n||0)-(+R.withdrawn||0)>0))return false;
-  const ry=+(R.year||String(R.term).slice(0,4));
-  if(!(ry>+String(terms[0]).slice(0,4)))return false;
+  const ry=+(R.year||String(R.term).slice(0,4)),t0=+String(terms[0]).slice(0,4);
+  if(ry<t0||(ry===t0&&(+R.introduced_in_session||0)>0))return false;
   return nhDay(now)>electionDayOf(ry-1);
 }
 // A term already in IDX is never fetched again. All terms is every one of

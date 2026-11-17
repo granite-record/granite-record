@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -8447,6 +8447,58 @@ def _request_stays_until_introduced(L, RP, BPG, AR):
                   "Text tab with the text read (in the API file, not the row); introduced: Introduced, "
                   "dated, forwarding; an undated introduction is not one" + ("" if card is not None else
                                                                              "; node not here for the card"))
+
+
+@check("build", "meta.json counts the requests introduced on a day of their own year apart from those "
+       "introduced before it, and the bill search opens on the requests until one of the first is",
+       needs=("build_lsrs",))
+def _requests_first_until_introduced(L):
+    """The owner, 17 November 2026: requests "do not become bills until the first session in January
+    when they are introduced and referred to committees", read by the manager as: the bill search
+    keeps opening on the 2027 requests through December, until bills are introduced in January.
+    build_lsrs.py, run as the build runs it on a fixture: an Organization Day resolution introduced
+    and adopted on 2 December 2026 and a bill introduced on 6 January 2027, each a request's.
+    On 5 December meta.requests counts one introduced and none in the session, and app.js's
+    requestsFirst opens the search on the requests though 2027-2028 is published; on 7 January it
+    counts two and one, and the search opens on 2027-2028."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-requests-first-"))
+    req = lambda n, body: {"lsr": f"2027-{n:04d}", "session": 2027, "body": body, "title": f"t{n}.",
+                           "sponsor": "Ann Lee", "cosponsors": [], "withdrawn": False}
+    metas = {}
+    try:
+        (tmp / "site" / "idx").mkdir(parents=True)
+        (tmp / "data").mkdir()
+        (tmp / "site" / "idx" / "2027-2028.json").write_text(json.dumps([
+            {"id": "HR1", "rail": [["Ip", "2026-12-02"], ["Hp", "2026-12-02"]]},
+            {"id": "HB45", "rail": [["Ip", "2027-01-06"], ["Ho"]]}]), encoding="utf-8")
+        (tmp / "data" / "bills.json").write_text(json.dumps({"2027-2028": {
+            "HR1": {"lsr_year": "2027", "lsr_num": "1"}, "HB45": {"lsr_year": "2027", "lsr_num": "2"}}}),
+            encoding="utf-8")
+        (tmp / "lsrs.json").write_text(json.dumps([req(1, "HR"), req(2, "HB"), req(3, "HB")]),
+                                       encoding="utf-8")
+        for day in ("2026-12-05", "2027-01-07"):
+            (tmp / "site" / "meta.json").write_text(json.dumps({"terms": ["2027-2028", "2025-2026"]}),
+                                                    encoding="utf-8")
+            r = _sealed_run([sys.executable, _paths.script("build_lsrs.py"), "--site", "site"], cwd=str(tmp),
+                            capture_output=True, text=True, timeout=120,
+                            env=dict(os.environ, GRANITE_BUILD_DATE=day))
+            assert r.returncode == 0, (r.stderr or r.stdout)[-400:]
+            metas[day] = json.loads((tmp / "site" / "meta.json").read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    dec, jan = (metas[d]["requests"] for d in ("2026-12-05", "2027-01-07"))
+    assert (dec.get("introduced"), dec.get("introduced_in_session")) == (1, 0), dec
+    assert (jan.get("introduced"), jan.get("introduced_in_session")) == (2, 1), jan
+    js = ("(() => [" + ", ".join(
+        f"scope.defaultTerm({json.dumps(metas[d])}, new Date('{d}T17:00:00Z'))" for d in metas) + "])()")
+    got = _app_js(js, names=("defaultTerm", "requestsFirst", "electionDayOf", "nhDay"))
+    if got is None:
+        return "skip", "meta.json's counts hold; node, app.js or the stub is not here for the search"
+    assert got == ["2027-requests", "2027-2028"], (
+        f"the search opens on {got[0]} on 5 December and {got[1]} on 7 January")
+    return "ok", ("an Organization Day resolution introduced on 2 December counts as introduced and not "
+                  "in the session, and the search stays on the requests; a bill introduced on 6 January "
+                  "counts in it, and the search opens on 2027-2028")
 
 
 @check("build", "a bill request's status is Requested or Filed (or Withdrawn); its History is the earlier "

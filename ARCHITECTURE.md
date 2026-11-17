@@ -1505,6 +1505,11 @@ term's sponsors from it -- a member now in the Senate under a new id reads as
 the Representative they were -- for a finished term as for the session's.
 `freeze_term --session` refuses a roster whose members sponsored and voted
 nothing in the term, and keeps the freeze's roster over one that has turned.
+And the new term's first bills, numbered in December before `LsrsOnly.txt` and
+`LsrSponsors.txt` carry their year, take their request's prime sponsor and
+co-sponsors from `lsrs.json` where no sponsor file or status page names any
+(`build_data.sponsors_from_requests`, 17 November 2026): each the one member of
+the term's roster of that name, else the name as the list prints it.
 The rows of a finished term a night's files still carry go on the run's page
 (`data/left_out.json`). The New term run lets only the feeds fall, and asks for
 a freeze only while the installed files are in the last session of their term,
@@ -2347,7 +2352,12 @@ to that, on the night's `preflight.py --built`.
 
 ## Next session's bill requests (November 2026)
 
-`src/pages/build_lsrs.py` makes the requests term the bill search opens. A
+`src/pages/build_lsrs.py` makes the requests term the bill search opens, from
+the day after the general election until the requests' bills are introduced
+in January (`app.js` `requestsFirst`; since 17 November 2026 not when the new
+term's first bills are published, in December: `meta.requests`'
+`introduced_in_session` counts the requests introduced on a day of their own
+year, which Organization Day's resolutions are not). A
 request has a title and a prime sponsor, so the search finds it by the
 sponsor's name (prime or co-sponsor; sitting, member-elect or former) and the
 Sponsor filter lists each with their party, where the roster or the results

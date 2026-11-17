@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -9955,14 +9955,19 @@ def _map_published():
 
 
 @check("frontend", "the bill search opens on the 2027 bill requests from the day after the election, and "
-       "only until the new term's bills are published")
+       "until the new term's bills are introduced in January, not when they are first published")
 def _search_opens_on_requests_after_the_election():
     """The owner, 11 November 2026: /bills opens on the bill requests (meta.json's requests) from
     the day after the general election -- the Tuesday after the first Monday in November of the year
     before the requests' own -- and before it on the current term as always. The rule is app.js's
-    requestsFirst, by Concord's day (nhDay); it ends of itself when meta.json's newest term is the
-    requests' own session. An address that names a term still wins (wantedTerm), and the address a
-    list writes leaves out the term it opens on (defaultTerm), so Back and a pasted link agree."""
+    requestsFirst, by Concord's day (nhDay). It ended when meta.json's newest term was the requests'
+    own session, which is from Organization Day, as the first bills are numbered; the owner, 17
+    November 2026: requests "do not become bills until the first session in January when they are
+    introduced" -- so it holds through December, while the new term is published and none of the
+    requests is introduced on a day of their own year (meta.requests.introduced_in_session), an
+    Organization Day resolution of the December before not counting. An address that names a term
+    still wins (wantedTerm), and the address a list writes leaves out the term it opens on
+    (defaultTerm), so Back and a pasted link agree."""
     got = _app_js("""(() => {
   const R = {term: "2027-requests", label: "2027 Bill Requests", year: 2027, n: 302, withdrawn: 4};
   const M = (over = {}) => Object.assign({terms: ["2025-2026", "2023-2024"], requests: R}, over);
@@ -9976,6 +9981,11 @@ def _search_opens_on_requests_after_the_election():
     after: at("2026-11-04T06:00:00Z"),          // 1 a.m. on the 4th in Concord
     june: at("2027-06-15T16:00:00Z"),
     published: at("2026-12-10T16:00:00Z", M({terms: ["2027-2028", "2025-2026"]})),
+    organized: at("2026-12-10T16:00:00Z", M({terms: ["2027-2028", "2025-2026"],
+      requests: Object.assign({}, R, {introduced: 3, introduced_in_session: 0})})),
+    introduced: at("2027-01-08T16:00:00Z", M({terms: ["2027-2028", "2025-2026"],
+      requests: Object.assign({}, R, {introduced: 300, introduced_in_session: 297})})),
+    older: at("2029-01-08T16:00:00Z", M({terms: ["2029-2030", "2027-2028"]})),
     noneStand: at("2026-12-10T16:00:00Z", M({requests: Object.assign({}, R, {n: 4})})),
     noRequests: at("2026-12-10T16:00:00Z", {terms: ["2025-2026"]}),
   };
@@ -9990,11 +10000,20 @@ def _search_opens_on_requests_after_the_election():
     for k in ("after", "june"):
         assert got[k]["first"] and got[k]["want"] == got[k]["dflt"] == "2027-requests", (
             f"{k}: from the day after the election the search opens on {got[k]}")
-    assert not got["published"]["first"] and got["published"]["want"] == "2027-2028", (
-        f"once the new term is published the search opens on it: {got['published']}")
+    for k in ("published", "organized"):
+        assert got[k]["first"] and got[k]["want"] == got[k]["dflt"] == "2027-requests", (
+            f"{k}: with 2027-2028 published and no request introduced in 2027 the search opens on "
+            f"{got[k]}")
+    assert not got["introduced"]["first"] and got["introduced"]["want"] == "2027-2028", (
+        f"once the requests' bills are introduced in January the search opens on the term: "
+        f"{got['introduced']}")
+    assert not got["older"]["first"] and got["older"]["want"] == "2029-2030", (
+        f"requests of an older session than the newest term are never opened first: {got['older']}")
     assert got["noneStand"]["want"] == "2025-2026" and got["noRequests"]["want"] == "2025-2026", (
         f"with no request standing the search opens on the term: {got['noneStand']} {got['noRequests']}")
-    return "ok", "opens on the requests from 4 November 2026, not before, and not once 2027-2028 is published"
+    return "ok", ("opens on the requests from 4 November 2026, not before; through December with "
+                  "2027-2028 published and Organization Day's resolutions introduced; not once the "
+                  "requests' bills are introduced in January")
 
 
 @check("frontend", "a topic left on is dropped where the list has no topics, said in the count line, and "

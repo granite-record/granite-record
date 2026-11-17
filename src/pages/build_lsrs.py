@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.25
+# GRANITE_VERSION: 2026-09-18.26
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -1111,6 +1111,15 @@ def main():
                         "withdrawn": sum(1 for r in rows if r["withdrawn"]),
                         # How many are bills introduced, and so forward to them.
                         "introduced": sum(1 for r in rows if r.get("introduced_on")),
+                        # AND HOW MANY IN THE SESSION ITSELF, on a day of the
+                        # requests' own year -- not Organization Day's
+                        # resolutions, introduced and adopted the December
+                        # before: the bill search opens on the requests until
+                        # one is (app.js requestsFirst; the owner, 17 November
+                        # 2026: bills "are introduced and referred to
+                        # committees" at "the first session in January").
+                        "introduced_in_session": sum(
+                            1 for r in rows if str(r.get("introduced_on") or "")[:4] == str(year)),
                         "dropped": sorted(r["address"] for r in dropped),
                         "by_slug": dict(sorted(by_slug.items()))}
     mj.write_text(json.dumps(meta), encoding="utf-8")
