@@ -2424,7 +2424,10 @@ year, which Organization Day's resolutions are not). A
 request has a title and a prime sponsor, so the search finds it by the
 sponsor's name (prime or co-sponsor; sitting, member-elect or former) and the
 Sponsor filter lists each with their party, where the roster or the results
-give one. A prime sponsor is found by every name the site prints for them:
+give one. Until the day they take office a member-elect's label, and so the
+request's card and the chip on its page, carries their title, "Rep. “Elect”"
+or "Sen. “Elect”" (`elect_title`, `elect_window`); the Sponsor filter lists
+them by name. A prime sponsor is found by every name the site prints for them:
 where the card's label or the page it links to gives the name in other words
 than the list does, as the search reads words (accents and apostrophes left
 out, a full stop no difference, a hyphen a break) -- "Lee C. Nyquist", the
@@ -2435,9 +2438,12 @@ reads a typed name by the search's own rule, read them beside `sponsor`
 (`app.js`, `sponsorNames`). A sponsor the roster misses is
 matched to a winner of the latest general election in the request's own
 chamber, and only where certain: a middle initial, a short nickname pair
-(`NICKNAMES`), a race under recount, a member changing chambers. Two winners of
-one name, a tie, the other chamber and a constitutional amendment request stay
-as typed. A request whose sponsor is not returning is dropped and its address
+(`NICKNAMES`), a race under recount, a member changing chambers, and the name
+the winner's own member record is under where the owner or the step linked
+the winner to it ("Jeffrey Goley" for the ballot's "Jeff Goley"). Two winners
+of one name, a tie and the other chamber stay as typed. A constitutional
+amendment request, which either chamber may file, is matched by the whole name
+alone, where one sitting member, member-elect or winner has it and nobody else. A request whose sponsor is not returning is dropped and its address
 forwards to the requests' list, matched by member and never by name: by the
 members-elect file's races while it is drawn, by the same races worked out
 again from Organization Day, when it retires, while the roster is still the
