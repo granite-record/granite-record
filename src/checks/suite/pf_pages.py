@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -3917,7 +3917,8 @@ def _search_enter(BP):
     box through the rows and back, and leave Return on a row to the row. The
     home page's box: Return opens the same, and /search where the dropdown is
     shut; its Search button is every result, always; and its arrows choose as
-    the header's do."""
+    the header's do. And the row is seen: app.css draws it as a row under the
+    pointer is while the box Return is pressed in has the focus."""
     if not shutil.which("node"):
         return "skip", "node is not installed"
     rows = [["legislator", "Sen. Sharon Carson (R - SD14)", "Senate · SD14 · Republican",
@@ -3997,12 +3998,17 @@ def _search_enter(BP):
     if got["home"]["hidden"]["enter"] != "/search?q=hb%201" or got["home"]["arrow"] != [True, True]:
         bad.append(f"the home box with its dropdown shut opens {got['home']['hidden']['enter']!r}, "
                    f"and its arrow down {got['home']['arrow']}")
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
+    if (":is(.findin:has(#findq:focus),.searchbig:has(#hq:focus)) .findout a[data-go]"
+            "{background:var(--wash)}") not in css:
+        bad.append("app.css does not draw the row Return opens, in either box, while the box has "
+                   "the focus")
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"{len(want)} searches in the header's box: Return opens the one clear destination "
                   f"for {sum(not v.startswith('/search?') for v in want.values())} (a bill, a "
                   "request, a statute, the only answer, a whole name, a how-to guide, a seat) and "
-                  "/search for the rest, never before the answers have come; the row marked and "
-                  "named on the status line; the arrows through the rows and back; the home box "
+                  "/search for the rest, never before the answers have come; the row marked, drawn "
+                  "and named on the status line; the arrows through the rows and back; the home box "
                   "the same, its Search button every result")
 
 
