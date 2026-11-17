@@ -16,6 +16,32 @@ a route, as `workers/follow/`'s does.
   item claimed in one statement and held, an answer kept with its item marked
   judged in one batch, undo, the daily cap, calibration, how far along, and
   the owner's Links page.
+- `common.js` -- the switch, the address and origin rules, reading a body,
+  answering (the page's own rules for scripts and frames among them) and the
+  log, which is a code and a count and nothing else.
+- `view.js` -- what the page is told after each call: an item as `{ ref,
+  queue, card }`, never its key (which says, of a tag, how the rule attached
+  it) or whether it is a calibration item.
+- `page.js` -- the page itself, which `functions/bench.js` answers.
+
+## The routes
+
+Every one answers 404 until `BENCH_DB` is bound in `wrangler.toml` for the
+environment, and only at its own address on the site's own names:
+
+| route | what |
+|---|---|
+| `GET /bench` | the page (`functions/bench.js`) |
+| `POST /api/bench/next` | what this link holds, two at most, and how far along |
+| `POST /api/bench/judge` | an answer, kept; the next items |
+| `POST /api/bench/undo` | the latest answer back, while not merged |
+| `POST /api/bench/hold` | the open page's items held ten more minutes |
+| `POST /api/bench/links` | the owner's Links tab: list, make, pause, resume, take back, turn off |
+
+Each post is JSON of at most 4 KiB from the site's own page (its Origin,
+and Sec-Fetch-Site where the browser sends it), carrying the token from
+after "#" in the link. A wrong token, or a link turned off, is one indexed
+read and the same 404 as no bench at all.
 
 ## What it keeps
 

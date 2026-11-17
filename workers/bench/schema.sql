@@ -105,9 +105,12 @@ CREATE TABLE IF NOT EXISTS calib_holds (
 
 -- An answer, in the ledger's words: `verdict` (correct, wrong, unsure; yes,
 -- no, unsure for a tag), `fields` (JSON: a time marked, a better topic) and
--- `note`; `side` is which way it went for the agreement measure ('yes' the
--- site is right, 'no', 'unsure'). 'kept' until the owner merges it or it is
--- taken back ('undone').
+-- `note`, cleaned as the report box cleans a reader's words, with `hidden`
+-- saying it carried characters that hide text, which were taken out (the
+-- owner's merge screens it, as compile_reports.py screens a report); `side`
+-- is which way it went for the agreement measure ('yes' the site is right,
+-- 'no', 'unsure'). 'kept' until the owner merges it or it is taken back
+-- ('undone').
 CREATE TABLE IF NOT EXISTS judgments (
   id       INTEGER PRIMARY KEY AUTOINCREMENT,
   kind     TEXT NOT NULL,
@@ -116,6 +119,7 @@ CREATE TABLE IF NOT EXISTS judgments (
   verdict  TEXT NOT NULL,
   fields   TEXT NOT NULL DEFAULT '{}',
   note     TEXT NOT NULL DEFAULT '',
+  hidden   INTEGER NOT NULL DEFAULT 0,
   side     TEXT NOT NULL CHECK (side IN ('yes', 'no', 'unsure')),
   at       TEXT NOT NULL,
   calib    INTEGER NOT NULL DEFAULT 0,

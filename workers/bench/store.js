@@ -111,9 +111,14 @@ export async function setState(db, id, state) {
 
 // ---- what is held ------------------------------------------------------------------
 
+// An item as the page is given it. `ref` names it opaquely -- "i" and its row
+// for an item, "c" and its row for a calibration item -- so neither its key
+// (which says, of a tag, how the rule attached it) nor whether it is a
+// calibration item reaches the page; the Function sends neither `kind`,
+// `key` nor `calib`.
 function item(row, calib) {
-  return { kind: row.kind, key: row.key, queue: row.queue, grp: row.grp || "",
-           card: parse(row.card, {}), ...(calib ? { calib: true } : {}) };
+  return { ref: (calib ? "c" : "i") + row.rid, kind: row.kind, key: row.key, queue: row.queue,
+           grp: row.grp || "", card: parse(row.card, {}), ...(calib ? { calib: true } : {}) };
 }
 
 // What this link holds now, its own items in the order they are served, then
@@ -121,11 +126,11 @@ function item(row, calib) {
 export async function heldItems(db, link, now) {
   const t = iso(now);
   const own = (await db.prepare(
-    "SELECT kind, key, queue, grp, card FROM items WHERE held_by = ?1 AND state = 'open' " +
+    "SELECT rowid AS rid, kind, key, queue, grp, card FROM items WHERE held_by = ?1 AND state = 'open' " +
     "AND held_until > ?2 ORDER BY ord").bind(link.id, t).all()).results || [];
   const cal = (await db.prepare(
-    "SELECT c.kind, c.key, c.queue, c.card FROM calib_holds h JOIN calib c ON c.kind = h.kind " +
-    "AND c.key = h.key WHERE h.link = ?1 AND h.held_until > ?2 ORDER BY h.held_until")
+    "SELECT c.rowid AS rid, c.kind, c.key, c.queue, c.card FROM calib_holds h JOIN calib c " +
+    "ON c.kind = h.kind AND c.key = h.key WHERE h.link = ?1 AND h.held_until > ?2 ORDER BY h.held_until")
     .bind(link.id, t).all()).results || [];
   return [...own.map(r => item(r, false)), ...cal.map(r => item(r, true))];
 }
@@ -138,7 +143,7 @@ export async function claimOne(db, link, queues, now) {
     "UPDATE items SET held_by = ?1, held_until = ?2 WHERE rowid = (" +
     "SELECT rowid FROM items WHERE state = 'open' AND queue IN (SELECT value FROM json_each(?3)) " +
     "AND (held_until IS NULL OR held_until <= ?4) ORDER BY ord LIMIT 1) " +
-    "RETURNING kind, key, queue, grp, card")
+    "RETURNING rowid AS rid, kind, key, queue, grp, card")
     .bind(link.id, later(now, HOLD_MS), JSON.stringify(queues), iso(now)).first();
   return row ? item(row, false) : null;
 }
@@ -154,7 +159,7 @@ export async function claimCalib(db, link, queues, now) {
     "ORDER BY c.ord LIMIT 1 RETURNING kind, key")
     .bind(link.id, later(now, HOLD_MS), JSON.stringify(queues)).first();
   if (!row) return null;
-  const c = await db.prepare("SELECT kind, key, queue, card FROM calib WHERE kind = ?1 AND key = ?2")
+  const c = await db.prepare("SELECT rowid AS rid, kind, key, queue, card FROM calib WHERE kind = ?1 AND key = ?2")
     .bind(row.kind, row.key).first();
   return c ? item(c, true) : null;
 }
@@ -281,32 +286,42 @@ async function refund(db, link, now) {
     .bind(link.id, day(now)).run();
 }
 
-// The card, queue and options of an item this link may answer now -- one it
-// holds, or a calibration item it holds -- or null.
-async function heldCard(db, link, kind, key, now) {
+// An item's reference as the page was given it: ["i" | "c", row], or null.
+const REF = /^([ic])([1-9]\d{0,11})$/;
+export function readRef(ref) {
+  const m = REF.exec(String(ref ?? ""));
+  return m ? [m[1], Number(m[2])] : null;
+}
+
+// The kind, key, card, queue and options of an item this link may answer
+// now -- one it holds, or a calibration item it holds -- by its reference,
+// or null.
+async function heldCard(db, link, ref, now) {
+  const r = readRef(ref);
+  if (!r) return null;
   const t = iso(now);
-  const own = await db.prepare(
-    "SELECT i.card, i.queue, q.options, 0 AS calib FROM items i JOIN queues q ON q.queue = i.queue " +
-    "WHERE i.kind = ?1 AND i.key = ?2 AND i.held_by = ?3 AND i.state = 'open' AND i.held_until > ?4")
-    .bind(kind, key, link.id, t).first();
-  if (own) return own;
+  if (r[0] === "i")
+    return await db.prepare(
+      "SELECT i.kind, i.key, i.card, i.queue, q.options, 0 AS calib FROM items i JOIN queues q " +
+      "ON q.queue = i.queue WHERE i.rowid = ?1 AND i.held_by = ?2 AND i.state = 'open' AND i.held_until > ?3")
+      .bind(r[1], link.id, t).first();
   return await db.prepare(
-    "SELECT c.card, c.queue, q.options, 1 AS calib FROM calib_holds h JOIN calib c ON c.kind = h.kind " +
-    "AND c.key = h.key JOIN queues q ON q.queue = c.queue WHERE h.link = ?1 AND h.kind = ?2 AND h.key = ?3 " +
-    "AND h.held_until > ?4").bind(link.id, kind, key, t).first();
+    "SELECT c.kind, c.key, c.card, c.queue, q.options, 1 AS calib FROM calib c JOIN calib_holds h " +
+    "ON h.kind = c.kind AND h.key = c.key JOIN queues q ON q.queue = c.queue WHERE c.rowid = ?1 " +
+    "AND h.link = ?2 AND h.held_until > ?3").bind(r[1], link.id, t).first();
 }
 
 // AN ANSWER: kept, and its item marked judged, in one batch, only while this
 // link holds the item and only a second or more after its last answer that
-// stands. { ok: true, verdict, side, calib } or { ok: false, why }, why one of
-// "gone" (not held: answered already, lapsed, or never given), "bad" (not an
-// answer this card takes), "fast" (within a second of the last) and "full"
-// (the day's cap).
-export async function judge(db, link, { kind, key, answer, note = "" }, now) {
-  if (typeof kind !== "string" || typeof key !== "string" || kind.length > 40 || key.length > 300)
-    return { ok: false, why: "bad" };
-  const held = await heldCard(db, link, kind, key, now);
-  if (!held) return { ok: false, why: "gone" };
+// stands. `note` is { text, hidden } as the Function cleaned it. Returns
+// { ok: true, verdict, side, calib } or { ok: false, why }, why one of "gone"
+// (not held: answered already, lapsed, or never given), "bad" (not an answer
+// this card takes), "fast" (within a second of the last) and "full" (the
+// day's cap).
+export async function judge(db, link, { ref, answer, note = { text: "", hidden: 0 } }, now) {
+  const held = await heldCard(db, link, ref, now);
+  if (!held) return { ok: false, why: readRef(ref) ? "gone" : "bad" };
+  const { kind, key } = held;
   const got = toLedger(parse(held.card, null), parse(held.options, null), answer);
   if (!got) return { ok: false, why: "bad" };
   const gap = iso(new Date(now.getTime() - GAP_MS));
@@ -328,11 +343,11 @@ export async function judge(db, link, { kind, key, answer, note = "" }, now) {
     "AND at = ?4 AND state = 'kept')";
   const r = await db.batch([
     db.prepare(
-      "INSERT INTO judgments (kind, key, link, verdict, fields, note, side, at, calib, state) " +
-      "SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'kept' WHERE NOT EXISTS (SELECT 1 FROM judgments " +
+      "INSERT INTO judgments (kind, key, link, verdict, fields, note, hidden, side, at, calib, state) " +
+      "SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?11, ?7, ?8, ?9, 'kept' WHERE NOT EXISTS (SELECT 1 FROM judgments " +
       `WHERE link = ?3 AND state != 'undone' AND at > ?10) AND ${holds}`)
-      .bind(kind, key, link.id, got.verdict, JSON.stringify(got.fields), String(note || ""), got.side, t,
-            calib, gap),
+      .bind(kind, key, link.id, got.verdict, JSON.stringify(got.fields), String(note?.text || ""), got.side, t,
+            calib, gap, note?.hidden ? 1 : 0),
     calib
       ? db.prepare(`DELETE FROM calib_holds WHERE link = ?1 AND kind = ?2 AND key = ?3 AND ${wentIn}`)
         .bind(link.id, kind, key, t)
@@ -341,7 +356,7 @@ export async function judge(db, link, { kind, key, answer, note = "" }, now) {
   ]);
   if (!r[0]?.meta?.changes) {
     await refund(db, link, now);
-    return { ok: false, why: await heldCard(db, link, kind, key, now) ? "fast" : "gone" };
+    return { ok: false, why: await heldCard(db, link, ref, now) ? "fast" : "gone" };
   }
   return { ok: true, verdict: got.verdict, side: got.side, calib: !!calib };
 }
@@ -368,9 +383,9 @@ export async function undo(db, link, now) {
   if (!r[0]?.meta?.changes) return null;
   await refund(db, link, now);
   const row = Number(j.calib)
-    ? await db.prepare("SELECT kind, key, queue, card FROM calib WHERE kind = ?1 AND key = ?2")
+    ? await db.prepare("SELECT rowid AS rid, kind, key, queue, card FROM calib WHERE kind = ?1 AND key = ?2")
       .bind(j.kind, j.key).first()
-    : await db.prepare("SELECT kind, key, queue, grp, card FROM items WHERE kind = ?1 AND key = ?2")
+    : await db.prepare("SELECT rowid AS rid, kind, key, queue, grp, card FROM items WHERE kind = ?1 AND key = ?2")
       .bind(j.kind, j.key).first();
   return row ? item(row, Number(j.calib) === 1) : null;
 }
@@ -400,10 +415,12 @@ export async function farAlong(db) {
                           judged: Math.min(Number(r.judged) || 0, Number(r.pool) || 0) }));
 }
 
-// The queues the page's chooser offers this link: label and order, from the pack.
+// The queues the page's chooser offers this link, in the pack's order: each
+// one's label, and the list a No may choose a better answer from.
 export async function queueLabels(db, link) {
-  const rows = (await db.prepare("SELECT queue, label FROM queues ORDER BY ord").all()).results || [];
-  return rows.filter(r => link.queues.includes(r.queue)).map(r => ({ queue: r.queue, label: r.label }));
+  const rows = (await db.prepare("SELECT queue, label, options FROM queues ORDER BY ord").all()).results || [];
+  return rows.filter(r => link.queues.includes(r.queue))
+    .map(r => ({ queue: r.queue, label: r.label, options: parse(r.options, null) }));
 }
 
 // ---- the owner's Links page ------------------------------------------------------------

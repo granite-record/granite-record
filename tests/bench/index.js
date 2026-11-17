@@ -5,3 +5,4 @@
 // from the list below.
 
 import "./store.test.js";
+import "./functions.test.js";

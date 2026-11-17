@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.99
+# GRANITE_VERSION: 2026-09-04.100
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -6372,6 +6372,10 @@ def sources_warned(recs):
 #                            on a day the live Worker has written one, which at
 #                            the night's hour it often has not
 #   /api/live/votes/<today>  the same
+#   /bench                   200 and its page where BENCH_DB is bound (the shared
+#                            bench, approved 17 November 2026), its own 404 where
+#                            it is not; /api/bench/next, /judge, /undo, /hold and
+#                            /links 405 as /api/report does, or the same 404
 #
 # What each environment binds is read from wrangler.toml, which has owned the
 # project's configuration since 12 September: production and the previews
@@ -6393,6 +6397,12 @@ FUNCTION_PROBES = (
     ("/api/follow/count", "FOLLOW_DB", "count"),
     ("/api/live/streams", "LIVE", "live"),
     ("/api/live/votes/{day}", "LIVE", "live"),
+    ("/bench", "BENCH_DB", "page"),
+    ("/api/bench/next", "BENCH_DB", "post"),
+    ("/api/bench/judge", "BENCH_DB", "post"),
+    ("/api/bench/undo", "BENCH_DB", "post"),
+    ("/api/bench/hold", "BENCH_DB", "post"),
+    ("/api/bench/links", "BENCH_DB", "post"),
 )
 FUNCTIONS_GAP = 1.0             # seconds between two Functions asked
 FUNCTIONS_TIMEOUT = 20

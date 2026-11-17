@@ -65,11 +65,14 @@ in its own header or README:
   them `get` and `head` alone -- and every other object in it, the switch
   and the Worker's state among them, is unreachable from them.
 - **The shared bench** (approved 17 November 2026), where people the owner
-  invites check the site's work one item at a time: `workers/bench/` holds
-  its database's schema and the code its Pages Functions share, on a D1
-  database of its own. It is reached only through a private link the owner
-  sends, keeps of a person the name the owner gives the link and the day it
-  was last used, and answers 404 everywhere until that database is bound.
+  invites check the site's work one item at a time: the page
+  `functions/bench.js` (`/bench`), the endpoints under `functions/api/bench/`
+  (next, judge, undo, hold, and the owner's links), and `workers/bench/`, its
+  database's schema and the code they share, on a D1 database of its own. It
+  is reached only through a private link the owner sends, whose token travels
+  after "#" and in request bodies, never in an address; it keeps of a person
+  the name the owner gives the link and the day it was last used; and it
+  answers 404 everywhere until that database is bound.
   `workers/bench/README.md` says what it keeps and what each part does.
 
 If you are looking for something to attack, it is the first two, and the

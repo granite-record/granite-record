@@ -85,7 +85,7 @@ test("an answer is kept in the ledger's words, and its item judged in the same b
   const { d1, sam } = await bench();
   const [first] = await next(d1, sam, ["timing"], at(0));
   const steps = first.card.steps.length;
-  const r = await judge(d1, sam, { kind: first.kind, key: first.key, note: "after a recess",
+  const r = await judge(d1, sam, { ref: first.ref, note: { text: "after a recess", hidden: 0 },
     answer: { steps: [{ answer: "no", mark: 754 }, ...Array(steps - 1).fill({ answer: "yes" })] } }, at(1));
   assert.deepEqual(r, { ok: true, verdict: "wrong", side: "no", calib: false });
   const j = d1.rows("judgments").at(-1);
@@ -96,33 +96,37 @@ test("an answer is kept in the ledger's words, and its item judged in the same b
   const it = d1.rows("items").find(x => x.key === first.key);
   assert.equal(it.state, "judged");
   assert.equal(it.held_by, null);
-  assert.deepEqual(await judge(d1, sam, { kind: first.kind, key: first.key, answer: stepsYes(steps) }, at(5)),
+  assert.deepEqual(await judge(d1, sam, { ref: first.ref, answer: stepsYes(steps) }, at(5)),
                    { ok: false, why: "gone" }, "an item answered is not answered twice");
   // The batch is one: a judgment that does not go in takes no item with it.
   const [second] = await next(d1, sam, ["timing"], at(6));
   d1.failWhen = sql => /^UPDATE items SET state = 'judged'/.test(sql) ? new Error("disk") : null;
-  await assert.rejects(judge(d1, sam, { kind: second.kind, key: second.key,
-                                        answer: stepsYes(second.card.steps.length) }, at(7)));
+  await assert.rejects(judge(d1, sam, { ref: second.ref, answer: stepsYes(second.card.steps.length) }, at(7)));
   d1.failWhen = null;
   assert.equal(d1.rows("judgments").length, 1, "the answer rolled back with its item");
+  // A reference that is no item's, or not a reference at all.
+  assert.deepEqual(await judge(d1, sam, { ref: "i99999", answer: yes }, at(9)), { ok: false, why: "gone" });
+  assert.deepEqual(await judge(d1, sam, { ref: "x'; DROP TABLE items", answer: yes }, at(9)),
+                   { ok: false, why: "bad" });
+  assert.match(first.ref, /^i\d+$/);
 });
 
 test("an item not held, a second answer within a second, and the day's cap are refused", async () => {
   const { d1, sam, ann } = await bench({ timings: 8, topics: 4 });
   const [a1, a2] = await next(d1, sam, ["topic"], at(0));
   const [b1] = await next(d1, ann, ["topic"], at(0));
-  assert.deepEqual(await judge(d1, sam, { kind: b1.kind, key: b1.key, answer: yes }, at(1)),
+  assert.deepEqual(await judge(d1, sam, { ref: b1.ref, answer: yes }, at(1)),
                    { ok: false, why: "gone" }, "another's item");
-  assert.ok((await judge(d1, sam, { kind: a1.kind, key: a1.key, answer: yes }, at(1))).ok);
-  assert.deepEqual(await judge(d1, sam, { kind: a2.kind, key: a2.key, answer: yes }, at(1.5)),
+  assert.ok((await judge(d1, sam, { ref: a1.ref, answer: yes }, at(1))).ok);
+  assert.deepEqual(await judge(d1, sam, { ref: a2.ref, answer: yes }, at(1.5)),
                    { ok: false, why: "fast" }, "one answer a second");
-  assert.ok((await judge(d1, sam, { kind: a2.kind, key: a2.key, answer: yes }, at(2.2))).ok);
+  assert.ok((await judge(d1, sam, { ref: a2.ref, answer: yes }, at(2.2))).ok);
   d1.sql.prepare("UPDATE links SET daily_cap = 3 WHERE id = 'sam234'").run();
   const capped = { ...sam, daily_cap: 3 };
   const [c1, c2] = await next(d1, capped, ["timing"], at(3));
-  assert.ok((await judge(d1, capped, { kind: c1.kind, key: c1.key, answer: stepsYes(c1.card.steps.length) },
+  assert.ok((await judge(d1, capped, { ref: c1.ref, answer: stepsYes(c1.card.steps.length) },
                          at(4))).ok, "the third of three");
-  assert.deepEqual(await judge(d1, capped, { kind: c2.kind, key: c2.key, answer: stepsYes(c2.card.steps.length) },
+  assert.deepEqual(await judge(d1, capped, { ref: c2.ref, answer: stepsYes(c2.card.steps.length) },
                                at(6)), { ok: false, why: "full" }, "a fourth, past the cap of three");
   assert.equal(d1.rows("link_days").find(r => r.link === "sam234").n, 3);
   assert.equal(DAILY_CAP, 500);
@@ -155,8 +159,8 @@ test("only an answer the card takes is kept", () => {
 test("undo takes back the latest answer alone, and gives its item back to the same person", async () => {
   const { d1, sam, ann } = await bench({ topics: 4 });
   const [a1, a2] = await next(d1, sam, ["topic"], at(0));
-  await judge(d1, sam, { kind: a1.kind, key: a1.key, answer: yes }, at(1));
-  await judge(d1, sam, { kind: a2.kind, key: a2.key, answer: { answer: "no" } }, at(3));
+  await judge(d1, sam, { ref: a1.ref, answer: yes }, at(1));
+  await judge(d1, sam, { ref: a2.ref, answer: { answer: "no" } }, at(3));
   const back = await undo(d1, sam, at(4));
   assert.equal(back.key, a2.key, "the latest");
   assert.equal(await undo(d1, sam, at(5)), null, "a second undo takes nothing more");
@@ -166,7 +170,7 @@ test("undo takes back the latest answer alone, and gives its item back to the sa
   assert.ok(!theirs.some(x => x.key === a2.key), "the item taken back is not given to another");
   const mine = await next(d1, sam, ["topic"], at(7));
   assert.equal(mine[0].key, a2.key, "it is the next shown");
-  assert.ok((await judge(d1, sam, { kind: a2.kind, key: a2.key, answer: yes }, at(8))).ok, "answered again");
+  assert.ok((await judge(d1, sam, { ref: a2.ref, answer: yes }, at(8))).ok, "answered again");
   d1.sql.prepare("UPDATE judgments SET state = 'merged'").run();
   assert.equal(await undo(d1, sam, at(9)), null, "a merged answer cannot be taken back");
 });
@@ -179,7 +183,7 @@ test("one item in twenty-five a contributor is given is one the owner judged, ne
     const it = held[0];
     given.push(it);
     n += 2;
-    const r = await judge(d1, sam, { kind: it.kind, key: it.key, answer: yes }, at(n));
+    const r = await judge(d1, sam, { ref: it.ref, answer: yes }, at(n));
     assert.ok(r.ok, JSON.stringify(r));
   }
   const cal = given.map((x, i) => [i + 1, x]).filter(([, x]) => x.calib);
@@ -196,7 +200,7 @@ test("one item in twenty-five a contributor is given is one the owner judged, ne
   // Never one this link has answered: the next is the other, and then none.
   const c2 = await claimCalib(d1, sam, ["topic"], at(n + 4));
   assert.equal(c2.key, "topic|2021-2022|HB901");
-  assert.ok((await judge(d1, sam, { kind: c2.kind, key: c2.key, answer: { answer: "yes" } }, at(n + 6))).ok);
+  assert.ok((await judge(d1, sam, { ref: c2.ref, answer: { answer: "yes" } }, at(n + 6))).ok);
   assert.equal(await claimCalib(d1, sam, ["topic"], at(n + 8)), null, "both answered: none left for Sam");
   // Taking back a link's answers leaves its calibration answers: the evidence.
   assert.equal(await takeBack(d1, "sam234"), 29);
@@ -228,8 +232,8 @@ test("the owner's Links page: a new link shown once, pause, take back and turn o
   assert.equal(await makeLink(d1, { name: "", queues: ["tag"] }, at(0)), null);
   assert.equal(await makeLink(d1, { name: "x", queues: [] }, at(0)), null);
   const [a1, a2] = await next(d1, sam, ["topic"], at(0));
-  await judge(d1, sam, { kind: a1.kind, key: a1.key, answer: yes }, at(1));
-  await judge(d1, sam, { kind: a2.kind, key: a2.key, answer: yes }, at(3));
+  await judge(d1, sam, { ref: a1.ref, answer: yes }, at(1));
+  await judge(d1, sam, { ref: a2.ref, answer: yes }, at(3));
   await touch(d1, sam, at(3));
   let s = (await linkList(d1)).find(l => l.id === "sam234");
   assert.deepEqual([s.answers, s.unmerged, s.last_on], [2, 2, "2026-11-20"]);
@@ -254,7 +258,7 @@ test("the owner's Links page: a new link shown once, pause, take back and turn o
 test("how far along: a group's judged of its goal, and each queue's share of its pool", async () => {
   const { d1, sam } = await bench({ timings: 6, topics: 4 });
   const [a1] = await next(d1, sam, ["topic"], at(0));
-  await judge(d1, sam, { kind: a1.kind, key: a1.key, answer: yes }, at(1));
+  await judge(d1, sam, { ref: a1.ref, answer: yes }, at(1));
   assert.deepEqual(await progress(d1, "topic|2023-2024"),
                    { grp: "topic|2023-2024", label: "Bills of 2023-2024", goal: 4, done: 1 });
   d1.sql.prepare("UPDATE items SET state = 'elsewhere' WHERE key = 'topic|2023-2024|HB203'").run();
