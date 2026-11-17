@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.286
+# GRANITE_VERSION: 2026-09-04.287
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2877,6 +2877,10 @@ const GROUPS=[
   {t:"Laws",h:tr("sr.g.laws","Laws"),w:[tr("sr.w.laws_one","law"),tr("sr.w.laws_many","laws")],k:r=>r[0]==="law"&&!findLawIsTitle(r)},
   {t:"Senators",h:tr("sr.g.senators","Senators"),w:[tr("sr.w.senators_one","senator"),tr("sr.w.senators_many","senators")],k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
   {t:"Representatives",h:tr("sr.g.representatives","Representatives"),w:[tr("sr.w.representatives_one","representative"),tr("sr.w.representatives_many","representatives")],k:r=>r[0]==="legislator"},
+  // THE MEMBERS-ELECT, AFTER THE MEMBERS (the owner, 16 November 2026: find.js,
+  // A MEMBER-ELECT), each chamber under its own heading as the members are.
+  {t:"Senators-Elect",h:tr("sr.g.senators_elect","Senators-Elect"),w:[tr("sr.w.senators_elect_one","senator-elect"),tr("sr.w.senators_elect_many","senators-elect")],k:r=>r[0]==="elect"&&/^Senate/.test(r[2])},
+  {t:"Representatives-Elect",h:tr("sr.g.representatives_elect","Representatives-Elect"),w:[tr("sr.w.representatives_elect_one","representative-elect"),tr("sr.w.representatives_elect_many","representatives-elect")],k:r=>r[0]==="elect"},
   // A committee that no longer sits goes with the people who have left, below
   // the ones that do (find.js, _fgone).
   {t:"Committees",h:tr("sr.g.committees","Committees"),w:[tr("sr.w.committees_one","committee"),tr("sr.w.committees_many","committees")],k:r=>r[0]==="committee"&&!r[5]},
@@ -2953,14 +2957,16 @@ const asked=(q,R)=>R&&R.state==="ready"&&R.n
    the member's page, or their own name where they only co-sponsored, which
    the index spells as the member's (every one of the 328 sitting members
    with a bill, on 25 October 2026). A member no bill names keeps the line
-   that says so. {who, name} for the first such member in `rows`, or null. */
+   that says so. {who, name} for the first such member in `rows`, or null.
+   A former member elected again is a member-elect's row (find.js, A
+   MEMBER-ELECT), and their bills are theirs as before. */
 const memberBills=(rows,s)=>{
   const pool=FALL.rows||FBILLS.file||[];
   for(const m of rows){
-    if((m[0]!=="legislator"&&m[0]!=="former")||!_fwhole(m,s))continue;
+    if((m[0]!=="legislator"&&m[0]!=="former"&&m[0]!=="elect")||!_fwhole(m,s))continue;
     const slug=String(m[3]||"").replace(/^[/]?legislator[/]/,"").replace(/[.]html$/,"");
-    const who=_fbare(m[1]).replace(/[ ]*[(][^()]*[)]$/,"");
-    const own=who.replace(/^(Rep|Sen)[.] /,"");
+    const who=_fbare(findName(m)).replace(/[ ]*[(][^()]*[)]$/,"");
+    const own=who.replace(/^(Rep|Sen)[.] (“[^”]*” )?/,"");
     const b=pool.find(x=>x.sponsor_slug===slug);
     const name=b?b.sponsor:pool.some(x=>(x.cosp||[]).includes(own))?own:"";
     if(name)return {who,name};

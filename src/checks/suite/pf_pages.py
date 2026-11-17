@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -4171,6 +4171,290 @@ def _find_details(BP):
                   "still finds Litchfield; 'ebike' is offered nothing and "
                   "'comittee' committees; half an emoji is drawn, and goes "
                   "into an address as the replacement character")
+
+
+# THE MEMBERS-ELECT IN THE SEARCH (the owner, 16 November 2026): find.js over find_index's rows
+# for a small site, the reader's day held -- the rows it takes in, what it finds, the header's
+# panel, a title in Spanish, and /search's groups.
+_FIND_ELECT_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const FIX = JSON.parse(fs.readFileSync("./fixture.json", "utf8"));
+const Q = JSON.parse(fs.readFileSync("./queries.json", "utf8"));
+const RealDate = Date;
+let held = null;
+globalThis.Date = class extends RealDate {
+  constructor(...a) { super(...(a.length || held === null ? a : [held])); }
+  static now() { return held === null ? RealDate.now() : held; } };
+globalThis.fetch = async (u) => {
+  const p = new URL(u).pathname;
+  if (!(p in FIX)) return {ok: false, status: 404, json: async () => { throw new Error("404"); }};
+  return {ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(FIX[p]))};
+};
+const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
+const script = (f) => vm.runInThisContext(fs.readFileSync(f, "utf8"), {filename: f});
+document.head.appendChild = (s) => {
+  if (/\/billmatch\.js$/.test(String(s.src))) { script("./billmatch.js"); if (s.onload) s.onload(); }
+  else if (s.onerror) s.onerror(); };
+let ready = null;
+document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
+const byId = document.getElementById.bind(document);
+let asked = 0;
+document.getElementById = (id) => id === "findbtn" && !asked++ ? null : byId(id);
+script("./find.js");
+const F = vm.runInThisContext("({FIND, findRows, findMatch, findName, findKind, findWhat, findDraw," +
+                              " findSuggest, findBillsLoad})");
+const at = (day) => { held = new RealDate(day + "T12:00:00").getTime(); F.FIND.rows = null; F.FIND.loading = null; };
+(async () => {
+  const out = {days: {}, match: {}, search: {}};
+  // The rows as find.js takes them in, on the reader's day: before the day they take office, and on it.
+  for (const day of ["2026-11-20", "2026-12-02"]) {
+    at(day);
+    out.days[day] = (await F.findRows()).map(r => [r[0], F.findName(r), r[3]]);
+  }
+  at("2026-11-20");
+  await F.findRows();
+  for (const q of Q) out.match[q] = F.findMatch(q, 8).map(r => [F.findName(r), F.findKind(r),
+                                                              F.findWhat(r, q), r[3]]);
+  await F.findBillsLoad(); await ticks(5);
+  F.findDraw("deiner");
+  out.panel = document.getElementById("findout").innerHTML;
+  out.suggest = F.findSuggest("elects");
+  // The title in the page's language, as the Members-Elect tab says it.
+  window.GR_WORDS = JSON.parse(fs.readFileSync("./words.json", "utf8"));
+  out.es = F.FIND.rows.filter(r => r[0] === "elect").map(r => F.findName(r));
+  delete window.GR_WORDS;
+  script("./search.js");
+  location.search = "?q=deiner";
+  ready(); await ticks(30);
+  const box = document.getElementById("resq");
+  for (const s of ["deiner", "webber", "baroody", "staub"]) {
+    if (s !== "deiner") { box.value = s; box.fire("input"); await ticks(30); }
+    out.search[s] = document.getElementById("resout").innerHTML;
+  }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + (e && e.stack || e)); process.exit(1); });
+"""
+
+
+def _find_elect_site(site):
+    """A small site's provisional pages' file, members-elect file, meta.json and former.json:
+    two new members-elect, Heather Deiner (Hillsborough 25) and Senator-elect Kurt Webber
+    (Senate District 2); a cross-nominated one, Pat Both (Belknap 6); Benjamin Baroody, a former
+    member elected again to another seat, his page the one of Hillsborough 39 and his ballot
+    name with an initial; and Kathy Staub, a sitting member re-elected. The roster's rows, for
+    find_index."""
+    pages = [{"slug": "kurt-webber-sd-2", "name": "Kurt Webber", "party": "D", "chamber": "S",
+              "county": "", "district": "2", "race": "S|2", "towns": ["Gilford"]},
+             {"slug": "pat-both-belk-6", "name": "Pat Both", "party": "R/D", "chamber": "H",
+              "county": "Belknap", "district": "6", "race": "H|Belknap|6", "towns": ["Gilford"]},
+             {"slug": "heather-deiner-hills-25", "name": "Heather Deiner", "party": "D", "chamber": "H",
+              "county": "Hillsborough", "district": "25", "race": "H|Hillsborough|25",
+              "towns": ["Manchester Ward 5"]}]
+    (site / "elect_pages.json").write_text(json.dumps(
+        {"election": "2026-11-03", "takes_office": "2026-12-02", "sources": [], "pages": pages,
+         "moved": {}}), encoding="utf-8")
+
+    def race(seats, *won):
+        return {"seats": seats, "not_final": 0, "held": 0, "elected": list(won)}
+    (site / "members_elect.json").write_text(json.dumps(
+        {"election": "2026-11-03", "takes_office": "2026-12-02", "term": "2027-2028", "sources": [],
+         "races": {"S|2": race(1, {"n": "Kurt Webber", "p": "D", "k": "new", "e": "kurt-webber-sd-2"}),
+                   "H|Belknap|6": race(1, {"n": "Pat Both", "p": "R/D", "k": "new",
+                                           "e": "pat-both-belk-6"}),
+                   "H|Hillsborough|16": race(1, {"n": "Benjamin C. Baroody", "p": "D", "k": "former",
+                                                 "id": "977", "s": "benjamin-baroody-hills-39"}),
+                   "H|Hillsborough|25": race(2, {"n": "Kathy Staub", "p": "D", "k": "sitting",
+                                                 "id": "10801", "s": "kathy-staub-hills-25",
+                                                 "own": True},
+                                             {"n": "Heather Deiner", "p": "D", "k": "new",
+                                              "e": "heather-deiner-hills-25"})}}), encoding="utf-8")
+    (site / "meta.json").write_text(json.dumps({"terms": ["2025-2026"], "topics": []}),
+                                    encoding="utf-8")
+    (site / "former.json").write_text(json.dumps([
+        {"id": "977", "name": "Baroody, Benjamin", "chamber": "H", "party": "D",
+         "county": "Hillsborough", "county_abbr": "Hills", "district": "39",
+         "display_plain": "Rep. Benjamin Baroody", "display_full": "Rep. Benjamin Baroody (D - Hills 39)",
+         "district_label": "Hills 39", "slug": "benjamin-baroody-hills-39", "former": True,
+         "served": {"first": "1/5/2023", "last": "10/10/2024", "terms": ["2023-2024"]}}]),
+        encoding="utf-8")
+    return [{"display_full": "Rep. Kathy Staub (D - Hills 25)", "chamber": "H", "district_label": "Hills 25",
+             "party": "Democrat", "slug": "kathy-staub-hills-25", "last": "Staub", "first": "Kathy",
+             "county": "Hillsborough"}]
+
+
+@check("frontend", "the search finds each member-elect by their name, seat and county, titled Rep. "
+                   "“Elect” or Sen. “Elect” and leading to their own page, a former member elected "
+                   "again in place of their former row until the day they take office; a sitting "
+                   "member's row as it was; /search lists them under their chamber",
+       needs=("build_indexes", "build_pages"))
+def _find_members_elect(BI, BP):
+    """The owner, 16 November 2026: "Add members elect to the header and homepage search and use
+    their title as Rep. "Elect" Heather Denier instead of just their first name." The header's
+    box, the home page's (the same findDraw) and /search found members and former members
+    only: "deiner" was "No matching results." and a former member elected again was "Former
+    Rep.". Held here, over find_index's rows for a small site (_find_elect_site), the build's
+    day stated:
+
+    - each new member-elect with a page, and each former member elected again, is one row of
+      the kind "elect" after the sitting members, named with the Members-Elect tab's title and
+      the seat they were elected to, "Rep. “Elect” Heather Deiner (D - Hills 25)", its line a
+      member's ("House · Hills 25 · Democrat"), leading to their own page; the former member's
+      row is not beside it but in it, with the day they take office; a sitting member's row is
+      as it was, and nobody has a second;
+    - on the day they take office, by the build's day: a new member's row is a member's, "Rep.
+      Heather Deiner (D - Hills 25)", and the former member's row is as it was; and by the
+      reader's day, from a find.json built before it, the former member's row is back
+      (find.js's findNow) while a new member's follows their page, which changes with the build;
+    - find.js finds them by any order of their name, a title typed as a reader types it,
+      "rep-elect" among them, the ballot's name with its initial, and their seat with or
+      without the county's whole name; a member of the seat before them; the header's panel
+      draws the row first, a Member-Elect, its name marked; "elect" is no word to offer; the
+      title is the page's language's (Spanish here);
+    - /search lists them under Senators-Elect and Representatives-Elect, and a former member
+      elected again keeps the link to their bills."""
+    if shutil.which("node") is None:
+        return "skip", "node is not installed"
+    import contextlib
+    import io
+
+    import i18n as I
+    root = Path(tempfile.mkdtemp(prefix="gr-findelect-"))
+    saved = os.environ.get("GRANITE_BUILD_DATE")
+    try:
+        site = root / "site"
+        site.mkdir()
+        legs = _find_elect_site(site)
+        got = {}
+        for day in ("2026-11-20", "2026-12-02"):
+            os.environ["GRANITE_BUILD_DATE"] = day
+            with contextlib.redirect_stdout(io.StringIO()):
+                got[day] = BI.find_index(site, legs, {})
+    finally:
+        if saved is None:
+            os.environ.pop("GRANITE_BUILD_DATE", None)
+        else:
+            os.environ["GRANITE_BUILD_DATE"] = saved
+        shutil.rmtree(root, ignore_errors=True)
+    rows, after = got["2026-11-20"], got["2026-12-02"]
+    people = [r[:5] + ([r[5]] if len(r) > 5 else []) for r in rows if r[0] in ("legislator", "elect", "former")]
+    was = ["former", "Former Rep. Benjamin Baroody", "House · Hills 39 · 2023–2024",
+           "legislator/benjamin-baroody-hills-39", "Hills D", 2024]
+    staub = ["legislator", "Rep. Kathy Staub (D - Hills 25)", "House · Hills 25 · Democrat",
+             "legislator/kathy-staub-hills-25", "Staub Kathy Hillsborough"]
+    want = [staub,
+            ["elect", "Sen. “Elect” Kurt Webber (D - SD2)", "Senate · SD2 · Democrat",
+             "legislator/kurt-webber-sd-2", "member-elect sen-elect senator-elect"],
+            ["elect", "Rep. “Elect” Pat Both (R/D - Belk 6)", "House · Belk 6 · R/D",
+             "legislator/pat-both-belk-6", "Belknap member-elect rep-elect representative-elect"],
+            ["elect", "Rep. “Elect” Benjamin Baroody (D - Hills 16)", "House · Hills 16 · Democrat",
+             "legislator/benjamin-baroody-hills-39",
+             "Benjamin C. Baroody Hillsborough Hills D member-elect rep-elect representative-elect",
+             "2026-12-02"],
+            ["elect", "Rep. “Elect” Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
+             "legislator/heather-deiner-hills-25",
+             "Hillsborough member-elect rep-elect representative-elect"]]
+    assert people == want, f"find_index's members and members-elect on 20 November are {people}"
+    carried = next(r for r in rows if r[0] == "elect" and len(r) > 5)
+    assert carried[6:] == [was] and not any(r[0] == "former" for r in rows), (
+        f"the former member's row is not carried whole in their member-elect's row, and only there: "
+        f"{carried}")
+    took = [r for r in after if r[0] in ("legislator", "elect", "former")]
+    assert took == [staub,
+                    ["legislator", "Sen. Kurt Webber (D - SD2)", "Senate · SD2 · Democrat",
+                     "legislator/kurt-webber-sd-2", ""],
+                    ["legislator", "Rep. Pat Both (R/D - Belk 6)", "House · Belk 6 · R/D",
+                     "legislator/pat-both-belk-6", "Belknap"],
+                    ["legislator", "Rep. Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
+                     "legislator/heather-deiner-hills-25", "Hillsborough"], was], (
+        f"find_index's members on the day they take office are {took}")
+    words = {k: I.lookup("es", k, en) for k, en in (("elect.title_rep", "Rep. “Elect”"),
+                                                    ("elect.title_sen", "Sen. “Elect”"))}
+    assert all(words.values()), f"the titles have no Spanish: {words}"
+    queries = {"deiner": "Deiner", "Deiner": "Deiner", "heather deiner": "Deiner",
+               "deiner heather": "Deiner", "rep deiner": "Deiner", "rep. deiner": "Deiner",
+               "representative deiner": "Deiner", "rep-elect deiner": "Deiner",
+               "rep elect deiner": "Deiner", "member-elect deiner": "Deiner",
+               "baroody": "Baroody", "benjamin c. baroody": "Baroody", "webber": "Webber",
+               "senator webber": "Webber", "sd2": "Webber", "pat both": "Both", "belk 6": "Both"}
+    seats = {"hills 25": ["Staub", "Deiner"], "hillsborough 25": ["Staub", "Deiner"],
+             "staub": ["Staub"]}
+    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
+    assert m, "build_pages.SEARCH_JS carries no <script>"
+    idx = [{"id": "HB1", "n": "HB 1", "year": 2025, "title": "relative to state revenues.",
+            "sponsor": "Benjamin Baroody", "sponsor_slug": "benjamin-baroody-hills-39",
+            "sponsor_label": "Rep. Benjamin Baroody (D)", "committee": "House Finance",
+            "committees": ["House Finance"], "topic": "Other", "kind": "active",
+            "status": "Introduced", "term": "2025-2026", "last_action": "2025-01-15", "votedays": []}]
+    fix = {"/find.json": rows, "/meta.json": {"terms": ["2025-2026"], "topics": [], "committees": [],
+                                              "sponsors": [], "votedays": [], "years": [2025, 2026]},
+           "/idx/2025-2026.json": idx}
+    root = Path(tempfile.mkdtemp(prefix="gr-findelect-js-"))
+    try:
+        files = {"stub.js": _source("tests/dom_stub.js"),
+                 "find.js": _with_components(_source("src/pages/find.js")),
+                 "billmatch.js": BP.bill_matcher_js(_source("src/pages/app.js")),
+                 "search.js": m.group(1), "fixture.json": json.dumps(fix),
+                 "queries.json": json.dumps(list(queries) + list(seats)),
+                 "words.json": json.dumps(words), "go.js": _FIND_ELECT_JS}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=120)
+        said = (r.stdout + r.stderr).strip()
+        last = (said.splitlines() or ["no output"])[-1]
+        assert r.returncode == 0 and last.startswith("{"), "node go.js: " + said[-400:]
+        js = json.loads(last)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    bad = []
+    by_day = {d: {a: (k, n) for k, n, a in v} for d, v in js["days"].items()}
+    base = "legislator/benjamin-baroody-hills-39"
+    if by_day["2026-11-20"].get(base) != ("elect", "Rep. “Elect” Benjamin Baroody (D - Hills 16)") \
+            or by_day["2026-12-02"].get(base) != ("former", "Former Rep. Benjamin Baroody") \
+            or by_day["2026-12-02"].get("legislator/heather-deiner-hills-25") != (
+                "elect", "Rep. “Elect” Heather Deiner (D - Hills 25)"):
+        bad.append(f"the rows find.js takes in on the reader's day: {js['days']}")
+    for q, who in queries.items():
+        first = (js["match"][q] or [[""]])[0]
+        if who not in first[0] or first[1] != "Member-Elect" or not re.match(r"(Rep|Sen)\. “Elect” ", first[0]):
+            bad.append(f"{q!r} first finds {first}")
+    deiner = js["match"]["deiner"][0]
+    if deiner != ["Rep. “Elect” Heather Deiner (D - Hills 25)", "Member-Elect",
+                  "House · Hills 25 · Democrat", "legislator/heather-deiner-hills-25"]:
+        bad.append(f"Heather Deiner's row is {deiner}")
+    for q, who in seats.items():
+        names = [x[0] for x in js["match"][q]]
+        if [next((w for w in who if w in n), n) for n in names] != who:
+            bad.append(f"{q!r} finds {names}")
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", js["panel"])).strip()
+    if not js["panel"].lstrip().startswith('<a href="/legislator/heather-deiner-hills-25">') \
+            or "<mark>Deiner</mark>" not in js["panel"] \
+            or not text.startswith("Rep. “Elect” Heather Deiner (D - Hills 25) Member-Elect House · Hills 25"):
+        bad.append(f"the header's panel draws {text[:200]!r}")
+    if js["suggest"]:
+        bad.append(f"'elects' is offered {js['suggest']!r}: the title is a word to offer")
+    if sorted(js["es"]) != sorted(n.replace("Rep. “Elect”", words["elect.title_rep"])
+                                  .replace("Sen. “Elect”", words["elect.title_sen"])
+                                  for n in (w[1] for w in want[1:])) \
+            or any("“Elect”" in n for n in js["es"]):
+        bad.append(f"in Spanish the rows are named {js['es']}")
+    s = js["search"]
+    group = lambda h, html: (re.search(r"<h2>" + h + r"\s*<span", html) is not None)  # noqa: E731
+    if not (group("Representatives-Elect", s["deiner"]) and "Heather <mark>Deiner</mark>" in s["deiner"]
+            and group("Senators-Elect", s["webber"]) and not group("Representatives-Elect", s["webber"])
+            and group("Representatives", s["staub"]) and not group("Representatives-Elect", s["staub"])):
+        bad.append("/search does not list the members-elect under Senators-Elect and "
+                   "Representatives-Elect, apart from the members")
+    if not (group("Representatives-Elect", s["baroody"]) and "/bills?sponsor=Benjamin%20Baroody&amp;term=all" in s["baroody"]
+            and "Rep. “Elect” Benjamin Baroody&rsquo;s bills" in s["baroody"]):
+        bad.append("/search does not link a former member elected again to their bills: "
+                   + re.sub(r"\s+", " ", s["baroody"])[:400])
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{sum(r[0] == 'elect' for r in rows)} members-elect after the sitting member, "
+                  "titled Rep. “Elect” or Sen. “Elect” with the seat they were elected to; the former "
+                  "member's row inside theirs, back on the day they take office by the reader's day, "
+                  f"a member's for the new by the build's; found by {len(queries) + len(seats)} "
+                  "searches, first in the panel, in Spanish words, and under their chamber on /search")
 
 
 @check("build", "the search index builder stops, and writes nothing, when a "

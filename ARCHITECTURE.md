@@ -2240,6 +2240,20 @@ with the member-elect sentence beside it (`build_legislator_pages.elect_mode`,
 whose word `app.js` reads from `GR_ELECT`). Both end on the day they take
 office, by the build's day and the reader's clock.
 
+The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
+gives `find.json` a row of the kind `elect` for each new member-elect with a
+provisional page and each former member elected again, named with the
+Members-Elect tab's title and the seat they were elected to -- "Rep. “Elect”
+Heather Deiner (D - Hills 25)" -- and leading to their own page. `find.js`
+finds and ranks it as a member's row, by the words of the name, the seat and
+the county, in the header's box and the home page's alike, and `/search` lists
+it under Senators-Elect or Representatives-Elect. A sitting member keeps their
+own row. A former member elected again stands in for their "Former Rep." row,
+which their row carries and which is theirs again on the day they take
+office, by the reader's clock as well as the build's (`find.js`, `findNow`);
+a new member's row becomes a member's from that day with their page, by the
+build's day.
+
 ## Sponsors before 1999 (13 November 2026)
 
 The bills of 1989-1998 print a sponsor as a surname, sometimes an initial, and

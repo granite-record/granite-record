@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.40
+# GRANITE_VERSION: 2026-09-04.41
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -349,6 +349,20 @@ def elect_member_name(m):
     with no honorific: the name as the provisional pages head a member-elect."""
     plain = str(m.get("display_plain") or m.get("display_full") or "").split(" (")[0]
     return re.sub(r"^(Rep|Sen)\. ", "", plain).strip()
+
+
+def elect_title(chamber):
+    """A member-elect's title, by the chamber they were elected to: "Rep.
+    “Elect”" for the House, "Sen. “Elect”" for the Senate -- the words the
+    Officials page's Members-Elect tab gives them (officials_tabs.elect_chip,
+    the owner's walk of dry run 8, 8 November 2026), which the owner asked
+    for in the search as well on 16 November 2026: 'use their title as Rep.
+    "Elect" Heather Denier instead of just their first name'. The search's
+    rows carry it (build_indexes.elect_rows). Ends with the members-elect,
+    on the day they take office."""
+    import i18n
+    return (i18n.say("en", "elect.title_sen", "Sen. “Elect”") if chamber == "S"
+            else i18n.say("en", "elect.title_rep", "Rep. “Elect”"))
 
 
 def elect_back(m, info):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.32
+# GRANITE_VERSION: 2026-09-13.33
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -48,6 +48,7 @@ from collections import defaultdict
 from urllib.parse import quote_plus
 
 import bill_order as BO
+import build_date
 import build_legislator_pages as BLP
 import guides as G
 import officials_tabs as OT
@@ -510,6 +511,114 @@ def officials_rows(off):
             for tab, name, what, words in OFFICIAL_TABS if people[tab]]
 
 
+# A member-elect's title as a reader may type it, among the words of their
+# row: "rep-elect deiner" and "member-elect" find the row that prints "Rep.
+# “Elect” Heather Deiner" as surely as "rep elect deiner" does.
+ELECT_WORDS = {"H": "member-elect rep-elect representative-elect",
+               "S": "member-elect sen-elect senator-elect"}
+
+
+def elect_line(chamber, tag, party):
+    """A member-elect's line, in the shape a sitting member's has: "House ·
+    Hills 25 · Democrat" -- the chamber, the seat and the party in words, or
+    a cross-nomination's letters as the results print them ("R/D")."""
+    return " · ".join(x for x in ("Senate" if chamber == "S" else "House", tag,
+                                  OT.PARTY_OF.get(party, party)) if x)
+
+
+def elect_rows(site, rows, people):
+    """find.json's rows for the members-elect, and the addresses of the
+    former members' rows they stand in for: ([row, ...], {address, ...}).
+
+    THE OWNER, 16 NOVEMBER 2026: "Add members elect to the header and
+    homepage search and use their title as Rep. "Elect" Heather Denier
+    instead of just their first name." The search found members and former
+    members only, so a new member-elect was "No matching results." and a
+    former member elected again was "Former Rep." Each member-elect whose
+    page is not a sitting member's gets a row of the kind "elect", named
+    with the title the Officials page's Members-Elect tab gives them (build_
+    legislator_pages.elect_title) and the seat of the race that elected them,
+    as a member's row is named -- "Rep. “Elect” Heather Deiner (D - Hills
+    25)" -- its line a member's, "House · Hills 25 · Democrat", and found
+    as a member's is, by the words of the name, the seat and the county:
+
+      a NEW member-elect, from their provisional page's own file
+        (site/elect_pages.json, build_elect_pages.py), leading to that page.
+        From the day they take office the page says they are a member, by
+        the build's day (build_legislator_pages.elect_body), and so does the
+        row: a member's, "Rep. Heather Deiner (D - Hills 25)", until the
+        General Court numbers them and their page gives way to their own;
+      a FORMER MEMBER ELECTED AGAIN, from the members-elect file through its
+        one reader (build_members_elect.for_pages), which ends on the day
+        they take office: leading to their own page, whose head is the
+        member-elect's while the file lasts, named as that head names them
+        (elect_member_name), the name the results print among its words.
+        It stands in for their "Former Rep." row and carries it whole, as
+        r[6], with the day they take office as r[5]: from that day the page
+        goes back to the former member's form by the reader's clock as well
+        as the build's (app.js renderMemberHead), and so does the row
+        (find.js, findNow).
+
+    A sitting member keeps their own row and title, re-elected or elected to
+    another seat: they are a member. A member-elect with no page of their
+    own has no row, there being nowhere to lead. `rows` are the rows so far,
+    whose former members' rows are found by address; `people` is former.json
+    by the same address."""
+    import build_members_elect as BME
+    from build_site_v2 import HONORIFIC, district_tag
+    today = build_date.today().isoformat()
+
+    def order(key):
+        try:
+            return BME.race_order(key)
+        except (AttributeError, TypeError):
+            return (2, "", 0)
+
+    def seat(party, tag):
+        both = " - ".join(x for x in (party, tag) if x)
+        return f" ({both})" if both else ""
+    out = []
+    f = Path(site) / "elect_pages.json"
+    try:
+        doc = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
+    except ValueError:
+        doc = {}
+    took = bool(doc.get("takes_office")) and today >= str(doc["takes_office"])
+    for p in doc.get("pages") or []:
+        if not (p.get("slug") and p.get("name")):
+            continue
+        ch = "S" if p.get("chamber") == "S" else "H"
+        tag = district_tag(ch, p.get("district"), county=p.get("county"))
+        party = str(p.get("party") or "")
+        out.append((order(p.get("race")), [
+            "legislator" if took else "elect",
+            f"{HONORIFIC[ch] if took else BLP.elect_title(ch)} {p['name']}{seat(party, tag)}",
+            elect_line(ch, tag, party), S.canon(f"legislator/{p['slug']}.html"),
+            " ".join(x for x in ((p.get("county") or "") if ch == "H" else "",
+                                 "" if took else ELECT_WORDS[ch]) if x)]))
+    elect, taken = BME.for_pages(site), set()
+    was = {r[3]: r for r in rows if r and r[0] == "former"}
+    for key, race in sorted(((elect or {}).get("races") or {}).items(), key=lambda kv: order(kv[0])):
+        m = BME.KEY_RE.match(key)
+        ch = "S" if m.group(3) else "H"
+        tag = district_tag(ch, m.group(3) or m.group(2), county=m.group(1))
+        for e in race.get("elected") or []:
+            addr = S.canon(f"legislator/{e.get('s')}.html")
+            if e.get("k") != "former" or not (e.get("id") and e.get("s")) or addr not in was:
+                continue
+            party = str(e.get("p") or "")
+            name = BLP.elect_member_name(people.get(addr) or {}) or str(e.get("n") or "")
+            out.append((order(key), [
+                "elect", f"{BLP.elect_title(ch)} {name}{seat(party, tag)}",
+                elect_line(ch, tag, party), addr,
+                " ".join(x for x in (str(e.get("n") or ""), m.group(1) or "", was[addr][4],
+                                     ELECT_WORDS[ch]) if x),
+                elect["takes_office"], was[addr]]))
+            taken.add(addr)
+    out.sort(key=lambda x: x[0])
+    return [r for _o, r in out], taken
+
+
 def find_index(site, legs, towns):
     """site/find.json: everything the header search can answer instantly.
 
@@ -527,7 +636,10 @@ def find_index(site, legs, towns):
     would be a third of it. A former member's row carries a sixth: the year
     they last sat, which is how the box orders them among themselves. A
     committee no longer on the General Court's list carries the same sixth,
-    the year it last sat, and a seventh, the years its page gives.
+    the year it last sat, and a seventh, the years its page gives. A
+    member-elect's row is of the kind "elect" (elect_rows), and a former
+    member elected again carries two more: the day they take office, and
+    the row they had as a former member, which is theirs again from that day.
 
     FORMER MEMBERS AND SUBJECTS ARE IN IT, asked for on 18 September in these
     words: "Search bar should also list former legislators in the results, but
@@ -549,6 +661,8 @@ def find_index(site, legs, towns):
                      " ".join(str(x) for x in (m.get("last"), m.get("first"),
                                                m.get("county"), m.get("email"))
                               if x)])
+    # Where the members-elect go, after the sitting members (elect_rows).
+    seated = len(rows)
     cm = site / "committees.json"
     for c in (json.loads(cm.read_text(encoding="utf-8")) if cm.exists() else []):
         if not c.get("code"):
@@ -630,9 +744,11 @@ def find_index(site, legs, towns):
     # flagged beyond that word: a member who has left is listed like any
     # other, just later.
     fm = site / "former.json"
+    people = {}
     for m in (json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else []):
         if not m.get("slug"):
             continue
+        people[S.canon(f"legislator/{m['slug']}.html")] = m
         terms = (m.get("served") or {}).get("terms") or []
         span = f"{terms[0].split('-')[0]}–{terms[-1].split('-')[1]}" if terms else ""
         years = record_years(site, m)
@@ -657,6 +773,12 @@ def find_index(site, legs, towns):
                      " ".join(str(x) for x in (m.get("county_abbr"), m.get("party"))
                               if x),
                      int(last.group(1)) if last else 0])
+    # THE MEMBERS-ELECT (elect_rows), after the sitting members: a former
+    # member elected again in place of their row above, which their own row
+    # carries for the day they take office.
+    elect, taken = elect_rows(site, rows, people)
+    rows = rows[:seated] + elect + [r for r in rows[seated:]
+                                    if not (r[0] == "former" and r[3] in taken)]
     # The subjects the bill search facets by, so that typing one arrives at
     # the bills rather than at nothing. meta.json is where the bill search
     # reads them from, so there is one list and it cannot drift.
