@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1977,6 +1977,92 @@ def _request_sponsor_cacr_and_record(build_lsrs):
                   "Goley's, whom the owner matched to his record, and is nobody's without it; a "
                   "CACR by less than the whole name, by a name two winners or two sitting "
                   "members share, and a member-elect's Senate request match nobody")
+
+
+@check("build", "a request's member-elect sponsor is drawn Rep. “Elect” or Sen. “Elect” "
+                "on its card and its page until the day they take office; a sitting member as ever",
+       needs=("build_lsrs", "build_request_pages"))
+def _request_member_elect_title(build_lsrs, build_request_pages):
+    """The owner, 17 November 2026: on a request's card a member-elect's chip reads Rep.
+    “Elect” Colin Mitchell (R), the title the search already gives them (Sen.
+    “Elect” for the Senate), until 2 December, when the members-elect take office.
+    On the live list of that day 54 requests of 18 members-elect read "Colin Mitchell (R)".
+
+    build_lsrs gives the label the title (elect_title) while elect_window is open -- the build's
+    day before members_elect.json's "takes_office" -- to a member-elect matched by their
+    provisional page (roster) or as a winner the file draws new or returning (Jeff Goley, a
+    former member); never to a sitting member re-elected or one elected to the other chamber;
+    and the search still reads the name (label_name). build_request_pages draws a member-elect's
+    chip on the request's page the same way (sponsors). From the day they take office, none."""
+    L, RP = build_lsrs, build_request_pages
+    tmp = Path(tempfile.mkdtemp(prefix="gr-elect-title-"))
+    was = os.environ.get("GRANITE_BUILD_DATE")
+    try:
+        (tmp / "members_elect.json").write_text(json.dumps(
+            {"election": "2026-11-03", "takes_office": "2026-12-02", "races": {}}), encoding="utf-8")
+        (tmp / "elect_pages.json").write_text(json.dumps({"takes_office": "2026-12-02", "pages": [
+            {"slug": "colin-mitchell-carr-8", "name": "Colin Mitchell", "party": "R", "chamber": "H",
+             "race": "H|Carroll|8"},
+            {"slug": "kurt-webber-sd-2", "name": "Kurt Webber", "party": "D", "chamber": "S",
+             "race": "S|2"}]}), encoding="utf-8")
+        (tmp / "legislators.json").write_text(json.dumps([
+            {"name": "Read, Ellen", "slug": "ellen-read-rock-10", "display": "Rep. Ellen Read (D)",
+             "display_full": "Rep. Ellen Read (D - Rock 10)", "party": "D"}]), encoding="utf-8")
+        results = {"races": {
+            "H|Hillsborough|21": {"candidates": [{"name": "Jeff Goley", "party": "d", "elected": True}]},
+            "S|8": {"candidates": [{"name": "Jim Creighton", "party": "r", "elected": True}]},
+            "H|Rockingham|10": {"candidates": [{"name": "Ellen Read", "party": "d", "elected": True}]}}}
+        drawn = {"H|Hillsborough|21": {"elected": [{"n": "Jeff Goley", "p": "D", "k": "former", "id": "460",
+                                                    "s": "jeffrey-goley-hills-21"}]},
+                 "S|8": {"elected": [{"n": "Jim Creighton", "p": "R", "k": "sitting", "id": "9917",
+                                      "s": "james-creighton-hills-30"}]},
+                 "H|Rockingham|10": {"elected": [{"n": "Ellen Read", "p": "D", "k": "sitting",
+                                                  "s": "ellen-read-rock-10"}]}}
+        people = [{"name": "Goley, Jeffrey", "slug": "jeffrey-goley-hills-21"},
+                  {"name": "Creighton, James", "slug": "james-creighton-hills-30"},
+                  {"name": "Read, Ellen", "slug": "ellen-read-rock-10"}]
+        req = lambda n, body, who_: {"lsr": f"2027-{n}", "session": 2027, "body": body, "title": "t.",
+                                     "sponsor": who_}
+        lsrs = [req("0646", "CACR", "Colin Mitchell"), req("0651", "HB", "Colin Mitchell"),
+                req("0700", "SB", "Kurt Webber"), req("0556", "HB", "Jeffrey Goley"),
+                req("0800", "SB", "Jim Creighton"), req("0001", "HB", "Ellen Read")]
+        got = {}
+        for day in ("2026-11-17", "2026-12-02"):
+            os.environ["GRANITE_BUILD_DATE"] = day
+            who = L.roster(tmp, str(tmp / "no-results"))
+            ws = L.election_winners(results, drawn, [], people, titled=L.elect_window(tmp))
+            rows, _ = L.rows_from(lsrs, who, {}, 2027, ws)
+            L.with_sponsor_names(rows, {})
+            chips = RP.sponsors(tmp)
+            got[day] = ({r["n"][4:]: r["sponsor_label"] for r in rows},
+                        {r["n"][4:]: r.get("sponsor_names") for r in rows},
+                        {s: chips[s]["display_full"] for s in chips})
+    finally:
+        if was is None:
+            os.environ.pop("GRANITE_BUILD_DATE", None)
+        else:
+            os.environ["GRANITE_BUILD_DATE"] = was
+        shutil.rmtree(tmp, ignore_errors=True)
+    rep, sen = "Rep. “Elect” ", "Sen. “Elect” "
+    labels, names, chips = got["2026-11-17"]
+    want = {"2027-0646": rep + "Colin Mitchell (R)", "2027-0651": rep + "Colin Mitchell (R)",
+            "2027-0700": sen + "Kurt Webber (D)", "2027-0556": rep + "Jeff Goley (D)",
+            "2027-0800": "Jim Creighton (R)", "2027-0001": "Rep. Ellen Read (D)"}
+    bad = [f"{n}: {labels.get(n)!r}, not {w!r}" for n, w in want.items() if labels.get(n) != w]
+    assert not bad, "a request's sponsor label before the day they take office: " + "; ".join(bad)
+    assert names["2027-0646"] is None and names["2027-0556"] == ["Jeff Goley"], (
+        f"the search reads the title as part of the name: {names}")
+    assert (chips["colin-mitchell-carr-8"], chips["kurt-webber-sd-2"], chips["ellen-read-rock-10"]) == (
+        rep + "Colin Mitchell (R)", sen + "Kurt Webber (D)", "Rep. Ellen Read (D - Rock 10)"), chips
+    labels, _names, chips = got["2026-12-02"]
+    assert not any("“Elect”" in v for v in list(labels.values()) + list(chips.values())), (
+        f"a member-elect still titled on the day they take office: {labels} {chips}")
+    assert L.label_name(rep + "Colin Mitchell (R)") == "Colin Mitchell"
+    return "ok", ("before 2 December Colin Mitchell's House and CACR requests read Rep. “Elect” "
+                  "Colin Mitchell (R), Kurt Webber's Sen. “Elect”, and Jeff Goley, a former "
+                  "member returning, Rep. “Elect”, on the card's label and the page's chip; a "
+                  "sitting member, re-elected or elected to the Senate, as before; the search reads the "
+                  "name alone; on 2 December no one is titled")
 
 
 @check("build", "a withdrawn request of a member who is not returning is dropped and its address forwards; "
@@ -9490,8 +9576,9 @@ def _requests_search_by_name():
     typed ("rep", "sen") agreeing with the label's, and a single word a WHOLE word -- "bail" is not Rep.
     Bailey. A request whose title has the words lists as it did. Held, on a fixture of requests: a full name
     lists the sponsor's requests and the ones they co-sponsor; "bail" lists the bail request and not
-    Bailey's; "sen" before a Rep.'s name lists none; a member-elect (a label with no title) is found by
-    "rep jane doe"; the party filter counts a sitting member's and a member-elect's party; the Sponsor list
+    Bailey's; "sen" before a Rep.'s name lists none; a member-elect, whose label is titled "Rep. “Elect”"
+    since 17 November 2026 (build_lsrs.elect_title), is found by "rep jane doe" and not by "sen jane doe", and
+    the Sponsor list names them without the title, as it names a sitting member without "Rep."; the party filter counts a sitting member's and a member-elect's party; the Sponsor list
     names a sponsor with the party their label gives (a request's label has no seat); the Topic group of the
     requests is named "Topic", as another term's is (the owner, 14 November 2026: "remove the topic from title
     label"; it said "(from the title)" until then); a bill's own search still lists no bill for a name.
@@ -9521,7 +9608,8 @@ def _requests_search_by_name():
     rows = [req(1, "relative to school funding.", "Ellen Read", "Rep. Ellen Read (D)", "ellen-read-rock-10", "D"),
             req(2, "relative to the state flag.", "Pat Bailey", "Rep. Pat Bailey (R)", "pat-bailey-hills-1", "R",
                 ["Ellen Read"]),
-            req(3, "relative to dog licensing.", "Jane Doe", "Jane Doe (R)", "jane-doe-elect", "R"),
+            req(3, "relative to dog licensing.", "Jane Doe", "Rep. “Elect” Jane Doe (R)", "jane-doe-elect",
+                "R"),
             req(4, "relative to fishing licences.", "Sam Senn", "Sen. Sam Senn (D)", "sam-senn-sd-1", "D"),
             dict(req(5, "relative to the budget.", "Nobody Known", "Nobody Known", "", ""),
                  topic="Taxes - State", topic_by="title"),
@@ -9592,7 +9680,7 @@ def _requests_search_by_name():
   out.full = listed("ellen read"); out.surname = listed("read"); out.rep = listed("rep ellen read");
   out.sen = listed("sen ellen read"); out.bail = listed("bail"); out.bailey = listed("bailey");
   out.elect = listed("rep jane doe"); out.title = listed("dog"); out.senator = listed("senator sam senn");
-  out.none = listed("xyzzy");
+  out.none = listed("xyzzy"); out.electSen = listed("sen jane doe");
   // A sponsor by the card's and the page's spelling, and by the list's own; never by an initial alone.
   out.nyquist = listed("Lee C. Nyquist"); out.nyquistRep = listed("Rep. Lee C. Nyquist");
   out.nyquistSur = listed("Nyquist"); out.creighton = listed("James Creighton");
@@ -9617,6 +9705,9 @@ def _requests_search_by_name():
   out.cosp = /<span>(Include co-sponsored [a-z]+)</.exec(f)[1];
   scope.setSponsorBox("read"); scope.renderFacets();
   out.sponsors = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
+  scope.setSponsorBox("");
+  scope.setSponsorBox("doe"); scope.renderFacets();
+  out.does = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
   scope.setSponsorBox("");
   scope.sel.party.add("Republican"); out.republican = scope.IDX().filter(b => scope.matches(b)).map(b => b.id.slice(-1));
   scope.sel.party.clear();
@@ -9660,6 +9751,8 @@ def _requests_search_by_name():
         f"the party filter counts {got['party']}: sitting and elect members alike")
     assert got["cosp"] == "Include co-sponsored requests", got["cosp"]
     assert ["Ellen Read", "Ellen Read (D)"] in got["sponsors"], f"the Sponsor list shows {got['sponsors']}"
+    assert got["does"] == [["Jane Doe", "Jane Doe (R)"]] and got["electSen"] == [], (
+        f"a member-elect's title: the Sponsor list shows {got['does']}, 'sen jane doe' lists {got['electSen']}")
     assert got["republican"] == ["2", "3", "8", "9"], f"the party filter lists {got['republican']}"
     # The names the site prints. Lee C. Nyquist's request is 7, Jim (James) Creighton's 8.
     assert got["nyquist"] == ["7"] and got["nyquistRep"] == ["7"], (

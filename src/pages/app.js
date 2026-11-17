@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.338
+// GRANITE_VERSION: 2026-09-07.339
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2249,7 +2249,8 @@ function nameWords(q){
   return {title,want};
 }
 // Whether the title typed agrees with the one a label begins with: a label
-// that names none (a member-elect's) agrees with any.
+// that names none (a sponsor matched to nobody) agrees with any; a
+// member-elect's "Rep. “Elect”" is Rep.
 const titleAgrees=(title,label)=>{
   const t=/^(Rep\.|Sen\.)/.exec(String(label||""));
   return !title||!t||t[1]===title;
@@ -2313,7 +2314,9 @@ function noteSponsors(term,rows){
   for(const b of rows){
     if(!b.sponsor||!b.sponsor_label)continue;
     const k=spKey(b);
-    if(!(k in m))m[k]=String(b.sponsor_label).replace(/^(Rep\.|Sen\.)\s*/,"");
+    // A member-elect's title goes with the rest ("Rep. “Elect” Colin Mitchell (R)",
+    // build_lsrs.elect_title): the filter lists the name.
+    if(!(k in m))m[k]=String(b.sponsor_label).replace(/^(Rep\.|Sen\.)\s*(“Elect”\s*)?/,"");
     if(b.sponsor_names&&!(k in o))o[k]=b.sponsor_names;
   }
 }

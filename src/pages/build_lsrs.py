@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.27
+# GRANITE_VERSION: 2026-09-18.28
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -171,11 +171,13 @@ def roster(site, collected="collected", year=None):
         for m in (json.loads(fj.read_text(encoding="utf-8")) if fj.exists() else []):
             last, _, first = str(m.get("name") or "").partition(",")
             gone.add(_fold(f"{first} {last}"))
+        titled = elect_window(site)
         for p in json.loads(ep.read_text(encoding="utf-8")).get("pages") or []:
             key = _fold(p.get("name"))
             party = f" ({p['party']})" if p.get("party") else ""
+            title = f"{elect_title(p.get('chamber'))} " if titled else ""
             out[key] = None if (key in out or key in gone) else (
-                f"{p.get('name')}{party}", p.get("slug"), p.get("chamber"))
+                f"{title}{p.get('name')}{party}", p.get("slug"), p.get("chamber"))
     # AND, ONCE THE ROSTER IS THE NEW TERM'S, THE MEMBERS OF THE TERM BEFORE
     # WHO ARE NOT ON IT (departed; the rehearsal of 17 November 2026). Their
     # requests were the old roster's to match until the New term run; after
@@ -218,8 +220,36 @@ def departed(site, collected="collected", year=None):
             and before in ((m.get("served") or {}).get("terms") or [])]
 
 
-# "Rep. " or "Sen. " before a name, which a label carries and a name does not.
-_TITLE = re.compile(r"^(?:Rep|Sen)\.\s*")
+# "Rep. " or "Sen. " before a name, which a label carries and a name does not,
+# and a member-elect's "Rep. “Elect”" (elect_title).
+_TITLE = re.compile("^(?:Rep|Sen)\\.\\s*(?:“Elect”\\s*)?")
+
+
+def elect_title(chamber):
+    """A member-elect's title, by the chamber they were elected to -- "Rep.
+    “Elect”", "Sen. “Elect”" -- in the words
+    build_legislator_pages.elect_title gives the search and their own page
+    (the i18n keys elect.title_rep and elect.title_sen)."""
+    import i18n
+    return (i18n.say("en", "elect.title_sen", "Sen. “Elect”") if chamber == "S"
+            else i18n.say("en", "elect.title_rep", "Rep. “Elect”"))
+
+
+def elect_window(site):
+    """Whether a request's member-elect sponsor is drawn under their title:
+    from the election until the day they take office, which the members-elect
+    file gives (site/members_elect.json, else site/elect_pages.json, each
+    "takes_office"), by the build's day. False where neither is there."""
+    import build_date
+    for name in ("members_elect.json", "elect_pages.json"):
+        p = Path(site) / name
+        try:
+            day = str((json.loads(p.read_text(encoding="utf-8")) or {}).get("takes_office") or "")
+        except (OSError, ValueError, AttributeError):
+            continue
+        if day:
+            return build_date.today().isoformat() < day
+    return False
 
 
 def page_names(site):
@@ -246,7 +276,8 @@ def page_names(site):
 
 def label_name(label):
     """A sponsor's label as the name in it, the title and the party taken off:
-    "Rep. Ellen Read (D)" -> "Ellen Read", "Lee C. Nyquist (D)" -> "Lee C. Nyquist"."""
+    "Rep. Ellen Read (D)" -> "Ellen Read", "Lee C. Nyquist (D)" -> "Lee C. Nyquist",
+    and a member-elect's "Rep. “Elect” Colin Mitchell (R)" -> "Colin Mitchell"."""
     return _TITLE.sub("", re.sub(r"\s*\([^()]*\)\s*$", "", str(label or ""))).strip()
 
 
@@ -325,7 +356,7 @@ def compatible(req, win):
     return ok, False
 
 
-def election_winners(results, drawn, pages, people):
+def election_winners(results, drawn, pages, people, titled=False):
     """[{name, party, chamber, race, slug, label}] for every winner the results
     name as elected, in a race final or not (a recount does not change the
     party on the ballot), and the page each links to.
@@ -344,7 +375,12 @@ def election_winners(results, drawn, pages, people):
     winner to a sitting or former member ("s"). The ballot printed "Jeff
     Goley"; the owner matched him to member 460, "Goley, Jeffrey"; and his
     request is filed as "Jeffrey Goley", which matched nobody, because a short
-    form is never taken on a name alone (NICKNAMES). That record ties the two."""
+    form is never taken on a name alone (NICKNAMES). That record ties the two.
+
+    `titled` (elect_window): a member-elect's label carries their title, "Rep.
+    “Elect” Jeff Goley (D)" (the owner, 17 November 2026) -- a winner
+    the members-elect file draws as new or as a former member returning, or one
+    with a provisional page; never one who sits now."""
     by_slug = {m.get("slug"): m for m in people if m.get("slug")}
     out = []
     for key, race in sorted((results.get("races") or {}).items()):
@@ -372,8 +408,10 @@ def election_winners(results, drawn, pages, people):
             rec = first_last((by_slug.get(e.get("s")) or {}).get("name")) if e.get("s") else ""
             if rec and _fold(rec) != _fold(name):
                 names.append(rec)
+            elect = e.get("k") in ("new", "former") or (not e and name in pg)
+            title = f"{elect_title(ch)} " if titled and elect else ""
             out.append({"name": name, "party": party, "chamber": ch, "race": key,
-                        "slug": slug, "label": f"{name} ({party})" if party else name,
+                        "slug": slug, "label": title + (f"{name} ({party})" if party else name),
                         "names": names})
     return out
 
@@ -446,7 +484,8 @@ def load_winners(site, collected):
     # file linked keeps that link on 2 December.
     drawn, _turned, _term, _why = election_races(site, collected)
     ws = election_winners(results, drawn or {},
-                          (rd("elect_pages.json", {}) or {}).get("pages") or [], people)
+                          (rd("elect_pages.json", {}) or {}).get("pages") or [], people,
+                          titled=elect_window(site))
     return ws, f"{len(ws)} winners of {path.name} to match a sponsor to, where the roster has nobody"
 
 

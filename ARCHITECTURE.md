@@ -2424,7 +2424,10 @@ year, which Organization Day's resolutions are not). A
 request has a title and a prime sponsor, so the search finds it by the
 sponsor's name (prime or co-sponsor; sitting, member-elect or former) and the
 Sponsor filter lists each with their party, where the roster or the results
-give one. A prime sponsor is found by every name the site prints for them:
+give one. Until the day they take office a member-elect's label, and so the
+request's card and the chip on its page, carries their title, "Rep. “Elect”"
+or "Sen. “Elect”" (`elect_title`, `elect_window`); the Sponsor filter lists
+them by name. A prime sponsor is found by every name the site prints for them:
 where the card's label or the page it links to gives the name in other words
 than the list does, as the search reads words (accents and apostrophes left
 out, a full stop no difference, a hyphen a break) -- "Lee C. Nyquist", the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.16
+# GRANITE_VERSION: 2026-11-08.17
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -86,7 +86,13 @@ def sponsors(site):
     (elect_pages.json). former.json is deliberately NOT read: a former member
     holds no seat, and their display_full names the old one, which others hold
     now (the review of 13 November 2026); person_chip draws them from the
-    request's own row instead."""
+    request's own row instead.
+
+    A member-elect's chip carries their title until the day they take office,
+    "Rep. “Elect” Colin Mitchell (R)" (the owner, 17 November 2026;
+    build_lsrs.elect_title and elect_window), as the request's row labels them
+    for its card; a sitting member's is the roster's, as it was."""
+    import build_lsrs
     out = {}
     f = site / "legislators.json"
     for m in (json.loads(f.read_text(encoding="utf-8")) if f.is_file() else []):
@@ -95,10 +101,12 @@ def sponsors(site):
                               "display_full": m.get("display_full") or m.get("display")
                               or m.get("name")}
     f = site / "elect_pages.json"
+    titled = build_lsrs.elect_window(site)
     for p in (json.loads(f.read_text(encoding="utf-8")).get("pages") or [] if f.is_file() else []):
+        title = f"{build_lsrs.elect_title(p.get('chamber'))} " if titled else ""
         out.setdefault(p["slug"], {"party_code": p.get("party"), "slug": p["slug"],
-                                   "display_full": f"{p['name']} ({p['party']})"
-                                   if p.get("party") else p["name"]})
+                                   "display_full": title + (f"{p['name']} ({p['party']})"
+                                                            if p.get("party") else p["name"])})
     return out
 
 
