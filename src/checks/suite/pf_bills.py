@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.20
+# GRANITE_VERSION: 2026-11-16.21
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2000,6 +2000,33 @@ def _request_bill_text_tab(build_lsrs):
     return "ok", ("requested, withdrawn, filed and read, filed and not read: Bill Text second on the page and "
                   "the card, (0) until read and (1) after; the owner's sentence, the withdrawn note and the "
                   "filed note each exact, the card's pane the page's; the read text in its block")
+
+
+@check("frontend", "a request's Bill Text tab asks for no versions file, which no build writes for a request; "
+                   "a bill's still does")
+def _request_text_tab_asks_no_versions():
+    """17 November 2026: once every request had a Bill Text tab, keyed 6 as a
+    bill's, a press on it in the bill search ran the bill's path for that
+    tab (app.js's tab handler calls needVersions for tab 6) and asked
+    /versions/2027/LSR20270001.json, which answered 404 for every request
+    -- seen in the screenshots' server log, four 404s for each request whose
+    card was turned to Bill Text. needVersions now asks nothing for a row
+    that is a request (`lsr`). Held in node: needVersions on a request's row
+    makes no request and leaves nothing in the cache; on a bill's row with
+    no record yet it asks /versions/2026/HB1.json, as before."""
+    js = ("(() => { const asked = []; globalThis.fetch = u => { asked.push(String(u));"
+          " return new Promise(() => {}); };"
+          " scope.needVersions({id: 'LSR20270001', n: 'LSR 2027-0001', year: 2027, term: '2027-requests', lsr: true});"
+          " const lsr = asked.slice();"
+          " scope.needVersions({id: 'HB1', n: 'HB 1', year: 2026, term: '2025-2026'});"
+          " return {lsr, bill: asked.slice(lsr.length)}; })()")
+    got = _app_js(js, names=("needVersions",))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    assert got["lsr"] == [], f"a request's Bill Text tab asks {got['lsr']}"
+    assert len(got["bill"]) == 1 and got["bill"][0].endswith("versions/2026/HB1.json"), (
+        f"a bill's Bill Text tab no longer asks its versions file: {got['bill']}")
+    return "ok", "a request's row asks nothing; a bill's asks versions/2026/HB1.json"
 
 
 @check("build", "a request's sponsor the roster misses is matched to a winner of the election only where certain: "

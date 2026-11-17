@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.341
+// GRANITE_VERSION: 2026-09-07.342
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -7146,6 +7146,10 @@ function renderVersions(b,d){
 // Fetch whatever the current view needs and redraw when it lands. Everything
 // already here is used from the cache; nothing is asked for twice.
 function needVersions(b){
+  // A BILL REQUEST HAS NO VERSIONS FILE: its Bill Text tab is its own
+  // (lsrTextPane), and since every request has one (17 November 2026) a
+  // press on it asked /versions/<year>/LSR....json, which no build writes.
+  if(b&&b.lsr)return;
   const key=verKey(b);
   // The record is the authority, when it has arrived. On a bill's own page it
   // is inline and this is answered before the first paint; reached from the
