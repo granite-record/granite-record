@@ -1046,6 +1046,8 @@
 "_proposals_reach_labelled_bills",
 "_topic_split_rule",
 "_topic_split_on_disk",
+"_topic_cannabis_rule",
+"_topic_cannabis_on_disk",
 "_bench_fields",
 "_build_lock",
 "_writers_merge",
@@ -1340,5 +1342,6 @@
 "_tag_hand_lists",
 "_tag_plural_y",
 "_tag_provisions",
+"_tag_duties",
 "_no_watch_left"
 ]

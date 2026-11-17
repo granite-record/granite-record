@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.279
+# GRANITE_VERSION: 2026-09-05.280
 """
 Generate the faceted site from real General Court data.
 
@@ -11292,6 +11292,11 @@ def vocabulary_of(s, rec, bid="", term=""):
     it changes (given `term`, from rsa_citations.json) and its title -- a
     request, which has neither a term here nor a text, by its title.
 
+    ONE IS DRAWN FROM ALL THE OTHERS (TM.cannabis_topic, 17 November 2026): a
+    bill or request whose title is about cannabis is Cannabis, whichever name
+    the General Court or the model gave it, but a constitutional amendment and
+    a study, which keep theirs.
+
     ONE PATH FOR EVERY TERM. unify_vocabulary applies it to every record, so
     the 2025-2026 labels and the official codes official_topics.adopt gives the
     archive are mapped by the same lines, and so are the table in
@@ -11309,6 +11314,8 @@ def vocabulary_of(s, rec, bid="", term=""):
     if s in TM.RETIRED and not TM.proposal_for(asked, "first"):
         return None
     new_s = TM.remap_gold(s, asked)
+    if TM.cannabis_topic(new_s, asked.get("title")) == TM.CANNABIS:
+        return TM.CANNABIS
     if new_s in TM.SPLITS:
         return TM.split_topic(new_s, asked.get("title"), statute_chapters(term, bid or asked.get("bill")))
     return TOPIC_WORDS.get(new_s, new_s)
@@ -11320,8 +11327,9 @@ def unify_vocabulary(bills):
     The topic model predicts in the General Court's own 46 categories, which is
     the vocabulary it was measured in -- 62.1% to 67.2% held out. The site's
     own vocabulary is a different thing: five starved categories folded into
-    parents, Regular Meeting retired, Housing and Study Committees added, and
-    two split in two (TM.SPLITS). Applying it inside the model would have meant
+    parents, Regular Meeting retired, Housing and Study Committees added,
+    two split in two (TM.SPLITS) and Cannabis drawn from the rest
+    (TM.cannabis_topic). Applying it inside the model would have meant
     scoring the model against a vocabulary it was not measured in.
 
     So it is applied HERE instead, once, to every bill of every term -- the

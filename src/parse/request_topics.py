@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.5
+# GRANITE_VERSION: 2026-11-12.6
 """
 An initial topic for a bill request, from its title.
 
@@ -90,6 +90,9 @@ jails, inmates, prisoners, parole, probation or corrections is Corrections, and
 a Property answer whose title names personal property, unclaimed property and
 the like is Personal Property. Nothing here is retrained for them: the model
 answers the General Court's name, as it always has, and is measured in it.
+CANNABIS (17 November 2026, topic_model.cannabis_topic) is filed by the title
+for a request and a bill alike: whatever the model answers, a title whose first
+subject is cannabis is Cannabis, but a constitutional amendment's or a study's.
 
 WHAT IS WRITTEN. `topic` and `topic_by = "title"` on the row of every request
 not yet a bill: the topic its title gives, or Miscellaneous. The card and the
