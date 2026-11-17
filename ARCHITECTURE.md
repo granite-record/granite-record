@@ -2435,9 +2435,12 @@ reads a typed name by the search's own rule, read them beside `sponsor`
 (`app.js`, `sponsorNames`). A sponsor the roster misses is
 matched to a winner of the latest general election in the request's own
 chamber, and only where certain: a middle initial, a short nickname pair
-(`NICKNAMES`), a race under recount, a member changing chambers. Two winners of
-one name, a tie, the other chamber and a constitutional amendment request stay
-as typed. A request whose sponsor is not returning is dropped and its address
+(`NICKNAMES`), a race under recount, a member changing chambers, and the name
+the winner's own member record is under where the owner or the step linked
+the winner to it ("Jeffrey Goley" for the ballot's "Jeff Goley"). Two winners
+of one name, a tie and the other chamber stay as typed. A constitutional
+amendment request, which either chamber may file, is matched by the whole name
+alone, where one sitting member, member-elect or winner has it and nobody else. A request whose sponsor is not returning is dropped and its address
 forwards to the requests' list, matched by member and never by name: by the
 members-elect file's races while it is drawn, by the same races worked out
 again from Organization Day, when it retires, while the roster is still the

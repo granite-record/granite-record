@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of members-elect and election results.
 
@@ -120,9 +120,12 @@ def _elect_provisional():
         (site / "meta.json").write_text(json.dumps({"requests": {
             "term": "2027-requests", "label": "2027 Bill Requests"}}), encoding="utf-8")
         # Requests matched by name only where certain: Jane Doe's House bill
-        # is hers, a Senate request of the same name is not, nor Lee Park's
-        # constitutional amendment, which either chamber may file.
+        # is hers, a Senate request of the same name is not; and Lee Park's
+        # constitutional amendment, which either chamber may file, is his,
+        # since nobody else, sitting, elected or a winner, has his name (the
+        # owner, 17 November 2026; _request_sponsor_cacr_and_record).
         who = L.roster(site)
+        park = next(p["slug"] for p in got if p.get("name") == "Lee Park")
         rows, _ = L.rows_from([
             {"lsr": "2027-0010", "title": "relative to tides.", "sponsor": "Jane Doe", "body": "HB"},
             {"lsr": "2027-0011", "title": "relative to dunes.", "sponsor": "Jane Doe", "body": "SB"},
@@ -131,7 +134,7 @@ def _elect_provisional():
             who, year=2027)
         by = {r["n"]: r["sponsor_slug"] for r in rows}
         assert by == {"LSR 2027-0010": "jane-doe-rock-13", "LSR 2027-0011": "",
-                      "LSR 2027-0012": "", "LSR 2027-0013": "jodi-nelson-rock-13"}, (
+                      "LSR 2027-0012": park, "LSR 2027-0013": "jodi-nelson-rock-13"}, (
             f"the requests are matched {by}")
         (site / "idx" / "2027-requests.json").write_text(json.dumps(rows), encoding="utf-8")
         # The template every page is drawn from, as the build has it in site/.

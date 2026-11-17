@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1901,6 +1901,82 @@ def _request_sponsor_winner(build_lsrs):
     assert base[0] == rows[0], "a row the roster matched is identical with or without winners"
     return "ok", ("winners match only in the request's chamber; initials and tabled nicknames; "
                   "a rival of the same surname and initial, a twin, a tie and the other chamber refuse")
+
+
+@check("build", "a constitutional amendment request's sponsor is matched by the whole name where one "
+                "person alone has it, and a winner by the name their member's record is under where "
+                "the owner tied the two", needs=("build_lsrs",))
+def _request_sponsor_cacr_and_record(build_lsrs):
+    """The owner, 17 November 2026: three of the 619 requests on the live list matched nobody
+    and read "Party not on file". LSR 2027-0646 and 2027-0592, constitutional amendment
+    requests of the members-elect Colin Mitchell (Carroll 8, whose House requests were his)
+    and W. Gordon Allen (Hillsborough 30): a member-elect's match held only for a request of
+    their chamber, and a CACR has none. And LSR 2027-0556, "Jeffrey Goley", re-elected on a
+    ballot that printed "Jeff Goley": a short form is never taken on a name alone, but the
+    owner matched that winner to former member 460, "Goley, Jeffrey" (corrections/
+    members_elect.json), and that record ties the two names.
+
+    build_lsrs, on those rows: a CACR's sponsor is the one sitting member, member-elect or
+    winner of either chamber with the whole name, and nobody where another winner, or two
+    sitting members, have it; the record's name counts only where the owner or the step
+    linked the winner ("s"), so without it Jeffrey is not Jeff."""
+    L = build_lsrs
+    results = {"races": {
+        "H|Carroll|8": {"candidates": [{"name": "Colin Mitchell", "party": "r", "elected": True}]},
+        "H|Hillsborough|30": {"candidates": [{"name": "W. Gordon Allen", "party": "d", "elected": True}]},
+        "H|Hillsborough|21": {"candidates": [{"name": "Jeff Goley", "party": "d", "elected": True}]},
+        "H|Cheshire|1": {"candidates": [{"name": "Dale Twin", "party": "r", "elected": True}]},
+        "S|5": {"candidates": [{"name": "Dale Twin", "party": "d", "elected": True}]}}}
+    drawn = {"H|Carroll|8": {"elected": [{"n": "Colin Mitchell", "p": "R", "k": "new",
+                                          "e": "colin-mitchell-carr-8"}]},
+             "H|Hillsborough|30": {"elected": [{"n": "W. Gordon Allen", "p": "D", "k": "new",
+                                                "e": "w-gordon-allen-hills-30"}]},
+             "H|Hillsborough|21": {"elected": [{"n": "Jeff Goley", "p": "D", "k": "former", "id": "460",
+                                                "s": "jeffrey-goley-hills-21"}]}}
+    pages = [{"slug": "colin-mitchell-carr-8", "name": "Colin Mitchell", "race": "H|Carroll|8"},
+             {"slug": "w-gordon-allen-hills-30", "name": "W. Gordon Allen", "race": "H|Hillsborough|30"}]
+    people = [{"name": "Goley, Jeffrey", "county": "Hills", "slug": "jeffrey-goley-hills-21"}]
+    ws = L.election_winners(results, drawn, pages, people)
+    find = L.winner_finder(ws)
+    goley = ("Jeff Goley (D)", "jeffrey-goley-hills-21", "H")
+    assert find("Jeffrey Goley", "HB") == goley, (
+        f"the name the owner's match's record is under: {find('Jeffrey Goley', 'HB')}")
+    unlinked = L.winner_finder(L.election_winners(
+        results, {k: v for k, v in drawn.items() if k != "H|Hillsborough|21"}, pages, people))
+    assert unlinked("Jeffrey Goley", "HB") is None, "a short form taken on a name alone"
+    assert find("Colin Mitchell", "CACR") == ("Colin Mitchell (R)", "colin-mitchell-carr-8", "H")
+    assert find("Jeffrey Goley", "CACR") == goley, "a CACR by the record's whole name"
+    assert find("Col Mitchell", "CACR") is None and find("Gordon Allen", "CACR") is None, (
+        "a CACR matched by less than the whole name")
+    assert find("Dale Twin", "CACR") is None, "two winners of one name, one in each chamber: nobody"
+    # rows_from, with the members-elect's provisional pages on the roster's map as roster() puts
+    # them, and two sitting members of one name (None).
+    who = {"colinmitchell": ("Colin Mitchell (R)", "colin-mitchell-carr-8", "H"),
+           "wgordonallen": ("W. Gordon Allen (D)", "w-gordon-allen-hills-30", "H"),
+           "daletwin": ("Dale Twin (R)", "dale-twin-ches-1", "H"),
+           "patsame": None}
+    req = lambda n, body, who_: {"lsr": f"2027-{n}", "session": 2027, "body": body, "title": "t.",
+                                 "sponsor": who_}
+    lsrs = [req("0646", "CACR", "Colin Mitchell"), req("0651", "HB", "Colin Mitchell"),
+            req("0592", "CACR", "W. Gordon Allen"), req("0556", "HB", "Jeffrey Goley"),
+            req("0901", "SB", "Colin Mitchell"), req("0902", "CACR", "Dale Twin"),
+            req("0903", "CACR", "Pat Same"), req("0904", "CACR", "Jeff Goley")]
+    ws.append({"name": "Pat Same", "party": "R", "chamber": "S", "race": "S|9", "slug": "",
+               "label": "Pat Same (R)", "names": ["Pat Same"]})
+    rows, unmatched = L.rows_from(lsrs, who, {}, 2027, ws)
+    by = {r["n"][4:]: (r["sponsor_slug"], r.get("sponsor_party", "")) for r in rows}
+    want = {"2027-0646": ("colin-mitchell-carr-8", "R"), "2027-0651": ("colin-mitchell-carr-8", "R"),
+            "2027-0592": ("w-gordon-allen-hills-30", "D"), "2027-0556": ("jeffrey-goley-hills-21", "D"),
+            "2027-0901": ("", ""), "2027-0902": ("", ""), "2027-0903": ("", ""),
+            "2027-0904": ("jeffrey-goley-hills-21", "D")}
+    bad = [f"{n}: {by.get(n)}, not {w}" for n, w in want.items() if by.get(n) != w]
+    assert not bad, "a request's sponsor matched otherwise than the rule says: " + "; ".join(bad)
+    assert sorted(unmatched) == ["Colin Mitchell", "Dale Twin", "Pat Same"], unmatched
+    return "ok", ("Colin Mitchell's and W. Gordon Allen's constitutional amendment requests are "
+                  "theirs, by the whole name no one else has; Jeffrey Goley's is the winner Jeff "
+                  "Goley's, whom the owner matched to his record, and is nobody's without it; a "
+                  "CACR by less than the whole name, by a name two winners or two sitting "
+                  "members share, and a member-elect's Senate request match nobody")
 
 
 @check("build", "a withdrawn request of a member who is not returning is dropped and its address forwards; "

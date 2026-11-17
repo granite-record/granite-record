@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.26
+# GRANITE_VERSION: 2026-09-18.27
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -337,7 +337,15 @@ def election_winners(results, drawn, pages, people):
     of a new member-elect; and, for a House winner drawn in neither (a race not
     final), the one sitting or former member of the same county whose name is
     compatible. A winner with none links nowhere and still carries the party
-    they ran under. A tie (elected not True) names nobody."""
+    they ran under. A tie (elected not True) names nobody.
+
+    AND THE NAME THEIR MEMBER'S RECORD IS UNDER (17 November 2026), as
+    "names", beside the ballot's: only where the step or the owner matched the
+    winner to a sitting or former member ("s"). The ballot printed "Jeff
+    Goley"; the owner matched him to member 460, "Goley, Jeffrey"; and his
+    request is filed as "Jeffrey Goley", which matched nobody, because a short
+    form is never taken on a name alone (NICKNAMES). That record ties the two."""
+    by_slug = {m.get("slug"): m for m in people if m.get("slug")}
     out = []
     for key, race in sorted((results.get("races") or {}).items()):
         ch = key.split("|")[0]
@@ -360,8 +368,13 @@ def election_winners(results, drawn, pages, people):
                         and county.lower().startswith(str(m["county"]).lower())
                         and m.get("slug") and compatible(first_last(m.get("name")), name)[0]]
                 slug = hits[0]["slug"] if len(hits) == 1 else ""
+            names = [name]
+            rec = first_last((by_slug.get(e.get("s")) or {}).get("name")) if e.get("s") else ""
+            if rec and _fold(rec) != _fold(name):
+                names.append(rec)
             out.append({"name": name, "party": party, "chamber": ch, "race": key,
-                        "slug": slug, "label": f"{name} ({party})" if party else name})
+                        "slug": slug, "label": f"{name} ({party})" if party else name,
+                        "names": names})
     return out
 
 
@@ -373,16 +386,28 @@ def winner_finder(winners):
     the whole name is the same, or no other winner of the chamber shares their
     surname and first initial (so "James Q. Smith" is not settled by "James
     Smith" while a "John Smith" also won). Two winners of the same whole name are
-    nobody. A constitutional amendment request (no chamber) is never resolved
-    here."""
+    nobody. A winner's names are the ballot's and the one their member's record
+    is under (election_winners' "names").
+
+    A CONSTITUTIONAL AMENDMENT REQUEST, which either chamber may file (no
+    chamber; 17 November 2026): the one winner of either chamber whose whole
+    name it is, and nobody where two are; never by an initial or a short form.
+    rows_from asks only where no sitting member or member-elect has the name."""
+    def names(w):
+        return w.get("names") or [w["name"]]
+
     def find(name, body):
         ch = chamber_of(body)
-        if not ch or not _parts(name):
+        if not _parts(name):
             return None
+        if not ch:
+            same = [w for w in winners if any(_fold(n) == _fold(name) for n in names(w))]
+            return (same[0]["label"], same[0]["slug"], same[0]["chamber"]) if len(same) == 1 else None
         pool = [w for w in winners if w["chamber"] == ch]
         ok = []
         for w in pool:
-            good, exact = compatible(name, w["name"])
+            said = [compatible(name, n) for n in names(w)]
+            good, exact = any(g for g, _ in said), any(x for _, x in said)
             if good:
                 ok.append((w, exact))
         exact = [w for w, x in ok if x]
@@ -723,6 +748,31 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
     year = year or newest_session(lsrs)[0]
     find = winner_finder(winners) if winners else (lambda name, body: None)
     term, _label = requests_term(year)
+    # The pages the winners of each whole name link to, a winner with none
+    # counted as somebody else: a constitutional amendment request's member-
+    # elect holds only where no other winner has their name (match, below).
+    named = {}
+    for i, w in enumerate(winners or []):
+        for n in w.get("names") or [w["name"]]:
+            named.setdefault(_fold(n), set()).add(w.get("slug") or f"#{i}")
+
+    def match(name, body):
+        """(label, slug[, chamber]) for a sponsor's name, or None.
+
+        A member-elect's match holds only for a request of their chamber -- or
+        for a constitutional amendment request, which either chamber may file,
+        where no winner of another page has the whole name (17 November 2026:
+        CACR 2027-0646, Colin Mitchell's, matched nobody while his House
+        requests were his). Where the roster has nobody, a winner of the
+        election (winner_finder); for a constitutional amendment request only
+        where no sitting member or member-elect has the name either."""
+        hit = who.get(_fold(name))
+        if hit and len(hit) > 2 and chamber_of(body) != hit[2]:
+            if chamber_of(body) is not None or named.get(_fold(name), {hit[1]}) - {hit[1]}:
+                hit = None
+        if name and not hit and not (chamber_of(body) is None and _fold(name) in who):
+            hit = find(name, body)
+        return hit
     rows, unmatched = [], []
     for r in lsrs:
         num = str(r.get("lsr") or "").strip()
@@ -738,12 +788,7 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
         pdf = pdf if pdf.startswith(("https://", "http://")) else ""
         body = str(r.get("body") or "").upper()
         name = str(r.get("sponsor") or "").strip()
-        hit = who.get(_fold(name))
-        # A member-elect's match holds only for a request of their chamber.
-        if hit and len(hit) > 2 and chamber_of(body) != hit[2]:
-            hit = None
-        if name and not hit:
-            hit = find(name, body)
+        hit = match(name, body)
         if name and not hit:
             unmatched.append(name)
         # The co-sponsors, matched as the prime sponsor is (a name that
@@ -752,11 +797,7 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
         co = []
         for c in r.get("cosponsors") or []:
             c = str(c or "").strip()
-            h = who.get(_fold(c))
-            if h and len(h) > 2 and chamber_of(body) != h[2]:
-                h = None
-            if c and not h:
-                h = find(c, body)
+            h = match(c, body)
             if c:
                 co.append({"label": h[0] if h else c, "slug": h[1] if h else "", "name": c,
                            **({"party": party_of(h[0])} if h and party_of(h[0]) else {})})
