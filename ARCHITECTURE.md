@@ -2362,7 +2362,13 @@ chamber, and only where certain: a middle initial, a short nickname pair
 (`NICKNAMES`), a race under recount, a member changing chambers. Two winners of
 one name, a tie, the other chamber and a constitutional amendment request stay
 as typed. A request whose sponsor is not returning is dropped and its address
-forwards to the requests' list, matched by member and never by name. A
+forwards to the requests' list, matched by member and never by name: by the
+members-elect file's races while it is drawn, by the same races worked out
+again from Organization Day, when it retires, while the roster is still the
+old term's (`election_races`), and once the roster is the new term's by the
+roster itself, each member of the old term not on it (`departed`), whom a
+request's sponsor is matched to as a sitting member is and drawn by name and
+party, never the seat they left. A
 request's topic comes from its title alone (`src/parse/request_topics.py`: the
 topic classifier with the committee left out, learned from every term's official
 code with the current term's counted three times, and Miscellaneous below its
