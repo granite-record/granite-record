@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-17.1
+# GRANITE_VERSION: 2026-11-17.2
 """
-The Secretary of State's count of a general election's races for Governor
-and United States Senator, read into collected/election_offices_<year>.json,
-for 2016 to 2026 (the elections plan's stage 4, readers only: nothing on the
-site reads these files yet).
+The Secretary of State's count of a general election's races for Governor,
+United States Senator, Representative in Congress and Executive Councilor,
+read into collected/election_offices_<year>.json, for 2016 to 2026 (the
+elections plan's stage 4, readers only: nothing on the site reads these
+files yet).
 
     python3 src/parse/parse_sos_offices.py --year 2026        # write one year
     python3 src/parse/parse_sos_offices.py --all              # every year on disk
@@ -21,6 +22,9 @@ network):
     <year>-ge-governor-summary.xlsx          2026: the summary in a file of its
     <year>-ge-governor-<county>.xlsx         own, and a file for each county
     (and the same for us-senator)
+    <year>-[ge-]congressional-district-<n>[_N].xlsx      a district a file
+    <year>-[ge-]executive-council-district-1-5[_N].xls   2016-2024: a district a sheet
+    <year>-ge-executive-council-<n>.xlsx                  2026: a district a file
 
 A recount's later upload of a name (_N) replaces the earlier, as the House
 reader has it (parse_sos_results.latest).
@@ -42,6 +46,15 @@ full names; the county blocks of 2016-2022 print a surname ("Sununu, r") and
 sometimes another party label ("l" for the summary's "lib") and another
 order (2022's US Senator), so a county's column is matched to the summary's
 by name and party, one to one, or the file is refused.
+
+A DISTRICT OFFICE'S SHEET (Congress, the Council) is one district: its
+titles say the State and "Congressional District 1" or "Executive Council -
+District No. 1", then a header row whose first cell is the day, a row per
+town or ward across the counties, and Totals. A file holds exactly the
+districts its name says, and a district with no file is listed as not on
+file. Such a race's count is its places' sum, as the House reader's is (a
+RECOUNT column's where one follows a count), and the reader refuses a race
+that the printed Totals would give to someone else.
 
 WHAT IT WRITES, per race: the candidates with their parties and counts, who
 the count elects (the files mark no winner: the most votes; a tie is null),
@@ -106,6 +119,22 @@ OFFICES = {
                   "title": re.compile(r"^united states senator$", re.I),
                   "file": "us-senator"},
 }
+# The offices elected by district, each its sheets' title: one district a
+# sheet. How many districts each has is the settings' (office_districts).
+DISTRICT_OFFICES = {
+    "us-house": {"name": "Representative in Congress",
+                 "title": re.compile(r"^congressional district\s+(\d+)$", re.I),
+                 "file": "congressional-district"},
+    "executive-council": {"name": "Executive Councilor",
+                          "title": re.compile(r"^executive council\s*-\s*district no\.?\s*(\d+)$",
+                                              re.I),
+                          "file": "executive-council"},
+}
+# 2016-2024: -congressional-district-1, -executive-council-district-1-5 (2020
+# and 2022 without "ge-"); 2026: -executive-council-1 to -5.
+DISTRICT_FILE = re.compile(r"^(?P<y>\d{4})-(?:ge-)?(?P<office>congressional-district|"
+                           r"executive-council)-(?:district-)?(?P<a>\d+)(?:-(?P<b>\d+))?"
+                           r"(?:_\d+)?\.xlsx?$")
 STATEWIDE_FILE = re.compile(r"^(?P<y>\d{4})-(?:ge-)?(?P<office>governor|us-senator)"
                             r"(?:-(?P<part>[a-z]+))?(?:_\d+)?\.xlsx?$")
 SUMMARY = re.compile(r"^summary by counties$", re.I)
@@ -176,12 +205,33 @@ def count(v, kind, where, col):
 
 VOTE_KINDS = ("candidate", "write_in_named")
 META_KINDS = {"scatter": "write_ins_scattered", "under": "undervotes", "over": "overvotes"}
+# A header cell the official record prints in a way no rule reads, by file
+# and its exact text, read as the cell it is, with why (a typo flags, not
+# fails). 2016's first congressional district prints two names after the
+# Scatter column with no party, where each candidate on the ballot carries
+# one: write-ins it names, as the House files of those years mark "w-in".
+_AFTER_SCATTER = ("a name with no party after the Scatter column, where every candidate on the "
+                  "ballot carries a party: a write-in the file names")
+HEADER_FIXES = {
+    ("2016-ge-congressional-district-1.xlsx", "Ashooh"): ("Ashooh w-in", _AFTER_SCATTER),
+    ("2016-ge-congressional-district-1.xlsx", "John Potucek"): ("John Potucek w-in",
+                                                               _AFTER_SCATTER),
+}
 
 
-def heads(row, where, legacy):
+def heads(row, where, legacy, notes=None):
     """The columns a header row names, as parse_sos_results.entities reads
     them, each given its row kind: candidate, write_in_named, or one of the
-    counts that are no candidate's."""
+    counts that are no candidate's. A header cell HEADER_FIXES names is read
+    as it says, and said in `notes`."""
+    row = list(row)
+    name = where.split(",")[0]
+    for c, v in enumerate(row):
+        fix = HEADER_FIXES.get((name, v)) if isinstance(v, str) else None
+        if fix:
+            row[c] = fix[0]
+            if notes is not None:
+                notes.append(f"{where}: the header prints {v!r}, read as {fix[0]!r}: {fix[1]}")
     out = []
     for e in PSR.entities(row, 1, where, legacy):
         if e.get("blc") is not None or e.get("header_count") is not None:
@@ -256,19 +306,29 @@ def match_columns(full, short, where):
 # ---- a block: a header row, its rows and its Totals ----------------------------------
 
 class Block:
-    """A header row, the rows of places under it and the Totals row."""
+    """A header row, the rows of places under it and the Totals row. Its
+    columns (`cols`) are each entity's count and, where a RECOUNT column
+    follows it, the recount's: (entity, 0) and (entity, 1). `span` is the
+    columns the block owns, where a sheet holds several side by side (the
+    county offices); None for all of them."""
 
-    def __init__(self, label, ents, where, path, sheet):
+    def __init__(self, label, ents, where, path, sheet, span=None):
         self.label, self.ents, self.where = label, ents, where
-        self.path, self.sheet = path, sheet
+        self.path, self.sheet, self.span = path, sheet, span
         self.rows, self.totals, self.notes = [], None, []
+        self.cols = [(e, k) for e in ents for k in (0, 1) if k == 0 or e["recount"] is not None]
 
     def at(self, where):
         m = re.search(r"row (\d+)$", where)
         return [self.path.name, self.sheet, int(m.group(1))]
 
+    def race_col(self, e):
+        """The index in `cols` of the count an entity's race total is made
+        of: its recount's where it has one."""
+        return self.cols.index((e, 1 if e["recount"] is not None else 0))
+
     def read(self):
-        """({place: [count per entity]}, [the Totals' figure per entity, None
+        """({place: [count per column]}, [the Totals' figure per column, None
         where it prints none], [disagreements]). A named write-in's empty
         cell is nought where the Totals account for it, as the House reader
         has it; a candidate's empty cell in a row of counts is refused."""
@@ -276,30 +336,34 @@ class Block:
         named = {c for e in self.ents for c in (e["col"], e.get("recount")) if c is not None}
         for place, row, where in self.rows + ([(None, *self.totals)] if self.totals else []):
             # A column no header names holds nothing (2026 prints 0 in its Totals).
-            stray = [c for c, v in enumerate(row) if c and c not in named and v is not None
-                     and v != 0 and not (isinstance(v, str) and PSR.DASHES.fullmatch(v.strip()))]
+            span = self.span if self.span is not None else range(1, len(row))
+            stray = [c for c in span if c < len(row) and c not in named and row[c] is not None
+                     and row[c] != 0 and not (isinstance(row[c], str)
+                                              and PSR.DASHES.fullmatch(row[c].strip()))]
             if stray:
                 raise Refused(f"{where}: {row[stray[0]]!r} in column {stray[0] + 1}, which no "
                               "header names")
+
+        def cell(row, e, k, where):
+            c = e["col"] if k == 0 else e["recount"]
+            return count(row[c] if c < len(row) else None, e["kind"], where, c)
         for place, row, where in self.rows:
             if place in seen:
                 raise Refused(f"{where}: {place} twice under one header")
             seen.add(place)
-            cells = [count(row[e["col"]] if e["col"] < len(row) else None, e["kind"], where,
-                           e["col"]) for e in self.ents]
-            for e, v in zip(self.ents, cells):
+            cells = [cell(row, e, k, where) for e, k in self.cols]
+            for (e, k), v in zip(self.cols, cells):
                 if v is None and e["kind"] == "candidate":
-                    raise Refused(f"{where}: {place} prints no count for {label(e)}")
+                    raise Refused(f"{where}: {place} prints no count for {col_label(e, k)}")
             got[place] = cells
         if not got:
             raise Refused(f"{self.where}: a header with no rows of counts under it")
-        printed = [None] * len(self.ents)
+        printed = [None] * len(self.cols)
         bad = []
         if self.totals is not None:
             row, where = self.totals
-            for i, e in enumerate(self.ents):
-                said = count(row[e["col"]] if e["col"] < len(row) else None, e["kind"], where,
-                             e["col"])
+            for i, (e, k) in enumerate(self.cols):
+                said = cell(row, e, k, where)
                 printed[i] = said
                 if said is None:
                     continue
@@ -307,21 +371,25 @@ class Block:
                 if empty and e["kind"] == "write_in_named":
                     for p in empty:
                         got[p][i] = 0
-                    self.notes.append(f"{where}: {label(e)} has an empty cell for "
+                    self.notes.append(f"{where}: {col_label(e, k)} has an empty cell for "
                                       f"{', '.join(empty)}; read as none, as the Totals "
                                       "account for it")
                 total = sum(v[i] or 0 for v in got.values())
                 if total != said:
                     bad.append({"check": "a column's places sum to the file's Totals",
-                                "what": f"{self.label}: {label(e)}, the places add up to "
+                                "what": f"{self.label}: {col_label(e, k)}, the places add up to "
                                         f"{total:,}, the file's Totals say {said:,}",
                                 "where": where})
-        for e in self.ents:
-            if e["kind"] == "write_in_named" and any(v[self.ents.index(e)] is None
-                                                     for v in got.values()):
-                raise Refused(f"{self.where}: {label(e)} has an empty cell and no Totals "
+        for i, (e, k) in enumerate(self.cols):
+            if e["kind"] == "write_in_named" and any(v[i] is None for v in got.values()):
+                raise Refused(f"{self.where}: {col_label(e, k)} has an empty cell and no Totals "
                               "account for it")
         return got, printed, bad
+
+
+def col_label(e, k):
+    """A column's name: the entity's, and " (recount)" for its recount's."""
+    return label(e) + (" (recount)" if k else "")
 
 
 def footnote(block, text, where, width):
@@ -500,6 +568,10 @@ def settle_statewide(year, key, election, summ, by_county, read, notes):
     office = OFFICES[key]
     contest = f"{election.isoformat()}.general.{key}.statewide"
     cols = summ.ents
+    for b in [summ, *by_county.values()]:
+        if any(e["recount"] is not None for e in b.ents):
+            raise Refused(f"{b.where}: a RECOUNT column, which no statewide file is known to "
+                          "print")
     rows, printed, bad = summ.read()
     notes.extend(summ.notes)
     if sorted(rows) != sorted(COUNTIES):
@@ -603,6 +675,182 @@ def candidate_id(contest, c):
     return f"{contest}.{ETR.slug(c['name'])}" + (f"-{ETR.slug(c['party'])}" if c["party"] else "")
 
 
+# ---- the district offices: Congress and the Executive Council ------------------------
+
+def office_districts(key):
+    """How many districts elect one each, from the settings' office list
+    (Const. Pt. 2, Art. 60 and 65 for the Council; two for Congress)."""
+    return {o["office"]: o for o in ST.SETTINGS["offices"]}[key]["seats"]
+
+
+def district_files(root, year, key):
+    """{"parts": {(first, last): path}, "missing": [district, ...],
+    "replaced": [(earlier, later)]}: the year's saved files of a district
+    office, each part's latest upload once, grouped by the districts their
+    names say they hold (2016-2024's -district-1-5, 2026's -1 to -5); None
+    where none is on disk."""
+    office = DISTRICT_OFFICES[key]
+    d = Path(root) / SOURCES
+    parts, replaced = {}, []
+    for p in sorted(d.glob(f"{year}-*")) if d.is_dir() else []:
+        m = DISTRICT_FILE.match(p.name)
+        if not m or m.group("y") != str(year) or m.group("office") != office["file"]:
+            continue
+        a = int(m.group("a"))
+        parts.setdefault((a, int(m.group("b") or a)), []).append(p)
+    if not parts:
+        return None
+    n = office_districts(key)
+    beyond = [ps[-1].name for s, ps in parts.items() if s[0] < 1 or s[0] > s[1] or s[1] > n]
+    if beyond:
+        raise Refused(f"{', '.join(beyond)}: named for districts outside 1 to {n}, or backwards")
+    missing, overlaps = PSR.senate_unheld(parts, n)
+    if overlaps:
+        d0, spans = overlaps[0]
+        raise Refused(f"{office['name']} district {d0} is named by more than one saved file -- "
+                      + "; ".join(parts[s][-1].name for s in spans))
+    return {"parts": {s: PSR.latest(ps, f"the {office['name']} results for "
+                                        f"{PSR.span_words(s)}", replaced)
+                      for s, ps in sorted(parts.items())},
+            "missing": missing, "replaced": replaced}
+
+
+def district_blocks(path, key, election, legacy, notes):
+    """{district: Block} of one file of a district office: a sheet a
+    district, its titles the State and "Congressional District 1" or
+    "Executive Council - District No. 1", then a header row whose first cell
+    is the election's day, a row per town or ward, and Totals."""
+    office = DISTRICT_OFFICES[key]
+    out = {}
+    for sheet, rows in PSR.sheets(path):
+        def at(i, sheet=sheet):
+            return f"{path.name}, sheet {sheet!r}, row {i + 1}"
+        n, said_state, cur = None, False, None
+        for i, row in enumerate(rows):
+            row = trimmed(row)
+            if not row:
+                continue
+            head = row[0]
+            cells = [c for c in row if c is not None]
+            if cur is None:
+                one = cells[0].strip() if len(cells) == 1 and isinstance(cells[0], str) else None
+                if one and TITLE.search(one):
+                    years = re.findall(r"\b(?:19|20)\d\d\b", one)
+                    if years and years != [str(election.year)]:
+                        raise Refused(f"{at(i)}: {one!r} is the title of another election")
+                    said_state = True
+                    continue
+                m = office["title"].match(one) if one else None
+                if m and n is None:
+                    n = int(m.group(1))
+                    continue
+                day = day_of(head)
+                if said_state and n is not None and day is not None:
+                    if day != election:
+                        raise Refused(f"{at(i)}: the header's day is {day}, not the election of "
+                                      f"{election}")
+                    cur = Block(f"district {n}", heads(row, at(i), legacy, notes), at(i), path,
+                                sheet)
+                    continue
+                raise Refused(f"{at(i)}: {row!r} before the sheet's titles name the State and "
+                              f"the {office['name']}'s district, and a header begins with the day")
+            if PSR.is_totals(head):
+                if cur.totals is not None:
+                    raise Refused(f"{at(i)}: a second Totals row under one header")
+                cur.totals = (row, at(i))
+                continue
+            if isinstance(head, str) and head.startswith("*"):
+                footnote(cur, head, at(i), len(row))
+                continue
+            if not isinstance(head, str):
+                raise Refused(f"{at(i)}: {head!r} where a place's name belongs")
+            if cur.totals is not None:
+                raise Refused(f"{at(i)}: a row of counts after the Totals")
+            cur.rows.append((place_name(head), row, at(i)))
+        if cur is None:
+            if n is None and not said_state:
+                continue  # a sheet with nothing on it
+            raise Refused(f"{path.name}, sheet {sheet!r}: no header of a district's counts")
+        if n in out:
+            raise Refused(f"{cur.where}: {office['name']} district {n} twice in one file")
+        out[n] = cur
+    return out
+
+
+def settle_block(key, district, block, election, seats, notes):
+    """(race, disagreements) of a race read from one block: its count is its
+    places' sum, as the House reader's is (a recount's where the file prints
+    one), and a race that the printed Totals would give to someone else is
+    refused. `seats` None is a race the file prints no number of seats for:
+    its counts are kept, and no one is marked elected."""
+    contest = f"{election.isoformat()}.general.{key}.{ETR.slug(str(district))}"
+    got, printed, bad = block.read()
+    notes.extend(block.notes)
+    sums = [sum(v[i] or 0 for v in got.values()) for i in range(len(block.cols))]
+    shown_any = [any(v[i] is not None for v in got.values()) for i in range(len(block.cols))]
+    votes = [e for e in block.ents if e["kind"] in VOTE_KINDS]
+    cands = [{"name": e["name"], "party": e["party"], "votes": sums[block.race_col(e)],
+              "write_in": e["kind"] == "write_in_named"} for e in votes]
+    meta = {k: None for k in META_KINDS.values()}
+    for e in block.ents:
+        if e["kind"] in meta and shown_any[block.race_col(e)]:
+            meta[e["kind"]] = sums[block.race_col(e)]
+    where = block.where
+    if seats is None:
+        shown = [dict(c, elected=None) for c in cands]
+    else:
+        shown = PSR.elect(cands, seats, where, meta["write_ins_scattered"])
+        if bad:
+            alt = [dict(c, votes=printed[block.race_col(e)]
+                        if printed[block.race_col(e)] is not None else c["votes"])
+                   for c, e in zip(cands, votes)]
+            if [c["elected"] for c in PSR.elect(alt, seats, where)] != [
+                    c["elected"] for c in shown]:
+                raise Refused(f"{where}: a column adds up differently from the file's Totals, "
+                              "and the two figures elect different people")
+        if meta["write_ins_scattered"] is None:
+            notes.append(f"{where}: the file counts no scattered write-ins, so whether a "
+                         "write-in it does not name won could not be checked")
+    for c in shown:
+        c["id"] = candidate_id(contest, c)
+    race = {"office": key, "district": district, "seats": seats, "contest": contest,
+            "count_from": "the places' sum",
+            "columns": [col_label(e, k) for e, k in block.cols], "candidates": shown,
+            "scatter": meta["write_ins_scattered"], "undervotes": meta["undervotes"],
+            "overvotes": meta["overvotes"]}
+    if any(k for _e, k in block.cols):
+        race["recounted"] = True
+    race["places"] = [[None, p, got[p], *block.at(w)] for (p, _r, w) in block.rows]
+    race["printed"] = ([["Totals", printed, *block.at(block.totals[1])]]
+                       if block.totals is not None else [])
+    return race, bad
+
+
+def read_district(root, year, key, election, notes):
+    """({race key: race}, [files read], [disagreements], [districts not on
+    file]) for one district office, or (None, [], [], []) where no file of it
+    is on disk."""
+    office = DISTRICT_OFFICES[key]
+    legacy = year <= LEGACY_UNTIL
+    files = district_files(root, year, key)
+    if files is None:
+        return None, [], [], []
+    notes.extend(f"{new.name} is read, and replaces {old.name}: the Secretary of State's later "
+                 "upload of the same results" for old, new in files["replaced"])
+    races, read, bad = {}, [], []
+    for (a, b), path in files["parts"].items():
+        read.append(path)
+        got = district_blocks(path, key, election, legacy, notes)
+        if sorted(got) != list(range(a, b + 1)):
+            raise Refused(f"{path.name} holds district(s) {', '.join(map(str, sorted(got)))}; its "
+                          f"name says {PSR.span_words((a, b))}")
+        for n in sorted(got):
+            race, d = settle_block(key, n, got[n], election, 1, notes)
+            races[f"{key}|{n}"] = race
+            bad += d
+    return races, read, bad, files["missing"]
+
+
 # ---- the tie-out ------------------------------------------------------------------
 
 def where_of(at):
@@ -661,11 +909,14 @@ def tie_out(doc):
         if any(v["towns"] is None for v in (race.get("counties") or {}).values()):
             continue
         for k, cand in enumerate(race["candidates"]):
-            i = cols.index(f"{cand['name']}, {cand['party']}" if cand["party"] else cand["name"])
+            name = f"{cand['name']}, {cand['party']}" if cand["party"] else cand["name"]
+            i = cols.index(name + " (recount)" if name + " (recount)" in cols else name)
             got = sum(p[2][i] or 0 for p in race["places"])
+            # A race of one place prints no Totals: its row is where to look.
+            at = race["printed"][0][2:] if race["printed"] else race["places"][0][3:6]
             note("a race's count is its places' sum", got == cand["votes"],
                  f"{key}: {cols[i]}, the places add up to {got:,}, the race's count is "
-                 f"{cand['votes']:,}", where_of(race["printed"][0][2:]))
+                 f"{cand['votes']:,}", where_of(at))
     return {"checks": {k: checks[k] for k in sorted(checks)}, "disagreements": bad}
 
 
@@ -702,13 +953,25 @@ def read_year(root, year, registry=None):
         # in the tie-out, and the race keeps the count it names.
         notes.extend(f"{d['where']}: {d['what']}; the race's count is {race['count_from']}"
                      for d in b)
+    for key, office in DISTRICT_OFFICES.items():
+        got, read, b, gone = read_district(root, year, key, election, notes)
+        if got is None:
+            missing.append(office["name"])
+            continue
+        if gone:
+            missing.append(f"{office['name']}, district " + ", ".join(map(str, gone)))
+        races.update(got)
+        files += read
+        notes.extend(f"{d['where']}: {d['what']}; the race's count is the places' sum"
+                     for d in b)
     doc = {"_about": [
         "What the Secretary of State's results files say of the races for "
-        + ", ".join(o["name"] for o in OFFICES.values())
+        + ", ".join(o["name"] for o in (*OFFICES.values(), *DISTRICT_OFFICES.values()))
         + ", read by src/parse/parse_sos_offices.py from the files named in _source. Nothing in "
         "it is this project's decision but the winners, which the files do not mark: the "
         "candidate with the most votes; a tie is null. A race's count is the summary's Totals "
-        "where the files print a summary. Nothing on the site reads this file yet.",
+        "where the files print a summary of the counties, and its places' sum where they do not. "
+        "Nothing on the site reads this file yet.",
         "Write it again by running the reader, never by hand: --check says where the saved files "
         "and this disagree."],
         "_source": [described(p, root, registry) for p in files],
@@ -787,7 +1050,8 @@ def load_registry(path):
 
 def years_on_disk(root="."):
     d = Path(root) / SOURCES
-    return [y for y in YEARS if any(STATEWIDE_FILE.match(p.name) for p in d.glob(f"{y}-*"))]
+    return [y for y in YEARS if any(STATEWIDE_FILE.match(p.name) or DISTRICT_FILE.match(p.name)
+                                    for p in d.glob(f"{y}-*"))]
 
 
 def main():

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 preflight's checks of members-elect and election results.
 
@@ -3218,6 +3218,112 @@ def _offices_statewide_logic(PSO):
                   "row; a missing county, an unknown column and another winner refused")
 
 
+def _offices_council_book(path, fix=None):
+    """A made-up 2020 Executive Council workbook: a sheet a district, Ann
+    Able ahead in each; `fix(n, rows)` changes a district's rows."""
+    import openpyxl
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    for n in range(1, 6):
+        towns = [[f"Town {n}A", 30 + n, 20, 1], [f"Town {n}B", 10, 5, 0]]
+        rows = [["State of New Hampshire - General Election"],
+                [f"Executive Council - District No. {n}"],
+                ["November 3, 2020", "Ann Able, r", "Bob Baker, d", "Scatter"],
+                *towns, ["Totals", *[sum(t[k] for t in towns) for k in (1, 2, 3)]]]
+        if fix:
+            rows = fix(n, rows)
+        ws = wb.create_sheet(f"council {n}")
+        for r in rows:
+            ws.append(r)
+    wb.save(path)
+
+
+@check("build", "other offices' results: the district reader reads Congress and the Council a "
+                "district a sheet, holds a file to the districts its name says, records a Totals "
+                "row its towns do not make, reads a recount's column, and refuses the rest",
+       needs=("parse_sos_offices",))
+def _offices_district_logic(PSO):
+    """The reader of the Representative in Congress's and Executive
+    Councilor's files, on made-up ones: 2020's one Council workbook of five
+    sheets, and 2026's one file a district. A race's count is its towns' sum;
+    a Totals row that disagrees is recorded with its row, and refused where
+    the printed figure would elect someone else; a recount's column is the
+    count read; a workbook that holds other districts than its name says, a
+    sheet of another election's day and a count in a column no header names
+    are refused; a district with no file is listed as not on file."""
+    src = lambda tmp: Path(tmp) / "records" / "sources"  # noqa: E731
+
+    def doc_of(fix=None, name="2020-executive-council-district-1-5.xlsx"):
+        with tempfile.TemporaryDirectory() as tmp:
+            src(tmp).mkdir(parents=True)
+            _offices_council_book(src(tmp) / name, fix)
+            return PSO.read_year(tmp, 2020)
+    doc = doc_of()
+    keys = [k for k in doc["races"]]
+    assert keys == [f"executive-council|{n}" for n in range(1, 6)], keys
+    r1 = doc["races"]["executive-council|1"]
+    assert [(c["name"], c["votes"], c["elected"]) for c in r1["candidates"]] == [
+        ("Ann Able", 41, True), ("Bob Baker", 25, False)] and r1["scatter"] == 1, r1
+    assert r1["contest"] == "2020-11-03.general.executive-council.1", r1["contest"]
+    assert not PSO.tie_out(PSO.plain(doc))["disagreements"]
+    assert "Representative in Congress" in doc["_not_on_file"], doc["_not_on_file"]
+
+    def bump(district, col, by):
+        def fix(n, rows):
+            if n == district:
+                rows[-1][col] += by
+            return rows
+        return fix
+    tied = PSO.tie_out(PSO.plain(doc_of(bump(3, 2, 1))))
+    assert [d["check"] for d in tied["disagreements"]] == [
+        "a column's places sum to the file's Totals"], tied["disagreements"]
+    assert "sheet 'council 3', row 6" in tied["disagreements"][0]["where"], tied
+    refused = {}
+
+    def recount(n, rows):
+        if n == 2:
+            rows[2] = rows[2][:2] + ["RECOUNT"] + rows[2][2:]
+            for r in rows[3:-1]:
+                r.insert(2, r[1] - 1)
+            rows[-1].insert(2, rows[-1][1] - 2)
+        return rows
+    r2 = doc_of(recount)["races"]["executive-council|2"]
+    assert r2.get("recounted") and r2["candidates"][0]["votes"] == 42 - 2, r2
+    assert r2["columns"][:2] == ["Ann Able, r", "Ann Able, r (recount)"], r2["columns"]
+    for name, kw in {
+            "another winner": {"fix": bump(4, 2, 40)},
+            "another district": {"fix": lambda n, r: [r[0], ["Executive Council - District "
+                                                             "No. 4"], *r[2:]] if n == 5 else r},
+            "another day": {"fix": lambda n, r: [r[0], r[1], ["November 8, 2016", *r[2][1:]],
+                                                 *r[3:]] if n == 1 else r},
+            "stray count": {"fix": lambda n, r: [*r[:3], r[3] + [None, 7], *r[4:]]
+                            if n == 1 else r}}.items():
+        try:
+            doc_of(**kw)
+        except PSO.Refused as e:
+            refused[name] = str(e)
+    assert set(refused) == {"another winner", "another district", "another day",
+                            "stray count"}, refused
+    assert "elect different people" in refused["another winner"], refused
+    assert "district 4 twice" in refused["another district"], refused
+    assert "2016-11-08" in refused["another day"], refused
+    assert "which no header names" in refused["stray count"], refused
+    with tempfile.TemporaryDirectory() as tmp:
+        src(tmp).mkdir(parents=True)
+        _offices_book(src(tmp) / "2026-ge-congressional-district-2.xlsx", [
+            ["State of New Hampshire - General Election"], ["Congressional District 2"],
+            ["NOVEMBER 03, 2026", "Ann Able, d", "Bob Baker, r", None, "Write-Ins"],
+            ["Acworth", 5, 4, None, 0], ["Albany", 3, 1, None, 1], ["TOTALS", 8, 5, 0, 1]])
+        doc = PSO.read_year(tmp, 2026)
+    assert list(doc["races"]) == ["us-house|2"], list(doc["races"])
+    assert "Representative in Congress, district 1" in doc["_not_on_file"], doc["_not_on_file"]
+    assert doc["races"]["us-house|2"]["candidates"][0]["elected"] is True
+    return "ok", ("five districts read from one workbook and one from its own file; a Totals row "
+                  "that disagrees recorded with its row, a recount's column read, another winner, "
+                  "a district twice, another day and a stray count refused, a district with no "
+                  "file listed")
+
+
 @check("data", "other offices' results: collected/election_offices_<year>.json is what the saved "
                "files say, and collected/election_offices_tieout.json is what it ties out to -- "
                "every disagreement the files have with themselves recorded, none corrected",
@@ -3285,7 +3391,9 @@ def _offices_read_by_nothing(PSO):
             elif isinstance(n, ast.Constant) and isinstance(n.value, str) and (
                     "election_offices" in n.value or "parse_sos_offices" in n.value):
                 hits.append(f"{f.name}:{n.lineno} names {n.value[:60]!r}")
-    scripts = [f for pat in ("*.js", "*.json", "*.yml") for f in _paths.code_files(pat)]
+    # versions.json is the stamps' list, written by inventory.py and ignored by git.
+    scripts = [f for pat in ("*.js", "*.json", "*.yml") for f in _paths.code_files(pat)
+               if f.name != "versions.json"]
     for f in scripts:
         text = _source(f, errors="replace")
         if "election_offices" in text or "parse_sos_offices" in text:

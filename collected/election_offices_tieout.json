@@ -2,7 +2,7 @@
  "2016": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 95,
+    "held": 122,
     "disagree": 0
    },
    "a county's row in the summary is its block's Totals": {
@@ -10,7 +10,7 @@
     "disagree": 0
    },
    "a race's count is its places' sum": {
-    "held": 4,
+    "held": 25,
     "disagree": 0
    }
   },
@@ -19,7 +19,7 @@
  "2018": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 44,
+    "held": 67,
     "disagree": 0
    },
    "a county's row in the summary is its block's Totals": {
@@ -27,7 +27,7 @@
     "disagree": 0
    },
    "a race's count is its places' sum": {
-    "held": 3,
+    "held": 20,
     "disagree": 0
    }
   },
@@ -36,7 +36,7 @@
  "2020": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 88,
+    "held": 111,
     "disagree": 0
    },
    "a county's row in the summary is its block's Totals": {
@@ -44,7 +44,7 @@
     "disagree": 0
    },
    "a race's count is its places' sum": {
-    "held": 6,
+    "held": 22,
     "disagree": 0
    }
   },
@@ -53,7 +53,7 @@
  "2022": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 99,
+    "held": 120,
     "disagree": 0
    },
    "a county's row in the summary is its block's Totals": {
@@ -61,7 +61,7 @@
     "disagree": 0
    },
    "a race's count is its places' sum": {
-    "held": 7,
+    "held": 21,
     "disagree": 0
    }
   },
@@ -70,7 +70,7 @@
  "2024": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 66,
+    "held": 101,
     "disagree": 0
    },
    "a county's row in the summary is its block's Totals": {
@@ -78,7 +78,7 @@
     "disagree": 0
    },
    "a race's count is its places' sum": {
-    "held": 3,
+    "held": 17,
     "disagree": 0
    }
   },
@@ -87,7 +87,7 @@
  "2026": {
   "checks": {
    "a column's places sum to the file's Totals": {
-    "held": 88,
+    "held": 110,
     "disagree": 0
    },
    "a county's row in the summary is its block's Totals": {
@@ -95,7 +95,7 @@
     "disagree": 15
    },
    "a race's count is its places' sum": {
-    "held": 6,
+    "held": 21,
     "disagree": 6
    }
   },

@@ -2247,7 +2247,11 @@ summary against its block's Totals and every race against its places' sum
 are tied out into `collected/election_offices_tieout.json`, each
 disagreement with its file, sheet and row and none corrected: in 2026 the
 summary files disagree with the county files in fifteen cells of the two
-races. `_offices_read_again` holds the committed files to the saved ones.
+races. For Representative in Congress and Executive Councilor a sheet is one
+district (2016-2024's Council workbook holds five; 2026 has a file a
+district), a file must hold the districts its name says, and a race's count
+is its places' sum, as the House reader's is. `_offices_read_again` holds
+the committed files to the saved ones.
 `src/parse/score_members_elect.py` replays the rule on 2024 as of Election
 Day -- sitting and former members from the roll calls before it, each at the
 seat its term's bills printed -- and holds every link to the 2025-2026 roll
