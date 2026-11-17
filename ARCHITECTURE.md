@@ -2246,10 +2246,15 @@ From Organization Day it says they took office, and it gives way to their
 regular page when the General Court numbers them. Only a former member elected again is
 re-headed: their own page is headed as a new member-elect's is, the
 member-elect of the new seat, with the earlier seat kept below. A sitting
-member elected to the other chamber keeps the heading of the seat they hold,
-with the member-elect sentence beside it (`build_legislator_pages.elect_mode`,
-whose word `app.js` reads from `GR_ELECT`). Both end on the day they take
-office, by the build's day and the reader's clock.
+member elected to the other chamber is headed as that chamber's member-elect,
+"Senator “Elect” Laura Telerski (D)" (the owner, 17 November 2026: 'link the
+new member pages as Sen. "Elect" Laura Telerski for the title but connect it to
+their house record as well'), on the page of the record they sit under now,
+the seat they hold named by its office on the line ("Representative for
+Hillsborough District 11"), with the member-elect sentence beside it
+(`build_legislator_pages.elect_mode`, whose word `app.js` reads from
+`GR_ELECT`). Both end on the day they take office, by the build's day and the
+reader's clock.
 
 The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
 gives `find.json` a row of the kind `elect` for each new member-elect with a
@@ -2258,9 +2263,12 @@ Members-Elect tab's title and the seat they were elected to -- "Rep. “Elect”
 Heather Deiner (D - Hills 25)" -- and leading to their own page. `find.js`
 finds and ranks it as a member's row, by the words of the name, the seat and
 the county, in the header's box and the home page's alike, and `/search` lists
-it under Senators-Elect or Representatives-Elect. A sitting member keeps their
-own row. A former member elected again stands in for their "Former Rep." row,
-which their row carries and which is theirs again on the day they take
+it under Senators-Elect or Representatives-Elect. A sitting member re-elected,
+or elected within their own chamber, keeps their own row. A former member
+elected again stands in for their "Former Rep." row, and a sitting member
+elected to the other chamber, "Sen. “Elect” Laura Telerski (D - SD13)" leading
+to her House page, for their member's row, the seat they hold among its words:
+the row stood in for is carried and is theirs again on the day they take
 office, by the reader's clock as well as the build's (`find.js`, `findNow`);
 a new member's row becomes a member's from that day with their page, by the
 build's day.

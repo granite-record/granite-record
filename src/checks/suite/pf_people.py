@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of sponsors, members and officials.
 
@@ -490,8 +490,9 @@ def _on_record_covers_the_nineties(LP, B):
 
 
 @check("build", "members-elect: every new member-elect with a page is linked to it on the Officials "
-                "tab; a returning member's page is the member-elect's, a new-chamber member's keeps "
-                "its seat with the election beside it, and both end the day the term is theirs",
+                "tab; a returning member's page is the member-elect's, a new-chamber member's is "
+                "headed as the other chamber's with the seat held now beside it, and both end the "
+                "day the term is theirs",
        needs=("officials_tabs", "build_legislator_pages", "build_members_elect"))
 def _elect_returning_pages(OT, LP, BME):
     """The owner, 13 November 2026: new members-elect had pages and the tab
@@ -621,8 +622,16 @@ def _elect_returning_pages(OT, LP, BME):
                  "Former Representative Michael Vose" in plain and said not in plain),
                 ("another member's page is told nothing of Vose's election",
                  said not in other and "Elected November 3" not in other),
-                ("the new-chamber member keeps the seat they hold",
-                 "Representative James Creighton" in cham),
+                # HEADED AS THE OTHER CHAMBER'S MEMBER-ELECT (the owner, 17 November 2026: 'link
+                # the new member pages as Sen. "Elect" Laura Telerski for the title but connect it
+                # to their house record as well'), the seat held now on the line, by its office.
+                ("the new-chamber member is headed as the Senate's member-elect and keeps the "
+                 "seat they hold on the line",
+                 '<h1 class="rh1">Senator “Elect” James Creighton (R)</h1>' in cham
+                 and "Representative for Hillsborough District&nbsp;30" in cham),
+                ("the new-chamber member's page is theirs again with the day",
+                 "Representative James Creighton" in cgone and "“Elect”" not in cgone
+                 and "Representative for" not in cgone),
                 ("the new-chamber member has the sentence beside it",
                  back["creighton"]["where"] in cham),
                 ("the new-chamber member's election line names the district",
@@ -675,9 +684,11 @@ def _elect_returning_pages(OT, LP, BME):
     if "Former Representative" in plain_html:
         bad.append("the plain page of a returning member is headed Former Representative")
     cham_html = LP.static_record(creighton, {}, "", {}, back["creighton"])
-    if "<h1>Representative James Creighton (R - Hills 30)</h1>" not in cham_html \
-            or back["creighton"]["where"] not in cham_html:
-        bad.append("the plain page of a new-chamber member lost its heading or lacks the sentence")
+    if "<h1>Senator “Elect” James Creighton (R)</h1>" not in cham_html \
+            or back["creighton"]["where"] not in cham_html \
+            or "<p>Serving now: Rep. James Creighton (R - Hills 30)</p>" not in cham_html:
+        bad.append("the plain page of a new-chamber member is not headed as the Senate's member-elect, "
+                   "or lacks the sentence or the seat they hold now")
     # A former member's page offers their requests, as a sitting member's: the
     # requests term first when they have any (build_lsrs' by_slug).
     req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "n": 1,
@@ -718,9 +729,135 @@ def _elect_returning_pages(OT, LP, BME):
     return "ok", ("the tab links every new member-elect with a page; a returning member's page is "
                   "the member-elect's with the earlier seat kept and its years on record on the "
                   "plain page as in app.js, its bar in the elected party's ink; a new-chamber "
-                  "member's keeps its seat, both end with the day; requests show on the former's "
+                  "member's headed as the Senate's member-elect with its seat held now beside it, "
+                  "both end with the day; requests show on the former's "
                   "and the provisional page, its earlier terms with an en dash"
                   + ("" if got is not None else " (node not here for the page's script)"))
+
+
+@check("build", "a sitting member elected to the other chamber is that chamber's member-elect, Sen. "
+                "“Elect” Laura Telerski, joined to the record they sit under now: on the Members-Elect "
+                "tab, in the search in place of their own row until the day they take office, and on "
+                "their page", needs=("build_indexes", "officials_tabs", "build_legislator_pages"))
+def _elect_other_chamber_joined(BI, OT, LP):
+    """The owner, 17 November 2026: 'You should link the new member pages as Sen. "Elect" Laura
+    Telerski for the title but connect it to their house record as well.' Laura Telerski sits for
+    Hillsborough 11 and was elected to the Senate for District 13; the General Court numbers her as a
+    senator when its roster turns, and until then the record she has is her House one. Held, the
+    build's day stated:
+
+      - the Officials page's Members-Elect tab: "Sen. “Elect” Laura Telerski (D - SD13)", linked to
+        her House page;
+      - the search (find_index): one row of the kind "elect", "Sen. “Elect” Laura Telerski (D -
+        SD13)", "Senate · SD13 · Democrat", leading to her House page, her House row's words and seat
+        among its words and that row carried whole with the day she takes office -- and her own row
+        not beside it; a member re-elected to their own seat, and one elected to another seat of
+        their own chamber, keep their rows; from that day, by the build's day her own row is back,
+        and by the reader's day from a find.json built before it (find.js findNow);
+      - her page: headed "Senator “Elect” Laura Telerski (D)" (elect_back's title spelled out), the
+        sentence of her election and the seat she holds now beside it, on the plain page and in
+        app.js's renderMemberHead, which is her House record's head again once the day is hers."""
+    import contextlib
+    import io
+    root = Path(tempfile.mkdtemp(prefix="gr-elect-chamber-"))
+    saved = os.environ.get("GRANITE_BUILD_DATE")
+    me = {"n": "Laura Telerski", "p": "D", "k": "sitting", "id": "9117", "s": "laura-telerski-hills-11"}
+
+    def race(*won):
+        return {"seats": len(won), "not_final": 0, "held": 0, "elected": list(won)}
+    legs = [{"display_full": f"Rep. {f} {l} (D - Hills {d})", "chamber": "H", "district_label": f"Hills {d}",
+             "party": "Democrat", "slug": f"{f.lower()}-{l.lower()}-hills-{d}", "last": l, "first": f,
+             "county": "Hillsborough", "email": f"{f}.{l}@x"}
+            for f, l, d in (("Laura", "Telerski", 11), ("Kathy", "Staub", 25), ("Jo", "Moves", 12))]
+    try:
+        site = root / "site"
+        site.mkdir()
+        (site / "elect_pages.json").write_text(json.dumps(
+            {"election": "2026-11-03", "takes_office": "2026-12-02", "sources": [], "pages": [], "moved": {}}),
+            encoding="utf-8")
+        (site / "members_elect.json").write_text(json.dumps(
+            {"election": "2026-11-03", "takes_office": "2026-12-02", "term": "2027-2028", "sources": [],
+             "races": {"S|13": race(me),
+                       "H|Hillsborough|25": race({"n": "Kathy Staub", "p": "D", "k": "sitting", "id": "1",
+                                                  "s": "kathy-staub-hills-25", "own": True}),
+                       "H|Hillsborough|30": race({"n": "Jo Moves", "p": "D", "k": "sitting", "id": "2",
+                                                  "s": "jo-moves-hills-12"})}}), encoding="utf-8")
+        (site / "meta.json").write_text(json.dumps({"terms": ["2025-2026"], "topics": []}), encoding="utf-8")
+        (site / "former.json").write_text("[]", encoding="utf-8")
+        got = {}
+        for day in ("2026-11-20", "2026-12-02"):
+            os.environ["GRANITE_BUILD_DATE"] = day
+            with contextlib.redirect_stdout(io.StringIO()):
+                got[day] = [r for r in BI.find_index(site, legs, {}) if r[0] in ("legislator", "elect")]
+    finally:
+        if saved is None:
+            os.environ.pop("GRANITE_BUILD_DATE", None)
+        else:
+            os.environ["GRANITE_BUILD_DATE"] = saved
+        shutil.rmtree(root, ignore_errors=True)
+    hers = "legislator/laura-telerski-hills-11"
+    own = ["legislator", "Rep. Laura Telerski (D - Hills 11)", "House · Hills 11 · Democrat", hers,
+           "Telerski Laura Hillsborough Laura.Telerski@x"]
+    before, after = got["2026-11-20"], got["2026-12-02"]
+    mine = [r for r in before if r[3] == hers]
+    assert mine == [["elect", "Sen. “Elect” Laura Telerski (D - SD13)", "Senate · SD13 · Democrat", hers,
+                     "Laura Telerski Telerski Laura Hillsborough Laura.Telerski@x Hills 11 "
+                     "member-elect sen-elect senator-elect", "2026-12-02", own]], (
+        f"her rows in the search before she takes office: {mine}")
+    assert [r[0] for r in before if r[3] != hers] == ["legislator", "legislator"] and \
+        [r[0] for r in after] == ["legislator"] * 3 and [r for r in after if r[3] == hers] == [own], (
+        f"the other members' rows, or hers from the day she takes office: {before} {after}")
+    if shutil.which("node"):
+        tmp = Path(tempfile.mkdtemp(prefix="gr-elect-chamber-js-"))
+        try:
+            (tmp / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+            (tmp / "find.js").write_text(_with_components(_source("src/pages/find.js")), encoding="utf-8")
+            (tmp / "go.js").write_text(
+                'require("./stub.js");\nconst src = require("fs").readFileSync("./find.js", "utf8");\n'
+                'const s = (0, eval)(src + "; ({findNow})");\n'
+                f'const rows = {json.dumps(before)};\n'
+                'process.stdout.write("@@" + JSON.stringify([s.findNow(rows, "2026-12-01"), '
+                's.findNow(rows, "2026-12-02")]));\n', encoding="utf-8")
+            r = _run(["node", "go.js"], cwd=tmp, capture_output=True, text=True, timeout=60)
+            assert r.returncode == 0 and "@@" in r.stdout, (r.stderr or r.stdout)[-300:]
+            eve, day = json.loads(r.stdout.rsplit("@@", 1)[1])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        assert [x for x in eve if x[3] == hers] == mine and [x for x in day if x[3] == hers] == [own], (
+            f"by the reader's day her row is {[x for x in day if x[3] == hers]}")
+    # The Members-Elect tab.
+    chip = OT.elect_chip(me, "S|13")
+    assert "Sen. “Elect” Laura Telerski" in chip and f'legislator/laura-telerski-hills-11"' in chip, chip
+    # Her page: the plain one and app.js's head.
+    m = {"id": "9117", "name": "Telerski, Laura", "chamber": "H", "party": "Democrat", "county": "Hillsborough",
+         "district": "11", "display_plain": "Rep. Laura Telerski", "display_full": "Rep. Laura Telerski (D - Hills 11)",
+         "slug": "laura-telerski-hills-11", "towns": ["Nashua Ward 3"], "committees": []}
+    back = LP.elect_back(m, {"key": "S|13", "k": "sitting", "p": "D"})
+    assert back and back["mode"] == "chamber" and back["title"] == "Sen. “Elect”" \
+        and back["name"] == "Laura Telerski", back
+    plain = LP.static_record(m, {}, "", {}, back)
+    for want in ("<h1>Senator “Elect” Laura Telerski (D)</h1>",
+                 "<p>Member-elect of the New Hampshire Senate, Senate District 13.</p>",
+                 "<p>Serving now: Rep. Laura Telerski (D - Hills 11)</p>", "Nashua Ward 3"):
+        assert want in plain, f"her plain page lacks {want!r}: {plain[:500]}"
+
+    def ge(far):
+        return {"id": "9117", "key": "S|13", "election": "2026-11-03",
+                "takes_office": "2999-01-01" if far else "2000-01-01",
+                **{k: back[k] for k in ("mode", "name", "party", "where", "title")}}
+    heads = _app_js("[" + ", ".join(f"(window.GR_ELECT={json.dumps(ge(far))}, scope.renderMemberHead("
+                                    f"{json.dumps(m)}))" for far in (True, False)) + "]",
+                    names=("renderMemberHead",))
+    if heads is not None:
+        now, gone = heads
+        assert '<h1 class="rh1">Senator “Elect” Laura Telerski (D)</h1>' in now \
+            and "Representative for Hillsborough District&nbsp;11" in now and back["where"] in now, now[:900]
+        assert "“Elect”" not in gone and "Representative Laura Telerski" in gone \
+            and back["where"] not in gone, gone[:600]
+    return "ok", ("the tab, the search's one row in place of hers (back by the build's and the reader's "
+                  "day she takes office) and her page all Sen. “Elect” Laura Telerski, joined to her House "
+                  "record and its seat; a member re-elected, or elected within the House, as before"
+                  + ("" if heads is not None else "; node not here for the page's script"))
 
 
 @check("build", "a legislator's search description names the seat once and the places first",

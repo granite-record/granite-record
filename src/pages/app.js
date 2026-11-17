@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.337
+// GRANITE_VERSION: 2026-09-07.338
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9539,8 +9539,12 @@ function renderMemberHead(m){
   //     member-elect's page is ("Benjamin Baroody (D)", "Member-elect of the
   //     New Hampshire House of Representatives, Hillsborough 16.", the
   //     election's line), the earlier seat kept in the facts below;
-  //   chamber -- a sitting member elected to the other chamber: still headed
-  //     by the seat they hold now, with the same sentence beside it.
+  //   chamber -- a sitting member elected to the other chamber: headed as
+  //     that chamber's member-elect, "Senator “Elect” Laura Telerski (D)"
+  //     (the owner, 17 November 2026: 'link the new member pages as Sen.
+  //     "Elect" Laura Telerski for the title but connect it to their house
+  //     record as well'), the page their House record, its line the seat
+  //     they hold now, named by its office, with the same sentence beside it.
   // Both end on the day they take office, by the reader's own clock as well
   // as the build's (components.js's untilAttrs): from then on the page is
   // the member's as before.
@@ -9553,7 +9557,7 @@ function renderMemberHead(m){
   // TITLED AS A MEMBER-ELECT (the owner, 16 November 2026): GR_ELECT's title,
   // "Rep. “Elect”", which fullTitle spells out, as build_legislator_pages.
   // elect_heading heads a new member-elect's page.
-  const named=retPage?(EG.title?String(EG.title)+" ":"")+String(EG.name||plain)+(EG.party?` (${EG.party})`:"")
+  const named=(retPage||chamPage)?(EG.title?String(EG.title)+" ":"")+String(EG.name||plain)+(EG.party?` (${EG.party})`:"")
     :former&&/^(Rep|Sen)\. /.test(plain)?"Former "+plain:plain;
   // The party from the record's own label where the file names none: "(R -
   // Rock 16)" is a Republican's. ON A RETURNING MEMBER'S PAGE, THE ELECTION'S
@@ -9571,9 +9575,14 @@ function renderMemberHead(m){
   // and a place the roster spells otherwise than the district maps stays words.
   const tp=window.GR_TOWNS||{};
   const place=t=>tp[t]?`<a href="${esc(tp[t])}">${esc(t)}</a>`:esc(t);
+  // A member elected to the other chamber: the seat they hold now named by its
+  // office, as the record they are joined to has it ("Representative for
+  // Hillsborough District 11"), since the heading names the other chamber.
+  const nowOffice=chamPage?(m.chamber==="S"?"Senator for ":"Representative for "):"";
   const line=(retPage?[esc(EG.where)]:[m.office?`<b>${esc(m.office)}</b>`:"",esc(PARTY_WORD[code]||m.party||""),
     // The seat's number held to its name: "Senate District" over "14" at 768px.
-    esc(seatName(m)).replace(/ (?=\S+$)/,"&nbsp;"),former?"":joinList(towns.map(place),"and"),
+    (seatName(m)?esc(nowOffice):"")+esc(seatName(m)).replace(/ (?=\S+$)/,"&nbsp;"),
+    former?"":joinList(towns.map(place),"and"),
     chamPage?esc(EG.where):""])
     .filter(Boolean)
     // Each dot holds to the words before it, so a wrapped line never opens on
