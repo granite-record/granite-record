@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -6778,12 +6778,19 @@ def _official_codes_for_the_archive(B, OT):
     assert tally["filled"] == 4 and tally["a code with no name on disk"] == 1, dict(tally)
     import contextlib
     import io
-    with contextlib.redirect_stdout(io.StringIO()):
-        B.unify_vocabulary(bills)
+    # The split of a topic in two reads the statutes a bill changes off this disk's
+    # rsa_citations.json by its term and number: none, for these made-up records.
+    saved = list(B._CHANGES)
+    B._CHANGES[:] = [{}]
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            B.unify_vocabulary(bills)
+    finally:
+        B._CHANGES[:] = saved
     got = {b: r.get("subject") for b, r in old.items()}
     assert got["HB1"] == "Environment - Conservation", "Parks and Recreation was revived, not folded"
     assert got["HB5"] == "State Government", "Agency Appropriations was revived, not folded"
-    assert got["HB7"] == "Crimes, Criminal Procedure and Corrections", got["HB7"]
+    assert got["HB7"] == "Crimes and Criminal Procedure", got["HB7"]
     assert got["HB2"] == "Elections" and got["HB8"] == "Animals", got
     return "ok", "named codes fill, folds and wording apply, unnamed, mismatched and current-term bills are left alone"
 
@@ -6803,7 +6810,8 @@ def _official_codes_total(B, OT):
         return "skip", "no db/past dump or data/bills.json here"
     subjects = json.loads(Path("data/subjects.json").read_text(encoding="utf-8"))
     names = OT.names_of(subjects)
-    site = set(B.TM.new_vocabulary()) | set(B.TOPIC_WORDS.values())
+    site = ((set(B.TM.new_vocabulary()) - set(B.TM.SPLITS)) | set(B.TOPIC_WORDS.values())
+            | B.TM.split_names())
     bills = json.loads(Path("data/bills.json").read_text(encoding="utf-8"))
     cur = max(bills)
     unmapped, unnamed = [], set()
@@ -6868,6 +6876,176 @@ def _proposals_reach_labelled_bills(B, TM):
     assert got == want, f"the proposals on this term's labelled bills: {got}, not {want}"
     assert "bill" not in bills["2025-2026"]["HR1"], "the vocabulary step wrote a number into the record"
     return "ok", "HR 1 and SR 5 under Legislature, a bill about rules not, HB 106 under Study"
+
+
+# THE TWO TOPICS SPLIT IN TWO (the owner, 16 November 2026), on real bills: each
+# case is a bill of the record of 7 November 2026, its title and the chapters
+# rsa_citations.json says it changes, with what the rule makes of it and why.
+_SPLIT_CASES = (
+    # Crimes, Crim.Proc. & Corr.: the chapters first, then the title
+    ("2009-2010/HB1658", "C", "relative to the adult parole board.", ("21-H", "651-A"), "Corrections", "chapters"),
+    ("1989-1990/HB276", "C", "relative to the penalty for assaulting a law enforcement officer.", ("631", "651"),
+     "Crimes and Criminal Procedure", "chapters"),
+    ("2009-2010/HB1680", "C", "establishing the crime of aggravated harassment by an inmate.", ("642",),
+     "Crimes and Criminal Procedure", "chapters"),
+    ("2011-2012/HB1654", "C", "relative to earned time credits for inmates participating in rehabilitative "
+     "programming.", ("651", "651-A"), "Corrections", "chapters"),
+    ("2025-2026/HB1236", "C", "relative to the use of body-worn cameras in county departments of corrections.",
+     ("30-B",), "Corrections", "chapters"),
+    ("2017-2018/HB282", "C", "relative to a prisoner's participation in the work release program.", ("651",),
+     "Corrections", "title"),
+    ("2013-2014/HB447", "C", "relative to annulment of criminal records.", ("651",), "Crimes and Criminal Procedure",
+     "title"),
+    ("1995-1996/HB316", "C", "relative to probation and parole officers.", ("504-A", "541-B", "642", "651"),
+     "Corrections", "title"),
+    ("1997-1998/HB730", "C", "relative to aggravated felonious sexual assault.", ("504-A", "632-A"),
+     "Crimes and Criminal Procedure", "title"),
+    ("1991-1992/HB61", "C", "repealing the prospective repeal of the victims' assistance fund and making technical "
+     "corrections in the distribution of penalty assessment funds.", ("188-F", "21-M"),
+     "Crimes and Criminal Procedure", "title"),
+    ("1989-1990/HBI2001", "C", "relating to mandatory prison sentences for certain felons.", (),
+     "Crimes and Criminal Procedure", "title"),
+    ("2009-2010/HB1602", "C", "relative to the secure psychiatric unit.", (), "Corrections", "title"),
+    # Property - Real and Personal: a personal-property chapter, then the title, else Real Estate
+    ("1999-2000/SB93", "P", "relative to self-service storage facility liens.", ("451-C",), "Personal Property",
+     "chapters"),
+    ("1989-1990/HB1259", "P", "relative to the unclaimed and abandoned property act.", ("471-C",), "Personal Property",
+     "chapters"),
+    ("2005-2006/HB1759", "P", "relative to liens for labor and materials.", ("447",), "Real Estate", "title"),
+    ("2019-2020/SB262", "P", "relative to the property interest in abandoned personal materials.", ("644",),
+     "Personal Property", "title"),
+    ("2023-2024/HB117", "P", "relative to the termination of tenancy at the expiration of the tenancy or lease "
+     "term.", ("540",), "Real Estate", "title"),
+    ("2023-2024/HB1180", "P", "relative to the scope of the homestead exemption.", ("480",), "Real Estate", "title"))
+
+
+@check("build", "two topics are split in two by the statutes a bill changes and then its title -- Crimes and "
+                "Criminal Procedure or Corrections, Real Estate or Personal Property -- after the model, a "
+                "request by its title, and each half's feed where the owner's readers follow it",
+       needs=("build_site_v2", "topic_model", "build_feeds", "tag_rules"))
+def _topic_split_rule(B, TM, F, TR):
+    """topic_model.SPLITS (the owner, 16 November 2026: "Split up Crimes, Criminal
+    Procedure and Corrections into Crimes and Criminal Procedure ... and Corrections
+    separately", and Property - Real and Personal "is a bit of a confusing topic").
+    Held, on real bills (_SPLIT_CASES): a prison, jail, probation or parole chapter
+    with none of the criminal code or procedure is Corrections, and the reverse is
+    Crimes and Criminal Procedure whatever the title says ("the crime of aggravated
+    harassment by an inmate"); where the chapters do not settle it the title does,
+    and "technical corrections" and "prison sentences" are not corrections; liens on
+    goods, unclaimed property and the like are Personal Property and every other
+    bill of Property is Real Estate, mechanics' liens (RSA 447) among them.
+    vocabulary_of applies it with the chapters of the bill's own term and number,
+    a request by its title (LSR 2027-0154's); unify_vocabulary files every
+    record by it and writes nothing else into one; the model still answers the
+    General Court's names, which never reach the site; a split topic's feed and
+    follow address stays with the half that holds most of its bills; and the tag
+    engine's list of the site's topics has the four names and not the two."""
+    import contextlib
+    import io
+    name = {"C": TM.CCP_NAME, "P": TM.PRP_NAME}
+    for key, k, title, chapters, want, how in _SPLIT_CASES:
+        got = TM.split_rule(name[k], title, chapters)
+        assert got == (want, how), f"{key} ({title[:60]}): {got}, not {(want, how)}"
+    assert TM.split_names() == {"Crimes and Criminal Procedure", "Corrections", "Real Estate", "Personal Property"}
+    assert TM.split_rule("Elections", "relative to prisons.", ("622",)) == ("Elections", ""), "another topic was split"
+    # the model is untouched: it is measured in the General Court's names and still answers them
+    assert TM.remap_gold(TM.CCP_NAME, {"title": "relative to prisons."}) == TM.CCP_NAME
+    assert TM.remap_gold(TM.PRP_NAME, {"title": "relative to unclaimed property."}) == TM.PRP_NAME
+    if TM.base.codes():     # data/subjects.json, which a bare clone lacks
+        assert {TM.CCP_NAME, TM.PRP_NAME} <= set(TM.new_vocabulary()), "the model's vocabulary lost a General Court name"
+    assert not TM.split_names() & set(TM.new_vocabulary()), "the model's vocabulary took a split name"
+    # vocabulary_of: with a term, the chapters the bill's own text changes; a request, its title
+    saved = list(B._CHANGES)
+    B._CHANGES[:] = [{"2021-2022": {"HB1105": {"changes": ["651-A:3"]}}}]
+    try:
+        rec = {"title": "relative to earned time credits."}
+        assert B.vocabulary_of(TM.CCP_NAME, rec, "HB1105", "2021-2022") == "Corrections", (
+            "vocabulary_of did not read the chapters the bill changes")
+        assert B.vocabulary_of(TM.CCP_NAME, rec, "HB1105") == "Crimes and Criminal Procedure", (
+            "without a term the split read chapters it cannot have")
+        req = {"title": "relative to parole eligibility for persons convicted of first degree murder.",
+               "subject": "", "bill": ""}
+        assert B.vocabulary_of(TM.CCP_NAME, req, "") == "Corrections", "a request's title did not split it"
+        assert B.vocabulary_of(TM.PRP_NAME, {"title": "repealing certain disclosure requirements for "
+                                             "homeowners' associations.", "subject": "", "bill": ""}, "") == \
+            "Real Estate", "LSR 2027-0132 is not Real Estate"
+        assert B.vocabulary_of(TM.CCP_NAME, {"title": "establishing a committee to study prison overcrowding."},
+                               "HB9") == TM.STUDY, "a study committee was split rather than filed under Study"
+        bills = {"2021-2022": {"HB1105": {"title": "relative to earned time credits.", "subject": TM.CCP_NAME,
+                                          "subject_code": "CCP"},
+                               "HB1101": {"title": "relative to a forfeiture of personal property.",
+                                          "subject": TM.PRP_NAME, "subject_code": "PRP"},
+                               "HB1133": {"title": "prohibiting the termination of a lease during the sale of "
+                                                   "real property.", "subject": TM.PRP_NAME, "subject_code": "PRP"},
+                               "HB2": {"title": "relative to theft.", "subject": TM.CCP_NAME, "subject_code": "CCP"}}}
+        before = {b: set(r) for b, r in bills["2021-2022"].items()}
+        with contextlib.redirect_stdout(io.StringIO()):
+            B.unify_vocabulary(bills)
+    finally:
+        B._CHANGES[:] = saved
+    got = {b: (r["subject"], r["subject_code"]) for b, r in bills["2021-2022"].items()}
+    assert got == {"HB1105": ("Corrections", "CCP"), "HB1101": ("Personal Property", "PRP"),
+                   "HB1133": ("Real Estate", "PRP"), "HB2": ("Crimes and Criminal Procedure", "CCP")}, got
+    assert before == {b: set(r) for b, r in bills["2021-2022"].items()}, "the vocabulary step wrote a field"
+    for t in ("relative to something.", "relative to prisons.", "relative to unclaimed property.", ""):
+        for s in (TM.CCP_NAME, TM.PRP_NAME):
+            assert B.vocabulary_of(s, {"title": t}, "HB1") in TM.split_names(), (s, t)
+    assert "Crimes, Criminal Procedure and Corrections" not in B.TOPIC_WORDS.values()
+    # the feeds: the larger half keeps the old topic's address, the smaller has its own
+    assert F.topic_slug("Crimes and Criminal Procedure") == F.slug("Crimes, Crim.Proc. & Corr.") == "crimes-crim-proc-corr"
+    assert F.topic_slug("Real Estate") == F.slug("Property - Real and Personal") == "property-real-and-personal"
+    assert (F.topic_slug("Corrections"), F.topic_slug("Personal Property")) == ("corrections", "personal-property")
+    assert F.topic_slug("Constitutional Amendments") == "cacr", "the renamed topic lost its feed's address"
+    # the tag engine's own list of the site's topics, for a disk with no built site
+    assert TM.split_names() <= set(TR.SITE_TOPICS), "tag_rules.SITE_TOPICS lacks a split name"
+    assert not {"Crimes, Criminal Procedure and Corrections", "Property - Real and Personal"} & set(TR.SITE_TOPICS)
+    return "ok", (f"{len(_SPLIT_CASES)} real bills split as the rule says, a request by its title, the model's "
+                  "names kept and never shown, the old feed addresses on the larger halves")
+
+
+@check("data", "every bill of the two topics split in two is filed under one of its halves on the record on "
+               "this disk, and no bill keeps the old names", needs=("build_site_v2", "official_topics", "topic_model"))
+def _topic_split_on_disk(B, OT, TM):
+    """The data half of _topic_split_rule: the build's own path to a topic -- the
+    General Court's code (official_topics.adopt), the model's answer for the rest
+    (merge_guessed_topics), then unify_vocabulary -- over data/bills.json, with the
+    statutes each bill changes from rsa_citations.json. Every bill the General Court
+    or the model files under Crimes, Crim.Proc. & Corr. or Property - Real and
+    Personal and no other rule claims (a study, a housing title) ends under one of
+    the two halves, both halves of each are used, and no record keeps an old name.
+    Says the counts: 1,568 and 227, 73 and 27 on the record of 7 November 2026."""
+    import contextlib
+    import io
+    if not Path("data/bills.json").exists() or not Path("data/subjects.json").exists():
+        return "skip", "no data/bills.json here"
+    bills = json.loads(Path("data/bills.json").read_text(encoding="utf-8"))
+    subjects = json.loads(Path("data/subjects.json").read_text(encoding="utf-8"))
+    with contextlib.redirect_stdout(io.StringIO()):
+        OT.adopt(bills, subjects)
+        B.merge_guessed_topics(bills)
+    split = {}
+    for term, by in bills.items():
+        for bid, rec in by.items():
+            s = (rec.get("subject") or "").strip()
+            if s in TM.SPLITS and TM.remap_gold(s, {**rec, "bill": bid}) == s:
+                split[(term, bid)] = s
+    with contextlib.redirect_stdout(io.StringIO()):
+        B.unify_vocabulary(bills)
+    if not split:
+        return "skip", "no bill of the two split topics on this disk"
+    old = {"Crimes, Criminal Procedure and Corrections", TM.CCP_NAME, TM.PRP_NAME, "Property - Real and Personal"}
+    kept = [f"{t} {b}" for t, by in bills.items() for b, r in by.items() if (r.get("subject") or "") in old]
+    assert not kept, f"{len(kept)} bills keep an old topic name, {kept[:3]}"
+    tally = Counter()
+    for (term, bid), s in split.items():
+        got = bills[term][bid].get("subject")
+        assert got in TM.SPLITS[s], f"{term} {bid}, filed under {s}, is now {got!r}"
+        tally[got] += 1
+    empty = [n for n in TM.split_names() if not tally[n]]
+    assert not empty, f"no bill on this disk is filed under {empty}: the split is not reaching the record"
+    (a, z), (c, d) = TM.SPLITS[TM.CCP_NAME], TM.SPLITS[TM.PRP_NAME]
+    return "ok", (f"{tally[a] + tally[z]:,} bills of Crimes: {tally[a]:,} {a}, {tally[z]:,} {z}; "
+                  f"{tally[c] + tally[d]:,} of Property: {tally[c]:,} {c}, {tally[d]:,} {d}; no old name kept")
 
 
 @check("status", "between two reports, the Reports tab quotes the motion that sent the bill back",

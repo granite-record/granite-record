@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.278
+# GRANITE_VERSION: 2026-09-05.279
 """
 Generate the faceted site from real General Court data.
 
@@ -11262,19 +11262,35 @@ def merge_guessed_topics(bills):
 ADDED_CODES = TM.ADDED_CODES
 
 
-# TWO OF THE GENERAL COURT'S TOPIC NAMES IN A READER'S WORDS (the person,
-# approved 17 October 2026): "Crimes, Crim.Proc. & Corr." on 384 bills, and
-# "CACR", a kind of measure rather than a subject, on the constitutional
-# amendments. Applied after the model's vocabulary, which is measured in the
-# General Court's own names; build_feeds keeps each topic's old feed address
-# (feeds.TOPIC_ADDRESS) so a feed already followed goes on working.
-TOPIC_WORDS = {"Crimes, Crim.Proc. & Corr.": "Crimes, Criminal Procedure and Corrections",
-               "CACR": "Constitutional Amendments"}
+# A GENERAL COURT TOPIC NAME IN A READER'S WORDS (the person, approved 17
+# October 2026): "CACR", a kind of measure rather than a subject, on the
+# constitutional amendments. Applied after the model's vocabulary, which is
+# measured in the General Court's own names; build_feeds keeps each topic's
+# old feed address (feeds.TOPIC_ADDRESS) so a feed already followed goes on
+# working. "Crimes, Crim.Proc. & Corr." was the other, worded "Crimes,
+# Criminal Procedure and Corrections"; since 17 November 2026 it and
+# "Property - Real and Personal" are each split in two instead (TM.SPLITS,
+# vocabulary_of below).
+TOPIC_WORDS = {"CACR": "Constitutional Amendments"}
 
 
-def vocabulary_of(s, rec, bid=""):
+def statute_chapters(term, bid):
+    """The chapters a bill's own text says it changes (statute_changes, without
+    the sections), for the split of a topic in two; () for a request, or where
+    rsa_citations.json is not on this disk."""
+    return tuple(sorted({a.split(":")[0] for a in statute_changes(term, bid)})) if term and bid else ()
+
+
+def vocabulary_of(s, rec, bid="", term=""):
     """The site category a General Court topic name ends up under, for one
     record: None where the name is retired, otherwise the name to show.
+
+    TWO NAMES ARE SPLIT IN TWO (TM.SPLITS, 17 November 2026): a bill the
+    General Court or the model files under Crimes, Crim.Proc. & Corr. is
+    Crimes and Criminal Procedure or Corrections, and one under Property -
+    Real and Personal is Real Estate or Personal Property, by the chapters
+    it changes (given `term`, from rsa_citations.json) and its title -- a
+    request, which has neither a term here nor a text, by its title.
 
     ONE PATH FOR EVERY TERM. unify_vocabulary applies it to every record, so
     the 2025-2026 labels and the official codes official_topics.adopt gives the
@@ -11293,6 +11309,8 @@ def vocabulary_of(s, rec, bid=""):
     if s in TM.RETIRED and not TM.proposal_for(asked, "first"):
         return None
     new_s = TM.remap_gold(s, asked)
+    if new_s in TM.SPLITS:
+        return TM.split_topic(new_s, asked.get("title"), statute_chapters(term, bid or asked.get("bill")))
     return TOPIC_WORDS.get(new_s, new_s)
 
 
@@ -11302,8 +11320,8 @@ def unify_vocabulary(bills):
     The topic model predicts in the General Court's own 46 categories, which is
     the vocabulary it was measured in -- 62.1% to 67.2% held out. The site's
     own vocabulary is a different thing: five starved categories folded into
-    parents, Regular Meeting retired, and Housing and Study Committees added.
-    Applying it inside the model would have meant
+    parents, Regular Meeting retired, Housing and Study Committees added, and
+    two split in two (TM.SPLITS). Applying it inside the model would have meant
     scoring the model against a vocabulary it was not measured in.
 
     So it is applied HERE instead, once, to every bill of every term -- the
@@ -11326,7 +11344,7 @@ def unify_vocabulary(bills):
             s = (rec.get("subject") or "").strip()
             if not s:
                 continue
-            new_s = vocabulary_of(s, rec, bid)
+            new_s = vocabulary_of(s, rec, bid, term)
             if new_s is None:
                 rec["subject"], rec["subject_code"] = "", ""
                 moved["retired"] += 1

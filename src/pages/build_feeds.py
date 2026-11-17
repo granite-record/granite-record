@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.48
+# GRANITE_VERSION: 2026-09-04.49
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -436,8 +436,15 @@ def slug(s):
 
 # A TOPIC RENAMED KEEPS ITS FEED'S ADDRESS (17 October 2026): two topics took a
 # reader's words (build_site_v2.TOPIC_WORDS), and their feeds and follow keys
-# stay where a reader already subscribed to them.
-TOPIC_ADDRESS = {"Crimes, Criminal Procedure and Corrections": slug("Crimes, Crim.Proc. & Corr."),
+# stay where a reader already subscribed to them. A TOPIC SPLIT IN TWO (17
+# November 2026, topic_model.SPLITS) leaves its address to the half that
+# holds most of its bills, so a feed or an email follow of the old topic goes
+# on with that half under its new name: Crimes and Criminal Procedure keeps
+# the address Crimes, Criminal Procedure and Corrections had, and Real Estate
+# the one of Property - Real and Personal. Corrections and Personal Property
+# are new addresses.
+TOPIC_ADDRESS = {"Crimes and Criminal Procedure": slug("Crimes, Crim.Proc. & Corr."),
+                 "Real Estate": slug("Property - Real and Personal"),
                  "Constitutional Amendments": slug("CACR")}
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.6
+# GRANITE_VERSION: 2026-11-12.7
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
@@ -107,15 +107,16 @@ GUIDE_TAGS = 5
 # Under this many at the title and analysis tiers across all terms, a tag is a search
 # synonym that leads to a topic or another tag, unless its entry says keep_small and why.
 MIN_BILLS = 20
-# The site's topics as of 12 November 2026; site/meta.json's "topics" wins where it is on disk.
+# The site's topics as of 17 November 2026, when two were split in two (topic_model.SPLITS);
+# site/meta.json's "topics" wins where it is on disk.
 SITE_TOPICS = (
     "Agriculture", "Animals", "Banking and Finance", "Business and Industry", "Children", "Civil Actions",
-    "Constitutional Amendments", "Counties", "Courts and Procedure", "Crimes, Criminal Procedure and Corrections",
+    "Constitutional Amendments", "Corrections", "Counties", "Courts and Procedure", "Crimes and Criminal Procedure",
     "Discrimination", "Domestic Relations", "Education - Finance", "Education - General", "Elections", "Employment",
     "Energy and Utilities", "Environment - Administration", "Environment - Conservation",
     "Federal and International Relations", "Fish & Game", "Gambling", "Housing", "Insurance", "Legislature",
     "Liquor and Beer", "Memorials", "Military & Veterans' Affairs", "Miscellaneous", "Motor Vehicles", "Municipalities",
-    "Occupational Regulation", "Police", "Property - Real and Personal", "Public and Mental Health", "Retirement",
+    "Occupational Regulation", "Personal Property", "Police", "Public and Mental Health", "Real Estate", "Retirement",
     "Right to Know", "State Government", "Study Committees and Commissions", "Taxes - Local", "Taxes - State",
     "Transportation and Highways", "Welfare/Medicare/Medicaid", "Zoning and Planning")
 TIERS = ("T", "A", "R", "H")
