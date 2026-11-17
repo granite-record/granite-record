@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.288
+# GRANITE_VERSION: 2026-09-04.289
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -108,6 +108,57 @@ def without_mark(css):
         return css
     end = css.find(b"\n", b)
     return css[:a] + (css[end + 1:] if end >= 0 else b"")
+
+
+# THE TAGS ARE PUBLISHED ONLY WITH A REGISTRY (topics as tags, stages 3 and 4,
+# 17 November 2026; switched off until the owner approves the list). What
+# draws a bill's tags, filters by them and searches through them is written
+# in app.js, find.js and app.css between a line holding TAGS:BEGIN and the
+# next holding TAGS:END -- each region whole lines, added beside the code they
+# extend and changing none of it -- and front_end keeps those regions only
+# where the site has tags: where build_site_v2 wrote a "tags" list into
+# meta.json (site_has_tags), which it does only when corrections/tags.json is
+# in force. Without one the published files are the files published before
+# tags, byte for byte, as the rest of the site is. The source runs as it
+# stands too (preflight's node harnesses run it): with no tags in meta.json
+# what the regions add does nothing.
+TAGS_BEGIN, TAGS_END = "TAGS:BEGIN", "TAGS:END"
+
+
+def without_tags(text, name="app.js"):
+    """`text` with each TAGS region cut out, its two marker lines with it, and
+    nothing else touched: its lines and their endings are kept as they were.
+    A region left open, opened inside another, or closed with none open stops
+    the build, since half a feature published is worse than none."""
+    out, inside = [], False
+    for n, line in enumerate(text.splitlines(keepends=True), 1):
+        mark = line.strip()
+        begin = mark.startswith(("// " + TAGS_BEGIN, "/* " + TAGS_BEGIN))
+        end = mark.startswith(("// " + TAGS_END, "/* " + TAGS_END))
+        if begin:
+            if inside:
+                raise SystemExit(f"{name}:{n}: {TAGS_BEGIN} inside a region that is already open")
+            inside = True
+            continue
+        if end:
+            if not inside:
+                raise SystemExit(f"{name}:{n}: {TAGS_END} with no {TAGS_BEGIN}")
+            inside = False
+            continue
+        if not inside:
+            out.append(line)
+    if inside:
+        raise SystemExit(f"{name}: a {TAGS_BEGIN} region is never closed")
+    return "".join(out)
+
+
+def site_has_tags(out):
+    """Whether the site in `out` has tags: its meta.json names any (build_site_v2
+    site_tagging). False where it has no meta.json or one that will not read."""
+    try:
+        return bool(json.loads((Path(out) / "meta.json").read_text(encoding="utf-8")).get("tags"))
+    except (OSError, ValueError, AttributeError):
+        return False
 
 
 # THE PUBLISHED app.css CARRIES NO COMMENTS (23 October 2026). They are this
@@ -2755,14 +2806,22 @@ BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey",
                      "spelling", "wordsAdd", "knownWord", "matchScore",
                      "titleShare", "statusCat", "requestNumber",
                      "setRequestYear")
+# And what its TAGS regions define, handed back where they are published.
+BILLMATCH_TAGS = ("setTagWords",)
 
 
-def bill_matcher_js(app_js):
+def bill_matcher_js(app_js, tags=False):
     """The marked regions of app.js, as one script defining GR_BILLMATCH.
 
     Stops the build rather than writing a partial file: a region left open,
     an END with no BEGIN, or a region set that no longer defines what the
-    header calls would each ship a panel that counts nothing, silently."""
+    header calls would each ship a panel that counts nothing, silently.
+
+    Without its TAGS regions (without_tags) unless `tags`: the site has tags
+    (site_has_tags). With them, GR_BILLMATCH hands back setTagWords as well,
+    which find.js gives meta.json's tags and the words that lead to them."""
+    if not tags:
+        app_js = without_tags(app_js)
     keep, inside, regions = [], False, 0
     for n, line in enumerate(app_js.splitlines(), 1):
         mark = line.strip()
@@ -2788,10 +2847,12 @@ def bill_matcher_js(app_js):
         raise SystemExit("app.js's BILLMATCH regions do not define "
                          + ", ".join(missing or BILLMATCH_EXPORTS)
                          + ": the header search could not count bills")
+    exports = BILLMATCH_EXPORTS + tuple(f for f in BILLMATCH_TAGS
+                                        if re.search(r"\bfunction " + f + r"\(", body))
     return ("// Written by build_pages.py from app.js's BILLMATCH regions, "
             "for find.js.\n// Do not edit here: edit app.js.\n"
             "window.GR_BILLMATCH=(function(){\n" + body + "\nreturn {"
-            + ",".join(BILLMATCH_EXPORTS) + "};\n})();\n")
+            + ",".join(exports) + "};\n})();\n")
 
 
 # THE WORDS INTO components.js (the component plan's C3, approved 9 October
@@ -4614,14 +4675,17 @@ COPIED = ("bills.html", "app.css", "components.js", "app.js", "find.js",
           "print.js", "print.css")
 
 
-def published_js(name, text):
+def published_js(name, text, tags=False):
     """A browser script's text as the site publishes it: components.js with
     the words written between its markers (with_words), and every script
     without its comments (strip_js.published, which publishes one as it is,
     and says so, where its reader refuses it). What front_end() writes, and
     what preflight holds the site's copy to (_published_scripts_stripped);
     build_district_map.py writes map.js through strip_js.published itself,
-    since it has no words."""
+    since it has no words. Without its TAGS regions (without_tags) unless
+    `tags`: the site has tags (site_has_tags)."""
+    if not tags:
+        text = without_tags(text, name)
     if name == "components.js":
         text = with_words(text)
     return strip_js.published(name, text)
@@ -4636,10 +4700,12 @@ def header_mark_placed(brand=Path("assets")):
                                or (brand / "licensed" / HEADER_MARK).is_file())
 
 
-def front_end(out, has_mark):
+def front_end(out, has_mark, has_tags=None):
     """Everything this step makes of the browser's files and of nothing else:
     the files it copies (COPIED) and billmatch.js. Returns the names it wrote
     whose bytes changed, and style.css where it took an old build's away.
+    `has_tags` keeps the TAGS regions of the scripts and app.css (without_tags);
+    None asks the site's own meta.json (site_has_tags), as the fast path does.
 
     ONE FUNCTION FOR THE BUILD AND THE FAST PATH (9 October 2026). main()
     calls it, and so does `build_all.py --front-end` (front_end.py), which
@@ -4651,6 +4717,8 @@ def front_end(out, has_mark):
     """
     out = Path(out)
     wrote = []
+    if has_tags is None:
+        has_tags = site_has_tags(out)
     # THERE IS NO style.css (23 October 2026): every page links app.css. A
     # site folder an earlier build wrote one into would publish it unused.
     stale = out / "style.css"
@@ -4682,9 +4750,10 @@ def front_end(out, has_mark):
         dst = out / name
         body = src.read_bytes()
         if name == "app.css":
-            body = strip_css((body if has_mark else without_mark(body)).decode("utf-8")).encode("utf-8")
+            css = (body if has_mark else without_mark(body)).decode("utf-8")
+            body = strip_css(css if has_tags else without_tags(css, name)).encode("utf-8")
         if name.endswith(".js"):
-            body = published_js(name, body.decode("utf-8")).encode("utf-8")
+            body = published_js(name, body.decode("utf-8"), tags=has_tags).encode("utf-8")
         # THE PAGE IS CLEANED, THE TEMPLATE IS NOT. src/pages/bills.html is
         # also the template every record's page is made from, and shell.page
         # finds its tabs by their written addresses ("officials.html"), so
@@ -4701,7 +4770,8 @@ def front_end(out, has_mark):
     # that do not load app.js. See bill_matcher_js.
     if Path("src/pages/app.js").exists():
         body = published_js("billmatch.js", bill_matcher_js(
-            Path("src/pages/app.js").read_text(encoding="utf-8"))).encode("utf-8")
+            Path("src/pages/app.js").read_text(encoding="utf-8"), tags=has_tags),
+            tags=has_tags).encode("utf-8")
         dst = out / "billmatch.js"
         if not dst.exists() or dst.read_bytes() != body:
             dst.write_bytes(body)

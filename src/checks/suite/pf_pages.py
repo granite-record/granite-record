@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.10
+# GRANITE_VERSION: 2026-11-16.13
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -2538,14 +2538,19 @@ done();
 """
 
 
-def _search_cases_node(BP, idx_files=(), text_at="tests/search_index.json"):
-    """tests/search_cases.json through the cut matcher: what the script found."""
+def _search_cases_node(BP, idx_files=(), text_at="tests/search_index.json", tags=None):
+    """tests/search_cases.json through the cut matcher: what the script found.
+    `tags`, a meta.json that lists tags, runs it as a site with those tags
+    publishes it: with its TAGS regions, handed the tags and their words."""
     app = _source("src/pages/app.js")
     try:
-        matcher = BP.bill_matcher_js(app)
+        matcher = BP.bill_matcher_js(app, tags=bool(tags))
     except SystemExit as e:
         raise AssertionError(f"build_pages cannot cut the matcher out of "
                              f"app.js: {e}")
+    if tags:
+        matcher += (f"\nwindow.GR_BILLMATCH.setTagWords({json.dumps(tags.get('tags') or [])},"
+                    f"{json.dumps(tags.get('tag_words') or {})});\n")
     # The header's copy hands back the functions it calls. The table and the
     # pattern a term is matched with are read from the same script, by the
     # same line.
@@ -2754,7 +2759,18 @@ def _search_cases_real(BP):
                         "(build_search_index.py writes it)")
     others = sorted(f for f in own.parent.glob("*.json")
                     if re.fullmatch(r"\d{4}-\d{4}", f.stem) and f != own)
-    got = _search_cases_node(BP, [own, *others], "site/sidx")
+    # WITH THE SITE'S TAGS WHERE IT HAS THEM (17 November 2026): a tag's words
+    # list its bills on /bills (app.js tagGroups), so the cases are asked of the
+    # search as the site publishes it. Measured that day on the cases' own 426
+    # bills, Draft 7 of the registry as it stood broke ten of them -- a bill a
+    # search must never list ("right to work", "vaccine mandate", "birth
+    # control") and four pairs of sides' words that would list different bills
+    # -- so the registry is to be put right before it is put in force, and this
+    # is where it would be seen.
+    meta_ = json.loads(Path("site/meta.json").read_text(encoding="utf-8")) \
+        if Path("site/meta.json").exists() else {}
+    got = _search_cases_node(BP, [own, *others], "site/sidx",
+                             tags=meta_ if meta_.get("tags") else None)
     assert not got["fails"], "search, on the real index: " + _search_cases_said(got["fails"])
     assert not got["whole"] or (got["across"] >= 11 and got["apart"] >= 4), (
         f"over every term, {got['across']} searches were held to bills of "
@@ -5747,7 +5763,9 @@ def _app_css_published():
     for what, site in _built_sites():
         built = (site / "app.css").read_text(encoding="utf-8")
         drawn = (site / BP.HEADER_MARK).is_file()
-        want = strip((src.encode() if drawn else BP.without_mark(src.encode())).decode("utf-8"))
+        want = (src.encode() if drawn else BP.without_mark(src.encode())).decode("utf-8")
+        # Less its TAGS region where the site has no tags (without_tags).
+        want = strip(want if BP.site_has_tags(site) else BP.without_tags(want, "app.css"))
         assert built == want, (
             f"{what}'s app.css is not app.css stripped of its comments"
             + ("" if drawn else ", without the header mark's block") + ": "
@@ -5885,8 +5903,13 @@ def _published_scripts_stripped(BP, SJ):
             if not f.exists():
                 continue
             built = f.read_bytes().decode("utf-8").replace("\r\n", "\n")
-            want = (BP.published_js(name, Path("src/pages/" + name).read_text(encoding="utf-8"))
-                    if name in BP.COPIED else out[name].replace("\r\n", "\n"))
+            # With their TAGS regions only where the site has tags (without_tags).
+            tagged = BP.site_has_tags(site)
+            want = (BP.published_js(name, Path("src/pages/" + name).read_text(encoding="utf-8"), tags=tagged)
+                    if name in BP.COPIED else
+                    BP.published_js(name, BP.bill_matcher_js(Path("src/pages/app.js").read_text(encoding="utf-8"),
+                                                             tags=True), tags=True)
+                    if name == "billmatch.js" and tagged else out[name].replace("\r\n", "\n"))
             assert built == want.replace("\r\n", "\n"), (
                 f"{what}'s {name} is not its source as published_js makes it, without its "
                 "comments: build_pages.front_end and build_district_map.py publish them, "
@@ -5895,6 +5918,86 @@ def _published_scripts_stripped(BP, SJ):
     return "ok", "; ".join(said) + ("" if node else "; node is not here to compile them")
 
 
+
+
+@check("code", "the tags' code is published only where the site has tags: app.js, find.js, app.css and billmatch.js "
+               "go without their TAGS regions unless meta.json lists a tag, and those regions are whole lines a "
+               "build can cut cleanly", needs=("build_pages",))
+def _tags_published_only_with_a_registry(BP):
+    """Topics as tags (17 November 2026), switched off until the owner approves the list. What draws, filters
+    and searches by tags is written between TAGS:BEGIN and TAGS:END lines in app.js, find.js and app.css, and
+    build_pages.front_end keeps those regions only where build_site_v2 wrote tags into meta.json
+    (site_has_tags): so with no registry the files published are those published before tags, byte for byte.
+
+    Held: without_tags cuts each region, its marker lines with it, keeps every other line and its ending, and
+    stops on a region opened inside another, left open, or an end with no beginning; each of the three
+    sources' regions cut cleanly; every name a region defines (a function, a variable, a class the page
+    draws) is in the copy published with tags and in none published without; published_js and
+    bill_matcher_js cut by default, and billmatch.js hands back setTagWords only where it is kept; front_end
+    over a site whose meta.json lists a tag publishes them, and over one that lists none publishes what
+    published_js makes by default."""
+    cases = {
+        "a\r\n// TAGS:BEGIN\r\nb\r\n// TAGS:END\r\nc\r\n": "a\r\nc\r\n",
+        "a\n  /* TAGS:BEGIN -- why\n  x{y:z} */\nq{r:s}\n/* TAGS:END */\nc": "a\nc",
+        "a\nb\n": "a\nb\n",
+    }
+    wrong = {k: BP.without_tags(k) for k, v in cases.items() if BP.without_tags(k) != v}
+    assert not wrong, "without_tags: " + "; ".join(f"{k!r} -> {v!r}" for k, v in wrong.items())
+    for broken in ("// TAGS:BEGIN\n// TAGS:BEGIN\n// TAGS:END\n", "// TAGS:BEGIN\na\n", "a\n// TAGS:END\n"):
+        try:
+            BP.without_tags(broken)
+            raise AssertionError(f"without_tags took a broken region: {broken!r}")
+        except SystemExit:
+            pass
+    said = []
+    defined = re.compile(r"\bfunction\s+([A-Za-z_$][\w$]*)|\b(?:let|const)\s+([A-Za-z_$][\w$]*)\s*=|class=\"([\w-]+)"
+                         r"|^\s*\.([\w-]+)[\s{:,.\[>]", re.M)
+    for name in ("app.js", "find.js", "app.css"):
+        src = _source(f"src/pages/{name}")
+        regions = re.findall(r"(?:// |/\* )TAGS:BEGIN.*?\n(.*?)\n[^\n]*TAGS:END", src.replace("\r\n", "\n"), re.S)
+        assert regions, f"{name} has no TAGS region: the tags would be drawn by nothing"
+        cut = BP.without_tags(src, name)
+        # The names a region defines that nothing outside the regions names, and the matcher's setter.
+        names = {n for r in regions for m in defined.finditer(r) for n in m.groups() if n}
+        names = {n for n in names if not re.search(r"(?<![\w$-])" + re.escape(n) + r"(?![\w$-])", cut)}
+        names |= {"setTagWords"} if name.endswith(".js") else set()
+        assert len(names) >= {"app.js": 10, "find.js": 1, "app.css": 3}[name], (
+            f"{name}'s TAGS regions define only {sorted(names)}")
+        if name == "app.css":
+            on, off = BP.strip_css(src), BP.strip_css(cut)
+        else:
+            on, off = BP.published_js(name, src, tags=True), BP.published_js(name, src)
+            assert off == BP.published_js(name, cut), f"published_js does not cut {name}'s TAGS regions by default"
+        missing = sorted(n for n in names if not re.search(r"(?<![\w$-])" + re.escape(n) + r"(?![\w$-])", on))
+        stray = sorted(n for n in names if re.search(r"(?<![\w$-])" + re.escape(n) + r"(?![\w$-])", off))
+        assert not missing, f"{name} published with tags lacks {missing}"
+        assert not stray, f"{name} published without tags still names {stray}"
+        said.append(f"{name}: {len(regions)} region(s), {len(names)} names")
+    app = _source("src/pages/app.js")
+    assert "setTagWords" not in BP.bill_matcher_js(app), "billmatch.js carries the tags' matcher without tags"
+    on = BP.bill_matcher_js(app, tags=True)
+    assert "function setTagWords(" in on and re.search(r"return \{[^}]*\bsetTagWords\}", on), (
+        "billmatch.js with tags does not hand back setTagWords for find.js")
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        for what, meta in (("with", {"terms": [], "tags": [{"id": "x", "name": "X", "definition": "X."}]}),
+                           ("without", {"terms": []})):
+            out = tmp / what
+            out.mkdir()
+            (out / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+            BP.front_end(out, False)
+            js = (out / "app.js").read_text(encoding="utf-8")
+            css = (out / "app.css").read_text(encoding="utf-8")
+            if what == "with":
+                assert "setTagWords" in js and ".tagfoot" in css and "setTagWords" in (
+                    out / "billmatch.js").read_text(encoding="utf-8"), "front_end left the tags out of a tagged site"
+            else:
+                assert js == BP.published_js("app.js", app) and "setTagWords" not in js and ".tagfoot" not in css \
+                    and "setTagWords" not in (out / "billmatch.js").read_text(encoding="utf-8"), (
+                        "front_end published the tags' code on a site with none")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", "; ".join(said) + "; front_end publishes them on a site with tags and cuts them from one without"
 @check("frontend", "the Learn pages' term figures stay on a term with a story until the next "
        "has one: not the newest term while most of its bills are still moving",
        needs=("site_read", "build_civics", "learn_numbers"))
@@ -6812,8 +6915,10 @@ def _links_resolve():
             "built with no lockup.png, the home page's heading is not the "
             "site's name as text: a mask whose file is missing is drawn as "
             "nothing, so the heading would be an empty band")
-        cut = BP.without_mark((here / "src/pages/app.css").read_bytes())
-        assert (site / "app.css").read_bytes() == BP.strip_css(cut.decode("utf-8")).encode("utf-8"), (
+        cut = BP.without_mark((here / "src/pages/app.css").read_bytes()).decode("utf-8")
+        # And less its TAGS region where the site has no tags (without_tags).
+        cut = cut if BP.site_has_tags(site) else BP.without_tags(cut, "app.css")
+        assert (site / "app.css").read_bytes() == BP.strip_css(cut).encode("utf-8"), (
             "built with no header mark, site/app.css is not app.css less its "
             "MARK region and its comments")
         for css in ("app.css",):

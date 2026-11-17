@@ -264,6 +264,7 @@
 "_one_stylesheet_linked",
 "_app_css_published",
 "_published_scripts_stripped",
+"_tags_published_only_with_a_registry",
 "_no_control_bytes",
 "_heading_levels",
 "_placeholder_colour",
@@ -1329,6 +1330,8 @@
 "_search_opens_on_requests_after_the_election",
 "_topic_dropped_on_the_requests",
 "_topic_filter_search_box",
+"_tags_on_the_bill_page_and_filter",
+"_tags_in_search",
 "_requests_search_by_name",
 "_requests_party_and_topic",
 "_request_topics_below_threshold",
@@ -1346,5 +1349,6 @@
 "_tag_plural_y",
 "_tag_provisions",
 "_tag_duties",
+"_tag_site_data",
 "_no_watch_left"
 ]

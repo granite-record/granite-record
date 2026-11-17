@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.80
+# GRANITE_VERSION: 2026-09-04.81
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -254,6 +254,16 @@ def static_record(b, d, data_url=None):
     if links:
         out.append("<h2>From the General Court</h2><ul>"
                    + "".join(f"<li>{x}</li>" for x in links) + "</ul>")
+    # THE TAGS, AS SEARCHES, LAST (the owner, 17 November 2026: tags are a
+    # search tool, listed at the bottom and not a label): each by the
+    # registry's name, in its order, to the bill search on All Terms with the
+    # tag ticked, as app.js draws them on the page (tagFoot). Only on a bill
+    # that carries one, so only once the owner has put a registry in force.
+    tags = [t for t in d.get("tags") or [] if isinstance(t, dict) and t.get("id") and t.get("name")]
+    if tags:
+        out.append("<h2>Related searches</h2><ul>" + "".join(
+            f'<li><a href="/bills?term=all&amp;tag={E(t["id"])}">{E(t["name"])}</a></li>' for t in tags)
+            + "</ul>")
     out.append("</div>")
     return "".join(out)
 

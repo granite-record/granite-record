@@ -872,6 +872,69 @@ run by the owner on the laptop after every note has passed
 
 `workers/bench/README.md` has the routes, the limits and the commands.
 
+## Topics as tags, switched off until the registry is in force (17 November 2026)
+
+A bill keeps its one topic and may carry several tags, each a subject the
+registry names, defines and gives a rule for (`reports/topics-as-tags-design-2026-11.md`;
+the engine is `src/parse/tag_rules.py`). The registry is the owner's file,
+`corrections/tags.json`, and her copying an approved list there is the
+switch: `tag_rules.in_force()` reads that file under the folder the build
+runs in and nothing else -- never the committed fixture, never
+`GRANITE_TAGS` -- and a registry `validate()` finds a problem with stops the
+build. Without it `build_site_v2.site_tagging()` answers `{}` and the site
+is the site built before tags, byte for byte. With it, every bill is read
+by the engine as it stands (its title, its text, the topic the site's
+vocabulary gave it), each answer kept in `.build_cache/bill_tags.json.gz`
+by its inputs, the registry's bytes and the engine's code, since the rules
+take about 13 ms a bill (seven minutes over the record cold); then
+
+- the bill's record (`bills/<year>/<id>.json`) carries `tags`, each
+  `{id, name, why}` in the registry's order, `why` the evidence that
+  attached it (`"T:mental health"`), which no page prints;
+- its index row carries `tags` as places in meta.json's list;
+- `meta.json` gains `tags`, the tags some bill carries, each
+  `{id, name, group, definition}` in the registry's own words and no
+  others, and `tag_words`, what a reader may type and where it leads
+  (`"tag:ID"`, or `"topic:Name"` for a topic of the site), from the
+  registry's names, asks and synonyms (`tag_rules.site_meta`);
+- the no-script record ends with "Related searches", each tag to the bill
+  search on All Terms with it ticked.
+
+What draws them is written in `app.js`, `find.js` and `app.css` between a
+line holding `TAGS:BEGIN` and the next holding `TAGS:END`, each region whole
+lines added beside the code it extends, and `build_pages.front_end`
+publishes those regions only where the site's `meta.json` lists a tag
+(`site_has_tags`, `without_tags`; `published_js` and `bill_matcher_js` cut
+them by default). The source runs as it stands -- `preflight`'s node
+harnesses run it -- and with no tags what the regions add does nothing.
+
+Tags are a search tool, not a label (the owner, 17 November 2026, in place
+of the design's 5.1 and 5.2): no card, list or record head shows one. A
+bill's own page lists them as "Related searches", each to `/bills` on All
+Terms with that tag ticked, by the registry's name with its definition on
+the hover: at the page's foot, below the tabs, or at the end of the History
+tab, as `TAGS_PLACE` in `app.js` says (`tagFoot`, `tagHistory`) -- the
+owner's choice. The bill search has a Tags group after Topic, closed until
+opened, whose box finds a tag by its name or by a word that leads to it,
+which is never shown; the Topic box finds a topic the same way ("weed",
+Cannabis). `?tag=` ticks a tag by its id; two are either, a tag and a topic
+both.
+
+The search reads a tag's words, built in and never displayed: where the
+whole search is a tag's name or one of the words that lead to it
+(`meta.json`'s `tag_words`), the tag's bills -- or the topic's, for a word
+whose subject is a topic -- are listed after every bill whose title, or
+whose analysis or text, has the reader's own word (`tagGroups`, `fitAlone`);
+a whole search that is such a phrase ("attorney general", "gravel tax") is
+read as that phrase, and one word of a longer search leads nowhere.
+`preflight`'s `_search_cases_real` asks `tests/search_cases.json` of the
+search as a site with tags publishes it. A card says nothing of a tag that
+listed it, and the line under the box no word that led there. The offers
+add "All bills tagged ...". `find.js` hands the same words to the header
+search's matcher (`billmatch.js`, `setTagWords`), so its counts are
+`/bills`'s. `CONCEPTS` is untouched: it maps a word to the bills' wording,
+which a tag does not replace until the measure in the tags report says so.
+
 ## The bill search, and what it reads
 
 One matcher, in `app.js` between its `BILLMATCH` marks. `/bills` runs it

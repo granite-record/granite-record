@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.342
+// GRANITE_VERSION: 2026-09-07.343
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -1307,6 +1307,10 @@ function queryGroups(raw){
     before=c?null:g;
     out.push(g);
   });
+  // TAGS:BEGIN
+  // A tag's word, or a topic's, the whole search or one part of it (tagGroups).
+  tagGroups(out,asTyped);
+  // TAGS:END
   // The search as typed, the skipped words still in it: a title that says
   // "medical bills" in those words is the one a reader of them wants first
   // (matchScore, below).
@@ -1656,6 +1660,68 @@ function asOne(b,alt){
   const J=joinedTitle(b);
   return !!J&&(altRx(alt).test(J.h)||(alt.length>=5&&altRx(alt).test(J.j)));
 }
+// TAGS:BEGIN
+/* THE TAGS (topics as tags, stages 3 and 4: reports/topics-as-tags-design-
+   2026-11.md, sections 5 and 6), SWITCHED OFF UNTIL THE OWNER APPROVES THE
+   LIST. build_site_v2 writes them into meta.json only where her registry,
+   corrections/tags.json, is in force, and build_pages publishes this file's
+   TAGS regions only then; without them every function here does nothing.
+   META.tags is the list, each {id, name, group, definition} in the
+   registry's own words, which are the only words a page says of a tag
+   (design 6.3), and only on a bill's own page and in the Tags filter (the
+   owner, 17 November 2026: no card or list shows one); a bill's index row
+   carries its tags as places in that list.
+   META.tag_words is what a reader may type and where it leads: "tag:ID", or
+   "topic:Name" for a word whose subject is a topic ("weed", the topic
+   Cannabis), as tag_rules.synonym_table makes it. setTagWords hands both to
+   the matcher: app.js when meta.json arrives, find.js for the header search
+   and /search. */
+let TAGLIST=[],TAGWORDS=new Map();
+// A word as the table is looked up: lower case, letters and digits, one space.
+const tagKey=w=>String(w||"").toLowerCase().replace(/['‘’]/g,"").replace(/[^a-z0-9+]+/g," ").trim();
+function setTagWords(tags,words){
+  TAGLIST=Array.isArray(tags)?tags.filter(t=>t&&t.id&&t.name):[];
+  TAGWORDS=new Map();
+  if(TAGLIST.length&&words&&typeof words==="object")
+    for(const w of Object.keys(words))if(tagKey(w))TAGWORDS.set(tagKey(w),String(words[w]));
+}
+// A bill's tags, by id, in the registry's order; and a tag by its id.
+const tagIdsOf=b=>(b&&Array.isArray(b.tags)?b.tags:[]).map(i=>TAGLIST[i]&&TAGLIST[i].id).filter(Boolean);
+const tagOf=id=>TAGLIST.find(t=>t.id===id)||null;
+// TAGS:END
+// TAGS:BEGIN
+// Whether a bill is where a word leads: a tag it carries, or its topic.
+function tagLeads(b,to){
+  const s=String(to||""),i=s.indexOf(":"),k=s.slice(0,i),v=s.slice(i+1);
+  return k==="tag"?tagIdsOf(b).includes(v):k==="topic"?String(b.topic||"")===v:false;
+}
+/* A TAG'S WORD, OR A TOPIC'S, LISTS ITS BILLS (design 6.1; the owner, 17
+   November 2026: tags "may replace the synonym matching system by having
+   those sorts of synonyms built in but not displayed"). A part of the
+   search that is a tag's name or one of the words that lead to it (the
+   registry's asks and synonyms) carries where it leads, `to`, and where it
+   is the whole search fitAlone lists that tag's bills, or that topic's,
+   after every bill whose title says the reader's word and every bill whose
+   analysis or text does ("eviction" lists the bills that say it first;
+   measured on tests/search_cases.json, 17 November 2026: at a topic's own
+   level, 0.5, a tagged bill came above them). A topic is said on the card as ever ("topic:
+   Cannabis"); a tag, and the words that led to it, never are (whyListed).
+   The whole word or phrase only, never the start of one, so a large tag is
+   not listed for a few letters; and the whole search only, never one word
+   of a longer one, where it listed a bill the words found apart ("college
+   students voting", tests/search_cases.json). A whole search of several
+   words that is one such phrase ("attorney general", "gravel tax") is read
+   as that phrase, one part, where it was a part a word. */
+function tagGroups(out,typed){
+  if(!TAGLIST.length||!TAGWORDS.size)return;
+  const whole=tagKey(typed);
+  if(out.length>1&&whole.includes(" ")&&TAGWORDS.has(whole)){
+    const w=String(typed).trim();
+    out.splice(0,out.length,{word:w,alts:[w]});
+  }
+  if(out.length===1){const to=TAGWORDS.get(tagKey(out[0].word));if(to)out[0].to=to;}
+}
+// TAGS:END
 // The topic's name as searched: what stands before " - ", and nothing at all
 // where that names more than one subject.
 const topicHay=b=>{
@@ -1743,6 +1809,16 @@ function fitAlone(b,g){
        &&(g.solo||(g.rest&&!/\S\s+\S/.test(t)
           &&g.rest.every(alts=>alts.some(a=>altRx(a).test(b.hayT)))))){d=0.5;why=["topic"];}
   }
+  // TAGS:BEGIN
+  // Where a tag's word or a topic's leads (tagGroups), for the whole search
+  // only, at 1.1: after a bill whose title has the word or a longer word it
+  // begins (1) and one whose analysis or text has the word itself (0.6 to
+  // 0.96), and before the rest -- a longer word in a text, the table's
+  // terms. The tag's id third, where no word found is: nothing is "found"
+  // in it, and the card says nothing (whyListed).
+  if(d>1.1&&g.solo&&g.to&&tagLeads(b,g.to)){
+    d=1.1;why=/^tag:/.test(g.to)?["tag","",g.to.slice(4)]:["topic"];}
+  // TAGS:END
   if(d>0.6&&b.term){
     const m=textHits(g,b.term),h=m&&m.get(b.id);
     if(h&&h[0]<d&&!(out&&h[3])){d=h[0];why=[h[1]?"analysis":"text",h[3]?h[2]:""];}
@@ -1978,6 +2054,11 @@ function whyListed(b,gs){
     if(!f)continue;
     const y=f[1],z=f[2];
     if(!y)continue;
+    // TAGS:BEGIN
+    // A bill a tag listed says nothing of it on its card (the owner, 17
+    // November 2026: tags are a search tool, built in and not displayed).
+    if(y[0]==="tag")continue;
+    // TAGS:END
     let s=y[0]==="topic"?"topic: "+b.topic
       :y[1]?y[0]+" says: "+y[1]:"in the bill's "+y[0];
     if(z)s+=y[1]&&z[0]===y[0]?" and "+z[1]:", "+z[0]+" says: "+z[1];
@@ -2536,6 +2617,9 @@ function billOffers(q){
       // "House No Committee Assignment" is a filter, and no committee.
       {key:"committee",values:vals("committee").filter(x=>!/\bno committee\b/i.test(x[0])),
        say:v=>`All bills referred to the <b>${esc(v)}</b> committee`}]);
+    // TAGS:BEGIN
+    tagOffers(q,offers,vals);
+    // TAGS:END
     for(const o of offers){
       const was=query;
       query=o.rest;sel[o.key].add(o.v);
@@ -2545,6 +2629,29 @@ function billOffers(q){
     return offers;
   }finally{term=own;}
 }
+// TAGS:BEGIN
+/* THE TAGS' OFFERS (design 6.1): "All bills tagged Attorney General" for a
+   tag whose name the words typed begin, as a topic or a committee is
+   offered; and first, where the whole search is a word that leads to a tag
+   or a topic ("weed": the topic Cannabis), that one, standing for all of
+   it. `offers` is billOffers' list, which this adds to, and `vals` its
+   reading of a filter's values in the term. */
+function tagOffers(q,offers,vals){
+  if(!TAGLIST.length)return;
+  const named=t=>`All bills tagged <b>${esc(t)}</b>`;
+  const tv=vals("tag").map(([v,_n,c])=>[v,(tagOf(v)||{}).name||v,c]);
+  const byName=filterOffers(q,[{key:"tag",values:tv,say:named}]);
+  const to=TAGWORDS.get(tagKey(q))||"",at=to.indexOf(":"),k=to.slice(0,at),v=to.slice(at+1);
+  const first=[];
+  if(k==="tag"&&tv.some(x=>x[0]===v)&&!byName.some(o=>o.v===v))
+    first.push({key:"tag",v,name:tagOf(v).name,n:0,how:0,html:named(tagOf(v).name),rest:""});
+  if(k==="topic"&&vals("topic").some(x=>x[0]===v)&&!offers.some(o=>o.key==="topic"&&o.v===v))
+    first.push({key:"topic",v,name:v,n:0,how:0,html:`All bills with the topic <b>${esc(v)}</b>`,rest:""});
+  offers.unshift(...first);
+  offers.push(...byName);
+  offers.splice(FO_MOST);
+}
+// TAGS:END
 // An offer taken, as ticking it in the list would be. Off the list -- a
 // bill's own page, a member's, a committee's -- it is taken where the list
 // is: /bills with the filter in its address, which /bills reads.
@@ -2852,6 +2959,9 @@ const billCmp=(a,b)=>{const x=billKey({id:String(a||"")}),y=billKey({id:String(b
 // committees, so a facet value is a list. Sorting the list alphabetically also
 // groups it: every House committee, then every Senate one.
 function facetVals(b,k){
+  // TAGS:BEGIN
+  if(k==="tag")return tagIdsOf(b);
+  // TAGS:END
   // The Status filter is the chip's category (statusCat), not its word. Not
   // chipOf: a request has no chip, and its own word -- Requested, Filed,
   // Withdrawn -- is its category (13 November 2026).
@@ -2967,6 +3077,10 @@ function sortRows(rows){
 }
 const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),status:new Set(),
            type:new Set(),voteday:new Set(),rsa:new Set(),party:new Set()};
+// TAGS:BEGIN
+// The tags ticked, by id: inside the Topic group, under its own key (?tag=).
+sel.tag=new Set();
+// TAGS:END
 // THE STATUTE FILTER (the person, 11 October 2026: the RSA search replaces the
 // floor vote day filter). A bill's index row carries `rsa`, the chapters and
 // sections its own text says it changes (rsa.py), each section's chapter with
@@ -2983,6 +3097,11 @@ function filtersFromAddress(params){
    // address (the second review of 7 November 2026), and on a reload before.
    for(const pt of params.getAll("topic"))
      if(pt&&(META.topics||[]).includes(pt)) sel.topic.add(pt);
+   // TAGS:BEGIN
+   // ...and every tag, by its id (?tag=), ignored where meta.json has no such tag.
+   for(const w of params.getAll("tag"))if(w&&tagOf(w))sel.tag.add(w);
+   if(sel.tag.size)openGroups.add("tag");
+   // TAGS:END
    // ...or with a Status or a Bill Type named, the same way: ?status=Passed,
    // ?type=CACR. A status is read through catOfWord, so an address written
    // with a chip's own word -- ?status=Became%20Law, ?status=In%20committee,
@@ -3416,6 +3535,9 @@ if(window.GR_STATIC){
  .then(([i,m])=>{
    IDX=i;META=m;
    setRequestYear(META.requests?reqYear():"");
+   // TAGS:BEGIN
+   setTagWords(META.tags,META.tag_words);
+   // TAGS:END
    // The haystack is built in ensureTerm, once per term as it arrives.
    const terms=META.terms&&META.terms.length?META.terms
      :[...new Set(IDX.map(b=>b.term).filter(Boolean))].sort().reverse();
@@ -3716,6 +3838,11 @@ function matches(b,ignore){
   if(!inTermOf(b))return false;
   for(const k of["committee","topic","sponsor","status","type","party"])
     if(k!==ignore&&sel[k].size&&!facetVals(b,k).some(v=>sel[k].has(v)))return false;
+  // TAGS:BEGIN
+  // Two tags ticked are either, as two topics are; a tag and a topic are
+  // both (Education - General and Mental health), being two keys (design 5.3).
+  if(ignore!=="tag"&&sel.tag.size&&!tagIdsOf(b).some(v=>sel.tag.has(v)))return false;
+  // TAGS:END
   if(ignore!=="voteday"&&sel.voteday.size&&!(b.votedays||[]).some(d=>sel.voteday.has(d)))return false;
   if(ignore!=="rsa"&&sel.rsa.size&&![...sel.rsa].some(a=>rsaHas(b,a)))return false;
   const q=query.trim(); if(!q)return true;
@@ -3806,6 +3933,9 @@ function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(isTopic?v:sponsorShow(v))}</span>
         <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
         ||((isTopic?topicFilter:sponsorFilter)?`<p class="fnone">No match</p>`:""));
+    // TAGS:BEGIN
+    if(isTopic)inner=topicLed(inner,f);
+    // TAGS:END
   }else{
     const order=zerosLast(key,vals,counts);
     inner=order.vals.map((v,i)=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}${i===order.rule?' fzero':''}">
@@ -3824,6 +3954,65 @@ function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
     <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
+// TAGS:BEGIN
+/* THE TAGS FILTER (design 5.3, as the owner's 17 November 2026 note leaves
+   it: tags are "a helpful search tool"). A group of its own after Topic,
+   closed until opened as the others are: the tags the list's bills carry,
+   each by the registry's name with its count and its definition on the
+   hover, by name with the zeros last as the topics are, and a box that
+   narrows them by name and by the words that lead to each, which it never
+   shows ("deepfake" lists Artificial intelligence and data centers). A tag
+   ticked is listed whatever is typed, so it can be unticked where it is;
+   two ticked are either, and a tag and a topic both (matches). */
+let tagFilter="";
+function tagGroup(inYear){
+  if(!TAGLIST.length)return "";
+  const typed=tagKey(tagFilter);
+  const ledTo=tagLedTo(typed);
+  const carried=new Set(inYear.flatMap(tagIdsOf));
+  if(!carried.size&&!sel.tag.size)return "";
+  const c={};
+  inYear.filter(b=>matches(b,"tag")).forEach(b=>tagIdsOf(b).forEach(v=>{c[v]=(c[v]||0)+1;}));
+  const pick=TAGLIST.map(t=>t.id).filter(id=>carried.has(id)||sel.tag.has(id))
+    .filter(id=>sel.tag.has(id)||!typed||tagKey(tagOf(id).name).includes(typed)||ledTo.has("tag:"+id))
+    .sort((a,b)=>tagOf(a).name.localeCompare(tagOf(b).name));
+  const order=zerosLast("topic",pick,c);
+  const open=openGroups.has("tag");
+  const list=order.vals.map((id,i)=>`<label class="fopt ${!c[id]&&!sel.tag.has(id)?'off':''}${i===order.rule?' fzero':''}"><input type="checkbox" data-f="tag"
+        value="${esc(id)}" ${sel.tag.has(id)?"checked":""}><span title="${esc(tagOf(id).definition)}">${esc(tagOf(id).name)}</span>
+        <span class="c">${(c[id]||0).toLocaleString()}</span></label>`).join("")||(typed?`<p class="fnone">No match</p>`:"");
+  return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="tag"
+    aria-expanded="${open}"><span>Tags</span>${sel.tag.size?`<span class="badge">${sel.tag.size}</span>`:""}
+    <span class="chev">▸</span></button><div class="fbody" ${open?"":"hidden"}>`
+    +`<input class="sbox" id="gbox" aria-label="Find a tag" placeholder="Type a subject…" value="${esc(tagFilter)}" autocomplete="off">`
+    +`${list}</div></div>`;
+}
+// Where the words typed lead: each word of the table that is the words
+// typed, or that they begin once they are three letters long.
+function tagLedTo(typed){
+  return new Set(typed?[...TAGWORDS].filter(([w])=>w===typed||(typed.length>2&&w.startsWith(typed)))
+    .map(([,to])=>to):[]);
+}
+/* THE TOPIC BOX FINDS A TOPIC BY A WORD THAT LEADS TO IT (design 5.3): "weed"
+   lists Cannabis under Topic, as the search does (tagGroups). `inner` is the
+   group's box and topics as fgroup drew them, `f` what is typed in the box;
+   each topic a typed word leads to that its name did not list is added, with
+   its count, and "No match" goes where one is. */
+function topicLed(inner,f){
+  if(!TAGLIST.length)return inner;
+  const ledTo=tagLedTo(tagKey(f));
+  const inYear=IDX.filter(inTermOf);
+  const here=new Set(inYear.map(b=>b.topic).filter(Boolean));
+  const more=[...ledTo].filter(to=>/^topic:/.test(to)).map(to=>to.slice(6))
+    .filter(t=>(here.has(t)||sel.topic.has(t))&&!inner.includes(`value="${esc(t)}"`)).sort();
+  if(!more.length)return inner;
+  const c={};
+  inYear.filter(b=>matches(b,"topic")).forEach(b=>{if(b.topic)c[b.topic]=(c[b.topic]||0)+1;});
+  return inner.replace(`<p class="fnone">No match</p>`,"")+more.map(t=>`<label class="fopt ${!c[t]&&!sel.topic.has(t)?'off':''}"><input type="checkbox" data-f="topic"
+        value="${esc(t)}" ${sel.topic.has(t)?"checked":""}><span>${esc(t)}</span>
+        <span class="c">${(c[t]||0).toLocaleString()}</span></label>`).join("");
+}
+// TAGS:END
 /* THE LAWS CHANGED FILTER (the person, 26 October 2026: "it's a bit unclear
    what the most changed by these bills section means and those don't seem to
    have any particular meaning. It's more of a power user filter for folks who
@@ -4212,6 +4401,9 @@ function renderFacets(){
   // the topic from title label"). A request's topic is read from its title
   // (request_topics.py), and one it cannot place is Miscellaneous, listed here.
   h+=fgroup("topic","Topic",[...new Set([...present("topic"),...sel.topic])].sort(),cnt("topic","topic"),true);
+  // TAGS:BEGIN
+  h+=tagGroup(inYear);
+  // TAGS:END
   // THE PRIME SPONSOR'S PARTY is a choice inside the Sponsor group it narrows
   // (the owner, 10 November 2026), below the name box and the co-sponsorship
   // box: a short list shown whole, in the legislators' chip shape and colour
@@ -7493,6 +7685,14 @@ function renderRelated(b,relRows,d){
     // section's bill history is shown (the owner's walk of dry run 9).
     +(rsaChapters(d||{}).length?rsaLines(Object.assign({},d,{changed:[]})):"");
 }
+// TAGS:BEGIN
+// The bill's own page's History tab ends with its tags as searches, where
+// TAGS_PLACE says so (tagHistory); a card opened in a list shows none.
+renderRelated=(drawn=>function(b,relRows,d){
+  const h=drawn(b,relRows,d);
+  return TAGS_PLACE==="history"&&focused===b.id?h+tagHistory(b,d):h;
+})(renderRelated);
+// TAGS:END
 
 // ======================================================= report a problem ==
 //
@@ -8650,6 +8850,13 @@ function cardHtml(b,focus,line,cls){
     rail:datedRail(b,!(b.rail||[]).length?d:undefined),
     open,body,card:cls||""});
 }
+// TAGS:BEGIN
+// The bill's own page, and only it, ends with its tags as searches (tagFoot).
+cardHtml=(drawn=>function(b,focus,line,cls){
+  const h=drawn(b,focus,line,cls);
+  return focus&&TAGS_PLACE==="foot"?h.replace(/<\/article>$/,()=>tagFoot(b,detail[dkey(b.id)])+"</article>"):h;
+})(cardHtml);
+// TAGS:END
 
 // A BILL'S NUMBER, ITS SUFFIXES MARKED FOR THEIR POPOVERS (C9: "FN in a
 // bill's title too"): "HB 1083-FN" says what FN is on a tap or a held hover,
@@ -8719,6 +8926,37 @@ function billHead(b,d){
   return back+head.replace(`<li><a href="${esc(BASE)}bills">`,`<li><a href="${esc(to)}">`);
 }
 
+// TAGS:BEGIN
+/* A BILL'S TAGS ON ITS OWN PAGE, AS SEARCHES (the owner, 17 November 2026,
+   in place of design 5.1 and 5.2: "I don't want tags to be distracting to the
+   layout as additional visual clutter and more of a helpful search tool, so
+   maybe they could be listed at the bottom of a page or in a certain section
+   tab like history"). No card and no list shows a tag, and the head has no
+   row of them. On the bill's own page, each tag is a link to the bill search
+   on All Terms with that tag ticked -- the history is the point -- under
+   "Related searches", by the registry's name, its definition on the hover,
+   in the registry's order. Where is the owner's choice, and TAGS_PLACE says
+   it: "foot", a short list at the foot of the page, below the tabs and
+   under every one; or "history", a section at the end of the History tab,
+   with the bills that share this one's language. Nothing where the bill has
+   no tag. */
+let TAGS_PLACE="foot";
+function tagLinks(b,d){
+  const ids=tagIdsOf(b);
+  const list=(ids.length?ids:((d&&d.tags)||[]).map(t=>t&&t.id)).map(tagOf).filter(Boolean);
+  return list.map(t=>`<li><a href="${esc(BASE)}bills?term=all&amp;tag=${encodeURIComponent(t.id)}" `
+    +`title="${esc(t.definition)}">${esc(t.name)}</a></li>`).join("");
+}
+function tagFoot(b,d){
+  const li=tagLinks(b,d);
+  return li?`<section class="tagfoot" aria-label="Related searches"><h2 class="tagfh">Related searches</h2>`
+    +`<ul class="taglinks">${li}</ul></section>`:"";
+}
+function tagHistory(b,d){
+  const li=tagLinks(b,d);
+  return li?`<section class="rl-g tagsec"><h2 class="sech">Related Searches</h2><ul class="taglinks">${li}</ul></section>`:"";
+}
+// TAGS:END
 // The tabs inside an expanded card are set after its HTML is in the document,
 // because every tab's pane is written and only one is shown. Both renderers
 // have to do it, so neither owns it.
@@ -12279,6 +12517,9 @@ function addressList(){
   if(term&&term!==defaultTerm(META))p.set("term",term);
   for(const k of ["status","type","topic","committee","sponsor","party","voteday","rsa"])
     for(const v of sel[k])p.append(k,v);
+  // TAGS:BEGIN
+  for(const v of sel.tag)p.append("tag",v);
+  // TAGS:END
   if(withCosp)p.set("cosp","1");
   if(sortChosen&&sortBy)p.set("sort",sortBy);
   const s=p.toString(),want=location.pathname+(s?"?"+s:"");
@@ -12793,6 +13034,14 @@ document.addEventListener("change",e=>{
   if(e.target.id==="cosp"){withCosp=!!e.target.checked;render();return;}
   const f=e.target.dataset.f;if(!f)return;
   e.target.checked?sel[f].add(e.target.value):sel[f].delete(e.target.value);render();});
+// TAGS:BEGIN
+// The Tags group's box (tagGroup), as the Topic group's is heard below.
+document.addEventListener("input",e=>{
+  if(PAGE||e.target.id!=="gbox")return;
+  tagFilter=e.target.value;renderFacets();
+  const b=document.getElementById("gbox");if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}
+});
+// TAGS:END
 // A law offered under the Laws Changed box, pressed, or its Clear (rsaGroup):
 // the keyboard into the box only for a click with no pointer behind it.
 document.addEventListener("click",e=>{
