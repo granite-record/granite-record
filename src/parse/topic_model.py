@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.14
+# GRANITE_VERSION: 2026-09-16.15
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 src/parse/topic_model.py --apply              # write topics_assigned.json
@@ -99,8 +99,9 @@ TWO LABEL SPACES, AND WHY --apply USES A BY DEFAULT
      Miscellaneous; space B 664/1,087 = 61.1% with 25.1% declined. It reaches
      654 Housing bills and 2,103 Study bills across the whole record.
 
-TITLE RULES, 23 October 2026. A constitutional amendment is answered CACR
-before the model asks anything, as the General Court files it; and below the
+TITLE RULES, 23 October 2026. A constitutional amendment was answered CACR
+before the model asked anything, as the General Court files it (retired with
+CACR itself on 18 November 2026: RETIRED, and the rules section); and below the
 floor, where the model would say Miscellaneous, a commemoration is answered
 Memorials and an opinion of the justices the topic of the bill it asks
 about. The first two are the General Court's own conventions, measured on its
