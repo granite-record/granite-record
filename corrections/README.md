@@ -18,6 +18,7 @@ it is, what it is for and how an entry is added.
 | `town_websites.json` | the current website of a town that has moved where the directories still hold the old one, and optionally the town's select board and its contact e-mail, each with the evidence and the day (below) | `src/towns/town_websites.py`, for `town_sites.py`, `parse_town_sites.py`, `town_boards.py` and `build_town_pages.py` |
 | `status/status.txt` | the state of the session -- session days, deadlines, sine die -- which no published file carries | `src/pages/build_site_v2.py` |
 | `vote_lines.json` | the one-line summary of a vote that names a member (a reprimand, a censure, an expulsion, a member's privileges; shown as a "Misc vote"), approved against the Journal's page; such a vote shows only the Journal's words until a line is here. Empty when it was made, 23 October 2026 | `src/parse/journal_motions.py` |
+| `name_forms.json` | two forms of one person's name the owner confirmed are the same person (a request filed by "Samuel Hoehn", the member-elect "Sam Hoehn"), with her words, the day and the evidence; a form not here is never guessed | `src/pages/build_lsrs.py` (`name_forms`), matching a request's sponsor |
 
 ## Earlier service in `members_elect.json`
 

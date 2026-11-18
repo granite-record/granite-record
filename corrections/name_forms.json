@@ -1,0 +1,14 @@
+{
+  "_about": "Two forms of one person's name that the owner has confirmed are the same person -- a request filed under \"Samuel Hoehn\" by the member-elect the results print as \"Sam Hoehn\". A short form is never guessed (the owner, 18 November 2026): a name not here matches only as it is written. Edited by a person; no generator writes this file, and preflight fails if one tries. src/pages/build_lsrs.py reads it (name_forms): a request whose sponsor is written as `form` is matched as if it were written as `is`, and so goes to the one person that name names, or to nobody where it names nobody or two.",
+  "_how": "One entry per form: `form`, the name as a source writes it; `is`, the form the person is matched under; `said`, the owner's words; `by` and `on`, who said so and the day; `evidence`, what was compared. `form` and `is` are whole names, never an initial or a surname alone.",
+  "forms": [
+    {
+      "form": "Samuel Hoehn",
+      "is": "Sam Hoehn",
+      "said": "Yes, same person",
+      "by": "the owner",
+      "on": "2026-11-18",
+      "evidence": "LSR 2027-0708, a House resolution request, names its sponsor \"Samuel Hoehn\"; the 2026 general election results print the Coos 1 member-elect as \"Sam Hoehn\". Asked whether they are one person, the owner answered \"Yes, same person\" on 18 November 2026."
+    }
+  ]
+}

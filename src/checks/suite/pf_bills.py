@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.24
+# GRANITE_VERSION: 2026-11-16.25
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2191,6 +2191,61 @@ def _request_sponsor_cacr_and_record(build_lsrs):
                   "Goley's, whom the owner matched to his record, and is nobody's without it; a "
                   "CACR by less than the whole name, by a name two winners or two sitting "
                   "members share, and a member-elect's Senate request match nobody")
+
+
+@check("build", "a request's sponsor written in a form the owner confirmed (corrections/"
+                "name_forms.json) is the person the other form names; any other form, nobody",
+       needs=("build_lsrs",))
+def _request_sponsor_name_forms(build_lsrs):
+    """The owner, 18 November 2026: LSR 2027-0708, a House resolution request filed by "Samuel
+    Hoehn", is the Coos 1 member-elect the results print as "Sam Hoehn" -- "Yes, same person".
+    Sam serves two names, so no table guesses it; the owner's word, in her hand file, ties the
+    two forms of this one person's name.
+
+    build_lsrs: name_forms reads the hand file, and its Hoehn entry carries the owner's words,
+    the day and the evidence; rows_from matches "Samuel Hoehn" to Sam Hoehn's page with it and
+    to nobody without it; a form the file does not hold ("Samuel Twin" beside a member-elect
+    "Sam Twin") still matches nobody, so short forms stay unguessed; a confirmed form whose
+    other form names two people matches nobody; an entry missing the owner's word stops the
+    build."""
+    L = build_lsrs
+    forms = L.name_forms()
+    assert forms.get("samuelhoehn") == "Sam Hoehn", f"the owner's Hoehn entry is not read: {forms}"
+    raw = json.loads(_source("corrections/name_forms.json"))
+    hoehn = [e for e in raw["forms"] if e["form"] == "Samuel Hoehn"]
+    assert hoehn and hoehn[0]["said"] == "Yes, same person" and hoehn[0]["on"] == "2026-11-18" \
+        and "2027-0708" in hoehn[0]["evidence"], f"the entry is not the owner's word: {hoehn}"
+    who = {"samhoehn": ("Sam Hoehn (R)", "sam-hoehn-coos-1", "H"),
+           "samtwin": ("Sam Twin (D)", "sam-twin-ches-2", "H"),
+           "patsame": None}
+    req = lambda n, body, who_: {"lsr": f"2027-{n}", "session": 2027, "body": body, "title": "t.",
+                                 "sponsor": who_}
+    lsrs = [req("0708", "HR", "Samuel Hoehn"), req("0901", "HB", "Samuel Twin"),
+            req("0902", "HB", "Patrick Same"), req("0903", "SB", "Samuel Hoehn")]
+    mine = dict(forms, patricksame="Pat Same")
+    rows, unmatched = L.rows_from(lsrs, who, {}, 2027, forms=mine)
+    by = {r["n"][4:]: r["sponsor_slug"] for r in rows}
+    want = {"2027-0708": "sam-hoehn-coos-1", "2027-0901": "", "2027-0902": "", "2027-0903": ""}
+    assert by == want, f"a sponsor matched otherwise than the owner's forms say: {by}"
+    assert sorted(unmatched) == ["Patrick Same", "Samuel Hoehn", "Samuel Twin"], unmatched
+    bare, _ = L.rows_from(lsrs[:1], who, {}, 2027)
+    assert bare[0]["sponsor_slug"] == "", "Samuel Hoehn matched with no confirmed form"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-name-forms-"))
+    try:
+        (tmp / "f.json").write_text(json.dumps({"forms": [{"form": "Samuel Roe", "is": "Sam Roe"}]}),
+                                    encoding="utf-8")
+        try:
+            L.name_forms(tmp / "f.json")
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError("an entry without the owner's word, day and evidence was read")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("LSR 2027-0708's \"Samuel Hoehn\" is Sam Hoehn's, by the owner's confirmed form, "
+                  "and nobody's without it or in the other chamber; \"Samuel Twin\", a form not in "
+                  "the file, and a confirmed form naming two people match nobody; an entry without "
+                  "the owner's word is refused")
 
 
 @check("build", "a request's member-elect sponsor is drawn Rep. “Elect” or Sen. “Elect” "

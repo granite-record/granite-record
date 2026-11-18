@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.28
+# GRANITE_VERSION: 2026-09-18.29
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -312,6 +312,30 @@ def _words(s):
 # because a table entry is a certainty and those are not.
 NICKNAMES = [{"ben", "benjamin"}]
 _SUFFIX = {"jr", "sr", "ii", "iii", "iv"}
+
+# FORMS OF ONE PERSON'S NAME THE OWNER CONFIRMED (18 November 2026): LSR
+# 2027-0708 is filed by "Samuel Hoehn", the results print the Coos 1
+# member-elect "Sam Hoehn", and the owner said "Yes, same person". Sam serves
+# two names, so NICKNAMES never tables it; the owner's word ties this one
+# person's two forms, and it lives in her hand file, which no script writes.
+NAME_FORMS = _paths.ROOT / "corrections" / "name_forms.json"
+
+
+def name_forms(path=None):
+    """{folded form: the form it is matched under} from corrections/
+    name_forms.json; {} where there is no file. An entry lacking a field the
+    file's _how names, or naming less than a whole name, stops the build:
+    the file is a person's word, and a half-written word is not one."""
+    p = Path(path) if path else NAME_FORMS
+    if not p.exists():
+        return {}
+    out = {}
+    for e in json.loads(p.read_text(encoding="utf-8")).get("forms") or []:
+        missing = [k for k in ("form", "is", "said", "by", "on", "evidence") if not e.get(k)]
+        assert not missing, f"{p}: an entry lacks {', '.join(missing)}: {e}"
+        assert _parts(e["form"]) and _parts(e["is"]), f"{p}: not a whole name: {e}"
+        out[_fold(e["form"])] = e["is"]
+    return out
 
 
 def _parts(name):
@@ -773,7 +797,7 @@ def history_of(title, year, earlier):
 
 
 def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, filed_on=None,
-              introduced_on=None, texts=None):
+              introduced_on=None, texts=None, forms=None):
     """The rows of idx/<year>-requests.json and the sponsor names that matched
     nobody. `became` (became_bills) names each request's bill; `year` is the
     session they are listed under (newest_session); `winners`
@@ -783,7 +807,10 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
     `introduced_on` (introduced_days) the day its bill was introduced, the
     one thing that forwards its address to the bill's page; `texts` the
     requests whose text the night has read (request_text), which carry
-    "text_on_file" for their card's and their page's Bill Text tab."""
+    "text_on_file" for their card's and their page's Bill Text tab;
+    `forms` (name_forms) the owner's confirmed forms of a name: a sponsor
+    written as one that matches nobody is matched as the other is, once,
+    and a form not there matches only as it is written."""
     year = year or newest_session(lsrs)[0]
     find = winner_finder(winners) if winners else (lambda name, body: None)
     term, _label = requests_term(year)
@@ -796,6 +823,13 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
             named.setdefault(_fold(n), set()).add(w.get("slug") or f"#{i}")
 
     def match(name, body):
+        """as_written, and where that finds nobody, the form the owner
+        confirmed this one is (`forms`), matched by the same rules."""
+        hit = as_written(name, body)
+        other = (forms or {}).get(_fold(name)) if name and not hit else None
+        return as_written(other, body) if other else hit
+
+    def as_written(name, body):
         """(label, slug[, chamber]) for a sponsor's name, or None.
 
         A member-elect's match holds only for a request of their chamber -- or
@@ -1153,7 +1187,8 @@ def main():
     print(f"  {said}")
     meta0 = json.loads((site / "meta.json").read_text(encoding="utf-8")) if (site / "meta.json").exists() else {}
     rows, unmatched = rows_from(lsrs, roster(site, a.collected, year), became, year, winners,
-                                earlier_bills(site, meta0.get("terms")), days, intro, texts)
+                                earlier_bills(site, meta0.get("terms")), days, intro, texts,
+                                name_forms())
     assert rows, "no request survived shaping, though the source had some"
     with_sponsor_names(rows, page_names(site))
     with_topics(rows, bills)
