@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.27
+# GRANITE_VERSION: 2026-11-16.28
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2363,7 +2363,7 @@ def _request_card_elect_title_es():
     Colin Mitchell (R)" and "Sen. “Electo/a” Kurt Webber (R)", and a sitting member's label
     unchanged; the party still read from the label."""
     es = json.loads(_source("src/pages/lang/es.json"))
-    es = es.get("entries", es)
+    es = es.get("strings", es)
     words = {k: es[k]["es"] for k in ("elect.title_rep", "elect.title_sen") if es.get(k, {}).get("es")}
     assert len(words) == 2, f"lang/es.json lacks the Spanish member-elect titles: {words}"
     got = _node_app(_CARD_ELECT_HARNESS, {"words.json": json.dumps(words)})
