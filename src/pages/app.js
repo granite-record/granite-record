@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.345
+// GRANITE_VERSION: 2026-09-07.346
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -8823,8 +8823,12 @@ function datedRail(b,d){
 // chip (D14) and the committees mentions of their pages, the subject beside
 // them but never the topic model's "Miscellaneous". `line` is what happened
 // to the bill at the meeting or on the day a page lists it under.
+// A member-elect's title in the page's language (find.js's findElectName): the
+// row carries the English, "Rep. “Elect” Colin Mitchell (R)" (build_lsrs.elect_title).
+const CARD_ELECT_TITLE=/^(Rep|Sen)\. “Elect”(?= )/;
 function cardSponsor(b){
-  const who=b.sponsor_label||b.sponsor||"";
+  const who=String(b.sponsor_label||b.sponsor||"").replace(CARD_ELECT_TITLE,(m,h)=>h==="Sen"
+    ?tr("elect.title_sen","Sen. “Elect”"):tr("elect.title_rep","Rep. “Elect”"));
   if(!who)return null;
   const party=b.sponsor_party||(/\(([A-Z])\b/.exec(who)||[])[1]||"";
   return {display_full:who,party,slug:b.sponsor_slug||""};

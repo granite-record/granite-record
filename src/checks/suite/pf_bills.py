@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.26
+# GRANITE_VERSION: 2026-11-16.27
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2332,6 +2332,50 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
                   "member returning, Rep. “Elect”, on the card's label and the page's chip; a "
                   "sitting member, re-elected or elected to the Senate, as before; the search reads the "
                   "name alone; on 2 December no one is titled")
+
+
+# app.js's cardSponsor in node, on an English page and a Spanish one (window.GR_WORDS as
+# i18n.page_words gives it, from lang/es.json).
+_CARD_ELECT_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({cardSponsor})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const labels = ["Rep. \u201cElect\u201d Colin Mitchell (R)", "Sen. \u201cElect\u201d Kurt Webber (R)",
+                "Rep. Ellen Read (D)"];
+const out = {en: labels.map(l => s.cardSponsor({sponsor_label: l}).display_full)};
+globalThis.window.GR_WORDS = JSON.parse(fs.readFileSync("./words.json", "utf8"));
+out.es = labels.map(l => s.cardSponsor({sponsor_label: l}).display_full);
+out.party = s.cardSponsor({sponsor_label: labels[0]}).party;
+console.log("@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "on a Spanish page a request card's member-elect sponsor is titled in Spanish, from "
+                   "lang/es.json")
+def _request_card_elect_title_es():
+    """The owner, 18 November 2026: on /es/ pages a member-elect sponsor's chip on a request card
+    read "Rep. “Elect”", in English. The row carries the English title (build_lsrs.elect_title);
+    app.js's cardSponsor now puts the page's words for it in its place, the keys elect.title_rep
+    and elect.title_sen that find.js already draws. Run in node: on an English page the labels
+    are as the row has them; on a Spanish page, with lang/es.json's words, "Rep. “Electo/a”
+    Colin Mitchell (R)" and "Sen. “Electo/a” Kurt Webber (R)", and a sitting member's label
+    unchanged; the party still read from the label."""
+    es = json.loads(_source("src/pages/lang/es.json"))
+    es = es.get("entries", es)
+    words = {k: es[k]["es"] for k in ("elect.title_rep", "elect.title_sen") if es.get(k, {}).get("es")}
+    assert len(words) == 2, f"lang/es.json lacks the Spanish member-elect titles: {words}"
+    got = _node_app(_CARD_ELECT_HARNESS, {"words.json": json.dumps(words)})
+    if got is None:
+        return "skip", "node, app.js or the DOM stub is not here"
+    rep, sen = "Rep. \u201cElect\u201d ", "Sen. \u201cElect\u201d "
+    assert got["en"] == [rep + "Colin Mitchell (R)", sen + "Kurt Webber (R)", "Rep. Ellen Read (D)"], got["en"]
+    assert got["es"] == [words["elect.title_rep"] + " Colin Mitchell (R)",
+                         words["elect.title_sen"] + " Kurt Webber (R)", "Rep. Ellen Read (D)"], got["es"]
+    assert got["party"] == "R", got
+    return "ok", (f"a Spanish page titles a member-elect sponsor {words['elect.title_rep']} and "
+                  f"{words['elect.title_sen']}; an English page and a sitting member as before")
 
 
 @check("build", "a withdrawn request of a member who is not returning is dropped and its address forwards; "
