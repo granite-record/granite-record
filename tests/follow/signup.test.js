@@ -130,6 +130,9 @@ test("a request is kept sealed, with its token's hash and never the token or the
     for (const cell of w.d1.everyCell()) {
       assert.ok(!cell.toLowerCase().includes("sealed.request"), "no address in any cell");
       assert.ok(!cell.includes(t), "no token in any cell");
+      // A sealed cell (v1.<ciphertext>) or a hash is random text that can hold "H90" by chance
+      // (18 November 2026, a dry run's code checks): the record is looked for in the plain cells.
+      if (/^v1\./.test(cell) || /^[0-9a-f]{64}$/.test(cell)) continue;
       assert.ok(!/H90|committee/.test(cell), "no record in any cell");
     }
     assert.equal(w.d1.rows("subscribers").length, 0, "nothing is followed before the confirmation");
