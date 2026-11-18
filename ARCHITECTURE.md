@@ -900,6 +900,18 @@ take about 13 ms a bill (seven minutes over the record cold); then
 - the no-script record ends with "Related searches", each tag to the bill
   search on All Terms with it ticked.
 
+A bill shows at most ten tags, its best-matched (`tag_rules.MAX_TAGS`, the
+owner's cap of 17 November 2026). `site_tags` applies it (`best_tags`), so
+the record, the index row and meta.json above all take the same tags:
+a person's word on the bench first, then a phrase in the title, then the
+analysis, then a provision the bill writes, a chapter with one of its words,
+a chapter alone, and a duty last; between two of a kind, the one more kinds
+of evidence attach, then the one the bill names more often (its words in the
+title and the analysis, and the duties the text gives its office), then the
+registry's order. A tag is weighed on the bill alone, and what is kept
+stays in the registry's order. `tag_bill` caps nothing, so the bench and the
+counts read the rules' whole answer.
+
 What draws them is written in `app.js`, `find.js` and `app.css` between a
 line holding `TAGS:BEGIN` and the next holding `TAGS:END`, each region whole
 lines added beside the code it extends, and `build_pages.front_end`
