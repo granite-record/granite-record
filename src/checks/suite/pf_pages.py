@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -4026,6 +4026,58 @@ def _search_enter(BP):
                   "/search for the rest, never before the answers have come; the row marked, drawn "
                   "and named on the status line; the arrows through the rows and back; the home box "
                   "the same, its Search button every result")
+
+
+# find.js's findMatch over three rows, for a Senate district typed with and without a space.
+_FIND_SEAT_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => { throw new Error("404"); } });
+vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), { filename: "find.js" });
+const F = vm.runInThisContext("({FIND, findMatch})");
+F.FIND.rows = JSON.parse(fs.readFileSync("./rows.json", "utf8"));
+const out = {};
+for (const q of ["sd22", "sd 22", "SD 22", "sd  22", "abbas sd 22", "sd 24", "hills 22", "sd"])
+  out[q] = F.findMatch(q, Infinity).map(r => r[3]);
+console.log("@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the site search finds a Senate district typed with a space as it finds it without")
+def _find_senate_district_space():
+    """The owner, 18 November 2026: "sd22" found the senator and "sd 22" nothing. A row prints the
+    seat "SD22", and a word under five letters must begin a word of the row, so "22" never did.
+    find.js's findMatch reads "sd" and a number typed apart as the row prints them. Run in node:
+    "sd 22", "SD 22", "sd  22" and "abbas sd 22" find what "sd22" finds, and only that; "sd 24" its
+    own senator; a House seat ("hills 22") and "sd" alone as before."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    rows = [["legislator", "Sen. Daryl Abbas (R - SD22)", "Senate \u00b7 SD22 \u00b7 Republican",
+             "legislator/daryl-abbas-sd-22", "Rockingham"],
+            ["legislator", "Sen. Debra Altschiller (D - SD24)", "Senate \u00b7 SD24 \u00b7 Democrat",
+             "legislator/debra-altschiller-sd-24", "Rockingham"],
+            ["legislator", "Rep. Jane Roe (R - Hills 22)", "House \u00b7 Hills 22 \u00b7 Republican",
+             "legislator/jane-roe-hills-22", "Hillsborough"]]
+    root = Path(tempfile.mkdtemp(prefix="gr-find-seat-"))
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_source("src/pages/find.js"), encoding="utf-8")
+        (root / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
+        (root / "go.js").write_text(_FIND_SEAT_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in r.stdout, (r.stderr or r.stdout)[-400:]
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    abbas = ["legislator/daryl-abbas-sd-22"]
+    assert got["sd22"] == abbas, got
+    bad = {q: got[q] for q in ("sd 22", "SD 22", "sd  22", "abbas sd 22") if got[q] != abbas}
+    assert not bad, f"a Senate district typed with a space: {bad}"
+    assert got["sd 24"] == ["legislator/debra-altschiller-sd-24"], got["sd 24"]
+    assert got["hills 22"] == ["legislator/jane-roe-hills-22"], got["hills 22"]
+    assert len(got["sd"]) == 2, got["sd"]
+    return "ok", ("\"sd 22\", \"SD 22\", \"sd  22\" and \"abbas sd 22\" find the SD22 senator as \"sd22\" "
+                  "does, and only them; \"sd 24\" its own; a House seat and \"sd\" alone as before")
 
 
 # The site search over find.json as build_indexes writes it (25 October 2026):

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.65
+// GRANITE_VERSION: 2026-09-16.66
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -512,8 +512,13 @@ function _fhas(hay,w){
     if(!i||!/[\p{L}\p{N}]/u.test(hay[i-1]))return true;
   return false;
 }
+/* A SENATE DISTRICT WITH A SPACE (the owner, 18 November 2026): "sd22" found
+   Sen. Daryl Abbas and "sd 22" nothing, since a row prints the seat "SD22"
+   and a short word must begin a word of it (_fhas). "sd" and the number
+   typed apart are read as the row prints them. */
+const _fseat=s=>s.replace(/(^|\s)sd\s+(?=\d)/g,"$1sd");
 function findMatch(q,limit){
-  const s=_ftitled(_fapos((q||"").trim().toLowerCase()));
+  const s=_fseat(_ftitled(_fapos((q||"").trim().toLowerCase())));
   if(!s||!FIND.rows)return [];
   const words=s.split(/\s+/);
   const edge=_fedge(s);
