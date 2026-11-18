@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -488,6 +488,79 @@ def _entities_round_trip(BE, EN, PE, GR, BME):
                   "byte for byte; a new member-elect has no person, a page link and a register id issued for "
                   "the place link and a shared name does not; a county seat kept twice is two tenures; four "
                   "losses each seen")
+
+
+# Sponsor lines of a made-up text_sponsors.json, as text_sponsors.py writes them: a member printed
+# at one seat under two names and at a second seat in the same term, a line placed on no one, a
+# senator in two terms, a member people.json does not hold, a line with no district and a
+# committee's line of no chamber.
+_PRINTED_DOC = {
+    "2021-2022": {
+        "HB1": [{"member_id": "3001", "name": "Smith", "chamber": "H", "county": "Rockingham", "district": "1"},
+                {"member_id": "", "name": "Jones", "chamber": "H", "county": "", "district": "24"},
+                {"member_id": "3002", "name": "Lee", "chamber": "S", "county": "", "district": "7"},
+                {"member_id": "3003", "name": "Moe", "chamber": "H", "county": "Carroll", "district": ""},
+                {"member_id": "", "name": "Rules Committee", "chamber": "", "county": "", "district": ""}],
+        "HB2": [{"member_id": "3001", "name": "J. Smith", "chamber": "H", "county": "Rockingham", "district": "1"},
+                {"member_id": "3001", "name": "Smith", "chamber": "H", "county": "Rockingham", "district": "2"}]},
+    "2023-2024": {
+        "SB1": [{"member_id": "3002", "name": "Lee", "chamber": "S", "county": "", "district": "7"},
+                {"member_id": "3004", "name": "Poe", "chamber": "H", "county": "Belknap", "district": "8"}]}}
+
+
+@check("build", "the model holds the seat each member held in each term as the term's bills print it: one tenure a member, seat and term, under every name printed, with the person and, in an era on file, the district",
+       needs=("build_entities", "entities", "people"))
+def _entities_printed_seats(BE, EN, PE):
+    """THE SEAT A TERM'S BILLS PRINT, IN THE MODEL (the design of 16 November 2026, step 5: the
+    seat-in-a-term readers read the tenure table). entities.printed_tenures reads
+    text_sponsors.json's sponsor lines into one tenure a member, seat and term, in the order the
+    file first prints each: a member printed at two seats in a term has two; a line placed on no
+    one is a seat with no member; every name a seat is printed under is kept, in order; a line
+    with no district, or of no chamber, is no seat. build_entities.printed_seats gives each the
+    person people.json gives its member id, and the district only where the term's era of
+    districts is on file (2021-2022's "Belknap 8" is not today's Belknap 8); build() puts them
+    in the model on a made-up tree, every one shaped as a tenure; and with no file, none, said."""
+    want = [("printed:2021-2022:3001|H|Rockingham|1", "3001", ["Smith", "J. Smith"], "501", None),
+            ("printed:2021-2022:|H||24", None, ["Jones"], None, None),
+            ("printed:2021-2022:3002|S||7", "3002", ["Lee"], "502", None),
+            ("printed:2021-2022:3001|H|Rockingham|2", "3001", ["Smith"], "501", None),
+            ("printed:2023-2024:3002|S||7", "3002", ["Lee"], "502", "senate:2022:7"),
+            ("printed:2023-2024:3004|H|Belknap|8", "3004", ["Poe"], None, "house:2022:belknap-8")]
+    plain = EN.printed_tenures(_PRINTED_DOC, "text_sponsors.json")
+    assert [t["tenure"] for t in plain] == [w[0] for w in want], [t["tenure"] for t in plain]
+    assert all(t["person"] is None and "district" not in t and t["files"] == ["text_sponsors.json"]
+               for t in plain), plain
+    tmp = Path(tempfile.mkdtemp(prefix="gr-printed-"))
+    try:
+        _copy_tracked(tmp, [n for n in TRACKED if n.startswith("records/")])
+        settings = BE.ST.SETTINGS
+        districts, _places = BE.districts_and_places(tmp, settings)
+        report = {"notes": []}
+        assert BE.printed_seats(tmp, settings, {}, districts, report) == [] and any(
+            BE.SPONSORS in n for n in report["notes"]), "no text_sponsors.json, and the model was not told"
+        (tmp / BE.SPONSORS).write_text(json.dumps(_PRINTED_DOC), encoding="utf-8")
+        by_mid = {"3001": {"person": "501"}, "3002": {"person": "502"}}
+        got = BE.printed_seats(tmp, settings, by_mid, districts, {"notes": []})
+        seen = [(t["tenure"], t.get("member_id"), t["sponsor_line"]["names"], t["person"], t.get("district"))
+                for t in got]
+        assert seen == want, f"the printed seats are {seen}"
+        assert got[0]["sponsor_line"] == {"chamber": "H", "county": "Rockingham", "district": "1",
+                                          "names": ["Smith", "J. Smith"]}, got[0]
+        assert {t["office"] for t in got} == {"house", "senate"}, {t["office"] for t in got}
+        bad = [p for t in got for p in EN.shape_problems(t, EN.SHAPES["tenure"], t["tenure"])]
+        assert not bad, bad
+        # build() puts them in the model, on the made-up tree of the round trip.
+        _world(tmp, PE)
+        model, _layouts, report = BE.build(tmp)
+        held = [t for t in model["tenure"] if t["tenure"].startswith("printed:")]
+        assert [t["tenure"] for t in held] == [w[0] for w in want], [t["tenure"] for t in held]
+        assert not [p for p in report["problems"] if "printed:" in p], report["problems"]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(want)} seats of a made-up text_sponsors.json, in the file's order, two seats of one "
+                  "member in a term two tenures, a line placed on no one a seat with no member, every name "
+                  "kept; persons by member id; a district only in an era on file; in the model build() "
+                  "makes, with no problem; no file, no seat, and said")
 
 
 @check("build", "build_entities.py says what the model cannot place or hold and goes on, and every file still comes back",

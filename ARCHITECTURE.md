@@ -2786,6 +2786,17 @@ roster's day -- the seat has two tenures, and the manifest lists the
 difference. Measured on the files of 7 November: 10,084 records, about 2.2 MB,
 built in under half a second, the same bytes under two hash seeds.
 
+The seat a member held in a term is a tenure too, where the term's bills print
+it (18 November 2026, the design's step 5). careers.json gives no district for
+any term, and the roster only today's, so the model reads `text_sponsors.json`'s
+sponsor lines (`entities.printed_tenures`): one tenure a member, seat and term,
+or a seat and term where a line was placed on no one, holding the seat as the
+lines print it and every name they print it under, with the person by member id
+and, in an era of districts on file, the district (`_entities_printed_seats`).
+On the files of 18 November: 6,151 such tenures, 5,050 of them a member's,
+every one of 2023-2024 resolved to its district; the model's files grow from
+2.3 to 3.8 MB, and every file still comes back.
+
 The step stops only where a file it needs is missing or will not read:
 `check_site` fails a night on any step that failed, optional or not, and no page
 reads the model. What it cannot place or hold -- a member who moved chamber within
