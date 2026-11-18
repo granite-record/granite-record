@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.10
+# GRANITE_VERSION: 2026-11-16.11
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -2326,6 +2326,39 @@ def _tab_keyboard():
     assert 'id="ptab_${i}" aria-controls="ppane"' in js and 'aria-labelledby="ptab_${PAGE_TAB}"' in js, \
         "member and committee tabs are not tied to their panel"
     return "ok", "an arrow key focuses after the redraw, the tab resets per page, the picker is a group"
+
+
+# tabStrip in node: one tab, and two (the commit of 14 November 2026 that gave a request's lone
+# Summary no strip pasted two of its lines into the member and committee strip as well).
+_TAB_STRIP_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({tabStrip})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const out = {};
+for (const [k, tabs] of [["one", [["Votes", 12]]], ["two", [["Votes", 12], ["Bills", 3]]]]) {
+  try { out[k] = s.tabStrip(tabs); } catch (e) { out[k] = "THREW " + e.constructor.name + ": " + e.message; }
+}
+console.log("@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a member's or committee's tab strip of one tab draws, and of two draws both")
+def _tab_strip_single():
+    """Commit 6c6ee490 (14 November 2026) left two lines of the request page's strip in app.js's
+    tabStrip, the member and committee pages' strip: an unused `const pane` and a line that read
+    an undefined `b` whenever a page had one tab, so such a page threw instead of drawing. Run
+    in node: one tab draws one tab button and two draw two, neither throwing."""
+    got = _node_app(_TAB_STRIP_HARNESS)
+    if got is None:
+        return "skip", "node, app.js or the DOM stub is not here"
+    bad = [f"{k}: {v[:160]}" for k, v in got.items() if v.startswith("THREW")]
+    assert not bad, "tabStrip threw: " + "; ".join(bad)
+    n = {k: v.count('role="tab"') for k, v in got.items()}
+    assert n == {"one": 1, "two": 2}, f"tab buttons drawn: {n}"
+    assert 'class="tabs" role="tablist"' in got["one"], got["one"][:200]
+    return "ok", "a strip of one tab draws its one tab and a strip of two its two, in node"
 
 
 # The harness of _focus_survives, run in node beside page.js (app.js) and

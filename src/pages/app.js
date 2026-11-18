@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.344
+// GRANITE_VERSION: 2026-09-07.345
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9202,9 +9202,6 @@ document.addEventListener("focusin",e=>{
 // One strip per member or committee page, so the ids are fixed: ptab_<i> for a
 // tab and ppane for the panel it controls, which pagePane() writes.
 function tabStrip(tabs){
-  const pane=([k])=>`<div class="pane" role="tabpanel" id="pane_${esc(b.id)}_${k}" aria-labelledby="tab_${esc(b.id)}_${k}" tabindex="0" data-t="${k}"${k===t?"":" hidden"}>${lsrPane(b,k)}</div>`;
-  // Summary alone is no choice to make: no strip, and a pane with no tab to answer to.
-  if(tabs.length<2)return `<div class="pane" data-t="0">${lsrPane(b,"0")}</div>`;
   return `<div class="tabs" role="tablist">${tabs.map((t,i)=>
     `<button class="tab" role="tab" id="ptab_${i}" aria-controls="ppane" data-pt="${i}" aria-selected="${
       i===PAGE_TAB}">${esc(t[0])}${t[1]?tabN(t[1].toLocaleString()):""}</button>`
