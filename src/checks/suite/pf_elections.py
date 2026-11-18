@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.13
 """
 preflight's checks of members-elect and election results.
 
@@ -1526,7 +1526,7 @@ def _member_elections_cards(BMEL, BME, BE):
     # The elections page's own card is as it was: anchored, no row marked.
     page = BE.race_card("S|5", r26["races"]["S|5"], {}, r26, {}, "2026-11-03")
     assert page.startswith('<article class="er-race" id="r-s-5" data-towns="alpha | beta">') \
-        and "er-me" not in page, f"the elections page's card changed: {page[:120]}"
+        and not re.search(r"\ber-me(?![\w-])", page), f"the elections page's card changed: {page[:120]}"
     # app.js draws the cards, newest first, each headed by its day linked to the race.
     html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": beck}) + ")",
                    names=("renderMemberElections",))
@@ -1535,8 +1535,8 @@ def _member_elections_cards(BMEL, BME, BE):
     heads = re.findall(r'<article class="er-race"><p class="er-when"><a href="([^"]+)">', html)
     assert heads == ["/elections/2026-11-03-general#r-s-5",
                      "/elections/2024-11-05-general#r-h-rockingham-3"], f"the cards' heads: {heads}"
-    assert '<div class="er-cards">' in html and "<table" not in html and html.count("er-me") == 2 \
-        and "a recount was requested" in html, "the tab is not the two cards, each with its row marked"
+    assert '<div class="er-cards">' in html and "<table" not in html and len(re.findall(r"\ber-me(?![\w-])", html)) == 2 \
+        and "a recount was requested" in html, (f"the tab is not the two cards, each with its row marked: cards={'<div class=\"er-cards\">' in html} table={'<table' in html} marks={len(re.findall(r'er-me(?![\w-])', html))} recount={'a recount was requested' in html}")
     for want in ("The general elections on file in which this member is recorded",
                  "appears only where the name and the district match", "Secretary of State"):
         assert want in html, f"the tab lost its note: {want!r}"
