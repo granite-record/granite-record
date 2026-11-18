@@ -2801,7 +2801,11 @@ Its first readers (the design's phase B, one a commit, each proven to leave the
 site byte for byte as it was) read these tenures through `entities`, from the
 file the model is built from, because the step that writes `data/entities/`
 runs last: `build_members_elect.seat_history`, the seats a member-elect's
-history is matched against (`_seat_history_reads_the_model`).
+history is matched against (`_seat_history_reads_the_model`), and
+`build_site_v2.printed_record`, `term_seats`' first source for the seat of the
+term a session day names a member by (`_printed_record_reads_the_model`).
+`term_seats`' second source, a member's ballots in their last term, is not a
+tenure of the model and stays where it is.
 `_entities_step_in_the_plan` lets the readers it lists (`SEAT_READERS`) import
 the shapes' module, and nothing names the folder.
 

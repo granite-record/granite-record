@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -566,7 +566,7 @@ def _entities_printed_seats(BE, EN, PE):
 # The readers of the seat a member held in a term that read the model's tenures (the design's
 # step 5), each through entities.printed_tenures: _entities_step_in_the_plan lets them import the
 # shapes' module, and nothing else.
-SEAT_READERS = {"build_members_elect.py"}
+SEAT_READERS = {"build_members_elect.py", "build_site_v2.py"}
 
 
 def _model_swapped(EN, change):
@@ -616,6 +616,49 @@ def _seat_history_reads_the_model(BME, EN):
         f"seat_history does not answer by the model's tenures: {moved}")
     return "ok", ("three members' seats from the model's tenures, two seats of one term both kept, a line of "
                   "no member none; a tenure taken out of the model and one put in each move the answer")
+
+
+@check("build", "the seat of the term a session day names a member by is the model's where the term's bills print one: build_site_v2.printed_record reads the tenures of the seats a term's bills print",
+       needs=("build_site_v2", "entities"))
+def _printed_record_reads_the_model(B2, EN):
+    """build_site_v2.printed_record -- term_seats' first source, the seat a term's bills print for
+    a member, which a session day names them by and date_former_seats dates a former member's by
+    (printed_seats) -- reads entities.printed_tenures, the tenures build_entities puts in the
+    model, rather than the sponsor lines (the design of 16 November 2026, step 5; byte-identical
+    on D:/nh's files and the fixture site, 18 November 2026). On the made-up lines and one more,
+    a Smith placed on no one at the seat a Smith was placed on: one seat a member is `one`; a
+    member at two seats in a term is in `two`; a seat printed under a surname placed on no one
+    is `named`, unless a member of that surname was placed at it. And it answers by the model: a
+    tenure taken out of the model and one put in each move `one`."""
+    doc = copy.deepcopy(_PRINTED_DOC)
+    doc["2021-2022"]["HB3"] = [{"member_id": "", "name": "Smith", "chamber": "H", "county": "Rockingham",
+                                "district": "1"}]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-printed-record-"))
+    try:
+        f = tmp / "text_sponsors.json"
+        f.write_text(json.dumps(doc), encoding="utf-8")
+        one, two, named = B2.printed_record(f)
+        assert one == {("2021-2022", "3002"): ("S", "", "7"), ("2023-2024", "3002"): ("S", "", "7"),
+                       ("2023-2024", "3004"): ("H", "Belknap", "8")}, f"one: {one}"
+        assert two == {("2021-2022", "3001")}, f"two: {two}"
+        assert named == {("2021-2022", "H", "jones"): {("", "24")}}, f"named: {named}"
+        assert B2.printed_seats(f) == one
+
+        def change(ts):
+            ts = [t for t in ts if t.get("member_id") != "3004"]
+            t = copy.deepcopy(ts[0])
+            t.update(tenure="printed:2023-2024:3009|H|Coos|3", term="2023-2024", member_id="3009",
+                     sponsor_line={"chamber": "H", "county": "Coos", "district": "3", "names": ["Roe"]})
+            return ts + [t]
+        with _model_swapped(EN, change):
+            moved = B2.printed_record(f)[0]
+        assert ("2023-2024", "3004") not in moved and moved.get(("2023-2024", "3009")) == ("H", "Coos", "3"), (
+            f"printed_record does not answer by the model's tenures: {moved}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("three one-seat members, one at two seats, one surname placed on no one, and a Smith's seat "
+                  "not doubted by an unplaced Smith, from the model's tenures; a tenure taken out of the "
+                  "model and one put in each move the answer")
 
 
 @check("build", "build_entities.py says what the model cannot place or hold and goes on, and every file still comes back",
