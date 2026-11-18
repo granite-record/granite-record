@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.6
+# GRANITE_VERSION: 2026-11-12.7
 """
 An initial topic for a bill request, from its title.
 
@@ -93,6 +93,9 @@ answers the General Court's name, as it always has, and is measured in it.
 CANNABIS (17 November 2026, topic_model.cannabis_topic) is filed by the title
 for a request and a bill alike: whatever the model answers, a title whose first
 subject is cannabis is Cannabis, but a constitutional amendment's or a study's.
+A CONSTITUTIONAL AMENDMENT IS NOT A TOPIC (the owner, 18 November 2026): the
+model does not learn CACR, so a CACR request takes the topic its title's
+subject gives, as a CACR bill does.
 
 WHAT IS WRITTEN. `topic` and `topic_by = "title"` on the row of every request
 not yet a bill: the topic its title gives, or Miscellaneous. The card and the
@@ -163,7 +166,10 @@ def train_on(bills, subjects=None, codes=None):
     says what it learned from in model["from"]."""
     own = [(b, titles_only(r)) for b, r in topics.labelled(bills)]
     past = archived_official(bills, subjects, codes)
-    rows = own * CURRENT_WEIGHT + past
+    # A constitutional amendment is not learned as one (the owner, 18 November
+    # 2026: CACR is retired as a topic, topic_model.RETIRED), so a CACR request
+    # is answered by its subject, as the topic model answers a CACR bill.
+    rows = [x for x in own * CURRENT_WEIGHT + past if x[1]["subject"] != "CACR"]
     if not rows:
         return None
     model = topics.train(rows)

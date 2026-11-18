@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.25
+# GRANITE_VERSION: 2026-11-16.26
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -7424,7 +7424,8 @@ def _topic_title_rules(TM):
 
     Each rule is a convention the General Court follows in the term it
     labelled, and each is allowed exactly as far as that convention goes. A
-    constitutional amendment is CACR before the model asks anything; a
+    constitutional amendment is no longer CACR before the model asks anything
+    (CACR is retired, 18 November 2026: _cacr_takes_its_subject); a
     commemoration is Memorials ONLY where the model would have said
     Miscellaneous -- never over an answer it gave. Three ways that goes wrong
     quietly: a rule that fires over a confident answer and moves a bill the
@@ -7454,12 +7455,12 @@ def _topic_title_rules(TM):
               "regimes": {r: {"W": W, "lp": 1.0, "temp": 1.0} for r in ("text", "notext")}}
     declined = dict(placed, floors={"text": 1.01, "notext": 1.01})
 
-    # A CACR is CACR, whatever its words and however sure the model is.
+    # No rule for a CACR since 18 November 2026: the model answers it as any other bill.
     cacr = {"bill": "CACR9", "title": "relating to absentee ballots for voters",
             "house_committee": "Election Law"}
-    assert TM.answer(model, cacr, "", placed)[:3] == ("CACR", 1.0, "rule:cacr"), \
+    assert TM.answer(model, cacr, "", placed) == TM.answer(model, cacr, "", placed, rules=False), \
         TM.answer(model, cacr, "", placed)
-    assert TM.answer(model, cacr, "", placed, rules=False)[0] != "CACR"
+    assert TM.answer(model, cacr, "", placed)[2] == "notext", "a rule answered a CACR"
 
     # Below the floor only. Placed, the model's answer stands.
     hon = {"bill": "HR9", "title": "honoring the absentee ballot clerks of Concord",
@@ -7519,8 +7520,56 @@ def _topic_title_rules(TM):
     finally:
         TM.ENABLED.clear()
         TM.ENABLED.update(saved)
-    return "ok", ("CACR first; a commemoration only below the floor; the proposals inert "
+    return "ok", ("no rule for a CACR; a commemoration only below the floor; the proposals inert "
                   "while off")
+
+
+@check("build", "Constitutional Amendments is no topic: a CACR, bill or request, takes the topic its "
+                "subject gives, and the site's topics do not name it",
+       needs=("topic_model", "build_site_v2", "request_topics", "tag_rules"))
+def _cacr_takes_its_subject(TM, B, RT, TR):
+    """The owner, 18 November 2026: constitutional amendments "are inherently covered by the CACR
+    title and it prevents them from being searchable by their individual topics." CACR is
+    retired (topic_model.RETIRED): the topic model learns no CACR class and a CACR it answers
+    takes the topic of its subject; the General Court's CACR on a bill names no site topic
+    (vocabulary_of, unify_vocabulary), so the model's answer stands in for it
+    (merge_guessed_topics, as for Regular Meeting); the request model (request_topics.train_on)
+    learns no CACR either; and tag_rules' list of the site's topics does not name it."""
+    import contextlib
+    import io
+    assert "CACR" in TM.RETIRED, "CACR is a topic again"
+    words = {"Elections": ["ballot", "voter", "election", "polling"],
+             "Motor Vehicles": ["vehicle", "driver", "registration", "license"]}
+    lab = {}
+    for i in range(12):
+        for t, w in words.items():
+            lab[f"HB{len(lab) + 1}"] = {"bill": f"HB{len(lab) + 1}", "subject": t,
+                                         "title": f"relative to {w[i % 4]} {w[(i + 1) % 4]} matters."}
+    for i in range(12):
+        lab[f"CACR{i + 1}"] = {"bill": f"CACR{i + 1}", "subject": "CACR",
+                               "title": "relating to ballot voter election. Providing that the constitution."}
+    W = {f: 1.0 for f in TM.FAMILIES}
+    cfg = {"m": {}, "P": {}, "seed_names": 0.0, "floors": {"text": 0.0, "notext": 0.0},
+           "regimes": {r: {"W": W, "lp": 1.0, "temp": 1.0} for r in ("text", "notext")}}
+    model = TM.fit({TM.base.LABELLED_TERM: lab}, {}, cfg, "B")
+    assert "CACR" not in model.tix, f"the model learned CACR: {model.topics}"
+    got = TM.answer(model, {"bill": "CACR40", "title": "relating to the registration of vehicles."}, "", cfg)
+    assert got[0] == "Motor Vehicles", f"a CACR about vehicles was answered {got}"
+    assert B.vocabulary_of("CACR", {"title": "relating to the governor."}, "CACR1") is None
+    bills = {"2025-2026": {"CACR1": {"title": "relating to the governor.", "subject": "CACR",
+                                     "subject_code": "CACR"}}}
+    with contextlib.redirect_stdout(io.StringIO()):
+        B.unify_vocabulary(bills)
+    assert bills["2025-2026"]["CACR1"]["subject"] == "", bills
+    rt = RT.train_on({"2025-2026": lab}, subjects={}, codes={})
+    assert "CACR" not in rt["logprior"] and rt["n"] == 24 * RT.CURRENT_WEIGHT, (
+        f"the request model learned CACR: {sorted(rt['logprior'])}, {rt['n']} rows")
+    assert "Constitutional Amendments" not in TR.SITE_TOPICS, "tag_rules lists the retired topic"
+    if TM.base.codes():
+        assert "CACR" not in TM.new_vocabulary(), "the model's vocabulary names CACR"
+    return "ok", ("CACR retired: the model and the request model learn no CACR, a CACR about vehicles "
+                  "is Motor Vehicles, the General Court's CACR names no site topic, and the list of "
+                  "the site's topics does not name Constitutional Amendments")
 
 
 @check("build", "an archived bill takes the General Court's own subject code as its topic, through the "
@@ -7853,7 +7902,7 @@ _CANNABIS_CASES = (
      "Crimes and Criminal Procedure"),
     ("2025-2026/CACR19", "CACR", "relative to the personal possession of cannabis. Providing that adults 21 years of "
      "age or older shall have the right to possess a modest amount of cannabis intended for their personal "
-     "consumption.", "Constitutional Amendments"),
+     "consumption.", None),
     ("2015-2016/HB150", "Crimes, Crim.Proc. & Corr.", "establishing a commission to study the legalization, "
      "regulation, and taxation of marijuana.", "Study Committees and Commissions"),
     ("2023-2024/HB1240", "Public and Mental Health", "relative to eating disorders as a qualifying condition for the "
@@ -7898,7 +7947,7 @@ def _topic_cannabis_rule(B, TM, F, TR):
         B.unify_vocabulary(bills)
         once = {b: (r["subject"], r["subject_code"]) for b, r in bills["2025-2026"].items()}
         B.unify_vocabulary(bills)
-    assert once == {"SB264": ("Cannabis", "CAN"), "CACR19": ("Constitutional Amendments", "CACR"),
+    assert once == {"SB264": ("Cannabis", "CAN"), "CACR19": ("", ""),
                     "HB1": ("Cannabis", "CAN")}, once
     assert once == {b: (r["subject"], r["subject_code"]) for b, r in bills["2025-2026"].items()}, (
         "a second pass moved a bill")

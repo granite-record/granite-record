@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.13
+# GRANITE_VERSION: 2026-09-16.14
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 src/parse/topic_model.py --apply              # write topics_assigned.json
@@ -173,7 +173,15 @@ FOLD = {
     "Agency Appropriations": "State Government",
     "Corporations/Partnerships": "Business and Industry",
 }
-RETIRED = {"Regular Meeting"}
+# CACR IS RETIRED TOO (the owner, 18 November 2026: constitutional amendments
+# "are inherently covered by the CACR title and it prevents them from being
+# searchable by their individual topics"). It is a kind of measure, not a
+# subject: the model no longer learns it or answers it, a CACR the General
+# Court filed under it is answered by the model as any unlabelled bill is,
+# and the site has no Constitutional Amendments topic. A CACR takes the
+# topic its subject gives it; the bill search's Kind filter still finds
+# every CACR.
+RETIRED = {"Regular Meeting", "CACR"}
 
 HOUSING = "Housing"
 STUDY = "Study Committees and Commissions"
@@ -461,13 +469,12 @@ def cannabis_topic(name, title):
 # floor is right 43% of the time), and these rules place the ones whose kind
 # can be read off the title.
 #
-#   KIND, BEFORE THE MODEL. A constitutional amendment concurrent resolution
-#   is filed under CACR by the General Court: 24 of the 31 of 2025-2026. The
-#   model, given the text, files 7 of the 11 in the held-out half there and
-#   the rule 8; without text the model gets 2 and the rule 8. So it answers
-#   first, as the study template does. topics.py measured the kind as a
-#   FEATURE and rejected it (it pulled HRs about); a rule that only ever
-#   fires on a CACR cannot pull anything else.
+#   KIND, BEFORE THE MODEL -- RETIRED 18 November 2026 with CACR itself
+#   (RETIRED). A constitutional amendment concurrent resolution is filed
+#   under CACR by the General Court: 24 of the 31 of 2025-2026, and this rule
+#   answered CACR for every one before the model asked anything. The owner
+#   retired CACR as a topic, so a CACR is now answered by its subject, as
+#   any other bill is.
 #
 #   CEREMONY, OBSERVANCE AND NAMING, ONLY WHERE THE MODEL DECLINES. The
 #   General Court files "honoring Tadeusz Kosciuszko", "naming a bridge in the
@@ -496,7 +503,6 @@ def cannabis_topic(name, title):
 # their own -- veterans' care, Social Security, the POW designation -- that
 # the General Court files by subject. It is a proposal below instead.
 
-CACR_TOPIC = "CACR"
 MEMORIALS = "Memorials"
 STATE_GOVERNMENT = "State Government"
 
@@ -1052,8 +1058,8 @@ def answer(model, rec, text, cfg=None, rules=True):
     key, p = proposal_rule(rec, "first")
     if p and p in model.tix:
         return p, 1.0, "rule:" + key, ""
-    if rules and CACR_TOPIC in model.tix and kind_of(rec) == "CACR":
-        return CACR_TOPIC, 1.0, "rule:cacr", ""
+    # No rule for a CACR since 18 November 2026: CACR is retired (RETIRED),
+    # and a constitutional amendment is answered by its subject below.
     regime = "text" if text else "notext"
     c = cfg["regimes"][regime]
     s = combine(model, model.famvec(rec, text), c["W"], cfg["P"], c["lp"])
@@ -1126,7 +1132,6 @@ def feature_string(fam, key):
 
 
 RULE_WHY = {
-    "cacr": "a constitutional amendment, which the General Court files under CACR",
     "ceremony": "a commemoration in the title",
 }
 
