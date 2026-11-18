@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.7
+# GRANITE_VERSION: 2026-11-07.8
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -296,7 +296,9 @@ def bill_href(site, term, bill):
 
 # ------------------------------------------------------------------ drawing ---
 
-def candidate_rows(race, elected_names, held=frozenset()):
+def candidate_rows(race, elected_names, held=frozenset(), mine=None):
+    """The race's rows, most votes first. `mine` is the candidate a member's
+    Elections tab is about (same_name), whose row is marked er-me."""
     shown = [c for c in race["candidates"] if same_name(c["name"]) not in held]
     cands = sorted(shown, key=lambda c: (-c["votes"], c["name"]))
     top = max((c["votes"] for c in cands), default=0) or 1
@@ -313,7 +315,8 @@ def candidate_rows(race, elected_names, held=frozenset()):
         share = f' <span>&middot; {100 * c["votes"] / counted:.1f}%</span>' if one and counted else ""
         bar_cls = p[:1] if p[:1] in ("R", "D") else "X"
         out.append(
-            '<li class="er-row"><span class="er-who">' + C.pchip(chipm)
+            '<li class="er-row' + (" er-me" if mine and same_name(c["name"]) == mine else "")
+            + '"><span class="er-who">' + C.pchip(chipm)
             + (' <span class="er-wi">write-in</span>' if c.get("write_in") else "")
             + (" " + C.chip("Elected") if won else "")
             + (" " + C.chip("Tied for the last seat") if tied and not won else "")
@@ -341,7 +344,12 @@ def status_lines(me):
     return out
 
 
-def race_card(key, race, me, results, tnotes, election, hand=None, h="h3"):
+def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=None, anchor=True):
+    """One race as its card. The elections page draws every race so; a
+    member's Elections tab draws each race the member is in by this same
+    function (build_member_elections), with `mine` their candidate's name
+    (same_name) to mark their row, and anchor=False: the card there is no
+    link's target, and one race may be on the tab for two elections."""
     elected_names = {e["n"]: e for e in me.get("elected") or []}
     held = held_names(hand or {}, key)
     towns = race.get("towns") or []
@@ -373,10 +381,11 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3"):
     if scatter:
         foot.append(f'{scatter:,} scattered write-in vote{"s" if scatter != 1 else ""} '
                     f'{"are" if scatter != 1 else "is"} not shown.')
-    return (f'<article class="er-race" id="{race_id(key)}" data-towns="{E(" | ".join(towns).lower())}">'
+    at = f' id="{race_id(key)}" data-towns="{E(" | ".join(towns).lower())}"' if anchor else ""
+    return (f'<article class="er-race"{at}>'
             f'<{h}>{E(race_name(key, race))}</{h}>'
             f'<p class="er-meta">{" &middot; ".join(E(x) if not x.startswith("<b>") else x for x in meta)}</p>'
-            f'<ul class="er-rows">{candidate_rows(race, elected_names, held)}</ul>'
+            f'<ul class="er-rows">{candidate_rows(race, elected_names, held, mine)}</ul>'
             + status_lines(me)
             + "".join(f'<p class="er-note">{n}</p>' for n in notes)
             + (f'<p class="er-foot">{" ".join(foot)}</p>' if foot else "")

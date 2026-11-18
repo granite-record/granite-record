@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of members-elect and election results.
 
@@ -1481,6 +1481,68 @@ def _member_elections_rows(BMEL, BME, BE):
     return "ok", (f"{sum(len(v) for v in got.values())} rows for {len(got)} members: a win, a certain "
                   "loss, two left off and listed, not final, a recount, a tie, both chambers, no "
                   "tab for a member with no race")
+
+
+@check("build", "a member's Elections tab draws each race as the elections page's own card "
+       "(build_elections.race_card, not a copy), headed by the election's day linked to the race, "
+       "the member's row alone marked, a race not final with a recount asked for still saying so",
+       needs=("build_member_elections", "build_members_elect", "build_elections"))
+def _member_elections_cards(BMEL, BME, BE):
+    """The owner, 18 November 2026: the tab "replacing it with the same chart layout"
+    the elections pages draw. Ida Beck (1004) has two races, the 2026 Senate race not
+    final with a recount asked for; each row's card is race_card's own with the
+    member's row marked er-me, and app.js draws the cards, not the table."""
+    sitting, former, districts, r24, r26 = _mel_world()
+    roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
+    got = {}
+    for res, hand in (
+            (r24, {"matches": {"H|Rockingham|3": {"Ida Beck": "1004"}}, "not_final": {},
+                   "held": {}, "party": {}, "recount_deadline": "2024-11-13"}),
+            (r26, {"matches": {}, "not_final": {"S|5": {"recount": True}},
+                   "held": {}, "party": {}, "recount_deadline": "2026-11-06"})):
+        races_me, _rep = BME.members_elect(res, sitting, former, districts, hand, "2026-11-10")
+        rows, _rep2 = BMEL.election_rows(res["election"], res, races_me, hand, roster,
+                                         BME.People(sitting, former, BME.ballot_of(res)))
+        for mid, rs in rows.items():
+            for r in rs:
+                want = BE.race_card(r["k"], res["races"][r["k"]], races_me[r["k"]], res,
+                                    BE.totals_notes(res), res["election"], hand,
+                                    mine=BE.same_name(roster.members[mid]["name"]), anchor=False)
+                assert r.get("c") == want, f"{mid} {r['d']}: the tab's card is not race_card's"
+                got.setdefault(mid, []).append(r)
+    assert got, "no member has a row on the made-up court"
+    for mid, rs in got.items():
+        for r in rs:
+            marked = re.findall(r'<li class="er-row er-me">(.*?)</li>', r["c"])
+            assert len(marked) == 1 and BE.same_name(roster.members[mid]["name"]) in marked[0], (
+                f"{mid} {r['d']}: {len(marked)} rows marked, not the member's own one")
+            assert r["c"].startswith('<article class="er-race">'), (
+                f"{mid}: the tab's card keeps the elections page's anchor")
+    beck = BMEL.sort_rows(got["1004"])
+    assert [(r["d"], r["k"]) for r in beck] == [("2026-11-03", "S|5"), ("2024-11-05", "H|Rockingham|3")], (
+        f"Ida Beck's two races: {[(r['d'], r['k']) for r in beck]}")
+    assert "Result not final" in beck[0]["c"] and "a recount was requested" in beck[0]["c"] \
+        and "Result not final" not in beck[1]["c"], "the card of a race not final lost its recount line"
+    # The elections page's own card is as it was: anchored, no row marked.
+    page = BE.race_card("S|5", r26["races"]["S|5"], {}, r26, {}, "2026-11-03")
+    assert page.startswith('<article class="er-race" id="r-s-5" data-towns="alpha | beta">') \
+        and "er-me" not in page, f"the elections page's card changed: {page[:120]}"
+    # app.js draws the cards, newest first, each headed by its day linked to the race.
+    html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": beck}) + ")",
+                   names=("renderMemberElections",))
+    if html is None:
+        return "skip", "node, app.js or the stub is not here (the cards were proven in Python)"
+    heads = re.findall(r'<article class="er-race"><p class="er-when"><a href="([^"]+)">', html)
+    assert heads == ["/elections/2026-11-03-general#r-s-5",
+                     "/elections/2024-11-05-general#r-h-rockingham-3"], f"the cards' heads: {heads}"
+    assert '<div class="er-cards">' in html and "<table" not in html and html.count("er-me") == 2 \
+        and "a recount was requested" in html, "the tab is not the two cards, each with its row marked"
+    for want in ("The general elections on file in which this member is recorded",
+                 "appears only where the name and the district match", "Secretary of State"):
+        assert want in html, f"the tab lost its note: {want!r}"
+    return "ok", (f"{sum(len(v) for v in got.values())} cards for {len(got)} members, each race_card's "
+                  "own with the member's row alone marked; Ida Beck's two drawn newest first under "
+                  "their days, the recount line kept, both notes kept, no table")
 
 
 # THE ELECTIONS BEFORE 2024 (10 November 2026; branch dec/results-2016-2022). The

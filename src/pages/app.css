@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.398 */
+/* GRANITE_VERSION: 2026-09-07.399 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -10017,6 +10017,11 @@ text-wrap:balance}
 .er-note{margin:var(--sp-4) 0 0;font-size:var(--t-ui);border-left:3px solid var(--st-table);padding-left:var(--sp-4)}
 .er-foot,.er-out{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-4) 0 0}
 .er-out{color:var(--ink);font-size:var(--t-ui)}
+/* A member's Elections tab draws these cards (app.js electionCard): the day above the
+   race, and the member's own row in a light outline (the owner, 18 November 2026). */
+.er-when{margin:0 0 var(--sp-1);font-size:var(--t-sm);font-weight:600}
+.er-row.er-me{outline:1px solid var(--rule-2);outline-offset:-1px;border-radius:var(--r-in);
+  margin:0 calc(-1 * var(--sp-3));padding-left:var(--sp-3);padding-right:var(--sp-3)}
 .er-county{margin:var(--sp-7) 0 0}
 .er-county span{font-size:var(--t-ui);font-weight:400;color:var(--ink-2);margin-left:var(--sp-3)}
 .er-find{margin:var(--sp-5) 0;max-width:var(--measure)}

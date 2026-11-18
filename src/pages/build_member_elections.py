@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.4
+# GRANITE_VERSION: 2026-11-10.5
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -67,7 +67,11 @@ member's votes, and -- for a race of one seat -- the share of every vote cast
 in it, write-ins included, as the elections page does; a race of more than one
 seat gives none, because a voter could choose several. The place among the
 candidates. A race whose winner the owner holds back has neither. Where a race
-is a recount's, the row says so; the first count is not on file.
+is a recount's, the row says so; the first count is not on file. And "c", the
+race's card as the elections page draws it (build_elections.race_card, the
+same function), with the member's own row marked, which is what the tab
+draws (the owner, 18 November 2026); the fields above stay for a reader of
+the JSON and for a row with no card.
 
 Nothing here asks the network.
 """
@@ -247,9 +251,12 @@ def race_row(election, key, race, me, cand, drawn, held):
 
 
 def election_rows(election, results, races_me, hand, roster, people):
-    """({member id: [row, ...]}, [report line, ...]) for one election."""
+    """({member id: [row, ...]}, [report line, ...]) for one election. Each
+    row carries "c", the race's card as the elections page draws it
+    (build_elections.race_card, the one function), the member's row marked."""
     rows, report = defaultdict(list), []
     matches = hand.get("matches") or {}
+    tnotes = BE.totals_notes(results)
     for key in sorted(results["races"], key=BME.race_order):
         race, me = results["races"][key], races_me.get(key)
         if me is None:
@@ -288,7 +295,10 @@ def election_rows(election, results, races_me, hand, roster, people):
                                        why or "no member of exactly that name; the name fits "
                                               "only loosely"))
                     continue
-            rows[member["id"]].append(race_row(election, key, race, me, c, won is not None, held))
+            row = race_row(election, key, race, me, c, won is not None, held)
+            row["c"] = BE.race_card(key, race, me, results, tnotes, election, hand,
+                                    mine=BE.same_name(c["name"]), anchor=False)
+            rows[member["id"]].append(row)
     return rows, report
 
 
@@ -327,9 +337,12 @@ def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT):
     roster = Roster(sitting, former, terms if isinstance(terms, list) else [], history)
     items = BE.elections_on_file(collected)
     by_member, report = defaultdict(list), []
+    pages = BE.provisional(site)
     for election, _p, results in items:
         races_me, _rep, hand = BE.decided(results, sitting, former, districts, hand_path, today,
                                           BE.settled_in(items, election), history)
+        # A new winner's chip links to their provisional page, as on the elections page's card.
+        BE.with_pages(races_me, pages.get(election))
         people = BME.People(sitting, former, BME.ballot_of(results))
         got, rep = election_rows(election, results, races_me, hand, roster, people)
         for mid, rows in got.items():

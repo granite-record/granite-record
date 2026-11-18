@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -270,6 +270,10 @@ def _class_collisions():
         # owner's asking ("the same tab format as standing committees", 29
         # October 2026; _study_committee_tabs)
         "tabs", "tab", "tn", "tnp", "pane",
+        # THE RACE CARDS' GRID: build_elections lays an election's races out
+        # in it, and app.js a member's Elections tab, whose cards are
+        # build_elections.race_card's own (the owner, 18 November 2026)
+        "er-cards",
     }
     here = Path(".")
     # The components draw on both sides by design: components.js with the
