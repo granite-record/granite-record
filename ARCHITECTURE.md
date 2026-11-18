@@ -2797,6 +2797,14 @@ On the files of 18 November: 6,151 such tenures, 5,050 of them a member's,
 every one of 2023-2024 resolved to its district; the model's files grow from
 2.3 to 3.8 MB, and every file still comes back.
 
+Its first readers (the design's phase B, one a commit, each proven to leave the
+site byte for byte as it was) read these tenures through `entities`, from the
+file the model is built from, because the step that writes `data/entities/`
+runs last: `build_members_elect.seat_history`, the seats a member-elect's
+history is matched against (`_seat_history_reads_the_model`).
+`_entities_step_in_the_plan` lets the readers it lists (`SEAT_READERS`) import
+the shapes' module, and nothing names the folder.
+
 The step stops only where a file it needs is missing or will not read:
 `check_site` fails a night on any step that failed, optional or not, and no page
 reads the model. What it cannot place or hold -- a member who moved chamber within

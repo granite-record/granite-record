@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.19
+# GRANITE_VERSION: 2026-10-16.20
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -189,6 +189,7 @@ import unicodedata
 from collections import Counter, defaultdict
 
 import build_date
+import entities as EN
 import proceedings
 from member_links import COUNTIES, SHORT, first_names, same_first, split_name, surname
 
@@ -701,20 +702,23 @@ def seat_history(sponsors):
     which carries the seat a sponsor held in the term the bill was filed. The
     roster holds one seat per member, the last; this is the seat each term,
     and a member who sponsored nothing in a term has none for it. A member
-    whose seat is printed two ways in one term has both."""
+    whose seat is printed two ways in one term has both.
+
+    READ FROM THE MODEL'S TENURES (18 November 2026, the refactor's model
+    design, step 5): the seats are entities.printed_tenures', the tenures of
+    the seats a term's bills print that build_entities puts in the model, each
+    a member's seat as printed; this keeps a member's, as a race key."""
     out = defaultdict(lambda: defaultdict(set))
-    for term, bills in (sponsors or {}).items():
-        for rows in (bills or {}).values():
-            for sp in rows or []:
-                mid = str(sp.get("member_id") or "")
-                d = number(sp.get("district"))
-                ch = str(sp.get("chamber") or "")[:1].upper()
-                if not mid or d is None:
-                    continue
-                if ch == "S":
-                    out[mid][term].add(f"S|{d}")
-                elif ch == "H" and sp.get("county"):
-                    out[mid][term].add(f"H|{full_county(sp['county'])}|{d}")
+    for t in EN.printed_tenures(sponsors, SPONSORS_DEFAULT.as_posix()):
+        mid, line = t.get("member_id") or "", t["sponsor_line"]
+        d = number(line["district"])
+        ch = str(line["chamber"])[:1].upper()
+        if not mid or d is None:
+            continue
+        if ch == "S":
+            out[mid][t["term"]].add(f"S|{d}")
+        elif ch == "H" and line["county"]:
+            out[mid][t["term"]].add(f"H|{full_county(line['county'])}|{d}")
     return {m: {t: sorted(ks) for t, ks in terms.items()} for m, terms in out.items()}
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -25,6 +25,10 @@ src/parse/build_entities.py writes the model to data/entities/ every night from 
 disk. NOTHING READS IT YET (the design of 16 November 2026, phase A): preflight holds that each
 of today's files above is a view of it, byte for byte, so that a reader moved onto it later
 cannot change the site, and a model that cannot give a file back has lost something.
+The readers moved onto it (phase B, one a commit, each proven to leave the site byte for byte
+as it was) read its tenures through this module, from the files it is built from, since the
+step that writes data/entities/ runs after them: build_members_elect.seat_history reads
+printed_tenures (18 November 2026).
 
 THE KINDS. Every record is a JSON object whose first field is its id, named for its kind:
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.10
+# GRANITE_VERSION: 2026-11-16.11
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -563,6 +563,61 @@ def _entities_printed_seats(BE, EN, PE):
                   "makes, with no problem; no file, no seat, and said")
 
 
+# The readers of the seat a member held in a term that read the model's tenures (the design's
+# step 5), each through entities.printed_tenures: _entities_step_in_the_plan lets them import the
+# shapes' module, and nothing else.
+SEAT_READERS = {"build_members_elect.py"}
+
+
+def _model_swapped(EN, change):
+    """A context in which entities.printed_tenures gives `change` of what it gives: a reader that
+    reads the model's tenures answers by the changed ones, and one that reads the lines itself
+    does not."""
+    import contextlib
+
+    @contextlib.contextmanager
+    def swapped():
+        real = EN.printed_tenures
+        EN.printed_tenures = lambda *a, **k: change(copy.deepcopy(real(*a, **k)))
+        try:
+            yield
+        finally:
+            EN.printed_tenures = real
+    return swapped()
+
+
+@check("build", "the seats a member-elect's history is matched against are the model's: build_members_elect.seat_history reads the tenures of the seats a term's bills print, and keeps a member's as a race key",
+       needs=("build_members_elect", "entities"))
+def _seat_history_reads_the_model(BME, EN):
+    """build_members_elect.seat_history (the seats each member printed as their own on each term's
+    bills, which an election's surname-only winner is matched to a member by) reads
+    entities.printed_tenures, the tenures build_entities puts in the model, rather than the
+    sponsor lines (the design of 16 November 2026, step 5; byte-identical on D:/nh's files and the
+    fixture site, 18 November 2026). On the made-up lines: a member printed at two seats in a term
+    has both, a senator one a term, a line placed on no one and a line with no district are no
+    member's. And it answers by the model: a tenure taken out of the model is a seat gone from the
+    history, and a tenure put in is one there."""
+    want = {"3001": {"2021-2022": ["H|Rockingham|1", "H|Rockingham|2"]},
+            "3002": {"2021-2022": ["S|7"], "2023-2024": ["S|7"]},
+            "3004": {"2023-2024": ["H|Belknap|8"]}}
+    got = BME.seat_history(_PRINTED_DOC)
+    assert got == want, f"seat_history gives {got}"
+    assert list(got) == ["3001", "3002", "3004"], f"members out of the file's order: {list(got)}"
+
+    def change(ts):
+        ts = [t for t in ts if t.get("member_id") != "3004"]
+        t = copy.deepcopy(ts[0])
+        t.update(tenure="printed:2023-2024:3009|H|Coos|3", term="2023-2024", member_id="3009",
+                 sponsor_line={"chamber": "H", "county": "Coos", "district": "3", "names": ["Roe"]})
+        return ts + [t]
+    with _model_swapped(EN, change):
+        moved = BME.seat_history(_PRINTED_DOC)
+    assert "3004" not in moved and moved.get("3009") == {"2023-2024": ["H|Coos|3"]}, (
+        f"seat_history does not answer by the model's tenures: {moved}")
+    return "ok", ("three members' seats from the model's tenures, two seats of one term both kept, a line of "
+                  "no member none; a tenure taken out of the model and one put in each move the answer")
+
+
 @check("build", "build_entities.py says what the model cannot place or hold and goes on, and every file still comes back",
        needs=("build_entities", "entities", "people"))
 def _entities_say_and_go_on(BE, EN, PE):
@@ -645,7 +700,8 @@ def _entities_step_in_the_plan(build_all):
     manifest; optional, because no page waits on a model nothing reads. And nothing reads it yet
     (phase A): no step of the plan names data/entities but it, and no code file but it, the shapes'
     module, src/ops/gr_register.py (which asks it only for the first offices' holders it links
-    to no one) and the checks imports either or names the folder."""
+    to no one) and the checks imports either or names the folder -- but the seat readers moved
+    onto the model's tenures (SEAT_READERS, phase B), which import the shapes' module alone."""
     class A:
         key = None
         session = "2026"
@@ -665,17 +721,25 @@ def _entities_step_in_the_plan(build_all):
                                                           list(x.args) + list(x.needs) + list(x.produces))]
     assert not others, f"steps besides the model's name data/entities: {others}"
     allowed = {"build_entities.py", "entities.py", "gr_register.py", "build_all.py"}
+    # PHASE B (the design's step 5, 18 November 2026): a reader moved onto the model's tenures
+    # reads them through the shapes' module (entities.printed_tenures), from the file the model
+    # is built from, since the step that writes data/entities/ runs after it; never the folder.
+    moved = SEAT_READERS
     readers = []
     for f in _paths.code_files("*.py"):
         if f.name in allowed or "suite" in f.parent.name:
             continue
         t = f.read_text(encoding="utf-8", errors="replace")
+        if f.name in moved and "data/entities" not in t and not re.search(
+                r"^\s*(?:import|from)\s+build_entities\b", t, re.M):
+            continue
         if re.search(r"^\s*(?:import|from)\s+(?:entities|build_entities)\b", t, re.M) or "data/entities" in t:
             readers.append(f.name)
     assert not readers, f"these read the model, which nothing reads yet: {readers}"
     return "ok", (f"step {i + 1} of {len(steps)}, after the district table, the site data, the members-elect, "
                   "the town pages, the district map and the bulk downloads; --out data/entities, optional; no "
-                  "other step or code file reads it")
+                  f"other step or code file reads it, and the {len(moved)} seat reader(s) moved onto its tenures "
+                  "read them through entities alone")
 
 
 def _first_offices_unlinked(BE, root):
