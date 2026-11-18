@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.12
+# GRANITE_VERSION: 2026-11-12.13
 """The tag rule engine: which tags a bill carries, and the evidence for each.
 
     python3 src/parse/tag_rules.py --bill 2023-2024 HB1596   # explain one bill
@@ -8,8 +8,9 @@
 STAGE 1 OF THE TOPICS-AS-TAGS DESIGN (reports/topics-as-tags-design-2026-11.md,
 sections 2 to 4), AND WHAT THE SITE READS OF IT (stages 3 and 4, 17 November
 2026): in_force(), site_tags() and site_meta(), at the end of this file, which
-build_site_v2.py calls. It asks no network and writes no file but the build's
-cache (.build_cache/bill_tags.json.gz, build_cache.py).
+build_site_v2.py calls, and the cap site_tags applies (best_tags). It asks no
+network and writes no file but the build's cache (.build_cache/bill_tags.json.gz,
+build_cache.py).
 
 THE REGISTRY is a person's file, corrections/tags.json, which no generator
 writes. Where it is absent the committed fixture (tests/tags_fixture.json, key
@@ -120,8 +121,10 @@ expression, used as written. A chapter is "126-X"; a trailing * takes the
 chapter and every lettered one under it ("159*").
 
 A tag that equals the bill's assigned topic (same_as_topic) is dropped and
-said to be, not attached twice. Nothing here caps the number of tags; a bill
-over `GUIDE_TAGS` (5) is for the caller to report.
+said to be, not attached twice. tag_bill caps nothing: it is the rules'
+answer, which the bench and the counts read, and a bill over `GUIDE_TAGS` (5)
+is for the caller to report. The site shows at most `MAX_TAGS` (10) of a
+bill's tags, its best-matched (best_tags: THE CAP, beside what the site reads).
 
 SYNONYMS (12 Nov 2026). The words a reader types live with the registry, one
 source: every tag's name and asks lead to that tag, and the file's own
@@ -157,6 +160,9 @@ ROOT = _paths.ROOT
 REGISTRY = Path("corrections") / "tags.json"
 FIXTURE = Path("tests") / "tags_fixture.json"
 GUIDE_TAGS = 5
+# THE CAP (the owner, 17 Nov 2026: "17 seems a bit excessive so maybe something like 10 that are the
+# best matches"): the most tags the site shows on one bill, its best-matched (best_tags).
+MAX_TAGS = 10
 # A REFERENCE, NOT A RULE (the owner, 12 Nov 2026): a tag wants a decent number of bills.
 # Under this many at the title and analysis tiers across all terms, a tag is a search
 # synonym that leads to a topic or another tag, unless its entry says keep_small and why.
@@ -723,9 +729,82 @@ def in_force(path=None):
     return {"tags": reg, "synonyms": syn, "digest": hashlib.sha256(raw).hexdigest()}
 
 
+# THE CAP (the owner, 17 November 2026: "we should potentially cap the number of total tags that a bill can
+# have since 17 seems a bit excessive so maybe something like 10 that are the best matches"). A bill the
+# rules give more than MAX_TAGS keeps its best-matched MAX_TAGS on the site. site_tags is the one place that
+# applies it, so the record, the index row (the page's foot list, the Tags filter, the tag search) and
+# meta.json's list all take the same tags. Best is the engine's own evidence, strongest first:
+#
+#     hand                 a person's word on the bench (H), which a count never takes off
+#     title                a phrase of the tag's in the bill's title (T)
+#     analysis             one in the drafters' analysis (A)
+#     provision            the bill writes a chapter or an article of that name (R)
+#     chapter with a word  it amends a chapter dedicated to the subject and says one of its words (R)
+#     chapter              it amends such a chapter (R)
+#     duty                 it gives the office a duty or a power (R): last, since a duty the text restates
+#                          beside the change counts too
+#
+# and between two of one kind, first the one more kinds of evidence attach (a title, an analysis and a
+# chapter beat a title alone), then the one the bill names more often -- its words in the title and the
+# analysis, and the duties the text gives its office (without the duties, 18 of the record's 21 bills over
+# ten had the line drawn by the registry's order, between offices the title and analysis never name) --
+# then the registry's order. A tag is weighed on the bill alone, never by how many bills it has elsewhere, so a
+# bill's tags move only when it or the registry does. What is kept stays in the registry's order.
+
+_STRENGTH = ("hand", "title", "analysis", "provision", "chapter with a word", "chapter", "duty")
+
+
+def evidence(rule, bill, v):
+    """(the kind of evidence one tag of tag_bill's answer, `v`, rests on, as _STRENGTH names it; how many
+    kinds attach it; how many times the bill names it: its words in the title and the analysis, and the duties
+    the text gives its office), for best_tags.
+    `bill` is the engine's (engine_bill), `rule` the tag's."""
+    fired, why = v["fired"], v["why"][2:]
+    if "H" in fired:
+        kind = "hand"
+    elif "T" in fired:
+        kind = "title"
+    elif "A" in fired:
+        kind = "analysis"
+    elif why in (bill.get("provisions") or []):
+        kind = "provision"
+    elif why.startswith("RSA ") and why.endswith(" with a word"):
+        kind = "chapter with a word"
+    elif why.startswith("RSA ") and why[4:] in {norm_chapter(c) for c in bill.get("chapters") or []}:
+        kind = "chapter"
+    else:
+        kind = "duty"
+    t, a = rule.blank(bill.get("title") or ""), rule.blank(bill.get("analysis") or "")
+    words = {p: rx for p, rx in rule.title + rule.analysis + rule.with_words}
+    said = sum(len(rx.findall(t)) + len(rx.findall(a)) for rx in words.values())
+    said += sum(1 for d in bill.get("duties") or [] if any(rx.search(rule.blank(d)) for _p, rx in rule.duties))
+    return kind, len(fired), said
+
+
+def ranked(rules, bill, tags):
+    """The ids of tag_bill's `tags` for `bill`, the best-matched first (THE CAP)."""
+    at = {t: i for i, t in enumerate(rules)}
+
+    def key(tid):
+        kind, kinds, said = evidence(rules[tid], bill, tags[tid])
+        return _STRENGTH.index(kind), -kinds, -said, at[tid]
+    return sorted(tags, key=key)
+
+
+def best_tags(rules, bill, tags, cap=None):
+    """tag_bill's `tags` for `bill` as the site shows them: every one where there are `cap` (MAX_TAGS) or
+    fewer, else the `cap` best-matched (ranked), still in the registry's order."""
+    cap = MAX_TAGS if cap is None else cap
+    if len(tags) <= cap:
+        return tags
+    keep = set(ranked(rules, bill, tags)[:cap])
+    return {t: v for t, v in tags.items() if t in keep}
+
+
 def site_tags(bills, doc, folder=None):
-    """{(term, bill): {id: why}}, in the registry's order, for every bill a tag attaches to (tag_bill):
-    `bills` gives (term, bill, title, text, topic) for each, `doc` is in_force()'s.
+    """{(term, bill): {id: why}}, in the registry's order, for every bill a tag attaches to (tag_bill), at
+    most MAX_TAGS a bill, its best-matched (best_tags): `bills` gives (term, bill, title, text, topic) for
+    each, `doc` is in_force()'s.
 
     Each bill's answer is kept in the build's cache (build_cache.py) by the registry's bytes, the
     bill's title, text and topic, and this code, since the rules read every bill's text: about 13 ms
@@ -740,8 +819,8 @@ def site_tags(bills, doc, folder=None):
         key = BC.digest(sig, doc["digest"], term, bid, title or "", text or "", topic or "")
         got = kept.get(key)
         if not isinstance(got, dict):
-            r = tag_bill(rules, engine_bill(term, bid, title, text, topic))
-            got = {tid: v["why"] for tid, v in r["tags"].items()}
+            eb = engine_bill(term, bid, title, text, topic)
+            got = {tid: v["why"] for tid, v in best_tags(rules, eb, tag_bill(rules, eb)["tags"]).items()}
         used[key] = got
         if got:
             out[(term, bid)] = got
@@ -792,6 +871,10 @@ def explain(rules, bill):
         print(f"  supporting only {tid}: RSA {', '.join(ch)}")
     if len(r["tags"]) > GUIDE_TAGS:
         print(f"  over the guide of {GUIDE_TAGS} tags: {len(r['tags'])}")
+    if len(r["tags"]) > MAX_TAGS:
+        kept = best_tags(rules, bill, r["tags"])
+        print(f"  over the cap of {MAX_TAGS}: the site leaves off "
+              + ", ".join(t for t in ranked(rules, bill, r["tags"]) if t not in kept))
     return r
 
 

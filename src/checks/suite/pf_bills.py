@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.23
+# GRANITE_VERSION: 2026-11-16.24
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -11050,3 +11050,87 @@ def _tag_site_data(TR, B, BBP):
     return "ok", (f"in force by corrections/tags.json alone; {len(want)} fixture bills tagged as the engine tags them, "
                   "warm from the cache and afresh once the registry moves; meta.json in the registry's words; the "
                   "fixture built with a registry carries the tags in record, row and meta.json, and without one none")
+
+
+@check("code", "a bill shows at most ten tags, its best-matched: a person's word, then the title, the analysis, a "
+               "provision, a chapter with a word, a chapter and a duty, kinds of evidence and the bill's own words "
+               "breaking a tie; site_tags applies it, so the record, the index row and meta.json agree",
+       needs=("tag_rules",))
+def _tag_cap(TR):
+    """THE CAP in tag_rules.py (the owner, 17 November 2026: "cap the number of total tags that a bill can have
+    since 17 seems a bit excessive so maybe something like 10 that are the best matches"). A made-up bill the
+    rules give twelve tags, each on different evidence, in a registry whose order is neither the answer's nor
+    the alphabet's: ranked puts them in the order of THE CAP (a hand list's word; then a title, the one more
+    kinds of evidence attach first and then the one whose words the bill says more often; an analysis, two
+    alike in the registry's order; a provision; a chapter with a word; a chapter; a duty, the one the bill
+    names more often first, by its words in the analysis and by the duties its text gives the office), and
+    site_tags keeps the ten best, in the registry's order, leaving off two duties -- one of them the
+    registry's first tag. A bill of fewer tags keeps all of them, and a tag left off one bill stays in
+    meta.json's list where another bill carries it. The setting is ten, in one place (MAX_TAGS)."""
+    assert TR.MAX_TAGS == 10, f"the cap is {TR.MAX_TAGS}, not the owner's ten"
+    key = "2025-2026/HB9999"
+    reg = {}
+    for tid, rule in (
+            ("office-ag", {"duties": ["attorney general"]}),
+            ("zoning-chapter", {"chapters_alone": ["996"]}),
+            ("toys", {"analysis": ["gadget"]}),
+            ("office-sos", {"duties": ["secretary of state"], "title": ["secretary of state"]}),
+            ("widget", {"title": ["widget"]}),
+            ("sprocket", {"provisions": ["sprocket"]}),
+            ("gizmo", {"analysis": ["gizmo"]}),
+            ("permits", {"title": ["permit fee"], "chapters_with_words": {"chapters": ["997"], "words": ["permit"]}}),
+            ("inspection", {"title": ["inspection"]}),
+            ("labor-commissioner", {"duties": ["commissioner of labor"]}),
+            ("licensing", {"title": ["licensing"], "analysis": ["licensing"], "chapters_alone": ["998-A"]}),
+            ("bench-only", {"title": ["zzqx"]})):
+        reg[tid] = {"name": tid.replace("-", " ").title(), "definition": f"Bills about {tid}.", "rule": rule}
+    reg["bench-only"]["hand"] = {"attach": {key: "the bench: yes"}}
+    assert not TR.validate(reg), TR.validate(reg)
+    bill = {"term": "2025-2026", "bill": "HB9999", "topic": "",
+            "title": "relative to widget inspection and licensing",
+            "analysis": ("This bill requires a permit for each gadget and gizmo, sets licensing rules, and has the "
+                         "secretary of state publish them. A gadget, a gadget, a gadget, a gizmo, a gizmo and a gizmo; an inspection, "
+                         "an inspection and an inspection; licensing. The secretary of state keeps the list."),
+            "chapters": ["996", "997", "998-A"], "provisions": ["RSA 999-Q Sprocket Licensing"],
+            "duties": ["the attorney general shall investigate", "the secretary of state shall publish them",
+                       "the commissioner of labor may adopt rules", "the commissioner of labor shall enforce it"]}
+    small = {"term": "2025-2026", "bill": "HB9998", "topic": "", "title": "relative to wages", "analysis": "",
+             "chapters": [], "provisions": [], "duties": ["the commissioner of labor shall enforce"]}
+    rules = TR.compile_registry(reg)
+    tags = TR.tag_bill(rules, bill)["tags"]
+    assert list(tags) == list(reg), f"the made-up bill does not carry all twelve: {sorted(set(reg) - set(tags))}"
+    kinds = {t: TR.evidence(rules[t], bill, tags[t])[0] for t in tags}
+    assert kinds == {"office-ag": "duty", "zoning-chapter": "chapter", "toys": "analysis",
+                     "office-sos": "duty", "widget": "title", "sprocket": "provision", "gizmo": "analysis",
+                     "permits": "chapter with a word", "inspection": "title", "labor-commissioner": "duty",
+                     "licensing": "title", "bench-only": "hand"}, f"the evidence is misread: {kinds}"
+    order = ["bench-only", "licensing", "inspection", "widget", "toys", "gizmo", "sprocket", "permits",
+             "zoning-chapter", "office-sos", "labor-commissioner", "office-ag"]
+    got = TR.ranked(rules, bill, tags)
+    assert got == order, f"ranked: {got}, where THE CAP gives {order}"
+    kept = [t for t in reg if t in order[:10]]
+    assert list(TR.best_tags(rules, bill, tags)) == kept, f"best_tags kept {list(TR.best_tags(rules, bill, tags))}"
+    assert TR.best_tags(rules, small, TR.tag_bill(rules, small)["tags"]) == TR.tag_bill(rules, small)["tags"], (
+        "a bill under the cap lost a tag")
+    # site_tags is where the site takes them: the engine's reading of the made-up bills, the cap applied.
+    real_engine = TR.engine_bill
+    made = {b["bill"]: b for b in (bill, small)}
+    TR.engine_bill = lambda term, bid, title, text, topic: made[bid]
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        doc = {"tags": reg, "synonyms": {}, "digest": "c" * 64}
+        rows = [(b["term"], b["bill"], b["title"], "", "") for b in (bill, small)]
+        site = TR.site_tags(rows, doc, folder=tmp / "cache")
+        warm = TR.site_tags(rows, doc, folder=tmp / "cache")
+    finally:
+        TR.engine_bill = real_engine
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert list(site[("2025-2026", "HB9999")]) == kept, f"site_tags: {list(site[('2025-2026', 'HB9999')])}"
+    assert site[("2025-2026", "HB9998")] == {"labor-commissioner": "R:the commissioner of labor shall"}, site
+    assert warm == site, "the cache's answer is not the capped one"
+    meta = [t["id"] for t in TR.site_meta(doc, site, set())["tags"]]
+    assert meta == [t for t in reg if t != "office-ag"], f"meta.json's list: {meta}"
+    return "ok", ("twelve tags of mixed evidence ranked hand, title (more kinds, then more of the bill's words), "
+                  "analysis, provision, chapter with a word, chapter, duty (more duties first); site_tags keeps the "
+                  "ten best in the registry's order, a bill of fewer keeps all, and meta.json lists a tag another "
+                  "bill still carries")
