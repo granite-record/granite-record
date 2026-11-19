@@ -59,6 +59,12 @@ Shared by every stage:
   line is (the owner's `hand`, or a contributor's `link:<id>` merged from the
   hosted bench), the owner's line beating a contributor's whatever the order,
   and a withdrawn link's lines read by no one. Reads one file, writes nothing;
+- `election_law`: the election law's days by the text of the section in force
+  on the day -- the state primary (RSA 653:8), the general election (RSA
+  653:7) and the primary's filing period (RSA 655:14) -- read off
+  `db/NH_RSA.psv` where it is in the run's folder, and off its own copy where
+  not; used by `pages/key_dates.py` and `parse/parse_sos_primary_results.py`,
+  which dates a State Primary by it. Standard library only;
 - `gr_ids`: Granite Record's own ids, `gr-` and a serial, for a person the
   record names and the General Court gives no number, kept in their own field
   (`granite_id`) and never in `gc_employee_number`: the register's reader and

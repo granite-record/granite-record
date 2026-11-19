@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of a bill's history as the site tells it (narrative.py).
 
@@ -13206,7 +13206,10 @@ def _key_dates_link_built_laws(KD):
         assert "<a " not in got[name], (
             f"a build whose table lacks RSA 39:1 ({name}) links it: {got[name]!r}, to a Laws page "
             "that build never wrote")
-    reader = _source(KD.__file__).split("def _sections_on_disk", 1)[1]
+    # The table's reader is src/lib/election_law.py's since 19 November 2026, which key_dates
+    # imports it from (KD._sections_on_disk is that function).
+    reader = _source(sys.modules[KD._sections_on_disk.__module__].__file__).split(
+        "def _sections_on_disk", 1)[1]
     assert "rsa.TABLE" not in reader.split("\ndef ", 1)[0], (
         "key_dates reads rsa.TABLE again: the repository's table, whatever folder the build runs in")
     return "ok", ("a statute's key date is a link where the build's own table holds the section, "
