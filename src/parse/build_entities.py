@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 The model of people, offices, terms, districts and elections, written to data/entities/ from
 the files on disk (src/lib/entities.py says what the model is).
@@ -22,6 +22,8 @@ of that day). It reads, and never writes:
   site/officers.json              who held the chair's offices, from the journals
   site/members_elect.json         November's winners until they sit, where the file is on disk
   records/districts/*.txt         the districts and their towns and wards
+  collected/election_2016.json,   the 2012 lines' House and Senate districts, as those generals'
+    2018 and 2020                 results lay them out (results_lists), no table of them being on file
   generated/gr_ids.json           Granite Record's own ids, issued by a person's run
   collected/county_officials.json the county officers as the Secretary of State's roster read,
                                   only to say where it and the hand file differ
@@ -381,10 +383,54 @@ def printed_seats(root, settings, by_mid, districts, report):
 
 # A district's spellings are its keys, made from its kind's patterns (entities.district_keys).
 
-def district_lists(root, settings):
-    """{era: lists} of records/districts/*.txt, as parse_districts reads them, for the era the
-    settings give the files (the newest), in entities.district_table's shape; refused where one
-    of the lists is not there."""
+# A PLACE AS A RESULTS FILE PRINTS IT: "Laconia Ward 1" is Laconia's ward 1; "Bath" a town of none.
+RESULTS_PLACE = re.compile(r"^(?P<town>.+?) Ward (?P<ward>\d+)$")
+
+
+def results_lists(root, era, spec):
+    """(lists, why): the House's and the Senate's districts of an era no list on file holds (its
+    "results" in the settings' district_eras), as the results files of the elections held on its
+    lines lay them out -- each race's seats, floterial mark and towns, a place printed otherwise
+    than the lists name it read by the era's "printed" -- in entities.district_table's shape. Every
+    race of every file must say what each other file says of it; where one does not, or a file
+    is not here, (None, why), and the era is left out."""
+    root = Path(root)
+    files = list(spec.get("results") or [])
+    gone = [f for f in files if not (root / f).is_file()]
+    if not files or gone:
+        return None, f"{', '.join(gone) or 'no results file'} not here"
+    printed = spec.get("printed") or {}
+    seen = {}
+    for rel in files:
+        for key, race in (_read(root, rel).get("races") or {}).items():
+            towns = []
+            for t in race.get("towns") or []:
+                t = printed.get(t, t)
+                m = RESULTS_PLACE.match(t)
+                towns.append((m.group("town"), m.group("ward")) if m else (t, "0"))
+            got = (race.get("seats"), bool(race.get("floterial")), towns)
+            first = seen.setdefault(key, (rel, got))
+            if (first[1][0], first[1][1], sorted(first[1][2])) != (got[0], got[1], sorted(towns)):
+                return None, f"{rel} {key} lays the district out otherwise than {first[0]}"
+    kinds = set(spec.get("kinds") or ("house", "senate"))
+    source = ", ".join(files)
+    parts = {"files": {k: source for k in kinds}, "source": source}
+    for key, (_rel, (seats, flot, towns)) in sorted(seen.items(), key=lambda kv: (kv[0].split("|")[:-1],
+                                                                                 int(kv[0].split("|")[-1]))):
+        bits = key.split("|")
+        if bits[0] == "H" and "house" in kinds:
+            parts.setdefault("house", {})[(bits[1], bits[2])] = {"county": bits[1], "district": bits[2],
+                                                                 "seats": seats, "floterial": flot, "towns": towns}
+        elif bits[0] == "S" and "senate" in kinds:
+            parts.setdefault("senate", {})[bits[1]] = towns
+    return parts, None
+
+
+def district_lists(root, settings, said=None):
+    """{era: lists}, in entities.district_table's shape: records/districts/*.txt, as
+    parse_districts reads them, for the era the settings give the files (the newest), refused
+    where one of them is not there; and each earlier era the settings lay out from its results
+    files (results_lists), newest first, or a line in `said` of why it is left out."""
     import parse_districts as PD
     folder = Path(root) / DISTRICTS
     era = max(EN.eras(settings))
@@ -400,13 +446,23 @@ def district_lists(root, settings):
             raise Refused(f"{k['file']} is not here")
         parts[kind] = PD.parse(p)
         parts["files"][kind] = k["file"]
-    return {era: parts}
+    out = {era: parts}
+    for e, spec in sorted(settings["district_eras"].items(), reverse=True):
+        if e != era and spec.get("results"):
+            got, why = results_lists(root, e, spec)
+            if got is None:
+                if said is not None:
+                    said.append(f"the districts of {e} are left out: {why}")
+                continue
+            out[e] = got
+    return out
 
 
-def districts_and_places(root, settings):
+def districts_and_places(root, settings, said=None):
     """(districts, places): the one district table (entities.district_table) of the lists of
-    district_lists; and the counties, which are not redrawn."""
-    districts, places = EN.district_table(district_lists(root, settings), settings)
+    district_lists, every era of it; and the counties, which are not redrawn. Why an era is left
+    out goes in `said`."""
+    districts, places = EN.district_table(district_lists(root, settings, said), settings)
     kinds = settings["district_kinds"]
     k = kinds["county"]
     for county in ST.COUNTIES:
@@ -904,6 +960,14 @@ def printed_districts(root, settings):
             kind = "senate" if r.get("chamber") == "S" else "house"
             served = (r.get("served") or {}).get("terms") or []
             era = seated if rel == ROSTER else (EN.era_of(served[-1], settings) if served else None)
+            # A FORMER MEMBER'S ONE DISTRICT IS READ IN THEIR LAST TERM'S ERA where that is today's,
+            # as it always was, or where every term they served is of that earlier era: the file
+            # gives one district for a whole service, and a member who also sat before those lines
+            # may be given a seat of then (site/former.json's Carlos E. Gonzalez, "Hills 48", of
+            # 2001-2006, whose last term, 2015-2016, was on the 2012 lines, which number 45).
+            if rel == FORMER and era not in (None, latest) and any(
+                    EN.era_of(t, settings) != era for t in served):
+                era = None
             who = f"{r.get('id')} {r.get('name')}"
             rec = f"{'member' if rel == ROSTER else 'former member'} {r.get('id')}"
             add(rel, who, kind, "label", r.get("district_label"), era, rec)
@@ -1008,10 +1072,11 @@ def district_report(model, printed, settings, missing=()):
     index = EN.district_index(model)
     D = {d["district"]: d for d in model.get("district") or []}
     PL = {p["place"]: p for p in model.get("place") or []}
+    held = {(d["kind"], d.get("era")) for d in D.values()}
     by_file, unresolved, differ, records = {}, [], [], {}
     for x in printed:
         n = by_file.setdefault(x["file"], {"resolved": 0, "era not on file": 0, "unresolved": 0})
-        if x["era"] is None:
+        if x["era"] is None or (x["kind"], x["era"]) not in held:
             n["era not on file"] += 1
             continue
         did = EN.resolve_district(index, x["kind"], x["spelling"], x["era"])
@@ -1037,7 +1102,8 @@ def district_report(model, printed, settings, missing=()):
             say("a place in a district that does not hold it", f"holds {x['place']}", "does not")
         if x.get("towns") is not None:
             mine = {_town_ward(PL[p]) for p in d.get("places") or [] if p in PL}
-            theirs = set(x["towns"])
+            printed_as = (settings["district_eras"].get(x["era"]) or {}).get("printed") or {}
+            theirs = {printed_as.get(t, t) for t in x["towns"]}
             if mine != theirs:
                 say("a district's towns, two ways", f"only here: {sorted(theirs - mine)[:5]}",
                     f"only there: {sorted(mine - theirs)[:5]}")
@@ -1047,8 +1113,11 @@ def district_report(model, printed, settings, missing=()):
                            "says": "; ".join(f"{x['file']} {x['form']} {x['spelling']!r} is {did}"
                                              for did, x in named.items()),
                            "other": "one record, one district"})
-    eras = sorted(EN.eras(settings))
-    return {"table": f"{DISTRICTS}/*.txt, the districts of {', '.join(eras)}",
+    latest = max(EN.eras(settings))
+    eras = sorted({d.get("era") for d in D.values() if d.get("era")})
+    table = ", ".join(f"{DISTRICTS}/*.txt, the districts of {e}" if e == latest else
+                      f"the results of {e}'s lines" for e in sorted(eras, reverse=True))
+    return {"table": table or f"{DISTRICTS}/*.txt",
             "spellings": sorted({f for d in model.get("district") or [] for f in EN.district_spellings(d)}),
             "printed": dict(sorted(by_file.items())), "not_here": list(missing),
             "unresolved_count": len(unresolved), "unresolved": unresolved[:100],
@@ -1631,7 +1700,7 @@ def build(root=".", settings=None, register=None):
     county_ten, county_diff, n_county = county_roster(root, hand_ten)
     off_ten, off_extra = officer_tenures(root, settings, by_mid, report)
     contests, cands, elect_ten, elect_layout = members_elect(root, settings, by_mid)
-    districts, places = districts_and_places(root, settings)
+    districts, places = districts_and_places(root, settings, report["notes"])
     gr_people = []
     for t in hand_ten:
         if t["person"] and re.match(EN.GR, t["person"]) and t["person"] not in {g["person"] for g in gr_people}:
@@ -1867,7 +1936,7 @@ def districts_summary(report):
          for k in ("resolved", "era not on file", "unresolved")}
     out = [f"districts: {sum(n.values()):,} spellings in {len(dr.get('printed') or {})} files the site prints; "
            f"{n['resolved']:,} resolved by the one table ({dr.get('table')}), {n['era not on file']:,} of a term "
-           f"before every era on file, {n['unresolved']:,} to no district; {dr.get('disagreements_count', 0)} "
+           f"whose districts it does not hold, {n['unresolved']:,} to no district; {dr.get('disagreements_count', 0)} "
            "place(s) where a file and the table disagree; fixed none"]
     for x in (dr.get("unresolved") or [])[:10] + (dr.get("disagreements") or [])[:10]:
         out.append(f"WARNING: {x['what']}: {x['where']}: {x['says']}; {x['other']}")

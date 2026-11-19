@@ -2926,10 +2926,20 @@ search, the district map, each election's results, the bills' sponsors), each
 in the era of the term it is printed for, and its manifest's `districts` says
 what resolves to nothing and where a file and the table disagree (seats, the
 floterial mark, a place, a race's towns, one record naming two districts); a
-seat of a term before every era on file -- the 2012 districts are not on file
--- is counted, never read as today's of that number. On the files of 16
-November: 24,554 spellings in 14 files, 19,137 resolved, 5,417 of an earlier
-era, none unresolved and no disagreement (`_districts_printed_today`). Where the hand file and the county roster name
+seat of a term whose districts the table does not hold is counted, never read
+as today's of that number. The table has two eras (the settings'
+`district_eras`): today's, from `records/districts/*.txt`, filling the terms
+from 2023-2024; and the 2012 lines, filling 2013-2014 to 2021-2022, of which no
+table is on file, so its House and Senate districts are as the 2016, 2018 and
+2020 results lay them out (`build_entities.results_lists`; they agree in all
+three years, and the era is left out, and said, where one does not), a place
+those files print otherwise read under the lists' name (the era's `printed`).
+`_district_era_2012` holds the era to the three files race by race. A former
+member's one district is read in their last term's era where that is today's
+or every term they served is of it. On the files of 19 November: 24,554
+spellings in 14 files, 21,026 resolved, 3,528 of a term whose districts the
+table does not hold, none unresolved and no disagreement
+(`_districts_printed_today`). Where the hand file and the county roster name
 different holders of one seat -- on 16 November the Hillsborough sheriff and
 the Strafford commissioner of district 1, each a vacancy filled since the
 roster's day -- the seat has two tenures, and the manifest lists the

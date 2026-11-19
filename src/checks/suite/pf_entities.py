@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.20
+# GRANITE_VERSION: 2026-11-16.21
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -2162,6 +2162,130 @@ def _districts_json_is_the_tables_view(PD, EN):
     return "ok", (f"{len(towns)} towns, {sum(len(w) for w in towns.values())} town-wards: the table's view of the "
                   "tracked lists is what they read plainly gave, byte for byte; a made-up folder too; and a "
                   "table planted with nine seats is what combine writes")
+
+
+_RESULTS_2012 = ("collected/election_2016.json", "collected/election_2018.json", "collected/election_2020.json")
+
+
+@check("files", "the district table's 2012 era is the House's and the Senate's districts as the 2016, 2018 and 2020 results lay them out, every race of the three agreeing with it, and the specials reader takes its era from the table",
+       needs=("build_entities", "entities", "state_settings", "parse_sos_results", "parse_sos_specials"))
+def _district_era_2012(BE, EN, ST, PSR, P):
+    """THE 2012 LINES, IN THE ONE TABLE (the model's design, step 4, and decision 11: no table of
+    the 2012 lines is on file, so the results of the generals held on them stand for it). The
+    settings' district_eras hold "2012" (the terms 2013-2014 to 2021-2022) beside "2022", and the
+    table builds its House and Senate districts from collected/election_2016.json,
+    election_2018.json and election_2020.json (build_entities.results_lists). Held on those
+    tracked files: era_of gives each term its era; the era has 204 House districts of 400 seats
+    and 24 Senate districts, and no Council or Congress; every race of each file resolves, by its
+    results key, to one district of 2012 whose seats, floterial mark and towns are the race's (a
+    place printed otherwise read by the era's "printed"); 2016's lack exactly Strafford's House
+    races and the Senate; every place of 2012 is a place of today's lists; a former member's one
+    district is read on the 2012 lines only where every term they served was on them (one who sat
+    before them too, given "Hills 48", is of no era on file; one of 2015-2016 alone is a district
+    the table does not hold, and said); and each "printed"
+    entry is printed by one of the files, names a place of the lists, and is that place by
+    parse_sos_results.place_key, a ward written Wd. Planted: a 2018 race laid out otherwise than
+    2016's and 2020's leaves the era out, and says which; a file not there, too. And the specials
+    reader takes a seat's era from the table: it binds no era of its own, and with the settings'
+    2012 era planted to start in 2021-2022 it refuses the 2019 special it read before."""
+    S = ST.SETTINGS
+    assert [EN.era_of(t) for t in ("2011-2012", "2013-2014", "2021-2022", "2023-2024")] == [None, "2012", "2012", "2022"]
+    spec = S["district_eras"]["2012"]
+    assert list(spec["results"]) == list(_RESULTS_2012) and set(spec["kinds"]) == {"house", "senate"}, spec
+    tmp = Path(tempfile.mkdtemp(prefix="gr-era-2012-"))
+    try:
+        _copy_tracked(tmp, [n for n in TRACKED if n.startswith("records/")] + list(_RESULTS_2012))
+        said = []
+        districts, places = BE.districts_and_places(tmp, S, said)
+        assert not said, said
+        of = {}
+        for d in districts:
+            of.setdefault((d["kind"], d.get("era")), []).append(d)
+        house, senate = of.get(("house", "2012"), []), of.get(("senate", "2012"), [])
+        assert len(house) == 204 and sum(d["seats"] for d in house) == 400 and len(senate) == 24, (
+            len(house), sum(d["seats"] for d in house), len(senate))
+        assert not of.get(("council", "2012")) and not of.get(("congress", "2012"))
+        index = EN.district_index({"district": districts})
+        PL = {p["place"]: p for p in places}
+        printed = spec["printed"]
+        used, keys = set(), {}
+        for rel in _RESULTS_2012:
+            races = json.loads((tmp / rel).read_text(encoding="utf-8"))["races"]
+            keys[rel] = set(races)
+            for key, race in races.items():
+                kind = "senate" if key.startswith("S|") else "house"
+                did = EN.resolve_district(index, kind, key, "2012")
+                assert did, f"{rel} {key} is no district of the 2012 table"
+                d = next(x for x in districts if x["district"] == did)
+                used |= {t for t in race["towns"] if t in printed}
+                theirs = {printed.get(t, t) for t in race["towns"]}
+                mine = {BE._town_ward(PL[p]) for p in d["places"]}
+                assert (race["seats"], bool(race.get("floterial")), theirs) == (d["seats"], bool(d.get("floterial")), mine), (
+                    f"{rel} {key}: {race['seats']} seat(s), floterial {race.get('floterial')}, towns {sorted(theirs - mine)[:3]} "
+                    f"against the table's {d['seats']}, {d.get('floterial')}, {sorted(mine - theirs)[:3]}")
+        lack = keys[_RESULTS_2012[1]] - keys[_RESULTS_2012[0]]
+        assert keys[_RESULTS_2012[1]] == keys[_RESULTS_2012[2]] and lack == {
+            k for k in keys[_RESULTS_2012[1]] if k.startswith("S|") or k.startswith("H|Strafford|")}, sorted(lack)[:5]
+        assert all("2022" in PL[p]["in"] for p in PL if "2012" in PL[p]["in"]), "a place of 2012 is not a place of the lists"
+        names = {BE._town_ward(p) for p in places if "2022" in p["in"]}
+        key = lambda s: re.sub(r"\bwd\b", "ward", PSR.place_key(s))  # noqa: E731
+        for wrote, place in printed.items():
+            assert wrote in used, f"the 2012 era's printed {wrote!r} is printed by none of the three files"
+            assert place in names, f"the 2012 era's printed {wrote!r} names {place!r}, no place of the lists"
+            assert key(wrote) == key(place), f"{wrote!r} and {place!r} are not one place by place_key"
+        # A former member's one district, in the era of their last term only where every term
+        # they served is of it: one who sat before the 2012 lines too is of no era on file.
+        def former(i, terms, label):
+            county, n = label.split()
+            return {"id": i, "name": f"Member, {i}", "chamber": "H", "county": "Hillsborough", "district": n,
+                    "district_label": label, "slug": f"m-{i}-hills-{n}", "served": {"terms": terms}}
+        (tmp / "site").mkdir(exist_ok=True)
+        (tmp / "site" / "former.json").write_text(json.dumps([
+            former("1", ["2001-2002", "2015-2016"], "Hills 48"), former("2", ["2017-2018", "2019-2020"], "Hills 45"),
+            former("3", ["2015-2016"], "Hills 48")]), encoding="utf-8")
+        pr, missing = BE.printed_districts(tmp, S)
+        dr = BE.district_report({"district": districts, "place": places}, pr, S, missing)
+        assert dr["printed"]["site/former.json"] == {"resolved": 3, "era not on file": 3, "unresolved": 3} and {
+            x["where"] for x in dr["unresolved"]} == {"site/former.json 3 Member, 3"}, (dr["printed"], dr["unresolved"])
+        # Planted: a 2018 race laid out otherwise, and a file not there.
+        doc = json.loads((tmp / _RESULTS_2012[1]).read_text(encoding="utf-8"))
+        doc["races"]["H|Belknap|2"]["seats"] += 1
+        (tmp / _RESULTS_2012[1]).write_text(json.dumps(doc), encoding="utf-8")
+        said = []
+        districts, _places = BE.districts_and_places(tmp, S, said)
+        assert not [d for d in districts if d.get("era") == "2012"] and said == [
+            "the districts of 2012 are left out: collected/election_2018.json H|Belknap|2 lays the district "
+            "out otherwise than collected/election_2016.json"], said
+        (tmp / _RESULTS_2012[1]).unlink()
+        said = []
+        BE.districts_and_places(tmp, S, said)
+        assert said == ["the districts of 2012 are left out: collected/election_2018.json not here"], said
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    # The specials reader binds no era of its own, and follows the table's.
+    tree = _parsed(_paths.locate("parse_sos_specials.py"))
+    own = [n.lineno for n in ast.walk(tree) if isinstance(n, ast.Assign)
+           and any(isinstance(c, ast.Constant) and c.value in ("2012", "2013-2014") for c in ast.walk(n.value))]
+    assert not own, f"parse_sos_specials.py binds an era of its own on line(s) {own}"
+    from pf_elections import _sp_world
+    root = Path(tempfile.mkdtemp(prefix="gr-era-specials-"))
+    first = spec["first_term"]
+    try:
+        src, col = _sp_world(root)
+        before = P.read_all(src, col)
+        r9 = [c for c in before["contest"] if c["contest"] == "2019-10-08.special.house.rockingham-9"]
+        assert r9 and r9[0]["district"] == "house:2012:rockingham-9" and not before.get("_refused"), r9
+        spec["first_term"] = "2021-2022"
+        planted = P.read_all(src, col)
+    finally:
+        spec["first_term"] = first
+        shutil.rmtree(root, ignore_errors=True)
+    refused = [r for r in planted.get("_refused") or [] if "rockingham-9" in r.get("file", "")]
+    assert refused and "before every era of districts" in refused[0]["why"], planted.get("_refused")
+    return "ok", (f"2012: {len(house)} House districts of 400 seats and {len(senate)} Senate, from the three results "
+                  f"files, every race of each agreeing; {len(printed)} places printed otherwise, each one place by "
+                  "place_key; a race planted otherwise and a file gone each leave the era out and say so; the "
+                  "specials reader binds no era and refuses a 2019 seat when the table's 2012 era is planted later")
 
 
 @check("data", "every district the site prints today resolves by the one district table to one id with its era, and where a file and the table disagree is listed",
