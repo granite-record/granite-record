@@ -25738,6 +25738,11 @@
    "es": "Una primaria se muestra en la papeleta del propio partido del miembro, debajo de las elecciones generales de ese año; quien encabeza se marca con Más votos.",
    "state": "draft"
   },
+  "race.intro_special": {
+   "en": "A special election is shown under the election cycle of the term whose seat it filled, by its date, with its primary under it.",
+   "es": "Una elección especial se muestra bajo el ciclo electoral del período cuyo escaño cubrió, por su fecha, con su primaria debajo.",
+   "state": "draft"
+  },
   "race.lost": {
    "en": "Not elected",
    "es": "No elegido/a",
@@ -25796,6 +25801,41 @@
   "race.source_primary": {
    "en": "The primaries are from the Secretary of State&rsquo;s State Primary results files: {years}; no page of them is on this site yet.",
    "es": "Las primarias provienen de los archivos de resultados de las primarias estatales de la Secretaría de Estado: {years}; aún no hay una página de ellas en este sitio.",
+   "state": "draft"
+  },
+  "race.source_special": {
+   "en": "The special elections are from the Secretary of State&rsquo;s page of each: {list}.",
+   "es": "Las elecciones especiales provienen de la página de cada una de la Secretaría de Estado: {list}.",
+   "state": "draft"
+  },
+  "race.special": {
+   "en": "Special election",
+   "es": "Elección especial",
+   "state": "draft"
+  },
+  "race.special_of": {
+   "en": "special election of {date}",
+   "es": "elección especial del {date}",
+   "state": "draft"
+  },
+  "race.special_primary": {
+   "en": "Special primary",
+   "es": "Primaria especial",
+   "state": "draft"
+  },
+  "race.special_primary_d": {
+   "en": "Special primary (Democratic)",
+   "es": "Primaria especial (demócrata)",
+   "state": "draft"
+  },
+  "race.special_primary_r": {
+   "en": "Special primary (Republican)",
+   "es": "Primaria especial (republicana)",
+   "state": "draft"
+  },
+  "race.special_tie": {
+   "en": "held after the {year} tie (House Resolution {n})",
+   "es": "celebrada tras el empate de {year} (Resolución de la Cámara {n})",
    "state": "draft"
   },
   "race.tab": {

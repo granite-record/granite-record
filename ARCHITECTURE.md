@@ -2357,7 +2357,8 @@ The State Primary's State Representative and State Senate races, 2016 to
 `D|H|Belknap|1`, `R|S|9`), which a member's Elections tab draws
 (`build_member_elections.primaries_on_file`, every `primary_*.json`). The layout is the general's, read by the
 House reader's own rules: `read_house`, `Block` and `district` take a
-primary's day as a date carrying the party (`Primary`), whose titles must
+primary's day as a date carrying the party (`Primary`, the day RSA 653:8 in
+force on it gives, by `src/lib/election_law.py`), whose titles must
 name the primary and that party, and a primary's block reads an empty cell
 under a candidate as none, because the files name every candidate any place
 wrote in, of every party, and print a count only where a vote came. The
@@ -2385,6 +2386,26 @@ print nothing under a candidate no county wrote in are its counties' rows.
 name the primary is read as the primary's, and said. A file that disagrees
 with itself is recorded in the year's `_disagreements`, never corrected.
 `_primary_read_again` holds the committed files to the saved ones.
+The special elections for State Representative (19 of them, October 2019 to
+March 2026; the owner's "Yes to all 9" of 19 November 2026) have no
+spreadsheet: each is a Secretary of State page, saved by a person as text in
+`records/sources/specials/` with its address, day and sha256 in
+`_manifest.json`. The pages print candidates' home addresses, so the folder is
+excluded from git and exists on the laptop only. `src/parse/parse_sos_specials.py`
+reads them into `collected/specials.json`, which is committed and is what the
+build reads: each special a contest of stage `special` and each party's primary
+for it a `primary` with `for` naming the special, in `src/lib/entities.py`'s
+shapes, with names, parties, votes (a recount's, the first count beside it),
+WINNER, the primary, special, recount and sworn-in days, and the district as the
+model's id in the era of the term it fills (`house:2012:...` for a term to
+2021-2022, `house:2022:...` after). Six wordings of the counts are read; any
+bracket or word it does not know refuses that special alone; each is tied out
+against itself (one WINNER with the most votes, a primary's leader its party's
+candidate, the sworn-in member the winner) and its district held to the general
+that elected the term. `cause` is written only where a record states it: the
+Strafford 8 re-run of 21 February 2023 under House Resolution 6, after the 2022
+general's 970-970 tie. No address is kept (`_specials_no_addresses`), and
+`_specials_read_again` reads the pages again where they are on disk.
 `src/parse/score_members_elect.py` replays the rule on 2024 as of Election
 Day -- sitting and former members from the roll calls before it, each at the
 seat its term's bills printed -- and holds every link to the 2025-2026 roll
@@ -2489,8 +2510,13 @@ card is `race_card`'s with `primary=` the ballot's party: the leader Most votes,
 never nominated, the label with no letter, the votes the file lists for another
 party's candidates left off and said in the note. The tab is one column of
 cards under a heading for each election cycle, strictly newest first: a cycle's
-general, then its primary under it (`sort_rows`, `cycle_of`; a special, when one
-is read, is to carry its cycle in `cy`). An uncontested race is a card too,
+general, then its primary under it (`sort_rows`, `cycle_of`). A special election
+and its party primaries (`special_rows`, from `collected/specials.json`) carry
+in `cy` the cycle of the general that elected the term whose seat they fill, so
+the March 2026 special sits under 2024 above that cycle's general; each is
+headed "Special election" or "Special primary" and links no elections page, and a
+candidate is linked by the certain rule around that term (`special_window`: the
+term, or the one before or after on the same lines). An uncontested race is a card too,
 labelled Unopposed (19 November 2026). On an Unopposed card, here and on the
 elections pages, the scattered write-ins are a row of their own ("Write-ins")
 and every share is of all the votes cast with them; a contested card keeps them
@@ -2509,7 +2535,8 @@ The next state general election's dates -- its primary's filing period, the
 primary and the general, those still ahead -- are on every week of the Calendar,
 under the week's arrows, and at the top of the elections page
 (`key_dates.election_dates` and `election_dates_html`; the owner, 19 November
-2026). Each is a day `key_dates.in_force` works out from the words of the RSA text
+2026). Each is a day `key_dates.in_force` (`src/lib/election_law.py`'s, which the primary
+reader dates a primary by too) works out from the words of the RSA text
 in force on it (RSA 655:14 and 653:8 as 2026, 44 amends them from 1 January 2028;
 RSA 653:7), cited to its section and act as the key dates are. The filing period is
 a key date of the kind `election`, so the status box's next deadline, which is the

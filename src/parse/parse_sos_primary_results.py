@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-18.6
+# GRANITE_VERSION: 2026-11-18.7
 """
 The Secretary of State's count of the State Primary's State Representative
 and State Senate races, 2016 to 2026, each party's primary its own contest,
@@ -36,8 +36,11 @@ layout of surnames and "Scatter" there is the same here). What differs:
 
   The titles say the primary and the party: "State of New Hampshire - 2024
   Primary Election", "State Representatives - BELKNAP County - Democratic",
-  "State Senate District 1 - Democratic". The day is the second Tuesday of
-  September, which every file that prints a day prints.
+  "State Senate District 1 - Democratic". The day is the one the law in
+  force on it gives (RSA 653:8, read by src/lib/election_law.py): the second
+  Tuesday of September for every year these files hold, which every file
+  that prints a day prints, and the second Tuesday of June from 2028, when
+  2026, 44:1 puts the new text in force.
 
   A party's file names every candidate any place wrote in, of any party:
   "Tom Ploszaj, r" in the Democratic primary of Belknap 1 is a Republican
@@ -97,6 +100,7 @@ import json
 import re
 
 import build_members_elect as BME
+import election_law as EL
 import parse_sos_results as PSR
 
 SOURCES = PSR.SOURCES
@@ -165,13 +169,19 @@ class Refused(PSR.Refused):
 class Primary(datetime.date):
     """The State Primary's day, as parse_sos_results.read_house takes an
     election: a date that carries the party it is read for, and the rule
-    that marks its winners (nominate) under the key "nominated"."""
+    that marks its winners (nominate) under the key "nominated".
+
+    THE DAY IS THE LAW'S IN FORCE ON IT (19 November 2026): RSA 653:8 by the
+    text in force on the day it gives (election_law.state_primary, the rule
+    the key dates and a member's upcoming elections take), never a month
+    typed here -- the second Tuesday of September up to 2026, the second
+    Tuesday of June from 2028 (2026, 44:1). Refused where the law gives none:
+    an odd year, or a text no rule reads."""
 
     def __new__(cls, year, party):
-        d = datetime.date(year, 9, 1)
-        while d.weekday() != 1:
-            d += datetime.timedelta(days=1)
-        d += datetime.timedelta(days=7)
+        d = EL.state_primary(year)
+        if d is None:
+            raise Refused(f"RSA 653:8, as in force, gives no state primary in {year}")
         self = super().__new__(cls, d.year, d.month, d.day)
         self.party = party
         # The contest's word in a race's id (parse_sos_offices.contest_kind): "primary-r".

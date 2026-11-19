@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -42,7 +42,9 @@ THE KINDS. Every record is a JSON object whose first field is its id, named for 
   tenure     a person (or a name, where no person is linked) holding an office: its district and
              seat, its term, party, the days the record states, and where the record says it
   contest    a race of one election for an office in a district; a primary is one party's,
-             and carries the party
+             and carries the party; a special election's primary names its special ("for"),
+             so that it is never read as a State Primary, and a special says why it was held
+             ("cause") only where a record states it
   candidacy  one candidate in a contest
 
 PARTY AND SEAT BELONG TO A TENURE, never to a person, so a label is the seat held then. A
@@ -335,8 +337,21 @@ SHAPES = {
             "not_final": _INT,
             "held": _INT,
             "recount": _TRUE,
+            # The day of the recount whose count the candidacies' votes are (a special's page
+            # prints it: Coos 5, 10 November 2025).
+            "recounted": _DAY,
             "term": {"type": "string", "pattern": TERM},
             "takes_office": _DAY,
+            # A special election's primary: the special it nominates for (the specials design of
+            # 19 November 2026, decision 3). Only a primary carries one (problems()).
+            "for": {"type": "string", "pattern": CONTEST},
+            # Why a special was held, only where a record states it: a tie of the general
+            # election that elected the term (`of`, that contest), re-run under the House
+            # resolution the page names; or a vacancy. Never inferred.
+            "cause": {"type": "object", "required": ["kind"], "additionalProperties": False,
+                      "properties": {"kind": {"enum": ["vacancy", "tie"]},
+                                     "resolution": _S,
+                                     "of": {"type": "string", "pattern": CONTEST}}},
             "sources": _STRS,
             "keys": {"type": "object", "additionalProperties": _S},
             "source": _S,
@@ -351,6 +366,11 @@ SHAPES = {
             "party": _S,
             "parties": _LETTERS,
             "elected": _BOOL,
+            # The count the source prints for the candidate: a recount's where the contest is
+            # recounted, with the first count beside it; a write-in marked so.
+            "votes": _INT,
+            "first_count": _INT,
+            "write_in": _TRUE,
             "person": {"type": ["string", "null"], "pattern": PERSON},
             "member_id": {"type": "string", "pattern": DIGITS},
             # What the members-elect rule says of a winner (build_members_elect.py): sitting,
@@ -678,6 +698,12 @@ def problems(model, settings=None, register=None):
                 out.append(f"contest {cid} is the primary of {c['party']!r}, and its id says {word!r}")
         elif c.get("party") or "-" in word:
             out.append(f"contest {cid} is a {c.get('stage')} and names a party")
+        # A special's primary names its special, which is in the model and a special.
+        if c.get("for") is not None:
+            if c.get("stage") != "primary":
+                out.append(f"contest {cid} is a {c.get('stage')} and names a contest it is for")
+            elif (C.get(c["for"]) or {}).get("stage") != "special":
+                out.append(f"contest {cid} is for {c['for']}, which is no special in the model")
         out += _party_problems("contest", cid, c, s)
     for xid, x in CA.items():
         c = C.get(x.get("contest"))

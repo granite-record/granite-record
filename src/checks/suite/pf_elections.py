@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.30
+# GRANITE_VERSION: 2026-11-16.34
 """
 preflight's checks of members-elect and election results.
 
@@ -2218,6 +2218,111 @@ def _member_elections_cycles(BMEL):
         ("2026", ["2026-11-03"]), ("2024", ["2024-11-05", "2024-09-10"])], f"the cycles: {got}"
     assert html.count('class="er-cards"') == 0 and html.count("er-stack") == 2, "a list of cards is not stacked"
     return "ok", "2026's general under 2026; 2024's general, then its primary, under 2024; one column at every width"
+
+
+@check("build", "a member's Elections tab shows a special election and its primary under the cycle of the "
+       "term whose seat it filled, by date, strictly newest first -- the March 2026 special under 2024, "
+       "above that cycle's general -- headed Special election and Special primary, by the same cards, "
+       "margin and certain rule, and links nowhere on the site",
+       needs=("build_member_elections",))
+def _member_elections_specials(BMEL):
+    """The owner, 19 November 2026 ("Yes to all 9" of reports/money-specials-design/
+    specials-and-upcoming.md, A2, A5.4 and A5.5), on a made-up court and a made-up
+    collected/specials.json in the reader's shapes: Bea Zane (sitting, Carroll 7) won the special
+    of 10 March 2026 (2,207 to 2,042; Ned Old, who held the seat in 2015-2016 only, 30, is
+    nobody's: too far from the term) after the Democratic special primary of 20 January; Max
+    Teller (a former member, Coos 5) is printed "Max D. Teller" on the Coos 5 special, which is
+    not his name letter for letter, so it is on nobody's tab and goes to the owner's list; a
+    candidate printed as the roster's Bea Zane in another district gets nothing.
+
+    Zane's rows: the special (st special, cy 2024, Elected, D+3.9, the margin's rule) and its
+    primary (st special-primary, Most votes, Unopposed); sorted with her 2026 general, 2024
+    general and 2024 primary, the order is 2026's general, then under 2024 the special, its
+    primary, the 2024 general and its primary. app.js draws headings 2026 and 2024 in that order,
+    heads the cards "Special election, " and "Special primary (Democratic), " with no link to an
+    elections page, says a tie's re-run, and names the Secretary of State's page in its sources.
+    Nothing on a card says whom the winner replaced."""
+    sitting = [_mel_member("5001", "Zane", "Bea", "H", "Carroll", "7")]
+    former = [_mel_member("5002", "Teller", "Max", "H", "Coos", "5", "former", ["2025-2026"]),
+              _mel_member("5003", "Old", "Ned", "H", "Carroll", "7", "former", ["2015-2016"])]
+    roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
+    sp = "2026-03-10.special.house.carroll-7"
+    pr = "2026-01-20.primary-d.house.carroll-7"
+    c5 = "2025-11-04.special.house.coos-5"
+
+    def x(contest, name, party, votes, **more):
+        return dict({"candidacy": f"{contest}.{name.lower().replace(' ', '-')}", "contest": contest,
+                     "printed": name, "party": party, "votes": votes, "person": None, "source": "m"}, **more)
+    doc = {"_source": [{"file": "records/sources/specials/a.txt", "address": "https://example.org/sp/a"},
+                       {"file": "records/sources/specials/b.txt", "address": "https://example.org/sp/b"}],
+           "contest": [
+               {"contest": c5, "election": "2025-11-04", "stage": "special", "office": "house",
+                "district": "house:2022:coos-5", "seats": 1, "term": "2025-2026", "recounted": "2025-11-10",
+                "keys": {"results": "H|Coos|5"}, "source": "records/sources/specials/b.txt"},
+               {"contest": sp, "election": "2026-03-10", "stage": "special", "office": "house",
+                "district": "house:2022:carroll-7", "seats": 1, "term": "2025-2026",
+                "cause": {"kind": "tie", "resolution": "House Resolution 6", "of": "2024-11-05.general.house.carroll-7"},
+                "keys": {"results": "H|Carroll|7"}, "source": "records/sources/specials/a.txt"},
+               {"contest": pr, "election": "2026-01-20", "stage": "primary", "party": "d", "office": "house",
+                "district": "house:2022:carroll-7", "seats": 1, "term": "2025-2026", "for": sp,
+                "keys": {"results": "H|Carroll|7"}, "source": "records/sources/specials/a.txt"}],
+           "candidacy": [x(c5, "Max D. Teller", "r", 878, elected=True, first_count=878),
+                         x(c5, "Bea Zane", "d", 873, elected=False, first_count=864),
+                         x(sp, "Bea Zane", "d", 2207, elected=True), x(sp, "Dee Bloom", "r", 2042, elected=False),
+                         x(sp, "Ned Old", "r", 30, elected=False),
+                         x(pr, "Bea Zane", "d", 615)]}
+    generals = {"2025-2026": {"races": {
+        "H|Carroll|7": {"seats": 1, "floterial": True, "towns": ["Lambda", "Mu"], "candidates": []},
+        "H|Coos|5": {"seats": 2, "floterial": False, "towns": ["Kappa"], "candidates": []}}}}
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / BMEL.SPECIALS).write_text(json.dumps(doc), encoding="utf-8")
+        specials = BMEL.specials_on_file(d)
+    rows, report = BMEL.special_rows(specials, generals, roster, BMEL.BME.People(sitting, former, ()))
+    assert sorted(rows) == ["5001"], f"the special rows are for {sorted(rows)}, not Zane alone"
+    got = {(r["d"], r["st"]): r for r in rows["5001"]}
+    s, p = got.get(("2026-03-10", "special")), got.get(("2026-01-20", "special-primary"))
+    assert s and p and len(rows["5001"]) == 2, f"Zane's special rows: {sorted(got)}"
+    assert (s["cy"], s["r"], s["v"], s["k"], s.get("fl"), s.get("u"), s.get("tie")) == (
+        "2024", "won", 2207, "H|Carroll|7", 1, "https://example.org/sp/a", {"y": "2024", "hr": "6"}), f"the special's row: {s}"
+    assert '<span class="chip er-mg pt-D">D+3.9</span>' in s["c"] and "Elected" in s["c"] and "1 seat" in s["c"] \
+        and "Lambda, Mu" in s["c"] and 'class="er-row er-me"' in s["c"], f"the special's card: {s['c']}"
+    assert (p["cy"], p["pp"], p["r"], p["v"]) == ("2024", "D", "most", 615) and "Unopposed" in p["c"] \
+        and "Most votes" in p["c"] and "Elected" not in p["c"], f"the special primary's row: {p}"
+    assert "5003" not in rows and any(r[2] == "Ned Old" and "2015-2016" in r[4] for r in report), (
+        f"Ned Old, who held Carroll 7 in 2015-2016 only, is linked or not listed: {report}")
+    assert "5002" not in rows and any(r[2] == "Max D. Teller" for r in report), (
+        f"Max D. Teller, not his name letter for letter, is not listed for the owner: {report}")
+    assert any(r[2] == "Bea Zane" and "not Coos 5" in r[4] for r in report), (
+        f"Zane's name in Coos 5, a seat she never held, is not listed with why: {report}")
+    order = BMEL.sort_rows(rows["5001"] + [
+        {"d": "2026-11-03", "k": "H|Carroll|7", "a": "r", "r": "won", "v": 1, "s": 1, "c": "<article></article>"},
+        {"d": "2024-11-05", "k": "H|Carroll|7", "a": "r", "r": "lost", "v": 1, "s": 1, "c": "<article></article>"},
+        {"d": "2024-09-10", "k": "H|Carroll|7", "a": "r", "st": "primary", "pp": "D", "r": "most", "v": 1, "s": 1,
+         "c": "<article></article>"}])
+    assert [r["d"] for r in order] == ["2026-11-03", "2026-03-10", "2026-01-20", "2024-11-05", "2024-09-10"], (
+        f"the order: {[r['d'] for r in order]}")
+    html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": order}) + ")",
+                   names=("renderMemberElections",))
+    if html is None:
+        return "ok", "the rows, cards and order held in Python; node, app.js or the stub is not here for the tab"
+    heads = re.findall(r'<h3 class="er-cycle">([^<]+)</h3>', html)
+    assert heads == ["2026", "2024"], f"the tab's headings: {heads}"
+    under = html.split('<h3 class="er-cycle">2024</h3>', 1)
+    assert "Special election, " in under[1] and "Special election, " not in under[0], (
+        "the March 2026 special is not under the 2024 heading")
+    when = re.findall(r'<p class="er-when">(.*?)</p>', html)
+    assert when[1].startswith("Special election, ") and "held after the 2024 tie (House Resolution 6)" in when[1] \
+        and when[2].startswith("Special primary (Democratic), ") and "<a " not in when[1] + when[2], (
+        f"the specials' heads: {when}")
+    assert "/elections/2026-03-10" not in html and "/elections/2026-01-20" not in html, "a special links an elections page"
+    assert '<a href="https://example.org/sp/a">special election of ' in html and "A special election is shown" in html, (
+        f"the tab's notes for a special: {html[-900:]}")
+    flat = re.sub(r"<[^>]+>", " ", html).lower()
+    assert not re.search(r"\b(replac|vacan|resign|predecessor)", flat), "the tab says whom a winner replaced"
+    return "ok", ("Zane's special (Elected, D+3.9) and its primary (Most votes, Unopposed) under 2024, above that "
+                  "cycle's general, 2026's general first; Max D. Teller listed for the owner, not linked; headed "
+                  "Special election and Special primary, the tie's re-run said, no elections-page link, the "
+                  "Secretary of State's page cited, nothing of whom a winner replaced")
 
 
 @check("build", "a member's Elections tab shows upcoming elections only for a member with a filing on record "
@@ -4690,6 +4795,500 @@ def _primary_reader_reads(P):
                   "unnamed write-ins could take; the general's towns, seats and floterial; a later "
                   "upload, a refused file listed, a race refused alone; a 2018 Senate sheet's note of "
                   "places and its mistyped title")
+
+
+@check("build", "State Primary results: a primary's day is the one RSA 653:8 in force on it gives -- the "
+                "second Tuesday of September for 2016-2026, 13 June 2028 by 2026, 44:1 -- from "
+                "src/lib/election_law.py, which the reader imports with no page module, and an odd "
+                "year is refused",
+       needs=("parse_sos_primary_results",))
+def _primary_day_by_law(P):
+    """Found on 19 November 2026: Primary hard-coded the second Tuesday of September, which
+    would have dated a 2028 primary file (June, by RSA 653:8 as 2026, 44:1 amends it from 1
+    January 2028) three months late. It takes the day from election_law.state_primary, the
+    rule key_dates and a member's upcoming elections take. Held in a folder with no statute
+    table (the law's own copy) and, where db/NH_RSA.psv is on this disk, in this one: every
+    year 2016-2026 its file holds is the day it always was, 2028 is 13 June, 2027 is
+    refused; and neither the reader nor election_law imports key_dates or i18n (src/parse/
+    importing a page module)."""
+    import ast
+    import datetime
+    want = {2016: datetime.date(2016, 9, 13), 2018: datetime.date(2018, 9, 11),
+            2020: datetime.date(2020, 9, 8), 2022: datetime.date(2022, 9, 13),
+            2024: datetime.date(2024, 9, 10), 2026: datetime.date(2026, 9, 8),
+            2028: datetime.date(2028, 6, 13)}
+    here, said = os.getcwd(), []
+    try:
+        with tempfile.TemporaryDirectory() as bare:
+            for where in (bare, here):
+                if where == here and not (Path(here) / "db" / "NH_RSA.psv").is_file():
+                    continue
+                os.chdir(where)
+                try:
+                    got = {y: datetime.date(*P.Primary(y, "democratic").timetuple()[:3]) for y in want}
+                    p = P.Primary(2028, "republican")
+                    try:
+                        P.Primary(2027, "democratic")
+                        odd = None
+                    except P.Refused as e:
+                        odd = str(e)
+                finally:
+                    # Out of the folder before it goes: Windows keeps a folder that is in use.
+                    os.chdir(here)
+                assert got == want, f"the primaries' days ({'no table' if where == bare else 'db/NH_RSA.psv'}): {got}"
+                assert (p.party, p.contest, p.isoformat()) == ("republican", "primary-r", "2028-06-13"), (
+                    f"the 2028 Republican primary: {(p.party, p.contest, p.isoformat())}")
+                assert odd is not None, "an odd year was given a state primary"
+                assert "653:8" in odd, f"refused, but not for the law: {odd}"
+                said.append("no table" if where == bare else "db/NH_RSA.psv")
+    finally:
+        os.chdir(here)
+    for f in (Path(P.__file__), Path(P.EL.__file__)):
+        mods = {a.name for n in ast.walk(_parsed(f)) if isinstance(n, ast.Import) for a in n.names} | {
+            n.module for n in ast.walk(_parsed(f)) if isinstance(n, ast.ImportFrom)}
+        assert not mods & {"key_dates", "i18n"}, f"{f.name} imports a page module: {sorted(mods & {'key_dates', 'i18n'})}"
+    return "ok", ("2016-2026 each its second Tuesday of September and 2028 on 13 June, 2027 refused, by "
+                  + " and by ".join(said) + "; the reader takes the rule from src/lib/election_law.py, "
+                  "importing no page module")
+
+
+# ---- special elections (the owner's "Yes to all 9" of 19 November 2026) ----------------------
+# Made-up pages in each wording the Secretary of State's nineteen pages print, every name and
+# every address made up ("1 Example St", ZIP 00000): the real pages print candidates' home
+# addresses and are never copied here.
+_SP_HEAD = ("Address: https://example.org/special/{n}\nRead: 2026-11-19, made up for a check\n---\n")
+_SP_PAGES = {
+    # 2019: "Primary Total", "(Election - 880 WINNER)", the sworn-in sentence on the line.
+    "2019-10-08-rockingham-9.txt": """State Representative - Rockingham County District No. 9
+The Governor and Executive Council approved the Precept to hold a SPECIAL ELECTION for State Representative from Rockingham County District No. 9 (Alphatown)
+
+Primary:  August 20, 2019
+
+Special Election:  October 8, 2019  (If only one person files, the special election will be held on August 20, 2019)
+
+Filings:
+
+Republican - Cy Able, Alphatown (PO Box 1)  00000 (Republican Primary Total 79)
+
+Republican - Al Baker, Alphatown (1 Example St) 00000 (Republican Primary Total 312 - WINNER)  (Election - 880 WINNER) Representative-elect Baker was sworn into office by the Governor and Executive Council on Wednesday, October 23, 2019.
+
+Democratic - Di Cole, Alphatown (1 Example St)  00000 (Democratic Primary Total 138 WINNER) (Election - 806)
+
+ALSO see reports filed on the on-line campaign finance system
+""",
+    # 2020: "WON PRIMARY" outside the brackets, a party's next candidate on an unmarked line.
+    "2020-03-10-merrimack-24.txt": """State Representative - Merrimack District 24 (Betaville)
+The Governor and Executive Council approved the Precept to hold a SPECIAL ELECTION for State Representative from Merrimack County District No. 24 (Betaville)
+
+Primary:  January 21, 2020
+
+Special Election:  March 10, 2020 Deadline to request a recount is March 11, 2020)
+
+Filings:
+
+Republican - Ed Dunn, Betaville (1 Example St) 00000 (primary vote 341) WON PRIMARY (election vote-961)
+
+                     Fay Earl, Betaville (1 Example St) 00000 (primary vote - 115)
+
+Democratic - Gus Fox, Betaville (1 Example St) 00000 (primary vote - 66) WON PRIMARY (election vote - 1000) WON ELECTION   Representative-elect Fox was sworn into office by the Governor and Executive Council on June 10, 2020
+
+ALSO see reports
+""",
+    # 2021: no primary; "(WINNER - Election Result 2,531)"; declarations of intent with and
+    # without votes.
+    "2021-04-13-hillsborough-21.txt": """Hillsborough County District 21 (Gammaburg) (1)
+The Governor and Executive Council approved the Precept to hold a SPECIAL ELECTION for State Representative from Hillsborough County District No. 21 (Gammaburg)
+
+Special Election: April 13, 2021
+
+FILINGS:
+
+Republican - Hal Gray, Gammaburg (1 Example St) 00000 (WINNER - Election Result 2,531)(Sworn into office by the Governor and Executive Council on April 21, 2021)
+
+Democrat - Ida E.N. Hunt, Gammaburg (1 Example St) 00000 (Election Result 2,144)
+
+Declaration of Intent - Jo Irwin, Gammaburg (1 Example St) 00000
+
+Declaration of Intent - Kit Jones, Gammaburg (1 Example St) 00000 (Election Result 104)
+
+Reporting Requirements: none here
+""",
+    # 2021: "(Primary 210 votes) (General 1393 votes)"; the sworn-in sentence above the filings.
+    "2021-06-08-merrimack-23.txt": """Merrimack County District No. 23 (Deltaford)
+The Governor and Executive Council approved the Precept to hold a SPECIAL ELECTION for State Representative from Merrimack County District No. 23 (Deltaford)
+
+Primary Election:  The primary election will be held on April 20, 2021.
+
+Special Election: The special election will be held on June 8, 2021.
+
+Rep-elect Lu Moss was sworn into office by the Governor and Executive Council on June 16, 2021.
+
+FILINGS:
+
+Republican - Ned Kerr, Deltaford(1 Example St) 00000 (Primary 210 votes) (General 1393 votes)
+
+Republican - Oz Lamb, Deltaford(1 Example St) 00000  (Primary 74 votes)
+
+Democrat - Lu Moss, Deltaford(1 Example St) 00000 (Primary 350 votes - WINNER)  (General 1912 votes - WINNER)
+
+Reporting Requirements: none here
+""",
+    # 2021: a dash for the party's next candidate; counts naming no stage.
+    "2021-12-07-rockingham-6.txt": """Rockingham County District 6 (Epsilon)
+The Governor and Executive Council approved the Precept to hold a SPECIAL ELECTION for State Representative from Rockingham County District 6 (Epsilon).
+
+Primary Election: October 19, 2021
+
+Special Election: December 7, 2021
+
+Filings:
+
+Republican - Pat Nash, Epsilon (1 Example St) 00000     (41 votes)
+
+                        - Quin Ott, Epsilon (1 Example St) 00000     (1281 votes - WON PRIMARY)         (2190 votes - WON ELECTION)
+
+Rep. elect Ott was sworn into office by the Governor and Executive Council on December 22, 2021
+
+Democratic - Rae Pike, Epsilon (1 Example St) 00000   (212 votes - WON PRIMARY)(1538 - Election)
+""",
+    # 2023: a tie's re-run under a House resolution; no primary; the sworn-in day on its own line.
+    "2023-02-21-strafford-8.txt": """Strafford County District 8 (Zeta Ward 4) (February 21, 2023)
+SPECIAL ELECTION for State Representative from Strafford County District 8 (Zeta Ward 4)
+
+Special Election: February 21, 2023
+
+House Resolution 6
+
+Candidates:
+
+       Republican: Sam Quay, Zeta (1 Example St) 00000  (Election Results 451)
+
+       Democratic: Tom Reed, Zeta (1 Example St) 00000  (Election Results 568 - WINNER)
+
+                            (Sworn into office by the Governor and Executive Council on March 8, 2023)
+
+Sample Ballot
+""",
+    # 2023: an uncontested special, no primary.
+    "2023-08-22-grafton-16.txt": """Grafton County District 16 (Etaville) (August 22, 2023)
+The Governor and Executive Council approved the Precept to hold a SPECIAL ELECTION for State Representative from Grafton County District 16 (Etaville).
+
+Special Election: August 22, 2023
+
+Candidates:
+
+      Democratic: Uma Shaw, Etaville (PO Box 1) 00000  (General Election votes 495 - WINNER)
+
+Representative elect Shaw was sworn into office by the Governor and Executive Council on September 6, 2023.
+
+Reporting Requirements: none here
+""",
+    # 2023: party headings; "(245 votes - Primary WINNER)"; a count alone on the next line.
+    "2023-09-19-rockingham-1.txt": """Rockingham County Dist. 1 (Theta & Iota) (Sept. 19, 2023)
+The Governor and Executive Council approved the Precept to hold a SPECIAL ELECTION for State Representative from Rockingham County District 1 (Theta and Iota).
+
+Primary Election: August 1, 2023
+
+Special Election: September 19, 2023
+
+Filings:
+
+  Democratic:
+
+Val Tate, Theta (1 Example St) 00000 (245 votes - Primary WINNER)
+
+                                                                     (General Election votes 1571 - WINNER)
+
+  Republican:
+
+Wes Upton, Iota (1 Example St) 00000 (230 votes - Primary WINNER) (General Election votes 1240)
+Xia Vale, Theta (1 Example St) 00000 (184 votes - Primary)
+
+Representative elect Tate was sworn into office by the Governor and Executive Council on October 4, 2023.
+
+Reporting Requirements: none here
+""",
+    # 2025: a recount.
+    "2025-11-04-coos-5.txt": """Coos County District 5 (November 4, 2025)
+The Governor and Executive Council approved the Precept to hold a SPECIAL ELECTION for State Representative from Coos County District 5 (Kappa)
+
+Primary Election: September 16, 2025
+
+Special Election: November 4, 2025
+
+Filings:
+
+      Democratic:
+
+Yan West, Kappa (1 Example St) 00000   (Primary Votes - 188 WINNER) (General Votes - 864) (Recount Votes - 873)
+
+     Republican:
+
+Zed Xu, Kappa (1 Example St) 00000  (Primary Votes - 10)
+Abe D. York, Kappa (1 Example St) 00000   (Primary Votes - 157 WINNER) (General Votes - 878 WINNER) (Recount Votes - 878)
+
+Representative elect York was sworn into office by the Governor and Executive Council on December 3, 2025.
+
+Reporting Requirements: none here
+
+RECOUNT - Monday November 10, 2025
+
+RECOUNT - NO CHANGE IN WINNER
+""",
+    # 2026: "(Primary Votes - 615 WINNER) (General votes - 2207 WINNER)"; a write-in wins a primary.
+    "2026-03-10-carroll-7.txt": """Carroll County District 7 (March 10, 2026)
+The Governor and Executive Council approved the Precept to hold a SPECIAL ELECTION for State Representative from Carroll County District 7 (Lambda, Mu)
+
+Primary Election: January 20, 2026
+
+Special Election: March 10, 2026
+
+Filings:
+
+      Democratic:
+
+Bea Zane, Lambda (1 Example St) 00000 (Primary Votes - 615 WINNER) (General votes - 2207 WINNER)
+
+     Republican:
+
+Cal Adams Jr., Ctr. Mu (1 Example St) 00000 (Primary Votes - 223)
+Write-In Dee Bloom, Lambda (1 Example St) 00000 (Primary Votes - 771 WINNER) (General votes - 2042)
+
+Representative elect Zane was sworn into office by the Governor and Executive Council on March 25, 2026.
+
+Reporting Requirements: none here
+""",
+}
+
+
+def _sp_world(root, pages=None, tamper=None):
+    """A folder of saved pages with its manifest, and a collected/ of made-up general results
+    holding each page's district (Strafford 8 of 2022 tied), under `root`. `tamper` changes a
+    page's bytes after its sha256 is taken."""
+    import hashlib
+    src, col = Path(root) / "specials", Path(root) / "collected"
+    src.mkdir()
+    col.mkdir()
+    entries = []
+    for i, (name, body) in enumerate(sorted((pages or _SP_PAGES).items())):
+        raw = (_SP_HEAD.format(n=i) + body).encode("utf-8")
+        entries.append({"file": name, "address": f"https://example.org/special/{i}", "read": "2026-11-19",
+                        "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw), "ends_whole": True})
+        if tamper and name in tamper:
+            raw = tamper[name](raw)
+        (src / name).write_bytes(raw)
+    (src / "_manifest.json").write_text(json.dumps({"pages": entries}), encoding="utf-8")
+    cand = lambda n, v, e: {"name": n, "party": "r", "votes": v, "write_in": False, "elected": e}  # noqa: E731
+    race = lambda *c, fl=False: {"seats": 1, "floterial": fl, "towns": ["Town"], "scatter": 0,  # noqa: E731
+                                 "candidates": list(c) or [cand("X", 1, True)]}
+    gens = {2018: ("2018-11-06", ["H|Rockingham|9", "H|Merrimack|24"]),
+            2020: ("2020-11-03", ["H|Hillsborough|21", "H|Merrimack|23", "H|Rockingham|6"]),
+            2022: ("2022-11-08", ["H|Grafton|16", "H|Rockingham|1"]),
+            2024: ("2024-11-05", ["H|Coos|5", "H|Carroll|7"])}
+    for y, (day, keys) in gens.items():
+        races = {k: race() for k in keys}
+        if y == 2022:
+            races["H|Strafford|8"] = race(cand("Q", 970, None), cand("R", 970, None))
+        (col / f"election_{y}.json").write_text(json.dumps({"election": day, "term": f"{y + 1}-{y + 2}",
+                                                            "races": races}), encoding="utf-8")
+    return src, col
+
+
+@check("build", "special elections: the reader reads every wording the Secretary of State's pages print "
+                "-- primary totals, WON PRIMARY, counts naming no stage, declarations of intent with and "
+                "without votes, a page with no primary, an uncontested special, a recount, a write-in "
+                "winning a primary, a tie's re-run under a House resolution -- into the model's shapes, "
+                "with each district the right era's id and no address kept",
+       needs=("parse_sos_specials", "entities"))
+def _specials_reader_reads(P, EN):
+    """The owner, 19 November 2026 ("Yes to all 9" of reports/money-specials-design/
+    specials-and-upcoming.md, A2 and A5): src/parse/parse_sos_specials.py on ten made-up pages,
+    one of each form the nineteen real pages take (_SP_PAGES), every name and address made up.
+    Every page is read, each record holds its kind's shape, and what each says is held: the
+    winners, the primaries "for" their special, the sworn-in day where given, the recount's
+    count with the first beside it, the write-in, the declaration of intent with votes and no
+    party and the one with none in the notes, the tie's cause, the 2012 lines for a term to
+    2021-2022 and the 2022 lines after; and nothing of an address -- no street, box, ZIP code
+    or town -- is in what it writes."""
+    root = Path(tempfile.mkdtemp(prefix="gr-specials-"))
+    try:
+        src, col = _sp_world(root)
+        doc = P.read_all(src, col)
+        text = P.dumps(doc)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert not doc.get("_refused"), f"made-up pages of every wording were refused: {doc.get('_refused')}"
+    c = {x["contest"]: x for x in doc["contest"]}
+    v = {(x["contest"], x["printed"]): x for x in doc["candidacy"]}
+    sp = sorted(k for k, x in c.items() if x["stage"] == "special")
+    assert len(sp) == 10 and len(doc["_source"]) == 10, f"the specials read: {sp}"
+    for kind in ("contest", "candidacy"):
+        bad = [s for r in doc[kind] for s in EN.shape_problems(r, EN.SHAPES[kind], r[kind])]
+        assert not bad, f"a {kind} breaks its shape: {bad[:2]}"
+
+    def won(sid):
+        return sorted((x["printed"], x["votes"]) for (k, _n), x in v.items() if k == sid and x.get("elected"))
+
+    def prims(sid):
+        return sorted((x["party"], [(y["printed"], y["votes"]) for (k, _n), y in v.items() if k == x["contest"]])
+                      for x in c.values() if x.get("for") == sid)
+    r9 = "2019-10-08.special.house.rockingham-9"
+    assert (c[r9]["district"], c[r9]["term"], c[r9].get("takes_office"), won(r9)) == (
+        "house:2012:rockingham-9", "2019-2020", "2019-10-23", [("Al Baker", 880)]), f"2019: {c[r9]}, {won(r9)}"
+    assert prims(r9) == [("d", [("Di Cole", 138)]), ("r", [("Al Baker", 312), ("Cy Able", 79)])], prims(r9)
+    assert all(c[k]["contest"].split(".")[1] == f"primary-{c[k]['party']}" for k in c if c[k].get("for")), (
+        "a special's primary's id does not name its party")
+    m24 = "2020-03-10.special.house.merrimack-24"
+    assert won(m24) == [("Gus Fox", 1000)] and prims(m24)[1] == ("r", [("Ed Dunn", 341), ("Fay Earl", 115)]), (
+        f"WON PRIMARY: {won(m24)}, {prims(m24)}")
+    h21 = "2021-04-13.special.house.hillsborough-21"
+    kit = v[(h21, "Kit Jones")]
+    assert prims(h21) == [] and won(h21) == [("Hal Gray", 2531)] and "party" not in kit and kit["votes"] == 104 \
+        and (h21, "Jo Irwin") not in v and any("Jo Irwin" in n for n in doc.get("_notes") or []), (
+        f"no primary, and the declarations of intent: {kit}, {doc.get('_notes')}")
+    m23 = "2021-06-08.special.house.merrimack-23"
+    assert c[m23].get("takes_office") == "2021-06-16" and won(m23) == [("Lu Moss", 1912)], f"2021: {c[m23]}"
+    r6 = "2021-12-07.special.house.rockingham-6"
+    assert prims(r6) == [("d", [("Rae Pike", 212)]), ("r", [("Quin Ott", 1281), ("Pat Nash", 41)])] \
+        and won(r6) == [("Quin Ott", 2190)], f"counts naming no stage: {prims(r6)}, {won(r6)}"
+    s8 = "2023-02-21.special.house.strafford-8"
+    assert c[s8].get("cause") == {"kind": "tie", "resolution": "House Resolution 6",
+                                  "of": "2022-11-08.general.house.strafford-8"} \
+        and c[s8]["district"] == "house:2022:strafford-8" and c[s8].get("takes_office") == "2023-03-08", (
+        f"the tie's re-run: {c[s8]}")
+    assert not [k for k in sp if k != s8 and c[k].get("cause")], "a special with no resolution was given a cause"
+    g16 = "2023-08-22.special.house.grafton-16"
+    assert [x for (k, _n), x in v.items() if k == g16] == [v[(g16, "Uma Shaw")]] and won(g16) == [("Uma Shaw", 495)], (
+        "the uncontested special")
+    r1 = "2023-09-19.special.house.rockingham-1"
+    assert won(r1) == [("Val Tate", 1571)] and prims(r1)[1] == ("r", [("Wes Upton", 230), ("Xia Vale", 184)]), (
+        f"party headings and a count on its own line: {won(r1)}, {prims(r1)}")
+    c5 = "2025-11-04.special.house.coos-5"
+    assert c[c5].get("recounted") == "2025-11-10" and (v[(c5, "Abe D. York")]["votes"], v[(c5, "Abe D. York")]["first_count"],
+                                                        v[(c5, "Yan West")]["votes"], v[(c5, "Yan West")]["first_count"]) == (878, 878, 873, 864), (
+        f"the recount: {c[c5]}")
+    c7 = "2026-03-10.special.house.carroll-7"
+    dee = v[("2026-01-20.primary-r.house.carroll-7", "Dee Bloom")]
+    assert dee.get("write_in") is True and dee["votes"] == 771 and v[(c7, "Dee Bloom")].get("party") == "r" \
+        and "write_in" not in v[(c7, "Dee Bloom")] and c[c7]["district"] == "house:2022:carroll-7", (
+        f"the write-in who won a primary: {dee}")
+    assert all(x["person"] is None for x in doc["candidacy"]), "the reader linked a person: the build's to do"
+    for kept in ("Example", "PO Box", "00000", "Alphatown", "Betaville", "Ctr. Mu", "Kappa,"):
+        assert kept not in text, f"an address or a town of residence is in what the reader writes: {kept!r}"
+    return "ok", (f"10 made-up pages, one of each wording: {len(sp)} specials, "
+                  f"{sum(1 for x in c.values() if x.get('for'))} primaries for them, "
+                  f"{len(doc['candidacy'])} candidacies, every record its shape; the 2012 and 2022 lines, a "
+                  "recount, a write-in, two declarations of intent, the tie's cause and no address kept")
+
+
+@check("build", "special elections: a page the reader cannot read whole -- a bracket or a word it does not "
+                "know, a WINNER without the most votes, a saved file whose sha256 is not its manifest's, a "
+                "file the manifest does not name -- is refused alone and listed, and no refusal quotes a "
+                "candidate's line",
+       needs=("parse_sos_specials",))
+def _specials_refuse(P):
+    """A6 of the design: a special the reader cannot read whole is refused and names what to fix,
+    and the others are read. Made up on _SP_PAGES: Merrimack 24 given a bracket of words no
+    count uses, Merrimack 23 a WINNER with fewer votes, Rockingham 9's saved bytes changed after
+    its sha256 was taken, and a page the manifest leaves out. The seven other pages are read; each
+    refusal says why and none carries the page's address or town."""
+    pages = dict(_SP_PAGES)
+    pages["2020-03-10-merrimack-24.txt"] = pages["2020-03-10-merrimack-24.txt"].replace(
+        "(primary vote - 115)", "(primary vote - 115) (see the attached list)")
+    pages["2021-06-08-merrimack-23.txt"] = pages["2021-06-08-merrimack-23.txt"].replace(
+        "(General 1393 votes)", "(General 2393 votes)")
+    root = Path(tempfile.mkdtemp(prefix="gr-specials-"))
+    try:
+        src, col = _sp_world(root, pages, tamper={"2019-10-08-rockingham-9.txt": lambda b: b.replace(b"880", b"881")})
+        (src / "2024-01-23-coos-1.txt").write_text(_SP_HEAD.format(n=99) + "nothing", encoding="utf-8")
+        doc = P.read_all(src, col)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    why = {r["file"]: r["why"] for r in doc.get("_refused") or []}
+    want = {"2020-03-10-merrimack-24.txt": "bracket", "2021-06-08-merrimack-23.txt": "does not have the most votes",
+            "2019-10-08-rockingham-9.txt": "sha256", "2024-01-23-coos-1.txt": "not in the manifest"}
+    for f, words in want.items():
+        assert words in why.get(f, ""), f"{f} was not refused for {words!r}: {why.get(f)!r}"
+    assert set(why) == set(want), f"refused besides: {sorted(set(why) - set(want))}"
+    assert len([x for x in doc["contest"] if x["stage"] == "special"]) == 7, "the other pages were not read"
+    for w in why.values():
+        assert not re.search(r"Example|00000|Betaville|Deltaford|attached", w), f"a refusal quotes the page: {w!r}"
+    return "ok", ("a bracket it does not know, a WINNER without the most votes, a changed file and one the "
+                  "manifest leaves out each refused alone with why, the seven others read; no refusal quotes a line")
+
+
+# What an address looks like in the specials file: a ZIP code of the state's (03xxx), a post office
+# box, or a number and a street word.
+_SP_ADDRESS = re.compile(r"\b03\d{3}\b|\bP\.?\s?O\.?\s+Box\b|\b\d+[A-Z]?\s+(?:[A-Z][\w.']*\s+){1,4}"
+                         r"(?:St|Street|Rd|Road|Dr|Drive|Ln|Lane|Way|Ave|Avenue|Pl|Place|Tpke|Turnpike|Ct|"
+                         r"Court|Cir|Circle|Hwy|Highway)\b\.?", re.I)
+
+
+@check("files", "special elections: collected/specials.json, which is committed and which the build reads, "
+                "holds no candidate's address -- no ZIP code, post office box or street -- and, where the "
+                "saved pages are on this disk, none of the addresses they print",
+       needs=("parse_sos_specials",))
+def _specials_no_addresses(P):
+    """The pages print each candidate's home address (the design, A2): the reader reads past them
+    and the committed file must never carry one. A regex over the whole file for the forms an
+    address takes (_SP_ADDRESS: a 03xxx ZIP code, a PO box, a number and a street word), and,
+    where records/sources/specials/ is on this disk (the laptop; never a bare clone or the
+    night), every first bracket of a candidate's line there and every ZIP code after it, looked
+    for in the file. The pattern is shown to catch the made-up forms first."""
+    for addr in ("PO Box 12", "P.O. Box 4", "12 Example Street", "7 N River Lake Rd", "1 Portwalk Pl.",
+                 "Northwood 03261"):
+        assert _SP_ADDRESS.search(addr), f"the address pattern misses {addr!r}"
+    for fine in ("2,531", "Hillsborough County District 21", "2026-03-10.special.house.carroll-7",
+                 "6849a6343c5c98b9af82c107816504b4e16b83bb45364de30ee2b34d09c28ed8"):
+        assert not _SP_ADDRESS.search(fine), f"the address pattern takes {fine!r}"
+    out = Path("collected") / P.OUT.name
+    if not out.is_file():
+        return "skip", f"{out.as_posix()} is not here"
+    text = _source(out)
+    hit = _SP_ADDRESS.search(text)
+    assert not hit, f"{out.as_posix()} holds what looks like an address at character {hit.start()}"
+    src = P.SOURCE
+    if not src.is_dir():
+        return "ok", (f"{out.as_posix()}: no ZIP code, PO box or street; the saved pages are not on this "
+                      "disk to compare")
+    n = 0
+    for f in sorted(src.glob("*.txt")):
+        for line in f.read_text(encoding="utf-8").split("\n"):
+            m = re.search(r"\(([^()]*)\)\s*(\d{5})\b", line)
+            if not m:
+                continue
+            for part in (m.group(1).strip(), m.group(2)):
+                n += 1
+                assert part not in text, f"{out.as_posix()} holds an address part of {f.name}"
+    return "ok", (f"{out.as_posix()}: no ZIP code, PO box or street, and none of the {n} address parts the "
+                  f"saved pages print")
+
+
+@check("data", "special elections: collected/specials.json is what the saved pages say -- the nineteen "
+                "specials of October 2019 to March 2026, fifteen with a primary, none refused -- read "
+                "again where the pages are on this disk",
+       needs=("parse_sos_specials",))
+def _specials_read_again(P):
+    """Like _primary_read_again: where records/sources/specials/ is on this disk (the laptop
+    only: the pages print home addresses and are not in git), read every page again with the
+    reader and compare with the committed file; with the folder gone, skip and say so. Holds
+    the counts the design measured (A1): 19 specials, 15 of them with a party primary, every
+    one for State Representative."""
+    out = Path("collected") / P.OUT.name
+    if not out.is_file():
+        return "skip", f"{out.as_posix()} is not here"
+    committed = json.loads(_source(out))
+    sp = [c for c in committed["contest"] if c["stage"] == "special"]
+    with_primary = {c["for"] for c in committed["contest"] if c.get("for")}
+    assert (len(sp), len(with_primary), committed.get("_refused")) == (19, 15, None), (
+        f"{len(sp)} specials, {len(with_primary)} with a primary, refused {committed.get('_refused')}")
+    assert all(c["office"] == "house" and c["seats"] == 1 for c in sp), "a special that is not one House seat"
+    if not (P.SOURCE / P.MANIFEST).is_file():
+        return "skip", (f"the committed file holds 19 specials, 15 with a primary; {P.SOURCE.as_posix()} is "
+                        "not on this disk (the laptop only), so it is not read again")
+    again = json.loads(P.dumps(P.read_all(P.SOURCE, Path("collected"))))
+    assert again == committed, f"{out.as_posix()} is not what the saved pages say: run src/parse/parse_sos_specials.py"
+    return "ok", "19 specials, 15 with a primary, none refused; read again from the saved pages, as committed"
 
 
 @check("build", "State Primary and general results: a race whose column does not add up to the "
