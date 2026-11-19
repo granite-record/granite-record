@@ -989,6 +989,16 @@ padding:var(--sp-5) var(--sp-6);cursor:pointer;list-style:none;min-height:44px}
 .calkd .caret{margin-left:auto;color:var(--ink-2);flex:none}
 .calkd[open] > summary .caret{transform:rotate(90deg)}
 .calkd .kdsrc{margin:var(--sp-4) 0 0;font-size:var(--t-sm);color:var(--ink-2);line-height:1.45}
+/* The next election's dates (key_dates.election_dates_html, 19 November 2026): on the
+   Calendar under the week's arrows and at the top of the elections page, a short list
+   edged in the Important Dates colour, each day, its name and its law. */
+.kdnext{margin:var(--sp-5) 0;padding:var(--sp-4) var(--sp-5);border:1px solid var(--rule);
+  border-left:4px solid var(--cal-date);border-radius:var(--r-out);background:var(--surface)}
+.kdnext h2{margin:0 0 var(--sp-2);font:600 var(--t-h3)/1.3 var(--serif)}
+.kdnext ul{list-style:none;margin:0;padding:0}
+.kdnext li{margin:var(--sp-3) 0 0}
+.kdnd{font-weight:600;font-variant-numeric:tabular-nums;margin-right:var(--sp-2)}
+.kdns{display:block;font-size:var(--t-sm);color:var(--ink-2);line-height:1.45}
 
 /* One line of the day's schedule, above the bills it took. Only drawn when
    the day holds more than one, because a single-slot meeting has already said

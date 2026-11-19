@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.56
+# GRANITE_VERSION: 2026-09-18.57
 """
 The General Court's week, one page per week.
 
@@ -2926,7 +2926,12 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              # the last block of the schedule's column, where a reader finds it.
              + f'<nav class="wknav" aria-label="{say(lang, "calp.other_weeks", "Other weeks")}">'
              f'{"".join(nav)}</nav>'
-             '</div>'
+             # THE NEXT ELECTION'S DATES (the owner, 19 November 2026: "The general info on
+             # upcoming election deadlines should be included on the calendar"): its
+             # filing period, primary and general, on every week, however far off --
+             # a week's page holds a key date only within KEY_AHEAD.
+             + KD.election_dates_html(KD.election_dates(today), today, lang, "h2", "kdnext")
+             + '</div>'
              + side_html(lang)
              + '<div class="calmain">'
              + (BAR_HTML if lang == i18n.DEFAULT else bar_html(lang))

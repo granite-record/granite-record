@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of a bill's history as the site tells it (narrative.py).
 
@@ -13492,6 +13492,103 @@ def _primary_2028_not_september(KD, BT):
     return "ok", (f"the key dates put 2028's primary on June 13 and none in September; the town pages' next "
                   f"election after 15 May 2028 is June 13; {len(files) + 1} files of page words and "
                   f"{len(es):,} Spanish strings put no state primary in September for 2028")
+
+
+@check("frontend", "the next election's filing period, primary and general are on every week of the Calendar and at "
+                   "the top of the elections page, each with its law, on a build dated 19 November 2026: "
+                   "March 3-10, June 13 and November 7, 2028",
+       needs=("key_dates", "build_calendar", "build_elections"))
+def _election_dates_on_calendar_and_hub(KD, BC, BE):
+    """The owner, 19 November 2026: "The general info on upcoming election deadlines should be
+    included on the calendar and on the elections page." key_dates.election_dates gives the next
+    state general election's dates still ahead -- its primary's filing period, the primary and the
+    general -- and election_dates_html draws them, the key dates' own names and source lines.
+    Held:
+
+    - the list: on 19 November 2026, 3-10 March, 13 June and 7 November 2028; on 1 April 2028 the
+      primary and the general; on the day after 2028's general, 2030's three; the filing period
+      is the key dates' (events) too, and never the status box's next deadline;
+    - the Calendar: a week's page built on 19 November 2026 (build_calendar.week_page) carries the
+      list under the week's arrows, in Spanish on the Spanish week, each row with its RSA
+      citation and retiring the day after its last;
+    - the elections page (build_elections.index_body): the list under its heading, above the
+      results, with no candidate and no special election."""
+    import contextlib
+    import io
+    from datetime import date
+    bad = []
+    got = [(e.day, e.until, e.name) for e in KD.election_dates("2026-11-19")]
+    want = [("2028-03-03", "2028-03-10", "Filing period for the state primary"),
+            ("2028-06-13", "", "State primary"), ("2028-11-07", "", "General election")]
+    if got != want:
+        bad.append(f"the next election's dates on 19 November 2026: {got}, not {want}")
+    if [e.day for e in KD.election_dates("2028-04-01")] != ["2028-06-13", "2028-11-07"]:
+        bad.append(f"on 1 April 2028: {[e.day for e in KD.election_dates('2028-04-01')]}")
+    if [e.day for e in KD.election_dates("2028-11-08")] != ["2030-03-01", "2030-06-11", "2030-11-05"]:
+        bad.append(f"the day after 2028's general: {[e.day for e in KD.election_dates('2028-11-08')]}")
+    nd = KD.next_deadline(KD.events(date(2028, 3, 1)), "2028-03-01")
+    if nd and nd[1].rule == "filing":
+        bad.append("the status box names the candidates' filing period as the legislature's next deadline")
+    cites = ("RSA 655:14</a>, as amended by 2026, 44:4, from January 1, 2028",
+             "RSA 653:8</a>, as amended by 2026, 44:1, from January 1, 2028", "RSA 653:7")
+    flat = lambda s: re.sub(r"<a [^>]*>", "", s)  # noqa: E731
+
+    def holds(page, where, lang="en"):
+        box = re.search(r'<section class="kdnext"[^>]*>(.*?)</section>', page, re.S)
+        if not box:
+            bad.append(f"{where}: no list of the next election's dates")
+            return
+        rows = re.findall(r'<li data-until="([\d-]+)"><span class="kdnd">([^<]+)</span> '
+                          r'<span class="kdnn">([^<]+)</span><span class="kdns">(.*?)</span></li>', box.group(1))
+        days = [r[0] for r in rows]
+        if days != ["2028-03-11", "2028-06-14", "2028-11-08"]:
+            bad.append(f"{where}: the rows retire on {days}")
+        if lang == "en" and [r[1] for r in rows] != ["March 3–10, 2028", "June 13, 2028", "November 7, 2028"]:
+            bad.append(f"{where}: the days are {[r[1] for r in rows]}")
+        for (_u, _d, _n, src), cite in zip(rows, cites):
+            if cite.replace("</a>", "") not in flat(src):
+                bad.append(f"{where}: {src!r} does not cite {cite!r}")
+        if lang == "es" and "Período de inscripción para la primaria estatal" not in box.group(1):
+            bad.append(f"{where}: the filing period is not named in Spanish")
+        if re.search(r"(?i)\bcandidate (?!in each)|\bhas filed|\brunning\b|special election", box.group(1)):
+            bad.append(f"{where}: the list says something of a candidate or a special election")
+
+    today = date(2026, 11, 19)
+    weeks = BC.weeks_from(_cal_rows(), names={})
+    events = BC.key_date_days(weeks, today)
+    BC.every_week(weeks, today)
+    order = sorted(weeks)
+    k = BC.week_key(today) if BC.week_key(today) in weeks else order[-1]
+    root = Path(tempfile.mkdtemp(prefix="gr-kd-next-"))
+    try:
+        site = root / "site"
+        site.mkdir()
+        shutil.copy(Path("src/pages/bills.html"), site / "bills.html")
+        pages = {}
+        for lang in ("en", "es"):
+            with contextlib.redirect_stdout(io.StringIO()):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, order, order.index(k),
+                             {}, {}, {}, [], today, set(), study=True, events=events, lang=lang)
+            pre = "" if lang == "en" else "es/"
+            f = [p for p in (site / pre / "calendar").glob("*.html")]
+            pages[lang] = f[0].read_text(encoding="utf-8") if f else ""
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    for lang, page in pages.items():
+        holds(page, f"the Calendar's week of {k} ({lang})", lang)
+        head = re.search(r'<div class="calhead">(.*?)<div class="calside"', page, re.S)
+        if not head or 'class="kdnext"' not in head.group(1):
+            bad.append(f"the Calendar ({lang}): the list is not under the week's heading and arrows")
+    hub = BE.index_body([("2026-11-03", None)], "2026-11-19")
+    holds(hub, "the elections page")
+    if not (hub.find("<h1>Elections</h1>") < hub.find('class="kdnext"') < hub.find('class="lead"')
+            < hub.find('class="er-index"')):
+        bad.append("the elections page: the list is not at the top, above the results")
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"on 19 November 2026: March 3-10, June 13 and November 7, 2028, each with its RSA section, "
+                  f"on the Calendar's week {k} in English and Spanish and at the top of the elections page; "
+                  "April 2028 drops the filing period, the day after the general moves to 2030; never the "
+                  "status box's deadline")
 
 
 @check("frontend", "the status box names the next deadline by its rule, on fixed days, in both "
