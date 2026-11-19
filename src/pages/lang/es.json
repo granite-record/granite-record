@@ -25713,9 +25713,24 @@
    "es": "Cámara de Representantes",
    "state": "draft"
   },
+  "race.inc_h": {
+   "en": "* held a seat in the House on election day.",
+   "es": "* ocupaba un escaño en la Cámara de Representantes el día de la elección.",
+   "state": "draft"
+  },
+  "race.inc_s": {
+   "en": "* held a seat in the Senate on election day.",
+   "es": "* ocupaba un escaño en el Senado el día de la elección.",
+   "state": "draft"
+  },
   "race.intro": {
-   "en": "The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. A share is of every vote cast in the race, write-ins included; a race for more than one seat gives none, because a voter could choose several.",
-   "es": "Las elecciones generales registradas en las que figura este miembro, de la más reciente a la más antigua, según el recuento de la Secretaría de Estado. El porcentaje es sobre todos los votos emitidos en la contienda, incluidos los de candidatos escritos a mano; una contienda por más de un escaño no da porcentaje, porque cada votante podía elegir varios.",
+   "en": "The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.",
+   "es": "Las elecciones generales registradas en las que figura este miembro, de la más reciente a la más antigua, según el recuento de la Secretaría de Estado. En una contienda por un escaño, el porcentaje es sobre todos los votos emitidos, incluidos los de candidatos escritos a mano; en una por más de uno, en la que cada votante podía elegir varios, es sobre todos los votos emitidos por los candidatos de la lista.",
+   "state": "draft"
+  },
+  "race.intro_primary": {
+   "en": "A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; its leader is marked Most votes.",
+   "es": "Una primaria se muestra en la papeleta del propio partido del miembro, debajo de las elecciones generales de ese año; quien encabeza se marca con Más votos.",
    "state": "draft"
   },
   "race.lost": {
@@ -25731,6 +25746,21 @@
   "race.place": {
    "en": "{ord} of {n}",
    "es": "{ord} de {n}",
+   "state": "draft"
+  },
+  "race.primary_d": {
+   "en": "Democratic primary",
+   "es": "Primaria demócrata",
+   "state": "draft"
+  },
+  "race.primary_l": {
+   "en": "Libertarian primary",
+   "es": "Primaria libertaria",
+   "state": "draft"
+  },
+  "race.primary_r": {
+   "en": "Republican primary",
+   "es": "Primaria republicana",
    "state": "draft"
   },
   "race.recounted": {
@@ -25756,6 +25786,11 @@
   "race.source": {
    "en": "Source: the New Hampshire Secretary of State&rsquo;s official results, shown on the elections pages: {years}. Each row links to its race there.",
    "es": "Fuente: los resultados oficiales de la Secretaría de Estado de New Hampshire, que se muestran en las páginas de elecciones: {years}. Cada fila enlaza con su contienda allí.",
+   "state": "draft"
+  },
+  "race.source_primary": {
+   "en": "The primaries are from the Secretary of State&rsquo;s State Primary results files: {years}; no page of them is on this site yet.",
+   "es": "Las primarias provienen de los archivos de resultados de las primarias estatales de la Secretaría de Estado: {years}; aún no hay una página de ellas en este sitio.",
    "state": "draft"
   },
   "race.tab": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -41,7 +41,8 @@ THE KINDS. Every record is a JSON object whose first field is its id, named for 
   term       a term of the legislature, with the days it runs
   tenure     a person (or a name, where no person is linked) holding an office: its district and
              seat, its term, party, the days the record states, and where the record says it
-  contest    a race of one election for an office in a district
+  contest    a race of one election for an office in a district; a primary is one party's,
+             and carries the party
   candidacy  one candidate in a contest
 
 PARTY AND SEAT BELONG TO A TENURE, never to a person, so a label is the seat held then. A
@@ -114,8 +115,10 @@ GR = r"^gr-\d{4,}$"
 OFFICE = r"^[a-z][a-z0-9-]*(?::[a-z0-9-]+)?$"
 DISTRICT = r"^[a-z][a-z-]*:(?:\d{4}:)?[a-z0-9][a-z0-9-]*$"
 PLACE = r"^[^|]+\|\d+$"
-CONTEST = r"^\d{4}-\d{2}-\d{2}\.[a-z]+\.[a-z0-9:-]+\.[a-z0-9-]+$"
-CANDIDACY = r"^\d{4}-\d{2}-\d{2}\.[a-z]+\.[a-z0-9:-]+\.[a-z0-9-]+\.[a-z0-9-]+$"
+# The stage's word is the stage, and for a primary the party's too ("primary-r"), as the State
+# Primary readers id their races (src/parse/parse_sos_primary_results.py).
+CONTEST = r"^\d{4}-\d{2}-\d{2}\.[a-z]+(?:-[a-z]+)?\.[a-z0-9:-]+\.[a-z0-9-]+$"
+CANDIDACY = r"^\d{4}-\d{2}-\d{2}\.[a-z]+(?:-[a-z]+)?\.[a-z0-9:-]+\.[a-z0-9-]+\.[a-z0-9-]+$"
 
 
 def slug(text):
@@ -134,8 +137,12 @@ def district_id(kind, era, local):
     return f"{kind}:{era}:{local}" if era else f"{kind}:{local}"
 
 
-def contest_id(day, stage, office, where):
-    return f"{day}.{stage}.{office}.{where}"
+def contest_id(day, stage, office, where, party=""):
+    """A contest's id. Two parties' primaries for one office on one day are two contests, so a
+    primary's carries its party as printed: ("2024-09-10", "primary", "us-house", "1", "r") ->
+    "2024-09-10.primary-r.us-house.1"."""
+    word = f"{stage}-{slug(party)}" if slug(party) else stage
+    return f"{day}.{word}.{office}.{where}"
 
 
 def candidacy_id(contest, printed, party):
@@ -318,6 +325,10 @@ SHAPES = {
             "contest": {"type": "string", "pattern": CONTEST},
             "election": _DAY,
             "stage": {"enum": ["general", "primary", "special"]},
+            # A primary's party as the file prints it, and its letters by the state's one table:
+            # a primary has one and no other stage has any (problems()).
+            "party": _S,
+            "parties": _LETTERS,
             "office": {"type": "string", "pattern": OFFICE},
             "district": {"type": ["string", "null"], "pattern": DISTRICT},
             "seats": _INT,
@@ -657,6 +668,17 @@ def problems(model, settings=None, register=None):
         won = [x for x in CA.values() if x.get("contest") == cid and x.get("elected")]
         if len(won) > c.get("seats", 0):
             out.append(f"contest {cid} has {len(won)} elected for {c.get('seats')} seat(s)")
+        # A primary is one party's: it carries the party, and its id's stage word says it; a
+        # general or a special is every party's and carries none.
+        word = cid.split(".")[1] if cid.count(".") >= 3 else ""
+        if c.get("stage") == "primary":
+            if not slug(c.get("party")):
+                out.append(f"contest {cid} is a primary and names no party")
+            elif word != f"primary-{slug(c['party'])}":
+                out.append(f"contest {cid} is the primary of {c['party']!r}, and its id says {word!r}")
+        elif c.get("party") or "-" in word:
+            out.append(f"contest {cid} is a {c.get('stage')} and names a party")
+        out += _party_problems("contest", cid, c, s)
     for xid, x in CA.items():
         c = C.get(x.get("contest"))
         if c is None:

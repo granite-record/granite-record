@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.23
 """
 preflight's checks of members-elect and election results.
 
@@ -1272,7 +1272,7 @@ def _elections_page(BE, BME):
                 got = {}
                 for row in rows:
                     name = re.sub(r"<[^>]+>", "", row.split('<span class="er-n">')[0])
-                    name = re.sub(r"\s*\([A-Z/]*\)\s*|\s*write-in\s*|\s*Elected\s*|\s*Tied for the last seat\s*",
+                    name = re.sub(r"\s*\([A-Z/]*\)\s*|\s*\*\s*|\s*write-in\s*|\s*Elected\s*|\s*Tied for the last seat\s*",
                                   " ", name).strip()
                     n = int(re.search(r'<span class="er-n">([\d,]+)', row).group(1).replace(",", ""))
                     got[name] = (n, "Elected</span>" in row, re.search(r'href="legislator/([^"]+?)(?:\.html)?"', row))
@@ -1341,6 +1341,578 @@ def _elections_page(BE, BME):
                       "the bars adding up, Grafton 9's total said")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+# THE MARGIN, DEFINED ONCE (the elections display design of 19 November 2026, section 2,
+# approved in full that day; src/pages/election_margin.py). The rule on made-up races, every
+# status and every form of label, and then every race on file worked out again here, by a
+# second hand, and held to the design's own measure.
+
+def _mg_race(seats, *cands, scatter=0):
+    """A made-up race: each candidate (name, party, votes[, write_in])."""
+    return {"seats": seats, "scatter": scatter, "candidates": [
+        {"name": c[0], "party": c[1], "votes": c[2], "write_in": bool(c[3:] and c[3]), "elected": None}
+        for c in cands]}
+
+
+@check("build", "the margin is one rule: the two-way lead of the last winner over the first out, to "
+       "one decimal rounded half up, labelled with the last winner's printed letters, \"over\" a party "
+       "only where both are of it, Unopposed, Tied, none with no seat count, and a primary's with no "
+       "letter", needs=("election_margin", "entities"))
+def _margin_rule(EM, EN):
+    """reports/elections2-design/proposal.md section 2, decisions 1-7. Each status and label
+    form on a made-up race whose answer is worked out by hand here: Cheshire 9 of 2024 (one seat,
+    1,524 to 1,485: R+1.3, 20 votes to change it) and Cheshire 10 (two seats, the last winner and
+    the first out both Republicans: R+0.7 over R, 17), a cross-nomination (I/D+4.0), the half
+    that rounds up (R+0.1, not R+0.0), an edge (4.96 is labelled 5.0 and is in 5 to 10), a named
+    write-in first out (the margin stands), two of two parties tied for the first place out (no
+    "over"), Unopposed with scattered write-ins, Tied, no seat count, a primary (+9.7, no letter,
+    no "over"), and the ids: the results file's own, else the model's."""
+    cid = "2024-11-05.general.house.cheshire-9"
+    m = EM.margin(_mg_race(1, ("Daniel Adams Eaton", "d", 1485), ("Rich Nalevanko", "r", 1524)), cid)
+    assert (m["status"], m["gap"], m["points"], m["label"], m["over"], EM.words(m), EM.flip(m),
+            EM.band(m)) == ("contested", 39, 1.3, "R+1.3", None, "R+1.3", 20, "u5"), f"Cheshire 9: {m}"
+    assert (m["last"], m["first_out"]) == (cid + ".rich-nalevanko-r", cid + ".daniel-adams-eaton-d"), (
+        f"Cheshire 9's ids: {m['last']}, {m['first_out']}")
+    assert set(m) == {"status", "last", "first_out", "gap", "points", "label", "over"}, sorted(m)
+    m = EM.margin(_mg_race(2, ("Barry Faulkner", "d", 2250), ("Sly Karasinski", "r", 2220),
+                           ("Daniel LeClair", "r", 2187), ("Alan Gross", "d", 1921)), "c")
+    assert (m["gap"], m["label"], m["over"], EM.words(m), EM.flip(m), m["last"]) == (
+        33, "R+0.7", "R", "R+0.7 over R", 17, "c.sly-karasinski-r"), f"Cheshire 10: {m}"
+    m = EM.margin(_mg_race(1, ("A", "i/d", 520), ("B", "d", 480)), "c")
+    assert (m["label"], m["over"]) == ("I/D+4.0", None), f"a cross-nomination: {m}"
+    m = EM.margin(_mg_race(1, ("A", "r", 2001), ("B", "d", 1999)), "c")
+    assert m["label"] == "R+0.1" and m["points"] == 0.1, f"0.05 exactly rounds half up: {m}"
+    m = EM.margin(_mg_race(1, ("A", "d", 26240), ("B", "r", 23760)), "c")
+    assert (m["label"], EM.band(m)) == ("D+5.0", "5-10"), f"4.96 is labelled 5.0 and banded so: {m}"
+    m = EM.margin(_mg_race(1, ("A", "r", 900), ("Kathy DesRoches", "", 100, True)), "c")
+    assert (m["status"], m["label"], m["first_out"]) == ("contested", "R+80.0", "c.kathy-desroches"), (
+        f"a named write-in first out keeps the margin: {m}")
+    m = EM.margin(_mg_race(3, ("A", "d", 1788), ("B", "d", 1751), ("C", "r", 1603), ("D", "r", 1542),
+                           ("E", "d", 1542), ("F", "r", 1460)), "c")
+    assert (m["gap"], m["over"]) == (61, None), f"two of two parties tied for the first out: {m}"
+    m = EM.margin(_mg_race(3, ("A", "d", 1788), ("B", "d", 1751), ("C", "r", 1603), ("D", "r", 1542),
+                           ("E", "r", 1542)), "c")
+    assert m["over"] == "R", f"two Republicans tied for the first out: {m}"
+    for seats, cands in ((1, [("Dylan Germana", "d", 1639)]), (2, [("A", "r", 9), ("B", "d", 8)]),
+                         (1, [])):
+        m = EM.margin(_mg_race(seats, *cands, scatter=12), "c")
+        assert (m["status"], m["label"], m["points"], m["gap"], m["first_out"], EM.band(m),
+                EM.flip(m)) == ("unopposed", "Unopposed", None, None, None, "unopposed", None), (
+            f"{len(cands)} candidate(s) for {seats} seat(s), 12 scattered: {m}")
+    m = EM.margin(_mg_race(2, ("A", "r", 50), ("B", "d", 40), ("C", "r", 40)), "c")
+    assert (m["status"], m["label"], m["gap"], m["points"], EM.band(m), EM.flip(m)) == (
+        "tie", "Tied", 0, None, "u5", None), f"a tie for the last seat: {m}"
+    for seats in (None, 0):
+        m = EM.margin(_mg_race(seats, ("A", "r", 50), ("B", "d", 40)), "c")
+        assert (m["status"], m["label"], EM.words(m), EM.band(m)) == ("no_seats", None, "", ""), (
+            f"seats {seats!r}: {m}")
+    pid = EM.results_contest("2024-09-10", "D|S|1", "primary")
+    assert pid == "2024-09-10.primary-d.senate.1", f"a primary's contest: {pid}"
+    m = EM.margin(_mg_race(1, ("A", "d", 5485), ("B", "d", 4515)), pid, primary=True)
+    assert (m["label"], m["over"], EM.words(m)) == ("+9.7", None, "+9.7"), f"a primary: {m}"
+    for word in ("nominat", "close", "safe", "competitive"):
+        assert all(word not in str(v).lower() for v in m.values()), f"a margin says {word!r}"
+    office = {"seats": 1, "candidates": [
+        {"name": "Kelly Ayotte", "party": "r", "votes": 436122, "id": "x.kelly-ayotte-r"},
+        {"name": "Joyce Craig", "party": "d", "votes": 360149, "id": "x.joyce-craig-d"}]}
+    m = EM.margin(office, "ignored")
+    assert (m["last"], m["first_out"], m["label"]) == ("x.kelly-ayotte-r", "x.joyce-craig-d", "R+9.5"), (
+        f"an office's file gives its own ids: {m}")
+    assert EM.results_contest("2024-11-05", "H|Cheshire|9") == EN.contest_id(
+        "2024-11-05", "general", "house", "cheshire-9") and EM.results_contest(
+        "2024-11-05", "S|5") == "2024-11-05.general.senate.5", "the House and Senate contests' ids"
+    keys = [EM.order_key(EM.margin(r, "c")) for r in (
+        _mg_race(1, ("A", "r", 5)), _mg_race(1, ("A", "r", 60), ("B", "d", 40)),
+        _mg_race(1, ("A", "r", 51), ("B", "d", 49)), _mg_race(1, ("A", "r", 5), ("B", "d", 5)),
+        _mg_race(None, ("A", "r", 5)))]
+    assert sorted(range(5), key=lambda i: keys[i]) == [3, 2, 1, 0, 4], (
+        f"smallest margin first is the tie, then by points, then the unopposed, then no seat count: {keys}")
+    return "ok", ("R+1.3 and its 20, R+0.7 over R and its 17, I/D+4.0, R+0.1 half up, 5.0 in 5 to 10, "
+                  "a write-in first out, a tie for first out of two parties, Unopposed thrice, Tied, "
+                  "no seat count twice, a primary's +9.7, the ids and the order, each as worked by hand")
+
+
+# The design's own measure of the 1,765 general races on file for 2016-2026 (proposal.md
+# section 2), banded on the unrounded points; the page bands on the label's one decimal.
+_MG_DESIGN = {"under 1": 109, "1-5": 334, "5-10": 298, "10-20": 380, "20 or more": 313,
+              "unopposed": 326, "tie": 1, "no_seats": 4}
+
+
+@check("data", "every race on file has the margin worked out again by a second hand from "
+       "collected/election_<year>.json and election_offices_<year>.json, and 2016-2026 come to the "
+       "design's measured distribution", needs=("election_margin",))
+def _margins_on_file(EM):
+    """Each House, Senate and other office's general race of every collected file, its margin
+    worked out here without election_margin (exact fractions, half up), held to EM.margin's: the
+    status, gap, points, label and "over". Then 2016-2026, banded on the unrounded points as the
+    design measured them, are its 1,765 races exactly (_MG_DESIGN); and the page's bands, on the
+    label, differ from those only by a race within a twentieth of a point below an edge."""
+    from fractions import Fraction
+    files = sorted(Path("collected").glob("election_*.json"))
+    files = [p for p in files if re.fullmatch(r"election_(?:offices_)?\d{4}\.json", p.name)]
+    if not files:
+        return "skip", "no collected/election_<year>.json here (a bare clone without the results)"
+    raw, page, moved, n = {}, {}, [], 0
+    for p in files:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        year = int(re.search(r"\d{4}", p.name).group(0))
+        for key, race in doc["races"].items():
+            n += 1
+            got = EM.margin(race, race.get("contest") or EM.results_contest(doc["election"], key))
+            seats, cs = race.get("seats"), sorted(race["candidates"], key=lambda c: -c["votes"])
+            if not isinstance(seats, int) or seats < 1:
+                want = ("no_seats", None, None, None, None)
+            elif len(cs) <= seats:
+                want = ("unopposed", None, None, "Unopposed", None)
+            elif cs[seats - 1]["votes"] == cs[seats]["votes"]:
+                want = ("tie", 0, None, "Tied", None)
+            else:
+                a, b = cs[seats - 1], cs[seats]
+                exact = Fraction(100 * (a["votes"] - b["votes"]), a["votes"] + b["votes"])
+                t = int(exact * 10 + Fraction(1, 2))
+                pa = (a.get("party") or "").upper()
+                outs = {(c.get("party") or "").upper() for c in cs[seats:] if c["votes"] == b["votes"]}
+                want = ("contested", a["votes"] - b["votes"], t / 10, f"{pa}+{t // 10}.{t % 10}",
+                        pa if pa and outs == {pa} else None)
+            assert (got["status"], got["gap"], got["points"], got["label"], got["over"]) == want, (
+                f"{p.name} {key}: election_margin says {got}, worked again {want}")
+            if not 2016 <= year <= 2026:
+                continue
+            if want[0] == "contested":
+                cut = [x for x in (1, 5, 10, 20) if exact < x]
+                bucket = {1: "under 1", 5: "1-5", 10: "5-10", 20: "10-20"}[cut[0]] if cut else "20 or more"
+                pb = EM.band(got)
+                if pb != {"under 1": "u5", "1-5": "u5", "5-10": "5-10", "10-20": "10-20",
+                          "20 or more": "20"}[bucket]:
+                    assert any(x - Fraction(1, 20) <= exact < x for x in (5, 10, 20)), (
+                        f"{p.name} {key}: {exact * 1.0:.3f} points is banded {pb!r}, and is near no edge")
+                    moved.append(f"{year} {key}")
+            else:
+                bucket = want[0]
+            raw[bucket] = raw.get(bucket, 0) + 1
+            page[EM.band(got) or "none"] = page.get(EM.band(got) or "none", 0) + 1
+    if not all((Path("collected") / f"election_{y}.json").is_file() for y in range(2016, 2027, 2)):
+        return "ok", f"{n} races worked out again alike; 2016-2026 not all here, so not held to the design"
+    assert raw == _MG_DESIGN, (
+        f"2016-2026 measure {raw}, not the design's {_MG_DESIGN}: a results file changed, or the "
+        "rule did; read which before changing _MG_DESIGN")
+    return "ok", (f"{n} races worked out again alike; 2016-2026 are the design's {sum(raw.values())} "
+                  f"exactly; the page's bands {dict(sorted(page.items()))}, {len(moved)} moved up an "
+                  "edge by the label's rounding")
+
+
+def _mg_tree(html):
+    """A page's markup as a tree node can rebuild ([tag, attrs, children]; a text is a string),
+    its scripts left out: what _MG_NODE drives the page's own script on."""
+    from html.parser import HTMLParser
+    void = {"input", "br", "img", "link", "meta", "hr", "source", "wbr"}
+
+    class P(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.root = ["#root", {}, []]
+            self.stack, self.skip = [self.root], 0
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "script":
+                self.skip += 1
+                return
+            n = [tag, {k: (v if v is not None else "") for k, v in attrs}, []]
+            self.stack[-1][2].append(n)
+            if tag not in void:
+                self.stack.append(n)
+
+        def handle_endtag(self, tag):
+            if tag == "script":
+                self.skip -= 1
+                return
+            if tag not in void and len(self.stack) > 1 and self.stack[-1][0] == tag:
+                self.stack.pop()
+
+        def handle_data(self, d):
+            if not self.skip and d:
+                self.stack[-1][2].append(d)
+    p = P()
+    p.feed(html)
+    return p.root
+
+
+# The elections page's markup rebuilt in node, just deep enough for its margin script: elements
+# with their attributes, children and parents, the hidden attribute, a select's and an input's
+# value, listeners, and querySelector(All) of the compound and descendant selectors the script
+# uses. Each pane's buttons are pressed in turn, the order chosen, a town typed, and what is
+# shown read back.
+_MG_NODE = r"""
+const ids = {};
+function sel1(s) { const m = /^([a-z0-9]+)?((?:[.#][\w-]+|\[[^\]]+\])*)$/.exec(s); if (!m) throw new Error("selector " + s);
+  const parts = m[2].match(/[.#][\w-]+|\[[^\]]+\]/g) || [];
+  return x => x.tag && (!m[1] || x.tag === m[1]) && parts.every(p => {
+    if (p[0] === ".") return (" " + (x.attrs.class || "") + " ").includes(" " + p.slice(1) + " ");
+    if (p[0] === "#") return x.attrs.id === p.slice(1);
+    const a = /^\[([\w-]+)(?:=["']?([^"'\]]*)["']?)?\]$/.exec(p);
+    return a[2] === undefined ? a[1] in x.attrs : x.attrs[a[1]] === a[2]; }); }
+function matcher(sel) { const chain = sel.trim().split(/\s+/).map(sel1);
+  return x => { if (!chain[chain.length - 1](x)) return false; let i = chain.length - 2, y = x.parentNode;
+    while (i >= 0 && y) { if (chain[i](y)) i--; y = y.parentNode; } return i < 0; }; }
+function node(t) {
+  if (typeof t === "string") return {text: t, parentNode: null};
+  const n = {tag: t[0], attrs: Object.assign({}, t[1]), children: [], parentNode: null, on: {},
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+    setAttribute(k, v) { this.attrs[k] = String(v); },
+    appendChild(c) { if (c.parentNode) c.parentNode.children = c.parentNode.children.filter(z => z !== c);
+      c.parentNode = this; this.children.push(c); return c; },
+    addEventListener(k, f) { (this.on[k] = this.on[k] || []).push(f); },
+    fire(k) { (this.on[k] || []).forEach(f => f({target: this, preventDefault() {}})); },
+    querySelectorAll(s) { const m = matcher(s), out = [];
+      const walk = y => (y.children || []).forEach(c => { if (c.tag && m(c)) out.push(c); if (c.tag) walk(c); });
+      walk(this); return out; },
+    querySelector(s) { return this.querySelectorAll(s)[0] || null; },
+    get nextElementSibling() { const k = this.parentNode ? this.parentNode.children.filter(c => c.tag) : [];
+      return k[k.indexOf(this) + 1] || null; },
+    get id() { return this.attrs.id || ""; },
+    get hidden() { return "hidden" in this.attrs; },
+    set hidden(v) { if (v) this.attrs.hidden = ""; else delete this.attrs.hidden; }};
+  Object.defineProperty(n, "textContent", {get() { return n.children.map(c => c.tag ? c.textContent : c.text).join(""); },
+    set(v) { n.children = [{text: String(v), parentNode: n}]; }});
+  if (n.tag === "select") { const o = (t[2] || []).filter(c => typeof c !== "string" && c[0] === "option");
+    n.value = (o.find(c => "selected" in c[1]) || o[0] || [0, {value: ""}])[1].value; }
+  if (n.tag === "input") n.value = n.attrs.value || "";
+  if (n.attrs.id) ids[n.attrs.id] = n;
+  (t[2] || []).forEach(c => n.appendChild(node(c)));
+  return n;
+}
+const root = node(TREE);
+global.document = {getElementById: k => ids[k] || null, querySelectorAll: s => root.querySelectorAll(s),
+  querySelector: s => root.querySelector(s)};
+new Function(SCRIPT)();
+const out = {panes: {}};
+for (const f of root.querySelectorAll(".er-filt")) {
+  const pane = ids[f.getAttribute("data-pane")], cards = pane.querySelectorAll(".er-race");
+  const shown = () => cards.filter(c => !c.hidden && !c.parentNode.hidden).map(c => c.attrs.id);
+  const say = () => f.querySelector(".er-count").textContent;
+  const p = out.panes[pane.attrs.id] = {unhidden: !f.hidden, all: shown(), buttons: []};
+  for (const b of f.querySelectorAll("button[data-band]")) {
+    b.fire("click");
+    p.buttons.push({band: b.attrs["data-band"], said: +b.querySelector(".er-c").textContent.replace(/,/g, ""),
+      shown: shown(), bands: shown().map(i => ids[i].attrs["data-band"]), say: say(),
+      pressed: f.querySelectorAll("button[data-band]").filter(x => x.attrs["aria-pressed"] === "true").length,
+      me: b.attrs["aria-pressed"]});
+  }
+  f.querySelector("button[data-band]").fire("click");
+  const s = f.querySelector("select"), flat = pane.querySelector(".er-flat");
+  const inflat = () => flat.children.filter(c => c.tag).map(c => c.attrs.id);
+  s.value = "small"; s.fire("change");
+  p.small = inflat(); p.small_heads = pane.querySelectorAll(".er-county").filter(h => !h.hidden).length;
+  p.small_shown = shown();
+  s.value = "large"; s.fire("change"); p.large = inflat();
+  s.value = "district"; s.fire("change");
+  p.district = cards.map(c => [c.attrs.id, c.parentNode.attrs.class]); p.back = shown();
+  p.district_heads = pane.querySelectorAll(".er-county").filter(h => !h.hidden).length;
+  const q = pane.querySelector(".er-find input");
+  if (q) { q.value = "alton"; q.fire("input"); p.alton = shown(); p.alton_say = say();
+    p.alton_heads = pane.querySelectorAll(".er-county").filter(h => !h.hidden).length;
+    q.value = ""; q.fire("input"); }
+}
+const link = root.querySelectorAll("a[data-order]").find(a => a.attrs["data-pane"] === "house");
+link.fire("click"); out.link = root.querySelectorAll(".er-flat").map(x => x.hidden);
+console.log(JSON.stringify(out));
+"""
+
+
+def _mg_results():
+    """A made-up election, every band and status in it: a tie and an under-5 in the Senate; in
+    the House, two counties with under 5, 5 to 10, 10 to 20, 20 or more, unopposed, a same-party
+    last seat, a held winner and a named write-in first out."""
+    def race(seats, towns, *cands, scatter=0):
+        return {"seats": seats, "floterial": False, "towns": list(towns), "scatter": scatter,
+                "candidates": [{"name": n, "party": p, "votes": v, "write_in": bool(w[:1] and w[0]),
+                                "elected": None} for n, p, v, *w in cands]}
+    races = {
+        "S|1": race(1, ["Alton"], ("Ann Ames", "r", 500), ("Bo Bell", "d", 500)),
+        "S|2": race(1, ["Barnstead"], ("Cy Cole", "d", 5150), ("Di Dunn", "r", 4850)),
+        "H|Belknap|1": race(1, ["Alton"], ("Ed Eaton", "r", 1524), ("Fay Fox", "d", 1485)),
+        "H|Belknap|2": race(2, ["Barnstead", "Gilmanton"], ("Gus Gale", "d", 2250), ("Hal Hart", "r", 2220),
+                            ("Ike Ives", "r", 2187), ("Jo Jay", "d", 1921)),
+        "H|Belknap|3": race(1, ["Alton"], ("Kit Kaye", "d", 1639), scatter=12),
+        "H|Belknap|4": race(1, ["Belmont"], ("Lu Lane", "r", 600), ("Mo Moss", "d", 400)),
+        "H|Carroll|1": race(1, ["Albany"], ("Ned Nye", "d", 560), ("Ola Orr", "r", 440)),
+        "H|Carroll|2": race(1, ["Bartlett"], ("Pam Park", "r", 860), ("Quin Quay", "d", 140)),
+        "H|Carroll|3": race(1, ["Conway"], ("Ray Roe", "r", 540), ("Sue Sims", "d", 460)),
+        "H|Carroll|4": race(1, ["Eaton"], ("Ty Tate", "d", 900), ("Una Urn", "", 100, True)),
+    }
+    for k, r in races.items():
+        best = sorted(r["candidates"], key=lambda c: -c["votes"])
+        for i, c in enumerate(best):
+            c["elected"] = None if k == "S|1" else i < r["seats"]
+    return {"election": "2026-11-03", "term": "2027-2028", "races": races,
+            "_source": [{"file": "made-up.xlsx", "saved": "2026-11-05"}], "_notes": []}
+
+
+@check("build", "the elections page carries each race's margin: the label at the top right of every card in "
+       "the party chip's shape, the gap and the votes that would change it, the margin buttons each "
+       "showing as many races as it counts in node, the order smallest margin first, and the button "
+       "counts the data's own bands", needs=("build_elections", "election_margin"))
+def _elections_margins_page(BE, EM):
+    """The elections display design of 19 November 2026, asks 2 and 3, on a made-up election
+    (_mg_results) drawn by build_elections.page_body itself:
+
+    - each card's chip says election_margin's words (R+1.3, R+0.7 over R, Unopposed, Tied), in
+      the party chip's family where the party has one, at the top right (.er-hd beside the
+      name), and carries data-band, data-points and data-gap; a held winner's race has none;
+    - the figures under the rows: "Won by 39 votes, 1.3 points. 20 voters ..." for one seat,
+      "The last seat by 33 votes, 0.7 points. 17 votes moved ..." for more, and before the
+      result is final the gap alone;
+    - each pane's buttons count its races by band, as the data's own bands come to (the
+      results' races less the held one), Any all of them;
+    - in node, the page's own script (MARGIN_JS) on the page's own markup: each button shows
+      exactly the races it counts and presses itself alone; Smallest margin first lists every
+      race of the pane in election_margin's order (the tie first, the unopposed and the held
+      last) with the county heads hidden, Largest the contested the other way, By district puts
+      each back in its county; the town box narrows with the count said; the overview's link
+      opens the House in that order;
+    - the overview's Smallest Margins is that order's first eight, each with its label;
+    - no word of "close", "safe" or "competitive" in what a reader reads; the member tab's card
+      (anchor=False) carries the label and no filter data."""
+    res = _mg_results()
+    races = res["races"]
+    hand = {"held": {"H|Belknap|4": {"Lu Lane": "held"}}}
+    me = {k: {"seats": r["seats"], "elected": [], "not_final": 0} for k, r in races.items()}
+    body = BE.page_body(res["election"], res, me, {}, hand, "site", [], settled=True)
+    want = {k: (None if k == "H|Belknap|4" else
+                EM.margin(r, EM.results_contest(res["election"], k))) for k, r in races.items()}
+    for k, m in want.items():
+        card = re.search(r'<article class="er-race" id="' + re.escape(BE.race_id(k)) + r'"[^>]*>.*?</article>',
+                         body, re.S).group(0)
+        attrs = dict(re.findall(r'(data-band|data-points|data-gap)="([^"]*)"', card.split(">", 1)[0]))
+        chip = re.search(r'<div class="er-hd"><(h[34])>[^<]*</\1>(<span class="chip er-mg([^"]*)">([^<]*)</span>)?'
+                         r"</div>", card)
+        assert chip, f"{k}: no head with the name and the label at its right: {card[:300]}"
+        if m is None:
+            assert not chip.group(2) and attrs == {"data-band": "", "data-points": "", "data-gap": ""} \
+                and "Won by" not in card and "votes moved" not in card, (
+                    f"{k}, its winner held: the margin says who won: {card[:400]}")
+            continue
+        p = m["label"].split("+")[0] if m["status"] == "contested" else ""
+        assert chip.group(4) == EM.words(m) and chip.group(3) == (f" pt-{p}" if p in ("R", "D", "I") else ""), (
+            f"{k}: the chip says {chip.group(4)!r} ({chip.group(3)!r}), the rule {EM.words(m)!r}")
+        assert attrs == {"data-band": EM.band(m), "data-gap": "" if m["gap"] is None else str(m["gap"]),
+                         "data-points": f"{m['points']:.1f}" if m["points"] is not None else
+                         ("0" if m["status"] == "tie" else "")}, f"{k}: the card's data {attrs}, the margin {m}"
+    one = re.search(r'id="r-h-belknap-1".*?</article>', body, re.S).group(0)
+    two = re.search(r'id="r-h-belknap-2".*?</article>', body, re.S).group(0)
+    assert ('<p class="er-out">Won by <b>39 votes</b>, 1.3 points. 20 voters choosing the other way would '
+            "have changed the result.</p>") in one, f"Belknap 1's figures: {one[-400:]}"
+    assert ('<p class="er-out">The last seat by <b>33 votes</b>, 0.7 points. 17 votes moved from the last '
+            "winner to the first out would have changed the result.</p>") in two and "R+0.7 over R" in two, (
+        f"Belknap 2's figures: {two[-400:]}")
+    early = BE.race_card("H|Belknap|1", races["H|Belknap|1"], {"seats": 1, "elected": [], "not_final": 1},
+                         res, {}, res["election"])
+    assert "The gap between the first two is <b>39 votes</b>, 1.3 points.</p>" in early \
+        and "would have changed" not in early, f"a race not final says what would have changed it: {early}"
+    tab = BE.race_card("H|Belknap|1", races["H|Belknap|1"], me["H|Belknap|1"], res, {}, res["election"],
+                       mine=BE.same_name("Ed Eaton"), anchor=False)
+    assert tab.startswith('<article class="er-race"><div class="er-hd"><h3>Belknap District 1</h3>'
+                          '<span class="chip er-mg pt-R">R+1.3</span></div>') and "data-band" not in tab, (
+        f"the member tab's card: {tab[:200]}")
+    # The buttons' counts are the data's own bands.
+    panes = {"senate": [k for k in races if k.startswith("S|")], "house": [k for k in races if k.startswith("H|")]}
+    for pane, keys in panes.items():
+        f = re.search(r'<div class="er-filt bfilt" id="er-mf-' + pane + r'".*?</select></label>', body, re.S).group(0)
+        said = dict(re.findall(r'data-band="([^"]*)" aria-pressed="[a-z]+">[^<]*<span class="er-c">([\d,]+)</span>', f))
+        data = {b: sum(1 for k in keys if want[k] and EM.band(want[k]) == b) for b, _w in EM.BANDS}
+        assert {b: int(n) for b, n in said.items()} == dict(data, **{"": len(keys)}), (
+            f"the {pane} buttons count {said}; the data's bands are {data} of {len(keys)}")
+    order = sorted([k for k in races if want[k] and want[k]["status"] in ("contested", "tie")],
+                   key=lambda k: (EM.order_key(want[k]), k.startswith("H|"), k))
+    listed = re.findall(r'<li><a href="[^"]*#(r-[a-z0-9-]+)">[^<]*</a><span class="chip er-mg[^"]*">([^<]*)</span>',
+                        body.split("Smallest Margins", 1)[1].split("</ol>", 1)[0])
+    assert [i for i, _w in listed] == [BE.race_id(k) for k in order][:8] and \
+        [w for _i, w in listed] == [EM.words(want[k]) for k in order][:8], (
+            f"Smallest Margins lists {listed}; the order is {order[:8]}")
+    text = re.sub(r"<[^>]+>", " ", re.sub(r"<script.*?</script>", "", body, flags=re.S)).lower()
+    for w in ("close", "safe", "competitive"):
+        assert not re.search(r"\b" + w, text), f"the page says {w!r}"
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "ok", "labels, figures, data and counts held in Python; node is not here for the script"
+    from pf_harness import _node_file
+    script = BE.MARGIN_JS.split(">", 1)[1].rsplit("</script>", 1)[0]
+    prog = f"const SCRIPT = {json.dumps(script)};\nconst TREE = {json.dumps(_mg_tree(body))};\n" + _MG_NODE
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, "the page's margin script stopped: " + (r.stderr or "").strip()[-400:]
+    out = json.loads(r.stdout.strip().splitlines()[-1])
+    for pane, keys in panes.items():
+        p = out["panes"][pane]
+        ids = [BE.race_id(k) for k in sorted(keys, key=BE.BME.race_order)]
+        assert p["unhidden"] and sorted(p["all"]) == sorted(ids), f"{pane}: the filter or a card is hidden at first"
+        for b in p["buttons"]:
+            assert b["said"] == len(b["shown"]) and b["me"] == "true" and b["pressed"] == 1, (
+                f"{pane}, the {b['band'] or 'Any'} button counts {b['said']} and shows {b['shown']}")
+            assert not b["band"] or set(b["bands"]) <= {b["band"]}, f"{pane}, {b['band']}: shows {b['bands']}"
+            assert b["say"] == ("" if not b["band"] else f"{b['said']} of {len(keys)} races"), (
+                f"{pane}, {b['band'] or 'Any'}: the count line says {b['say']!r}")
+        small = [BE.race_id(k) for k in sorted(keys, key=lambda k: (
+            EM.order_key(want[k]) if want[k] else (2, 0, 0), BE.BME.race_order(k)))]
+        assert p["small"] == small and p["small_heads"] == 0 and sorted(p["small_shown"]) == sorted(ids), (
+            f"{pane}, smallest margin first: {p['small']}, the rule {small}, {p['small_heads']} county heads shown")
+        contested = [i for i in p["large"] if any(BE.race_id(k) == i and want[k] and want[k]["status"] == "contested"
+                                                  for k in keys)]
+        pts = [float(re.search(r'id="' + i + r'"[^>]*data-points="([\d.]+)"', body).group(1)) for i in contested]
+        assert pts == sorted(pts, reverse=True) and len(p["large"]) == len(keys), (
+            f"{pane}, largest margin first: {p['large']}")
+        assert p["back"] == ids or sorted(p["back"]) == sorted(ids), f"{pane}: By district shows {p['back']}"
+        assert [c for c, cls in p["district"] if "er-flat" in cls] == [] and p["district_heads"] == (
+            2 if pane == "house" else 0), f"{pane}: By district left {p['district']}"
+        if pane == "house":
+            alton = sorted(BE.race_id(k) for k in keys if "Alton" in races[k]["towns"])
+            assert sorted(p["alton"]) == alton and p["alton_say"].startswith(f"{len(alton)} of {len(keys)} races with a town") \
+                and p["alton_heads"] == 1, f"the town box: {p['alton']}, {p['alton_say']!r}, {p['alton_heads']} heads"
+    assert out["link"] == [True, False], f"the overview's link does not open the House smallest first: {out['link']}"
+    return "ok", (f"{len(races)} made-up races: every label and its family, the figures for one seat, for "
+                  "two and before the result is final, the held winner's race without them, each "
+                  "button's count the data's band and the races it shows in node, smallest and largest "
+                  "first, back by district, the town box, the overview's eight and its link")
+
+
+@check("data", "on the built elections pages every card's margin is election_margin's of the results "
+       "file's race, and each House and Senate button counts the data's own races of its band",
+       needs=("build_elections", "election_margin", "build_members_elect"))
+def _elections_margins_built(BE, EM, BME):
+    """site/elections/<day>-general.html, where a build has written them, held to
+    collected/election_<year>.json: each card's data-points, data-band and label are the margin
+    of its race, none where the owner holds a winner back (corrections/members_elect.json), and
+    each pane's buttons count its races by band as the file's own races come to."""
+    pages = sorted(Path("site/elections").glob("*-general.html"))
+    if not pages:
+        return "skip", "no site/elections/<day>-general.html here: no build has drawn the elections pages"
+    files = {doc["election"]: doc for _e, _p, doc in BE.elections_on_file("collected")}
+    said, total = [], {}
+    for page in pages:
+        day = page.name[:10]
+        doc = files.get(day)
+        assert doc, f"{page.name} has no results file in collected/"
+        hand = BME.read_hand(BME.HAND_DEFAULT, day)[0]
+        html = page.read_text(encoding="utf-8")
+        bands = {}
+        for k, race in doc["races"].items():
+            m = BE.margin_of(k, race, day, hand)
+            head = re.search(r'<article class="er-race" id="' + re.escape(BE.race_id(k)) + r'"[^>]*>', html)
+            assert head, f"{page.name}: no card for {k}"
+            got = dict(re.findall(r'(data-band|data-points)="([^"]*)"', head.group(0)))
+            pts = "" if not m else f"{m['points']:.1f}" if m["status"] == "contested" else "0" if m["status"] == "tie" else ""
+            assert got == {"data-band": EM.band(m), "data-points": pts}, f"{page.name} {k}: {got}, the margin {m}"
+            pane = "senate" if k.startswith("S|") else "house"
+            bands.setdefault(pane, {}).setdefault(EM.band(m), 0)
+            bands[pane][EM.band(m)] += 1
+        for pane, b in bands.items():
+            f = re.search(r'id="er-mf-' + pane + r'".*?</select>', html, re.S)
+            assert f, f"{page.name}: no margin filter on the {pane} tab"
+            counts = {k: int(v.replace(",", "")) for k, v in re.findall(
+                r'data-band="([^"]*)" aria-pressed="[a-z]+">[^<]*<span class="er-c">([\d,]+)</span>', f.group(0))}
+            want = {x: b.get(x, 0) for x, _w in EM.BANDS}
+            want[""] = sum(b.values())
+            assert counts == want, f"{page.name} {pane}: the buttons count {counts}; the file's races {want}"
+            for x in want:
+                total[x] = total.get(x, 0) + want[x]
+        said.append(day[:4])
+    return "ok", (f"{len(pages)} pages ({', '.join(said)}), every card and button the data's; the House "
+                  "and Senate buttons together: " + ", ".join(
+                      f"{w} {total.get(x, 0):,}" for x, w in [("", "Any")] + list(EM.BANDS)))
+
+
+def _row_shares(card):
+    """{name: share} of a race card's rows, the share as printed ("" for none)."""
+    out = {}
+    for row in re.findall(r'<li class="er-row[^"]*">(.*?)</li>', card, re.S):
+        name = re.search(r'class="mchip[^"]*"[^>]*>(?:<a[^>]*>)?([^<]+?)\s*<span class="mtag">', row).group(1)
+        sh = re.search(r'<span class="er-n">[\d,]+ <span>&middot; ([\d.]+)%</span>', row)
+        out[name] = sh.group(1) if sh else ""
+    return out
+
+
+@check("build", "a race card gives every candidate a share: of every vote cast in a race for one seat, as "
+       "before, and of all the votes cast for the candidates listed in a race for more, its note saying so",
+       needs=("build_elections",))
+def _election_shares(BE):
+    """The owner, 19 November 2026 ("share of all votes"), on the cards the elections pages and a
+    member's Elections tab both draw (race_card). Strafford 21 of 2026, three seats, 41 scattered:
+    Alice Wade's 8,807 of the listed 29,275 is 30.1% (of 29,316 with the scattered it would be 30.0%),
+    Joseph D. Morganella's 3,852 is 13.2%, and the note says the shares are of the votes cast for the
+    candidates listed; Strafford 15 of 2024, one seat, 2 scattered, keeps the share of every vote:
+    2,047 of 2,918, 70.2%, and Keith Mistretta's 869 29.8%; a race of two seats with a winner held
+    back gives no share at all; the tab's intro says the same in both languages."""
+    def race(seats, scatter, *cands):
+        return {"seats": seats, "scatter": scatter, "towns": ["Dover Ward 1"], "candidates": [
+            {"name": n, "party": p, "votes": v, "write_in": False, "elected": e} for n, p, v, e in cands]}
+    s21 = race(3, 41, ("Seth Miller", "d", 8468, True), ("Geoff Smith", "d", 8148, True),
+               ("Alice Wade", "d", 8807, True), ("Joseph D. Morganella", "r", 3852, False))
+    card = BE.race_card("H|Strafford|21", s21, {"seats": 3, "elected": [], "not_final": 0}, {}, {}, "2026-11-03")
+    assert _row_shares(card) == {"Alice Wade": "30.1", "Seth Miller": "28.9", "Geoff Smith": "27.8",
+                                 "Joseph D. Morganella": "13.2"}, f"Strafford 21's shares: {_row_shares(card)}"
+    assert ("Each voter could choose up to 3, so a share is of all the votes cast for the candidates listed"
+            in card and "no share" not in card), f"Strafford 21's note: {card[-400:]}"
+    s15 = race(1, 2, ("Alice Wade", "d", 2047, True), ("Keith Mistretta", "r", 869, False))
+    card = BE.race_card("H|Strafford|15", s15, {"seats": 1, "elected": [], "not_final": 0}, {}, {}, "2024-11-05")
+    assert _row_shares(card) == {"Alice Wade": "70.2", "Keith Mistretta": "29.8"} and \
+        "could choose" not in card, f"Strafford 15's shares: {_row_shares(card)}"
+    big = BE.race_card("S|9", race(1, 100, ("Ann", "r", 500, True), ("Bo", "d", 400, False)),
+                       {"seats": 1, "elected": [], "not_final": 0}, {}, {}, "2026-11-03")
+    assert _row_shares(big) == {"Ann": "50.0", "Bo": "40.0"}, (
+        f"one seat, 100 scattered: the share is not of every vote cast: {_row_shares(big)}")
+    held =BE.race_card("H|Strafford|21", s21, {"seats": 3, "elected": [], "not_final": 0}, {}, {}, "2026-11-03",
+                        {"held": {"H|Strafford|21": {"Geoff Smith": "x"}}})
+    assert set(_row_shares(held).values()) == {""}, f"a held winner's race gives shares: {_row_shares(held)}"
+    js = _source(Path("src/pages/app.js"))
+    es = json.loads(_source(Path("src/pages/lang/es.json")))
+    intro = es["strings"]["race.intro"] if "strings" in es else es["race.intro"]
+    assert "of all the votes cast for the candidates listed" in intro["en"] and intro["en"] in js \
+        and "gives none" not in js and "candidatos de la lista" in intro["es"], (
+            "the tab's intro does not say what a share in a race of several seats is of")
+    return "ok", ("Strafford 21's 30.1% of the votes for the candidates listed, Strafford 15's 70.2% of "
+                  "every vote, no share beside a held winner, the note and the intro in both languages")
+
+
+@check("build", "an unopposed race's card shows its scattered write-ins as a row of their own, every share of "
+       "all the votes cast with them, still labelled Unopposed; a contested card keeps them in its note",
+       needs=("build_elections",))
+def _election_unopposed_writeins(BE):
+    """The owner, 19 November 2026 ("Unopposed races like that can still show write-ins
+    separately"), on the real counts of 2024's Cheshire 1 (Dylan Germana 1,639, 12 scattered:
+    99.3% and Write-ins 0.7%) and Grafton 12 (four seats, four candidates, 19 scattered), a
+    named write-in standing alone (marked write-in, beside the Write-ins row), and a contested race
+    (its scattered votes still the note's)."""
+    def race(seats, scatter, *cands):
+        return {"seats": seats, "scatter": scatter, "towns": ["Keene Ward 1"], "candidates": [
+            {"name": n, "party": p, "votes": v, "write_in": bool(w), "elected": True} for n, p, v, *w in cands]}
+
+    def rows(card):
+        return [(re.sub(r"<[^>]+>", "", re.search(r'<span class="er-who">(.*?)</span><span class="er-n">', r, re.S)
+                        .group(1)).strip(), re.search(r'<span class="er-n">([\d,]+) <span>&middot; ([\d.]+)%', r).groups())
+                for r in re.findall(r'<li class="er-row[^"]*">(.*?)</li>', card, re.S)]
+    me = {"seats": 1, "elected": [], "not_final": 0}
+    card = BE.race_card("H|Cheshire|1", race(1, 12, ("Dylan Germana", "d", 1639)), me, {}, {}, "2024-11-05")
+    assert rows(card) == [("Dylan Germana (D)", ("1,639", "99.3")), ("Write-ins", ("12", "0.7"))], (
+        f"Cheshire 1's rows: {rows(card)}")
+    assert '<span class="chip er-mg">Unopposed</span>' in card and "scattered write-in" not in card \
+        and "a share is of all the votes cast, the write-ins included" in card, f"Cheshire 1's card: {card}"
+    g = BE.race_card("H|Grafton|12", race(4, 19, ("A", "d", 3000), ("B", "d", 2900), ("C", "d", 2800), ("D", "d", 2281)),
+                     dict(me, seats=4), {}, {}, "2024-11-05")
+    assert rows(g)[-1] == ("Write-ins", ("19", "0.2")) and rows(g)[0][1] == ("3,000", "27.3") and \
+        "could choose up to 4." in g, f"Grafton 12's rows: {rows(g)}"
+    big = BE.race_card("H|Grafton|13", race(2, 1000, ("A", "d", 600), ("B", "d", 400)), dict(me, seats=2), {}, {},
+                       "2024-11-05")
+    assert [r[1][1] for r in rows(big)] == ["30.0", "20.0", "50.0"], (
+        f"two seats unopposed, 1,000 written in: the shares are not of every vote: {rows(big)}")
+    w = BE.race_card("H|Rockingham|7", race(1, 41, ("Sam Wright", "", 212, True)), me, {}, {}, "2026-11-03")
+    assert [r[0] for r in rows(w)] == ["Sam Wright write-in", "Write-ins"] and "Unopposed" in w, (
+        f"a named write-in standing alone: {rows(w)}")
+    c = BE.race_card("H|Cheshire|9", race(1, 7, ("Rich Nalevanko", "r", 1524), ("Daniel Adams Eaton", "d", 1485)),
+                     me, {}, {}, "2024-11-05")
+    assert "Write-ins" not in c and "7 scattered write-in votes are not shown." in c and "R+1.3" in c, (
+        f"a contested card: {c[-300:]}")
+    return "ok", ("Cheshire 1: Dylan Germana 99.3%, Write-ins 12 (0.7%), Unopposed; Grafton 12's four and its "
+                  "19; a named write-in alone; a contested card's write-ins still in its note")
 
 
 # A MEMBER'S ELECTIONS TAB (the owner's design of 10 November 2026; src/pages/
@@ -1507,7 +2079,10 @@ def _member_elections_cards(BMEL, BME, BE):
             for r in rs:
                 want = BE.race_card(r["k"], res["races"][r["k"]], races_me[r["k"]], res,
                                     BE.totals_notes(res), res["election"], hand,
-                                    mine=BE.same_name(roster.members[mid]["name"]), anchor=False)
+                                    mine=BE.same_name(roster.members[mid]["name"]), anchor=False,
+                                    inc=BMEL.incumbents(r["k"], res["races"][r["k"]], res["election"], roster,
+                                                        {e["n"]: e for e in races_me[r["k"]]["elected"]},
+                                                        hand["matches"].get(r["k"]) or {}))
                 assert r.get("c") == want, f"{mid} {r['d']}: the tab's card is not race_card's"
                 got.setdefault(mid, []).append(r)
     assert got, "no member has a row on the made-up court"
@@ -1525,7 +2100,7 @@ def _member_elections_cards(BMEL, BME, BE):
         and "Result not final" not in beck[1]["c"], "the card of a race not final lost its recount line"
     # The elections page's own card is as it was: anchored, no row marked.
     page = BE.race_card("S|5", r26["races"]["S|5"], {}, r26, {}, "2026-11-03")
-    assert page.startswith('<article class="er-race" id="r-s-5" data-towns="alpha | beta">') \
+    assert page.startswith('<article class="er-race" id="r-s-5" data-towns="alpha | beta" data-band=') \
         and not re.search(r"\ber-me(?![\w-])", page), f"the elections page's card changed: {page[:120]}"
     # app.js draws the cards, newest first, each headed by its day linked to the race.
     html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": beck}) + ")",
@@ -1535,7 +2110,7 @@ def _member_elections_cards(BMEL, BME, BE):
     heads = re.findall(r'<article class="er-race"><p class="er-when"><a href="([^"]+)">', html)
     assert heads == ["/elections/2026-11-03-general#r-s-5",
                      "/elections/2024-11-05-general#r-h-rockingham-3"], f"the cards' heads: {heads}"
-    assert '<div class="er-cards">' in html and "<table" not in html and len(re.findall(r"\ber-me(?![\w-])", html)) == 2 \
+    assert '<div class="er-cards er-stack">' in html and "<table" not in html and len(re.findall(r"\ber-me(?![\w-])", html)) == 2 \
         and "a recount was requested" in html, (f"the tab is not the two cards, each with its row marked: cards={'<div class=\"er-cards\">' in html} table={'<table' in html} marks={len(re.findall(r'er-me(?![\w-])', html))} recount={'a recount was requested' in html}")
     for want in ("The general elections on file in which this member is recorded",
                  "appears only where the name and the district match", "Secretary of State"):
@@ -1543,6 +2118,263 @@ def _member_elections_cards(BMEL, BME, BE):
     return "ok", (f"{sum(len(v) for v in got.values())} cards for {len(got)} members, each race_card's "
                   "own with the member's row alone marked; Ida Beck's two drawn newest first under "
                   "their days, the recount line kept, both notes kept, no table")
+
+
+@check("build", "a member's Elections tab shows their primaries on their own party's ballot by the general "
+       "cards' certain rule, the leader Most votes and never nominated, the label with no letter, another "
+       "party's candidates left off and said, each primary before its year's general",
+       needs=("build_member_elections", "build_elections"))
+def _member_elections_primaries(BMEL, BE):
+    """The owner, 19 November 2026, on the made-up court of _mel_world and a made-up State
+    Primary of 8 September 2026: Dee Moss (sitting, Rockingham 2) and Ed Ford (who held it in
+    2025-2026) each get the Republican primary's card, Moss marked Most votes, the label +14.3,
+    the Democrat written in on that ballot left off and said; Ann Hart (R), with 3 votes on the
+    Democratic ballot, gets nothing and nobody else's card names her; Fay Ives, printed with no
+    party on the Democratic ballot, is not hers (she is R) and goes to the owner's list. The rows
+    sort newest first, a year's general and then its primary; app.js heads a primary with its ballot and day,
+    links it nowhere, and says where the primaries come from."""
+    sitting, former, _d, _r24, _r26 = _mel_world()
+    roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
+
+    def cand(name, party, votes, most):
+        return {"name": name, "party": party, "votes": votes, "write_in": False, "nominated": most}
+    doc = {"election": "2026-09-08", "general": "2026-11-03", "races": {
+        "R|H|Rockingham|2": {"party": "r", "seats": 1, "floterial": False, "towns": ["Beta"], "scatter": 2,
+                             "candidates": [cand("Dee Moss", "r", 400, True), cand("Ed Ford", "r", 300, False),
+                                            cand("Dan Dunn", "d", 5, False)]},
+        "D|H|Rockingham|1": {"party": "d", "seats": 1, "floterial": False, "towns": ["Alpha"], "scatter": 0,
+                             "candidates": [cand("Kim Dee", "d", 300, True), cand("Ann Hart", "r", 3, False)]},
+        "D|H|Rockingham|3": {"party": "d", "seats": 2, "floterial": False, "towns": ["Gamma"], "scatter": 0,
+                             "candidates": [cand("Lu Ray", "d", 500, True), cand("Fay Ives", "", 20, True)]}}}
+    rows, report = BMEL.primary_rows("2026-09-08", doc, roster)
+    assert sorted(rows) == ["1002", "2002"], f"the primary rows are for {sorted(rows)}, not Moss and Ford"
+    moss, ford = rows["1002"][0], rows["2002"][0]
+    assert (moss["st"], moss["pp"], moss["k"], moss["r"], moss["v"]) == ("primary", "R", "H|Rockingham|2",
+                                                                         "most", 400), f"Moss's row: {moss}"
+    assert (ford["r"], ford["v"]) == ("not", 300), f"Ford's row: {ford}"
+    card = moss["c"]
+    assert '<span class="chip er-mg">+14.3</span>' in card and 'Dee Moss <span class="mtag">(R)</span>' in card \
+        and card.count('<span class="chip">Most votes</span>') == 1 and "Elected" not in card, f"Moss's card: {card}"
+    assert "Dan Dunn" not in card and "1 candidate of another party, with 5 votes, is not shown." in card, (
+        f"the Democrat written in on the Republican ballot: {card[-300:]}")
+    assert "Most votes by <b>100 votes</b>, 14.3 points." in card and "would have changed" not in card, (
+        f"the figures of a primary: {card}")
+    low = re.sub(r"<[^>]+>", " ", " ".join(r["c"] for rs in rows.values() for r in rs)).lower()
+    assert "nominat" not in low and "won by" not in low, "a primary's card says nominated or won"
+    assert any(x[2] == "Fay Ives" and "not of it" in x[4] for x in report), f"Fay Ives is not listed: {report}"
+    order = BMEL.sort_rows([{"d": "2024-11-05", "k": "H|A|1"}, {"d": "2026-09-08", "k": "H|A|1", "st": "primary"},
+                            {"d": "2024-09-10", "k": "H|A|1", "st": "primary"}, {"d": "2026-11-03", "k": "S|5"}])
+    assert [r["d"] for r in order] == ["2026-11-03", "2026-09-08", "2024-11-05", "2024-09-10"], (
+        f"the order: {[r['d'] for r in order]}")
+    html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": [moss]}) + ")",
+                   names=("renderMemberElections",))
+    if html is None:
+        return "ok", "the rows and cards held in Python; node, app.js or the stub is not here for the tab"
+    assert '<p class="er-when">Republican primary, ' in html and "/elections/2026-09-08" not in html, (
+        f"the primary's head: {html[:600]}")
+    assert "its leader is marked Most votes" in html and "State Primary results files: 2026" in html \
+        and "shown on the elections pages" not in html, f"the tab's notes for a primary: {html[-700:]}"
+    return "ok", ("Moss and Ford on the Republican ballot, Moss Most votes at +14.3, the written-in Democrat "
+                  "left off and said, Hart on the other ballot and Ives with no party not shown, a "
+                  "year's general and then its primary, the tab's head and notes")
+
+
+@check("build", "a member's Elections tab is one column of race cards under a heading for each election "
+       "cycle, strictly newest first: a cycle's general, then its primary",
+       needs=("build_member_elections",))
+def _member_elections_cycles(BMEL):
+    """The owner, 19 November 2026 (twice: the order was corrected the same day). Three rows given
+    in a muddle -- 2024's primary, 2026's general, 2024's general -- are sorted by sort_rows and
+    drawn by app.js: a heading "2026" over one stacked list holding 2026's general, a heading
+    "2024" over one holding 2024's general and then its primary; and app.css draws a stacked list
+    in one column at every width (.er-cards.er-stack, which no later rule or media query
+    undoes)."""
+    def row(d, k, st=None):
+        r = {"d": d, "k": k, "a": "r-" + d, "r": "won", "v": 1, "s": 1,
+             "c": f'<article class="er-race"><div class="er-hd"><h3>{d}</h3></div></article>'}
+        if st:
+            r.update(st=st, pp="D")
+        return r
+    rows = BMEL.sort_rows([row("2024-09-10", "H|Strafford|15", "primary"), row("2026-11-03", "H|Strafford|21"),
+                           row("2024-11-05", "H|Strafford|15")])
+    assert [r["d"] for r in rows] == ["2026-11-03", "2024-11-05", "2024-09-10"], f"the order: {[r['d'] for r in rows]}"
+    html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": rows}) + ")",
+                   names=("renderMemberElections",))
+    css = _source(Path("src/pages/app.css"))
+    rules = re.findall(r"([^{}]*\.er-stack[^{}]*)\{([^}]*)\}", css)
+    assert rules and all("grid-template-columns:minmax(0,1fr)" in body.replace(" ", "") for _s, body in rules
+                         if "grid-template-columns" in body) and any(
+        "grid-template-columns" in b for _s, b in rules), f"app.css's stacked list: {rules}"
+    for m in re.finditer(r"@media[^{]*\{", css):
+        depth, i = 1, m.end()
+        while depth and i < len(css):
+            depth += {"{": 1, "}": -1}.get(css[i], 0)
+            i += 1
+        assert ".er-stack" not in css[m.end():i], f"a media query changes the stacked list: {m.group(0)}"
+    if html is None:
+        return "ok", "the order and the one column held; node, app.js or the stub is not here for the tab"
+    got = re.findall(r'<h3 class="er-cycle">(\d{4})</h3><div class="er-cards er-stack">(.*?)</div>(?=<h3|<p|\s)', html, re.S)
+    assert [(y, re.findall(r"<h3>([\d-]+)</h3>", body)) for y, body in got] == [
+        ("2026", ["2026-11-03"]), ("2024", ["2024-11-05", "2024-09-10"])], f"the cycles: {got}"
+    assert html.count('class="er-cards"') == 0 and html.count("er-stack") == 2, "a list of cards is not stacked"
+    return "ok", "2026's general under 2026; 2024's general, then its primary, under 2024; one column at every width"
+
+
+@check("data", "on today's roster and results, Alice Wade's tab reads 2026's general, 2024's general, 2024's "
+       "primary, and every uncontested race a member ran in is a card, counted by kind",
+       needs=("build_member_elections", "build_members_elect"))
+def _member_elections_order_on_file(BMEL, BME):
+    """The owner's own case of 19 November 2026, on a built site's roster (site/legislators.json,
+    former.json, districts.json, meta.json) and collected/: build_member_elections.build's rows for
+    Wade (11286) in that order, and the cards labelled Unopposed (no more candidates than seats)
+    counted for the generals and the primaries."""
+    site = Path("site")
+    need = [site / n for n in ("legislators.json", "former.json", "districts.json", "meta.json")]
+    if not all(p.is_file() for p in need):
+        return "skip", "not here: " + ", ".join(p.as_posix() for p in need if not p.is_file())
+    import build_date
+    by_member, _report, _e = BMEL.build(site, "collected", BME.HAND_DEFAULT, build_date.today().isoformat())
+    wade = [(r["d"], r.get("st") or "general", r["k"]) for r in by_member.get("11286") or []]
+    assert wade == [("2026-11-03", "general", "H|Strafford|21"), ("2024-11-05", "general", "H|Strafford|15"),
+                    ("2024-09-10", "primary", "H|Strafford|15")], f"Wade's tab: {wade}"
+    un = {"general": 0, "primary": 0}
+    for rows in by_member.values():
+        for r in rows:
+            if '<span class="chip er-mg">Unopposed</span>' in r.get("c", ""):
+                un[r.get("st") or "general"] += 1
+    rows = sum(len(v) for v in by_member.values())
+    return "ok", (f"Wade's three cards in the owner's order; {rows} cards for {len(by_member)} members, of them "
+                  f"Unopposed: {un['general']} general, {un['primary']} primary")
+
+
+@check("data", "on today's roster and primary files, Alice Wade's 2024 Democratic primary in Strafford 15 is "
+       "on her tab, Most votes at +42.1 with Keith Mistretta's 0 left off, and her written-in votes on "
+       "2026's Republican ballot are not", needs=("build_member_elections", "build_members_elect"))
+def _member_primaries_on_file(BMEL, BME):
+    """The owner's own cases of 19 November 2026, on site/legislators.json and site/former.json (a
+    build's) and collected/primary_2024.json and primary_2026.json, matched without the bills'
+    seat history, which only the 2016-2022 surnames need."""
+    site = Path("site")
+    need = [site / "legislators.json", site / "former.json", site / "meta.json",
+            Path("collected/primary_2024.json"), Path("collected/primary_2026.json")]
+    if not all(p.is_file() for p in need):
+        return "skip", "not here: " + ", ".join(p.as_posix() for p in need if not p.is_file())
+    meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+    roster = BMEL.Roster(json.loads(need[0].read_text(encoding="utf-8")),
+                         json.loads(need[1].read_text(encoding="utf-8")), meta.get("terms") or [])
+    if "11286" not in roster.members:
+        return "skip", "Alice Wade (11286) is not on this roster"
+    got, n = [], 0
+    for day, doc in BMEL.primaries_on_file("collected"):
+        if day[:4] not in ("2024", "2026"):
+            continue
+        rows, _rep = BMEL.primary_rows(day, doc, roster)
+        n += sum(len(v) for v in rows.values())
+        got += rows.get("11286", [])
+    assert [(r["d"], r["pp"], r["k"], r["r"], r["v"]) for r in got] == [
+        ("2024-09-10", "D", "H|Strafford|15", "most", 405)], f"Wade's primaries: {[(r['d'], r['pp'], r['k']) for r in got]}"
+    card = got[0]["c"]
+    assert '<span class="chip er-mg">+42.1</span>' in card and "Lucas Veitch" in card and "Most votes" in card \
+        and "Keith Mistretta" not in card and "1 candidate of another party, with 0 votes, is not shown." in card, (
+            f"Wade's 2024 primary card: {card}")
+    return "ok", f"Wade's one primary of 2024 and 2026 as the owner described it; {n} primary rows in those two years"
+
+
+@check("build", "a race card marks * each candidate who held a seat in the race's chamber on election day, "
+       "on a certain match only, and says once under the cards what the mark is",
+       needs=("build_member_elections", "build_elections", "build_members_elect"))
+def _election_incumbents(BMEL, BE, BME):
+    """The owner, 19 November 2026, on the made-up court of _mel_world. 2026's Senate 5: Ida Beck,
+    sitting in the Senate, is marked and Rob Cole is not. 2024's Rockingham 1: Bob Lowe, who held
+    it in 2023-2024, is marked; Ann Hart, who sits for it only from 2025, is not (a newcomer); nor
+    Olly Old (2001-2002). A former member whose last recorded day is in the first year of the
+    term had left before the election, and is not marked; a sitting Representative running for
+    the Senate is not marked there (the House is not the race's chamber); a namesake of a member
+    in another district is no match. The card draws the asterisk with its words; the page's
+    House tab says it once; the tab's cards in node say it once, by chamber."""
+    sitting, former, districts, r24, r26 = _mel_world()
+    former = former + [_mel_member("2005", "Gone", "Gil", "H", "Rockingham", "2", "former")]
+    former[-1]["served"]["last"] = "6/1/2023"
+    roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
+
+    def c(name, votes, party="r"):
+        return {"name": name, "party": party, "votes": votes, "write_in": False, "elected": None}
+    got = {
+        "S|5 2026": BMEL.incumbents("S|5", r26["races"]["S|5"], "2026-11-03", roster),
+        "H1 2024": BMEL.incumbents("H|Rockingham|1", r24["races"]["H|Rockingham|1"], "2024-11-05", roster),
+        "H2 2024": BMEL.incumbents("H|Rockingham|2", {"seats": 1, "candidates": [c("Gil Gone", 10), c("Dee Moss", 9)]},
+                                   "2024-11-05", roster),
+        # Fay Ives, a sitting Representative, wins the Senate seat: the page links her, and she held
+        # no seat of the Senate on election day.
+        "S|6 2026": BMEL.incumbents("S|6", {"seats": 1, "candidates": [dict(c("Fay Ives", 10), elected=True),
+                                                                       c("Joe Kay", 9)]},
+                                    "2026-11-03", roster, {"Fay Ives": {"n": "Fay Ives", "id": "1003"}}),
+        "H4 2026": BMEL.incumbents("H|Rockingham|4", {"seats": 1, "candidates": [c("Dee Moss", 10), c("Nan Pike", 9)]},
+                                   "2026-11-03", roster),
+    }
+    assert got == {"S|5 2026": {"Ida Beck"}, "H1 2024": {"Bob Lowe"}, "H2 2024": set(), "S|6 2026": {"Joe Kay"},
+                   "H4 2026": {"Nan Pike"}}, f"the incumbents: {got}"
+    card = BE.race_card("S|5", r26["races"]["S|5"], {}, r26, {}, "2026-11-03", inc=got["S|5 2026"])
+    assert ('Ida Beck <span class="mtag">(R)</span></span> <abbr class="er-inc" title="held a seat in the Senate '
+            'on election day">*</abbr>') in card and card.count("er-inc") == 1, f"the Senate card: {card}"
+    body = BE.page_body(r24["election"], r24, {k: {"seats": r["seats"], "elected": [], "not_final": 0}
+                                               for k, r in r24["races"].items()}, {}, {}, "site", [], True,
+                        {"H|Rockingham|1": got["H1 2024"]})
+    house = body.split('id="house"', 1)[1]
+    assert house.count('class="er-inc"') == 1 and house.count(
+        '<p class="src er-incl">* held a seat in the House on election day.</p>') == 1, (
+        "the House tab does not mark Bob Lowe once and say what the mark is once")
+    plain = BE.page_body(r24["election"], r24, {k: {"seats": r["seats"], "elected": [], "not_final": 0}
+                                                for k, r in r24["races"].items()}, {}, {}, "site", [], True)
+    assert "er-incl" not in plain and "er-inc" not in plain, "a page with nobody marked says what the mark is"
+    html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": [
+        {"d": "2026-11-03", "k": "S|5", "a": "r-s-5", "r": "won", "v": 9000, "s": 1, "c": card, "inc": "S"},
+        {"d": "2024-11-05", "k": "H|Rockingham|1", "a": "r-h-rockingham-1", "r": "lost", "v": 1500, "s": 1,
+         "c": card, "inc": "H"}]}) + ")", names=("renderMemberElections",))
+    if html is None:
+        return "ok", "the marks held in Python; node, app.js or the stub is not here for the tab"
+    assert html.count("* held a seat in the Senate on election day.") == 1 and \
+        html.count("* held a seat in the House on election day.") == 1, f"the tab's legend: {html[-600:]}"
+    return "ok", ("Beck and Lowe marked, Hart (a newcomer), Old, a member gone before the election, a "
+                  "namesake and a Representative in a Senate race not; the card's asterisk, the page's "
+                  "one line and the tab's one line a chamber")
+
+
+@check("data", "on today's roster and results, the incumbents' marks fall where the record says: Alice Wade "
+       "not in 2024, when she was first elected, and marked in 2026; the marks counted by year",
+       needs=("build_member_elections", "build_members_elect", "build_elections"))
+def _election_incumbents_on_file(BMEL, BME, BE):
+    """The owner's own case of 19 November 2026 on a built site's roster (site/legislators.json,
+    former.json, meta.json) and collected/election_<year>.json, with the bills' seat history where
+    text_sponsors.json is on disk (BME.load_history): Wade (11286) first won Strafford 15 in 2024
+    and is not marked there, and is marked in Strafford 21 in 2026 (sitting in 2025-2026)."""
+    site = Path("site")
+    need = [site / "legislators.json", site / "former.json", site / "meta.json", site / "districts.json"]
+    if not all(p.is_file() for p in need):
+        return "skip", "not here: " + ", ".join(p.as_posix() for p in need if not p.is_file())
+    import build_date
+    sitting, former, meta, districts = (json.loads(p.read_text(encoding="utf-8")) for p in need)
+    history = BME.load_history(BME.SPONSORS_DEFAULT)
+    roster = BMEL.Roster(sitting, former, meta.get("terms") or [], history)
+    if "11286" not in roster.members:
+        return "skip", "Alice Wade (11286) is not on this roster"
+    by_year, wade = {}, {}
+    items = BE.elections_on_file("collected")
+    for election, _p, doc in items:
+        # The page's own way: the winners members_elect links, then the hand file, then the rule.
+        races_me, _rep, hand = BE.decided(doc, sitting, former, districts, BME.HAND_DEFAULT,
+                                          build_date.today().isoformat(), BE.settled_in(items, election), history)
+        n = 0
+        for k, race in doc["races"].items():
+            drawn = {e["n"]: e for e in (races_me.get(k) or {}).get("elected") or []}
+            inc = BMEL.incumbents(k, race, election, roster, drawn, (hand.get("matches") or {}).get(k) or {})
+            n += len(inc)
+            if k in ("H|Strafford|15", "H|Strafford|21") and "Alice Wade" in {c["name"] for c in race["candidates"]}:
+                wade[election[:4]] = "Alice Wade" in inc
+        by_year[election[:4]] = n
+    assert wade == {"2024": False, "2026": True}, f"Wade's marks: {wade}"
+    return "ok", ("Wade unmarked in 2024 and marked in 2026; marks by year: "
+                  + ", ".join(f"{y} {n}" for y, n in sorted(by_year.items())))
 
 
 # THE ELECTIONS BEFORE 2024 (10 November 2026; branch dec/results-2016-2022). The

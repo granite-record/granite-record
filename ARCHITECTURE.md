@@ -2443,6 +2443,47 @@ Hillsborough District 11"), with the member-elect sentence beside it
 `GR_ELECT`). Both end on the day they take office, by the build's day and the
 reader's clock.
 
+A race's margin is one function's, `src/pages/election_margin.py` (the
+elections display design of 19 November 2026): the two-way lead of the last
+winner over the first out, in points to one decimal, labelled with the last
+winner's printed letters ("R+1.3", "R+0.7 over R" where both share a party,
+Unopposed, Tied, none with no seat count; a primary's with no letter). The
+elections page draws it at the top right of each race's card in the one chip,
+with the gap in votes and the votes that would have changed it under the rows,
+and so does a member's Elections tab, whose cards are the page's own; each card
+on the page carries `data-band`, `data-points` and `data-gap`, which the House
+and Senate tabs' margin buttons, with their counts, and Order read
+(`build_elections.MARGIN_JS`, which also runs the House's town box); the
+overview's Smallest Margins is that order's first eight. A race whose winner the
+owner holds back shows no margin. preflight holds the rule on made-up races
+(`_margin_rule`), every race on file against a second hand and the design's
+measure (`_margins_on_file`), the page and its script in node
+(`_elections_margins_page`) and a built site's pages against the data
+(`_elections_margins_built`).
+
+A member's Elections tab also lists their State Primary candidacies
+(`build_member_elections.primary_rows`, from `collected/primary_<year>.json`),
+on their own party's ballot only and by the same certain rule as a loss; the
+card is `race_card`'s with `primary=` the ballot's party: the leader Most votes,
+never nominated, the label with no letter, the votes the file lists for another
+party's candidates left off and said in the note. The tab is one column of
+cards under a heading for each election cycle, strictly newest first: a cycle's
+general, then its primary under it (`sort_rows`, `cycle_of`; a special, when one
+is read, is to carry its cycle in `cy`). An uncontested race is a card too,
+labelled Unopposed (19 November 2026). On an Unopposed card, here and on the
+elections pages, the scattered write-ins are a row of their own ("Write-ins")
+and every share is of all the votes cast with them; a contested card keeps them
+in its note.
+
+Every race card, on the elections pages and the tab, marks * a candidate who held
+a seat in the race's chamber on election day (`build_member_elections.incumbents`):
+the member is found as the tab finds one (the page's own link for a winner, the
+owner's hand-file match, else `Roster.certain`), and held a seat of that chamber
+in the term sitting that day by the roster's seat or the seats their bills print
+(`entities.printed_tenures`); a former member whose last recorded day is before
+the election's year had left. A candidate the rule cannot place is not marked.
+One line under the cards says what the mark is.
+
 The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
 gives `find.json` a row of the kind `elect` for each new member-elect with a
 provisional page and each former member elected again, named with the
@@ -2784,7 +2825,12 @@ a member-elect until the General Court numbers
 them; a date only where a record states one; a holder of a hand-file office
 is linked to a person by the file's own `member` entry, by the owner's hand
 file of links or by the rule below, never by a name alone.
-Party and seat are a tenure's. A party is kept as its file prints it and read,
+Party and seat are a tenure's, and a primary's: two parties' primaries for one
+office on one day are two contests, so a primary contest carries its party as
+printed with its letters, and its id says it in the stage's word
+(`2024-09-10.primary-r.us-house.1`, as the State Primary readers id their races;
+`entities.contest_id`'s `party`); a general names none (19 November 2026,
+`_entity_primary_party`). A party is kept as its file prints it and read,
 into the letters it stands for (`parties`: "R/D" is R and D), by the one table
 of parties in `src/lib/state_settings.json` ("parties": each party's letter,
 the site's words for it, every form the files print it in, and the colours

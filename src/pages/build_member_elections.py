@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.5
+# GRANITE_VERSION: 2026-11-10.9
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -70,8 +70,23 @@ candidates. A race whose winner the owner holds back has neither. Where a race
 is a recount's, the row says so; the first count is not on file. And "c", the
 race's card as the elections page draws it (build_elections.race_card, the
 same function), with the member's own row marked, which is what the tab
-draws (the owner, 18 November 2026); the fields above stay for a reader of
-the JSON and for a row with no card.
+draws (the owner, 18 November 2026), its margin's label and figures with it
+(build_elections.margin_chip, election_margin.py's one rule, 19 November
+2026); the fields above stay for a reader of the JSON and for a row with no
+card.
+
+THE PRIMARIES (the owner, 19 November 2026). collected/primary_<year>.json
+(src/parse/parse_sos_primary_results.py) is read too: a member's candidacy on
+their own party's ballot is a row ("st": "primary", "pp": the party), matched
+by the same certain rule as a loss above, never by the hand file (its matches
+are the general's), and never on another party's ballot: the votes a file
+lists for another party's candidates are left off the card and said in its
+note. The leader is "Most votes", never nominated; the label has no letter.
+A race with no more candidates than seats is a card too, labelled Unopposed.
+
+THE ORDER (the owner, 19 November 2026): strictly newest first, under a
+heading for each election cycle (app.js), a cycle's general and then its
+primary; one column of cards.
 
 Nothing here asks the network.
 """
@@ -129,6 +144,8 @@ class Roster:
                                   for k in ks}
                 if p["seat"] and p["term"]:
                     p["held"].add((p["term"], p["seat"]))
+                # A former member's last recorded day, and their last term: who left early.
+                p["last"], p["last_term"] = (m.get("served") or {}).get("last") or "", served[-1] if served else ""
                 p["readings"], p["sfx"] = BME.readings(p["name"])
                 p["party"] = str(m.get("party") or "")[:1].upper()
                 self.members[p["id"]] = p
@@ -296,8 +313,137 @@ def election_rows(election, results, races_me, hand, roster, people):
                                               "only loosely"))
                     continue
             row = race_row(election, key, race, me, c, won is not None, held)
+            inc = incumbents(key, race, election, roster, drawn, said) - held
             row["c"] = BE.race_card(key, race, me, results, tnotes, election, hand,
-                                    mine=BE.same_name(c["name"]), anchor=False)
+                                    mine=BE.same_name(c["name"]), anchor=False, inc=inc)
+            if inc:
+                row["inc"] = key[0]
+            rows[member["id"]].append(row)
+    return rows, report
+
+
+def member_for(c, key, race, election, drawn, said, roster):
+    """The member candidate `c` of race `key` is, or None: the elections page's
+    own link for a drawn winner, the owner's hand-file match, else the certain
+    rule (Roster.certain) -- the order election_rows takes, with nothing
+    reported. `drawn` is {name: members_elect's winner}, `said` the hand file's
+    matches for the race."""
+    won = drawn.get(BE.same_name(c["name"])) if c.get("elected") is True else None
+    if won is not None and won.get("id"):
+        return roster.members.get(str(won["id"]))
+    if won is not None and c["name"] not in said:
+        return None  # a winner the elections page draws and does not link: its refusal stands
+    if c["name"] in said:
+        return roster.members.get(str(said[c["name"]])) if said[c["name"]] is not None else None
+    got, _why = roster.certain(c["name"], key, election, race, c.get("party"))
+    return got[0] if len(got) == 1 else None
+
+
+def _day_of(mdy):
+    """"6/4/2026" -> "2026-06-04", or "" where it is not such a day."""
+    try:
+        m, d, y = (int(x) for x in str(mdy).split("/"))
+        return f"{y:04d}-{m:02d}-{d:02d}"
+    except ValueError:
+        return ""
+
+
+def held_on(member, chamber, day):
+    """Whether `member` held a seat of `chamber` ("H" or "S") in the term sitting
+    on `day`: a seat of it in that term among the seats the record gives them
+    (the roster's seat for its term, and every seat their bills of a term print,
+    entities.printed_tenures through BME.seat_history). A former member whose last
+    recorded day is before the election's year, in that term, had left it."""
+    term = BME.term_before(BME.term_after(int(day[:4])))
+    if not any(t == term and k.startswith(chamber + "|") for t, k in member["held"]):
+        return False
+    gone = _day_of(member.get("last"))
+    return not (member["kind"] == "former" and member.get("last_term") == term and gone
+                and gone < f"{day[:4]}-01-01")
+
+
+def incumbents(key, race, election, roster, drawn=None, said=None):
+    """The candidates of race `key` (same_name) who held a seat in its chamber
+    on election day (the owner, 19 November 2026: marked * on the card), each
+    by a certain match only (member_for) and held_on; a wrong mark is worse than
+    none, so a candidate the rule cannot place is not marked."""
+    chamber = key.split("|", 1)[0]
+    out = set()
+    for c in race["candidates"]:
+        m = member_for(c, key, race, election, drawn or {}, said or {}, roster)
+        if m and held_on(m, chamber, election):
+            out.add(BE.same_name(c["name"]))
+    return frozenset(out)
+
+
+PRIMARY_RE = "primary_*.json"
+
+
+def primaries_on_file(collected):
+    """[(primary day, document)] of every collected/primary_<year>.json
+    (src/parse/parse_sos_primary_results.py), oldest first."""
+    out = []
+    for p in sorted(Path(collected).glob(PRIMARY_RE)):
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        if isinstance(doc, dict) and doc.get("election") and isinstance(doc.get("races"), dict):
+            out.append((doc["election"], doc))
+    return out
+
+
+def primary_race(race):
+    """A primary's race as its card draws it: the candidates on that party's
+    ballot -- of its party, or of none the file prints -- and, as
+    "other_votes", the votes for candidates of another party, which the file
+    lists (a few written in, 2026's Republican Strafford 21 printing three
+    Democrats with 3 to 5 votes; a 0 for 2024's Democratic Strafford 15's
+    Republican) and which are no campaign on this ballot."""
+    ballot = str(race.get("party") or "").lower()
+    keep = [c for c in race["candidates"] if str(c.get("party") or "").lower() in (ballot, "")]
+    gone = [c for c in race["candidates"] if c not in keep]
+    out = dict(race, candidates=keep)
+    if gone:
+        out["other_votes"], out["other_rows"] = sum(c["votes"] for c in gone), len(gone)
+    return out
+
+
+def primary_rows(day, doc, roster):
+    """({member id: [row, ...]}, [report line, ...]) for one primary day: a
+    member's candidacy on their own party's ballot, by the general cards' own
+    certain rule (Roster.certain: the whole name and a seat held the term
+    before or after; the stricter surname rule where the file prints surnames),
+    never on another party's ballot. A candidate the file prints with no party
+    is the member only where the member is of the ballot's party. Each row is
+    the general's shape with "st": "primary" and "pp", the ballot's party, and
+    "c", the race's card (build_elections.race_card with primary=)."""
+    rows, report = defaultdict(list), []
+    for key in sorted(doc["races"], key=lambda k: (k.split("|", 1)[0],) + tuple(
+            BME.race_order(k.split("|", 1)[1]) if BME.KEY_RE.match(k.split("|", 1)[1]) else (9,))):
+        party, gkey = key.split("|", 1)
+        if not BME.KEY_RE.match(gkey):
+            continue
+        race = primary_race(doc["races"][key])
+        ballot = party.upper()
+        for c in race["candidates"]:
+            printed = str(c.get("party") or "").upper()
+            got, why = roster.certain(c["name"], gkey, day, race, c.get("party"))
+            if got and not printed and got[0]["party"] != ballot:
+                got, why = [], f"printed with no party on the {ballot} ballot; the member is not of it"
+            if not got:
+                if why:
+                    report.append((day, f"{ballot} primary {gkey}", c["name"],
+                                   roster.surname_near(c["name"], gkey) if race.get("surnames") else "", why))
+                continue
+            member = got[0]
+            row = {"d": day, "st": "primary", "pp": ballot, "k": gkey, "a": BE.race_id(gkey),
+                   "r": "most" if c.get("nominated") is True else "not", "v": c["votes"],
+                   "s": race["seats"]}
+            if race.get("floterial"):
+                row["fl"] = 1
+            inc = incumbents(gkey, race, day, roster)
+            row["c"] = BE.race_card(gkey, race, {}, doc, {}, day, {}, mine=BE.same_name(c["name"]),
+                                    anchor=False, primary=ballot, inc=inc)
+            if inc:
+                row["inc"] = gkey[0]
             rows[member["id"]].append(row)
     return rows, report
 
@@ -320,9 +466,18 @@ def near_members(name, key, people):
     return ", ".join(sorted(set(found)))
 
 
+def cycle_of(row):
+    """The election cycle a row is drawn under on the tab (app.js groups by it):
+    a general's or a primary's own year. A special election, when one is read,
+    is to carry the cycle of the term whose seat it fills, and so sits among
+    that cycle's rows by its day."""
+    return row.get("cy") or row["d"][:4]
+
+
 def sort_rows(rows):
-    """Newest election first; within one, the Senate before the House."""
-    return sorted(rows, key=lambda r: (r["d"], r["k"].startswith("S|")), reverse=True)
+    """Strictly newest first (the owner, 19 November 2026): a cycle's general,
+    then its primary under it; within one election, the Senate before the House."""
+    return sorted(rows, key=lambda r: (cycle_of(r), r["d"], r["k"].startswith("S|")), reverse=True)
 
 
 def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT):
@@ -345,6 +500,12 @@ def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT):
         BE.with_pages(races_me, pages.get(election))
         people = BME.People(sitting, former, BME.ballot_of(results))
         got, rep = election_rows(election, results, races_me, hand, roster, people)
+        for mid, rows in got.items():
+            by_member[mid] += rows
+        report += rep
+    # The primaries (the owner, 19 November 2026): each on the member's own party's ballot.
+    for day, doc in primaries_on_file(collected):
+        got, rep = primary_rows(day, doc, roster)
         for mid, rows in got.items():
             by_member[mid] += rows
         report += rep
@@ -455,7 +616,8 @@ def main():
               f"{a.site}/legislators/<id>.json, so no tab: {', '.join(missing[:8])}", file=sys.stderr)
     wins = sum(1 for rs in by_member.values() for r in rs if r["r"] == "won")
     lost = sum(1 for rs in by_member.values() for r in rs if r["r"] == "lost")
-    rows = sum(len(rs) for rs in by_member.values())
+    prim = sum(1 for rs in by_member.values() for r in rs if r.get("st") == "primary")
+    rows = sum(len(rs) for rs in by_member.values()) - prim
     rp = Path(a.report)
     try:
         rp.parent.mkdir(parents=True, exist_ok=True)
@@ -464,7 +626,8 @@ def main():
     except OSError as e:
         said = f"{len(report)} to settle (the report could not be written: {e})"
     print(f"member elections: {len(by_member)} members, {rows} rows ({wins} won, {lost} lost, "
-          f"{rows - wins - lost} not final or tied); {changed} member files changed; {said}")
+          f"{rows - wins - lost} not final or tied) and {prim} primary rows; {changed} member files "
+          f"changed; {said}")
     return 0
 
 

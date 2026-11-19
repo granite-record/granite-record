@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.352
+// GRANITE_VERSION: 2026-09-07.356
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10161,27 +10161,42 @@ function memberElectionTab(m){
 // elections page draws, written by build_elections.race_card with the
 // member's own row marked er-me; headed here by the election's day, linked to
 // the race on that page as the row was.
+// A primary (the owner, 19 November 2026) is headed by its party's ballot and
+// its day, and links nowhere: no page of the primaries is built yet.
 function electionCard(r){
   const href=`/elections/${esc(r.d)}-general#${esc(r.a)}`;
-  const when=`<p class="er-when"><a href="${href}">${esc(dateWords(r.d))}</a></p>`;
+  const ballot=r.pp==="D"?tr("race.primary_d","Democratic primary"):r.pp==="R"
+    ?tr("race.primary_r","Republican primary"):tr("race.primary_l","Libertarian primary");
+  const when=r.st==="primary"?`<p class="er-when">${esc(ballot)}, ${esc(dateWords(r.d))}</p>`
+    :`<p class="er-when"><a href="${href}">${esc(dateWords(r.d))}</a></p>`;
   return String(r.c).replace(/^<article\b[^>]*>/,m=>m+when);
 }
 function renderMemberElections(m){
   const rows=m.elections||[];
   if(!rows.length)return "";
-  const days=[...new Set(rows.map(r=>r.d))];
+  const prim=[...new Set(rows.filter(r=>r.st==="primary").map(r=>r.d.slice(0,4)))].join(", ");
+  // The incumbent's asterisk (the owner, 19 November 2026), said once under the cards.
+  const inc=["H","S"].filter(c=>rows.some(r=>r.c&&r.inc===c)).map(c=>`<p class="src er-incl">${
+    c==="H"?tr("race.inc_h","* held a seat in the House on election day."):tr("race.inc_s","* held a seat in the Senate on election day.")}</p>`).join("");
+  const days=[...new Set(rows.filter(r=>r.st!=="primary").map(r=>r.d))];
   const src=days.map(d=>`<a href="/elections/${esc(d)}-general">${esc(
     tr("race.year","{year} general election",{year:d.slice(0,4)}))}</a>`).join(", ");
   // A row with no card (a file written before the cards) keeps the table.
   const cards=rows.filter(r=>r.c), plain=rows.filter(r=>!r.c);
-  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. A share is of every vote cast in the race, write-ins included; a race for more than one seat gives none, because a voter could choose several.")}</p>
-    ${cards.length?`<div class="er-cards">${cards.map(electionCard).join("")}</div>`:""}${plain.length?`
+  // ONE COLUMN, A HEADING FOR EACH ELECTION CYCLE (the owner, 19 November 2026): the
+  // rows come newest first (build_member_elections.sort_rows), a cycle's general and
+  // then its primary; a special is to carry its cycle in "cy".
+  const cyc=[...new Set(cards.map(r=>r.cy||r.d.slice(0,4)))];
+  const stack=cyc.map(y=>`<h3 class="er-cycle">${esc(y)}</h3><div class="er-cards er-stack">${
+    cards.filter(r=>(r.cy||r.d.slice(0,4))===y).map(electionCard).join("")}</div>`).join("");
+  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}${prim?" "+tr("race.intro_primary","A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; its leader is marked Most votes."):""}</p>
+    ${stack}${inc}${plain.length?`
     <table class="votes vfull"><thead><tr><th>${esc(tr("race.col_election","Election"))}</th>
       <th>${esc(tr("race.col_race","Race"))}</th><th>${esc(tr("race.col_result","Result"))}</th>
       <th>${esc(tr("race.col_votes","Votes"))}</th></tr></thead>
       <tbody>${plain.map(electionRow).join("")}</tbody></table>`:""}
     <p class="src">${tr("race.omitted","A race this member lost appears only where the name and the district match the record exactly; any other is left off.")}
-      ${tr("race.source","Source: the New Hampshire Secretary of State&rsquo;s official results, shown on the elections pages: {years}. Each row links to its race there.",{years:src})}</p>`;
+      ${days.length?tr("race.source","Source: the New Hampshire Secretary of State&rsquo;s official results, shown on the elections pages: {years}. Each row links to its race there.",{years:src}):""}${prim?" "+tr("race.source_primary","The primaries are from the Secretary of State&rsquo;s State Primary results files: {years}; no page of them is on this site yet.",{years:esc(prim)}):""}</p>`;
 }
 
 function renderMember(m){

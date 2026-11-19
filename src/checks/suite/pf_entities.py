@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -288,6 +288,65 @@ def _entity_shapes(EN):
     return "ok", ("a model that keeps every rule, a mid-term change as two dated tenures of one seat "
                   "among them, passes; thirteen faults are each seen, from a district id with no era "
                   "to a member-elect under an id of ours")
+
+
+@check("build", "a primary is one party's contest: it carries the party as printed and its letters, its "
+       "id's stage word says it (\"primary-r\"), a general names none, and the State Primary readers' "
+       "ids are the model's", needs=("entities",))
+def _entity_primary_party(EN):
+    """The elections display design of 19 November 2026 (the Model row of its section 1): the
+    model's contest had a stage and no party, and two parties' primaries for one office on one
+    day are two contests. On the state's own settings, two primaries for Congress 1 and the
+    general beside them hold every rule; a primary with no party, a primary whose id names
+    another party, a general naming a party and a primary's letters the table does not read are
+    each seen. Then every race of collected/primary_<year>.json that carries an id has one of the
+    model's shape whose stage word is its party's (the House and Senate ones carry none yet)."""
+    offices = EN.offices(None)
+    day, gen = "2024-09-10", "2024-11-05"
+    r, d = EN.contest_id(day, "primary", "us-house", "1", "r"), EN.contest_id(day, "primary", "us-house", "1", "d")
+    assert (r, EN.contest_id(gen, "general", "us-house", "1")) == (
+        "2024-09-10.primary-r.us-house.1", "2024-11-05.general.us-house.1"), f"the ids: {r}"
+    base = {"office": offices, "contest": [
+        {"contest": r, "election": day, "stage": "primary", "party": "r", "parties": ["R"],
+         "office": "us-house", "district": None, "seats": 1, "source": "m"},
+        {"contest": d, "election": day, "stage": "primary", "party": "d", "parties": ["D"],
+         "office": "us-house", "district": None, "seats": 1, "source": "m"},
+        {"contest": EN.contest_id(gen, "general", "us-house", "1"), "election": gen, "stage": "general",
+         "office": "us-house", "district": None, "seats": 1, "source": "m"}],
+        "candidacy": [{"candidacy": EN.candidacy_id(r, "Russell Prescott", "r"), "contest": r,
+                       "printed": "Russell Prescott", "party": "r", "parties": ["R"], "person": None,
+                       "source": "m"}]}
+    got = EN.problems(base)
+    assert got == [], f"two primaries and a general that keep every rule broke some: {got[:4]}"
+
+    def fault(what, i, change, words):
+        m = copy.deepcopy(base)
+        m["contest"][i].update(change)
+        for k in [k for k, v in change.items() if v is None]:
+            del m["contest"][i][k]
+        said = EN.problems(m)
+        assert any(words in s for s in said), f"{what} was not seen ({said[:3]})"
+
+    fault("a primary with no party", 0, {"party": None, "parties": None}, "names no party")
+    fault("a primary whose id names another party", 1, {"party": "r", "parties": ["R"]}, "its id says")
+    fault("a general naming a party", 2, {"party": "r", "parties": ["R"]}, "names a party")
+    fault("a primary's letters the table does not read so", 0, {"parties": ["D"]}, "which the table reads")
+    ids, files = 0, sorted(Path("collected").glob("primary_*.json"))
+    for p in files:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        for key, race in doc["races"].items():
+            if "contest" not in race:
+                continue
+            ids += 1
+            word = race["contest"].split(".")[1]
+            assert re.match(EN.CONTEST, race["contest"]) and word == "primary-" + EN.slug(race["party"]), (
+                f"{p.name} {key}: {race['contest']} is not the model's id of the {race['party']!r} primary")
+            for c in race["candidates"]:
+                assert re.match(EN.CANDIDACY, c["id"]), f"{p.name} {key}: {c['id']} is no candidacy id"
+    if not files:
+        return "skip", "the rule held; no collected/primary_<year>.json here to hold the readers' ids to"
+    return "ok", (f"two primaries and a general hold, four faults each seen; {ids} primary races' ids "
+                  f"in {len(files)} files are the model's")
 
 
 @check("files", "New Hampshire's offices and district kinds are data in the state's settings, and each article of the Constitution they name is one on file",
@@ -767,7 +826,9 @@ def _entities_step_in_the_plan(build_all):
     # PHASE B (the design's step 5, 18 November 2026): a reader moved onto the model's tenures
     # reads them through the shapes' module (entities.printed_tenures), from the file the model
     # is built from, since the step that writes data/entities/ runs after it; never the folder.
-    moved = SEAT_READERS
+    # And the margin (19 November 2026, src/pages/election_margin.py) takes a contest's and a
+    # candidacy's id from the shapes' module, so that its ids are the model's; never the folder.
+    moved = set(SEAT_READERS) | {"election_margin.py"}
     readers = []
     for f in _paths.code_files("*.py"):
         if f.name in allowed or "suite" in f.parent.name:
@@ -781,8 +842,8 @@ def _entities_step_in_the_plan(build_all):
     assert not readers, f"these read the model, which nothing reads yet: {readers}"
     return "ok", (f"step {i + 1} of {len(steps)}, after the district table, the site data, the members-elect, "
                   "the town pages, the district map and the bulk downloads; --out data/entities, optional; no "
-                  f"other step or code file reads it, and the {len(moved)} seat reader(s) moved onto its tenures "
-                  "read them through entities alone")
+                  f"other step or code file reads it, and the {len(SEAT_READERS)} seat reader(s) moved onto its "
+                  "tenures, and the margin's ids, read them through entities alone")
 
 
 def _first_offices_unlinked(BE, root):
