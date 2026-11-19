@@ -2784,7 +2784,12 @@ a member-elect until the General Court numbers
 them; a date only where a record states one; a holder of a hand-file office
 is linked to a person by the file's own `member` entry, by the owner's hand
 file of links or by the rule below, never by a name alone.
-Party and seat are a tenure's. A party is kept as its file prints it and read,
+Party and seat are a tenure's, and a primary's: two parties' primaries for one
+office on one day are two contests, so a primary contest carries its party as
+printed with its letters, and its id says it in the stage's word
+(`2024-09-10.primary-r.us-house.1`, as the State Primary readers id their races;
+`entities.contest_id`'s `party`); a general names none (19 November 2026,
+`_entity_primary_party`). A party is kept as its file prints it and read,
 into the letters it stands for (`parties`: "R/D" is R and D), by the one table
 of parties in `src/lib/state_settings.json` ("parties": each party's letter,
 the site's words for it, every form the files print it in, and the colours

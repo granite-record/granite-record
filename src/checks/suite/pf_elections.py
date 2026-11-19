@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of members-elect and election results.
 
@@ -1341,6 +1341,165 @@ def _elections_page(BE, BME):
                       "the bars adding up, Grafton 9's total said")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+# THE MARGIN, DEFINED ONCE (the elections display design of 19 November 2026, section 2,
+# approved in full that day; src/pages/election_margin.py). The rule on made-up races, every
+# status and every form of label, and then every race on file worked out again here, by a
+# second hand, and held to the design's own measure.
+
+def _mg_race(seats, *cands, scatter=0):
+    """A made-up race: each candidate (name, party, votes[, write_in])."""
+    return {"seats": seats, "scatter": scatter, "candidates": [
+        {"name": c[0], "party": c[1], "votes": c[2], "write_in": bool(c[3:] and c[3]), "elected": None}
+        for c in cands]}
+
+
+@check("build", "the margin is one rule: the two-way lead of the last winner over the first out, to "
+       "one decimal rounded half up, labelled with the last winner's printed letters, \"over\" a party "
+       "only where both are of it, Unopposed, Tied, none with no seat count, and a primary's with no "
+       "letter", needs=("election_margin", "entities"))
+def _margin_rule(EM, EN):
+    """reports/elections2-design/proposal.md section 2, decisions 1-7. Each status and label
+    form on a made-up race whose answer is worked out by hand here: Cheshire 9 of 2024 (one seat,
+    1,524 to 1,485: R+1.3, 20 votes to change it) and Cheshire 10 (two seats, the last winner and
+    the first out both Republicans: R+0.7 over R, 17), a cross-nomination (I/D+4.0), the half
+    that rounds up (R+0.1, not R+0.0), an edge (4.96 is labelled 5.0 and is in 5 to 10), a named
+    write-in first out (the margin stands), two of two parties tied for the first place out (no
+    "over"), Unopposed with scattered write-ins, Tied, no seat count, a primary (+9.7, no letter,
+    no "over"), and the ids: the results file's own, else the model's."""
+    cid = "2024-11-05.general.house.cheshire-9"
+    m = EM.margin(_mg_race(1, ("Daniel Adams Eaton", "d", 1485), ("Rich Nalevanko", "r", 1524)), cid)
+    assert (m["status"], m["gap"], m["points"], m["label"], m["over"], EM.words(m), EM.flip(m),
+            EM.band(m)) == ("contested", 39, 1.3, "R+1.3", None, "R+1.3", 20, "u5"), f"Cheshire 9: {m}"
+    assert (m["last"], m["first_out"]) == (cid + ".rich-nalevanko-r", cid + ".daniel-adams-eaton-d"), (
+        f"Cheshire 9's ids: {m['last']}, {m['first_out']}")
+    assert set(m) == {"status", "last", "first_out", "gap", "points", "label", "over"}, sorted(m)
+    m = EM.margin(_mg_race(2, ("Barry Faulkner", "d", 2250), ("Sly Karasinski", "r", 2220),
+                           ("Daniel LeClair", "r", 2187), ("Alan Gross", "d", 1921)), "c")
+    assert (m["gap"], m["label"], m["over"], EM.words(m), EM.flip(m), m["last"]) == (
+        33, "R+0.7", "R", "R+0.7 over R", 17, "c.sly-karasinski-r"), f"Cheshire 10: {m}"
+    m = EM.margin(_mg_race(1, ("A", "i/d", 520), ("B", "d", 480)), "c")
+    assert (m["label"], m["over"]) == ("I/D+4.0", None), f"a cross-nomination: {m}"
+    m = EM.margin(_mg_race(1, ("A", "r", 2001), ("B", "d", 1999)), "c")
+    assert m["label"] == "R+0.1" and m["points"] == 0.1, f"0.05 exactly rounds half up: {m}"
+    m = EM.margin(_mg_race(1, ("A", "d", 26240), ("B", "r", 23760)), "c")
+    assert (m["label"], EM.band(m)) == ("D+5.0", "5-10"), f"4.96 is labelled 5.0 and banded so: {m}"
+    m = EM.margin(_mg_race(1, ("A", "r", 900), ("Kathy DesRoches", "", 100, True)), "c")
+    assert (m["status"], m["label"], m["first_out"]) == ("contested", "R+80.0", "c.kathy-desroches"), (
+        f"a named write-in first out keeps the margin: {m}")
+    m = EM.margin(_mg_race(3, ("A", "d", 1788), ("B", "d", 1751), ("C", "r", 1603), ("D", "r", 1542),
+                           ("E", "d", 1542), ("F", "r", 1460)), "c")
+    assert (m["gap"], m["over"]) == (61, None), f"two of two parties tied for the first out: {m}"
+    m = EM.margin(_mg_race(3, ("A", "d", 1788), ("B", "d", 1751), ("C", "r", 1603), ("D", "r", 1542),
+                           ("E", "r", 1542)), "c")
+    assert m["over"] == "R", f"two Republicans tied for the first out: {m}"
+    for seats, cands in ((1, [("Dylan Germana", "d", 1639)]), (2, [("A", "r", 9), ("B", "d", 8)]),
+                         (1, [])):
+        m = EM.margin(_mg_race(seats, *cands, scatter=12), "c")
+        assert (m["status"], m["label"], m["points"], m["gap"], m["first_out"], EM.band(m),
+                EM.flip(m)) == ("unopposed", "Unopposed", None, None, None, "unopposed", None), (
+            f"{len(cands)} candidate(s) for {seats} seat(s), 12 scattered: {m}")
+    m = EM.margin(_mg_race(2, ("A", "r", 50), ("B", "d", 40), ("C", "r", 40)), "c")
+    assert (m["status"], m["label"], m["gap"], m["points"], EM.band(m), EM.flip(m)) == (
+        "tie", "Tied", 0, None, "u5", None), f"a tie for the last seat: {m}"
+    for seats in (None, 0):
+        m = EM.margin(_mg_race(seats, ("A", "r", 50), ("B", "d", 40)), "c")
+        assert (m["status"], m["label"], EM.words(m), EM.band(m)) == ("no_seats", None, "", ""), (
+            f"seats {seats!r}: {m}")
+    pid = EM.results_contest("2024-09-10", "D|S|1", "primary")
+    assert pid == "2024-09-10.primary-d.senate.1", f"a primary's contest: {pid}"
+    m = EM.margin(_mg_race(1, ("A", "d", 5485), ("B", "d", 4515)), pid, primary=True)
+    assert (m["label"], m["over"], EM.words(m)) == ("+9.7", None, "+9.7"), f"a primary: {m}"
+    for word in ("nominat", "close", "safe", "competitive"):
+        assert all(word not in str(v).lower() for v in m.values()), f"a margin says {word!r}"
+    office = {"seats": 1, "candidates": [
+        {"name": "Kelly Ayotte", "party": "r", "votes": 436122, "id": "x.kelly-ayotte-r"},
+        {"name": "Joyce Craig", "party": "d", "votes": 360149, "id": "x.joyce-craig-d"}]}
+    m = EM.margin(office, "ignored")
+    assert (m["last"], m["first_out"], m["label"]) == ("x.kelly-ayotte-r", "x.joyce-craig-d", "R+9.5"), (
+        f"an office's file gives its own ids: {m}")
+    assert EM.results_contest("2024-11-05", "H|Cheshire|9") == EN.contest_id(
+        "2024-11-05", "general", "house", "cheshire-9") and EM.results_contest(
+        "2024-11-05", "S|5") == "2024-11-05.general.senate.5", "the House and Senate contests' ids"
+    keys = [EM.order_key(EM.margin(r, "c")) for r in (
+        _mg_race(1, ("A", "r", 5)), _mg_race(1, ("A", "r", 60), ("B", "d", 40)),
+        _mg_race(1, ("A", "r", 51), ("B", "d", 49)), _mg_race(1, ("A", "r", 5), ("B", "d", 5)),
+        _mg_race(None, ("A", "r", 5)))]
+    assert sorted(range(5), key=lambda i: keys[i]) == [3, 2, 1, 0, 4], (
+        f"smallest margin first is the tie, then by points, then the unopposed, then no seat count: {keys}")
+    return "ok", ("R+1.3 and its 20, R+0.7 over R and its 17, I/D+4.0, R+0.1 half up, 5.0 in 5 to 10, "
+                  "a write-in first out, a tie for first out of two parties, Unopposed thrice, Tied, "
+                  "no seat count twice, a primary's +9.7, the ids and the order, each as worked by hand")
+
+
+# The design's own measure of the 1,765 general races on file for 2016-2026 (proposal.md
+# section 2), banded on the unrounded points; the page bands on the label's one decimal.
+_MG_DESIGN = {"under 1": 109, "1-5": 334, "5-10": 298, "10-20": 380, "20 or more": 313,
+              "unopposed": 326, "tie": 1, "no_seats": 4}
+
+
+@check("data", "every race on file has the margin worked out again by a second hand from "
+       "collected/election_<year>.json and election_offices_<year>.json, and 2016-2026 come to the "
+       "design's measured distribution", needs=("election_margin",))
+def _margins_on_file(EM):
+    """Each House, Senate and other office's general race of every collected file, its margin
+    worked out here without election_margin (exact fractions, half up), held to EM.margin's: the
+    status, gap, points, label and "over". Then 2016-2026, banded on the unrounded points as the
+    design measured them, are its 1,765 races exactly (_MG_DESIGN); and the page's bands, on the
+    label, differ from those only by a race within a twentieth of a point below an edge."""
+    from fractions import Fraction
+    files = sorted(Path("collected").glob("election_*.json"))
+    files = [p for p in files if re.fullmatch(r"election_(?:offices_)?\d{4}\.json", p.name)]
+    if not files:
+        return "skip", "no collected/election_<year>.json here (a bare clone without the results)"
+    raw, page, moved, n = {}, {}, [], 0
+    for p in files:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        year = int(re.search(r"\d{4}", p.name).group(0))
+        for key, race in doc["races"].items():
+            n += 1
+            got = EM.margin(race, race.get("contest") or EM.results_contest(doc["election"], key))
+            seats, cs = race.get("seats"), sorted(race["candidates"], key=lambda c: -c["votes"])
+            if not isinstance(seats, int) or seats < 1:
+                want = ("no_seats", None, None, None, None)
+            elif len(cs) <= seats:
+                want = ("unopposed", None, None, "Unopposed", None)
+            elif cs[seats - 1]["votes"] == cs[seats]["votes"]:
+                want = ("tie", 0, None, "Tied", None)
+            else:
+                a, b = cs[seats - 1], cs[seats]
+                exact = Fraction(100 * (a["votes"] - b["votes"]), a["votes"] + b["votes"])
+                t = int(exact * 10 + Fraction(1, 2))
+                pa = (a.get("party") or "").upper()
+                outs = {(c.get("party") or "").upper() for c in cs[seats:] if c["votes"] == b["votes"]}
+                want = ("contested", a["votes"] - b["votes"], t / 10, f"{pa}+{t // 10}.{t % 10}",
+                        pa if pa and outs == {pa} else None)
+            assert (got["status"], got["gap"], got["points"], got["label"], got["over"]) == want, (
+                f"{p.name} {key}: election_margin says {got}, worked again {want}")
+            if not 2016 <= year <= 2026:
+                continue
+            if want[0] == "contested":
+                cut = [x for x in (1, 5, 10, 20) if exact < x]
+                bucket = {1: "under 1", 5: "1-5", 10: "5-10", 20: "10-20"}[cut[0]] if cut else "20 or more"
+                pb = EM.band(got)
+                if pb != {"under 1": "u5", "1-5": "u5", "5-10": "5-10", "10-20": "10-20",
+                          "20 or more": "20"}[bucket]:
+                    assert any(x - Fraction(1, 20) <= exact < x for x in (5, 10, 20)), (
+                        f"{p.name} {key}: {exact * 1.0:.3f} points is banded {pb!r}, and is near no edge")
+                    moved.append(f"{year} {key}")
+            else:
+                bucket = want[0]
+            raw[bucket] = raw.get(bucket, 0) + 1
+            page[EM.band(got) or "none"] = page.get(EM.band(got) or "none", 0) + 1
+    if not all((Path("collected") / f"election_{y}.json").is_file() for y in range(2016, 2027, 2)):
+        return "ok", f"{n} races worked out again alike; 2016-2026 not all here, so not held to the design"
+    assert raw == _MG_DESIGN, (
+        f"2016-2026 measure {raw}, not the design's {_MG_DESIGN}: a results file changed, or the "
+        "rule did; read which before changing _MG_DESIGN")
+    return "ok", (f"{n} races worked out again alike; 2016-2026 are the design's {sum(raw.values())} "
+                  f"exactly; the page's bands {dict(sorted(page.items()))}, {len(moved)} moved up an "
+                  "edge by the label's rounding")
 
 
 # A MEMBER'S ELECTIONS TAB (the owner's design of 10 November 2026; src/pages/
