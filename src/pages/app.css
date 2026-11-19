@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.402 */
+/* GRANITE_VERSION: 2026-09-07.403 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2353,6 +2353,17 @@ a.vtl{white-space:nowrap}
 .fopt:has(.tname){align-items:baseline}
 .sbox{width:100%;height:32px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);
 border:1px solid var(--edge);border-radius:var(--r-in);margin-bottom:var(--sp-3)}
+/* THE BOX STAYS IN VIEW WHILE ITS LIST SCROLLS (the owner, 19 November
+   2026: scrolled down the Topics list, the box had gone, and finding another
+   topic meant scrolling back up). A group's list scrolls inside its own box
+   (.fbody, 340px here and 210px under 60em), which is the box's scrolling
+   container, so the box sticks to that box's top; where the whole panel
+   scrolls instead (.facets, beside the list), the group goes up with it, box
+   and all, as it should. Solid, as the field always is, and the gap under it
+   painted the page's colour, so no option shows through either. Every
+   group's box: Topic, Tags, Sponsor. */
+.fbody > .sbox{position:sticky;top:0;z-index:2;background-color:Field;
+box-shadow:0 var(--sp-3) 0 var(--paper)}
 .chosen{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-bottom:var(--sp-3)}
 .pill{font-size:var(--t-sm);background:var(--pine-soft);color:var(--pine);border-radius:var(--r-pill);padding:var(--sp-1) var(--sp-4)}
 .pill button{margin-left:var(--sp-2);color:var(--pine)}

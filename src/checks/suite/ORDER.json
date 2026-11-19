@@ -1344,6 +1344,7 @@
 "_search_opens_on_requests_after_the_election",
 "_topic_dropped_on_the_requests",
 "_topic_filter_search_box",
+"_filter_boxes_stay_in_view",
 "_tags_on_the_bill_page_and_filter",
 "_tags_in_search",
 "_requests_search_by_name",

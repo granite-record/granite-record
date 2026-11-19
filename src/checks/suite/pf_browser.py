@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -10137,6 +10137,52 @@ def _topic_filter_search_box():
     assert topics(got["none"]) == [] and "No match" in got["none"], "a word no topic has is not said to match nothing"
     return "ok", "the box narrows the topics, counts hold, a ticked topic stays"
 
+
+@check("frontend", "each filter's search box stays in view while its list scrolls: the box is its group's list's "
+       "own child, sticky at the top of that scrolling box, solid")
+def _filter_boxes_stay_in_view():
+    """The owner, 19 November 2026: scrolled down the Topics list, its box had scrolled away. A group's list
+    scrolls inside its own box (.fbody: a max-height and overflow-y:auto), so app.css holds the box sticky at
+    that box's top (.fbody > .sbox: position sticky, top 0, a background of its own and the gap under it painted
+    over, so no option shows through). In node, the Topic, Tags and Sponsor groups, open, each
+    draw their box as the first thing in their list's box (a sponsor's chosen pills apart), where the rule
+    reaches it; a box wrapped in anything else would scroll away again."""
+    css = _source(Path("src/pages/app.css"))
+    body = re.search(r"\n\.fbody\{([^}]*)\}", css)
+    assert body and "overflow-y:auto" in body[1] and "max-height" in body[1], (
+        "a filter group's list (.fbody) no longer scrolls inside its own box; the sticky box would need the "
+        "panel's scroll instead")
+    rule = re.search(r"\n\.fbody > \.sbox\{([^}]*)\}", css)
+    assert rule, "app.css has no rule holding a filter's box (.fbody > .sbox) in view"
+    r = re.sub(r"\s+", "", rule[1])
+    assert "position:sticky" in r and re.search(r"(^|;)top:0(;|$)", r), (
+        f"the filter box is not sticky at the top of its list: {rule[1]!r}")
+    assert re.search(r"background(-color)?:", r) and "box-shadow:0var(--sp-3)0var(--paper)" in r, (
+        f"the sticky box lets the options show through it or through the gap under it: {rule[1]!r}")
+    got = _app_js("(() => {" + _TAGS_HARNESS + """
+  ROWS.forEach((b, i) => { b.sponsor = i % 2 ? "Ann Lee" : "Sam Senn";
+    b.sponsor_label = i % 2 ? "Rep. Ann Lee (R - Rock 3)" : "Sen. Sam Senn (R - SD4)"; b.sponsor_party = "R"; });
+  scope.setState("2025-2026", META_T, ROWS);
+  scope.setTagWords(TAGS, WORDS);
+  ["topic", "tag", "sponsor"].forEach(k => scope.openGroups.add(k));
+  scope.sel.sponsor.add("Ann Lee");
+  scope.renderFacets();
+  const h = document.querySelector("#facets").innerHTML;
+  const out = {};
+  for (const k of ["topic", "tag", "sponsor"]) {
+    const g = group(h, k) || "";
+    const b = g.slice(g.indexOf('<div class="fbody'));
+    out[k] = b.replace(/^<div class="fbody[^"]*"\\s*>/, "").replace(/^<div class="chosen">[\\s\\S]*?<\\/span><\\/div>/, "").slice(0, 60);
+  }
+  return out;
+})()""", names=_TAGS_NAMES)
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    for k, box in (("topic", "tbox"), ("tag", "gbox"), ("sponsor", "sbox")):
+        assert got[k].startswith(f'<input class="sbox" id="{box}"'), (
+            f"the {k} group's box is not the first thing in its list's box, where the sticky rule holds it: "
+            f"{got[k]!r}")
+    return "ok", "the box sticks at the top of each list's own scrolling box (Topic, Tags, Sponsor), solid with its gap painted"
 
 
 # THE TAGS' HARNESS: four tags, five bills and the words that lead to them, as meta.json and the index rows
