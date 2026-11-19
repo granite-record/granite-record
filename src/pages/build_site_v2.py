@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.282
+# GRANITE_VERSION: 2026-09-05.283
 """
 Generate the faceted site from real General Court data.
 
@@ -8524,13 +8524,19 @@ def _spellings():
     return _SPELLINGS[0]
 
 
-def mover_member(mover, body, legs):
+def mover_member(mover, body, legs, pages=None):
     """{"label", "slug"} of the one sitting member of `body` the docket's
     mover can mean -- "Rep. Alexander Jr." is Rep. Joe Alexander (R - Hills
     29), the only Alexander in the House -- or None where the name is no
     one's or more than one's. A WRONG LINK IS WORSE THAN NO LINK: a surname
     two members of the chamber share is left as the docket wrote it, and a
-    full name ("Peter Schmidt") is tried before the surname alone."""
+    full name ("Peter Schmidt") is tried before the surname alone.
+
+    `legs` is the members the name is looked for among (mover_pool says
+    which), and `pages` {id: member}, where given, whose page each of them
+    links to now: `legs` is then a term's own roster as it was frozen, which
+    gives the seat held in that term, and the link goes to the person's own
+    page as it is now (own_slug), or nowhere where they have none."""
     n = MOVER_SUFFIX.sub("", MOVER_HONORIFIC.sub("", (mover or "").strip())).strip().strip(".")
     ch = (body or "").strip().upper()[:1]
     if not n or not ch:
@@ -8554,8 +8560,37 @@ def mover_member(mover, body, legs):
     lab = member_labels(m.get("name"), chamber=m.get("chamber"),
                         party=m.get("party_code") or m.get("party"), district=m.get("district"),
                         county=m.get("county"), county_abbr=m.get("county_abbr"))
+    if pages is not None:
+        page = pages.get(str(m.get("id") or ""))
+        slug = own_slug(page) if page else ""
+        return {"label": lab.get("display_full") or m.get("label") or "",
+                "slug": slug} if slug else None
     return {"label": lab.get("display_full") or m.get("label") or "",
             "slug": m.get("slug") or member_slug(m, lab)}
+
+
+def mover_pool(term, current, legs, term_rosters, people):
+    """(members, pages) a mover of `term` is looked for among, for
+    mover_member: THE TERM'S OWN MEMBERS, WITH THE SEAT EACH HELD IN IT
+    (labels-use-the-seat-held-at-the-time). A term whose own roster is frozen
+    and is not the sitting one (`term_rosters`, freeze_term.own_roster_terms)
+    takes that roster, linked to each person's page as it is now (`people`,
+    build_bills' every member and former member); the current term, while its
+    roster is the sitting one, takes `legs`; any other term, nobody, and the
+    docket's words stand.
+
+    The rehearsal of the turn (19 November 2026): matched against the sitting
+    roster for the current term alone, 2025-2026 lost the link on 843 movers
+    of 647 bills the night 2027-2028 became the current term, and between
+    Organization Day and the switch, with the next House installed and the
+    term still current, a name would have been looked for among the next
+    House, where a member who left at the election is nobody, or a newcomer
+    who shares the surname."""
+    if term in (term_rosters or {}):
+        return term_rosters[term], people
+    if term == current:
+        return legs, None
+    return None, None
 
 
 # A MEMBER NAMED IN THE STORY: "offered by Rep. Jane Smith", "Sen. Bradley
@@ -12315,6 +12350,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
 
         rc_out = bill_rollcalls(bid, term, rcs, narr,
                                 votes_by_bill, legs, unnamed, in_office)
+        # Whom this term's movers are looked for among (mover_pool).
+        _mpool, _mpages = mover_pool(term, current, legs, term_rosters, _people)
         for r in rc_out:
             r.pop("_ord", None)
             # THE VOTE WORDS' KEY (the person, 8 October 2026; motions.py):
@@ -12333,11 +12370,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                     r["ruling"] = rul
             # THE MOVER AS THE PERSON IN A SENTENCE (D14): "Moved by Rep. Joe
             # Alexander (R - Hills 29)", linked, where the docket's "Rep.
-            # Alexander Jr." can mean one member of the chamber. The sitting
-            # roster's seat is the seat held at the time only in the current
-            # term, so only there; elsewhere the docket's words stand.
-            if r.get("mover") and term == current:
-                who = mover_member(r["mover"], r.get("body"), legs)
+            # Alexander Jr." can mean one member of the chamber. Among the
+            # term's own members with the seat each held then (mover_pool):
+            # the sitting roster in the current term, a finished term's frozen
+            # roster after the turn; elsewhere the docket's words stand.
+            if r.get("mover") and _mpool is not None:
+                who = mover_member(r["mover"], r.get("body"), _mpool, pages=_mpages)
                 if who:
                     r["mover_m"] = who
         # WHERE EACH ROLL CALL'S CARD IS on this bill's Votes tab, for the

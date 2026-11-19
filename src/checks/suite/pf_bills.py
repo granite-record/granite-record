@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.28
+# GRANITE_VERSION: 2026-11-16.29
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -7133,6 +7133,84 @@ def _story_people(B):
     assert html.count('class="psent"') == 2 and 'href="legislator/jane-smith-rock-13"' in html \
         and "Rep. Lee spoke." in html, html
     return "ok", "Rep. Jane Smith and Sen. Bradley linked; Rep. Lee, two members, left as words"
+
+
+@check("build", "a finished term's movers stay linked after the turn, by the seat held in that term",
+       needs=("build_site_v2",))
+def _movers_of_a_finished_term(B):
+    """The rehearsal of the turn (19 November 2026): a roll call's mover was
+    linked only while its term was the current one, against the sitting
+    roster, so the night 2027-2028 became the current term 2025-2026 lost
+    "Moved by <linked person>" on 843 roll calls of 647 bills. mover_pool
+    gives a term whose own roster is frozen and is not the sitting one that
+    roster, the seat each member held in it, linked to the person's page as
+    it is now (build_bills' `_people`, as the sponsors are); the current term
+    the sitting roster, as before; any other term nobody. Here a fake turn:
+    Joe Alexander moved to Hills 69, Pat Gone left at the election and a
+    Newcomer Gone took a seat, two Lees sat in 2025-2026, and Kim Nopage sat
+    then and has no page now. And between Organization Day and the switch,
+    with the next House installed and 2025-2026 still current, the same."""
+    def mem(i, last, first, ch, county, abbr, dist, party):
+        return {"id": i, "name": f"{last}, {first}", "chamber": ch, "county": county,
+                "county_abbr": abbr, "district": dist, "party_code": party}
+    then = {m["id"]: m for m in (
+        mem("1", "Alexander", "Joe", "H", "Hillsborough", "Hills", "29", "R"),
+        mem("2", "Carson", "Sharon", "S", "", "", "14", "R"),
+        mem("3", "Lee", "Ann", "H", "Hillsborough", "Hills", "1", "D"),
+        mem("4", "Lee", "Bo", "H", "Hillsborough", "Hills", "2", "R"),
+        mem("5", "Gone", "Pat", "H", "Belknap", "Belk", "3", "D"),
+        mem("6", "Nopage", "Kim", "H", "Coos", "Coos", "1", "R"))}
+    now = {m["id"]: m for m in (
+        mem("1", "Alexander", "Joe", "H", "Hillsborough", "Hills", "69", "R"),
+        mem("2", "Carson", "Sharon", "S", "", "", "14", "R"),
+        mem("3", "Lee", "Ann", "H", "Hillsborough", "Hills", "1", "D"),
+        mem("9", "Gone", "Newcomer", "H", "Belknap", "Belk", "4", "R"))}
+    former = {"4": {**then["4"], "former": True}, "5": {**then["5"], "former": True}}
+    people = {**now, **former}
+    rosters = {"2025-2026": then}
+    said = ("Rep. Alexander Jr.", "Sen. Carson", "Rep. Gone", "Rep. Lee", "Rep. Ann Lee",
+            "Rep. Nopage")
+    keep_slugs, keep_spell = dict(B._OWN_SLUG), list(B._SPELLINGS)
+    try:
+        B._SPELLINGS[:] = [{}]
+
+        def linked(term, current, legs, term_rosters):
+            B._OWN_SLUG.clear()
+            pool, pages = B.mover_pool(term, current, legs, term_rosters, people)
+            return {s: (B.mover_member(s, "S" if s.startswith("Sen") else "H", pool, pages=pages)
+                        if pool is not None else None) for s in said}
+        after = linked("2025-2026", "2027-2028", now, rosters)
+        window = linked("2025-2026", "2025-2026", now, rosters)
+        today = linked("2025-2026", "2025-2026", then, {})
+        older = linked("2023-2024", "2025-2026", then, {})
+        B._OWN_SLUG.clear()
+        plain = {s: B.mover_member(s, "S" if s.startswith("Sen") else "H", then) for s in said}
+    finally:
+        B._OWN_SLUG.clear()
+        B._OWN_SLUG.update(keep_slugs)
+        B._SPELLINGS[:] = keep_spell
+    want = {"Rep. Alexander Jr.": {"label": "Rep. Joe Alexander (R - Hills 29)",
+                                   "slug": "joe-alexander-hills-69"},
+            "Sen. Carson": {"label": "Sen. Sharon Carson (R - SD14)", "slug": "sharon-carson-sd-14"},
+            "Rep. Gone": {"label": "Rep. Pat Gone (D - Belk 3)", "slug": "pat-gone-belk-3"},
+            "Rep. Lee": None, "Rep. Ann Lee": {"label": "Rep. Ann Lee (D - Hills 1)",
+                                               "slug": "ann-lee-hills-1"},
+            "Rep. Nopage": None}
+    bad = [f"{s!r} is {after.get(s)!r}, not {w!r}" for s, w in want.items() if after.get(s) != w]
+    assert not bad, "a 2025-2026 mover after the turn: " + "; ".join(bad)
+    assert window == after, f"between Organization Day and the switch the movers read {window}"
+    # the current term with its own roster sitting: exactly as before the fix
+    assert today == plain and today["Rep. Alexander Jr."]["slug"] == "joe-alexander-hills-29" \
+        and today["Rep. Nopage"], f"the current term's movers moved: {today}"
+    assert not any(older.values()), f"a term with no frozen roster linked a mover: {older}"
+    src = _source(_paths.locate("build_site_v2.py"))
+    assert "mover_pool(term, current, legs, term_rosters, _people)" in src and \
+        'mover_member(r["mover"], r.get("body"), _mpool, pages=_mpages)' in src, (
+            "build_bills no longer looks for a roll call's mover among the term's own members")
+    return "ok", ("after the turn and between Organization Day and the switch, 2025-2026's movers "
+                  "keep the seat of the term (Alexander's Hills 29, linked to his Hills 69 page), "
+                  "Pat Gone is not the Newcomer Gone, two Lees and a member with no page stay "
+                  "words; the current term as before; a term with no frozen roster links none")
 
 
 @check("build", "the bill-text fetch saves only the bill it asked for, and stops when told no",
