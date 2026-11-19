@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-18.2
+# GRANITE_VERSION: 2026-11-18.3
 """
 The Secretary of State's count of the State Primary's State Representative
 and State Senate races, 2016 to 2026, each party's primary its own contest,
@@ -67,8 +67,12 @@ alone, and said.
 
 IT REFUSES RATHER THAN GUESSES, saying which file, sheet and row: a file it
 cannot read is listed in "_refused" with why, and its races are not written;
-a race it cannot settle is refused alone, and listed. The rest of the year is
-written. Files of the primary that are not these races (presidential
+a race it cannot settle is refused alone, and listed. A race whose column of
+places does not add up to the Totals the file prints for it is one of those
+(19 November 2026: one such race in the 2026 Strafford Democratic file had
+taken the county's other twenty with it): listed in "_refused" by race and
+printed as a REFUSED line, which figure is right never guessed. The rest of
+the year is written. Files of the primary that are not these races (presidential
 primaries, ballots cast, names on the checklist, delegates to a party's
 convention, and the other offices, which parse_sos_primary_offices reads)
 are not read: --not-read lists those on disk that neither reader reads,
@@ -284,13 +288,14 @@ def unread(root, year):
     return out
 
 
-def read_senate(path, election, legacy, span, notes):
+def read_senate(path, election, legacy, span, notes, alone=None):
     """{district: district record} of one party's Senate file: a sheet for
     one to three districts, each a title "State Senate District 5 -
     Republican" (the day beside it or not), a header row whose first cell is
     the day or empty, its places and a Totals row. The file must hold the
     districts `span` names, each once. What it reads past is said in
-    `notes`."""
+    `notes`. A district whose column does not add up to its Totals goes to
+    `alone`, as parse_sos_results.read_house has it, where one is given."""
     found, cur = {}, None
 
     def day_typo(day, where, sheet):
@@ -382,7 +387,13 @@ def read_senate(path, election, legacy, span, notes):
             raise Refused(f"{d['where']}: Senate district {n} has no header row")
     out = {}
     for n, d in found.items():
-        out[n] = PSR.district(d["blocks"], 1, d["where"], nominate, "nominated")
+        try:
+            out[n] = PSR.district(d["blocks"], 1, d["where"], nominate, "nominated")
+        except PSR.Disagrees as e:
+            if alone is None:
+                raise
+            alone.append({"district": n, "where": d["where"], "why": str(e)})
+            continue
         if d["no_votes"]:
             twice = sorted(set(d["no_votes"]) & set(out[n]["towns"]))
             if twice:
@@ -503,13 +514,19 @@ def read_year(root, year):
 
     for (county, party), path in files["house"].items():
         election = Primary(year, party)
+        alone = []
         try:
-            got = PSR.read_house(path, county, election, legacy)
+            got = PSR.read_house(path, county, election, legacy, alone)
         except PSR.Unreadable:
             raise
         except PSR.Refused as e:
             refused.append({"file": path.name, "why": str(e)})
             continue
+        # ONE RACE THAT DOES NOT ADD UP IS REFUSED ALONE (19 November 2026),
+        # listed by race; the file's other races are read.
+        refused += [{"file": path.name, "race": f"{PARTIES[party].upper()}|H|{county.title()}|"
+                                                f"{a['district']}", "why": a["why"]}
+                    for a in alone]
         read.append(path)
         blanks = 0
         for n, (seats, _flo, rec) in got.items():
@@ -525,15 +542,18 @@ def read_year(root, year):
     for party, paths in files["senate"].items():
         election = Primary(year, party)
         for path in paths:
+            alone = []
             try:
                 said = []
-                got = read_senate(path, election, legacy, file_party(path.name)[1], said)
+                got = read_senate(path, election, legacy, file_party(path.name)[1], said, alone)
                 notes.extend(said)
             except PSR.Unreadable:
                 raise
             except PSR.Refused as e:
                 refused.append({"file": path.name, "why": str(e)})
                 continue
+            refused += [{"file": path.name, "race": f"{PARTIES[party].upper()}|S|{a['district']}",
+                         "why": a["why"]} for a in alone]
             read.append(path)
             blanks = 0
             for n, rec in got.items():

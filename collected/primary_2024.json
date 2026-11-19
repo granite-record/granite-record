@@ -20,6 +20,7 @@
    "2024-sp-house-coos-democratic_0.xls, district 1: D|H|Coos|1: Sean C. Durkin, James W. Tierney Jr. not settled by the count -- a tie for the last place, or the write-ins nobody named (12) could have taken it",
    "2024-sp-house-coos-democratic_0.xls, district 2: D|H|Coos|2: Arnold G. Davis not settled by the count -- a tie for the last place, or the write-ins nobody named (3) could have taken it",
    "2024-sp-house-coos-democratic_0.xls: 44 empty cell(s) under a candidate, read as none",
+   "2024-sp-house-coos-republican_0.xls: 1 count(s) saved as text, read as the number: row 5 column 2 ('76')",
    "2024-sp-house-grafton-democratic_0.xls, district 11: D|H|Grafton|11: 1 place(s) no named candidate won; the write-ins nobody named come to 22, and whether one of them was nominated is not in the file",
    "2024-sp-house-grafton-democratic_0.xls: 61 empty cell(s) under a candidate, read as none",
    "2024-sp-house-grafton-republican.xls, district 8: R|H|Grafton|8: Sallie Fellows, Peter Lovett not settled by the count -- a tie for the last place, or the write-ins nobody named (33) could have taken it",
@@ -145,6 +146,7 @@
  "_refused": [
    {
      "file": "2024-sp-house-coos-republican_0.xls",
+     "race": "R|H|Coos|1",
      "why": "2024-sp-house-coos-republican_0.xls, sheet 'dcoosrep', row 9: Sean C. Durkin's column adds up to 497 and the file's Totals say 421"
    },
    {
@@ -160,6 +162,7 @@
   {"file": "records/sources/2024-sp-house-cheshire-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "26777ec99825e453e3473ee54253f54ac21b63d8035d6523b9b293cddb8e4a8d"},
   {"file": "records/sources/2024-sp-house-cheshire-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "abde3f729eebcab079497b18582cba5725fc80daed3c3ab77055b58f75a8ccc8"},
   {"file": "records/sources/2024-sp-house-coos-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "828de7205071f159fead571b63a72bdd7ee9f40b1edd35375a93a102bd8d647d"},
+  {"file": "records/sources/2024-sp-house-coos-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "a780ee6f34ca10ab901ebdcf9637f3087201f89550500f4ea394ed0435378fb9"},
   {"file": "records/sources/2024-sp-house-grafton-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "628580d9eb20c160fbb8b7ce45e5ef5811bf691d06b58a929acbaa210613308d"},
   {"file": "records/sources/2024-sp-house-grafton-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "5b95805233d400974b8be9b75dffe6cfdc06c5a6cfd1604fd9b8822fcde4fd86"},
   {"file": "records/sources/2024-sp-house-hillsborough-democratic_2.xls", "url": null, "saved": "2026-11-11", "sha256": "9b48978608ee4f366347da986cac86aac8f7c019876abad6e2d0a098f3a72ba5"},
@@ -751,22 +754,39 @@
     {"name": "James W. Tierney Jr.", "party": "r", "votes": 3, "write_in": false, "nominated": null}]},
   "D|H|Coos|2": {"party": "d", "seats": 1, "floterial": false, "towns": ["Atk. & Gil. Academy Grant", "Cambridge", "Clarksville", "Dix's Grant", "Dixville", "Dummer", "Errol", "Milan", "Millsfield", "Odell", "Pittsburg", "Second College Gt", "Stark", "Wentworth's Loc."], "scatter": 3, "printed_totals": 4, "candidates": [
     {"name": "Arnold G. Davis", "party": "r", "votes": 1, "write_in": false, "nominated": null}]},
+  "R|H|Coos|2": {"party": "r", "seats": 1, "floterial": false, "towns": ["Atk. & Gil. Academy Grant", "Cambridge", "Clarksville", "Dix's Grant", "Dixville", "Dummer", "Errol", "Milan", "Millsfield", "Odell", "Pittsburg", "Second College Gt", "Stark", "Wentworth's Loc."], "scatter": 1, "printed_totals": 4, "candidates": [
+    {"name": "Arnold G. Davis", "party": "r", "votes": 453, "write_in": false, "nominated": true}]},
   "D|H|Coos|3": {"party": "d", "seats": 1, "floterial": false, "towns": ["Colebrook", "Columbia", "Erving's Location", "Stewartstown"], "scatter": 0, "printed_totals": 4, "candidates": [
     {"name": "Mike Ouellet", "party": "r", "votes": 1, "write_in": false, "nominated": true}]},
+  "R|H|Coos|3": {"party": "r", "seats": 1, "floterial": false, "towns": ["Colebrook", "Columbia", "Erving's Location", "Stewartstown"], "scatter": 3, "printed_totals": 4, "candidates": [
+    {"name": "Mike Ouellet", "party": "r", "votes": 361, "write_in": false, "nominated": true}]},
   "D|H|Coos|4": {"party": "d", "seats": 1, "floterial": false, "towns": ["Carroll", "Jefferson", "Kilkenny", "Whitefield"], "scatter": 7, "printed_totals": 5, "candidates": [
     {"name": "Seth King", "party": "r", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Suzy Colt", "party": "", "votes": 101, "write_in": true, "nominated": true}]},
+  "R|H|Coos|4": {"party": "r", "seats": 1, "floterial": false, "towns": ["Carroll", "Jefferson", "Kilkenny", "Whitefield"], "scatter": 9, "printed_totals": 4, "candidates": [
+    {"name": "Seth King", "party": "r", "votes": 412, "write_in": false, "nominated": true}]},
   "D|H|Coos|5": {"party": "d", "seats": 2, "floterial": false, "towns": ["Berlin"], "scatter": 5, "printed_totals": 0, "candidates": [
     {"name": "Corinne Cascadden", "party": "d", "votes": 579, "write_in": false, "nominated": true},
     {"name": "Henry W. Noel", "party": "d", "votes": 505, "write_in": false, "nominated": true},
     {"name": "Peter Morency", "party": "r", "votes": 7, "write_in": false, "nominated": false},
     {"name": "Brian L. Valerino", "party": "r", "votes": 5, "write_in": false, "nominated": false}]},
+  "R|H|Coos|5": {"party": "r", "seats": 2, "floterial": false, "towns": ["Berlin"], "scatter": 5, "printed_totals": 0, "candidates": [
+    {"name": "Peter Morency", "party": "r", "votes": 456, "write_in": false, "nominated": true},
+    {"name": "Brian L. Valerino", "party": "r", "votes": 498, "write_in": false, "nominated": true},
+    {"name": "Corinne Cascadden", "party": "d", "votes": 2, "write_in": false, "nominated": false},
+    {"name": "Henry W. Noel", "party": "d", "votes": 2, "write_in": false, "nominated": false}]},
   "D|H|Coos|6": {"party": "d", "seats": 1, "floterial": false, "towns": ["Bean's Grant", "Bean's Purchase", "Chandler's Pur.", "Crawford's Pur.", "Cutt's Grant", "Gorham", "Green's Grant", "Hadley's Purchase", "Low & Burbank's Grant", "Martin's Location", "Pinkham's Grant", "Randolph", "Sargent's Purchase", "Shelburne", "Success", "Thompson & Mes's Purchase"], "scatter": 0, "printed_totals": 5, "candidates": [
     {"name": "Maggie Baker", "party": "d", "votes": 383, "write_in": false, "nominated": true},
     {"name": "Michael P. Murphy", "party": "r", "votes": 4, "write_in": false, "nominated": false}]},
+  "R|H|Coos|6": {"party": "r", "seats": 1, "floterial": false, "towns": ["Bean's Grant", "Bean's Purchase", "Chandler's Pur.", "Crawford's Pur.", "Cutt's Grant", "Gorham", "Green's Grant", "Hadley's Purchase", "Low & Burbank's Grant", "Martin's Location", "Pinkham's Grant", "Randolph", "Sargent's Purchase", "Shelburne", "Success", "Thompson & Mes's Purchase"], "scatter": 1, "printed_totals": 5, "candidates": [
+    {"name": "Michael P. Murphy", "party": "r", "votes": 313, "write_in": false, "nominated": true},
+    {"name": "Maggie Baker", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
   "D|H|Coos|7": {"party": "d", "seats": 1, "floterial": true, "towns": ["Berlin", "Carroll", "Jefferson", "Kilkenny", "Whitefield"], "scatter": 6, "printed_totals": 5, "candidates": [
     {"name": "Eamon Kelley", "party": "d", "votes": 967, "write_in": false, "nominated": true},
     {"name": "Lori Korzen", "party": "r", "votes": 3, "write_in": false, "nominated": false}]},
+  "R|H|Coos|7": {"party": "r", "seats": 1, "floterial": true, "towns": ["Berlin", "Carroll", "Jefferson", "Kilkenny", "Whitefield"], "scatter": 2, "printed_totals": 5, "candidates": [
+    {"name": "Lori Korzen", "party": "r", "votes": 951, "write_in": false, "nominated": true},
+    {"name": "Eamon Kelley", "party": "d", "votes": 2, "write_in": false, "nominated": false}]},
   "D|H|Grafton|1": {"party": "d", "seats": 3, "floterial": false, "towns": ["Bath", "Lisbon", "Littleton", "Lyman", "Monroe", "Sugar Hill"], "scatter": 6, "printed_totals": 10, "candidates": [
     {"name": "Timothy T. Egan", "party": "d", "votes": 636, "write_in": false, "nominated": true},
     {"name": "Linda Massimilla", "party": "d", "votes": 716, "write_in": false, "nominated": true},

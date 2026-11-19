@@ -2307,6 +2307,12 @@ other: a `RECOUNT` column beside a count, a second whole district headed
 `RECOUNT <name>` cells directly under that one town with one row of figures
 under it (`recount_under_town`), accepted only where each cell names the
 candidate above it in that column.
+A House race whose column does not add up to the file's Totals is refused
+alone (`Disagrees`, the owner's rule that a slip in the record never takes
+the rest down): `read_house` leaves it out where its caller passes a list
+for it, the race goes to `_refused` and a REFUSED line, and the file's other
+races are read, a refused base district's towns still telling the floterial
+over it. Which figure is right is never guessed.
 The other offices' results are read by `src/parse/parse_sos_offices.py`
 into `collected/election_offices_<year>.json`, one file a year beside the
 House reader's, and nothing on the site reads them yet (preflight's
@@ -2348,7 +2354,9 @@ none, are `"nominated": true`; a tie, or a place the unnamed write-ins could
 have taken, is null and said; places no named candidate won are `"open"`.
 Each race is held to the same year's general election, its seats and towns
 (`collected/election_<year>.json`), and a file or race it cannot read is
-listed in `_refused` with where, the rest of the year written.
+listed in `_refused` with where, the rest of the year written; a district
+whose column does not add up to its Totals is refused alone, as the
+general's is, its file's other races read.
 The primaries for Governor, United States Senator, Congress, the Council and
 the county offices are read by `src/parse/parse_sos_primary_offices.py` into
 the same file (keys `R|governor`, `D|us-house|1`, `R|sheriff|Belknap`), which

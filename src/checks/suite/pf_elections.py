@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.23
+# GRANITE_VERSION: 2026-11-16.24
 """
 preflight's checks of members-elect and election results.
 
@@ -4546,6 +4546,105 @@ def _primary_reader_reads(P):
                   "places and its mistyped title")
 
 
+@check("build", "State Primary and general results: a race whose column does not add up to the "
+                "file's Totals is refused alone and listed by race, and the file's other races are "
+                "read -- one slip in the record never takes a county with it",
+       needs=("parse_sos_primary_results",))
+def _results_refuse_one_race(P):
+    """ONE RACE THAT DOES NOT ADD UP IS REFUSED ALONE (19 November 2026): the
+    2026 Strafford Democratic primary file prints district 2's Totals under
+    district 3, and read_house refused the whole file, the county's twenty
+    other races with it. Held on made-up files: a 2024 primary House file
+    and a 2018 primary Senate sheet each with one district that does not add
+    up beside one that does, and a 2018 general whose refused base district
+    still makes the floterial over it one."""
+    try:
+        import openpyxl  # noqa: F401
+    except ImportError:
+        return "skip", "openpyxl is not installed"
+    import datetime
+    PSR = P.PSR
+    root = Path(tempfile.mkdtemp(prefix="gr-sos-alone-"))
+    try:
+        d = root / PSR.SOURCES
+        d.mkdir(parents=True)
+        (root / "collected").mkdir()
+        (root / "collected" / "election_2024.json").write_text(json.dumps({"races": {
+            "H|Belknap|1": {"seats": 1, "floterial": False, "towns": ["Alpha", "Beta"]},
+            "H|Belknap|2": {"seats": 1, "floterial": False, "towns": ["Gamma"]},
+            "H|Belknap|3": {"seats": 1, "floterial": False, "towns": ["Delta"]}}}),
+            encoding="utf-8")
+        house = d / "2024-sp-house-belknap-democratic.xlsx"
+        _legacy_book(house, [
+            ["State of New Hampshire - 2024 Primary Election"],
+            ["State Representatives - BELKNAP County - Democratic"], [datetime.date(2024, 9, 10)],
+            ["District No. 1 (1)", "Ann Ash, d", "Bo Birch, d", "Write-Ins"],
+            ["Alpha", 100, 90, 1], ["Beta", 50, 40, 0], ["Totals", 150, 130, 1],
+            # District 2's Totals are another district's: 999 where its one town gives 40.
+            ["District No. 2 (1)", "Di Dunn, d", "Write-Ins"],
+            ["Gamma", 40, 3], ["Totals", 999, 3],
+            ["District No. 3 (1)", "Ed Eve, d", "Write-Ins"], ["Delta", 7, 0]])
+        doc = P.read_year(root, 2024)
+        assert sorted(doc["races"]) == ["D|H|Belknap|1", "D|H|Belknap|3"], (
+            f"the file's other races were not read beside the one that does not add up: "
+            f"{sorted(doc['races'])}; refused {doc.get('_refused')}")
+        refused = doc.get("_refused") or []
+        assert [(r["file"], r.get("race")) for r in refused] == [
+            (house.name, "D|H|Belknap|2")] and "Di Dunn's column adds up to 40 and the file's " \
+            "Totals say 999" in refused[0]["why"], f"the race was not listed alone, with why: {refused}"
+        assert [s["file"] for s in doc["_source"]] == [f"records/sources/{house.name}"], (
+            f"the file whose other races were read is not in _source: {doc['_source']}")
+        # Any other caller of read_house still meets the refusal whole.
+        try:
+            PSR.read_house(house, "belknap", P.Primary(2024, "democratic"))
+            raise AssertionError("read_house without a list for refused races read past the sum")
+        except PSR.Disagrees as e:
+            assert "999" in str(e), f"refused, but not for the sum: {e}"
+        # A 2018 Senate sheet of two districts, the first's printed Totals
+        # naming another winner than its places do.
+        senate = d / "2018-sp-state-senate-1-2-democratic.xlsx"
+        _legacy_book(senate, [
+            ["New Hampshire Primary Election - September 11, 2018"],
+            ["State Senate District No. 1 - Democratic"],
+            [None, "Ash, d", "Bly, d", "Scatter"], ["Alpha", 10, 8, 1], ["Totals", 5, 8, 1],
+            ["State Senate District No. 2 - Democratic"],
+            [None, "Cole, d", "Scatter"], ["Beta", 12, 0], ["Totals", 12, 0]])
+        alone = []
+        got = P.read_senate(senate, P.Primary(2018, "democratic"), True, (1, 2), [], alone)
+        assert sorted(got) == [2] and [a["district"] for a in alone] == [1] and \
+            "elect different people" in alone[0]["why"], (
+                f"the Senate district that does not add up was not refused alone: {sorted(got)}, "
+                f"{alone}")
+        # The general: Belknap 1 does not add up, and is a base district of
+        # Belknap 3, which floats over 1 and 2 by its towns.
+        title = ["State of New Hampshire - 2018 General Election"]
+        _legacy_book(d / "2018-ge-house-belknap.xlsx", [
+            title, ["State Representatives - BELKNAP County"], [],
+            ["District No. 1 (1)", "Gray, r", "Hale, d", "Scatter"],
+            ["Alpha", 100, 90, 1], ["Totals", 100, 190, 1],
+            ["District No. 2 (1)", "Cole, r", "Dunn, d", "Scatter"],
+            ["Beta", 30, 31, 0], ["Totals", 30, 31, 0],
+            ["District No. 3 (1)", "Eve, r", "Fay, d", "Scatter"],
+            ["Alpha", 60, 50, 0], ["Beta", 20, 25, 0], ["Totals", 80, 75, 0]])
+        gen = PSR.read_all(root, 2018, None, partial=True)
+        assert sorted(gen["races"]) == ["H|Belknap|2", "H|Belknap|3"], (
+            f"the general's other races: {sorted(gen['races'])}")
+        assert [(r["file"], r["race"]) for r in gen.get("_refused") or []] == [
+            ("2018-ge-house-belknap.xlsx", "H|Belknap|1")], f"the general's refusal: {gen.get('_refused')}"
+        assert gen["races"]["H|Belknap|3"]["floterial"] is True, (
+            "a refused base district's towns no longer made the district over it a floterial")
+        again = json.loads(PSR.dumps(gen))
+        assert again["_refused"] == gen["_refused"] and "H|Belknap|1" in PSR.summary(gen), (
+            "the general's refusal did not go round dumps, or the summary does not name it")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("a primary House district whose Totals say 999 where its town gives 40 refused alone "
+                  "and listed by race, its two neighbours read; read_house without the list still "
+                  "refuses the file; a 2018 Senate district whose Totals elect another refused beside "
+                  "its neighbour; a general's refused base district listed, written round dumps, named "
+                  "in the summary, and still making the district over it a floterial")
+
+
 @check("data", "State Primary results: collected/primary_<year>.json is what the saved files say, "
                "each race's nominees no more than its seats and every unsettled one said",
        needs=("parse_sos_primary_results",))
@@ -4584,6 +4683,47 @@ def _primary_read_again(P):
     return "ok", ("; ".join(lines) + ("; read again from the saved files: " + ", ".join(map(str, again))
                                       if again else "; the saved files are not here, so only the "
                                       "committed files were held to their seats"))
+
+
+@check("data", "State Primary results: the 2026 Strafford Democratic House file yields its races, the "
+               "one whose Totals are another district's refused alone",
+       needs=("parse_sos_primary_results",))
+def _primary_strafford_2026_d_races(P):
+    """The file whose district 3 prints district 2's Totals (row 13's cells
+    are =SUM(B7:B8), district 2's rows) once refused the county's twenty
+    other Democratic House races with it (19 November 2026). The committed
+    document holds those twenty and lists district 3 alone; where the file is
+    on disk, reading it gives the same."""
+    path = P.out_path(2026)
+    if not path.is_file():
+        return "skip", f"{path.as_posix()} is not here"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    name = "2026-sp-house-strafford-democratic.xlsx"
+    mine = sorted((k for k in doc["races"] if k.startswith("D|H|Strafford|")),
+                  key=lambda k: int(k.rsplit("|", 1)[1]))
+    want = [f"D|H|Strafford|{n}" for n in range(1, 22) if n != 3]
+    assert mine == want, f"the committed Strafford Democratic House races: {mine}"
+    listed = [r for r in doc.get("_refused") or [] if r["file"] == name]
+    assert [r.get("race") for r in listed] == ["D|H|Strafford|3"] and "666" in listed[0]["why"], (
+        f"the file's refusal is not district 3's alone: {listed}")
+    chouinard = [(c["name"], c["votes"], c["nominated"])
+                 for c in doc["races"]["D|H|Strafford|15"]["candidates"]]
+    assert chouinard == [("Samuel Chouinard", 799, True)], f"D|H|Strafford|15: {chouinard}"
+    src = P.SOURCES / name
+    if not src.is_file():
+        return "ok", (f"{len(mine)} races committed, district 3 alone refused; {name} is not here "
+                      "to read again")
+    try:
+        alone = []
+        got = P.PSR.read_house(src, "strafford", P.Primary(2026, "democratic"), False, alone)
+    except P.PSR.Unreadable as e:
+        return "skip", str(e)
+    assert sorted(got) == [n for n in range(1, 22) if n != 3] and \
+        [a["district"] for a in alone] == [3], (
+            f"reading {name} again: {sorted(got)} read, {[a['district'] for a in alone]} refused")
+    return "ok", (f"{len(mine)} races committed and read again from {name}, district 3 alone refused "
+                  "(its Totals say 666 where its towns give Linda R. Adamo 363); Strafford 15 "
+                  "Samuel Chouinard 799")
 
 
 @check("files", "State Primary results: nothing on the site reads collected/primary_*.json or the "
