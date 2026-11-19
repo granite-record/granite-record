@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the GitHub workflows.
 
@@ -422,6 +422,90 @@ def _workflows_patch_notes():
     return "ok", (f"one Notes box, read through NOTES alone; its step runs on a run by hand and on none "
                   f"of the timer's or the clock's ({seen} readings of 9 kinds of run, boxes as booleans "
                   "and strings), escapes & < > in each subject, writes the run's page and cannot fail the night")
+
+
+@check("workflows", "the night takes the whole history only on the runs whose patch notes read it, "
+       "the jobs whose checks read it keep it, and every job that installs requirements.txt keeps "
+       "pip's downloads under a key of every pin it installs")
+def _workflows_checkout_and_pip_cache():
+    """THE HISTORY ONLY WHERE IT IS READ and THE PIP CACHE (nightly.yml; the refactor's B16).
+    The night job's checkout depth, read as GitHub reads it for every kind of night (WF_RUNS,
+    boxes as booleans and strings), is "0" -- every commit, branch and tag -- exactly on the runs
+    its patch notes step runs on, the one step of the job that reads the history, and "1" on the
+    rest; no other step of the job names git log, a remote branch or a tag. The code checks' job
+    and the weekly, which run preflight --code and its readers of the history (every commit's
+    address, the Clerks' list on any ref, dev's registers), keep fetch-depth 0. And every
+    setup-python of a job that installs requirements.txt says cache: pip, with a
+    cache-dependency-path naming requirements.txt, and its own workflow file where the job pins a
+    package in its own pip line."""
+    files = {f.name: f for f in _workflows()}
+    if "nightly.yml" not in files:
+        return "skip", "no nightly.yml here"
+    jobs = _wf_jobs(_source(files["nightly.yml"]))
+    steps = _wf_steps(_wf_code(jobs.get("night", [])))
+
+    def named(name):
+        got = [st for st in steps if any(ln.strip() == f"- name: {name}" for ln in st)]
+        assert len(got) == 1, f"the night has {len(got)} steps named {name!r}"
+        return got[0]
+    out = named("Check out main")
+    depth = next((ln.split(":", 1)[1].strip() for ln in out if ln.strip().startswith("fetch-depth:")),
+                 "")
+    assert depth.startswith("${{"), f"the night's checkout depth is {depth!r}, not read per run"
+    notes_if = next(ln.strip()[3:].strip() for ln in named("The patch notes")
+                    if ln.strip().startswith("if:"))
+    seen = 0
+    for event, ref, boxes, _dry, title in WF_RUNS["nightly.yml"]:
+        forms = [boxes] + ([{k: str(v).lower() for k, v in boxes.items()}]
+                           if event == "workflow_dispatch" else [])
+        for bx in forms:
+            ctx = _wf_run_ctx(event, ref, bx)
+            got, notes = str(_gh_eval(depth, ctx)), bool(_gh_eval(notes_if, ctx))
+            assert got == ("0" if notes else "1"), (
+                f"on {title} the night checks out at depth {got!r}, where its patch notes "
+                f"{'run' if notes else 'do not run'}")
+            seen += 1
+    for st in steps:
+        if st is named("The patch notes"):
+            continue
+        text = "\n".join(st)
+        assert not re.search(r"\bgit (log|rev-list|merge-base|describe|fetch)\b|origin/|refs/tags",
+                             text), f"a step of the night reads the history: {st[0].strip()}"
+    keep = {"nightly.yml:checks": jobs.get("checks", [])}
+    if "weekly.yml" in files:
+        keep["weekly.yml:weekly"] = _wf_jobs(_source(files["weekly.yml"])).get("weekly", [])
+    for where, jl in keep.items():
+        assert any(re.fullmatch(r"\s*fetch-depth: 0\s*", ln) for ln in _wf_code(jl)), (
+            f"{where} runs preflight --code, whose checks read the whole history, without it")
+    cached = []
+    for f in files.values():
+        for j, jl in _wf_jobs(_source(f)).items():
+            code = _wf_code(jl)
+            body = "\n".join(code)
+            if "-r requirements.txt" not in body:
+                continue
+            for st in _wf_steps(code):
+                if not any("actions/setup-python@" in ln for ln in st):
+                    continue
+                with_ = [ln.strip() for ln in st]
+                assert "cache: pip" in with_, f"{f.name}:{j}'s setup-python keeps no pip cache"
+                at = with_.index(next(ln for ln in with_ if ln.startswith("cache-dependency-path:")))
+                named_paths = [with_[at].split(":", 1)[1].strip(" |")] + \
+                    [ln for ln in with_[at + 1:] if ln and ":" not in ln]
+                named_paths = [x for x in named_paths if x]
+                assert "requirements.txt" in named_paths, (
+                    f"{f.name}:{j}'s pip cache is not keyed by requirements.txt: {named_paths}")
+                # A pin of the job's own: a line of its pip install that begins with one.
+                if re.search(r"^\s+[\w.-]+==\d", body, re.M):
+                    assert f".github/workflows/{f.name}" in named_paths, (
+                        f"{f.name}:{j} pins a package in its own pip line and its pip cache is not "
+                        f"keyed by {f.name}: {named_paths}")
+                cached.append(f"{f.name}:{j}")
+    assert {"nightly.yml:night", "nightly.yml:checks"} <= set(cached), cached
+    return "ok", (f"depth 0 exactly where the patch notes run ({seen} readings of "
+                  f"{len(WF_RUNS['nightly.yml'])} kinds of night), 1 elsewhere, and no other step "
+                  f"of the night reads the history; {', '.join(keep)} keep it all; pip cached and "
+                  f"keyed by every pin in {', '.join(sorted(cached))}")
 
 
 @check("workflows", "each workflow's token reads the repository and no more, and nothing a "
