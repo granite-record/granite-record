@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -3883,6 +3883,80 @@ def _night_started_by(NI):
                   f"a schedule more than {NI.TIMER_GRACE} minutes past it warns, in two wordings, "
                   "never holding the night, in the warnings, the standing ones and a night that "
                   "stopped early, and nothing else does")
+
+
+@check("workflows", "the night says its machine's processor, how many CPUs, and a fixed probe's "
+                    "time, in its log and its verdict, never in the published build.json",
+       needs=("nightly",))
+def _night_cpu_probe(NI):
+    """THE MACHINE'S PROCESSOR, AND A FIXED PROBE (nightly.py; the refactor's
+    B14). The loop is the one it always was (it adds up to CPU_PROBE_SUM),
+    timed as the best of CPU_PROBE_RUNS runs; cpu_record() names the model,
+    the CPUs, the time and the Python, works them out once a process, and a
+    loop that no longer adds up says so; a Night's verdict carries it from
+    the start; the night's log and the week's say it in cpu_line()'s words
+    before they are written; and nothing that writes site/build.json does."""
+    import inspect
+    import types
+    from datetime import datetime
+    ms, total = NI.cpu_probe()
+    assert total == NI.CPU_PROBE_SUM and ms > 0, (
+        f"the fixed probe adds up to {total}, not {NI.CPU_PROBE_SUM}: a different loop is a "
+        "different probe, and no older night's time can be compared with it")
+    assert NI.cpu_probe(steps=NI.CPU_PROBE_STEPS - 1)[1] != NI.CPU_PROBE_SUM
+    saved = dict(NI.CPU), NI.cpu_probe
+    try:
+        NI.CPU.clear()
+        calls = []
+
+        def probe():
+            calls.append(1)
+            return 12.5, NI.CPU_PROBE_SUM
+        NI.cpu_probe = probe
+        rec = NI.cpu_record()
+        again = NI.cpu_record()
+        assert calls == [1] and rec == again, "the probe ran more than once in one process"
+        assert set(rec) == {"model", "cpus", "probe_ms", "probe", "python"} and \
+            rec["probe_ms"] == 12.5 and isinstance(rec["cpus"], int) and rec["cpus"] >= 1 and \
+            rec["model"] and rec["probe"] == (f"best of {NI.CPU_PROBE_RUNS} runs of a fixed "
+                                              f"{NI.CPU_PROBE_STEPS:,}-step loop"), rec
+        line = NI.cpu_line(rec)
+        assert line.startswith("the machine's processor: ") and "12.5 ms" in line and \
+            f"{rec['cpus']} logical CPUs" in line and "\n" not in line, line
+        NI.CPU.clear()
+        NI.cpu_probe = lambda: (12.5, 1)
+        assert "no longer adds up" in NI.cpu_record()["probe"], "a changed loop was not said"
+        NI.CPU.clear()
+        NI.cpu_probe = probe
+        here = Path(".").resolve()
+        tmp = Path(tempfile.mkdtemp(prefix="gr-cpu-"))
+        try:
+            os.chdir(tmp)
+            night = NI.Night(types.SimpleNamespace(no_fetch=True, dry_run=True, new_term=False),
+                             datetime(2026, 11, 19, 3, 20))
+        finally:
+            os.chdir(here)
+            shutil.rmtree(tmp, ignore_errors=True)
+        assert night.v.get("cpu") == rec, ("a night's verdict does not carry the machine",
+                                           night.v.get("cpu"))
+    finally:
+        NI.CPU.clear()
+        NI.CPU.update(saved[0])
+        NI.cpu_probe = saved[1]
+    for fn in (NI.main, NI.weekly):
+        src = inspect.getsource(fn)
+        said = src.find("say(cpu_line(cpu_record()))")
+        wrote = src.find('"\\n".join(LOG)', said)
+        assert said >= 0 and wrote > said, f"{fn.__name__}'s log does not say the machine"
+    for fn in (NI.stamp_commit,):
+        assert "cpu" not in inspect.getsource(fn), "the machine went into site/build.json"
+    build_all = _source(_paths.ROOT / "build_all.py")
+    assert "cpu_record" not in build_all and "cpu_count" not in build_all, \
+        "build_all writes the machine into site/build.json, which every deployment serves"
+    return "ok", (f"a {NI.CPU_PROBE_STEPS:,}-step loop adding up to {NI.CPU_PROBE_SUM}, best of "
+                  f"{NI.CPU_PROBE_RUNS}, {ms} ms here; model, CPUs, time and Python worked out once "
+                  "a process; a changed loop said; in a night's verdict and the night's and the "
+                  "week's logs; not in site/build.json")
 
 
 @check("workflows", "the night reads the private list of renewal dates brought down with its state "

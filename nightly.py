@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.102
+# GRANITE_VERSION: 2026-09-04.103
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -2172,6 +2172,7 @@ def main():
         say("\n" + "=" * 74)
         say(f"finished {datetime.now():%H:%M}, "
             f"{(datetime.now() - started).seconds // 60} min, exit {code}")
+        say(cpu_line(cpu_record()))
         if machine_lows():
             say(f"the machine: {machine_lows()}")
         logs = Path("logs")
@@ -2367,6 +2368,78 @@ def machine_lows():
         if WATCH[k]:
             out.append(f"lowest {name} {WATCH[k][0]:.1f} GB, during {WATCH[k][1]}")
     return "; ".join(out)
+
+
+# THE MACHINE'S PROCESSOR, AND A FIXED PROBE (19 November 2026; the refactor's
+# B14). GitHub gives the night whichever machine it has, and a night's
+# minutes moved with it as much as with any change of the code's, so no
+# saving could be told from a faster machine. The night says the processor's
+# model, how many logical CPUs it has, and how long one fixed loop of pure
+# Python took (CPU_PROBE_STEPS steps, the best of CPU_PROBE_RUNS runs), once,
+# in its log and in the verdict ("cpu"), which stay in the private bucket.
+# Not in site/build.json: no reader needs it, and on GitHub's machine it is
+# GitHub's hardware, but a build.json from anywhere else would publish that
+# machine's. The loop never changes: CPU_PROBE_SUM is what it adds up to,
+# and a different loop is a different probe, whose times no older night's
+# can be compared with.
+CPU_PROBE_STEPS = 500_000
+CPU_PROBE_RUNS = 3
+CPU_PROBE_SUM = 2270474384
+CPU = {}
+
+
+def cpu_model():
+    """The processor's model as the machine names it; "" where it does not."""
+    try:
+        if os.name == "nt":
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                r"HARDWARE\DESCRIPTION\System\CentralProcessor\0") as k:
+                return " ".join(str(winreg.QueryValueEx(k, "ProcessorNameString")[0]).split())
+        for ln in Path("/proc/cpuinfo").read_text(encoding="utf-8", errors="replace").splitlines():
+            if ln.lower().startswith("model name") and ":" in ln:
+                return " ".join(ln.split(":", 1)[1].split())
+    except (OSError, ImportError, ValueError):
+        pass
+    import platform
+    return " ".join(platform.processor().split())
+
+
+def cpu_probe(steps=CPU_PROBE_STEPS, runs=CPU_PROBE_RUNS):
+    """(the best of `runs` timings of the fixed loop in milliseconds, what the
+    loop adds up to). The clock is the time module's own perf_counter, imported
+    here, because the checks replace this module's `time` to count a night's
+    waits."""
+    from time import perf_counter
+    best, x = None, 0
+    for _ in range(max(1, runs)):
+        t = perf_counter()
+        x = 0
+        for i in range(steps):
+            x = (x * 31 + i) & 0xFFFFFFFF
+        s = perf_counter() - t
+        best = s if best is None else min(best, s)
+    return round(best * 1000, 1), x
+
+
+def cpu_record():
+    """{"model", "cpus", "probe_ms", "probe", "python"}: THE MACHINE'S
+    PROCESSOR, AND A FIXED PROBE, worked out once a process."""
+    if not CPU:
+        import platform
+        ms, total = cpu_probe()
+        CPU.update(model=cpu_model() or "not named", cpus=os.cpu_count() or 0, probe_ms=ms,
+                   probe=f"best of {CPU_PROBE_RUNS} runs of a fixed {CPU_PROBE_STEPS:,}-step loop"
+                   + ("" if total == CPU_PROBE_SUM else ", which no longer adds up as it did"),
+                   python=platform.python_version())
+    return dict(CPU)
+
+
+def cpu_line(rec):
+    """cpu_record() as the night's log says it."""
+    return (f"the machine's processor: {rec.get('model')}, {rec.get('cpus')} logical CPUs; the "
+            f"fixed probe ({rec.get('probe')}) took {rec.get('probe_ms')} ms on Python "
+            f"{rec.get('python')}")
 
 
 def load_json(path):
@@ -6775,6 +6848,9 @@ class Night:
         # Who started the night: the timer, GitHub's schedule or a person
         # (WHO STARTED THE NIGHT), and a warning where the schedule had to.
         self.v["started_by"] = started_by_record()
+        # The machine's processor and the fixed probe, before the night's
+        # work (THE MACHINE'S PROCESSOR, AND A FIXED PROBE).
+        self.v["cpu"] = cpu_record()
         # The private list of renewal dates, as state-down brought it (KNOWN
         # EXPIRIES): each due within EXPIRY_DAYS, or past, warns.
         self.v["expiries"] = expiries_record(started.date())
@@ -8215,6 +8291,7 @@ def weekly(a):
         say("\n" + "=" * 74)
         say(f"finished {datetime.now():%H:%M}, "
             f"{(datetime.now() - started).seconds // 60} min, exit {code}")
+        say(cpu_line(cpu_record()))
         if machine_lows():
             say(f"the machine: {machine_lows()}")
         logs = Path("logs")
