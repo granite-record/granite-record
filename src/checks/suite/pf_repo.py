@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -2907,6 +2907,48 @@ def _rehearsal_answers_every_night_step():
     return "ok", (f"all {len(started)} scripts nightly.py can start outside weekly() are answered "
                   f"by the rehearsal's Nights.fake, any other stops it, and its database views "
                   f"come with their columns")
+
+
+@check("files", "the turn's rehearsal moves its continuing member into a seat that exists, and its "
+       "two files say the same of the seat and the party")
+def _rehearsal_moves_into_a_real_seat():
+    """THE REHEARSAL OF 19 NOVEMBER 2026 held its first post-turn build on
+    two findings that were the harness's own: tests/rehearse_turn.new_roster
+    moved Rep. Katherine Prudhomme-O'Brien from Rockingham 13 to "Rockingham
+    53", the old district plus 40, which no map and no district table holds,
+    so the map counted 381 members against the Legislators tab's 382 and
+    entities' tenure of 903 named a district not in the model. The General
+    Court's roster names only real seats, and a seat one member leaves is
+    another's. Held here on a six-member roster: the mover lands in a
+    district of their own county that a newcomer held, the newcomer takes
+    the mover's, no district's count of members moves, and Members.txt
+    carries the same seat and party as legislators.txt."""
+    import importlib.util
+    path = _paths.locate("tests/rehearse_turn.py")
+    spec = importlib.util.spec_from_file_location("_rehearse_turn_roster", path)
+    RT = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(RT)
+    seats = [("10", "D"), ("13", "R"), ("13", "D"), ("10", "R"), ("13", "R"), ("10", "D")]
+    leg = [f"{100 + i}|Last{i}|First{i}||H|{1000 + i}|8|{d}|{p}|a|b|c|NH|03301|m{i}@gc.nh.gov"
+           for i, (d, p) in enumerate(seats)]
+    mem = ["LastName\tFirstName\tCounty\tDistrict\tWorkEmail\tparty"] + [
+        f"Last{i}\tFirst{i}\tRockingham\t{d}\tm{i}@gc.nh.gov\t{p}" for i, (d, p) in enumerate(seats)]
+    L, M, swapped, moved = RT.new_roster(RT.join(leg), RT.join(mem))
+    rows = [ln.split("|") for ln in RT.lines(L)]
+    count = lambda rs: sorted((f[6], f[7]) for f in rs)
+    assert count(rows) == count([ln.split("|") for ln in leg]), (
+        f"the fake roster changed a district's count of members: {count(rows)}")
+    dist = {k: v for k, v in moved.items() if v[0] == "district"}
+    assert dist and all(now in {d for d, _p in seats} and now != was
+                        for _f, was, now in dist.values()), (
+        f"the fake roster moves a member to a district its county does not have: {dist}")
+    by_mail = {f[14].lower(): (f[7], f[8]) for f in rows}
+    mrows = [r.split("\t") for r in RT.lines(M)[1:]]
+    off = [r for r in mrows if by_mail.get(r[4].lower()) != (r[3], r[5])]
+    assert not off, f"Members.txt and legislators.txt disagree on a seat or a party: {off}"
+    return "ok", (f"the mover goes {next(iter(dist.values()))[1]} -> "
+                  f"{next(iter(dist.values()))[2]} of the same county, a newcomer taking their "
+                  f"seat; {len(swapped)} newcomers, every district's count kept, both files agree")
 
 
 # ---- a run for a change, and the fast path's checks (9 October 2026) ----------
