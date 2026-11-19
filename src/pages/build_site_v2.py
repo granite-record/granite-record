@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.289
+# GRANITE_VERSION: 2026-09-05.290
 """
 Generate the faceted site from real General Court data.
 
@@ -11944,7 +11944,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 chapters=None, seats=None, session_over="", former=None,
                 links=None, hearing_reports=None, ballots=None, term_rosters=None,
                 rc_cards=None, moments=None, numbers=None, record_chambers=None,
-                id_parties=None, tagging=None, voters=None, people=None):
+                id_parties=None, tagging=None, voter_pools=None, people=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -11966,9 +11966,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     `tagging` is site_tagging's answer: each tagged bill's row gains "tags"
     and its record "tags", and nothing changes where it is empty or None.
 
-    `voters` is term_voters': each term's members as their ballots give
-    them, with the seat of the term, among whom a roll call's mover of a term
-    before the current one is looked for (mover_pool). None links none.
+    `voter_pools` is term_voters': each term's members as their ballots
+    give them, with the seat of the term, among whom a roll call's mover of a
+    term before the current one is looked for (mover_pool). None links none.
+    NOT `voters`: the loop below binds that name to a CACR's ballot card on
+    every bill, and the parameter of that name, read after it, was None on
+    every bill but a CACR's -- the dry run of 20 November 2026 linked no mover
+    of 1999-2024 at all.
 
     `people`, where given, is filled as `sponsored` is: {term: {key: member}},
     everyone each term's index rows name as a sponsor (sponsor_roster), for
@@ -12447,7 +12451,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         rc_out = bill_rollcalls(bid, term, rcs, narr,
                                 votes_by_bill, legs, unnamed, in_office)
         # Whom this term's movers are looked for among (mover_pool).
-        _mpool, _mpages = mover_pool(term, current, legs, term_rosters, _people, voters)
+        _mpool, _mpages = mover_pool(term, current, legs, term_rosters, _people,
+                                     voter_pools)
         for r in rc_out:
             r.pop("_ord", None)
             # THE VOTE WORDS' KEY (the person, 8 October 2026; motions.py):
@@ -13602,7 +13607,7 @@ def main():
                                ballots=load_ballots(BALLOTS, bills),
                                rc_cards=rc_cards, moments=floor_moments,
                                record_chambers=record_chambers, id_parties=id_parties,
-                               tagging=tagging, voters=voters)
+                               tagging=tagging, voter_pools=voters)
     add_related(out, index)
     add_same_number(out, index, notes)
     # NO index.json (retired 5 October 2026). It was every row below in one

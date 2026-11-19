@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.36
+# GRANITE_VERSION: 2026-11-16.37
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -7505,7 +7505,7 @@ def _movers_of_a_finished_term(B):
         and today["Rep. Nopage"], f"the current term's movers moved: {today}"
     assert not any(older.values()), f"a term with no frozen roster linked a mover: {older}"
     src = _source(_paths.locate("build_site_v2.py"))
-    assert "mover_pool(term, current, legs, term_rosters, _people, voters)" in src and \
+    assert "mover_pool(term, current, legs, term_rosters, _people,\n" in src and \
         'mover_member(r["mover"], r.get("body"), _mpool, pages=_mpages)' in src, (
             "build_bills no longer looks for a roll call's mover among the term's own members")
     return "ok", ("after the turn and between Organization Day and the switch, 2025-2026's movers "
@@ -7665,9 +7665,9 @@ def _movers_of_older_terms(B):
         shutil.rmtree(root, ignore_errors=True)
     assert a == b, "floor_record.json differs when main works the seats out before the bills"
     src = _source(_paths.locate("build_site_v2.py"))
-    assert "mover_pool(term, current, legs, term_rosters, _people, voters)" in src and \
+    assert "mover_pool(term, current, legs, term_rosters, _people,\n" in src and \
         "voters = term_voters(votes_by_member, floor_seats)" in src and \
-        "tagging=tagging, voters=voters)" in src and "worked=(floor_seats, floor_ballots))" in src, (
+        "tagging=tagging, voter_pools=voters)" in src and "worked=(floor_seats, floor_ballots))" in src, (
             "build_bills is not handed each term's voters, or the session days another seat")
     return "ok", ("Letourneau linked as Rep. of Rock 77 and Sen. of SD19 to his one page, Sanborn "
                   "by SD7 and then SD9, Rep. Eaton (two that term) and Sen. Boutin (no Senate "
@@ -7778,6 +7778,75 @@ def _story_people_of_older_terms(B):
     assert got == want, f"an older term's story names {got}, not {want}"
     return "ok", ("a story of 2003-2004 names Rep. Letourneau by Rock 77 and no Senator of that "
                   "term; of 2013-2014 Rep. Richard Eaton, and Rep. Eaton, two of them, as words")
+
+
+@check("build", "build_site_v2.py itself links an older term's mover and story name, through "
+                "main() and build_bills", needs=("build_site_v2",))
+def _older_movers_through_main(B):
+    """The dry run of 20 November 2026 built the whole site and linked no mover of 1999-2024,
+    though every check of the functions passed: build_bills took the pools as `voters`, and
+    its loop binds `voters` to a CACR's ballot card on every bill, None on all the rest. So
+    this runs the script, main() and all, over the fixture project with one bill of
+    2023-2024 added -- HB1442 of that term, a voice vote Rep. Quill moved, and Quill's one
+    ballot of 2024, his last -- and reads the record it writes: the roll call and the story
+    name Rep. Joe Quill (R - Hills 9), linked to his page. And no name build_bills hands
+    mover_pool as the pools is bound again in its body."""
+    import ast
+    tree = ast.parse(_source(B.__file__))
+    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "build_bills")
+    call = next(n for n in ast.walk(fn) if isinstance(n, ast.Call)
+                and getattr(n.func, "id", "") == "mover_pool")
+    pools = call.args[5].id if len(call.args) > 5 and isinstance(call.args[5], ast.Name) else ""
+    assert pools in [a.arg for a in fn.args.args + fn.args.kwonlyargs], (
+        f"build_bills hands mover_pool {pools or 'no pools'} for the voters, not a parameter")
+    bound = sorted({getattr(t, "lineno", 0) for n in ast.walk(fn)
+                    for t in ((n.targets if isinstance(n, ast.Assign) else
+                               [n.target] if isinstance(n, (ast.AugAssign, ast.AnnAssign, ast.For,
+                                                            ast.NamedExpr)) else []))
+                    for x in ast.walk(t) if isinstance(x, ast.Name) and x.id == pools})
+    assert not bound, f"build_bills binds {pools}, the voters' pools, again at line(s) {bound}"
+    root = Path(tempfile.mkdtemp(prefix="gr-older-main-"))
+    try:
+        _site_fixture(root)
+        d = root / "data"
+        bills = json.loads((d / "bills.json").read_text(encoding="utf-8"))
+        bills["2023-2024"] = {"HB1442": {
+            "designation": "HB 1442", "title": "an entirely different bill", "lsr_num": "0411",
+            "lsr_year": "2024", "subject": "Insurance", "chamber": "H",
+            "house_committee": "Commerce", "senate_committee": "", "lsr": "2024-0411"}}
+        (d / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+        votes = json.loads((d / "member_votes.json").read_text(encoding="utf-8"))
+        votes.append({"member_id": "9001", "name": "Quill, Joe", "party": "R",
+                      "label": "Quill, Joe(R) Hills 9", "year": "2024", "body": "H",
+                      "vote_number": "310", "bill": "HB1442",
+                      "question": "Inexpedient to Legislate", "date": "2024-03-06", "vote": "Yea"})
+        (d / "member_votes.json").write_text(json.dumps(votes), encoding="utf-8")
+        narr = json.loads((root / "narratives.json").read_text(encoding="utf-8"))
+        narr["2023-2024"] = {"HB1442": {
+            "narrative": "Rep. Quill moved to table it.", "stages": [], "notes": [],
+            "unrecognised": [],
+            "events": [{"date": "2024-03-06", "type": "floor", "body": "H", "cancelled": False,
+                        "action": "Laid on Table", "motion": "MA", "vote_kind": "VV",
+                        "mover": "Rep. Quill",
+                        "raw": "Rep. Quill Moved Laid on Table, MA VV 03/06/2024"}]}}
+        (root / "narratives.json").write_text(json.dumps(narr), encoding="utf-8")
+        r = _run([sys.executable, _paths.script("build_site_v2.py"), "--data", "data",
+                  "--out", "site", "--segments", "work"], cwd=root, capture_output=True,
+                 text=True, timeout=300)
+        assert r.returncode == 0, f"build_site_v2.py failed on the fixture: {r.stderr[-600:]}"
+        p = root / "site" / "bills" / "2024" / "HB1442.json"
+        assert p.is_file(), "the build wrote no record of HB1442 of 2023-2024"
+        rec = json.loads(p.read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    quill = {"label": "Rep. Joe Quill (R - Hills 9)", "slug": "joe-quill-hills-9"}
+    moved = [x.get("mover_m") for x in rec.get("rollcalls") or [] if x.get("mover") == "Rep. Quill"]
+    assert moved == [quill], f"the built record's mover of 2023-2024 is {moved}, not [{quill}]"
+    told = rec.get("story_people") or []
+    assert told == [{"text": "Rep. Quill", **quill}], f"the built story names {told}"
+    return "ok", (f"build_bills hands mover_pool its parameter {pools}, never bound again; the "
+                  "script's own build links 2023-2024's Rep. Quill on the roll call and in the "
+                  "story as Rep. Joe Quill (R - Hills 9)")
 
 
 @check("build", "the bill-text fetch saves only the bill it asked for, and stops when told no",
