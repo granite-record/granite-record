@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.281
+# GRANITE_VERSION: 2026-09-05.282
 """
 Generate the faceted site from real General Court data.
 
@@ -65,6 +65,7 @@ import parse_constitution as PCON
 import bill_order as BO
 import past_sponsors as PSP
 import text_sponsors as TS
+import entities as EN
 from past_roster import MATCHED as PAST_ROSTER_MATCH, shared_names as past_roster_shared_names
 import topic_model as TM
 import official_topics as OT
@@ -3035,25 +3036,29 @@ def printed_record(path="text_sponsors.json"):
             namesake's, and says nothing of this member (the second review
             of 5 November 2026: counting those refused 29 seats that were
             right, David Flanders's Rock 20 among them).
-    Empty where the file is not here."""
+    Empty where the file is not here.
+
+    READ FROM THE MODEL'S TENURES (18 November 2026, the refactor's model
+    design, step 5): each seat is one of entities.printed_tenures, the
+    tenures of the seats a term's bills print that build_entities puts in
+    the model -- a member's, or a seat no one was placed on -- under every
+    name the lines print it."""
     p = Path(path)
     try:
         text = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
     except ValueError:
         text = {}
     seen, loose, placed = defaultdict(set), defaultdict(set), defaultdict(set)
-    for term, bills in text.items():
-        for recs in (bills or {}).values():
-            for r in recs or []:
-                if not r.get("district"):
-                    continue
-                s = (r.get("chamber") or "", r.get("county") or "", str(r["district"]).lstrip("0"))
-                k = (term, s[0], _surname(r.get("name")))
-                if r.get("member_id"):
-                    seen[(term, str(r["member_id"]))].add(s)
-                    placed[k].add(s[1:])
-                else:
-                    loose[k].add(s[1:])
+    for t in EN.printed_tenures(text, p.as_posix()):
+        line, term = t["sponsor_line"], t["term"]
+        s = (line["chamber"], line["county"], line["district"].lstrip("0"))
+        for name in line["names"]:
+            k = (term, s[0], _surname(name))
+            if t.get("member_id"):
+                seen[(term, t["member_id"])].add(s)
+                placed[k].add(s[1:])
+            else:
+                loose[k].add(s[1:])
     one = {k: next(iter(v)) for k, v in seen.items() if len(v) == 1}
     two = {k for k, v in seen.items() if len(v) > 1}
     named = {k: v - placed.get(k, set()) for k, v in loose.items() if v - placed.get(k, set())}

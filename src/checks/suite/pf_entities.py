@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -490,6 +490,177 @@ def _entities_round_trip(BE, EN, PE, GR, BME):
                   "losses each seen")
 
 
+# Sponsor lines of a made-up text_sponsors.json, as text_sponsors.py writes them: a member printed
+# at one seat under two names and at a second seat in the same term, a line placed on no one, a
+# senator in two terms, a member people.json does not hold, a line with no district and a
+# committee's line of no chamber.
+_PRINTED_DOC = {
+    "2021-2022": {
+        "HB1": [{"member_id": "3001", "name": "Smith", "chamber": "H", "county": "Rockingham", "district": "1"},
+                {"member_id": "", "name": "Jones", "chamber": "H", "county": "", "district": "24"},
+                {"member_id": "3002", "name": "Lee", "chamber": "S", "county": "", "district": "7"},
+                {"member_id": "3003", "name": "Moe", "chamber": "H", "county": "Carroll", "district": ""},
+                {"member_id": "", "name": "Rules Committee", "chamber": "", "county": "", "district": ""}],
+        "HB2": [{"member_id": "3001", "name": "J. Smith", "chamber": "H", "county": "Rockingham", "district": "1"},
+                {"member_id": "3001", "name": "Smith", "chamber": "H", "county": "Rockingham", "district": "2"}]},
+    "2023-2024": {
+        "SB1": [{"member_id": "3002", "name": "Lee", "chamber": "S", "county": "", "district": "7"},
+                {"member_id": "3004", "name": "Poe", "chamber": "H", "county": "Belknap", "district": "8"}]}}
+
+
+@check("build", "the model holds the seat each member held in each term as the term's bills print it: one tenure a member, seat and term, under every name printed, with the person and, in an era on file, the district",
+       needs=("build_entities", "entities", "people"))
+def _entities_printed_seats(BE, EN, PE):
+    """THE SEAT A TERM'S BILLS PRINT, IN THE MODEL (the design of 16 November 2026, step 5: the
+    seat-in-a-term readers read the tenure table). entities.printed_tenures reads
+    text_sponsors.json's sponsor lines into one tenure a member, seat and term, in the order the
+    file first prints each: a member printed at two seats in a term has two; a line placed on no
+    one is a seat with no member; every name a seat is printed under is kept, in order; a line
+    with no district, or of no chamber, is no seat. build_entities.printed_seats gives each the
+    person people.json gives its member id, and the district only where the term's era of
+    districts is on file (2021-2022's "Belknap 8" is not today's Belknap 8); build() puts them
+    in the model on a made-up tree, every one shaped as a tenure; and with no file, none, said."""
+    want = [("printed:2021-2022:3001|H|Rockingham|1", "3001", ["Smith", "J. Smith"], "501", None),
+            ("printed:2021-2022:|H||24", None, ["Jones"], None, None),
+            ("printed:2021-2022:3002|S||7", "3002", ["Lee"], "502", None),
+            ("printed:2021-2022:3001|H|Rockingham|2", "3001", ["Smith"], "501", None),
+            ("printed:2023-2024:3002|S||7", "3002", ["Lee"], "502", "senate:2022:7"),
+            ("printed:2023-2024:3004|H|Belknap|8", "3004", ["Poe"], None, "house:2022:belknap-8")]
+    plain = EN.printed_tenures(_PRINTED_DOC, "text_sponsors.json")
+    assert [t["tenure"] for t in plain] == [w[0] for w in want], [t["tenure"] for t in plain]
+    assert all(t["person"] is None and "district" not in t and t["files"] == ["text_sponsors.json"]
+               for t in plain), plain
+    tmp = Path(tempfile.mkdtemp(prefix="gr-printed-"))
+    try:
+        _copy_tracked(tmp, [n for n in TRACKED if n.startswith("records/")])
+        settings = BE.ST.SETTINGS
+        districts, _places = BE.districts_and_places(tmp, settings)
+        report = {"notes": []}
+        assert BE.printed_seats(tmp, settings, {}, districts, report) == [] and any(
+            BE.SPONSORS in n for n in report["notes"]), "no text_sponsors.json, and the model was not told"
+        (tmp / BE.SPONSORS).write_text(json.dumps(_PRINTED_DOC), encoding="utf-8")
+        by_mid = {"3001": {"person": "501"}, "3002": {"person": "502"}}
+        got = BE.printed_seats(tmp, settings, by_mid, districts, {"notes": []})
+        seen = [(t["tenure"], t.get("member_id"), t["sponsor_line"]["names"], t["person"], t.get("district"))
+                for t in got]
+        assert seen == want, f"the printed seats are {seen}"
+        assert got[0]["sponsor_line"] == {"chamber": "H", "county": "Rockingham", "district": "1",
+                                          "names": ["Smith", "J. Smith"]}, got[0]
+        assert {t["office"] for t in got} == {"house", "senate"}, {t["office"] for t in got}
+        bad = [p for t in got for p in EN.shape_problems(t, EN.SHAPES["tenure"], t["tenure"])]
+        assert not bad, bad
+        # build() puts them in the model, on the made-up tree of the round trip.
+        _world(tmp, PE)
+        model, _layouts, report = BE.build(tmp)
+        held = [t for t in model["tenure"] if t["tenure"].startswith("printed:")]
+        assert [t["tenure"] for t in held] == [w[0] for w in want], [t["tenure"] for t in held]
+        assert not [p for p in report["problems"] if "printed:" in p], report["problems"]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(want)} seats of a made-up text_sponsors.json, in the file's order, two seats of one "
+                  "member in a term two tenures, a line placed on no one a seat with no member, every name "
+                  "kept; persons by member id; a district only in an era on file; in the model build() "
+                  "makes, with no problem; no file, no seat, and said")
+
+
+# The readers of the seat a member held in a term that read the model's tenures (the design's
+# step 5), each through entities.printed_tenures: _entities_step_in_the_plan lets them import the
+# shapes' module, and nothing else.
+SEAT_READERS = {"build_members_elect.py", "build_site_v2.py"}
+
+
+def _model_swapped(EN, change):
+    """A context in which entities.printed_tenures gives `change` of what it gives: a reader that
+    reads the model's tenures answers by the changed ones, and one that reads the lines itself
+    does not."""
+    import contextlib
+
+    @contextlib.contextmanager
+    def swapped():
+        real = EN.printed_tenures
+        EN.printed_tenures = lambda *a, **k: change(copy.deepcopy(real(*a, **k)))
+        try:
+            yield
+        finally:
+            EN.printed_tenures = real
+    return swapped()
+
+
+@check("build", "the seats a member-elect's history is matched against are the model's: build_members_elect.seat_history reads the tenures of the seats a term's bills print, and keeps a member's as a race key",
+       needs=("build_members_elect", "entities"))
+def _seat_history_reads_the_model(BME, EN):
+    """build_members_elect.seat_history (the seats each member printed as their own on each term's
+    bills, which an election's surname-only winner is matched to a member by) reads
+    entities.printed_tenures, the tenures build_entities puts in the model, rather than the
+    sponsor lines (the design of 16 November 2026, step 5; byte-identical on D:/nh's files and the
+    fixture site, 18 November 2026). On the made-up lines: a member printed at two seats in a term
+    has both, a senator one a term, a line placed on no one and a line with no district are no
+    member's. And it answers by the model: a tenure taken out of the model is a seat gone from the
+    history, and a tenure put in is one there."""
+    want = {"3001": {"2021-2022": ["H|Rockingham|1", "H|Rockingham|2"]},
+            "3002": {"2021-2022": ["S|7"], "2023-2024": ["S|7"]},
+            "3004": {"2023-2024": ["H|Belknap|8"]}}
+    got = BME.seat_history(_PRINTED_DOC)
+    assert got == want, f"seat_history gives {got}"
+    assert list(got) == ["3001", "3002", "3004"], f"members out of the file's order: {list(got)}"
+
+    def change(ts):
+        ts = [t for t in ts if t.get("member_id") != "3004"]
+        t = copy.deepcopy(ts[0])
+        t.update(tenure="printed:2023-2024:3009|H|Coos|3", term="2023-2024", member_id="3009",
+                 sponsor_line={"chamber": "H", "county": "Coos", "district": "3", "names": ["Roe"]})
+        return ts + [t]
+    with _model_swapped(EN, change):
+        moved = BME.seat_history(_PRINTED_DOC)
+    assert "3004" not in moved and moved.get("3009") == {"2023-2024": ["H|Coos|3"]}, (
+        f"seat_history does not answer by the model's tenures: {moved}")
+    return "ok", ("three members' seats from the model's tenures, two seats of one term both kept, a line of "
+                  "no member none; a tenure taken out of the model and one put in each move the answer")
+
+
+@check("build", "the seat of the term a session day names a member by is the model's where the term's bills print one: build_site_v2.printed_record reads the tenures of the seats a term's bills print",
+       needs=("build_site_v2", "entities"))
+def _printed_record_reads_the_model(B2, EN):
+    """build_site_v2.printed_record -- term_seats' first source, the seat a term's bills print for
+    a member, which a session day names them by and date_former_seats dates a former member's by
+    (printed_seats) -- reads entities.printed_tenures, the tenures build_entities puts in the
+    model, rather than the sponsor lines (the design of 16 November 2026, step 5; byte-identical
+    on D:/nh's files and the fixture site, 18 November 2026). On the made-up lines and one more,
+    a Smith placed on no one at the seat a Smith was placed on: one seat a member is `one`; a
+    member at two seats in a term is in `two`; a seat printed under a surname placed on no one
+    is `named`, unless a member of that surname was placed at it. And it answers by the model: a
+    tenure taken out of the model and one put in each move `one`."""
+    doc = copy.deepcopy(_PRINTED_DOC)
+    doc["2021-2022"]["HB3"] = [{"member_id": "", "name": "Smith", "chamber": "H", "county": "Rockingham",
+                                "district": "1"}]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-printed-record-"))
+    try:
+        f = tmp / "text_sponsors.json"
+        f.write_text(json.dumps(doc), encoding="utf-8")
+        one, two, named = B2.printed_record(f)
+        assert one == {("2021-2022", "3002"): ("S", "", "7"), ("2023-2024", "3002"): ("S", "", "7"),
+                       ("2023-2024", "3004"): ("H", "Belknap", "8")}, f"one: {one}"
+        assert two == {("2021-2022", "3001")}, f"two: {two}"
+        assert named == {("2021-2022", "H", "jones"): {("", "24")}}, f"named: {named}"
+        assert B2.printed_seats(f) == one
+
+        def change(ts):
+            ts = [t for t in ts if t.get("member_id") != "3004"]
+            t = copy.deepcopy(ts[0])
+            t.update(tenure="printed:2023-2024:3009|H|Coos|3", term="2023-2024", member_id="3009",
+                     sponsor_line={"chamber": "H", "county": "Coos", "district": "3", "names": ["Roe"]})
+            return ts + [t]
+        with _model_swapped(EN, change):
+            moved = B2.printed_record(f)[0]
+        assert ("2023-2024", "3004") not in moved and moved.get(("2023-2024", "3009")) == ("H", "Coos", "3"), (
+            f"printed_record does not answer by the model's tenures: {moved}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("three one-seat members, one at two seats, one surname placed on no one, and a Smith's seat "
+                  "not doubted by an unplaced Smith, from the model's tenures; a tenure taken out of the "
+                  "model and one put in each move the answer")
+
+
 @check("build", "build_entities.py says what the model cannot place or hold and goes on, and every file still comes back",
        needs=("build_entities", "entities", "people"))
 def _entities_say_and_go_on(BE, EN, PE):
@@ -572,7 +743,8 @@ def _entities_step_in_the_plan(build_all):
     manifest; optional, because no page waits on a model nothing reads. And nothing reads it yet
     (phase A): no step of the plan names data/entities but it, and no code file but it, the shapes'
     module, src/ops/gr_register.py (which asks it only for the first offices' holders it links
-    to no one) and the checks imports either or names the folder."""
+    to no one) and the checks imports either or names the folder -- but the seat readers moved
+    onto the model's tenures (SEAT_READERS, phase B), which import the shapes' module alone."""
     class A:
         key = None
         session = "2026"
@@ -592,17 +764,25 @@ def _entities_step_in_the_plan(build_all):
                                                           list(x.args) + list(x.needs) + list(x.produces))]
     assert not others, f"steps besides the model's name data/entities: {others}"
     allowed = {"build_entities.py", "entities.py", "gr_register.py", "build_all.py"}
+    # PHASE B (the design's step 5, 18 November 2026): a reader moved onto the model's tenures
+    # reads them through the shapes' module (entities.printed_tenures), from the file the model
+    # is built from, since the step that writes data/entities/ runs after it; never the folder.
+    moved = SEAT_READERS
     readers = []
     for f in _paths.code_files("*.py"):
         if f.name in allowed or "suite" in f.parent.name:
             continue
         t = f.read_text(encoding="utf-8", errors="replace")
+        if f.name in moved and "data/entities" not in t and not re.search(
+                r"^\s*(?:import|from)\s+build_entities\b", t, re.M):
+            continue
         if re.search(r"^\s*(?:import|from)\s+(?:entities|build_entities)\b", t, re.M) or "data/entities" in t:
             readers.append(f.name)
     assert not readers, f"these read the model, which nothing reads yet: {readers}"
     return "ok", (f"step {i + 1} of {len(steps)}, after the district table, the site data, the members-elect, "
                   "the town pages, the district map and the bulk downloads; --out data/entities, optional; no "
-                  "other step or code file reads it")
+                  f"other step or code file reads it, and the {len(moved)} seat reader(s) moved onto its tenures "
+                  "read them through entities alone")
 
 
 def _first_offices_unlinked(BE, root):

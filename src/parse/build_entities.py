@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 The model of people, offices, terms, districts and elections, written to data/entities/ from
 the files on disk (src/lib/entities.py says what the model is).
@@ -26,6 +26,8 @@ of that day). It reads, and never writes:
   collected/county_officials.json the county officers as the Secretary of State's roster read,
                                   only to say where it and the hand file differ
   generated/past_roster.json      the members of 1989-1998, and who of them has no page
+  text_sponsors.json              the seat each member held in each term, as the term's bills
+                                  print it (entities.printed_tenures), where it is on disk
   corrections/officials_links.json the owner's word on who an official is, where it is on disk
   LINK_EVIDENCE                   what the files say of every member an official might be
                                   (site/former.json, data/legislators.json, the General Court's
@@ -348,6 +350,32 @@ def roster_district(r, era):
     if r.get("chamber") == "H":
         return EN.district_id("house", era, f"{EN.slug(r.get('county'))}-{int(r.get('district'))}")
     return EN.district_id("senate", era, str(int(r.get("district"))))
+
+
+def printed_seats(root, settings, by_mid, districts, report):
+    """[tenure, ...]: the seat each member held in each term as the term's bills print it
+    (entities.printed_tenures, from text_sponsors.json), each with the person people.json gives
+    its member id to, and its district where the term's era of districts is on file and the
+    table spells the printed seat as one district (entities.resolve_district); a seat of a term
+    before every era on file names none, never today's district of that number. Not here, no
+    seat, and said."""
+    if not (Path(root) / SPONSORS).is_file():
+        report["notes"].append(f"{SPONSORS} is not here: the model holds no seat a term's bills print")
+        return []
+    index = EN.district_index({"district": districts})
+    out = EN.printed_tenures(_read(root, SPONSORS), SPONSORS, settings)
+    kinds = {o["office"]: o["district_kind"] for o in EN.offices(settings) if o.get("district_kind")}
+    for t in out:
+        p = by_mid.get(t.get("member_id") or "")
+        if p is not None:
+            t["person"] = p["person"]
+        line, kind = t["sponsor_line"], kinds[t["office"]]
+        era = EN.era_of(t["term"], settings) if EN.kind_has_eras(kind, settings) else None
+        said = f"{line['county']} {line['district']}" if line["county"] else line["district"]
+        did = EN.resolve_district(index, kind, said, era) if era else None
+        if did:
+            t["district"] = did
+    return out
 
 
 # ---- districts and places -----------------------------------------------------------------
@@ -1663,7 +1691,8 @@ def build(root=".", settings=None, register=None):
         if t["person"] and re.match(EN.GR, t["person"]) and t["person"] not in {g["person"] for g in gr_people}:
             gr_people.append({"person": t["person"], "granite_id": t["person"], "name": t["printed"]})
     past = past_people(root, persons + gr_people, report)
-    all_ten = tenures + hand_ten + county_ten + off_ten + elect_ten
+    printed = printed_seats(root, settings, by_mid, districts, report)
+    all_ten = tenures + hand_ten + county_ten + off_ten + elect_ten + printed
     meta = _read(root, META)
     term_names = set(meta.get("terms") or []) | {t["term"] for t in all_ten if t.get("term")} | \
         {c["term"] for c in contests if c.get("term")}

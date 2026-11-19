@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.8
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -16,6 +16,7 @@ files back from it.
     EN.view_districts(model, era)    # site/districts.json
     EN.view_officers(model)          # site/officers.json's "officers"
     EN.view_names(model)             # the search index's part: each confirmed form of a name
+    EN.printed_tenures(doc, file)    # the seat each member held in each term, as its bills print it
     EN.party_letters("r&d")          # ("R", "D"): a printed party by the state's one table
     EN.resolve_district(EN.district_index(model), "house", "Belk 8", "2022")
                                      # "house:2022:belknap-8": any spelling, in an era, to its id
@@ -24,6 +25,10 @@ src/parse/build_entities.py writes the model to data/entities/ every night from 
 disk. NOTHING READS IT YET (the design of 16 November 2026, phase A): preflight holds that each
 of today's files above is a view of it, byte for byte, so that a reader moved onto it later
 cannot change the site, and a model that cannot give a file back has lost something.
+The readers moved onto it (phase B, one a commit, each proven to leave the site byte for byte
+as it was) read its tenures through this module, from the files it is built from, since the
+step that writes data/entities/ runs after them: build_members_elect.seat_history and
+build_site_v2.printed_record read printed_tenures (18 November 2026).
 
 THE KINDS. Every record is a JSON object whose first field is its id, named for its kind:
 
@@ -298,6 +303,11 @@ SHAPES = {
                      "properties": {"path": {"type": "array"}, "order": _STRS,
                                     "kept": {"type": "object"}}},
             "keys": {"type": "object", "additionalProperties": _S},
+            # The seat as a term's bills print it in their sponsor lines (printed_tenures): the
+            # chamber, county and district as printed, and every name it is printed under.
+            "sponsor_line": {"type": "object", "required": ["chamber", "county", "district", "names"],
+                             "additionalProperties": False,
+                             "properties": {"chamber": _S, "county": _S, "district": _S, "names": _STRS}},
             "files": _STRS,
             "source": _S,
         },
@@ -792,6 +802,54 @@ def resolve_district(index, kind, text, era):
     holds no districts of -- a term before every era on file."""
     ids = index.get((kind, era, spelling(text)))
     return ids[0] if ids and len(ids) == 1 else None
+
+
+# ---- the seat a term's bills print ----------------------------------------------------------
+
+def printed_tenures(sponsors, file, settings=None):
+    """[tenure, ...]: THE SEAT A MEMBER HELD IN A TERM, AS THE TERM'S BILLS PRINT IT. `sponsors`
+    is text_sponsors.json as read ({term: {bill: [{"member_id", "name", "chamber", "county",
+    "district", ...}]}}), the sponsor lines src/parse/text_sponsors.py read off each bill's own
+    text, which carry the seat a sponsor held in the term the bill was filed; `file` is where it
+    was read. One tenure a member, seat and term -- or, where text_sponsors placed a line on no
+    one, a seat and term with no member -- holding the seat as printed ("sponsor_line": the
+    chamber, county and district as the lines print them, and every name the lines print it
+    under, in the file's order), its office the chamber's, and no person (build_entities gives
+    the person and, where the term's era of districts is on file, the district). A member who
+    sponsored nothing in a term has no tenure of it here; one printed at two seats has two. A
+    line with no district, or in a chamber no office of the settings is coded for, is no seat:
+    text_sponsors.py writes H, S or nothing, and a line of no chamber prints no district. The
+    tenures come in the order the file first prints each, as the readers that read them have
+    always met the lines: the seat of the term a session day names a member by
+    (build_site_v2.printed_record) and the seats a member-elect's history is matched against
+    (build_members_elect.seat_history), each with its own rule."""
+    codes = {o["code"]: o["office"] for o in offices(settings)
+             if o.get("code") and o.get("district_kind") in ("house", "senate")}
+    out, by_id = [], {}
+    for term, bills in (sponsors or {}).items():
+        for rows in (bills or {}).values():
+            for r in rows or []:
+                if not r.get("district"):
+                    continue
+                chamber = r.get("chamber") or ""
+                office = codes.get(chamber)
+                if office is None:
+                    continue
+                mid, county, district = str(r.get("member_id") or ""), r.get("county") or "", str(r["district"])
+                tid = f"printed:{term}:{mid}|{chamber}|{county}|{district}"
+                t = by_id.get(tid)
+                if t is None:
+                    t = by_id[tid] = {"tenure": tid, "office": office, "term": term, "person": None}
+                    if mid:
+                        t["member_id"] = mid
+                    t["sponsor_line"] = {"chamber": chamber, "county": county, "district": district,
+                                         "names": []}
+                    t["files"] = [file]
+                    out.append(t)
+                name = str(r.get("name") or "")
+                if name not in t["sponsor_line"]["names"]:
+                    t["sponsor_line"]["names"].append(name)
+    return out
 
 
 # ---- the views: today's files, from the model -----------------------------------------------
