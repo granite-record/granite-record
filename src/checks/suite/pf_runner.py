@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 The runner: what `python3 preflight.py` does with its checks.
 
@@ -22,9 +22,9 @@ import traceback
 from collections import Counter
 from pathlib import Path
 
-from pf_core import (CHECKS, _OUTCOMES, _THIS_RUN, _answer, _in_order, _manifest_text, _parsed,
-                     _settle, _suite_files, imp)
-from pf_fixture import (_early_wanted, _start_early_builds)
+from pf_core import (CHECKS, _OUTCOMES, _THIS_RUN, _answer, _in_order, _manifest, _manifest_text,
+                     _map_kept, _parsed, _settle, _suite_files, imp)
+from pf_fixture import (_EARLY_MAP, _EARLY_THREADS, _early_wanted, _start_early_builds)
 MAIN_REF = "refs/heads/main"
 # Preflight inherits the workflow's DRY_RUN too, when the night runs it first on
 # GitHub's machine. The workflow's words for its own run, which no check's
@@ -170,6 +170,595 @@ def built_tier(c):
     return "warn" if c["fn"].__name__ in RECORD_CHECKS | REMINDERS else "hold"
 
 
+# ---- the map: what each check read and ran (19 November 2026) -----------------
+#
+# THE MAP (the refactor's stage 1, step 8; reports/refactor/stage0-checks.md,
+# sections 6 and 9). --changed chooses its checks by what their code names
+# (check_select.py), which chooses hundreds where a change reaches a hub
+# module and a handful where a check reads a folder whole. The map is what a
+# later step may choose by instead: what each check was SEEN to read and run.
+# This records it and chooses nothing. A run of every check of a kind -- the
+# suite, --code, --data or --built; never --changed, which runs a part --
+# writes for each check, in the order it ran:
+#   reads    the repository's files it opened to read, but for a module's
+#            import (imports), and every file a cache answered it
+#            (pf_core._map_read, _map_kept);
+#   lists    the repository's folders it listed (os.listdir, os.scandir, and
+#            so glob, os.walk and copytree);
+#   starts   the repository's files named on a command it started;
+#   funcs    the repository's functions it ran, as "path:name" -- a method as
+#            Class.method, a function defined inside another as the outer
+#            one, and a module's own code, a class's body or a lambda at the
+#            top as "<module>" and the class's name;
+#   kept     the once-a-run work it took (_map_kept's keys), whose reads and
+#            functions are among its own, as they are the check's that did
+#            the work;
+#   untraced how many Python children it started with no environment of their
+#            own, which the map cannot follow;
+# with its fingerprints from the manifest and its seconds. Its Python children
+# are watched as it is: the environment each is handed (child.run always hands
+# one) gets a folder holding _MAP_SITE as a sitecustomize.py at the head of
+# PYTHONPATH, which records the child and, before the child's own code runs,
+# takes the folder and its own words back out of the child's path and
+# environment and runs the sitecustomize.py that stood behind it, as the
+# seal's (pf_core._Seal); a child of a child is followed the same way.
+# What it watches with: an audit hook (sys.addaudithook) for the files and
+# the commands, installed once a process and idle while no map is kept, and
+# sys.monitoring's PY_START for the functions, each function told once and
+# then turned off until the next check turns every one back on
+# (restart_events), so a function costs one call a check, not one a call.
+# The early builds' threads (pf_fixture._EARLY_THREADS) are recorded as
+# _EARLY_MAP's, which every check that takes one takes.
+# RECORDS ONLY. No check is chosen, ordered or answered by it; a hook that
+# fails is silent and records less; the map that cannot be written is one
+# line under the run's count, and the run's exit is its checks'. Node's own
+# reads and functions are not in it (step 10 of the plan), nor a file a
+# module read when an earlier check imported it, nor what a cache inside a
+# project module (functools.cache) answered without running.
+# WHERE: logs/check-map-<kind>.json.gz, beside the run's record
+# (logs/preflight-last.json), which git ignores and no build reads: the map
+# describes a run of the checks, as that does, and is made again by the next
+# one. Kept apart by kind, since the night's --code and --built see what the
+# laptop's suite does not, and read together. src/checks/map_replay.py reads it.
+MAP_OUT = "logs/check-map-{kind}.json.gz"
+MAP_FORMAT = 1
+MAP_ENV = ("GRANITE_CHECK_MAP", "GRANITE_CHECK_MAP_TO", "GRANITE_CHECK_MAP_ROOT")
+_MAP_KINDS = ("reads", "imports", "lists", "starts", "funcs")
+
+_MAP_SITE = r'''# Written by preflight.py (pf_runner._MapRecorder): what this process read and ran, for the map.
+def _granite_map():
+    import os
+    import sys
+    env = os.environ
+    out, to, root = (env.get(k, "") for k in ("GRANITE_CHECK_MAP", "GRANITE_CHECK_MAP_TO",
+                                                "GRANITE_CHECK_MAP_ROOT"))
+    here = os.path.normcase(os.path.dirname(os.path.abspath(__file__)))
+
+    def ours(d):
+        try:
+            return bool(d) and os.path.normcase(os.path.abspath(d)) == here
+        except Exception:
+            return False
+    behind = None
+    for d in sys.path:
+        f = os.path.join(d, "sitecustomize.py") if d and not ours(d) else ""
+        if f and os.path.isfile(f):
+            behind = f
+            break
+    sys.path[:] = [d for d in sys.path if not ours(d)]
+    parts = [p for p in env.get("PYTHONPATH", "").split(os.pathsep) if p and not ours(p)]
+    if parts:
+        env["PYTHONPATH"] = os.pathsep.join(parts)
+    else:
+        env.pop("PYTHONPATH", None)
+    for k in ("GRANITE_CHECK_MAP", "GRANITE_CHECK_MAP_TO", "GRANITE_CHECK_MAP_ROOT"):
+        env.pop(k, None)
+    if out and to and root:
+        try:
+            _granite_watch(out, to, root, os.path.dirname(os.path.abspath(__file__)))
+        except Exception:
+            pass
+    if behind:
+        import types
+        mod = types.ModuleType("sitecustomize")
+        mod.__file__ = behind
+        with open(behind, encoding="utf-8") as fh:
+            exec(compile(fh.read(), behind, "exec"), mod.__dict__)
+
+
+def _granite_watch(out, to, root, site):
+    import atexit
+    import os
+    import sys
+    got = {k: set() for k in ("reads", "imports", "lists", "starts", "funcs")}
+    untraced = [0]
+    on = [True]
+    nroot = os.path.normcase(os.path.abspath(root)).rstrip("\\/") + os.sep
+    W = os.O_WRONLY | getattr(os, "O_CREAT", 0) | getattr(os, "O_APPEND", 0) | getattr(os, "O_TRUNC", 0)
+
+    def under(p, cwd=None):
+        if isinstance(p, int) or p is None:
+            return None
+        if isinstance(p, bytes):
+            p = os.fsdecode(p)
+        p = os.fspath(p)
+        p = os.path.abspath(os.path.join(cwd, p) if cwd else p)
+        n = os.path.normcase(p)
+        if n + os.sep == nroot:
+            return "."
+        if not n.startswith(nroot):
+            return None
+        rel = p[len(nroot):].replace("\\", "/")
+        return None if "__pycache__" in rel else rel
+
+    def from_import():
+        return sys._getframe(2).f_code.co_filename.startswith("<frozen importlib")
+
+    def words(argv):
+        # Windows hands the hook the command as one line: its words, quotes taken off.
+        if not isinstance(argv, str):
+            return list(argv) if isinstance(argv, (list, tuple)) else []
+        out, cur, q, quoted = [], [], False, False
+        for ch in argv[:4096]:
+            if ch == '"':
+                q, quoted = not q, True
+            elif ch in " \t" and not q:
+                if cur or quoted:
+                    out.append("".join(cur))
+                cur, quoted = [], False
+            else:
+                cur.append(ch)
+        if cur or quoted:
+            out.append("".join(cur))
+        return out
+
+    def hook(event, args):
+        if not on[0]:
+            return
+        try:
+            if event == "open":
+                path, mode, flags = args
+                if isinstance(mode, str):
+                    if "w" in mode or "a" in mode or "x" in mode:
+                        return
+                elif isinstance(flags, int) and flags & W:
+                    return
+                rel = under(path)
+                if rel:
+                    got["imports" if from_import() else "reads"].add(rel)
+            elif event in ("os.listdir", "os.scandir"):
+                if not from_import():
+                    rel = under(args[0] if args and args[0] is not None else ".")
+                    if rel is not None:
+                        got["lists"].add(rel)
+            elif event == "subprocess.Popen":
+                executable, argv, cwd, cenv = args
+                argv = words(argv)
+                try:
+                    for a in argv:
+                        if isinstance(a, (str, os.PathLike)) and len(os.fspath(a)) < 400:
+                            rel = under(a, cwd)
+                            if rel and rel != "." and os.path.isfile(os.path.join(root, rel)):
+                                got["starts"].add(rel)
+                except Exception:
+                    pass
+                if isinstance(cenv, dict):
+                    cenv["GRANITE_CHECK_MAP"], cenv["GRANITE_CHECK_MAP_TO"] = out, to
+                    cenv["GRANITE_CHECK_MAP_ROOT"] = root
+                    pp = [p for p in cenv.get("PYTHONPATH", "").split(os.pathsep) if p]
+                    cenv["PYTHONPATH"] = os.pathsep.join([site] + [p for p in pp if p != site])
+                elif "python" in os.path.basename(str(executable or (argv[0] if argv else ""))).lower():
+                    untraced[0] += 1
+        except Exception:
+            pass
+    sys.addaudithook(hook)
+    mon = getattr(sys, "monitoring", None)
+    codes = {}
+    if mon is not None:
+        tool = next((t for t in (4, 3, 5, 2) if mon.get_tool(t) is None), None)
+        if tool is not None:
+            mon.use_tool_id(tool, "preflight: the map")
+
+            def started(code, offset):
+                k = codes.get(code)
+                if k is None:
+                    rel = under(code.co_filename) if on[0] else None
+                    k = False
+                    if rel and rel.endswith(".py"):
+                        q = code.co_qualname.split(".<locals>", 1)[0]
+                        k = rel + ":" + ("<module>" if q.startswith("<") else q)
+                    codes[code] = k
+                if k:
+                    got["funcs"].add(k)
+                return mon.DISABLE
+            mon.register_callback(tool, mon.events.PY_START, started)
+            mon.set_events(tool, mon.events.PY_START)
+
+    def write():
+        on[0] = False
+        try:
+            import json
+            import time
+            body = {k: sorted(v) for k, v in got.items()}
+            body["to"], body["untraced"] = int(to), untraced[0]
+            name = os.path.join(out, f"{os.getpid()}-{time.time_ns()}.json")
+            with open(name + ".part", "w", encoding="utf-8") as fh:
+                json.dump(body, fh)
+            os.replace(name + ".part", name)
+        except Exception:
+            pass
+    atexit.register(write)
+
+
+_granite_map()
+del _granite_map, _granite_watch
+'''
+
+# Every recorder on, the innermost last: the audit hook tells the last.
+_MAP_ON = []
+_MAP_HOOKED = []
+
+
+def _map_hook(event, args):
+    """The process's one audit hook for the map (above): idle while no map is
+    kept, and silent whatever happens in it."""
+    if _MAP_ON and event in _MapRecorder.EVENTS:
+        try:
+            _MAP_ON[-1].event(event, args)
+        except Exception:                                       # noqa: BLE001
+            pass
+
+
+class _MapRecorder:
+    """What each check of a run read and ran (the map, above). begin(name)
+    before a check and end() after it; enter(key) and leave(key) around a
+    once-a-run helper's work (pf_core._map_kept); read(path) for a file a
+    cache answered; then map(...) for what is written."""
+
+    EVENTS = frozenset(("open", "os.listdir", "os.scandir", "subprocess.Popen"))
+    OWN = ("_MapRecorder", "_map_")
+    WRITES = os.O_WRONLY | getattr(os, "O_CREAT", 0) | getattr(os, "O_APPEND", 0) \
+        | getattr(os, "O_TRUNC", 0)
+
+    def __init__(self, root=None):
+        import _paths
+        import _thread
+        self.root = str(Path(root or _paths.ROOT).resolve())
+        self.nroot = os.path.normcase(self.root).rstrip("\\/") + os.sep
+        self.buckets, self.named, self.stack = [], {}, []
+        self.codes = {}
+        self.main = _thread.get_ident()
+        self.ident = _thread.get_ident
+        self.dir = self.site = self.tool = None
+        self.on = False
+        self.early = self.bucket(("kept", _EARLY_MAP))
+
+    # -- the buckets: one a check, one a key a helper kept work under --------
+
+    def bucket(self, name):
+        if name not in self.named:
+            self.named[name] = len(self.buckets)
+            self.buckets.append({**{k: set() for k in _MAP_KINDS}, "untraced": 0, "takes": set()})
+        return self.named[name]
+
+    def target(self):
+        """The bucket what happens now goes to: the innermost key a helper is
+        keeping work under, else the check running; an early build's thread's
+        goes to _EARLY_MAP. None between checks."""
+        if self.ident() != self.main:
+            import threading
+            if threading.current_thread().name.startswith(_EARLY_THREADS):
+                return self.early
+        return self.stack[-1] if self.stack else None
+
+    def begin(self, name):
+        self.stack = [self.bucket(("check", name))]
+        self._rearm()
+
+    def end(self):
+        self.stack = []
+
+    def enter(self, key):
+        b = self.bucket(("kept", key))
+        if self.stack:
+            self.buckets[self.stack[-1]]["takes"].add(b)
+        self.stack.append(b)
+        self._rearm()
+
+    def leave(self, key):
+        b = self.named.get(("kept", key))
+        if self.stack and self.stack[-1] == b:
+            self.stack.pop()
+            self._rearm()
+
+    def _rearm(self):
+        if self.tool is not None:
+            sys.monitoring.restart_events()
+
+    # -- what is seen ----------------------------------------------------------
+
+    def under(self, p, cwd=None):
+        """`p`'s path from the root with "/", or None where it is not a file of
+        the repository (or a cache of compiled code)."""
+        if isinstance(p, int) or p is None:
+            return None
+        if isinstance(p, bytes):
+            p = os.fsdecode(p)
+        p = os.fspath(p)
+        p = os.path.abspath(os.path.join(cwd, p) if cwd else p)
+        n = os.path.normcase(p)
+        if n + os.sep == self.nroot:
+            return "."
+        if not n.startswith(self.nroot):
+            return None
+        rel = p[len(self.nroot):].replace("\\", "/")
+        return None if "__pycache__" in rel else rel
+
+    def read(self, path):
+        b = self.target()
+        rel = self.under(path) if b is not None else None
+        if rel:
+            self.buckets[b]["reads"].add(rel)
+
+    def event(self, event, args):
+        if not self.on:
+            return
+        b = self.target()
+        if b is None:
+            return
+        got = self.buckets[b]
+        if event == "open":
+            path, mode, flags = args
+            if isinstance(mode, str):
+                if "w" in mode or "a" in mode or "x" in mode:
+                    return
+            elif isinstance(flags, int) and flags & self.WRITES:
+                return
+            rel = self.under(path)
+            if rel:
+                got["imports" if self._from_import() else "reads"].add(rel)
+        elif event in ("os.listdir", "os.scandir"):
+            if not self._from_import():
+                rel = self.under(args[0] if args and args[0] is not None else ".")
+                if rel is not None:
+                    got["lists"].add(rel)
+        elif event == "subprocess.Popen":
+            self._popen(got, b, *args)
+
+    @staticmethod
+    def _from_import():
+        # The frame that opened: the hook's caller's caller (event, then this).
+        return sys._getframe(3).f_code.co_filename.startswith("<frozen importlib")
+
+    @staticmethod
+    def words(argv):
+        """The words of a command as the audit hook is handed it: a list, or on
+        Windows one line, read here with its quotes taken off."""
+        if not isinstance(argv, str):
+            return list(argv) if isinstance(argv, (list, tuple)) else []
+        out, cur, q, quoted = [], [], False, False
+        for ch in argv[:4096]:
+            if ch == '"':
+                q, quoted = not q, True
+            elif ch in " \t" and not q:
+                if cur or quoted:
+                    out.append("".join(cur))
+                cur, quoted = [], False
+            else:
+                cur.append(ch)
+        if cur or quoted:
+            out.append("".join(cur))
+        return out
+
+    def _popen(self, got, b, executable, argv, cwd, env):
+        argv = self.words(argv)
+        try:
+            for a in argv:
+                if isinstance(a, (str, os.PathLike)) and len(os.fspath(a)) < 400:
+                    rel = self.under(a, cwd)
+                    if rel and rel != "." and os.path.isfile(os.path.join(self.root, rel)):
+                        got["starts"].add(rel)
+        except Exception:                                       # noqa: BLE001
+            pass
+        if isinstance(env, dict) and self.site:
+            env[MAP_ENV[0]], env[MAP_ENV[1]], env[MAP_ENV[2]] = self.dir, str(b), self.root
+            pp = [p for p in env.get("PYTHONPATH", "").split(os.pathsep) if p]
+            env["PYTHONPATH"] = os.pathsep.join([self.site] + [p for p in pp if p != self.site])
+        elif "python" in os.path.basename(str(executable or (argv[0] if argv else ""))).lower():
+            got["untraced"] += 1
+
+    def _started(self, code, offset):
+        k = self.codes.get(code)
+        if k is None:
+            rel = self.under(code.co_filename)
+            k = False
+            if rel and rel.endswith(".py"):
+                q = code.co_qualname.split(".<locals>", 1)[0]
+                k = rel + ":" + ("<module>" if q.startswith("<") else q)
+                if rel.startswith("src/checks/suite/") and q.startswith(self.OWN):
+                    k = False       # the map's own code, which every check would carry
+            self.codes[code] = k
+        if k and self.on:
+            b = self.target()
+            if b is not None:
+                self.buckets[b]["funcs"].add(k)
+            if b == self.early and self.ident() != self.main:
+                return None     # the early builds' threads do not turn a function off
+        return sys.monitoring.DISABLE
+
+    # -- on and off ------------------------------------------------------------
+
+    def start(self):
+        """Begin watching: the children's folder, the hook, a tool of
+        sys.monitoring. Where no tool is free, the map has no functions."""
+        import atexit
+        import shutil
+        import tempfile
+        self.dir = tempfile.mkdtemp(prefix="gr-map-")
+        atexit.register(shutil.rmtree, self.dir, ignore_errors=True)
+        self.site = os.path.join(self.dir, "site")
+        os.mkdir(self.site)
+        with open(os.path.join(self.site, "sitecustomize.py"), "w", encoding="utf-8") as fh:
+            fh.write(_MAP_SITE)
+        if not _MAP_HOOKED:
+            sys.addaudithook(_map_hook)
+            _MAP_HOOKED.append(True)
+        mon = getattr(sys, "monitoring", None)
+        if mon is not None:
+            self.tool = next((t for t in (4, 3, 5, 2) if mon.get_tool(t) is None), None)
+            if self.tool is not None:
+                mon.use_tool_id(self.tool, "preflight: the map")
+                mon.register_callback(self.tool, mon.events.PY_START, self._started)
+                mon.set_events(self.tool, mon.events.PY_START)
+        self.on = True
+        _MAP_ON.append(self)
+        return self
+
+    def stop(self):
+        """Stop watching, and take in what the children recorded."""
+        import json
+        import shutil
+        self.on = False
+        if self in _MAP_ON:
+            _MAP_ON.remove(self)
+        if self.tool is not None:
+            mon = sys.monitoring
+            mon.set_events(self.tool, 0)
+            mon.register_callback(self.tool, mon.events.PY_START, None)
+            mon.free_tool_id(self.tool)
+            self.tool = None
+        if self.dir and os.path.isdir(self.dir):
+            for name in os.listdir(self.dir):
+                if not name.endswith(".json"):
+                    continue
+                try:
+                    with open(os.path.join(self.dir, name), encoding="utf-8") as fh:
+                        got = json.load(fh)
+                    into = self.buckets[int(got["to"])]
+                except (OSError, ValueError, KeyError, IndexError, TypeError):
+                    continue
+                for k in _MAP_KINDS:
+                    into[k].update(got.get(k) or ())
+                into["untraced"] += int(got.get("untraced") or 0)
+            shutil.rmtree(self.dir, ignore_errors=True)
+        self.dir = self.site = None
+
+    # -- what is written -------------------------------------------------------
+
+    def seen(self, name):
+        """{kind: set} of the check `name`, with everything it took, at any
+        depth, and the keys it took."""
+        b0 = self.named.get(("check", name))
+        out = {**{k: set() for k in _MAP_KINDS}, "untraced": 0, "kept": set()}
+        if b0 is None:
+            return out
+        keys = {b: n[1] for n, b in self.named.items() if n[0] == "kept"}
+        todo, seen = [b0], set()
+        while todo:
+            b = todo.pop()
+            if b in seen:
+                continue
+            seen.add(b)
+            got = self.buckets[b]
+            for k in _MAP_KINDS:
+                out[k] |= got[k]
+            out["untraced"] += got["untraced"]
+            if b in keys:
+                out["kept"].add(keys[b])
+            todo += got["takes"]
+        return out
+
+    def map(self, kind, ran, prints=None):
+        """The map of the checks `ran`, [(check, seconds)] in the order they
+        ran: the file's whole content (MAP_FORMAT)."""
+        import datetime
+        import platform
+        files, funcs, rows = {}, {}, []
+        for c, secs in ran:
+            fn = c["fn"].__name__
+            got = self.seen(fn)
+            row = {"fn": fn, "group": c["group"], "needs": list(c["needs"]),
+                   "seconds": round(secs, 2)}
+            if prints and fn in prints:
+                row["own"], row["reach"] = prints[fn]
+            for k in _MAP_KINDS:
+                table = funcs if k == "funcs" else files
+                row[k] = sorted(table.setdefault(x, len(table)) for x in got[k])
+            row["kept"], row["untraced"] = sorted(got["kept"]), got["untraced"]
+            rows.append(row)
+        commit, idents, dirty = _map_files(self.root, files)
+        return {"format": MAP_FORMAT, "kind": kind, "commit": commit, "dirty": dirty,
+                "python": platform.python_version(),
+                "finished": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                "files": [[p, idents.get(p, "")] for p in sorted(files, key=files.get)],
+                "funcs": sorted(funcs, key=funcs.get), "checks": rows}
+
+
+def _map_files(root, files):
+    """(the commit HEAD names, {path: what it held}, the tracked files the
+    working tree has changed): a tracked file by git's blob id ("git:<id>"),
+    any other by its size and time of writing ("size:<n>:<ns>"), a folder
+    "dir", and one gone since "gone". Git's ids cost nothing to read, and a
+    change since the map's commit is git's to say."""
+    import child
+    idents, commit, dirty = {}, "", []
+    try:
+        r = child.run(["git", "ls-files", "-s", "-z"], cwd=root, capture_output=True, timeout=120)
+        for row in (r.stdout or "").split("\0") if r.returncode == 0 else ():
+            if "\t" in row:
+                head, path = row.split("\t", 1)
+                idents[path] = "git:" + head.split()[1]
+        r = child.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, timeout=60)
+        commit = (r.stdout or "").strip() if r.returncode == 0 else ""
+        r = child.run(["git", "diff", "--name-only", "-z", "HEAD"], cwd=root, capture_output=True,
+                      timeout=120)
+        dirty = sorted(p for p in (r.stdout or "").split("\0") if p) if r.returncode == 0 else []
+    except (OSError, ValueError):
+        pass
+    out = {}
+    for p in files:
+        if p in idents and p not in dirty:
+            out[p] = idents[p]
+            continue
+        f = os.path.join(root, p)
+        try:
+            st = os.stat(f)
+            out[p] = "dir" if os.path.isdir(f) else f"size:{st.st_size}:{st.st_mtime_ns}"
+        except OSError:
+            out[p] = "gone"
+    return commit, out, dirty
+
+
+def _map_prints():
+    """{check: (own, reach)} from the manifest (pf_core._manifest), or {} where
+    it cannot be made."""
+    try:
+        return {e["fn"]: (e["own"], e["reach"]) for e in _manifest()["checks"]}
+    except Exception:                                           # noqa: BLE001
+        return {}
+
+
+def _map_write(rec, kind, ran, out=None):
+    """Write the map of the checks `ran` that `rec` watched to MAP_OUT for
+    `kind` (or `out`), whole and at once, and say so in a line; a map that
+    cannot be made or written is that line, and nothing else."""
+    import gzip
+    path = Path(out or MAP_OUT.format(kind=kind))
+    try:
+        rec.stop()
+        body = rec.map(kind, ran, _map_prints())
+        path.parent.mkdir(parents=True, exist_ok=True)
+        part = path.with_name(path.name + ".part")
+        with gzip.open(part, "wt", encoding="utf-8", compresslevel=6) as fh:
+            json.dump(body, fh, separators=(",", ":"))
+        os.replace(part, path)
+        return (f"the map of what each check read and ran: {path.as_posix()} "
+                f"({len(body['checks'])} checks, {len(body['files'])} files, "
+                f"{len(body['funcs'])} functions)")
+    except Exception as e:                                      # noqa: BLE001
+        return f"the map of what each check read and ran was not written: {type(e).__name__}: {e}"
+
+
 # ======================================================================= main ==
 
 # EVERY RUN ENDS ON ITS SLOWEST CHECKS (26 October 2026). The night's
@@ -256,6 +845,10 @@ def main():
                          "them, with its group, words, needs and marks and two fingerprints of "
                          "its code (_manifest), and nothing else -- the proof that a move of "
                          "the checks changed none")
+    ap.add_argument("--no-map", action="store_true",
+                    help="do not record the map of what each check read and ran, which a run "
+                         "of every check of a kind writes to " + MAP_OUT.format(kind="<kind>")
+                         + " (the map, in pf_runner.py)")
     a = ap.parse_args()
     # NOT BOTH. --code leaves the data checks out and --data runs only them,
     # so together they ran no check at all, printed "0 passed", exited 0 and
@@ -320,7 +913,18 @@ def main():
     # fixture sites its checks take, built beside them (_early_for_run).
     _THIS_RUN.chosen = None if chosen is None else {CHECKS[i]["fn"].__name__
                                                     for i in chosen["run"]}
-    _start_early_builds(_early_for_run(a, chosen))
+    # THE MAP (above): what each check read and ran, in a run of every check
+    # of a kind. It records, and chooses and changes nothing.
+    rec = None
+    if chosen is None and not a.no_map:
+        try:
+            rec = _MapRecorder().start()
+        except Exception as e:                                  # noqa: BLE001
+            print(f"the map of what each check read and ran is not kept this run: "
+                  f"{type(e).__name__}: {e}")
+        _THIS_RUN.map = rec
+    with _map_kept(_EARLY_MAP):
+        _start_early_builds(_early_for_run(a, chosen))
     results, group, built, took = [], None, [], []
     for c in _in_order(CHECKS):
         if a.code and c["group"] == "data":
@@ -334,6 +938,8 @@ def main():
         if c["group"] != group:
             group = c["group"]
             print(f"\n{group.upper()}")
+        if rec is not None:
+            rec.begin(c["fn"].__name__)
         t0 = _time.perf_counter()
         mods = []
         missing = None
@@ -357,6 +963,8 @@ def main():
             _OUTCOMES[c["fn"].__name__] = (status, msg)
             status, msg = _settle(status, msg, c.get("expect_fail"))
         took.append((_time.perf_counter() - t0, c))
+        if rec is not None:
+            rec.end()
         results.append((c["group"], c["name"], status, msg))
         if a.built:
             built.append({"fn": c["fn"].__name__, "group": c["group"], "name": c["name"],
@@ -387,6 +995,10 @@ def main():
     print(f"{len(ok)} passed, {len(bad)} failed, {len(skipped)} skipped"
           + (f", {len(expected)} expected to fail" if expected else ""))
     print(_slowest(took, loading + _time.time() - began, loading))
+    if rec is not None:
+        _THIS_RUN.map = None
+        print(_map_write(rec, "built" if a.built else "code" if a.code else "data" if a.data
+                         else "all", [(c, s) for s, c in took]))
     if bad:
         print("\nWhat is broken:")
         for g, n, s, m in bad:

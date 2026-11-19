@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 The definitions preflight's checks share across areas, and those no check reaches
 by name (the _DOCKET_* rows _journey_clauses_kept reads by their prefix among them).
@@ -22,7 +22,7 @@ from pathlib import Path
 
 import _paths
 
-from pf_core import (_SWITCHED, _THIS_RUN, _reaching, _run, _source)
+from pf_core import (_SWITCHED, _THIS_RUN, _map_read, _reaching, _run, _source)
 from pf_fixture import (CHAIN_NEEDS, _fixture_site_shared, _fixture_site_whole, _once_a_run,
                         _shared_root)
 from pf_harness import (_components_js, _with_components)
@@ -1164,6 +1164,7 @@ def _read_once(path, read):
     if _READ_ONCE.get(was, (None, None))[0] != now:
         _READ_ONCE.pop(was, None)
         _READ_ONCE[was] = (now, read(p))
+    _map_read(p)
     return _READ_ONCE[was][1]
 
 

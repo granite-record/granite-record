@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -22,12 +22,13 @@ from pathlib import Path
 import _paths
 
 from pf_core import (CHECKS, _ManifestPrints, _SOURCES, _SWITCHED, _THIS_RUN, _answer,
-                     _check_outcome, _in_order, _in_suite, _manifest_text, _parse_in_pieces,
+                     _check_outcome, _in_order, _in_suite, _manifest_text, _map_kept,
+                     _map_read, _parse_in_pieces,
                      _parse_whole, _parsed, _parsed_warned, _piece_cuts, _reaching, _run,
                      _sealed_run, _settle, _source, _suite_files, _suite_namespaces, check, imp)
 from pf_fixture import (_EARLY, _EARLY_TAKEN_BY, _early_wanted, _once_a_run,
                         _start_early_builds)
-from pf_runner import (_changed_choice, _early_for_run, main)
+from pf_runner import (_MAP_ON, _MapRecorder, _changed_choice, _early_for_run, main)
 from pf_shared import (_RUNNERS, _json_rows, _plant, _published_harnesses, _runner_names)
 
 
@@ -3169,6 +3170,200 @@ def _manifest_lists_the_registry():
                   f"and marks; a run under PYTHONHASHSEED={seed} wrote the same bytes and nothing "
                   "else; the prints hold for a moved line or docstring and move with a body, a "
                   "helper, or a name rebound")
+
+
+# ---- the map: what each check read and ran (19 November 2026) ----------------
+#
+# The map (pf_runner, "the map"; the refactor's stage 1, step 8) is a record,
+# and two things hold it to being one: that it records what a check did, on a
+# check whose every read and run is known (_map_probe), and that a check
+# recorded answers as it does unrecorded, on the probe and on two real checks
+# whose answers rest on what their children are handed.
+
+
+def _map_probe(tmp, record):
+    """Three small checks, run as main() runs a check, in the planted tree `tmp`:
+    probe_a imports a module of the tree and runs one of its three functions,
+    reads a file, lists a folder, does a once-a-run helper's work (a read under
+    _map_kept), and starts a child that runs a script of the tree, which runs
+    another of them, a sealed one, and one handed no environment; probe_b only
+    takes the helper's work; probe_c runs again the function probe_a ran.
+    `record`: under a map rooted at `tmp`, or with no map watching at all.
+    ({name: its answer}, {name: what the map saw of it} or None, the module's
+    name)."""
+    mod = f"gr_map_probe_{os.getpid()}"
+    _plant(tmp, {
+        f"{mod}.py": ("def ran():\n    return 1\n\n\ndef kid_ran():\n    return 3\n\n\n"
+                      "def not_ran():\n    return 2\n"),
+        "data.txt": "one\n", "kept.txt": "kept\n", "folder/a.txt": "a\n", "kid.txt": "kid\n",
+        "sealed.txt": "sealed\n", "kid.py": (
+            "import os\nimport sys\nsys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))\n"
+            f"import {mod}\n{mod}.kid_ran()\n"
+            "with open('kid.txt', encoding='utf-8') as fh:\n    fh.read()\n"
+            "print(os.environ.get('PYTHONPATH', '-'), os.environ.get('GRANITE_CHECK_MAP', '-'),"
+            " any('gr-map-' in p for p in sys.path), sys.argv[1:])\n"),
+        "sealed.py": "with open('sealed.txt', encoding='utf-8') as fh:\n    print(fh.read().strip())\n"})
+    made, key = {}, f"the probe's work {os.getpid()}"
+
+    def take():
+        with _map_kept(key):
+            if key not in made:
+                made[key] = (tmp / "kept.txt").read_text(encoding="utf-8").strip()
+        return made[key]
+
+    def probe_a():
+        sys.path.insert(0, str(tmp))
+        try:
+            got = __import__(mod).ran()
+        finally:
+            sys.path.remove(str(tmp))
+        with open(tmp / "data.txt", encoding="utf-8") as fh:
+            one = fh.read().strip()
+        listed = sorted(os.listdir(tmp / "folder"))
+        kid = _run([sys.executable, str(tmp / "kid.py"), "x"], cwd=str(tmp), capture_output=True,
+                   timeout=60)
+        sealed = _sealed_run([sys.executable, str(tmp / "sealed.py")], cwd=str(tmp),
+                             capture_output=True, timeout=60)
+        bare = subprocess.run([sys.executable, "-c", "pass"], timeout=60).returncode
+        return "ok", (f"{got} {one} {listed} {take()} | {kid.stdout.strip()} {kid.stderr.strip()} | "
+                      f"{sealed.stdout.strip()} | {bare}")
+
+    def probe_b():
+        return "ok", take()
+
+    def probe_c():
+        return "ok", str(sys.modules[mod].ran())
+
+    was_map, rec = _THIS_RUN.map, None
+    if record:
+        rec = _MapRecorder(root=tmp).start()
+    else:
+        quiet = _MapRecorder(root=tmp)      # never started: every event comes to it and stops
+        _MAP_ON.append(quiet)
+    _THIS_RUN.map = rec
+    answers = {}
+    try:
+        for fn in (probe_a, probe_b, probe_c):
+            if rec is not None:
+                rec.begin(fn.__name__)
+            try:
+                answers[fn.__name__] = _answer(fn())
+            finally:
+                if rec is not None:
+                    rec.end()
+    finally:
+        _THIS_RUN.map = was_map
+        sys.modules.pop(mod, None)
+        if rec is not None:
+            rec.stop()
+        else:
+            _MAP_ON.remove(quiet)
+    seen = None if rec is None else {n: rec.seen(n) for n in answers}
+    return answers, seen, mod
+
+
+@check("files", "the map records the files a check read, listed and started and the functions it "
+                "ran, its children's with its own, and what a once-a-run helper did for it")
+def _map_records_what_a_check_ran():
+    """The map (pf_runner, "the map") is what a later step would choose a
+    change's checks by, so what it records of a check is held on one whose
+    every read and run is known (_map_probe): the check's own read, the folder
+    it listed, the module it imported (as an import, not a read) and the one
+    of its functions it ran (not the others); what its child read and ran, and
+    its sealed child's, and the scripts it started; the child it started with
+    no environment of its own, counted as one the map could not follow; the
+    once-a-run work, among the reads of the check that did it and of the check
+    that only took it, and nothing else of the first among the second's; a
+    function an earlier check ran, told again for the next check that runs it;
+    and the child handed back its own environment and path, with no word of
+    the map in either."""
+    tmp = Path(tempfile.mkdtemp(prefix="gr-probe-map-")).resolve()
+    try:
+        answers, seen, mod = _map_probe(tmp, record=True)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    a, b = seen["probe_a"], seen["probe_b"]
+    assert answers["probe_a"][0] == "ok" and answers["probe_b"] == ("ok", "kept") \
+            and answers["probe_c"] == ("ok", "1"), (
+        f"the probe itself did not run: {answers}")
+    want = {"reads": {"data.txt", "kept.txt", "kid.txt", "sealed.txt"}, "lists": {"folder"},
+            "imports": {f"{mod}.py"}, "starts": {"kid.py", "sealed.py"},
+            "funcs": {f"{mod}.py:ran", f"{mod}.py:kid_ran", "kid.py:<module>",
+                      "sealed.py:<module>"}}
+    for kind, names in want.items():
+        assert names <= a[kind], (f"the map's {kind} of a check left out "
+                                  f"{', '.join(sorted(names - a[kind]))}: it saw {sorted(a[kind])[:12]}")
+    assert f"{mod}.py:not_ran" not in a["funcs"] and f"{mod}.py" not in a["reads"] \
+        and a["untraced"] == 1, (
+            f"the map says the check ran a function it never called, or read the module it "
+            f"imported as text, or followed {a['untraced']} children handed no environment, "
+            "not the one")
+    assert seen["probe_c"]["funcs"] == {f"{mod}.py:ran"}, (
+        f"a function the check before had run was recorded for the next as "
+        f"{sorted(seen['probe_c']['funcs'])}: the map does not turn its functions on again")
+    assert b["reads"] == {"kept.txt"} and not b["funcs"] and not b["starts"], (
+        f"the check that only took the once-a-run work was recorded as reading {sorted(b['reads'])} "
+        f"and running {sorted(b['funcs'])[:6]}, not the work's one read")
+    assert a["kept"] == b["kept"] and len(a["kept"]) == 1, (
+        f"the once-a-run work is not among both checks' takes: {a['kept']}, {b['kept']}")
+    kid = answers["probe_a"][1].split(" | ")[1]
+    assert "gr-map-" not in kid and "False ['x']" in kid, (
+        f"the map's words reached the child it watched: {kid}")
+    return "ok", (f"a check's read, listing, import, starts and the one function it ran, its "
+                  f"child's and its sealed child's reads and code, one child it could not follow, "
+                  f"and once-a-run work given to both checks: {len(a['funcs'])} functions, "
+                  f"{len(a['reads'])} reads")
+
+
+@check("files", "a check recorded by the map answers as it does unrecorded")
+def _map_changes_no_answer():
+    """RECORDS ONLY (pf_runner, "the map"): a check run while the map watches
+    it must answer what it answers with nothing watching, or the map would
+    change the run it describes. Held on the probe of _map_records_what_a_check_ran,
+    whose child prints the path and environment it was handed, and on two real
+    checks whose answers rest on what their children are handed:
+    _children_sealed, whose sealed children and their children must carry the
+    seal (the map's sitecustomize.py stands in front of the seal's and must
+    hand over to it), and _bootstrap_first, whose children report their
+    sys.path. Each runs with no map at all and under a map, and the answers are
+    the same once digits and temporary folders are masked; the map saw each run."""
+    def words(answer):
+        return re.sub(r"(?:gr-|tmp)[\w.-]+|\d+", "#", f"{answer[0]}: {answer[1]}")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-probe-same-")).resolve()
+    try:
+        plain, _seen, _mod = _map_probe(tmp / "plain", record=False)
+        mapped, seen, _mod = _map_probe(tmp / "mapped", record=True)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    differ = [n for n in plain if words(plain[n]) != words(mapped[n])]
+    assert not differ, ("the probe answered otherwise under the map: "
+                        + "; ".join(f"{plain[n]} / {mapped[n]}" for n in differ))
+    by = {c["fn"].__name__: c for c in CHECKS}
+    real = [n for n in ("_children_sealed", "_bootstrap_first") if n in by]
+    assert len(real) == 2, f"the real checks this holds are gone: {real}"
+    for name in real:
+        quiet = _MapRecorder()
+        _MAP_ON.append(quiet)
+        try:
+            off = _check_outcome(by[name])
+        finally:
+            _MAP_ON.remove(quiet)
+        rec, was = _MapRecorder().start(), _THIS_RUN.map
+        _THIS_RUN.map = rec
+        try:
+            rec.begin(name)
+            on = _check_outcome(by[name])
+            rec.end()
+        finally:
+            _THIS_RUN.map = was
+            rec.stop()
+        assert words(off) == words(on), (f"{name} answered otherwise under the map: {off[0]} "
+                                         f"{str(off[1])[:200]} / {on[0]} {str(on[1])[:200]}")
+        got = rec.seen(name)
+        assert got["funcs"] and got["reads"] | got["imports"] | got["starts"], (
+            f"the map saw nothing of {name} while it ran")
+    return "ok", (f"the probe and {', '.join(real)} answer the same with the map and without, "
+                  "and the map saw each")
 
 
 @check("files", "the state settings file loads with every key, and no second literal county list stands outside it")

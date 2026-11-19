@@ -16,9 +16,12 @@ what is run, and holds every check; these are what it imports:
 - `pf_harness.py` -- a page's script run in node as a browser runs it
   (`_with_components`, `_node_app`, `_app_js`).
 - `pf_runner.py` -- `main()`: the arguments, the choice of checks, the run,
-  its record and its slowest line; and the lists of the checks the night
-  runs after its build (`BUILT_CODE`, `NOT_ON_THE_NIGHT`, `RECORD_CHECKS`,
-  `REMINDERS`).
+  its record and its slowest line; the map of what each check read and ran,
+  which a run of every check of a kind writes to
+  `logs/check-map-<kind>.json.gz` (`_MapRecorder`; `--no-map` leaves it
+  out); and the lists of the checks
+  the night runs after its build (`BUILT_CODE`, `NOT_ON_THE_NIGHT`,
+  `RECORD_CHECKS`, `REMINDERS`).
 
 Each uses only those above it in this list, and none imports `preflight`.
 The checks are here too, by the module each tests (`pf_<area>.py`, the
