@@ -3031,6 +3031,20 @@ same `person_name` spelling (only where a bill has any). The bill search's
 Sponsor filter matches either, and with a sponsor chosen lists their own
 bills, then the bills they co-sponsored (`_sponsor_prime_first`).
 
+In a term the filter lists the term's members to choose from (app.js
+`spPicker`, the owner, 19 November 2026): the House and then the Senate,
+each by surname, each member as their chip with the count of their bills,
+which is the count of the list the filter then gives. Who they are is
+`site/sponsors/<term>.json`, which `sponsor_roster.py` writes for
+`build_site_v2`: `build_bills` fills it (`people`) with everyone each term's
+rows name, keyed as the rows key them (`sp_key` is app.js's `spKey`), and
+for the term the sitting roster describes `add_sitting` adds every sitting
+member and every member who served in it and has left (marked `f`, drawn
+"Former Rep."), with their district's towns for the box to find them by.
+The page fetches the file the first time the group is open in a term; until
+then, or with none, it lists the people the term's rows name
+(`_sponsor_roster_file`, `_sponsor_picker_lists_the_term`).
+
 ## Known rough edges
 
 Each is described where it belongs; this is the list in one place.

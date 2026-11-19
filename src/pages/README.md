@@ -137,6 +137,8 @@ The record and its own pages:
 - `build_site_v2`: the record builder -- each bill's payload and the bill
   index, and the legislators', towns' and committees' files the pages after
   it read (there was never a v1 here);
+- `sponsor_roster`: the members the bill search's Sponsor filter lists, a
+  file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,
   and their sitemap;
 - `build_legislator_pages`: an address for every sitting legislator;

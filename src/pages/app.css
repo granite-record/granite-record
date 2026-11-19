@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.403 */
+/* GRANITE_VERSION: 2026-09-07.404 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2364,6 +2364,23 @@ border:1px solid var(--edge);border-radius:var(--r-in);margin-bottom:var(--sp-3)
    group's box: Topic, Tags, Sponsor. */
 .fbody > .sbox{position:sticky;top:0;z-index:2;background-color:Field;
 box-shadow:0 var(--sp-3) 0 var(--paper)}
+/* THE SPONSOR GROUP'S MEMBERS (app.js spPicker): the House and the Senate
+   each under its own head, which sticks under the box as its members scroll
+   past, each member as their chip with their bills beside it. The group has
+   room for the list (.spbody), more than a long list's 340px. */
+.fbody.spbody{max-height:440px}
+.sphead{position:sticky;top:calc(32px + var(--sp-3));z-index:1;background:var(--paper);
+font:600 var(--t-sm)/1.35 var(--sans);color:var(--ink);margin-top:var(--sp-3);
+padding:var(--sp-3) 0 var(--sp-2);border-bottom:1px solid var(--rule)}
+.sphead span{font-weight:400;color:var(--ink-2)}
+.sprow .spn{flex:1 1 auto;min-width:0}
+/* The chip at the size of the list's words, in the column's room: it wraps
+   before the party and seat (.mtag) where the name and seat are wider than
+   the column, never inside them. */
+.sprow .mchip{display:inline-block;margin:0;padding:var(--sp-1) var(--sp-3);font-size:var(--t-sm);
+line-height:1.35;max-width:100%;white-space:normal}
+.sprow .c{flex:0 0 auto}
+@media (max-width:59.9375em){.fbody.spbody{max-height:60vh}}
 .chosen{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-bottom:var(--sp-3)}
 .pill{font-size:var(--t-sm);background:var(--pine-soft);color:var(--pine);border-radius:var(--r-pill);padding:var(--sp-1) var(--sp-4)}
 .pill button{margin-left:var(--sp-2);color:var(--pine)}

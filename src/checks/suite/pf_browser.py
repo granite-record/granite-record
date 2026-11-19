@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -10139,12 +10139,14 @@ def _topic_filter_search_box():
 
 
 @check("frontend", "each filter's search box stays in view while its list scrolls: the box is its group's list's "
-       "own child, sticky at the top of that scrolling box, solid")
+       "own child, sticky at the top of that scrolling box, solid, and the Sponsor list's chamber heads stick "
+       "under it")
 def _filter_boxes_stay_in_view():
     """The owner, 19 November 2026: scrolled down the Topics list, its box had scrolled away. A group's list
     scrolls inside its own box (.fbody: a max-height and overflow-y:auto), so app.css holds the box sticky at
     that box's top (.fbody > .sbox: position sticky, top 0, a background of its own and the gap under it painted
-    over, so no option shows through). In node, the Topic, Tags and Sponsor groups, open, each
+    over, so no option shows through), and the Sponsor list's House and Senate heads (.sphead) stick under it,
+    at the box's height and gap, on a solid background. In node, the Topic, Tags and Sponsor groups, open, each
     draw their box as the first thing in their list's box (a sponsor's chosen pills apart), where the rule
     reaches it; a box wrapped in anything else would scroll away again."""
     css = _source(Path("src/pages/app.css"))
@@ -10159,11 +10161,19 @@ def _filter_boxes_stay_in_view():
         f"the filter box is not sticky at the top of its list: {rule[1]!r}")
     assert re.search(r"background(-color)?:", r) and "box-shadow:0var(--sp-3)0var(--paper)" in r, (
         f"the sticky box lets the options show through it or through the gap under it: {rule[1]!r}")
+    sbox = re.search(r"\n\.sbox\{([^}]*)\}", css)
+    assert sbox and "height:32px" in sbox[1] and "margin-bottom:var(--sp-3)" in sbox[1], (
+        "the box's height or gap moved: the Sponsor list's heads stick at 32px and --sp-3 below its top")
+    head = re.search(r"\n\.sphead\{([^}]*)\}", css)
+    h = re.sub(r"\s+", "", head[1]) if head else ""
+    assert "position:sticky" in h and "top:calc(32px+var(--sp-3))" in h and "background:var(--paper)" in h, (
+        f"the Sponsor list's chamber heads do not stick under the box on a solid ground: {h!r}")
     got = _app_js("(() => {" + _TAGS_HARNESS + """
   ROWS.forEach((b, i) => { b.sponsor = i % 2 ? "Ann Lee" : "Sam Senn";
     b.sponsor_label = i % 2 ? "Rep. Ann Lee (R - Rock 3)" : "Sen. Sam Senn (R - SD4)"; b.sponsor_party = "R"; });
   scope.setState("2025-2026", META_T, ROWS);
   scope.setTagWords(TAGS, WORDS);
+  scope.setRoster("2025-2026", []);
   ["topic", "tag", "sponsor"].forEach(k => scope.openGroups.add(k));
   scope.sel.sponsor.add("Ann Lee");
   scope.renderFacets();
@@ -10175,14 +10185,138 @@ def _filter_boxes_stay_in_view():
     out[k] = b.replace(/^<div class="fbody[^"]*"\\s*>/, "").replace(/^<div class="chosen">[\\s\\S]*?<\\/span><\\/div>/, "").slice(0, 60);
   }
   return out;
-})()""", names=_TAGS_NAMES)
+})()""", names=_TAGS_NAMES + ("setRoster: (t, m) => { SP_ROSTER[t] = m; }",))
     if got is None:
         return "skip", "node, app.js or dom_stub.js is not here"
     for k, box in (("topic", "tbox"), ("tag", "gbox"), ("sponsor", "sbox")):
         assert got[k].startswith(f'<input class="sbox" id="{box}"'), (
             f"the {k} group's box is not the first thing in its list's box, where the sticky rule holds it: "
             f"{got[k]!r}")
-    return "ok", "the box sticks at the top of each list's own scrolling box (Topic, Tags, Sponsor), solid with its gap painted"
+    return "ok", ("the box sticks at the top of each list's own scrolling box (Topic, Tags, Sponsor), solid with its "
+                  "gap painted; the Sponsor list's chamber heads stick under it")
+
+
+# THE SPONSOR PICKER'S HARNESS (the owner, 19 November 2026): six members of 2025-2026 as
+# site/sponsors/<term>.json gives them (sponsor_roster.py), one of them gone, two with no bill, and four
+# bills naming them as prime sponsor and co-sponsor; and a bill of 2023-2024 by somebody else.
+_PICKER_HARNESS = r"""
+  const META_P = {terms: ["2025-2026", "2023-2024"], committee_codes: {}, topics: []};
+  const ROSTER = [
+    {k: "Joe Gone", l: "Rep. Joe Gone (D - Belk 6)", c: "H", p: "D", o: "gone, joe", t: ["Gilford"], f: 1},
+    {k: "Ann Lee", l: "Rep. Ann Lee (R - Rock 3)", c: "H", p: "R", o: "lee, ann", t: ["Rye"]},
+    {k: "Nancy Murphy", l: "Rep. Nancy Murphy (D - Hills 12)", c: "H", p: "D", o: "murphy, nancy", t: ["Bedford"]},
+    {k: "Zed Quiet", l: "Rep. Zed Quiet (R - Belk 6)", c: "H", p: "R", o: "quiet, zed", t: ["Gilford"]},
+    {k: "Amy Able", l: "Sen. Amy Able (D - SD9)", c: "S", p: "D", o: "able, amy", t: ["Keene"]},
+    {k: "Sam Senn", l: "Sen. Sam Senn (R - SD4)", c: "S", p: "R", o: "senn, sam", t: ["Dover"]}];
+  const bill = (id, sp, lab, party, cosp, term) => ({id, n: id.replace(/^HB/, "HB "), year: +(term || "2025").slice(0, 4),
+    term: term || "2025-2026", title: "a bill", sponsor: sp, sponsor_label: lab, sponsor_party: party,
+    sponsor_slug: sp.toLowerCase().replace(/ /g, "-"), cosp, topic: "", committee: "", committees: [], votedays: [],
+    status: "Killed", chip: "Died", kind: "done", last_action: "", nrc: 0, hayT: id.toLowerCase(), hayC: ""});
+  const ROWS_P = [
+    bill("HB1", "Nancy Murphy", "Rep. Nancy Murphy (D - Hills 12)", "D", ["Ann Lee", "Sam Senn"]),
+    bill("HB2", "Nancy Murphy", "Rep. Nancy Murphy (D - Hills 12)", "D", ["Joe Gone"]),
+    bill("HB3", "Joe Gone", "Rep. Joe Gone (D - Belk 6)", "D", ["Nancy Murphy"]),
+    bill("HB4", "Sam Senn", "Sen. Sam Senn (R - SD4)", "R", ["Ann Lee"]),
+    bill("HB9", "Old Hand", "Rep. Old Hand (R - Coos 1)", "R", [], "2023-2024")];
+  const rows = h => [...h.matchAll(/<label class="fopt sprow([^"]*)"><input type="checkbox" data-f="sponsor"\s+value="([^"]*)"[^>]*>\s*<span class="spn">([\s\S]*?)<\/span>\s*<span class="c"([^>]*)>([\d,]+)<\/span>/g)]
+    .map(m => ({k: m[2], cls: m[1], text: m[3].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), title: m[4], n: +m[5].replace(/,/g, ""), html: m[0]}));
+  const heads = h => [...h.matchAll(/<div class="sphead" data-ch="([^"]*)">/g)].map(m => m[1]);
+"""
+_PICKER_NAMES = ("renderFacets", "sel", "matches", "openGroups", "IDX: () => IDX", "ALLT: ALL_TERMS",
+                 "setState: (t, m, rows) => { term = t; if (m) META = m; if (rows) IDX = rows; "
+                 "for (const k in SP_LABELS) delete SP_LABELS[k]; for (const t2 of (m || META).terms) noteSponsors(t2, IDX.filter(b => b.term === t2)); }",
+                 "setBox: (v) => { sponsorFilter = v; }", "setCosp: (v) => { withCosp = v; }",
+                 "setRoster: (t, m) => { SP_ROSTER[t] = m; }", "setTerm: (t) => { term = t; }")
+
+
+@check("frontend", "the Sponsor filter lists the term's members as their chips, House then Senate, each once by "
+       "surname, with their bill counts equal to what ticking them lists, prime or with co-sponsorships; a member "
+       "who left is named Former in their place; typing narrows by name, town or district")
+def _sponsor_picker_lists_the_term():
+    """The owner, 19 November 2026: "a dropdown list of the sitting term's State Representatives and Senators
+    that you can scroll and type into", each row "the member's chip ... with their bill count beside it". On the
+    harness's six members and four bills, the Sponsor group open in 2025-2026 with nothing typed lists all six
+    once, under a House head and then a Senate head (roster-listings-separate-the-chambers), each chamber by
+    surname with the members at none after the rest under the rule, greyed; each row is the member's chip
+    (.mchip in their party's colour) and the count is exactly the bills the filter then lists for them alone,
+    prime sponsorships by default and with "Include co-sponsored bills" ticked prime and co-sponsored together,
+    each part on the count's hover. Joe Gone, who left, is "Former Rep. Joe Gone" in his place among the House,
+    with no mark of any other kind and no group of his own (treat-former-members-the-same). Typing narrows the
+    list by a part of a name, a town of the district or the district; a ticked member stays listed whatever is
+    typed. All Terms lists nobody until a name is typed. A term with no file lists the people its bills name, a
+    co-sponsor the bills give no chamber under a head of their own, never in a chamber."""
+    got = _app_js("(() => {" + _PICKER_HARNESS + """
+  const out = {};
+  scope.setState("2025-2026", META_P, ROWS_P);
+  scope.setRoster("2025-2026", ROSTER);
+  scope.openGroups.add("sponsor");
+  const draw = () => { scope.renderFacets(); return document.querySelector("#facets").innerHTML; };
+  const listed = k => { scope.sel.sponsor.clear(); scope.sel.sponsor.add(k);
+    const n = scope.IDX().filter(b => scope.matches(b)).length; scope.sel.sponsor.clear(); return n; };
+  for (const cosp of [false, true]) {
+    scope.setCosp(cosp);
+    const h = draw(), rs = rows(h);
+    out[cosp ? "cosp" : "prime"] = {heads: heads(h), rows: rs.map(r => [r.k, r.n, r.cls.trim(), r.title]),
+      filtered: Object.fromEntries(rs.map(r => [r.k, listed(r.k)])),
+      gone: (rs.find(r => r.k === "Joe Gone") || {}).html || "", texts: rs.map(r => r.text),
+      chips: rs.map(r => (/<span class="mchip p-([A-Z])"/.exec(r.html) || [])[1] || "")};
+  }
+  scope.setCosp(false);
+  for (const [k, v] of [["town", "bedf"], ["district", "belk 6"], ["senate", "sd9"], ["name", "SENN"]]) {
+    scope.setBox(v); out[k] = rows(draw()).map(r => r.k); }
+  scope.sel.sponsor.add("Nancy Murphy"); scope.setBox("senn"); out.ticked = rows(draw()).map(r => r.k);
+  scope.sel.sponsor.clear(); scope.setBox("");
+  scope.setTerm(scope.ALLT); const all = draw(); out.allTerms = [rows(all).length, heads(all).length];
+  scope.setBox("murphy"); out.allTyped = ([...draw().matchAll(/data-f="sponsor"\\s+value="([^"]*)"/g)].map(m => m[1]));
+  scope.setBox("");
+  scope.setState("2025-2026", META_P, ROWS_P);
+  scope.setRoster("2025-2026", []);
+  const fb = draw(); out.fallback = {heads: heads(fb), rows: rows(fb).map(r => [r.k, r.text])};
+  return out;
+})()""", names=_PICKER_NAMES)
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    p, c = got["prime"], got["cosp"]
+    keys = [r[0] for r in p["rows"]]
+    assert sorted(keys) == sorted(["Joe Gone", "Ann Lee", "Nancy Murphy", "Zed Quiet", "Amy Able", "Sam Senn"]) \
+        and len(keys) == len(set(keys)), f"the picker does not list every member of the term once: {keys}"
+    assert p["heads"] == ["H", "S"], f"the chambers are not the House and then the Senate: {p['heads']}"
+    assert keys == ["Joe Gone", "Nancy Murphy", "Ann Lee", "Zed Quiet", "Sam Senn", "Amy Able"], (
+        f"not each chamber by surname, those with prime bills first and those at none after: {keys}")
+    assert [r[2] for r in p["rows"]] == ["", "", "off fzero", "off", "", "off fzero"], (
+        f"the members at none are not greyed after a rule: {[r[2] for r in p['rows']]}")
+    assert p["chips"] == ["D", "D", "R", "R", "R", "D"], f"a row is not the member's chip in their party: {p['chips']}"
+    for mode in (p, c):
+        bad = [(k, n, mode["filtered"][k]) for k, n, _, _ in mode["rows"] if n != mode["filtered"][k]]
+        assert not bad, f"a count is not the bills the filter then lists (member, count, listed): {bad}"
+    assert dict((r[0], r[1]) for r in p["rows"]) == {"Joe Gone": 1, "Nancy Murphy": 2, "Ann Lee": 0, "Zed Quiet": 0,
+                                                      "Sam Senn": 1, "Amy Able": 0}, p["rows"]
+    assert dict((r[0], r[1]) for r in c["rows"]) == {"Joe Gone": 2, "Nancy Murphy": 3, "Ann Lee": 2, "Zed Quiet": 0,
+                                                      "Sam Senn": 2, "Amy Able": 0}, c["rows"]
+    assert [r[0] for r in c["rows"]] == ["Joe Gone", "Ann Lee", "Nancy Murphy", "Zed Quiet", "Sam Senn", "Amy Able"], (
+        f"with co-sponsorships the order does not follow their counts: {[r[0] for r in c['rows']]}")
+    tip = dict((r[0], r[3]) for r in c["rows"])
+    assert 'title="2 prime, 1 co-sponsored"' in tip["Nancy Murphy"] and not any(r[3] for r in p["rows"]), (
+        f"the parts of a count are not on its hover with co-sponsorships, or are without: {tip['Nancy Murphy']!r}")
+    assert p["texts"][0] == "Former Rep. Joe Gone (D - Belk 6)" and p["texts"][1] == "Rep. Nancy Murphy (D - Hills 12)", (
+        f"a member who left is not named Former, in his place: {p['texts'][:2]}")
+    gone = re.sub(r">[^<]*<", "><", p["gone"]).lower()
+    assert "former" not in gone and "badge" not in gone and "left" not in gone, (
+        f"a member who left carries a mark beyond his name: {p['gone']}")
+    assert got["town"] == ["Nancy Murphy"] and got["district"] == ["Joe Gone", "Zed Quiet"] \
+        and got["senate"] == ["Amy Able"] and got["name"] == ["Sam Senn"], (
+        f"typing a town, a district or a name: {got['town']}, {got['district']}, {got['senate']}, {got['name']}")
+    assert got["ticked"] == ["Nancy Murphy", "Sam Senn"], f"a ticked member leaves the list when typing: {got['ticked']}"
+    assert got["allTerms"] == [0, 0] and got["allTyped"] == ["Nancy Murphy"], (
+        f"All Terms lists members with nothing typed, or not the one typed: {got['allTerms']}, {got['allTyped']}")
+    fb = got["fallback"]
+    assert fb["heads"] == ["H", "S", "X"] and [k for k, _ in fb["rows"]] == [
+        "Joe Gone", "Nancy Murphy", "Sam Senn", "Ann Lee"], (
+        f"with no file, the people the bills name, a co-sponsor of no known chamber under a head of their own: {fb}")
+    return "ok", ("six members once each, House then Senate by surname, zeros greyed after a rule; counts equal the "
+                  "filter's lists, prime 2/1/1 and with co-sponsorships 3/2/2/2; Former Rep. Joe Gone in his place; "
+                  "a town, a district, a name narrow it; All Terms waits for a name; no file lists the bills' people")
+
 
 
 # THE TAGS' HARNESS: four tags, five bills and the words that lead to them, as meta.json and the index rows

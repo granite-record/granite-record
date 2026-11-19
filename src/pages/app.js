@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.356
+// GRANITE_VERSION: 2026-09-07.357
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4025,6 +4025,103 @@ function sponsorFitsName(v,f){
   const real=want.filter(w=>parts.some(x=>x.length>1&&x.startsWith(w)));
   return real.length>0&&want.every(w=>real.includes(w)||(w.length>2&&parts.some(x=>x.length===1&&w.startsWith(x))));
 }
+/* THE SPONSOR FILTER LISTS THE TERM'S MEMBERS (the owner, 19 November 2026:
+   "Today you have to know a name to select a sponsor ... Make it a dropdown
+   list of the sitting term's State Representatives and Senators that you can
+   scroll and type into"). In a term, the Sponsor group lists every member of
+   it the record names, the House and then the Senate, each by surname, as the
+   member's chip with the number of their bills beside it; the box narrows
+   them by any part of a name, a town or a district, and a member ticked is
+   listed whatever is typed. All Terms keeps the box alone, a name typed
+   listing up to fifteen, since thirty-seven years of members is no list.
+   Who they are is site/sponsors/<term>.json (sponsor_roster.py), fetched the
+   first time the group is open in that term: the term's sponsors and
+   co-sponsors with the seat each held then, and for the term the sitting
+   roster describes, every sitting member and every member who has since left,
+   whether or not they filed a bill, with their district's towns. Until it
+   comes, or where there is none, the list is the people the term's own rows
+   name (spPeople), so it is never empty for want of a file.
+   THE COUNT IS THE LIST THE FILTER WOULD GIVE (fgroup's counts, the other
+   filters and the search applied): prime sponsorships, or with "Include
+   co-sponsored bills" ticked, those and the co-sponsorships together, each
+   part on its hover. A member at none goes after those with bills in their
+   chamber, under the rule the long lists draw (zerosLast), greyed, so the
+   members with bills are the top of each list.
+   A MEMBER WHO HAS LEFT is listed in their place among the rest, named as a
+   search result names them, "Former Rep." (treat-former-members-the-same):
+   no badge, no group of their own, nothing about why. Only in the term the
+   sitting roster describes; in a finished term every member named is named
+   with the seat they held in it. */
+const SP_ROSTER=Object.create(null);
+function spRosterLoad(t){
+  if(!t||t===ALL_TERMS||SP_ROSTER[t]||!published(t)||!((META&&META.terms)||[]).includes(t))return;
+  SP_ROSTER[t]="asked";
+  need("sponsors/"+encodeURIComponent(t)+".json")
+    .then(j=>{SP_ROSTER[t]=j&&Array.isArray(j.members)?j.members:[];},()=>{SP_ROSTER[t]=[];})
+    .then(()=>{if(t===term&&openGroups.has("sponsor")&&!facetsShut())renderFacets();});
+}
+// A name surname first, for the order the list reads in where the file gives
+// none: "Bob Lynn Jr." is "lynn, bob".
+const spOrder=n=>{const w=String(n||"").split(/\s+/).filter(Boolean);
+  while(w.length>1&&/^(jr|sr|ii|iii|iv|v)\.?$/i.test(w[w.length-1]))w.pop();
+  return (w.length>1?w[w.length-1]+", "+w.slice(0,-1).join(" "):w.join(" ")).toLowerCase();};
+// The chamber a label's honorific names; a member-elect's "Rep. “Elect”" is Rep.
+const spChamber=l=>{const h=String(l||"").split(" ")[0];return h==="Rep."?"H":h==="Sen."?"S":"";};
+// Everyone the list offers in this term, once each by the key the filter
+// keeps: the file's members, then anyone the term's rows name that it does
+// not, then a sponsor ticked elsewhere whom this term names nowhere.
+function spPeople(rows){
+  const r=SP_ROSTER[term],m=new Map();
+  for(const p of Array.isArray(r)?r:[])if(p&&p.k)m.set(p.k,{k:p.k,l:p.l||p.k,c:p.c||"",p:p.p||"",
+    o:p.o||spOrder(p.k),t:p.t||[],f:!!p.f});
+  // The prime sponsors first, by their own labels: a co-sponsor of one bill
+  // who files another is listed by the label that bill gives them.
+  for(const b of rows){
+    const k=spKey(b);
+    if(k&&!m.has(k))m.set(k,{k,l:b.sponsor_label||k,c:spChamber(b.sponsor_label),p:b.sponsor_party||"",
+      o:spOrder(b.sponsor||k),t:[],f:false});
+  }
+  for(const b of rows)
+    for(const c of b.cosp||[])if(c&&!m.has(c))m.set(c,{k:c,l:c,c:"",p:"",o:spOrder(c),t:[],f:false});
+  for(const k of sel.sponsor)if(!m.has(k))m.set(k,{k,l:sponsorShow(k),c:"",p:"",o:spOrder(k),t:[],f:false});
+  return [...m.values()];
+}
+// What is typed against a member: their name as the box always read it
+// (sponsorFits), or a part of their district ("hills 12", "sd22") or of a
+// town of it ("bedf").
+function spFits(p,f){
+  if(sponsorFits(p.k,f))return true;
+  const seat=String((SEAT_RE.exec(p.l)||["",""])[1]).split(" - ").pop().toLowerCase();
+  return !!seat&&/\d/.test(seat)&&seat.includes(f)||(p.t||[]).some(x=>String(x).toLowerCase().includes(f));
+}
+const spLabel=p=>p.f&&/^(Rep|Sen)\. /.test(p.l)?"Former "+p.l:p.l;
+function spRow(p,counts,prime,chosen,rule){
+  const n=counts[p.k]||0,pn=prime[p.k]||0;
+  const how=withCosp?` title="${esc(`${pn.toLocaleString()} prime, ${(n-pn).toLocaleString()} co-sponsored`)}"`:"";
+  return `<label class="fopt sprow${!n&&!chosen.has(p.k)?" off":""}${rule?" fzero":""}"><input type="checkbox" data-f="sponsor"
+        value="${esc(p.k)}" ${chosen.has(p.k)?"checked":""}><span class="spn">${pchip({party_code:p.p,display_full:spLabel(p)})}</span>
+        <span class="c"${how}>${n.toLocaleString()}</span></label>`;
+}
+const SP_CHAMBERS=[["H","House"],["S","Senate"],["","Others these bills name"]];
+function spPicker(chosen,counts,f){
+  const rows=IDX.filter(inTermOf);
+  if(openGroups.has("sponsor"))spRosterLoad(term);
+  const prime={};
+  rows.filter(b=>matches(b,"sponsor")).forEach(b=>{const k=spKey(b);if(k)prime[k]=(prime[k]||0)+1;});
+  const ppl=spPeople(rows).filter(p=>chosen.has(p.k)||!f||spFits(p,f));
+  let h="";
+  for(const [c,name] of SP_CHAMBERS){
+    const of=ppl.filter(p=>c?p.c===c:p.c!=="H"&&p.c!=="S")
+      .sort((a,b)=>a.o<b.o?-1:a.o>b.o?1:a.k<b.k?-1:a.k>b.k?1:0);
+    if(!of.length)continue;
+    const has=p=>counts[p.k]||chosen.has(p.k);
+    const some=of.filter(has),none=of.filter(p=>!has(p));
+    h+=`<div class="sphead" data-ch="${c||"X"}">${name} <span>${of.length.toLocaleString()} ${of.length===1?"member":"members"}</span></div>`
+      +some.map(p=>spRow(p,counts,prime,chosen,false)).join("")
+      +none.map((p,i)=>spRow(p,counts,prime,chosen,i===0&&some.length>0)).join("");
+  }
+  return h||(f?`<p class="fnone">No match</p>`:"");
+}
 function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
   const chosen=sel[key],open=openGroups.has(key);
   let inner="";
@@ -4037,6 +4134,7 @@ function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
     // list whatever is typed, so it can be unticked where it is. No synonyms:
     // CONCEPTS maps a public word to bill wording, not to a topic's name.
     const isTopic=key==="topic";
+    const picker=!isTopic&&term!==ALL_TERMS;
     const f=(isTopic?topicFilter:sponsorFilter).toLowerCase();
     const pick=isTopic
       ?vals.filter(v=>!f||chosen.has(v)||v.toLowerCase().includes(f))
@@ -4046,10 +4144,10 @@ function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
     const pills=isTopic?"":[...chosen].map(v=>`<span class="pill">${esc(sponsorShow(v))}<button data-unpick="${esc(v)}">×</button></span>`).join("");
     const box=isTopic
       ?`<input class="sbox" id="tbox" aria-label="Find a topic by name" placeholder="Type a topic…" value="${esc(topicFilter)}" autocomplete="off">`
-      :`<input class="sbox" id="sbox" aria-label="Find a sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">
+      :`<input class="sbox" id="sbox" aria-label="${picker?"Find a sponsor by name, town or district":"Find a sponsor by name"}" placeholder="${picker?"Name, town or district…":"Type a name…"}" value="${esc(sponsorFilter)}" autocomplete="off">
       <label class="fcosp"><input type="checkbox" id="cosp" ${withCosp?"checked":""}><span>${termNoun()==="bills"?"Include co-sponsored bills":"Include co-sponsored requests"}</span></label>${extra||""}`;
     inner=`${pills?`<div class="chosen">${pills}</div>`:""}${box}`
-      +(shown.map((v,i)=>`<label class="fopt ${!counts[v]&&!(isTopic&&chosen.has(v))?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
+      +(picker?spPicker(chosen,counts,f.trim()):shown.map((v,i)=>`<label class="fopt ${!counts[v]&&!(isTopic&&chosen.has(v))?'off':''}${i===found.rule?' fzero':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(isTopic?v:sponsorShow(v))}</span>
         <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("")
         ||((isTopic?topicFilter:sponsorFilter)?`<p class="fnone">No match</p>`:""));
@@ -4069,9 +4167,11 @@ function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
   // term's seven kinds and none of All Terms' after SCR, CACR among them,
   // with nothing to say the list went on.
   const whole=key==="status"||key==="type";
+  // The Sponsor group's list of a term's members has more room (app.css, .spbody).
+  const room=key==="sponsor"&&term!==ALL_TERMS?" spbody":"";
   return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="${key}"
     aria-expanded="${open}"><span>${label}</span>${chosen.size+(extraN||0)?`<span class="badge">${chosen.size+(extraN||0)}</span>`:""}
-    <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}" ${open?"":"hidden"}>${inner}</div></div>`;
+    <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}${room}" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
 // TAGS:BEGIN
