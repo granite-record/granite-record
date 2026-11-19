@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.358
+// GRANITE_VERSION: 2026-09-07.359
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4571,6 +4571,115 @@ function rsaGroup(inYear){
     <span class="chev">▸</span></button><div class="fbody whole" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
+/* THE FILTERS IN USE, IN ONE PLACE (the owner, 19 November 2026: "selected
+   filters should be easily viewable and should have an x mark next to them
+   to deselect them ... you have a prime sponsor selected, but you switch to
+   a different term or apply a different filter that doesn't overlap and you
+   have to scroll through to deselect that specific filter"). Every filter
+   ticked is a pill here, the Sponsor group's pill's look, saying which filter
+   it is and what, with an × that takes that one off (a button, "Remove
+   filter: ..."); "Include co-sponsored bills" is one while a sponsor is
+   chosen; two or more and "Clear all" ends the row. Nothing ticked, no bar.
+   The address follows, as it follows every filter (render, addressList).
+   A FILTER KEPT ACROSS A TERM IS KEPT, AND SAYS SO. A filter that names no
+   bill of the term in view -- a sponsor who did not serve then, a tag no bill
+   of it carries -- stays (dropping it would change the list unseen) and is
+   drawn muted and dashed, its hover and a line under the bar saying it
+   matches nothing in this term. And where the filters together list nothing
+   though each lists something, each pill whose removal alone would list
+   bills again is marked, with how many on its hover, and the line says so.
+   WHERE IT GOES: above the results (FBAR_PLACE "results"), where it is in
+   view on a phone with the panel shut and beside the count it explains; or,
+   "facets", at the top of the filter panel, sticking there as the panel
+   scrolls. */
+let FBAR_PLACE="results";
+// The result's length as render() last drew it, for the bar in the panel.
+let FBAR_N=null;
+const FBAR_KEYS=[["status","Status"],["type","Bill type"],["committee","Committee"],["topic","Topic"],
+  ["tag","Tag"],["sponsor","Sponsor"],["party","Party"],["rsa","Law"],["voteday","Vote day"]];
+function fbarShow(k,v){
+  if(k==="tag")return (tagOf(v)||{}).name||v;
+  if(k==="sponsor")return sponsorShow(v);
+  if(k==="type")return TYPE_NAME[v]||v;
+  if(k==="rsa")return "RSA "+v;
+  return v;
+}
+// Whether a filter names any bill of the term in view, the others aside.
+function fbarHas(k,v,rows){
+  if(k==="cosp")return true;
+  if(k==="tag")return rows.some(b=>tagIdsOf(b).includes(v));
+  if(k==="voteday")return rows.some(b=>(b.votedays||[]).includes(v));
+  if(k==="rsa")return rows.some(b=>rsaHas(b,v));
+  return rows.some(b=>facetVals(b,k).includes(v));
+}
+function fbarItems(){
+  const out=[];
+  for(const [k,name] of FBAR_KEYS)for(const v of sel[k]||[])out.push({k,v,name,show:fbarShow(k,v)});
+  if(withCosp&&sel.sponsor.size)out.push({k:"cosp",v:"1",name:"",
+    show:termNoun()==="bills"?"Co-sponsored bills included":"Co-sponsored requests included"});
+  return out;
+}
+// How many the list would hold without this one filter.
+function fbarWithout(it){
+  if(it.k==="cosp"){withCosp=false;const n=IDX.filter(b=>matches(b)).length;withCosp=true;return n;}
+  sel[it.k].delete(it.v);
+  const n=IDX.filter(b=>matches(b)).length;
+  sel[it.k].add(it.v);
+  return n;
+}
+function filterBarHtml(n){
+  const items=fbarItems();
+  if(!items.length)return "";
+  const rows=IDX.filter(inTermOf),noun=termNoun(),where=termPhrase();
+  for(const it of items)it.none=!fbarHas(it.k,it.v,rows);
+  // Each list something, and together nothing: which one alone is in the way.
+  const stuck=n===0&&items.length>1&&!billNumbers(query)&&!items.some(it=>it.none);
+  if(stuck)for(const it of items)it.without=fbarWithout(it);
+  const said=it=>it.name?`${it.name}: ${it.show}`:it.show;
+  const pills=items.map(it=>{
+    const tip=it.none?`Matches no ${noun} ${where}`
+      :it.without?`Without this, ${it.without.toLocaleString()} ${it.without===1?noun.replace(/s$/,"")+" matches":noun+" match"}`:"";
+    return `<span class="pill fpill${it.none?" none":""}${it.without?" fblock":""}"${tip?` title="${esc(tip)}"`:""}>`
+      +`<span class="fv">${it.name?`<span class="fk">${esc(it.name)}:</span> `:""}${esc(it.show)}</span>`
+      +(tip?`<span class="sr"> (${esc(tip)})</span>`:"")
+      +`<button type="button" class="fx" data-unfilter="${esc(it.k)}" data-v="${esc(it.v)}" aria-label="${
+        esc("Remove filter: "+said(it))}">×</button></span>`;
+  }).join("");
+  const note=items.some(it=>it.none)
+    ?`A dashed filter matches no ${noun} ${where}.`
+    :stuck?(items.some(it=>it.without)?`No ${noun.replace(/s$/,"")} matches all of these together. Removing an outlined one lists some again.`
+      :`No ${noun.replace(/s$/,"")} matches all of these together.`):"";
+  return `<div class="fbar" role="region" aria-label="Filters in use">${pills}${
+    items.length>1?`<button type="button" class="link fclear" data-fclear="1">Clear all</button>`:""}${
+    note?`<p class="fbarnote">${esc(note)}</p>`:""}</div>`;
+}
+// The bar above the results: in #fbar, made before the summary where the
+// page has none; hidden on a bill's own view and with nothing ticked.
+function drawFilterBar(n){
+  const html=n==null||FBAR_PLACE!=="results"?"":filterBarHtml(n);
+  let el=document.getElementById("fbar");
+  if(!el){
+    const main=document.getElementById("main"),sum=document.getElementById("summary");
+    if(!html||!main||!sum||!main.insertBefore)return;
+    el=document.createElement("div");el.id="fbar";main.insertBefore(el,sum);
+  }
+  if(el.innerHTML!==html)el.innerHTML=html;
+  el.hidden=!html;
+}
+// A filter taken off from its pill, or all of them; from the keyboard, the
+// focus goes to the pill now where it was, or to the search box.
+function unfilter(k,v,kbd,at){
+  if(k==="cosp")withCosp=false;
+  else if(sel[k]){sel[k].delete(v);if(k==="rsa")rsaText="";}
+  render();
+  if(kbd){const xs=document.querySelectorAll(".fbar .fx");
+    const to=xs[Math.min(at||0,xs.length-1)]||$("#q");if(to&&to.focus)to.focus();}
+}
+function clearFilters(kbd){
+  Object.values(sel).forEach(s=>s.clear());withCosp=false;rsaText="";RSA_OFF.open=false;render();
+  if(kbd){const q=$("#q");if(q&&q.focus)q.focus();}
+}
+
 function renderFacets(){
   const inYear=IDX.filter(inTermOf);
   const cnt=(k,ig)=>{const c={};inYear.filter(b=>matches(b,ig)).forEach(b=>{
@@ -4641,6 +4750,8 @@ function renderFacets(){
   // unless a law is chosen (rsaGroup).
   h+=rsaGroup(inYear);
   if(Object.values(sel).some(s=>s.size))h+=`<button class="link" id="clear" style="margin-top:12px">Clear all filters</button>`;
+  // The filters in use, at the panel's top where the bar is put there (FBAR_PLACE).
+  if(FBAR_PLACE==="facets"&&FBAR_N!=null)h=filterBarHtml(FBAR_N)+h;
   // Replacing innerHTML resets scrollTop to zero. Capture it first and put it
   // back in the same tick, before anything is painted, or every tick of a
   // checkbox throws the reader back to the top of the list.
@@ -12617,6 +12728,9 @@ function render(more){
   // to the member (the audit of 2 October 2026, S14). The click handler goes
   // back in history only where back IS the search (backIsSearch), so the
   // list returns as it was left; everywhere else this is an ordinary link.
+  // The filters in use, above the list (drawFilterBar); none over one bill.
+  FBAR_N=fb?null:rows.length;
+  drawFilterBar(FBAR_N);
   parkActions(!fb);
   holdHeight($("#results"));
   const spHead=(b,gi,arr)=>!fb&&bySponsor&&(gi===0||primeChosen(arr[gi-1])!==primeChosen(b))
@@ -13143,6 +13257,11 @@ document.addEventListener("click",e=>{
     return;}
   const un=e.target.dataset.unpick;
   if(un){sel.sponsor.delete(un);render();return;}
+  // A pill's × in the filters in use, and its Clear all (filterBarHtml).
+  const ux=e.target.closest&&e.target.closest("[data-unfilter]");
+  if(ux){unfilter(ux.dataset.unfilter,ux.dataset.v,e.detail===0,
+    [...document.querySelectorAll(".fbar .fx")].indexOf(ux));return;}
+  if(e.target.closest&&e.target.closest("[data-fclear]")){clearFilters(e.detail===0);return;}
   // Left click opens in place; a modified or middle click falls through to
   // the anchor and gets the static page in a new tab, which still works.
   // On a record page there is no search list to come back to, so the arrow

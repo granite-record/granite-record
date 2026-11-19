@@ -3045,6 +3045,16 @@ The page fetches the file the first time the group is open in a term; until
 then, or with none, it lists the people the term's rows name
 (`_sponsor_roster_file`, `_sponsor_picker_lists_the_term`).
 
+Every filter in use is also a pill above the results (app.js
+`filterBarHtml`, the owner, 19 November 2026), each with an × that takes
+that one off, and Clear all for two or more; the address follows, through
+`render` and `addressList` as for any filter. A filter kept into a term it
+matches nothing in stays and is drawn dashed, and where filters that each
+list something list nothing together, each whose removal alone would list
+bills again is outlined with that count on its hover. `FBAR_PLACE`
+"facets" puts the bar at the top of the panel instead
+(`_filters_in_use_bar`).
+
 ## Known rough edges
 
 Each is described where it belongs; this is the list in one place.

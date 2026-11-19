@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.15
+# GRANITE_VERSION: 2026-11-16.16
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -10316,6 +10316,78 @@ def _sponsor_picker_lists_the_term():
     return "ok", ("six members once each, House then Senate by surname, zeros greyed after a rule; counts equal the "
                   "filter's lists, prime 2/1/1 and with co-sponsorships 3/2/2/2; Former Rep. Joe Gone in his place; "
                   "a town, a district, a name narrow it; All Terms waits for a name; no file lists the bills' people")
+
+
+@check("frontend", "every filter in use is a pill above the results with an × that takes that one off, and Clear all "
+       "for two or more; one kept into a term it matches nothing in is kept and muted; where filters that each "
+       "list something list nothing together, the ones in the way are marked")
+def _filters_in_use_bar():
+    """The owner, 19 November 2026: "selected filters should be easily viewable and should have an x mark next to
+    them to deselect them ... more centralized for all filters". On the picker's harness: nothing ticked draws no
+    bar; a bill type, a sponsor and "Include co-sponsored bills" ticked draw three pills, each saying which filter
+    it is and what, each with a button "Remove filter: ..." keyed to it, then Clear all; one filter, no Clear all.
+    The term changed to one the sponsor filed nothing in keeps the filter ticked and draws its pill muted (none),
+    titled, with the line saying a dashed filter matches nothing in the term. Two filters that each list bills
+    and together none (a Democrat's party and a Republican sponsor) are each outlined (fblock) with how many the
+    list would hold without it. A pill's × takes that filter off and the bar is drawn again; Clear all takes
+    them all. With FBAR_PLACE "facets" the bar heads the panel instead. app.css wraps the pills, and a long one
+    wraps inside itself, so a phone never scrolls sideways."""
+    css = _source(Path("src/pages/app.css"))
+    bar = re.search(r"\n\.fbar\{([^}]*)\}", css)
+    pill = re.search(r"\n\.fpill\{([^}]*)\}", css)
+    assert bar and "flex-wrap:wrap" in bar[1] and pill and "max-width:100%" in pill[1] \
+        and "overflow-wrap:anywhere" in pill[1], "the filters' pills do not wrap, or a long one can push the page sideways"
+    assert re.search(r"\n\.fpill\.none\{[^}]*dashed", css), "a filter matching nothing in the term is not drawn dashed"
+    got = _app_js("(() => {" + _PICKER_HARNESS + """
+  const out = {};
+  const bar = () => document.getElementById("fbar");
+  const pills = h => [...h.matchAll(/<span class="pill fpill([^"]*)"(?: title="([^"]*)")?><span class="fv">([\\s\\S]*?)<\\/span>(?:<span class="sr">[^<]*<\\/span>)?<button type="button" class="fx" data-unfilter="([^"]*)" data-v="([^"]*)" aria-label="([^"]*)">/g)]
+    .map(m => ({cls: m[1].trim(), title: m[2] || "", text: m[3].replace(/<[^>]+>/g, ""), k: m[4], v: m[5], aria: m[6]}));
+  scope.setState("2025-2026", META_P, ROWS_P);
+  scope.setRoster("2025-2026", ROSTER);
+  scope.render(); out.empty = [bar().innerHTML, bar().hidden];
+  scope.sel.type.add("HB"); scope.sel.sponsor.add("Nancy Murphy"); scope.setCosp(true);
+  scope.render(); const h = bar().innerHTML;
+  out.three = pills(h); out.clear = /data-fclear="1">Clear all</.test(h); out.hidden = bar().hidden;
+  scope.unfilter("type", "HB", false); out.afterX = [[...scope.sel.type], pills(bar().innerHTML).map(p => p.k)];
+  scope.unfilter("cosp", "1", false); out.one = [pills(bar().innerHTML).map(p => p.k), /Clear all/.test(bar().innerHTML)];
+  scope.setTerm("2023-2024"); scope.render(); const t = bar().innerHTML;
+  out.term = [pills(t), [...scope.sel.sponsor], /A dashed filter matches no bills in the 2023.2024 term/.test(t)];
+  scope.setTerm("2025-2026"); scope.sel.sponsor.clear(); scope.sel.sponsor.add("Sam Senn"); scope.sel.party.add("Democrat");
+  scope.render(); const o = bar().innerHTML;
+  out.stuck = [pills(o), scope.IDX().filter(b => scope.matches(b)).length, /No bill matches all of these together/.test(o)];
+  scope.clearFilters(false); out.cleared = [Object.values(scope.sel).reduce((n, s) => n + s.size, 0), bar().hidden];
+  scope.sel.sponsor.add("Nancy Murphy"); scope.setPlace("facets"); scope.render(); scope.renderFacets();
+  out.panel = [document.querySelector("#facets").innerHTML.slice(0, 40), bar().hidden];
+  return out;
+})()""", names=_PICKER_NAMES + ("render", "unfilter", "clearFilters", "setPlace: (p) => { FBAR_PLACE = p; }"))
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    assert got["empty"] == ["", True], f"a bar is drawn with nothing ticked: {got['empty']}"
+    three = got["three"]
+    assert [(p["k"], p["v"], p["text"]) for p in three] == [
+        ("type", "HB", "Bill type: House Bill"), ("sponsor", "Nancy Murphy", "Sponsor: Nancy Murphy (D - Hills 12)"),
+        ("cosp", "1", "Co-sponsored bills included")] and not got["hidden"], f"the pills drawn: {three}"
+    assert [p["aria"] for p in three] == ["Remove filter: Bill type: House Bill",
+                                          "Remove filter: Sponsor: Nancy Murphy (D - Hills 12)",
+                                          "Remove filter: Co-sponsored bills included"], [p["aria"] for p in three]
+    assert got["clear"] and got["one"] == [["sponsor"], False], (
+        f"Clear all is not there for three, or is there for one: {got['clear']}, {got['one']}")
+    assert got["afterX"] == [[], ["sponsor", "cosp"]], f"a pill's × does not take its filter off alone: {got['afterX']}"
+    pills, kept, said = got["term"]
+    assert kept == ["Nancy Murphy"] and len(pills) == 1 and pills[0]["cls"] == "none" \
+        and pills[0]["title"] == "Matches no bills in the 2023–2024 term" and said, (
+        f"a sponsor kept into a term she filed nothing in: kept {kept}, pill {pills}, said {said}")
+    pills, n, said = got["stuck"]
+    assert n == 0 and said and sorted((p["k"], p["cls"], p["title"]) for p in pills) == [
+        ("party", "fblock", "Without this, 1 bill matches"), ("sponsor", "fblock", "Without this, 3 bills match")], (
+        f"two filters that list nothing together: {pills}, {n} listed, said {said}")
+    assert got["cleared"] == [0, True], f"Clear all leaves filters or the bar: {got['cleared']}"
+    assert got["panel"][0].startswith('<div class="fbar"') and got["panel"][1], (
+        f"FBAR_PLACE 'facets' does not put the bar at the panel's top instead: {got['panel']}")
+    return "ok", ("no bar with nothing ticked; three pills with their own × and Clear all, one without; a sponsor kept "
+                  "into 2023-2024 muted and said; Democrat with a Republican sponsor both outlined (1 and 3 without); "
+                  "Clear all clears; the panel's top on 'facets'")
 
 
 
