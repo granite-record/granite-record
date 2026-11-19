@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.31
+# GRANITE_VERSION: 2026-11-16.32
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -7204,7 +7204,7 @@ def _movers_of_a_finished_term(B):
         and today["Rep. Nopage"], f"the current term's movers moved: {today}"
     assert not any(older.values()), f"a term with no frozen roster linked a mover: {older}"
     src = _source(_paths.locate("build_site_v2.py"))
-    assert "mover_pool(term, current, legs, term_rosters, _people)" in src and \
+    assert "mover_pool(term, current, legs, term_rosters, _people, voters)" in src and \
         'mover_member(r["mover"], r.get("body"), _mpool, pages=_mpages)' in src, (
             "build_bills no longer looks for a roll call's mover among the term's own members")
     return "ok", ("after the turn and between Organization Day and the switch, 2025-2026's movers "
@@ -7249,9 +7249,8 @@ def _story_people_of_a_finished_term(B):
     assert [p["slug"] for p in today] == ["joe-alexander-hills-29", "pat-gone-hills-3"], (
         f"the current term's story moved: {today}")
     src = _source(_paths.locate("build_site_v2.py"))
-    assert "_spool, pages=_spages) if _spool is not None else [])" in src and \
-        "_spool, _spages = mover_pool(term, current, legs, term_rosters, _people)" in src, (
-            "build_bills no longer looks for the story's members among the term's own members")
+    assert "_mpool, pages=_mpages) if _mpool is not None else [])" in src, (
+        "build_bills no longer looks for the story's members among the term's own members")
     return "ok", ("after the turn a 2025-2026 story names Alexander by Hills 29, linked to his "
                   "page now, and Pat Gone, not the newcomer; the current term as before")
 
@@ -7431,6 +7430,53 @@ def _older_movers_sample():
     return "ok", (f"{sum(1 for w in OLDER_MOVERS.values() if w)} movers of 1999-2024 linked as the "
                   f"sample holds, {sum(1 for w in OLDER_MOVERS.values() if not w)} left as words, "
                   "none of 1993-1994")
+
+
+@check("build", "the members a 1999-2024 story names are linked among that term's own voters, "
+                "by the seat the term gives them", needs=("build_site_v2",))
+def _story_people_of_older_terms(B):
+    """The owner, 19 November 2026, "Yes, link them", of a bill's written history as well
+    as its roll calls: story_people looks the names up where the term's movers are looked
+    up (mover_pool), so a story of 2003-2004 names Rep. Robert Letourneau by Rock 77,
+    linked to his one page, though he sat in the Senate after; "Rep. Eaton", two voters
+    of 2013-2014, stays words, and "Rep. Richard Eaton" links; build_bills hands the
+    story the movers' pool (_story_people_of_a_finished_term holds the call)."""
+    def ballot(mid, name, body, year):
+        return {"member_id": mid, "name": name, "body": body, "year": year,
+                "date": f"{year}-03-01", "party": "R"}
+    votes = {"376142": [ballot("376142", "Letourneau, Robert", "H", "2003")],
+             "209060": [ballot("209060", "Letourneau, Robert", "S", "2005")],
+             "101": [ballot("101", "Eaton, Daniel", "H", "2013")],
+             "102": [ballot("102", "Eaton, Richard", "H", "2013")]}
+    seats = {"2003-2004": {"376142": "Rep. Robert Letourneau (R - Rock 77)"},
+             "2005-2006": {"209060": "Sen. Robert Letourneau (R - SD19)"},
+             "2013-2014": {"101": "Rep. Daniel Eaton (D - Ches 9)",
+                           "102": "Rep. Richard Eaton (D - Hills 38)"}}
+    page = {"id": "209060", "slug": "robert-letourneau-sd-19"}
+    people = {"376142": page, "209060": page, "101": {"id": "101", "slug": "daniel-eaton-ches-9"},
+              "102": {"id": "102", "slug": "richard-eaton-hills-38"}}
+    voters = B.term_voters(votes, seats)
+    keep_slugs, keep_spell = dict(B._OWN_SLUG), list(B._SPELLINGS)
+    got = {}
+    try:
+        B._SPELLINGS[:] = [{}]
+        for term, text in (("2003-2004", "Rep. Letourneau moved to table; Sen. Letourneau spoke."),
+                           ("2013-2014", "Rep. Eaton moved; Rep. Richard Eaton offered an amendment.")):
+            B._OWN_SLUG.clear()
+            pool, pages = B.mover_pool(term, "2025-2026", {}, {}, people, voters)
+            got[term] = {p["text"]: (p["label"], p["slug"])
+                         for p in B.story_people([text], pool, pages=pages)}
+    finally:
+        B._OWN_SLUG.clear()
+        B._OWN_SLUG.update(keep_slugs)
+        B._SPELLINGS[:] = keep_spell
+    want = {"2003-2004": {"Rep. Letourneau": ("Rep. Robert Letourneau (R - Rock 77)",
+                                              "robert-letourneau-sd-19")},
+            "2013-2014": {"Rep. Richard Eaton": ("Rep. Richard Eaton (D - Hills 38)",
+                                                 "richard-eaton-hills-38")}}
+    assert got == want, f"an older term's story names {got}, not {want}"
+    return "ok", ("a story of 2003-2004 names Rep. Letourneau by Rock 77 and no Senator of that "
+                  "term; of 2013-2014 Rep. Richard Eaton, and Rep. Eaton, two of them, as words")
 
 
 @check("build", "the bill-text fetch saves only the bill it asked for, and stops when told no",
