@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the laws pages.
 
@@ -1437,7 +1437,7 @@ def _filter_offers(B):
     assert got["offers"] == [["topic", "Housing", 2, ""], ["committee", "House Housing", 2, ""]], (
         f"'housing' offers {got['offers']}")
     assert "All bills with the topic <b>Housing</b>" in got["list"] and \
-        "All bills referred to the <b>House Housing</b> committee" in got["list"] and \
+        "All bills referred to the <b>House Housing Committee</b>" in got["list"] and \
         got["list"].count('role="option"') == 2 and got["shown"], f"the list drawn: {got['list'][:300]}"
     assert got["box"] == ["combobox", "list", "q-offers", "true"], f"the box's combobox attributes: {got['box']}"
     assert got["say"].startswith("2 filters match"), f"the status line says {got['say']!r}"

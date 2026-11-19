@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.347
+// GRANITE_VERSION: 2026-09-07.348
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2590,8 +2590,8 @@ function filterCombo(inp,o){
   return {list,say,update,shut,rows:()=>rows,active:()=>act,
     enter(){if(rows.length&&act>=0){choose(act);return true;}shut();return false;}};
 }
-// THE BILL SEARCH'S OFFERS: a Topic, or a Committee, of the bills in the
-// term, by name; each with the count it would list -- the filters already
+// THE BILL SEARCH'S OFFERS: a Topic, a Committee or a Tag of the bills in
+// the term, by name; each with the count it would list -- the filters already
 // chosen kept, this one added, and the words it does not stand for searched.
 // IN THE TERM AN OFFER LANDS IN (the review of 26 October 2026). With a bill
 // open on /bills and the picker turned, the list's term waits for the bill to
@@ -2613,10 +2613,10 @@ function billOffers(q){
     const vals=k=>{const c={};inYear.forEach(b=>facetVals(b,k).forEach(v=>{
       if(v&&!sel[k].has(v))c[v]=(c[v]||0)+1;}));return Object.keys(c).map(v=>[v,v,c[v]]);};
     const offers=filterOffers(q,[
-      {key:"topic",values:vals("topic"),say:v=>`All bills with the topic <b>${esc(v)}</b>`},
+      {key:"topic",values:vals("topic"),say:offerTopic},
       // "House No Committee Assignment" is a filter, and no committee.
       {key:"committee",values:vals("committee").filter(x=>!/\bno committee\b/i.test(x[0])),
-       say:v=>`All bills referred to the <b>${esc(v)}</b> committee`}]);
+       say:offerCommittee}]);
     // TAGS:BEGIN
     tagOffers(q,offers,vals);
     // TAGS:END
@@ -2629,6 +2629,14 @@ function billOffers(q){
     return offers;
   }finally{term=own;}
 }
+// AN OFFER'S WORDS, in the page's language (lang/<code>.json's bills.offer_*):
+// a topic by its name; a committee by the name the header's search gives it
+// (find.js, findName), its chamber first and "Committee" after it where the
+// name does not already say it -- "House Housing Committee", "House Special
+// Committee on Housing".
+const offerTopic=v=>tr("bills.offer_topic","All bills with the topic <b>{name}</b>",{name:esc(v)});
+const offerCommittee=v=>tr("bills.offer_committee","All bills referred to the <b>{name}</b>",
+  {name:esc(/\bcommittee\b/i.test(v)?v:`${v} Committee`)});
 // TAGS:BEGIN
 /* THE TAGS' OFFERS (design 6.1): "All bills tagged Attorney General" for a
    tag whose name the words typed begin, as a topic or a committee is
@@ -2638,7 +2646,7 @@ function billOffers(q){
    reading of a filter's values in the term. */
 function tagOffers(q,offers,vals){
   if(!TAGLIST.length)return;
-  const named=t=>`All bills tagged <b>${esc(t)}</b>`;
+  const named=t=>tr("bills.offer_tag","All bills tagged <b>{name}</b>",{name:esc(t)});
   const tv=vals("tag").map(([v,_n,c])=>[v,(tagOf(v)||{}).name||v,c]);
   const byName=filterOffers(q,[{key:"tag",values:tv,say:named}]);
   const to=TAGWORDS.get(tagKey(q))||"",at=to.indexOf(":"),k=to.slice(0,at),v=to.slice(at+1);
@@ -2646,7 +2654,7 @@ function tagOffers(q,offers,vals){
   if(k==="tag"&&tv.some(x=>x[0]===v)&&!byName.some(o=>o.v===v))
     first.push({key:"tag",v,name:tagOf(v).name,n:0,how:0,html:named(tagOf(v).name),rest:""});
   if(k==="topic"&&vals("topic").some(x=>x[0]===v)&&!offers.some(o=>o.key==="topic"&&o.v===v))
-    first.push({key:"topic",v,name:v,n:0,how:0,html:`All bills with the topic <b>${esc(v)}</b>`,rest:""});
+    first.push({key:"topic",v,name:v,n:0,how:0,html:offerTopic(v),rest:""});
   offers.unshift(...first);
   offers.push(...byName);
   offers.splice(FO_MOST);
