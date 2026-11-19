@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.15
+# GRANITE_VERSION: 2026-11-16.16
 """
 preflight's checks of members-elect and election results.
 
@@ -3556,7 +3556,7 @@ def _offices_read_by_nothing(PSO):
     page: _primaries_read_by_nothing holds that nothing reads it."""
     import ast
     own = {Path(PSO.__file__).resolve(),
-           Path(PSO.__file__).with_name("parse_sos_primary_offices.py").resolve()}
+           (_paths.ROOT / "src" / "parse" / "parse_sos_primary_offices.py").resolve()}
     hits = []
     for f in _paths.code_files("*.py"):
         if _in_suite(f) or f.resolve() in own:
@@ -3763,7 +3763,8 @@ def _primaries_read_by_nothing(P):
     or names their files in a string (a docstring that names them is no
     reader), and no script names them."""
     import ast
-    own = {Path(P.__file__).resolve(), Path(P.__file__).with_name("parse_sos_primary_offices.py").resolve()}
+    own = {Path(P.__file__).resolve(),
+           (_paths.ROOT / "src" / "parse" / "parse_sos_primary_offices.py").resolve()}
     mods = ("parse_sos_primary_results", "parse_sos_primary_offices")
     hits = []
     for f in _paths.code_files("*.py"):
