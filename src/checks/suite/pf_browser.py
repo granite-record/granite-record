@@ -1434,14 +1434,16 @@ var fixtures = [
          // two recorded stations. (This is JavaScript: a # here is a syntax
          // error, and was.)
          "Votes (1)",
-         "Hearings (2)",
+         // Videos since 19 November 2026 (the owner).
+         "Videos (2)",
          // A start and an end, and nothing else. Both stations here start at a
          // boundary the chair announced, so neither carries the one word that
          // marks an inference. The Hearings tab is one player and a playlist
          // (10 November 2026): the first recording's moments are under the
          // player, and the second is a row of the playlist, drawn when chosen.
-         "00:02:30 starts",
-         "00:15:00 ends",
+         // Each moment a play button, named for what it is (19 November 2026).
+         'aria-label="Play from 00:02:30, where it starts"',
+         'aria-label="Play from 00:15:00, where it ends"',
          'data-vwpick="h1"'],
    // THE VERSION PANE IS ONLY DRAWN WHEN THE CARD IS OPEN, so these belong in
    // wantFocused and not in want. Asserting them in both is how this first
@@ -6871,7 +6873,11 @@ def _bill_panes_one_heading():
 
     Read three ways: the three rules agree in app.css; every h2 the panes'
     renderers write, from renderReports to renderRelated, is a .sech; and
-    Sponsors and Documents, drawn in node, open with one."""
+    Documents, drawn in node, opens with one.
+
+    THE SPONSORS ARE THE SUMMARY'S FIRST SECTION since 19 November 2026 (the
+    owner), under its .w4h "Sponsors", each chamber's names an h3.spch set
+    smaller than it."""
     css = _source("src/pages/app.css")
     won = {}
     for at, sel, body, _l in _css_rules(css):
@@ -6916,20 +6922,29 @@ def _bill_panes_one_heading():
     if not under or under[0].get("font-size") != "var(--t-ui)":
         bad.append("the labels under Bill Text (THE BILL, FISCAL IMPACT, HOW IT GOT HERE) are not --t-ui, "
                    "under a heading at --t-h3")
+    sps = ('{sponsors: [{name: "A", chamber: "H", label: "Rep. A", prime: true}, '
+           '{name: "B", chamber: "S", label: "Sen. B"}]}')
     drawn = _app_js(
-        '[scope.renderSponsors({id: "HB1"}, {sponsors: [{name: "A", chamber: "H", label: "Rep. A", prime: true}, '
-        '{name: "B", chamber: "S", label: "Sen. B"}]}), '
+        f'[scope.renderSummary({{id: "HB1"}}, {sps}), '
         'scope.renderDocuments({id: "HB1"}, {documents: [{kind: "text", label: "Bill text", '
         'url: "https://example.org/x.pdf"}]})]',
-        names=("renderSponsors", "renderDocuments"))
+        names=("renderSummary", "renderDocuments"))
     if drawn is not None:
-        for what, html in zip(("Sponsors", "Documents"), drawn):
-            first = re.search(r"<h[1-6][^>]*>", html)
-            if not first or not re.match(r'<h2 class="[^"]*\bsech\b', first.group(0)):
-                bad.append(f"{what} opens with {first.group(0) if first else 'no heading'}, not an h2.sech")
+        summ, docs = drawn
+        first = re.search(r"<h[1-6][^>]*>", docs)
+        if not first or not re.match(r'<h2 class="[^"]*\bsech\b', first.group(0)):
+            bad.append(f"Documents opens with {first.group(0) if first else 'no heading'}, not an h2.sech")
+        sheads = re.findall(r"<h[1-6][^>]*>[^<]*", summ)
+        if not (sheads[:3] == ['<h2 class="w4h">Sponsors', '<h3 class="spch">Representatives ',
+                              '<h3 class="spch">Senators '] and summ.index('id="sponsors"') < summ.index("spch")):
+            bad.append(f"the Summary does not open with Sponsors and its chambers under it: {sheads[:3]}")
+    spch = won.get(".spch", {})
+    if not re.match(r"600 var\(--t-ui\)/[\d.]+ var\(--sans\)", spch.get("font", "")):
+        bad.append(f".spch is {spch.get('font')!r}, not a 600 --t-ui sans heading under the --t-h3 .w4h")
     assert not bad, "; ".join(bad[:6])
     return "ok", (f"{len(heads)} h2s in the bill panes, every one .sech, as Summary's and a vote's"
-                  + ("" if drawn is None else "; Sponsors and Documents drawn, each opening with one"))
+                  + ("" if drawn is None else "; Documents drawn opening with one, the Summary with "
+                     "Sponsors and its chambers' h3s under it"))
 
 
 @check("frontend", "a bill's Testify button counts the Senate's hearings, and says testimony may open again "

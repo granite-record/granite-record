@@ -15298,8 +15298,8 @@
    "state": "draft"
   },
   "guide.testifying.this-site-holds-public-hearings-each": {
-   "en": "This site holds <b>[[hearings]] public hearings</b>, each with the committee and the day. Every bill's page shows its own hearings. Where a hearing was recorded &mdash; [[hearing_video_bills]] bills[[hearing_video_since]] &mdash; the bill's Hearings tab links it, opened where the bill was taken up when that moment has been found. <a href=\"committees.html\">A committee's page</a> lists every day it met and what it heard.",
-   "es": "Este sitio tiene <b>[[hearings]] audiencias públicas</b>, cada una con el comité y el día. La página de cada proyecto de ley muestra sus propias audiencias. Cuando una audiencia se grabó &mdash; [[hearing_video_bills]] proyectos de ley[[hearing_video_since]] &mdash; la pestaña Hearings (audiencias) del proyecto la enlaza, abierta en el momento en que se empezó a tratar el proyecto, cuando ese momento se ha encontrado. <a href=\"committees.html\">La página de un comité</a> enumera cada día en que se reunió y lo que estudió.",
+   "en": "This site holds <b>[[hearings]] public hearings</b>, each with the committee and the day. Every bill's page shows its own hearings. Where a hearing was recorded &mdash; [[hearing_video_bills]] bills[[hearing_video_since]] &mdash; the bill's Videos tab plays it, opened where the bill was taken up when that moment has been found. <a href=\"committees.html\">A committee's page</a> lists every day it met and what it heard.",
+   "es": "Este sitio tiene <b>[[hearings]] audiencias públicas</b>, cada una con el comité y el día. La página de cada proyecto de ley muestra sus propias audiencias. Cuando una audiencia se grabó &mdash; [[hearing_video_bills]] proyectos de ley[[hearing_video_since]] &mdash; la pestaña Videos del proyecto la reproduce, abierta en el momento en que se empezó a tratar el proyecto, cuando ese momento se ha encontrado. <a href=\"committees.html\">La página de un comité</a> enumera cada día en que se reunió y lo que estudió.",
    "state": "draft"
   },
   "guide.testifying.title": {
@@ -16155,14 +16155,9 @@
    "es": "Granite Record es un índice del propio registro de la Legislatura de New Hampshire: [[all_bills]] proyectos de ley en [[terms]] períodos de dos años, desde [[first_year]], con lo que hace cada proyecto, quién lo patrocinó, cuándo se celebró su audiencia, cómo se votó y en qué momento de la grabación ocurrió. Se genera de forma automática a partir de los archivos que publica la Legislatura, y esta página se generó por última vez el [[built_on]].",
    "state": "draft"
   },
-  "guide.using-this-site.hearings": {
-   "en": "Hearings",
-   "es": "Hearings",
-   "state": "draft"
-  },
-  "guide.using-this-site.hearings-each-meeting-that-took-the": {
-   "en": "<b>Hearings</b> &mdash; each meeting that took the bill up, with its day, time and room, and the recording where there is one, opened at the moment the bill was taken up.",
-   "es": "<b>Hearings</b> (audiencias) &mdash; cada reunión que trató el proyecto de ley, con su día, hora y sala, y la grabación cuando la hay, abierta en el momento en que se empezó a tratar el proyecto.",
+  "guide.using-this-site.history": {
+   "en": "History",
+   "es": "History",
    "state": "draft"
   },
   "guide.using-this-site.history-where-there-is-any-bills": {
@@ -16226,8 +16221,8 @@
    "state": "draft"
   },
   "guide.using-this-site.reports-what-the-committee-recommended": {
-   "en": "<b>Reports</b> &mdash; what the committee recommended and why, in the committee's own words, and the Governor's message where a bill was vetoed.",
-   "es": "<b>Reports</b> (informes) &mdash; lo que recomendó el comité y por qué, en las propias palabras del comité, y el mensaje del gobernador cuando se vetó un proyecto de ley.",
+   "en": "<b>Reports</b> &mdash; what the committee recommended and why, in the committee's own words, a Senate committee's report of its public hearing, and the Governor's message where a bill was vetoed.",
+   "es": "<b>Reports</b> (informes) &mdash; lo que recomendó el comité y por qué, en las propias palabras del comité, el informe de un comité del Senado sobre su audiencia pública, y el mensaje del gobernador cuando se vetó un proyecto de ley.",
    "state": "draft"
   },
   "guide.using-this-site.senate-rules": {
@@ -16235,24 +16230,14 @@
    "es": "Reglamento del Senado",
    "state": "draft"
   },
-  "guide.using-this-site.sponsors": {
-   "en": "Sponsors",
-   "es": "Sponsors",
-   "state": "draft"
-  },
-  "guide.using-this-site.sponsors-the-member-who-filed-the": {
-   "en": "<b>Sponsors</b> &mdash; the member who filed the bill and those who signed on to it.",
-   "es": "<b>Sponsors</b> (patrocinadores) &mdash; el miembro que presentó el proyecto de ley y los que se sumaron a él.",
-   "state": "draft"
-  },
   "guide.using-this-site.summary": {
    "en": "Summary",
    "es": "Summary",
    "state": "draft"
   },
-  "guide.using-this-site.summary-the-general-court-s-own": {
-   "en": "<b>Summary</b> &mdash; the General Court's own analysis, the current status, and a narrative of what has happened, in order, with each action linked to the journal or calendar that recorded it.",
-   "es": "<b>Summary</b> (resumen) &mdash; el propio análisis de la Legislatura, el estado actual y un relato de lo que ha pasado, en orden, con cada acción enlazada al diario o al calendario que la registró.",
+  "guide.using-this-site.summary-the-member-who-filed-the": {
+   "en": "<b>Summary</b> &mdash; the member who filed the bill and those who signed on to it, the General Court's own analysis, the current status, and a narrative of what has happened, in order, with each action linked to the journal or calendar that recorded it.",
+   "es": "<b>Summary</b> (resumen) &mdash; el miembro que presentó el proyecto de ley y los que se sumaron a él, el propio análisis de la Legislatura, el estado actual y un relato de lo que ha pasado, en orden, con cada acción enlazada al diario o al calendario que la registró.",
    "state": "draft"
   },
   "guide.using-this-site.the-search-button-in-the-header": {
@@ -16263,6 +16248,16 @@
   "guide.using-this-site.title": {
    "en": "Using This Site",
    "es": "Cómo usar este sitio",
+   "state": "draft"
+  },
+  "guide.using-this-site.videos": {
+   "en": "Videos",
+   "es": "Videos",
+   "state": "draft"
+  },
+  "guide.using-this-site.videos-the-recording-of-each-meeting": {
+   "en": "<b>Videos</b> &mdash; the recording of each meeting that took the bill up, opened at the moment the bill was taken up, with its time and room; a meeting with no recording is listed with its day.",
+   "es": "<b>Videos</b> &mdash; la grabación de cada reunión que trató el proyecto de ley, abierta en el momento en que se empezó a tratar, con su hora y su sala; una reunión sin grabación aparece con su día.",
    "state": "draft"
   },
   "guide.using-this-site.votes": {
@@ -21618,8 +21613,8 @@
    "state": "draft"
   },
   "learn.state-agencies.where-a-hearing-was-recorded-bills": {
-   "en": "Where a hearing was recorded &mdash; [[hearing_video_bills]] bills[[hearing_video_since]] &mdash; the bill's Hearings tab links the recording, opened where the bill was taken up when that moment has been found. <a href=\"committees.html\">Committee pages</a> list every day a committee met and what it heard.",
-   "es": "Cuando se grabó una audiencia &mdash; [[hearing_video_bills]] proyectos de ley[[hearing_video_since]] &mdash; la pestaña Hearings (audiencias) del proyecto de ley enlaza la grabación, que se abre en el punto en que se trató el proyecto si ese momento se ha localizado. Las <a href=\"committees.html\">páginas de los comités</a> indican cada día que un comité se reunió y los proyectos de ley que examinó.",
+   "en": "Where a hearing was recorded &mdash; [[hearing_video_bills]] bills[[hearing_video_since]] &mdash; the bill's Videos tab plays the recording, opened where the bill was taken up when that moment has been found. <a href=\"committees.html\">Committee pages</a> list every day a committee met and what it heard.",
+   "es": "Cuando se grabó una audiencia &mdash; [[hearing_video_bills]] proyectos de ley[[hearing_video_since]] &mdash; la pestaña Videos del proyecto de ley reproduce la grabación, que se abre en el punto en que se trató el proyecto si ese momento se ha localizado. Las <a href=\"committees.html\">páginas de los comités</a> indican cada día que un comité se reunió y los proyectos de ley que examinó.",
    "state": "draft"
   },
   "learn.state-agencies.where-statutes-get-applied": {

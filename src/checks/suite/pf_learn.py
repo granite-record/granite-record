@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of Learn, the guides, civics and the numbers pages.
 
@@ -4404,7 +4404,7 @@ def _using_this_site_tabs(civics):
     rd = re.search(r"\nfunction renderDetail\(.*?\n\}\n", app, re.S)
     rd = rd.group(0) if rd else ""
     drawn = set(re.findall(r'\["\d","([A-Z][a-z]+(?: [A-Z][a-z]+)?)",', rd))
-    assert drawn >= {"Summary", "Votes", "Hearings", "Reports", "Sponsors"}, (
+    assert drawn >= {"Summary", "Votes", "Videos", "Reports"} and not drawn & {"Hearings", "Sponsors"}, (
         f"the bill page's tabs read {sorted(drawn)} out of app.js")
     missing = [t for t in named if t not in drawn and t != "Bill Text"]
     assert not missing, (f"Using this site names tabs a bill's page does not have: {missing}; "

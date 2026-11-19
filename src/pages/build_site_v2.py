@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.286
+# GRANITE_VERSION: 2026-09-05.287
 """
 Generate the faceted site from real General Court data.
 
@@ -49,6 +49,7 @@ import report_check as RC
 import rollcall_outcomes as RO
 import vote_passage as VP
 import senate_hearing_reports as SHR
+import sos_archives as SA
 import site_read
 import spellings
 import csv
@@ -8581,6 +8582,42 @@ def mover_member(mover, body, legs, pages=None):
             "slug": m.get("slug") or member_slug(m, lab)}
 
 
+# "(D - Rock 37)" at the end of a member's label: the party's letter.
+_LABEL_PARTY = re.compile(r"\(([A-Z])\b[^()]*\)\s*$")
+
+
+def report_author(author, body, legs, pages=None):
+    """{"label", "slug", "party_code"} for the member a committee report says
+    wrote it -- "Rep. David Meuse", "Senator Daryl Abbas" -- or None. A WRONG
+    MEMBER IN A CHIP IS A FACTUAL ERROR AND A MISSING CHIP IS NOT: the name is
+    taken only where mover_member finds exactly one member of the report's
+    chamber it can mean, among `legs` and `pages` as mover_pool gives them
+    (the term's own members, with the seat each held then), and only a name
+    with its chamber's title; anything else stays the report's words. The
+    party is the label's own, so the chip's colour is the seat's of the term."""
+    said = (author or "").strip()
+    if not MOVER_HONORIFIC.match(said):
+        return None
+    who = mover_member(said, body, legs, pages=pages)
+    if not who or not who.get("label") or not who.get("slug"):
+        return None
+    m = _LABEL_PARTY.search(who["label"])
+    return {**who, "party_code": m.group(1) if m else ""}
+
+
+def report_authors(written, legs, pages=None):
+    """Each written report's sides gain `author_m` (report_author) where the
+    author can be named; a House Calendar report is the House's, a report
+    that says "S" the Senate's."""
+    for r in written or ():
+        body = "S" if (r.get("body") or "").upper().startswith("S") else "H"
+        for e in r.get("reports") or ():
+            if e.get("author"):
+                who = report_author(e["author"], body, legs, pages)
+                if who:
+                    e["author_m"] = who
+
+
 def term_voters(votes_by_member, seats):
     """{term: {"<id>|<chamber>": member}}: THE MEMBERS OF EACH TERM'S CHAMBERS,
     AS THEIR OWN BALLOTS OF THE TERM GIVE THEM -- everyone who voted in that
@@ -11944,6 +11981,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     video_facts = P.video_facts()
 
     index, years = [], set()
+    # WHERE EACH BILL'S COMMITTEE FILES ARE (the owner, 19 November 2026):
+    # the Secretary of State's archive page, by the rule sos_archives.address
+    # keeps, read from collected/sos_archives.json. Never fetched.
+    sos_files, sos_day = SA.load(), build_date.today().isoformat()
     status_pages = load("bill_status.json", {})
     if status_pages:
         n = (sum(len(v) for v in status_pages.values())
@@ -12424,6 +12465,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 who = mover_member(r["mover"], r.get("body"), _mpool, pages=_mpages)
                 if who:
                     r["mover_m"] = who
+        # THE MEMBER WHO WROTE A COMMITTEE'S REPORT AS THE PERSON'S CHIP (the
+        # owner, 19 November 2026), by the movers' rule and among the same
+        # members, with the seat held then: report_author says when.
+        if _mpool is not None:
+            report_authors(rep_written, _mpool, _mpages)
         # WHERE EACH ROLL CALL'S CARD IS on this bill's Votes tab, for the
         # session days (`rc_cards`, write_floor_record): {term: {bill: {roll
         # call: index into the record's rollcalls}}}.
@@ -12743,6 +12789,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                            f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"
                            f"&txtsessionyear={b.get('lsr_year','')}"
                            f"&txtbillnumber={bid.lower()}&sortoption=billnumber"),
+            # The Secretary of State's archive page of the bill's committee
+            # files, where sos_archives.address gives one (the Reports tab).
+            **({"sos_archives": _sos} if (_sos := ("" if b.get("journal") else SA.address(
+                sos_files, b.get("lsr_year"), bid, b.get("lsr_num"), sos_day))) else {}),
             "documents": docs,
             # The amendments this bill went through, in the order they were
             # taken up, with the text where the calendars printed it.

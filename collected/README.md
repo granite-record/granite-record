@@ -17,6 +17,11 @@ and the diff is the review.
   pages saved in `records/sources/constitution/`
   (`src/parse/parse_constitution.py`). The Laws page's Constitution tab is
   drawn from it, and a CACR's page links the articles it would change.
+- `sos_archives.json` -- where each bill's committee files are: the
+  Secretary of State's archive page the General Court's own docket and status
+  pages link, read from `docket_pages/` and `status_pages/`
+  (`src/parse/sos_archives.py`, which asks nobody). A bill's Reports tab
+  links it; nothing fetches it.
 - `town_clerks.json` -- each town's clerk and polling place, from the
   Secretary of State's list (`src/towns/parse_clerks_csv.py`); each row's
   `read_on` is the day of the export it was read from.
