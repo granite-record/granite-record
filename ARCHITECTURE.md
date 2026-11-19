@@ -2695,7 +2695,7 @@ topic classifier with the committee left out, learned from every term's official
 code with the current term's counted three times, and Miscellaneous below its
 threshold, which the Topic filter lists and a card or a request's page does not
 print, as for an archived bill's). The model answers in the General Court's own
-names and `build_site_v2.vocabulary_of` files a request where it files a bill:
+names and `topic_vocabulary.vocabulary_of` files a request where it files a bill:
 the two topics the site splits in two (`topic_model.SPLITS`, 17 November 2026 --
 Crimes and Criminal Procedure or Corrections, Real Estate or Personal Property),
 which a bill's statutes and title decide, a request's title decides alone; and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of Learn, the guides, civics and the numbers pages.
 
@@ -5258,7 +5258,7 @@ def _language_sweep_words(civics, C):
              "laws not yet included."),
             ("build_site_v2.py", src("build_site_v2.py"), '"text": f"Still in interim study when',
              "In interim study: the committee studies the subject in the fall of"),
-            ("build_site_v2.py", src("build_site_v2.py"), "TOPIC_WORDS = {}",
+            ("topic_vocabulary.py", src("topic_vocabulary.py"), "TOPIC_WORDS = {}",
              '"CACR": "Constitutional Amendments"')):
         if gone in text:
             bad.append(f"{where} says {gone!r} again")

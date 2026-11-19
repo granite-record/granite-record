@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1055,6 +1055,7 @@ _IMPORTS_CUT = {
     ("officials_tabs", "build_site_v2"), ("officials_tabs", "build_town_pages"),
     ("build_town_pages", "build_pages"), ("build_pages", "build_town_pages"),   # parts.py
     ("live_hook", "build_live"),                                # live_hook.past_stems
+    ("request_topics", "build_site_v2"),                        # topic_vocabulary.py
 }
 
 
