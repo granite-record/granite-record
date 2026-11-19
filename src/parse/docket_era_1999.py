@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.14
+# GRANITE_VERSION: 2026-09-11.15
 """
 The 1999-2006 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -339,7 +339,6 @@ UNSIGNED_OLD = re.compile(
 CONSENT_OFF_OLD = re.compile(
     r"^Removed\s+from\s+(?:the\s+)?Cons(?:ent)?\.?\s*Cal(?:endar)?\b", re.I)
 DIED_OLD = re.compile(r"^Died\s+(?:on\s+(?:the\s+)?Table\b|\(All\s+bills\s+Laid\s+on\s+Table)", re.I)
-RETAINED_OLD = re.compile(r"^Retained\s+in\s+Comm", re.I)
 INTERIM_OLD = re.compile(
     r"^Int(?:erim)?\.?\s+Study\s+Report\s*:\s*(?P<rec>[A-Za-z][A-Za-z ,.]*?(?:\s+(?:IN\s+)?\d{4})?)\s*"
     r"(?:\(\s*Vote\s*(?P<y>\d+)\s*-\s*(?P<n>\d+)\s*;?\s*(?P<cal>CC|RC)?\s*\))?\s*$", re.I)

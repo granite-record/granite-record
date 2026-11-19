@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.18
+# GRANITE_VERSION: 2026-09-11.19
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -61,10 +61,6 @@ ERAS = [
     (1999, 2006, E1999, E1999.FIRST, E1999.AFTER, E1999.ROUTINE),
     (2007, 2016, E2007, E2007.FIRST, E2007.AFTER, E2007.ROUTINE),
 ]
-
-# The last session the database dump covers, and the first the web docket
-# does. A row outside this range is not ours.
-FIRST_YEAR, LAST_YEAR = 1989, 2016
 
 
 def era_for(session):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.289
+# GRANITE_VERSION: 2026-09-04.290
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -4585,7 +4585,6 @@ HOME_CARDS = (
     ("resources.html", "book", "Resources",
      "How-to guides, how the legislature works, and official sources"),
 )
-CONSTITUTION_HREF = "/laws#constitution"
 
 
 def card_words(lang="en"):

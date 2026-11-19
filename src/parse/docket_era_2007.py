@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.6
+# GRANITE_VERSION: 2026-09-11.7
 """
 The 2007-2016 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -195,7 +195,6 @@ def mend(desc):
 
 
 # -------------------------------------------------------------- joining
-ROMAN = re.compile(r"^[IVX]{1,5}\s*\.\s*\S")
 RESULT_ONLY = re.compile(r"^(?:MA|MF|ML|AA|AF|AL|Motion\s+(?:Adopted|Failed|Lost))\b", re.I)
 LOWER = re.compile(r"^[a-z]")
 HAS_RESULT = re.compile(r"\b(?:MA|MF|ML|AA|AF|AL|Adopted|Failed)\b")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.2
+# GRANITE_VERSION: 2026-11-11.3
 """
 An article's "History and citations" fold on the Laws page's Constitution tab.
 
@@ -40,7 +40,6 @@ import components as C
 import i18n as I
 
 E = html.escape
-FOLD_NAME = "History and citations"
 CHAMBER = {"H": "House", "S": "Senate"}
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.3
+# GRANITE_VERSION: 2026-11-13.4
 """
 Who the printed sponsors of 1989 to 1998 are, where that is certain.
 
@@ -64,7 +64,6 @@ import text_sponsors as TS
 
 # The terms whose sponsors this places: the bills have no roll call to place them by.
 PRE_TERMS = ("1989-1990", "1991-1992", "1993-1994", "1995-1996", "1997-1998")
-SOURCE_NAME = "General Court list of members"
 
 CERTAIN, AMBIGUOUS, UNMATCHED = "certain", "ambiguous", "unmatched"
 # What a sponsor record placed on a person says in `matched`.
@@ -148,11 +147,6 @@ def place(sp, rows, people):
     if cands:
         return AMBIGUOUS, None, f"{len(cands)} numbers on the bill's record fit {' '.join(words)!r}"
     return UNMATCHED, None, "no number on the bill's sponsor record fits the printed name"
-
-
-def place_bill(pieces, rows, people):
-    """[(state, employee, why)] for each printed sponsor of one bill."""
-    return [place(sp, rows, people) for sp in pieces]
 
 
 # ------------------------------------------------------------------ the second step: the term's seat list

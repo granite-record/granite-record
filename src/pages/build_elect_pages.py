@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.8
+# GRANITE_VERSION: 2026-11-08.9
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -179,12 +179,6 @@ def race_parts(key):
     """("H", "Rockingham", "13") or ("S", "", "24") from a race key."""
     p = key.split("|")
     return (p[0], p[1], p[2]) if p[0] == "H" else (p[0], "", p[1])
-
-
-def first_last(name):
-    """'Nelson, Jodi' -> 'Jodi Nelson'; a name already first-last as it is."""
-    last, sep, first = str(name or "").partition(",")
-    return f"{first.strip()} {last.strip()}".strip() if sep else str(name or "").strip()
 
 
 def numbered_as(e_name, chamber, county, district, sitting, people=None):

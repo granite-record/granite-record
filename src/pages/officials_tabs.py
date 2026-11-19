@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.22
+# GRANITE_VERSION: 2026-10-10.23
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -327,11 +327,8 @@ def source_link(url):
     return weblink(url, where(url).split("/")[0])
 
 
-FIND_TOWN = '<a href="officials.html#my-town">Find your town</a>.'
-
-
 def find_town(lang="en"):
-    """FIND_TOWN in `lang`."""
+    """The "Find your town" link to the Officials page's My Town tab, in `lang`."""
     return ('<a href="officials.html#my-town">' + I.say(lang, "off.find_town", "Find your town")
             + "</a>.")
 
