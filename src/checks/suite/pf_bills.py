@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.35
+# GRANITE_VERSION: 2026-11-16.36
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -10085,6 +10085,151 @@ def _sponsor_numbers_join_their_person(build_site_v2):
                   "linked to their page, at the seat it prints")
 
 
+@check("build", "the Sponsor filter's members, a file a term (site/sponsors/<term>.json): keyed as the index and "
+       "app.js key them, each once, House then Senate by surname; the sitting term's every sitting member and "
+       "every member who left, marked, with their district's towns; a stale term's file removed",
+       needs=("build_site_v2", "sponsor_roster"))
+def _sponsor_roster_file(build_site_v2, sponsor_roster):
+    """The owner, 19 November 2026: the Sponsor filter lists the term's members (app.js spPicker). On a
+    fixture: build_bills, given `people`, fills it with everyone the term's rows name, under the keys the
+    row's `sponsor` (as app.js spKey reads it) and `cosp` carry, a co-sponsor by the label their own record
+    gives; add_sitting adds the sitting member who filed nothing and the member who left having filed
+    nothing, marks the members who left (f) and gives each their district's towns, the padded "Belk 06" the
+    roster's "Belk 6"; a former member of another term is not listed; write() lists the House and then the
+    Senate by surname and removes a term's file an earlier build left. sp_key and app.js's spKey agree on
+    every shape a row takes, a 1989-1998 sponsor left as printed among them."""
+    import contextlib
+    import io
+    B, SR = build_site_v2, sponsor_roster
+    T = "2025-2026"
+    mem = lambda i, name, ch, party, dist, county, towns: {
+        "id": i, "name": name, "chamber": ch, "party_code": party, "district": dist, "county": "",
+        "county_abbr": county, "towns": towns}
+    nancy = mem("1", "Murphy, Nancy", "H", "D", "12", "Hills", ["Bedford"])
+    ann = mem("2", "Lee, Ann", "H", "R", "3", "Rock", ["Rye"])
+    zed = mem("3", "Quiet, Zed", "H", "R", "6", "Belk", ["Gilford"])
+    sam = mem("4", "Senn, Sam", "S", "R", "4", "", ["Dover"])
+    for m in (nancy, ann, zed, sam):
+        m.update(B.member_labels(m["name"], chamber=m["chamber"], party=m["party_code"],
+                                 district=m["district"], county_abbr=m["county_abbr"]))
+        m["slug"] = B.own_slug(m)
+    legs = {m["id"]: m for m in (nancy, ann, zed, sam)}
+    gone = dict(mem("5", "Gone, Joe", "H", "D", "6", "Belk", []), served={"terms": ["2023-2024", T]})
+    quit_ = dict(mem("6", "Left, Lou", "S", "D", "9", "", []), served={"terms": [T]})
+    old = dict(mem("7", "Hand, Old", "H", "R", "1", "Coos", []), served={"terms": ["2019-2020"]})
+    for m in (gone, quit_, old):
+        m.update(B.member_labels(m["name"], chamber=m["chamber"], party=m["party_code"],
+                                 district=m["district"], county_abbr=m["county_abbr"]))
+        m["slug"] = B.own_slug(m)
+        m["former"] = True
+    former = {m["id"]: m for m in (gone, quit_, old)}
+    rec = lambda i, name, prime, ch, party, dist, county: {
+        "member_id": i, "name": name, "prime": prime, "chamber": ch, "party": party, "district": dist,
+        "county": county, "source": "bill status page"}
+    sponsors = {T: {"HB1": [rec("1", "Nancy Murphy", True, "H", "D", "12", "Hills"),
+                            rec("2", "Ann Lee", False, "H", "R", "3", "Rock"),
+                            rec("4", "Sam Senn", False, "S", "R", "4", "")],
+                    "HB2": [rec("5", "Joe Gone", True, "H", "D", "06", "Belk"),
+                            rec("99", "Pat Visitor", False, "H", "R", "2", "Straf")]}}
+    bills = {T: {b: {"bill": b, "lsr": f"2025-000{b[-1]}", "lsr_year": "2025", "title": "a fixture.",
+                     "chamber": "H", "designation": b.replace("HB", "HB ")} for b in ("HB1", "HB2")}}
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-roster-"))
+    people = {}
+    try:
+        os.chdir(tmp)
+        out = tmp / "site"
+        out.mkdir()
+        by_sort = {B.sort_name(m["name"]): m for m in legs.values()}
+        by_key = {B.name_key(m["name"]): m for m in legs.values()}
+        with contextlib.redirect_stdout(io.StringIO()):
+            index, *_ = B.build_bills(out, bills, {}, {}, {}, sponsors, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                                      legs, by_sort, by_key, {},
+                                      seats={m["id"]: [(T, m["chamber"])] for m in (*legs.values(), gone)},
+                                      former=former, links={}, people=people)
+            SR.add_sitting(people, T, legs, former, B.own_slug, B.person_name)
+            (out / "sponsors").mkdir()
+            (out / "sponsors" / "2001-2002.json").write_text("{}", encoding="utf-8")
+            SR.write(out, people)
+        files = sorted(p.name for p in (out / "sponsors").glob("*.json"))
+        listed = json.loads((out / "sponsors" / f"{T}.json").read_text(encoding="utf-8"))
+    finally:
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+    named = {r["sponsor"] for r in index} | {c for r in index for c in r.get("cosp", [])}
+    rows = listed["members"]
+    keys = [r["k"] for r in rows]
+    assert named <= set(keys), f"a name the index files a bill under is not listed: {sorted(named - set(keys))}"
+    assert keys == ["Joe Gone", "Ann Lee", "Nancy Murphy", "Zed Quiet", "Pat Visitor", "Lou Left", "Sam Senn"], (
+        f"not each member once, House then Senate by surname: {keys}")
+    by = {r["k"]: r for r in rows}
+    assert [k for k in keys if by[k].get("f")] == ["Joe Gone", "Lou Left"], (
+        f"the members who left are not the ones marked: {[k for k in keys if by[k].get('f')]}")
+    assert "Old Hand" not in keys, "a former member of another term is listed in this one"
+    assert by["Nancy Murphy"].get("t") == ["Bedford"] and by["Joe Gone"].get("t") == ["Gilford"] \
+        and by["Zed Quiet"].get("t") == ["Gilford"], (
+        f"towns: {by['Nancy Murphy'].get('t')}, Joe Gone's (Belk 06) {by['Joe Gone'].get('t')}")
+    assert by["Ann Lee"]["l"] == "Rep. Ann Lee (R - Rock 3)" and by["Ann Lee"].get("p") == "R" \
+        and by["Sam Senn"].get("c") == "S", f"a co-sponsor's label, party or chamber: {by['Ann Lee']}, {by['Sam Senn']}"
+    assert by["Nancy Murphy"]["o"] == "murphy, nancy", by["Nancy Murphy"]
+    assert files == [f"{T}.json"], f"a term's file an earlier build left is not removed: {files}"
+    assert by["Pat Visitor"].get("c") == "H" and not by["Pat Visitor"].get("f"), (
+        f"a co-sponsor no roster names is not listed by their record's chamber: {by['Pat Visitor']}")
+    # The seat a bill status page pads ("Belk 06") is the roster's ("Belk 6"): the towns of the district.
+    padded = {}
+    SR.note_bill(padded, T, {"sponsor": "Joe Gone", "sponsor_label": "Rep. Joe Gone (D - Belk 06)",
+                             "sponsor_slug": gone["slug"], "sponsor_party": "D"}, [], None, B.person_name)
+    SR.add_sitting(padded, T, legs, former, B.own_slug, B.person_name)
+    assert padded[T]["Joe Gone"]["t"] == ["Gilford"], (
+        f"a padded seat is not its district: Joe Gone (Belk 06) gets {padded[T]['Joe Gone']['t']}")
+    shapes = [{"sponsor": "Nancy Murphy", "sponsor_label": "Rep. Nancy Murphy (D - Hills 12)", "sponsor_slug": "x"},
+              {"sponsor": "Allen", "sponsor_label": "Rep. Allen (Hills 1)"},
+              {"sponsor": "Allen", "sponsor_label": "Rep. Allen (R - Hills 1)", "sponsor_party": "R"},
+              {"sponsor": "Dana Moore", "sponsor_label": "Rep. Dana Moore (Graf 5)", "sponsor_person": 1},
+              {"sponsor": "Keough", "sponsor_label": "Sen. Keough (SD23)"},
+              {"sponsor": "Smith", "sponsor_label": "Rep. Smith"},
+              {"sponsor": "", "sponsor_label": ""}]
+    js = _app_js("(%s).map(b => scope.spKey(b))" % json.dumps(shapes), names=("spKey",))
+    py = [SR.sp_key(r) for r in shapes]
+    assert js is None or js == py, f"sponsor_roster.sp_key and app.js spKey disagree: {py} against {js}"
+    src = _source(Path("src/pages/build_site_v2.py"))
+    assert "SR.note_bill(people, term, row, sp_list, prime, person_name)" in src \
+        and "SR.write(out, sponsor_people)" in src and "people=sponsor_people" in src, (
+        "build_site_v2's main no longer collects and writes the Sponsor filter's members")
+    return "ok", ("7 members, House then Senate by surname, the two who left marked, towns by district (Belk 06 too), "
+                  "an unmatched co-sponsor by their record's chamber, the old term's "
+                  "file removed; the keys are the index's" + ("" if js is None else " and app.js spKey's"))
+
+
+@check("data", "the built Sponsor filter's file for the sitting term lists every sitting member once, House then Senate",
+       needs=())
+def _sponsor_roster_data():
+    """site/sponsors/<newest term>.json against site/legislators.json, where both are on this disk: every
+    sitting member's label is one row's, and only one, not marked as having left; the House's rows all come
+    before the Senate's; no key is listed twice; the members who left are marked and nobody sitting is."""
+    site = _paths.ROOT / "site"
+    terms = sorted(p.stem for p in (site / "sponsors").glob("*.json")) if (site / "sponsors").is_dir() else []
+    legs_f = site / "legislators.json"
+    if not terms or not legs_f.is_file():
+        return "skip", "no site/sponsors/ or site/legislators.json here (build_site_v2 writes them)"
+    newest = max(t for t in terms if "-" in t)
+    rows = json.loads((site / "sponsors" / f"{newest}.json").read_text(encoding="utf-8"))["members"]
+    legs = json.loads(legs_f.read_text(encoding="utf-8"))
+    keys = [r["k"] for r in rows]
+    assert len(keys) == len(set(keys)), f"a key is listed twice: {[k for k, n in Counter(keys).items() if n > 1][:5]}"
+    ch = [r.get("c", "") for r in rows]
+    assert ch == sorted(ch, key=lambda c: {"H": 0, "S": 1}.get(c, 2)), "the House's rows are not all before the Senate's"
+    labels = Counter(r["l"] for r in rows if not r.get("f"))
+    missing = [m["display_full"] for m in legs if labels.get(m["display_full"], 0) != 1]
+    assert not missing, (f"{len(missing)} sitting member(s) not listed exactly once in sponsors/{newest}.json: "
+                         f"{missing[:5]}")
+    sitting = {m["display_full"] for m in legs}
+    marked = [r["l"] for r in rows if r.get("f") and r["l"] in sitting]
+    assert not marked, f"a sitting member is marked as having left: {marked[:5]}"
+    return "ok", (f"sponsors/{newest}.json: {len(legs)} sitting members once each, {sum(1 for r in rows if r.get('f'))} "
+                  f"who left marked, {len(rows)} rows, House then Senate")
+
+
 @check("naming", "a member who resigned mid-term keeps the link on every bill they sponsored",
        needs=("build_site_v2", "member_links"))
 def _resigned_sponsors_keep_their_link(build_site_v2, member_links):
@@ -10801,6 +10946,10 @@ def _requests_search_by_name():
             "requests": {"term": "2027-requests", "year": 2027, "n": 9, "withdrawn": 0, "label": "2027 Bill Requests"}}
     got = _app_js("""(() => {
   const norm = (s) => scope.hintWords(s).join(" ");
+  // Each Sponsor row's key and the words its chip reads (the picker of 19 November 2026 draws a
+  // term's members as their chips, spPicker; All Terms the name alone).
+  const rowsOf = (h) => [...h.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*(?:<span class="spn">([\\s\\S]*?)|<span>([^<]*))<\\/span>\\s*<span class="c"/g)]
+    .map(m => [m[1], (m[2] || m[3] || "").replace(/<[^>]+>/g, "").replace(/\\s+/g, " ").trim()]);
   const out = {};
   scope.setState("2027-requests", %s, %s);
   const listed = (q) => { scope.setQuery(q); return scope.IDX().filter(b => scope.matches(b)).map(b => b.id.slice(-1)); };
@@ -10820,7 +10969,7 @@ def _requests_search_by_name():
   out.hintCreighton = scope.sponsorHint("james creighton", scope.IDX()).map(p => [p.name, p.label]);
   out.hintInitial = scope.sponsorHint("c", scope.IDX()).map(p => p.name);
   const box = (v) => { scope.setSponsorBox(v); scope.renderFacets();
-    return [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]); };
+    return rowsOf(document.querySelector("#facets").innerHTML); };
   out.boxLeeC = box("lee c"); out.boxJames = box("james");
   out.boxPacky = box("W. Packy Campbell"); out.boxLeeCNyquist = box("lee c nyquist");
   scope.setSponsorBox("");
@@ -10831,10 +10980,10 @@ def _requests_search_by_name():
   out.party = [...f.matchAll(/data-f="party"\\s+value="([^"]*)"[\\s\\S]*?<span class="c">([\\d,]+)</g)].map(m => [m[1], +m[2]]);
   out.cosp = /<span>(Include co-sponsored [a-z]+)</.exec(f)[1];
   scope.setSponsorBox("read"); scope.renderFacets();
-  out.sponsors = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
+  out.sponsors = rowsOf(document.querySelector("#facets").innerHTML);
   scope.setSponsorBox("");
   scope.setSponsorBox("doe"); scope.renderFacets();
-  out.does = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
+  out.does = rowsOf(document.querySelector("#facets").innerHTML);
   scope.setSponsorBox("");
   scope.sel.party.add("Republican"); out.republican = scope.IDX().filter(b => scope.matches(b)).map(b => b.id.slice(-1));
   scope.sel.party.clear();
@@ -10849,11 +10998,11 @@ def _requests_search_by_name():
   out.hintFrank = scope.sponsorHint("frank riley", scope.IDX()).map(p => [p.name, p.label]);
   out.hintRiley = scope.sponsorHint("riley", scope.IDX()).map(p => [p.name, p.label]);
   scope.setSponsorBox("allen"); scope.renderFacets();
-  out.allens = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
+  out.allens = rowsOf(document.querySelector("#facets").innerHTML);
   scope.setSponsorBox("");
   out.hintDana = scope.sponsorHint("dana moore", scope.IDX()).map(p => [p.name, p.label]);
   scope.setSponsorBox("moore"); scope.renderFacets();
-  out.moores = [...document.querySelector("#facets").innerHTML.matchAll(/data-f="sponsor"\\s+value="([^"]*)"[^>]*>\\s*<span>([^<]*)</g)].map(m => [m[1], m[2]]);
+  out.moores = rowsOf(document.querySelector("#facets").innerHTML);
   scope.setSponsorBox("");
   scope.setQuery(""); scope.sel.sponsor.add("Allen (Rock 3)"); out.rock3 = scope.IDX().filter(b => scope.matches(b)).map(b => b.id);
   return out;
@@ -10877,8 +11026,8 @@ def _requests_search_by_name():
     assert got["party"] == [["Republican", 4], ["Democrat", 4], ["Party not on file", 1]], (
         f"the party filter counts {got['party']}: sitting and elect members alike")
     assert got["cosp"] == "Include co-sponsored requests", got["cosp"]
-    assert ["Ellen Read", "Ellen Read (D)"] in got["sponsors"], f"the Sponsor list shows {got['sponsors']}"
-    assert got["does"] == [["Jane Doe", "Jane Doe (R)"]] and got["electSen"] == [], (
+    assert ["Ellen Read", "Rep. Ellen Read (D)"] in got["sponsors"], f"the Sponsor list shows {got['sponsors']}"
+    assert got["does"] == [["Jane Doe", "Rep. \u201cElect\u201d Jane Doe (R)"]] and got["electSen"] == [], (
         f"a member-elect's title: the Sponsor list shows {got['does']}, 'sen jane doe' lists {got['electSen']}")
     assert got["republican"] == ["2", "3", "8", "9"], f"the party filter lists {got['republican']}"
     # The names the site prints. Lee C. Nyquist's request is 7, Jim (James) Creighton's 8.
@@ -10917,7 +11066,7 @@ def _requests_search_by_name():
     assert got["rock3"] == ["HB2"], f"the second Allen's filter lists {got['rock3']}"
     assert got["hintDana"] == [["Dana Moore", "Rep. Dana Moore"]], (
         f"a sponsor the General Court's record names is not their full name alone: {got['hintDana']}")
-    assert sorted(got["moores"]) == [["Dana Moore", "Dana Moore (Graf 5)"], ["Moore (Hills 2)", "Moore (Hills 2)"]], (
+    assert sorted(got["moores"]) == [["Dana Moore", "Rep. Dana Moore (Graf 5)"], ["Moore (Hills 2)", "Rep. Moore (Hills 2)"]], (
         f"a named sponsor and one left as printed are not two choices: {got['moores']}")
     return "ok", ("a request is found by name, prime or co-sponsor, a title agreeing, a whole word for a "
                   "single one, and by the names its card and its sponsor's page print ('Lee C. Nyquist', "

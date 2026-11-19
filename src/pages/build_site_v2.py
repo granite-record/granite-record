@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.287
+# GRANITE_VERSION: 2026-09-05.289
 """
 Generate the faceted site from real General Court data.
 
@@ -51,6 +51,7 @@ import vote_passage as VP
 import senate_hearing_reports as SHR
 import sos_archives as SA
 import site_read
+import sponsor_roster as SR
 import spellings
 import csv
 import functools
@@ -11943,7 +11944,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 chapters=None, seats=None, session_over="", former=None,
                 links=None, hearing_reports=None, ballots=None, term_rosters=None,
                 rc_cards=None, moments=None, numbers=None, record_chambers=None,
-                id_parties=None, tagging=None, voters=None):
+                id_parties=None, tagging=None, voters=None, people=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -11968,6 +11969,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     `voters` is term_voters': each term's members as their ballots give
     them, with the seat of the term, among whom a roll call's mover of a term
     before the current one is looked for (mover_pool). None links none.
+
+    `people`, where given, is filled as `sponsored` is: {term: {key: member}},
+    everyone each term's index rows name as a sponsor (sponsor_roster), for
+    the Sponsor filter's list.
 
     Returns (index, years, unnamed, sponsored) -- unnamed being the member
     ids the roll calls reference that the roster cannot name, and sponsored
@@ -12347,6 +12352,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             if n and n != row.get("sponsor")))
         if _cosp:
             row["cosp"] = _cosp
+        # And everyone the row names, for the Sponsor filter's list of the
+        # term's members (sponsor_roster: site/sponsors/<term>.json).
+        if people is not None:
+            SR.note_bill(people, term, row, sp_list, prime, person_name)
         # NO RAIL FOR A BILL THAT WAS NEVER INTRODUCED. The rail's first stop
         # is "Introduced", drawn as passed, and its second is a chamber the
         # bill is shown stopping in. A bill the Senate refused to introduce,
@@ -13569,6 +13578,8 @@ def main():
     floor_seats = term_seats(votes_by_member, ballots=floor_ballots)
     voters = term_voters(votes_by_member, floor_seats)
     # -------------------------------------------------------------- index --
+    # Who each term's bills name, for the Sponsor filter (sponsor_roster).
+    sponsor_people = {}
     index, years, unnamed, sponsored = build_bills(out, bills, narratives, rollcalls, reports,
                                sponsors, bill_texts, amend_texts, testimony,
                                testimony_db,
@@ -13579,6 +13590,7 @@ def main():
                                former=former, links=links,
                                hearing_reports=hearing_reports,
                                term_rosters=term_rosters,
+                               people=sponsor_people,
                                numbers={str(_n): str(_q.get("person") or "")
                                         for _q in ((register or {}).get("people") or [])
                                         for _n in (_q.get("numbers") or [])},
@@ -13643,6 +13655,15 @@ def main():
             print(f"  idx/{stale_.name}: a term this build has no bills for, "
                   "left by an earlier one -- removed")
             stale_.unlink()
+    # THE SPONSOR FILTER'S MEMBERS, a file a term beside the index (the owner,
+    # 19 November 2026): who the term's bills name, and for the term the
+    # sitting roster describes, every sitting member and every member who
+    # served in it and has left. Only for a term the index has.
+    sponsor_people = {t: b for t, b in sponsor_people.items() if t in by_term}
+    _sitting_term = max(bills) if bills else ""
+    if _sitting_term in by_term and _sitting_term not in term_rosters:
+        SR.add_sitting(sponsor_people, _sitting_term, legs, former, own_slug, person_name)
+    SR.write(out, sponsor_people)
     newest_ = max(by_term) if by_term else ""
     print(f"  idx/: {len(by_term)} terms, newest {newest_} "
           f"({len(by_term.get(newest_, [])):,} bills, "

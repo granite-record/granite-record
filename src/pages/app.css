@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.407 */
+/* GRANITE_VERSION: 2026-09-07.408 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2363,9 +2363,61 @@ a.vtl{white-space:nowrap}
 .fopt:has(.tname){align-items:baseline}
 .sbox{width:100%;height:32px;padding:0 var(--sp-4);font:inherit;font-size:var(--t-ui);
 border:1px solid var(--edge);border-radius:var(--r-in);margin-bottom:var(--sp-3)}
+/* THE BOX STAYS IN VIEW WHILE ITS LIST SCROLLS (the owner, 19 November
+   2026: scrolled down the Topics list, the box had gone, and finding another
+   topic meant scrolling back up). A group's list scrolls inside its own box
+   (.fbody, 340px here and 210px under 60em), which is the box's scrolling
+   container, so the box sticks to that box's top; where the whole panel
+   scrolls instead (.facets, beside the list), the group goes up with it, box
+   and all, as it should. Solid, as the field always is, and the gap under it
+   painted the page's colour, so no option shows through either. Every
+   group's box: Topic, Tags, Sponsor. */
+.fbody > .sbox{position:sticky;top:0;z-index:2;background-color:Field;
+box-shadow:0 var(--sp-3) 0 var(--paper)}
+/* THE SPONSOR GROUP'S MEMBERS (app.js spPicker): the House and the Senate
+   each under its own head, which sticks under the box as its members scroll
+   past, each member as their chip with their bills beside it. The group has
+   room for the list, more than a long list's 340px (60vh under 60em, in
+   the Filters button's block below). */
+.fhead[data-g="sponsor"] + .fbody{max-height:440px}
+.sphead{position:sticky;top:calc(32px + var(--sp-3));z-index:1;background:var(--paper);
+font:600 var(--t-sm)/1.35 var(--sans);color:var(--ink);margin-top:var(--sp-3);
+padding:var(--sp-3) 0 var(--sp-2);border-bottom:1px solid var(--rule)}
+.sphead span{font-weight:400;color:var(--ink-2)}
+.sprow .spn{flex:1 1 auto;min-width:0}
+/* The chip at the size of the list's words, in the column's room: it wraps
+   before the party and seat (.mtag) where the name and seat are wider than
+   the column, never inside them. */
+.sprow .mchip{display:inline-block;margin:0;padding:var(--sp-1) var(--sp-3);font-size:var(--t-sm);
+line-height:1.35;max-width:100%;white-space:normal}
+.sprow .c{flex:0 0 auto}
 .chosen{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-bottom:var(--sp-3)}
 .pill{font-size:var(--t-sm);background:var(--pine-soft);color:var(--pine);border-radius:var(--r-pill);padding:var(--sp-1) var(--sp-4)}
 .pill button{margin-left:var(--sp-2);color:var(--pine)}
+/* THE FILTERS IN USE (app.js filterBarHtml, the owner, 19 November 2026):
+   every filter ticked as the Sponsor group's pill, which filter it is in a
+   quieter ink, and an × that takes it off; they wrap, and a long name wraps
+   inside its pill rather than push the page sideways. Muted and dashed: it
+   matches nothing in the term in view. Outlined: taking it off alone would
+   list something again. Above the results; in the panel (FBAR_PLACE
+   "facets") it sticks to the panel's top as the panel scrolls. */
+.fbar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3);margin:0 0 var(--sp-5);max-width:100%}
+.fbar[hidden],#fbar[hidden]{display:none}
+.fpill{display:inline-flex;align-items:center;max-width:100%;min-width:0;overflow-wrap:anywhere;
+border:1px solid transparent;padding:var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-4)}
+.fpill .fv{min-width:0}
+.fpill .fk{color:var(--ink-2)}
+.fpill .fx{flex:0 0 auto;min-width:1.6em;min-height:1.6em;border-radius:var(--r-pill);line-height:1;font-size:var(--t-ui)}
+/* A phone's control is 44px, as every button there is (the phone audit). */
+@media (max-width:45em){.fpill .fx{min-width:36px;min-height:44px}}
+.fpill .fx:hover{background:var(--surface)}
+.fpill.none{background:transparent;color:var(--ink-2);border:1px dashed var(--edge)}
+.fpill.none .fx{color:var(--ink-2)}
+.fpill.fblock{border-color:var(--pine);background:transparent}
+.fbar .fclear{font-size:var(--t-sm)}
+.fbarnote{flex:1 0 100%;margin:0;font-size:var(--t-sm);color:var(--ink-2)}
+.facets > .fbar{position:sticky;top:0;z-index:3;background:var(--paper);margin:0;padding:var(--sp-3) 0;
+border-bottom:1px solid var(--rule)}
 /* :empty, because #summary is written only on some views and an empty
    paragraph still carries its 12px margin -- 12px of nothing between the
    filter control and the first bill on a phone. */
@@ -3819,6 +3871,7 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
     margin:0 0 var(--sp-6);border-right:none;border-bottom:none;padding:0}
   .shell > main{order:3;min-width:0}
   .shell:not(.fopen) .facets{display:none}
+  .fhead[data-g="sponsor"] + .fbody{max-height:60vh}
 }
 /* On a tablet the open panel is two columns of groups (the drawing at 768),
    so Status and Bill Type, open, sit side by side above the fold. */
