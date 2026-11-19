@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.68
+# GRANITE_VERSION: 2026-09-04.69
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1810,6 +1810,41 @@ def finished_builds(d, out):
     return got
 
 
+def ballot_member(mid, year, when, legs, rosters, former):
+    """The roster record a ballot names its member from: the record `legs`
+    (the installed roster) holds for `mid`, or the one of the frozen roster
+    nearest at or after the ballot's term, or None, which names the member
+    from `former` as one who has left. `rosters` is [(term, roster)] for
+    freeze_term.own_roster_terms; `year` and `when` the roll call's session
+    year and day, which proceedings.vote_term turns into its term
+    (Organization Day's ballots are the next term's).
+
+    THE TURN MOVES NO FINISHED TERM'S BALLOTS (the rehearsal of the turn, 19
+    November 2026). Only a finished term's own frozen roster was read here,
+    so a ballot of an older term by a member who sits today took the
+    installed roster's party and seat: once Organization Day's House was
+    installed, Rep. Peter Bixby's 2024 ballots read R, the party the fake
+    roster gave him for 2027, and the Learn page's HB 1002 split (63
+    Republicans for, from the ballots) stopped agreeing with them. The
+    installed roster is the witness of its own term only. A ballot is named
+    from the nearest frozen roster at or after its term -- the roster that
+    named it before the turn -- and where that roster has no such member
+    (they sat then, left, and sit again: Maria Elizabeth Perez, Independent
+    on every ballot of 2021-2024 and elected a Democrat for 2027) from
+    `former`, as before the turn. Where no frozen roster stands at or after
+    the term, the installed one, as always."""
+    m = legs.get(mid)
+    if not m:
+        return None
+    term = P.vote_term(year, when)
+    for t, roster in sorted(rosters):
+        if t >= term:
+            if mid in roster:
+                return roster[mid]
+            return None if mid in former else m
+    return m
+
+
 def read_roster(folder, counties, report=None):
     """{id: member} from legislators.txt in `folder`, with each member's
     committees from Members.txt beside it: the roster as build_data reads it.
@@ -2034,11 +2069,12 @@ def main():
     # (legislators.json) is the installed one. Before any of that, nothing
     # here moves.
     roster_terms = [] if frozen else freeze_term.own_roster_terms(d)
-    year_legs = {}
+    year_legs, term_rosters = {}, []
     for _t in roster_terms:
         _day = d / "frozen" / _t / "day"
         _fc = {r[0]: {"name": r[1], "abbr": r[2].rstrip(".")} for r in rows(_day / "Counties.txt", 3)}
         _roster = read_roster(_day, _fc)
+        term_rosters.append((_t, _roster))
         for _y in freeze_term.term_years(_t):
             year_legs[_y] = _roster
     md, term_legs, sess_roster = sd, legs, {}
@@ -3007,17 +3043,16 @@ def main():
             ballot_fixed[key] += 1
         if not r[4].strip() and mid:
             no_person[mid] += 1
-        m = legs.get(mid)
         # A MEMBER WHO SITS ON, on a ballot of a term whose own roster is
         # frozen and is not the installed one: the party and seat of that
         # roster, the ones they voted under, and not the ones Organization
         # Day gave them (the review of 5 October 2026). A member who left is
         # named from `former`, as above, in the shape former_roster reads.
         # Not on a ballot of Organization Day, which the next House cast
-        # (proceedings.vote_term): the roster installed is theirs.
-        if (m and mid in (year_legs.get(r[0]) or {})
-                and P.vote_term(r[0], s["datetime"]) == P.term_of(r[0])):
-            m = year_legs[r[0]][mid]
+        # (proceedings.vote_term): the roster installed is theirs. And a
+        # ballot of an older term, from the nearest frozen roster after it
+        # (ballot_member, 19 November 2026).
+        m = ballot_member(mid, r[0], s["datetime"], legs, term_rosters, former)
         vote_kinds[r[6]] += 1
         member_votes.append({
             # 420 members cast votes but only 406 are in legislators.txt: the
