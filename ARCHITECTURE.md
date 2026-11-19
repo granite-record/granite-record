@@ -2315,7 +2315,11 @@ what is the file's own, its title, county, day or a district twice, still
 refuses the file. `read_house` leaves the race out where its caller passes a list
 for it, the race goes to `_refused` and a REFUSED line, and the file's other
 races are read, a refused base district's towns still telling the floterial
-over it. Which figure is right is never guessed.
+over it. Which figure is right is never guessed. A Totals row under a
+district's later block may sum the column over all its blocks (2026
+Hillsborough R: `=SUM(L7,L9)`); `Block.across` holds it to the whole
+district only where the cell's own formula names exactly those rows and the
+figure is their sum.
 The other offices' results are read by `src/parse/parse_sos_offices.py`
 into `collected/election_offices_<year>.json`, one file a year beside the
 House reader's, and nothing on the site reads them yet (preflight's

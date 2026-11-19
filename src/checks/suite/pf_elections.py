@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.25
+# GRANITE_VERSION: 2026-11-16.26
 """
 preflight's checks of members-elect and election results.
 
@@ -4706,6 +4706,60 @@ def _results_refuse_race_faults(P):
                   "never a race's")
 
 
+@check("build", "results readers: a Totals row under a district's later block is held to the whole "
+                "district only where its own formula sums that column's rows in every block, and its "
+                "figure is their sum -- a figure that merely matches, or any other formula, is refused",
+       needs=("parse_sos_results",))
+def _results_totals_across_blocks(PSR):
+    """Block.across (20 November 2026): the 2026 Hillsborough Republican
+    primary file's districts 2, 12 and 13 print a block of Republicans over
+    their one town, a block of Democrats written in over it again, and one
+    Totals row whose write-ins cell is =SUM(L7,L9). Held on made-up blocks,
+    as _elect_2026_layout holds short_sum: the district read with that
+    formula, and refused for each near miss."""
+    fake = Path(tempfile.gettempdir()) / "gr-sos-across-not-a-file.xlsx"
+    key = str(fake.resolve())
+    rep = [{"name": "Ann Ames", "party": "r", "write_in": False, "col": 1, "recount": None},
+           {"name": "Bo Bell", "party": "r", "write_in": False, "col": 2, "recount": None},
+           {"meta": "scatter", "col": 3, "recount": None}]
+    dem = [{"name": "Cy Cole", "party": "d", "write_in": False, "col": 1, "recount": None},
+           {"name": "Di Dunn", "party": "d", "write_in": False, "col": 2, "recount": None},
+           {"meta": "scatter", "col": 3, "recount": None}]
+
+    def district(formula, said=25):
+        PSR._FORMULAS[key] = {("s", 10, 3): formula} if formula else {}
+        a = PSR.Block([dict(e) for e in rep], "f, sheet 's', row 6", source=(fake, "s"))
+        a.rows = [("Bedford", ["Bedford", 100, 90, 25], "f, sheet 's', row 7")]
+        b = PSR.Block([dict(e) for e in dem], "f, sheet 's', row 8", source=(fake, "s"))
+        b.rows = [("Bedford", ["Bedford", 3, 1, None], "f, sheet 's', row 9")]
+        b.totals = (["Totals", 3, 1, said], "f, sheet 's', row 10")
+        return PSR.district([a, b], 2, "f, sheet 's', row 6")
+    try:
+        got = district("=SUM(D7,D9)")
+        assert got["scatter"] == 25 and any("=SUM(D7,D9)" in n for n in got["notes"]), (
+            f"the Totals summing both blocks: scatter {got['scatter']}, notes {got['notes']}")
+        assert [(c["name"], c["votes"], c["elected"]) for c in got["candidates"]] == [
+            ("Ann Ames", 100, True), ("Bo Bell", 90, True), ("Cy Cole", 3, False),
+            ("Di Dunn", 1, False)], f"the count: {got['candidates']}"
+        assert district("=SUM(D7:D7,D9:D9)")["scatter"] == 25, "the same rows as ranges"
+        for formula, said, why in (("=SUM(D9)", 25, "the block's own row alone"),
+                                   ("=SUM(D7,D8,D9)", 25, "a row that is no town's"),
+                                   ("=SUM(C7,C9)", 25, "another column"),
+                                   ("=SUM(D7,C9)", 25, "a cell of another column"),
+                                   (None, 25, "no formula: a figure that merely matches"),
+                                   ("=SUM(D7,D9)", 26, "a figure that is not the rows' sum")):
+            try:
+                district(formula, said)
+                raise AssertionError(f"Totals of {said} with {formula} ({why}) were read")
+            except PSR.Disagrees as e:
+                assert f"say {said}" in str(e), f"{why}: refused, but not for the sum: {e}"
+    finally:
+        PSR._FORMULAS.pop(key, None)
+    return "ok", ("a Totals row whose write-ins cell is =SUM(D7,D9), cells or ranges, held to both "
+                  "blocks; its own row alone, a row no town's, another column, no formula with a "
+                  "matching figure, and a figure not the rows' sum each refused")
+
+
 @check("data", "State Primary results: collected/primary_<year>.json is what the saved files say, "
                "each race's nominees no more than its seats and every unsettled one said",
        needs=("parse_sos_primary_results",))
@@ -4819,6 +4873,36 @@ def _primary_race_faults_on_file(P):
                 and name in read, f"{y} {name}: {listed}"
             lines.append(f"{y} {stem}{bad} alone, {len(got)} read")
     return "ok", "; ".join(lines)
+
+
+@check("data", "State Primary results: the 2026 Hillsborough Republican House file yields all 45 "
+               "races, districts 2, 12 and 13 held to the Totals row that sums their two blocks",
+       needs=("parse_sos_primary_results",))
+def _primary_hillsborough_2026_r_races(P):
+    """The committed 2026 document (20 November 2026): districts 2, 12 and 13
+    of 2026-sp-house-hillsborough-republican.xlsx, whose write-ins Totals
+    are =SUM(L7,L9), =SUM(L30,L32) and =SUM(L35,L37) (Block.across), are
+    read, with the write-ins those cells print and a note of each; nothing
+    of the file is refused. _primary_read_again holds the document to the
+    saved file."""
+    path = P.out_path(2026)
+    if not path.is_file():
+        return "skip", f"{path.as_posix()} is not here"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    name = "2026-sp-house-hillsborough-republican.xlsx"
+    got = sorted(int(k.rsplit("|", 1)[1]) for k in doc["races"]
+                 if k.startswith("R|H|Hillsborough|"))
+    assert got == list(range(1, 46)), f"R|H|Hillsborough: {got}"
+    listed = [r for r in doc.get("_refused") or [] if r["file"] == name]
+    assert not listed, f"refused from {name}: {listed}"
+    for n, cells, said in ((2, "=SUM(L7,L9)", 25), (12, "=SUM(L30,L32)", 20),
+                           (13, "=SUM(L35,L37)", 40)):
+        race = doc["races"][f"R|H|Hillsborough|{n}"]
+        assert race["scatter"] == said, f"R|H|Hillsborough|{n}'s write-ins: {race['scatter']}"
+        assert any(name in t and f"({cells})" in t for t in doc.get("_notes") or []), (
+            f"R|H|Hillsborough|{n}: the Totals summing its blocks is not said")
+    return "ok", ("R|H|Hillsborough 1 to 45 read, none refused; 2, 12 and 13 held to =SUM(L7,L9), "
+                  "=SUM(L30,L32) and =SUM(L35,L37): write-ins 25, 20 and 40, each said")
 
 
 @check("files", "State Primary results: nothing on the site reads collected/primary_*.json or the "

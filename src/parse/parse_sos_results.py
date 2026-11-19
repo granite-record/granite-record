@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.13
+# GRANITE_VERSION: 2026-10-17.14
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -542,6 +542,9 @@ def formulas(path):
 _FORMULAS = {}
 ROW_OF = re.compile(r"row (\d+)$")
 SUM_RANGE = re.compile(r"^=SUM\(([A-Z]{1,3})(\d+):([A-Z]{1,3})(\d+)\)$")
+# A SUM of cells and ranges, "=SUM(L7,L9)" (Block.across), and one of its arguments.
+SUM_ARGS = re.compile(r"^=SUM\(([^()]*)\)$")
+SUM_ARG = re.compile(r"^([A-Z]{1,3})(\d+)(?::([A-Z]{1,3})(\d+))?$")
 
 
 def column_letter(col):
@@ -580,6 +583,9 @@ class Block:
         # (path, sheet name) of the file the block is read from, for its
         # formulas (short_sum); and what reading it flagged, for _notes.
         self.source = source
+        # The district's blocks read before this one, and what reading this
+        # one gave (read): for a Totals row that sums them all (across).
+        self.earlier, self.got = [], None
         self.notes = [f"{where}: the header prints {e['typo'][0]!r}, read as {e['typo'][1]}"
                       for e in ents if e.get("typo")]
         if any(e.get("blc") is not None for e in ents):
@@ -622,6 +628,53 @@ class Block:
             return None
         return (f"{where}: the file's Totals cell is {f}, which leaves out "
                 f"{', '.join(str(t) for t in left)}; read as the towns add up")
+
+    def across(self, where, col, said, e):
+        """A note, or None. A TOTALS ROW MAY SUM THE DISTRICT'S BLOCKS
+        TOGETHER (20 November 2026): the 2026 State Primary's Hillsborough
+        Republican file prints district 2's Republicans and their write-ins
+        over Bedford, then the Democrats written in over Bedford again, then
+        one Totals row, whose write-ins cell is =SUM(L7,L9): both blocks'
+        rows. Held to the whole district only where the cell's own formula
+        is a SUM of exactly that column's town rows in every block of the
+        district that carries it, the earlier blocks' included, and the
+        printed figure is their sum; a figure alone that happens to match
+        is not taken. `e` is the column's entity, a count that is not a
+        candidate's (the write-ins), which a later block carries in the
+        first's column."""
+        if self.source is None or "meta" not in e or not self.earlier:
+            return None
+        path, sheet = self.source
+        line = ROW_OF.search(where)
+        f = formulas(path).get((sheet, int(line.group(1)), col)) if line else None
+        m = SUM_ARGS.match(f or "")
+        if not m:
+            return None
+        letter, cited = column_letter(col), set()
+        for arg in m.group(1).split(","):
+            a = SUM_ARG.match(arg.strip())
+            if not a or a.group(1) != letter or (a.group(3) or letter) != letter:
+                return None
+            lo, hi = int(a.group(2)), int(a.group(4) or a.group(2))
+            if lo > hi:
+                return None
+            cited.update(range(lo, hi + 1))
+        rows, total = set(), 0
+        for b in [*self.earlier, self]:
+            j = next((j for j, x in enumerate(b.ents)
+                      if x.get("meta") == e["meta"] and x["col"] == col), None)
+            if j is None:
+                continue
+            for _town, _row, w in b.rows:
+                n = ROW_OF.search(w)
+                if not n:
+                    return None
+                rows.add(int(n.group(1)))
+            total += sum(v[j][0] or 0 for v in (b.got if b is not self else self.got).values())
+        if rows != cited or total != said:
+            return None
+        return (f"{where}: the Totals row sums {e['meta']} over the district's blocks of rows "
+                f"together ({f}), and is held to that, {said:,}")
 
     def count(self, row, col, meta, where, ent=None):
         v = row[col] if col < len(row) else None
@@ -687,6 +740,7 @@ class Block:
                          for i, e in enumerate(self.ents)}
         if not out:
             raise Refused(f"{self.where}: a header with no rows of counts under it")
+        self.got = out
         if self.totals is None:
             if len(out) > 1:
                 raise Refused(f"{self.where}: {len(out)} towns and no Totals row to hold them to")
@@ -722,6 +776,11 @@ class Block:
                     who = f"{e.get('name') or e['meta']}'s {'recount ' if k else ''}column"
                     note = self.short_sum(where, col, said,
                                           lambda t, i=i, k=k: out[t][i][k] if t in out else None)
+                    if note is None and k == 0:
+                        note = self.across(where, col, said, e)
+                        if note is not None:
+                            self.notes.append(note)
+                            continue
                     if note is None and self.legacy and e.get("meta") == "scatter":
                         # The write-ins nobody named are never drawn and only
                         # bound the unnamed-write-in check; a total that is
@@ -855,7 +914,8 @@ def district(blocks, seats, where, choose=None, mark="elected"):
         cands, meta, towns, nought = {}, {}, None, {}
         recounted = False
         single = None
-        for b in group:
+        for at, b in enumerate(group):
+            b.earlier = group[:at]
             got = b.read(single)
             # THE TOWN ROWS ARE KEPT (12 November 2026): every town's and
             # ward's count of every column, with the row it was read from.
