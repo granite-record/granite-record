@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.19
+# GRANITE_VERSION: 2026-11-16.20
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -878,7 +878,10 @@ def _entities_step_in_the_plan(build_all):
     # candidacy's id from the shapes' module, so that its ids are the model's; never the folder.
     # The specials reader (19 November 2026, src/parse/parse_sos_specials.py) writes its records in
     # the shapes' module's shapes and ids and holds each to its shape; never the folder.
-    moved = set(SEAT_READERS) | {"election_margin.py", "parse_sos_specials.py"}
+    # The writer of site/districts.json (19 November 2026, src/towns/parse_districts.py) builds the
+    # one district table and its view through the shapes' module (district_table, view_districts)
+    # from the lists it reads; never the folder.
+    moved = set(SEAT_READERS) | {"election_margin.py", "parse_sos_specials.py", "parse_districts.py"}
     readers = []
     for f in _paths.code_files("*.py"):
         if f.name in allowed or "suite" in f.parent.name:
@@ -2084,6 +2087,81 @@ def _district_table(BE, EN, PE, ST):
                   "two districts share breaks a rule; on a made-up tree the step resolves every file the site prints "
                   "districts from, says the one that resolves to nothing and the seven disagreements, and counts "
                   "the terms before every era on file")
+
+
+def _districts_read_plainly(PD, folder):
+    """site/districts.json as parse_districts.combine wrote it before the district table (to 19
+    November 2026): each list read and laid out town by town, here only to hold the table's view
+    to it."""
+    out = {}
+    for kind in ("senate", "council", "congress"):
+        if (folder / f"{kind}.txt").is_file():
+            for num, entries in PD.parse(folder / f"{kind}.txt").items():
+                for town, ward in entries:
+                    out.setdefault(town, {}).setdefault(ward, {})[kind] = int(num)
+    if (folder / "house.txt").is_file():
+        for (county, num), rec in PD.parse_house(folder / "house.txt").items():
+            for town, ward in rec["towns"]:
+                out.setdefault(town, {}).setdefault(ward, {}).setdefault("house", []).append(
+                    {"county": county, "district": int(num), "seats": rec["seats"], "floterial": rec["floterial"]})
+        for wards in out.values():
+            for v in wards.values():
+                if "house" in v:
+                    v["house"].sort(key=lambda x: (x["floterial"], x["district"]))
+    return out
+
+
+@check("files", "site/districts.json is written from the one district table, and is byte for byte what the district lists said before it",
+       needs=("parse_districts", "entities"))
+def _districts_json_is_the_tables_view(PD, EN):
+    """THE DISTRICT TABLE IS THE ONE SOURCE OF site/districts.json (the model's design, step 4).
+    parse_districts.combine, which the night runs to write it, reads the lists and returns the view
+    of the newest era (entities.view_districts) of the one table (entities.district_table), the
+    table the model is built on. Held: on the tracked lists (records/districts/) it is, byte for
+    byte as the file is written, what the lists read plainly gave before the table (the town-by-
+    town layout combine built until 19 November 2026); and a table planted to disagree -- one
+    district given nine seats -- is what combine then returns, so nothing but the table writes it.
+    And on a made-up folder of lists, the same."""
+    folder = _paths.ROOT / "records" / "districts"
+    quiet = lambda *a, **k: None  # noqa: E731
+    got = json.dumps(PD.combine(folder, None, say=quiet), indent=2, sort_keys=True)
+    assert got == json.dumps(_districts_read_plainly(PD, folder), indent=2, sort_keys=True), (
+        "site/districts.json from the district table is not what the lists read plainly give")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-districts-json-"))
+    try:
+        (tmp / "house.txt").write_text("Belknap County District 1\nCenter Harbor, New Hampton\n"
+                                       "Belknap County District 2 (2 seats)\nMeredith\n"
+                                       "Belknap County District 3 (Floterial)\nCenter Harbor, Meredith\n",
+                                       encoding="utf-8")
+        (tmp / "senate.txt").write_text("District 2\nCenter Harbor, Meredith, New Hampton\n", encoding="utf-8")
+        (tmp / "council.txt").write_text("District 1\nCenter Harbor, Meredith, New Hampton\n", encoding="utf-8")
+        (tmp / "congress.txt").write_text("District 1\nCenter Harbor, Meredith, Dover-Ward 1\n", encoding="utf-8")
+        made = PD.combine(tmp, None, say=quiet)
+        assert json.dumps(made, sort_keys=True) == json.dumps(_districts_read_plainly(PD, tmp), sort_keys=True), made
+        assert made["Meredith"]["0"]["house"] == [
+            {"county": "Belknap", "district": 2, "seats": 2, "floterial": False},
+            {"county": "Belknap", "district": 3, "seats": 1, "floterial": True}] and made["Dover"]["1"] == {
+            "congress": 1}, made
+        real = EN.district_table
+
+        def planted(lists, settings=None):
+            districts, places = real(lists, settings)
+            for d in districts:
+                if d["district"].endswith(":belknap-2"):
+                    d["seats"] = 9
+            return districts, places
+        PD.EN.district_table = planted
+        try:
+            seats = [h["seats"] for h in PD.combine(tmp, None, say=quiet)["Meredith"]["0"]["house"]]
+        finally:
+            PD.EN.district_table = real
+        assert seats == [9, 1], f"a table planted to give Belknap 2 nine seats wrote {seats}: combine has another source"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    towns = json.loads(got)
+    return "ok", (f"{len(towns)} towns, {sum(len(w) for w in towns.values())} town-wards: the table's view of the "
+                  "tracked lists is what they read plainly gave, byte for byte; a made-up folder too; and a "
+                  "table planted with nine seats is what combine writes")
 
 
 @check("data", "every district the site prints today resolves by the one district table to one id with its era, and where a file and the table disagree is listed",

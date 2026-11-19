@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.10
+# GRANITE_VERSION: 2026-11-16.11
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -13,6 +13,7 @@ files back from it.
     EN.view_careers(model)           # generated/careers.json but its ballot counts
     EN.hand_file(model, path)        # a hand file as it is written (corrections/officials.json)
     EN.view_members_elect(model)     # site/members_elect.json, or None
+    EN.district_table(lists)         # (districts, places): the one district table, era by era
     EN.view_districts(model, era)    # site/districts.json
     EN.view_officers(model)          # site/officers.json's "officers"
     EN.view_names(model)             # the search index's part: each confirmed form of a name
@@ -91,6 +92,7 @@ the network.
 import datetime
 import json
 import re
+import string
 from pathlib import Path
 
 FORMAT = 1
@@ -850,6 +852,106 @@ def resolve_district(index, kind, text, era):
     holds no districts of -- a term before every era on file."""
     ids = index.get((kind, era, spelling(text)))
     return ids[0] if ids and len(ids) == 1 else None
+
+
+# ---- the district table, era by era --------------------------------------------------------------
+#
+# ONE TABLE OF DISTRICTS (the design's step 4). Built here from the lists of each era -- the shapes
+# src/towns/parse_districts.py reads a district list in -- and read by both of its writers: the
+# model (src/parse/build_entities.py, into data/entities/) and site/districts.json, which is this
+# table's view of an era (view_districts; parse_districts.combine). A district's keys are made
+# from its kind's patterns in the settings (district_keys); a place is one record whatever the
+# era, and says, era by era, which districts it lies in.
+
+# A DISTRICT'S SPELLINGS, each a key of its record, in this order, made from its kind's patterns in
+# the settings (district_kinds): the results' and the members-elect's ("H|Belknap|8", "S|22"), the
+# district map's ("BE8"), the roster's label ("Belk 8", "SD22"), the General Court's county code
+# with the number, as its roster and its own district table print them ("01-8"), and the end of
+# a member's page address ("belk-8", "sd-22"). Its name and its id's own part ("belknap-8", the
+# elections' contest ids') are the record's already. district_index resolves them all.
+DISTRICT_KEYS = ("results", "map", "label", "legislature", "slug")
+
+
+def district_keys(kind, fill):
+    """{form: spelling} of a district from its kind's patterns (DISTRICT_KEYS, those it has), but a
+    pattern naming something the settings do not give for it (a county's number)."""
+    out = {}
+    for f in DISTRICT_KEYS:
+        if kind.get(f) and all(fill.get(name) not in ("", None)
+                               for _t, name, _s, _c in string.Formatter().parse(kind[f]) if name):
+            out[f] = kind[f].format(**fill)
+    return out
+
+
+def district_table(lists, settings=None):
+    """(districts, places): the district table of every era `lists` gives, {era: {"house":
+    {(county, number): {"seats", "floterial", "towns": [(town, ward)]}}, "senate" | "council" |
+    "congress": {number: [(town, ward)]}, "files": {kind: where its list was read}, "source": where
+    the era's lists are}} -- parse_districts.parse_house's and parse's shapes, a kind left out
+    where its list is not there. Each district has its era in its id, its kind's name and keys,
+    its seats and places; a floterial one the districts it lies over; each place the districts it
+    lies in, era by era, and the county of its House district. The places come in the order of
+    their town and ward. The counties, which are not redrawn, are not here."""
+    s = _settings(settings)
+    kinds = s["district_kinds"]
+    abbr_of, code_of, number_of = (dict(s.get(k) or {}) for k in
+                                   ("county_abbreviations", "county_codes", "county_numbers"))
+    districts, places = [], {}
+    for era, parts in lists.items():
+        files, made = parts.get("files") or {}, []
+
+        def place(town, ward):
+            pid = place_id(town, ward)
+            pl = places.setdefault(pid, {"place": pid, "town": town, "ward": ward, "county": None,
+                                         "in": {}, "source": parts.get("source")})
+            pl["in"].setdefault(era, [])
+            return pl
+
+        for (county, num), rec in (parts.get("house") or {}).items():
+            k = kinds["house"]
+            n = int(num)
+            did = district_id("house", era, f"{slug(county)}-{n}")
+            abbr = abbr_of.get(county, county)
+            fill = {"county": county, "n": n, "county_abbr": abbr, "county_code": code_of.get(county, ""),
+                    "county_number": number_of.get(county, ""), "county_abbr_slug": slug(abbr)}
+            d = {"district": did, "kind": "house", "era": era, "name": k["name"].format(**fill),
+                 "county": county, "number": n, "seats": rec["seats"], "floterial": rec["floterial"],
+                 "places": [], "keys": district_keys(k, fill), "source": files.get("house")}
+            for town, ward in rec["towns"]:
+                pl = place(town, ward)
+                pl["in"][era].append(did)
+                pl["county"] = county if pl["county"] in (None, county) else pl["county"]
+                d["places"].append(pl["place"])
+            made.append(d)
+        for kind in ("senate", "council", "congress"):
+            if kind not in parts:
+                continue
+            k = kinds[kind]
+            for num, entries in parts[kind].items():
+                n = int(num)
+                d = {"district": district_id(kind, era, str(n)), "kind": kind, "era": era,
+                     "name": k["name"].format(n=n), "number": n, "seats": 1, "places": []}
+                keys = district_keys(k, {"n": n})
+                if keys:
+                    d["keys"] = keys
+                d["source"] = files.get(kind)
+                for town, ward in entries:
+                    pl = place(town, ward)
+                    pl["in"][era].append(d["district"])
+                    d["places"].append(pl["place"])
+                made.append(d)
+        by_id = {d["district"]: d for d in made}
+        for d in made:
+            if d.get("floterial"):
+                d["floterial_over"] = sorted({b for pl in d["places"] for b in places[pl]["in"][era]
+                                              if by_id[b]["kind"] == "house" and not by_id[b]["floterial"]})
+                d["keys"] = d.pop("keys")
+                d["source"] = d.pop("source")
+        districts += made
+    for pl in places.values():
+        pl["in"] = {e: sorted(set(v)) for e, v in sorted(pl["in"].items())}
+        pl["source"] = pl.pop("source")
+    return districts, sorted(places.values(), key=lambda pl: (pl["town"], int(pl["ward"])))
 
 
 # ---- the seat a term's bills print ----------------------------------------------------------

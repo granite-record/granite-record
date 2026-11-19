@@ -2915,6 +2915,11 @@ use as a key -- the results' `H|Belknap|8`, the map's `BE8`, the roster's
 `county_numbers`, Counties.txt's), a page address's `belk-8` -- beside its name
 and its id's own part, so that any of them, as a file prints it (`Belk. 8`,
 `Carr 07`), resolves in an era to the one id (`entities.district_index`). The
+table is built once, by `entities.district_table`, from the lists of each era,
+and both its writers read it: the model, and `site/districts.json`, which
+`parse_districts.combine` writes as the table's view of the newest era
+(`entities.view_districts`; `_districts_json_is_the_tables_view` holds it to
+what the lists read plainly gave, byte for byte). The
 step reads every district the files the site prints districts from spell
 (`build_entities.PRINTED`: the rosters, the members-elect, the town table and
 search, the district map, each election's results, the bills' sponsors), each

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Turn the Senate and Executive Council district lists into a town lookup.
 
@@ -22,6 +22,10 @@ the three sources line up. Unincorporated places -- "Bean's Purchase",
 
 These are redistricted every ten years. Editing the text files and re-running
 is the whole update.
+
+What this writes is the one district table's view of the newest era
+(entities.district_table, entities.view_districts): the table the model of
+people, offices and districts (src/parse/build_entities.py) is built on too.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -34,6 +38,9 @@ import argparse
 import json
 import re
 from collections import defaultdict
+
+import entities as EN
+import state_settings as ST
 
 HEAD = re.compile(r"^\s*District\s+(\d+)\s*$", re.I)
 
@@ -105,9 +112,17 @@ def combine(d, towns=None, say=print):
     site/towns.json where it is built, is only read to say whether the names
     line up. One function, because the district map's check builds the same
     table from the tracked lists (build_district_map.py) and must not build it
-    a second way."""
+    a second way.
+
+    WRITTEN FROM THE ONE DISTRICT TABLE (the model's design, step 4, 19
+    November 2026): the lists are read here, and the table is
+    entities.district_table's, of the newest era the state's settings hold --
+    the same table the model of people, offices and districts is built on --
+    and what this returns is its view of that era (entities.view_districts).
+    What is said along the way is said of the lists as read."""
     d = Path(d)
-    combined = defaultdict(dict)
+    parts = {"source": d.as_posix(), "files": {}}
+    listed = set()      # the towns the Senate's, the Council's and Congress's lists name
     counts = {}
     for kind, fname in (("senate", "senate.txt"), ("council", "council.txt"),
                         ("congress", "congress.txt")):
@@ -116,11 +131,12 @@ def combine(d, towns=None, say=print):
             say(f"missing: {p}")
             continue
         districts = parse(p)
+        parts[kind], parts["files"][kind] = districts, p.as_posix()
         counts[kind] = len(districts)
         n = 0
         for num, entries in districts.items():
             for town, ward in entries:
-                combined[town].setdefault(ward, {})[kind] = int(num)
+                listed.add(town)
                 n += 1
         say(f"{kind}: {len(districts)} districts, {n:,} town-ward entries")
 
@@ -130,7 +146,7 @@ def combine(d, towns=None, say=print):
     if tp and tp.exists():
         house = json.loads(tp.read_text(encoding="utf-8"))
         hnames = set(house)
-        mine = set(combined)
+        mine = set(listed)
         missing = sorted(hnames - mine)
         extra = sorted(mine - hnames)
         say(f"\ntowns in the House file: {len(hnames)}; in these lists: {len(mine)}")
@@ -145,8 +161,10 @@ def combine(d, towns=None, say=print):
 
     # House districts, from the fuller list rather than HouseDistricts.txt.
     hp = d / "house.txt"
+    era = max(EN.eras())
     if hp.exists():
         hd = parse_house(hp)
+        parts["house"], parts["files"]["house"] = hd, hp.as_posix()
         flot = sum(1 for v in hd.values() if v["floterial"])
         seats = sum(v["seats"] for v in hd.values())
         say(f"\nhouse: {len(hd)} districts ({flot} floterial), "
@@ -154,15 +172,9 @@ def combine(d, towns=None, say=print):
         if seats != 400:
             say(f"  seat total is {seats}, not the constitutional 400 "
                   "\u2014 worth checking the source list")
-        for (county, num), rec in hd.items():
-            for town, ward in rec["towns"]:
-                combined[town].setdefault(ward, {}).setdefault("house", []).append(
-                    {"county": county, "district": int(num),
-                     "seats": rec["seats"], "floterial": rec["floterial"]})
-        for town, wards in combined.items():
-            for w, v in wards.items():
-                if "house" in v:
-                    v["house"].sort(key=lambda x: (x["floterial"], x["district"]))
+    table, places = EN.district_table({era: parts}, ST.SETTINGS)
+    combined = EN.view_districts({"district": table, "place": places}, era)
+    if hp.exists():
         nohouse = [f"{t}{'' if w=='0' else ' ward '+w}"
                    for t, ws in combined.items() for w, v in ws.items()
                    if "house" not in v]

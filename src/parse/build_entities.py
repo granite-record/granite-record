@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 The model of people, offices, terms, districts and elections, written to data/entities/ from
 the files on disk (src/lib/entities.py says what the model is).
@@ -99,7 +99,6 @@ import datetime
 import hashlib
 import json
 import re
-import string
 import tempfile
 import time
 
@@ -380,94 +379,41 @@ def printed_seats(root, settings, by_mid, districts, report):
 
 # ---- districts and places -----------------------------------------------------------------
 
-# A DISTRICT'S SPELLINGS, each a key of its record, in this order, made from its kind's patterns in
-# the settings (district_kinds): the results' and the members-elect's ("H|Belknap|8", "S|22"), the
-# district map's ("BE8"), the roster's label ("Belk 8", "SD22"), the General Court's county code
-# with the number, as its roster and its own district table print them ("01-8"), and the end of
-# a member's page address ("belk-8", "sd-22"). Its name and its id's own part ("belknap-8", the
-# elections' contest ids') are the record's already. entities.district_index resolves them all.
-SPELLINGS = ("results", "map", "label", "legislature", "slug")
+# A district's spellings are its keys, made from its kind's patterns (entities.district_keys).
 
-
-def spellings_of(kind, fill):
-    """{form: spelling} of a district from its kind's patterns (SPELLINGS, those it has), but a
-    pattern naming something the settings do not give for it (a county's number)."""
-    out = {}
-    for f in SPELLINGS:
-        if kind.get(f) and all(fill.get(name) not in ("", None)
-                               for _t, name, _s, _c in string.Formatter().parse(kind[f]) if name):
-            out[f] = kind[f].format(**fill)
-    return out
-
-
-def districts_and_places(root, settings):
-    """(districts, places) from records/districts/*.txt, as parse_districts.combine reads them,
-    of the era the settings give the files; and the counties, which are not redrawn."""
+def district_lists(root, settings):
+    """{era: lists} of records/districts/*.txt, as parse_districts reads them, for the era the
+    settings give the files (the newest), in entities.district_table's shape; refused where one
+    of the lists is not there."""
     import parse_districts as PD
     folder = Path(root) / DISTRICTS
     era = max(EN.eras(settings))
     kinds = settings["district_kinds"]
-    districts, places = [], {}
-
-    def place(town, ward):
-        pid = EN.place_id(town, ward)
-        return places.setdefault(pid, {"place": pid, "town": town, "ward": ward, "county": None,
-                                       "in": {era: []}, "source": DISTRICTS})
-
     hp = folder / "house.txt"
     if not hp.is_file():
         raise Refused(f"{DISTRICTS}/house.txt is not here")
-    for (county, num), rec in PD.parse_house(hp).items():
-        k = kinds["house"]
-        n = int(num)
-        did = EN.district_id("house", era, f"{EN.slug(county)}-{n}")
-        abbr = ST.COUNTY_ABBR.get(county, county)
-        fill = {"county": county, "n": n, "county_abbr": abbr, "county_code": ST.COUNTY_CODE.get(county, ""),
-                "county_number": ST.COUNTY_NUMBER.get(county, ""), "county_abbr_slug": EN.slug(abbr)}
-        d = {"district": did, "kind": "house", "era": era, "name": k["name"].format(**fill),
-             "county": county, "number": n, "seats": rec["seats"], "floterial": rec["floterial"],
-             "places": [], "keys": spellings_of(k, fill), "source": f"{DISTRICTS}/house.txt"}
-        for town, ward in rec["towns"]:
-            pl = place(town, ward)
-            pl["in"][era].append(did)
-            pl["county"] = county if pl["county"] in (None, county) else pl["county"]
-            d["places"].append(pl["place"])
-        districts.append(d)
+    parts = {"house": PD.parse_house(hp), "files": {"house": f"{DISTRICTS}/house.txt"}, "source": DISTRICTS}
     for kind in ("senate", "council", "congress"):
         k = kinds[kind]
         p = folder / Path(k["file"]).name
         if not p.is_file():
             raise Refused(f"{k['file']} is not here")
-        for num, entries in PD.parse(p).items():
-            n = int(num)
-            did = EN.district_id(kind, era, str(n))
-            d = {"district": did, "kind": kind, "era": era, "name": k["name"].format(n=n),
-                 "number": n, "seats": 1, "places": []}
-            keys = spellings_of(k, {"n": n})
-            if keys:
-                d["keys"] = keys
-            d["source"] = k["file"]
-            for town, ward in entries:
-                pl = place(town, ward)
-                pl["in"][era].append(did)
-                d["places"].append(pl["place"])
-            districts.append(d)
-    by_id = {d["district"]: d for d in districts}
-    for d in districts:
-        if d.get("floterial"):
-            d["floterial_over"] = sorted({b for pl in d["places"] for b in places[pl]["in"][era]
-                                          if by_id[b]["kind"] == "house" and not by_id[b]["floterial"]})
-            d["keys"] = d.pop("keys")
-            d["source"] = d.pop("source")
-    for pl in places.values():
-        pl["in"][era] = sorted(set(pl["in"][era]))
-        pl["source"] = pl.pop("source")
+        parts[kind] = PD.parse(p)
+        parts["files"][kind] = k["file"]
+    return {era: parts}
+
+
+def districts_and_places(root, settings):
+    """(districts, places): the one district table (entities.district_table) of the lists of
+    district_lists; and the counties, which are not redrawn."""
+    districts, places = EN.district_table(district_lists(root, settings), settings)
+    kinds = settings["district_kinds"]
     k = kinds["county"]
     for county in ST.COUNTIES:
         districts.append({"district": EN.district_id("county", None, EN.slug(county)), "kind": "county",
                           "name": k["name"].format(county=county),
                           "source": "src/lib/state_settings.json counties"})
-    return districts, sorted(places.values(), key=lambda pl: (pl["town"], int(pl["ward"])))
+    return districts, places
 
 
 # ---- the hand file's offices --------------------------------------------------------------
