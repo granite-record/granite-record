@@ -43,6 +43,15 @@ How old each of the town files is, and when each is due to be read again, is
 - `granit_layers.json` -- what each of NH GRANIT's district layers is, where
   it came from, and whether it agrees with the House districts
   (`src/towns/parse_granit.py`).
+- `specials.json` -- the special elections for State Representative, October
+  2019 to March 2026, each special and its party primaries in
+  `src/lib/entities.py`'s contest and candidacy shapes, written by
+  `src/parse/parse_sos_specials.py` from the Secretary of State's pages a
+  person saved in `records/sources/specials/` with their address, day and
+  sha256 (`_manifest.json`). Those pages print candidates' home addresses,
+  so that folder is on the laptop only and never in git; this file keeps
+  names, parties, votes, days and districts and no address, which preflight
+  holds (`_specials_no_addresses`). A member's Elections tab reads it.
 - `election_<year>.json` -- a general election's State Representative and
   State Senate results, as the Secretary of State posted them, by the race
   keys of `site/districts.json`; `src/parse/build_members_elect.py` reads the

@@ -2386,6 +2386,26 @@ print nothing under a candidate no county wrote in are its counties' rows.
 name the primary is read as the primary's, and said. A file that disagrees
 with itself is recorded in the year's `_disagreements`, never corrected.
 `_primary_read_again` holds the committed files to the saved ones.
+The special elections for State Representative (19 of them, October 2019 to
+March 2026; the owner's "Yes to all 9" of 19 November 2026) have no
+spreadsheet: each is a Secretary of State page, saved by a person as text in
+`records/sources/specials/` with its address, day and sha256 in
+`_manifest.json`. The pages print candidates' home addresses, so the folder is
+excluded from git and exists on the laptop only. `src/parse/parse_sos_specials.py`
+reads them into `collected/specials.json`, which is committed and is what the
+build reads: each special a contest of stage `special` and each party's primary
+for it a `primary` with `for` naming the special, in `src/lib/entities.py`'s
+shapes, with names, parties, votes (a recount's, the first count beside it),
+WINNER, the primary, special, recount and sworn-in days, and the district as the
+model's id in the era of the term it fills (`house:2012:...` for a term to
+2021-2022, `house:2022:...` after). Six wordings of the counts are read; any
+bracket or word it does not know refuses that special alone; each is tied out
+against itself (one WINNER with the most votes, a primary's leader its party's
+candidate, the sworn-in member the winner) and its district held to the general
+that elected the term. `cause` is written only where a record states it: the
+Strafford 8 re-run of 21 February 2023 under House Resolution 6, after the 2022
+general's 970-970 tie. No address is kept (`_specials_no_addresses`), and
+`_specials_read_again` reads the pages again where they are on disk.
 `src/parse/score_members_elect.py` replays the rule on 2024 as of Election
 Day -- sitting and former members from the roll calls before it, each at the
 seat its term's bills printed -- and holds every link to the 2025-2026 roll
