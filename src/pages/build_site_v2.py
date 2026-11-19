@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.290
+# GRANITE_VERSION: 2026-09-05.291
 """
 Generate the faceted site from real General Court data.
 
@@ -8901,8 +8901,9 @@ def manual_said(manual, left):
 
 # The party letters the Manual for the General Court's returns print for a candidate of one
 # party (build_manual_seats.PARTY). A line of two or three ("d&r", "r&d&l") is a candidate
-# more than one party nominated, and names no one party.
-MANUAL_PARTY = {"r": "R", "d": "D", "l": "L", "i": "I", "ind": "I"}
+# more than one party nominated, and names no one party. Read by the state's one table of
+# parties, whole: "d&r" is no form of it.
+MANUAL_PARTY = ST.party_lookup()
 
 
 def party_letter(party):

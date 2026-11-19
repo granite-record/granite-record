@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 Who holds an office the legislature's record does not number: the rule that links a holder of
 an office -- a governor, a councilor, a member of Congress, a county officer -- to a person of
@@ -79,6 +79,7 @@ import _paths  # noqa: E402,F401
 
 import re
 
+import state_settings as ST
 from build_members_elect import first_equal, fold, readings, seat_first
 from member_links import same_first
 
@@ -97,9 +98,8 @@ LIST_KINDS = {
     "the middle initials differ": "middle initial",
 }
 
-PARTY_WORDS = {"r": "R", "rep": "R", "republican": "R", "d": "D", "dem": "D", "democratic": "D",
-               "democrat": "D", "l": "L", "lib": "L", "libertarian": "L", "i": "I", "ind": "I",
-               "independent": "I", "c": "C", "con": "C", "constitution": "C", "g": "G", "green": "G"}
+# Each word of a printed party, lower case, to its letter: the state's one table of parties.
+PARTY_WORDS = ST.party_lookup()
 
 
 # ---- names -----------------------------------------------------------------------------------
