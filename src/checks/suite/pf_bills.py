@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.36
+# GRANITE_VERSION: 2026-11-16.37
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -10199,6 +10199,58 @@ def _sponsor_roster_file(build_site_v2, sponsor_roster):
     return "ok", ("7 members, House then Senate by surname, the two who left marked, towns by district (Belk 06 too), "
                   "an unmatched co-sponsor by their record's chamber, the old term's "
                   "file removed; the keys are the index's" + ("" if js is None else " and app.js spKey's"))
+
+@check("build", "the Sponsor filter's list labels every sitting member and every member who left as their own page "
+       "does, from the roster as build_site_v2 reads it, a member no bill names among them",
+       needs=("build_site_v2", "sponsor_roster"))
+def _sponsor_roster_from_the_raw_roster(build_site_v2, sponsor_roster):
+    """The dry run of 19 November 2026 (44575335108): _sponsor_roster_data found 31 sitting members not listed
+    as their pages label them. The roster build_site_v2 reads (data/legislators.json, and former_roster's members)
+    has no display_full or district_label -- the built site/legislators.json gains them later -- so every member
+    no bill names was listed by their bare name, under no chamber, and a member who left had no towns.
+    add_sitting now labels them with sitting_labels, as build_legislators labels their pages. Held on members in
+    that raw shape: a sitting member who filed and signed nothing ("Boudman, Bobbi") is listed once as "Rep. Bobbi
+    Boudman (D - Carr 7)" in the House, with her towns; a senator likewise; a member who left and filed nothing
+    is labelled and marked, with the towns of the district a sitting member holds; one already listed by a bill
+    keeps that row; and main hands add_sitting sitting_labels."""
+    B, SR = build_site_v2, sponsor_roster
+    T = "2025-2026"
+    raw = lambda i, name, ch, code, dist, county, abbr, towns: {
+        "id": i, "name": name, "chamber": ch, "party": {"D": "Democratic", "R": "Republican"}[code],
+        "party_code": code, "district": dist, "county": county, "county_abbr": abbr, "towns": towns,
+        "label": ""}
+    boudman = raw("1", "Boudman, Bobbi", "H", "D", "7", "Carroll", "Carr", ["Ossipee", "Wolfeboro"])
+    abbas = raw("2", "Abbas, Daryl", "S", "R", "22", "Rockingham", "Rock", ["Salem"])
+    murphy = raw("3", "Murphy, Nancy", "H", "D", "12", "Hillsborough", "Hills", ["Bedford"])
+    neighbour = raw("4", "Gilford, Gil", "H", "R", "2", "Belknap", "Belk", ["Meredith"])
+    legs = {m["id"]: m for m in (boudman, abbas, murphy, neighbour)}
+    lunney = dict(raw("5", "Lunney, Matthew", "H", "R", "2", "Belknap", "Belk", []),
+                  former=True, served={"terms": [T]})
+    del lunney["label"]
+    people = {T: {}}
+    SR.note_bill(people, T, {"sponsor": "Nancy Murphy", "sponsor_label": "Rep. Nancy Murphy (D - Hills 12)",
+                             "sponsor_slug": B.own_slug(murphy), "sponsor_party": "D"}, [], None, B.person_name)
+    SR.add_sitting(people, T, legs, {"5": lunney}, B.own_slug, B.person_name, labels=B.sitting_labels)
+    rows = {r["k"]: r for r in SR.rows(people[T])}
+    want = {m["id"]: B.sitting_labels(m)["display_full"] for m in (boudman, abbas, murphy, neighbour, lunney)}
+    assert rows["Bobbi Boudman"]["l"] == want["1"] == "Rep. Bobbi Boudman (D - Carr 7)" \
+        and rows["Bobbi Boudman"].get("c") == "H" and rows["Bobbi Boudman"].get("t") == ["Ossipee", "Wolfeboro"], (
+        f"a sitting member no bill names is not listed as her page labels her: {rows.get('Bobbi Boudman')}")
+    assert rows["Daryl Abbas"]["l"] == want["2"] == "Sen. Daryl Abbas (R - SD22)" and rows["Daryl Abbas"].get("c") == "S", (
+        f"a senator no bill names: {rows.get('Daryl Abbas')}")
+    assert rows["Matthew Lunney"]["l"] == "Rep. Matthew Lunney (R - Belk 2)" and rows["Matthew Lunney"].get("f") == 1 \
+        and rows["Matthew Lunney"].get("t") == ["Meredith"], (
+        f"a member who left and filed nothing is not labelled, marked and given his district's towns: "
+        f"{rows.get('Matthew Lunney')}")
+    assert len(rows) == 5 and rows["Nancy Murphy"]["l"] == "Rep. Nancy Murphy (D - Hills 12)", (
+        f"a member a bill lists is listed twice or relabelled: {sorted(rows)}")
+    assert not [r for r in rows.values() if r["l"] == r["k"] or not r.get("c")], (
+        f"a member is listed by a bare name or under no chamber: {[r for r in rows.values() if not r.get('c')]}")
+    src = _source(Path("src/pages/build_site_v2.py"))
+    assert "labels=sitting_labels)" in src, "build_site_v2's main does not hand add_sitting the members' own labels"
+    return "ok", ("from the raw roster: Rep. Bobbi Boudman (D - Carr 7) and Sen. Daryl Abbas (R - SD22), no bill "
+                  "naming them, once each in their chamber with their towns; Rep. Matthew Lunney (R - Belk 2), who "
+                  "left, marked with Belk 2's towns; Nancy Murphy's bill row kept")
 
 
 @check("data", "the built Sponsor filter's file for the sitting term lists every sitting member once, House then Senate",
