@@ -11,6 +11,21 @@ captions, so it is never published. `calendar_meetings` reads the
 calendars: it is the independent check, and the only source for a hearing
 the docket never recorded.
 
+Four more, which the rest lean on:
+
+- `docket_parser`: the docket read into scheduled proceedings, the input
+  `build_manifest` and `calendar_meetings` take;
+- `caption_span`: whether a recording's captions reach its end
+  (`caption_spans.json`), which `segment_markers`, the record builder and
+  the night read before they trust a recording's captions;
+- `floor_markers`: a floor session cut where the clerk reads each
+  committee report, the first stated-boundary reader, whose patterns
+  `segment_markers` took over;
+- `apply_markers`: the older step that wrote stated boundaries into
+  `segments.json`; `build_all.py` keeps it as a superseded step that runs
+  only with `--with-superseded`, because `segment_markers` does its work
+  and the record builder reads that directly.
+
 **Nothing about timestamps goes on the site until
 `python3 src/hearings/probe_alignment.py --truth --candidate candidate_segments.json`
 has been run and the median has not regressed** on the proceedings both the
