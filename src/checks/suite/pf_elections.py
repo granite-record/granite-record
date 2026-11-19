@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of members-elect and election results.
 
@@ -3551,9 +3551,12 @@ def _offices_read_by_nothing(PSO):
     Read off every code file of the code folders and the site's scripts, the
     suite aside: no Python file imports parse_sos_offices or names its files
     in a string, and no script names them; the reader's own files are the
-    only ones that do."""
+    only ones that do. The State Primary's reader of the same offices
+    (parse_sos_primary_offices) reads with its rules, a reader too, and no
+    page: _primaries_read_by_nothing holds that nothing reads it."""
     import ast
-    own = {Path(PSO.__file__).resolve()}
+    own = {Path(PSO.__file__).resolve(),
+           Path(PSO.__file__).with_name("parse_sos_primary_offices.py").resolve()}
     hits = []
     for f in _paths.code_files("*.py"):
         if _in_suite(f) or f.resolve() in own:
@@ -3726,7 +3729,9 @@ def _primary_read_again(P):
         unsettled = 0
         for key, race in doc["races"].items():
             won = sum(c["nominated"] is True for c in race["candidates"])
-            assert won <= race["seats"], f"{y} {key}: {won} nominated for {race['seats']} seat(s)"
+            # The at-large commissioners of 2016-2022 print no number of seats.
+            assert race["seats"] is None or won <= race["seats"], (
+                f"{y} {key}: {won} nominated for {race['seats']} seat(s)")
             if any(c["nominated"] is None for c in race["candidates"]):
                 unsettled += 1
                 assert any(f"{key}: " in n and "not settled" in n for n in doc.get("_notes") or []), (
@@ -3789,6 +3794,104 @@ def _primaries_read_by_nothing(P):
     assert not hits, "something reads the State Primary results: " + "; ".join(hits[:8])
     return "ok", (f"no code file but the readers names collected/primary_* or imports them "
                   f"({len(scripts)} scripts and every Python file read)")
+
+
+@check("build", "State Primary results: the other offices' reader reads each party's primary for "
+                "Governor and Senator (the summary and every county's towns), Congress and the "
+                "Council, and the county offices, as the general's reader does -- an empty cell "
+                "none, a summary's empty Totals its counties' rows, 2018's day at the end of the "
+                "State's title, a sheet with no day -- and lists a file of another party refused",
+       needs=("parse_sos_primary_offices",))
+def _primary_offices_reader_reads(PO):
+    """parse_sos_primary_offices on a fixture: a 2024 Republican Governor
+    workbook (a summary and ten counties' sheets, one printing no day), a
+    2018 Democratic Congress sheet, a 2024 county offices sheet of two races,
+    and a Congress file whose title is the other party's."""
+    try:
+        import openpyxl
+    except ImportError:
+        return "skip", "openpyxl is not installed"
+    import datetime
+    PSR, PSO = PO.PSR, PO.PSO
+    root = Path(tempfile.mkdtemp(prefix="gr-sos-primary-offices-"))
+    try:
+        d = root / PSR.SOURCES
+        d.mkdir(parents=True)
+        day = datetime.date(2024, 9, 10)
+        heads = ["Al Ash, r", "Bo Bly, r", "Cy Cole, d", "Write-Ins", "Overvotes", "Undervotes"]
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Sum Gov"
+        for r in ([None, "State of New Hampshire - Primary Election"], [day, "Governor - Republican"],
+                  ["Summary By Counties", *heads],
+                  *[[c, 10, 5, 1 if c == "Belknap" else None, 1, 0, 2] for c in PSO.COUNTIES],
+                  ["TOTALS", 100, 50, None, 10, 0, 20]):
+            ws.append(r)
+        for c in PSO.COUNTIES:
+            ws = wb.create_sheet(f"{c} Gov")
+            cole = 1 if c == "Belknap" else None
+            for r in ([None, "State of New Hampshire - Primary Election"],
+                      [None if c == "Coos" else day, "Governor - Republican"],
+                      [f"{c} County", *heads], [f"{c} Town", 10, 5, cole, 1, 0, 2],
+                      ["TOTALS", 10, 5, cole, 1, 0, 2]):
+                ws.append(r)
+        wb.save(d / "2024-sp-governor-republican_2.xlsx")
+        _legacy_book(d / "2024-sp-county-offices-belknap-republican_1.xlsx", [
+            ["State of New Hampshire - 2024 Primary Election"], ["Belknap County Offices - Republican"],
+            [day, "Sheriff", None, None, None, "Attorney"],
+            [None, "Bill Wright, r", "Write-Ins", "Overvotes", "Undervotes", "Keith Cormier, d",
+             "Write-Ins", "Overvotes", "Undervotes"],
+            ["Alton", 100, 1, 0, 3, None, 5, 0, 90], ["Barnstead", 50, 0, 0, 1, 2, 1, 0, 40],
+            ["TOTALS", 150, 1, 0, 4, 2, 6, 0, 130]])
+        _legacy_book(d / "2024-sp-congressional-district-2-democratic_4.xlsx", [
+            ["State of New Hampshire - Primary Election"], ["Congressional District 2 - Republican"],
+            [day, "Ann Ash, d", "Write-Ins"], ["Alpha", 5, 0]])
+        _legacy_book(d / "2018-sp-congressional-district-1-democratic_0.xlsx", [
+            ["New Hampshire Primary Election - September 11, 2018"],
+            ["Congressional District 1 Democratic"],
+            # 2018's Congress prints no party after a name; and the minus sign.
+            [None, "Di Dunn", "Ed Eve, r", "Scatter"], ["Alpha", 30, "−", 2],
+            ["Beta", 20, None, 1], ["Totals", 50, None, 3]])
+        races, read, notes, refused, bad = PO.read_year(root, 2024)
+        assert sorted(races) == ["R|county-attorney|Belknap", "R|governor", "R|sheriff|Belknap"], (
+            f"races: {sorted(races)}")
+
+        def got(r):
+            return [(c["name"], c["votes"], c["nominated"]) for c in r["candidates"]]
+        gov = races["R|governor"]
+        assert got(gov) == [("Al Ash", 100, True), ("Bo Bly", 50, False), ("Cy Cole", 1, False)], (
+            f"the Governor: {got(gov)}")
+        assert gov["contest"] == "2024-09-10.primary-r.governor.statewide" and gov["party"] == "r", (
+            f"the Governor's contest: {gov['contest']}")
+        assert gov["printed_totals"] > 0 and not bad, f"tie-out: {gov['printed_totals']}, {bad}"
+        for words in ("print no figure for Cy Cole, d; read as its counties' rows, 1",
+                      "prints no day; read as the primary of 2024-09-10"):
+            assert any(words in n for n in notes), f"not said: {words!r}"
+        assert got(races["R|sheriff|Belknap"]) == [("Bill Wright", 150, True)], (
+            f"the Sheriff: {got(races['R|sheriff|Belknap'])}")
+        att = races["R|county-attorney|Belknap"]
+        assert got(att) == [("Keith Cormier", 2, None)] and att["scatter"] == 6, (
+            f"two votes against six the file does not name: {got(att)}")
+        assert any("R|county-attorney|Belknap: Keith Cormier not settled" in n for n in notes), (
+            "the unsettled nominee was not said")
+        assert [r["file"] for r in refused] == ["2024-sp-congressional-district-2-democratic_4.xlsx"], (
+            f"the other party's title was not refused and listed: {refused}")
+        assert [p.name for p in read] == ["2024-sp-governor-republican_2.xlsx",
+                                          "2024-sp-county-offices-belknap-republican_1.xlsx"], (
+            f"read: {[p.name for p in read]}")
+        races, read, notes, refused, bad = PO.read_year(root, 2018)
+        assert got(races["D|us-house|1"]) == [("Di Dunn", 50, True), ("Ed Eve", 0, False)], (
+            f"2018's Congress: {races}")
+        assert races["D|us-house|1"]["contest"] == "2018-09-11.primary-d.us-house.1", (
+            races["D|us-house|1"]["contest"])
+        assert any("'Di Dunn', whose party the file leaves out" in n for n in notes), (
+            "a name with no party was not said")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("a Governor workbook of ten counties tied to its summary, an empty Totals read as the "
+                  "counties' rows and a sheet with no day said; 2018's Congress, its day in the State's "
+                  "title; two county offices side by side, one left unsettled and said; another party's "
+                  "file refused and listed")
 
 
 @check("data", "members-elect: on the 2024 election, as of its own day, the matching rule links "

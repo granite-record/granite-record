@@ -1,6 +1,6 @@
 {
  "_about": [
-   "What the Secretary of State's State Primary results files say of the State Representative and State Senate races, each party's primary its own race, read by src/parse/parse_sos_primary_results.py from the files in _source and held to the same year's general election (collected/election_<year>.json). Nothing in it is this project's decision but the nominees, which the files do not mark: the candidates with the most votes, as many as the race has seats and none with no votes; null where the count does not settle it.",
+   "What the Secretary of State's State Primary results files say, each party's primary its own race: the State Representative and State Senate races, read by src/parse/parse_sos_primary_results.py and held to the same year's general election (collected/election_<year>.json), and Governor, United States Senator, Representative in Congress, Executive Councilor and the county offices, read by src/parse/parse_sos_primary_offices.py; each from the files in _source. Nothing in it is this project's decision but the nominees, which the files do not mark: the candidates with the most votes, as many as the race has seats and none with no votes; null where the count does not settle it.",
    "Write the file again by running the reader, never by hand: --check says where the saved files and this disagree."
  ],
  "_notes": [
@@ -63,7 +63,81 @@
    "2020-sp-house-sullivan-republican.xls: 29 empty cell(s) under a candidate, read as none",
    "2020-sp-state-senate-1-24-democratic.xls: 1 empty cell(s) under a candidate, read as none",
    "2020-sp-state-senate-1-24-republican.xls, sheet 'rsenate 22-24', row 27: the title prints 'State Senate District 24 - Democratic', read as the Republican primary's: it is the Republican primary's file, and its every other title says Republican",
-   "2020-sp-state-senate-1-24-republican.xls: 2 empty cell(s) under a candidate, read as none"
+   "2020-sp-state-senate-1-24-republican.xls: 2 empty cell(s) under a candidate, read as none",
+   "2020-sp-hillsborough-county-democratic_0.xls is read, and replaces 2020-sp-hillsborough-county-democratic.xls: the Secretary of State's later upload of the same results",
+   "2020-sp-sullivan-county-republican_0.xls is read, and replaces 2020-sp-sullivan-county-republican.xls: the Secretary of State's later upload of the same results",
+   "the republican Governor primary: 5 empty cell(s) under a candidate, read as none",
+   "2020-sp-executive-council-1-5-democratic-.xls: 21 empty cell(s) under a candidate, read as none",
+   "2020-sp-executive-council-1-5-republican-.xls: 665 empty cell(s) under a candidate, read as none",
+   "2020-sp-congressional-district-2-democratic.xlsx: 4 empty cell(s) under a candidate, read as none",
+   "2020-09-08.primary-d.county-treasurer.belknap: D|county-treasurer|Belknap: Muzzey not settled by the count -- a tie for the last place, or the write-ins nobody named (58) could have taken it",
+   "2020-sp-belknap-county-democratic.xls, sheet 'dbelknap', row 25: D|county-commissioner|Belknap|3: No Election; no race is read",
+   "2020-sp-cheshire-county-democratic.xls, sheet 'rcheshire', row 68: D|county-commissioner|Cheshire|3: No Election; no race is read",
+   "2020-sp-cheshire-county-republican.xls, sheet 'rcheshire', row 4: the header prints 'Earl Nelson', read as the candidate 'Earl Nelson', whose party the file leaves out",
+   "2020-09-08.primary-r.county-attorney.cheshire: R|county-attorney|Cheshire: McLaughlin not settled by the count -- a tie for the last place, or the write-ins nobody named (98) could have taken it",
+   "2020-09-08.primary-r.register-of-deeds.cheshire: R|register-of-deeds|Cheshire: Tilton not settled by the count -- a tie for the last place, or the write-ins nobody named (89) could have taken it",
+   "2020-09-08.primary-r.register-of-probate.cheshire: R|register-of-probate|Cheshire: LaPlante not settled by the count -- a tie for the last place, or the write-ins nobody named (71) could have taken it",
+   "2020-09-08.primary-r.county-commissioner.cheshire-2: R|county-commissioner|Cheshire|2: Clark not settled by the count -- a tie for the last place, or the write-ins nobody named (38) could have taken it",
+   "2020-sp-cheshire-county-republican.xls, sheet 'rcheshire', row 68: R|county-commissioner|Cheshire|3: No Election; no race is read",
+   "2020-sp-hillsborough-county-democratic_0.xls, sheet 'rhillsborough', row 221: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2020-sp-rockingham-county-democratic.xls, sheet 'rrockingham', row 96: D|county-commissioner|Rockingham|2: No Election; no race is read",
+   "2020-sp-rockingham-county-republican.xls, sheet 'rrockingham', row 96: R|county-commissioner|Rockingham|2: No Election; no race is read",
+   "2020-sp-strafford-county-democratic.xls, sheet 'rstrafford', row 68: county-commissioner|Strafford elects more than one at large and the file prints no number of seats, so the count is kept and no one is marked elected",
+   "2020-09-08.primary-d.county-commissioner.strafford: D|county-commissioner|Strafford: Rollo, Maglaras, Watson not settled by the count -- a tie for the last place, or the write-ins nobody named (59) could have taken it",
+   "2020-sp-strafford-county-republican.xls, sheet 'rstrafford', row 67: the header prints 'Cintavey', read as the candidate 'Cintavey', whose party the file leaves out",
+   "2020-sp-strafford-county-republican.xls, sheet 'rstrafford', row 67: county-commissioner|Strafford elects more than one at large and the file prints no number of seats, so the count is kept and no one is marked elected",
+   "2020-09-08.primary-r.county-attorney.strafford: R|county-attorney|Strafford: Velardi not settled by the count -- a tie for the last place, or the write-ins nobody named (104) could have taken it",
+   "2020-09-08.primary-r.county-treasurer.strafford: R|county-treasurer|Strafford: Arnold not settled by the count -- a tie for the last place, or the write-ins nobody named (117) could have taken it",
+   "2020-09-08.primary-r.register-of-deeds.strafford: R|register-of-deeds|Strafford: Berube not settled by the count -- a tie for the last place, or the write-ins nobody named (102) could have taken it",
+   "2020-09-08.primary-r.register-of-probate.strafford: R|register-of-probate|Strafford: Bay not settled by the count -- a tie for the last place, or the write-ins nobody named (132) could have taken it",
+   "2020-09-08.primary-r.county-commissioner.strafford: R|county-commissioner|Strafford: Rollo, Maglaras, Watson, Cintavey not settled by the count -- a tie for the last place, or the write-ins nobody named (0) could have taken it",
+   "2020-sp-sullivan-county-democratic.xls, sheet 'dsullivan', row 27: the header prints 'Rodd Ward', read as the candidate 'Rodd Ward', whose party the file leaves out",
+   "2020-sp-sullivan-county-democratic.xls, sheet 'dsullivan', row 27: the header prints 'Ray Gagnon', read as the candidate 'Ray Gagnon', whose party the file leaves out",
+   "2020-sp-sullivan-county-democratic.xls, sheet 'dsullivan', row 27: the header prints 'Joe Osgood', read as the candidate 'Joe Osgood', whose party the file leaves out",
+   "2020-09-08.primary-d.county-treasurer.sullivan: D|county-treasurer|Sullivan: Sanderson not settled by the count -- a tie for the last place, or the write-ins nobody named (42) could have taken it",
+   "2020-sp-sullivan-county-democratic.xls, sheet 'dsullivan', row 27: D|county-commissioner|Sullivan|3: No Election; no race is read"
+ ],
+ "_refused": [
+   {
+     "file": "2020-sp-governor-democratic.xls",
+     "why": "2020-sp-governor-democratic.xls, sheet 'dcheshgov', row 5: 197 in column 11, which no header names"
+   },
+   {
+     "file": "2020-sp-united-states-senate-democratic.xls",
+     "why": "2020-sp-united-states-senate-democratic.xls, sheet 'dcoosuss', row 3: ['Coos Countyy', 'Tom Alciere, d', 'Paul J. Krautmann, d', 'Jeanne Shaheen, d', 'Gerard Beloin, r', 'Don Bolduc, r', 'Andy Martin, r', 'Corky Messner, r', 'Scatter'] before any header"
+   },
+   {
+     "file": "2020-sp-uss-republican.xls",
+     "why": "2020-sp-uss-republican.xls, sheet 'rcoosuss', row 4: ['Coos Countyy', 'Gerard Beloin, r', 'Don Bolduc, r', 'Andy Martin, r', 'Corky Messner, r', 'Tom Alciere, d', 'Paul J. Krautmann, d', 'Jeanne Shaheen, d', 'Scatter'] before any header"
+   },
+   {
+     "file": "2020-sp-carroll-county-democratic.xls",
+     "why": "2020-sp-carroll-county-democratic.xls, sheet 'rcarroll', row 4: \"O'Rourke-Andruzzi, d*\" in column 4 is neither a candidate (\"Name, d\") nor Undervotes, Overvotes or Write-Ins"
+   },
+   {
+     "file": "2020-sp-coos-county-democratic.xls",
+     "why": "2020-sp-coos-county-democratic.xls, sheet 'dcoos', row 4: a header row that names no candidate"
+   },
+   {
+     "file": "2020-sp-coos-county-republican.xls",
+     "why": "2020-sp-coos-county-republican.xls, sheet 'rcoos', row 4: a header row that names no candidate"
+   },
+   {
+     "file": "2020-sp-grafton-county-democratic.xls",
+     "why": "2020-sp-grafton-county-democratic.xls, sheet 'rgrafton', row 51: a header row that names no candidate"
+   },
+   {
+     "file": "2020-sp-grafton-county-republican.xls",
+     "why": "2020-sp-grafton-county-republican.xls, sheet 'rgrafton', row 51: a header row that names no candidate"
+   },
+   {
+     "file": "2020-sp-merrimack-county-republican.xls",
+     "why": "2020-sp-merrimack-county-republican.xls, sheet 'rmerrimack', row 46: 'Heath, Mary' in column 4 is neither a candidate (\"Name, d\") nor Undervotes, Overvotes or Write-Ins"
+   },
+   {
+     "file": "2020-sp-sullivan-county-republican_0.xls",
+     "why": "2020-sp-sullivan-county-republican_0.xls, sheet 'rsullivan', row 27: 'Ward (Write in)' in column 2 is neither a candidate (\"Name, d\") nor Undervotes, Overvotes or Write-Ins"
+   }
  ],
  "_source": [
   {"file": "records/sources/2020-sp-house-belknap-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "aa2df035253d3af55bf190c8ec1adaae60ad3a74de88fa38c859901ef4d8a82e"},
@@ -87,12 +161,119 @@
   {"file": "records/sources/2020-sp-house-sullivan-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "5a008be257257dff101feae6caa99d5ac88b9c8c7504dff44cd4ce03e866abd6"},
   {"file": "records/sources/2020-sp-house-sullivan-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "4394e411eda01cefb103b77e69852bd02bcdcaf06034b713bf9ffbb70eceb609"},
   {"file": "records/sources/2020-sp-state-senate-1-24-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "5574121453ab8c6a082f9576f68223c6bed9479460f2dc9442983235b3685b0b"},
-  {"file": "records/sources/2020-sp-state-senate-1-24-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "fb84ea3e40c90f20e27025dd7a9b897b4f512f8b771080b54493482ea966e73e"}
+  {"file": "records/sources/2020-sp-state-senate-1-24-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "fb84ea3e40c90f20e27025dd7a9b897b4f512f8b771080b54493482ea966e73e"},
+  {"file": "records/sources/2020-sp-governor-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "0f6ccc9174883e02a7b2e5e2df222c60f29f46ae17cb6128e6bf6463d5258248"},
+  {"file": "records/sources/2020-sp-executive-council-1-5-democratic-.xls", "url": null, "saved": "2026-11-11", "sha256": "87dc74eac4288f668f4b202c31850723ce4104da242e5a7d7d831d9ae1a7c20a"},
+  {"file": "records/sources/2020-sp-executive-council-1-5-republican-.xls", "url": null, "saved": "2026-11-11", "sha256": "d39a67112b56cbb5fe271433814c06ab8139a6206e08b30ab0858f4d0747f321"},
+  {"file": "records/sources/2020-sp-congressional-district-1-democratic.xlsx", "url": null, "saved": "2026-11-11", "sha256": "b968b6532675899ca0ca2d9cafa229c14dec06012163dd89daeadbbada5cfc64"},
+  {"file": "records/sources/2020-sp-congressional-district-2-democratic.xlsx", "url": null, "saved": "2026-11-11", "sha256": "4451c071049e46a3cd67a70ec29e38ab7385cad70fab40d7fe11a790bcd09f9b"},
+  {"file": "records/sources/2020-sp-congressional-district-1-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "11cbf90d02033d9be2438a6c45586f007b6ef7fece957e4fa06b912d0f00295b"},
+  {"file": "records/sources/2020-sp-congressional-district-2-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "2ee02a880202c6274cd82e7f7897aef4c35e11b5f0d5fff590ee0da4cdd25ccc"},
+  {"file": "records/sources/2020-sp-belknap-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "5040d547d54762703032f99840b9c70a7383104ec181d353b170dd8c602eef3a"},
+  {"file": "records/sources/2020-sp-cheshire-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "0f0436c9e19c653c8014b2b59a502733ce55890ed466c06c04e0ab4700a4c7f2"},
+  {"file": "records/sources/2020-sp-cheshire-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "17bc4582be73b80a03aa8378983f78cfd21c5b54a5b877193c45141f6228e6c4"},
+  {"file": "records/sources/2020-sp-hillsborough-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "ffe958a72fcea15d4410a36732d489cf507702d03d8fdc4c8b4a9bb1ec9aacbd"},
+  {"file": "records/sources/2020-sp-hillsborough-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "860062a21c6f93cded4c1e3dacce025118166dfe0bd60f6b4a8c8041220bcce8"},
+  {"file": "records/sources/2020-sp-rockingham-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "43d71b69eb9d7cf298638ab4285254a916c44617f0affab4607392555e469da9"},
+  {"file": "records/sources/2020-sp-rockingham-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "d9bdd7e971faf4462063477005d9a9612e055bf5428e3190b6944ddea07bec39"},
+  {"file": "records/sources/2020-sp-strafford-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "213f856e0386e2d6f269b55495bc575da31d7ddb2914545b669887dae645deb9"},
+  {"file": "records/sources/2020-sp-strafford-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "49a1456d8190b4545b58f374beb44f8defd527920de726fb17438c6bec338731"},
+  {"file": "records/sources/2020-sp-sullivan-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "db2dd0d440fa0b6c7c828f5d10199035f0ba6811e55bb8ae57a9e279dd765a2e"}
  ],
  "election": "2020-09-08",
  "general": "2020-11-03",
  "term": "2021-2022",
  "races": {
+  "R|governor": {"party": "r", "office": "governor", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.governor.statewide", "count_from": "the summary's Totals", "scatter": 95, "undervotes": null, "overvotes": null, "printed_totals": 65, "candidates": [
+    {"name": "Nobody", "party": "r", "votes": 1239, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.governor.statewide.nobody-r"},
+    {"name": "Chris Sununu", "party": "r", "votes": 130703, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.governor.statewide.chris-sununu-r"},
+    {"name": "Karen Testerman", "party": "r", "votes": 13589, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.governor.statewide.karen-testerman-r"},
+    {"name": "Dan Feltes", "party": "d", "votes": 133, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.governor.statewide.dan-feltes-d"},
+    {"name": "Andru Volinsky", "party": "d", "votes": 93, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.governor.statewide.andru-volinsky-d"}]},
+  "D|us-house|1": {"party": "d", "office": "us-house", "district": 1, "seats": 1, "contest": "2020-09-08.primary-d.us-house.1", "count_from": "the places' sum", "scatter": 194, "undervotes": null, "overvotes": null, "printed_totals": 7, "candidates": [
+    {"name": "Chris Pappas", "party": "d", "votes": 70643, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.us-house.1.chris-pappas-d"},
+    {"name": "Michael Callis", "party": "r", "votes": 8, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.us-house.1.michael-callis-r"},
+    {"name": "Jeff Denaro", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.us-house.1.jeff-denaro-r"},
+    {"name": "Matt Mayberry", "party": "r", "votes": 71, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.us-house.1.matt-mayberry-r"},
+    {"name": "Matt Mowers", "party": "r", "votes": 101, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.us-house.1.matt-mowers-r"},
+    {"name": "Kevin Rondeau", "party": "r", "votes": 8, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.us-house.1.kevin-rondeau-r"}]},
+  "R|us-house|1": {"party": "r", "office": "us-house", "district": 1, "seats": 1, "contest": "2020-09-08.primary-r.us-house.1", "count_from": "the places' sum", "scatter": 132, "undervotes": null, "overvotes": null, "printed_totals": 7, "candidates": [
+    {"name": "Michael Callis", "party": "r", "votes": 2703, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.us-house.1.michael-callis-r"},
+    {"name": "Jeff Denaro", "party": "r", "votes": 2723, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.us-house.1.jeff-denaro-r"},
+    {"name": "Matt Mayberry", "party": "r", "votes": 18479, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.us-house.1.matt-mayberry-r"},
+    {"name": "Matt Mowers", "party": "r", "votes": 41100, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.us-house.1.matt-mowers-r"},
+    {"name": "Kevin Rondeau", "party": "r", "votes": 4203, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.us-house.1.kevin-rondeau-r"},
+    {"name": "Chris Pappas", "party": "d", "votes": 254, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.us-house.1.chris-pappas-d"}]},
+  "D|us-house|2": {"party": "d", "office": "us-house", "district": 2, "seats": 1, "contest": "2020-09-08.primary-d.us-house.2", "count_from": "the places' sum", "scatter": 84, "undervotes": null, "overvotes": null, "printed_totals": 7, "candidates": [
+    {"name": "Ann McLane Kuster", "party": "d", "votes": 71358, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.us-house.2.ann-mclane-kuster-d"},
+    {"name": "Joseph Mirzoeff", "party": "d", "votes": 5500, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.us-house.2.joseph-mirzoeff-d"},
+    {"name": "Matthew D. Bjelobrk", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.us-house.2.matthew-d-bjelobrk-r"},
+    {"name": "Lynne Ferrari Blankenbeker", "party": "r", "votes": 45, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.us-house.2.lynne-ferrari-blankenbeker-r"},
+    {"name": "Eli D. Clemmer", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.us-house.2.eli-d-clemmer-r"},
+    {"name": "Steven Negron", "party": "r", "votes": 63, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.us-house.2.steven-negron-r"}]},
+  "R|us-house|2": {"party": "r", "office": "us-house", "district": 2, "seats": 1, "contest": "2020-09-08.primary-r.us-house.2", "count_from": "the places' sum", "scatter": 153, "undervotes": null, "overvotes": null, "printed_totals": 7, "candidates": [
+    {"name": "Matthew D. Bjelobrk", "party": "r", "votes": 4381, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.us-house.2.matthew-d-bjelobrk-r"},
+    {"name": "Lynne Ferrari Blankenbeker", "party": "r", "votes": 24464, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.us-house.2.lynne-ferrari-blankenbeker-r"},
+    {"name": "Eli D. Clemmer", "party": "r", "votes": 3850, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.us-house.2.eli-d-clemmer-r"},
+    {"name": "Steven Negron", "party": "r", "votes": 30503, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.us-house.2.steven-negron-r"},
+    {"name": "Ann McLane Kuster", "party": "d", "votes": 201, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.us-house.2.ann-mclane-kuster-d"},
+    {"name": "Joseph Mirzoeff", "party": "d", "votes": 5, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.us-house.2.joseph-mirzoeff-d"}]},
+  "D|executive-council|1": {"party": "d", "office": "executive-council", "district": 1, "seats": 1, "contest": "2020-09-08.primary-d.executive-council.1", "count_from": "the places' sum", "scatter": 83, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Michael J. Cryans", "party": "d", "votes": 28221, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.executive-council.1.michael-j-cryans-d"},
+    {"name": "Joseph D. Kenney", "party": "r", "votes": 73, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.1.joseph-d-kenney-r"},
+    {"name": "Kim Strathdee", "party": "r", "votes": 17, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.1.kim-strathdee-r"}]},
+  "R|executive-council|1": {"party": "r", "office": "executive-council", "district": 1, "seats": 1, "contest": "2020-09-08.primary-r.executive-council.1", "count_from": "the places' sum", "scatter": 42, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Joseph D. Kenney", "party": "r", "votes": 21440, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.executive-council.1.joseph-d-kenney-r"},
+    {"name": "Kim Strathdee", "party": "r", "votes": 5654, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.1.kim-strathdee-r"},
+    {"name": "Michael J. Cryans", "party": "d", "votes": 76, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.1.michael-j-cryans-d"}]},
+  "D|executive-council|2": {"party": "d", "office": "executive-council", "district": 2, "seats": 1, "contest": "2020-09-08.primary-d.executive-council.2", "count_from": "the places' sum", "scatter": 38, "undervotes": null, "overvotes": null, "printed_totals": 9, "candidates": [
+    {"name": "Leah Plunkett", "party": "d", "votes": 8356, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.2.leah-plunkett-d"},
+    {"name": "John D. Shea", "party": "d", "votes": 2185, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.2.john-d-shea-d"},
+    {"name": "Emmett Soldati", "party": "d", "votes": 6968, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.2.emmett-soldati-d"},
+    {"name": "Jay Surdukowski", "party": "d", "votes": 2738, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.2.jay-surdukowski-d"},
+    {"name": "Craig Thompson", "party": "d", "votes": 4194, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.2.craig-thompson-d"},
+    {"name": "Cinde Warmington", "party": "d", "votes": 9207, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.executive-council.2.cinde-warmington-d"},
+    {"name": "Jim Beard", "party": "r", "votes": 34, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.2.jim-beard-r"},
+    {"name": "Stewart I. Levenson", "party": "r", "votes": 18, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.2.stewart-i-levenson-r"}]},
+  "R|executive-council|2": {"party": "r", "office": "executive-council", "district": 2, "seats": 1, "contest": "2020-09-08.primary-r.executive-council.2", "count_from": "the places' sum", "scatter": 72, "undervotes": null, "overvotes": null, "printed_totals": 9, "candidates": [
+    {"name": "Jim Beard", "party": "r", "votes": 10393, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.executive-council.2.jim-beard-r"},
+    {"name": "Stewart I. Levenson", "party": "r", "votes": 9212, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.2.stewart-i-levenson-r"},
+    {"name": "Leah Plunkett", "party": "d", "votes": 7, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.2.leah-plunkett-d"},
+    {"name": "John D. Shea", "party": "d", "votes": 11, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.2.john-d-shea-d"},
+    {"name": "Emmett Soldati", "party": "d", "votes": 24, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.2.emmett-soldati-d"},
+    {"name": "Jay Surdukowski", "party": "d", "votes": 11, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.2.jay-surdukowski-d"},
+    {"name": "Craig Thompson", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.2.craig-thompson-d"},
+    {"name": "Cinde Warmington", "party": "d", "votes": 18, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.2.cinde-warmington-d"}]},
+  "D|executive-council|3": {"party": "d", "office": "executive-council", "district": 3, "seats": 1, "contest": "2020-09-08.primary-d.executive-council.3", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 6, "candidates": [
+    {"name": "Patty Lovejoy", "party": "d", "votes": 9444, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.3.patty-lovejoy-d"},
+    {"name": "Mindi Messmer", "party": "d", "votes": 18468, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.executive-council.3.mindi-messmer-d"},
+    {"name": "Timothy P. Comerford", "party": "r", "votes": 7, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.3.timothy-p-comerford-r"},
+    {"name": "Bruce Crochetiere", "party": "r", "votes": 7, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.3.bruce-crochetiere-r"},
+    {"name": "Janet Stevens", "party": "r", "votes": 16, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.3.janet-stevens-r"}]},
+  "R|executive-council|3": {"party": "r", "office": "executive-council", "district": 3, "seats": 1, "contest": "2020-09-08.primary-r.executive-council.3", "count_from": "the places' sum", "scatter": 61, "undervotes": null, "overvotes": null, "printed_totals": 6, "candidates": [
+    {"name": "Timothy P. Comerford", "party": "r", "votes": 8052, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.3.timothy-p-comerford-r"},
+    {"name": "Bruce Crochetiere", "party": "r", "votes": 9142, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.3.bruce-crochetiere-r"},
+    {"name": "Janet Stevens", "party": "r", "votes": 11443, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.executive-council.3.janet-stevens-r"},
+    {"name": "Patty Lovejoy", "party": "d", "votes": 11, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.3.patty-lovejoy-d"},
+    {"name": "Mindi Messmer", "party": "d", "votes": 24, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.3.mindi-messmer-d"}]},
+  "D|executive-council|4": {"party": "d", "office": "executive-council", "district": 4, "seats": 1, "contest": "2020-09-08.primary-d.executive-council.4", "count_from": "the places' sum", "scatter": 56, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Kola Adewumi", "party": "d", "votes": 4402, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.4.kola-adewumi-d"},
+    {"name": "Jerome Duval", "party": "d", "votes": 7631, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.4.jerome-duval-d"},
+    {"name": "Mark S. Mackenzie", "party": "d", "votes": 9890, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.executive-council.4.mark-s-mackenzie-d"},
+    {"name": "Ted Gatsas", "party": "r", "votes": 65, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.4.ted-gatsas-r"}]},
+  "R|executive-council|4": {"party": "r", "office": "executive-council", "district": 4, "seats": 1, "contest": "2020-09-08.primary-r.executive-council.4", "count_from": "the places' sum", "scatter": 193, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Ted Gatsas", "party": "r", "votes": 23676, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.executive-council.4.ted-gatsas-r"},
+    {"name": "Kola Adewumi", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.4.kola-adewumi-d"},
+    {"name": "Jerome Duval", "party": "d", "votes": 24, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.4.jerome-duval-d"},
+    {"name": "Mark S. Mackenzie", "party": "d", "votes": 7, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.4.mark-s-mackenzie-d"}]},
+  "D|executive-council|5": {"party": "d", "office": "executive-council", "district": 5, "seats": 1, "contest": "2020-09-08.primary-d.executive-council.5", "count_from": "the places' sum", "scatter": 49, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Debora B. Pignatelli", "party": "d", "votes": 23885, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.executive-council.5.debora-b-pignatelli-d"},
+    {"name": "Bob Clegg", "party": "r", "votes": 17, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.5.bob-clegg-r"},
+    {"name": "Dave Wheeler", "party": "r", "votes": 29, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.executive-council.5.dave-wheeler-r"}]},
+  "R|executive-council|5": {"party": "r", "office": "executive-council", "district": 5, "seats": 1, "contest": "2020-09-08.primary-r.executive-council.5", "count_from": "the places' sum", "scatter": 36, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Bob Clegg", "party": "r", "votes": 9758, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.5.bob-clegg-r"},
+    {"name": "Dave Wheeler", "party": "r", "votes": 16164, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.executive-council.5.dave-wheeler-r"},
+    {"name": "Debora B. Pignatelli", "party": "d", "votes": 26, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.executive-council.5.debora-b-pignatelli-d"}]},
   "D|S|1": {"party": "d", "seats": 1, "floterial": false, "towns": ["Atkinson and Gilmanton Ac. Gt.", "Bath", "Bean's Grant", "Bean's Purchase", "Benton", "Berlin", "Bethlehem", "Cambridge", "Carroll", "Chandler's Purchase", "Clarksville", "Colebrook", "Columbia", "Crawford's Purchase", "Cutt's Grant", "Dalton", "Dix's Grant", "Dixville", "Dummer", "Easton", "Errol", "Erving's Location", "Franconia", "Gorham", "Green's Grant", "Hadley's Purchase", "Jefferson", "Kilkenny", "Lancaster", "Landaff", "Lincoln", "Lisbon", "Littleton", "Livermore", "Low and Burbank's Grant", "Lyman", "Martin's Location", "Milan", "Millsfield", "Monroe", "Northumberland", "Odell", "Pinkham's Grant", "Pittsburg", "Randolph", "Sargent's Purchase", "Second College Grant", "Shelburne", "Stark", "Stewartstown", "Stratford", "Success", "Sugar Hill", "Thompson & Meserve's Pur.", "Thornton", "Wentworth's Location", "Whitefield", "Woodstock"], "scatter": 13, "printed_totals": 4, "candidates": [
     {"name": "Ford", "party": "d", "votes": 4667, "write_in": false, "nominated": true},
     {"name": "Hennessey", "party": "r", "votes": 27, "write_in": false, "nominated": false},
@@ -2365,6 +2546,231 @@
     {"name": "Smith", "party": "r", "votes": 16, "write_in": false, "nominated": false}]},
   "R|H|Sullivan|11": {"party": "r", "seats": 1, "floterial": true, "towns": ["Acworth", "Charlestown", "Goshen", "Langdon", "Lempster", "Washington"], "scatter": 7, "printed_totals": 2, "surnames": true, "candidates": [
     {"name": "Smith", "party": "r", "votes": 904, "write_in": false, "nominated": true},
-    {"name": "Henry", "party": "d", "votes": 0, "write_in": false, "nominated": false}]}
+    {"name": "Henry", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|county-attorney|Belknap": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-attorney.belknap", "count_from": "the places' sum", "scatter": 58, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Livernois", "party": "r", "votes": 88, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-attorney.belknap.livernois-r"}]},
+  "D|county-commissioner|Belknap|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.belknap-1", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Brunette", "party": "d", "votes": 1771, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.belknap-1.brunette-d"},
+    {"name": "Spanos", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.belknap-1.spanos-r"}]},
+  "D|county-commissioner|Belknap|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.belknap-2", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Waring", "party": "r", "votes": 18, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.belknap-2.waring-r"}]},
+  "D|county-treasurer|Belknap": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-treasurer.belknap", "count_from": "the places' sum", "scatter": 58, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Muzzey", "party": "r", "votes": 44, "write_in": false, "nominated": null, "id": "2020-09-08.primary-d.county-treasurer.belknap.muzzey-r"}]},
+  "D|register-of-deeds|Belknap": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-deeds.belknap", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Davis", "party": "d", "votes": 4718, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-deeds.belknap.davis-d"},
+    {"name": "McGrath", "party": "r", "votes": 47, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.register-of-deeds.belknap.mcgrath-r"}]},
+  "D|register-of-probate|Belknap": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-probate.belknap", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Thomas", "party": "d", "votes": 4731, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-probate.belknap.thomas-d"},
+    {"name": "Glassman", "party": "d", "votes": 14, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.register-of-probate.belknap.glassman-d"}]},
+  "D|sheriff|Belknap": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.sheriff.belknap", "count_from": "the places' sum", "scatter": 91, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Wright", "party": "r", "votes": 298, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.belknap.wright-r"},
+    {"name": "Richard Robinson", "party": "", "votes": 379, "write_in": true, "nominated": true, "id": "2020-09-08.primary-d.sheriff.belknap.richard-robinson-write-in"}]},
+  "D|county-attorney|Cheshire": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-attorney.cheshire", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "McLaughlin", "party": "d", "votes": 8631, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-attorney.cheshire.mclaughlin-d"}]},
+  "R|county-attorney|Cheshire": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.county-attorney.cheshire", "count_from": "the places' sum", "scatter": 98, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "McLaughlin", "party": "d", "votes": 32, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.county-attorney.cheshire.mclaughlin-d"}]},
+  "D|county-commissioner|Cheshire|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.cheshire-1", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Wozmak", "party": "d", "votes": 2678, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.cheshire-1.wozmak-d"},
+    {"name": "DiBernardo", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.cheshire-1.dibernardo-r"}]},
+  "R|county-commissioner|Cheshire|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2020-09-08.primary-r.county-commissioner.cheshire-1", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "DiBernardo", "party": "r", "votes": 1556, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-commissioner.cheshire-1.dibernardo-r"},
+    {"name": "Wozmak", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.cheshire-1.wozmak-d"}]},
+  "D|county-commissioner|Cheshire|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.cheshire-2", "count_from": "the places' sum", "scatter": 34, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Clark", "party": "d", "votes": 3157, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.cheshire-2.clark-d"}]},
+  "R|county-commissioner|Cheshire|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2020-09-08.primary-r.county-commissioner.cheshire-2", "count_from": "the places' sum", "scatter": 38, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Clark", "party": "d", "votes": 7, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.county-commissioner.cheshire-2.clark-d"}]},
+  "D|county-treasurer|Cheshire": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-treasurer.cheshire", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Cheshire", "candidates": [
+    {"name": "Weed", "party": "d", "votes": 4939, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-treasurer.cheshire.weed-d"},
+    {"name": "Filiault", "party": "d", "votes": 4022, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-treasurer.cheshire.filiault-d"},
+    {"name": "Cartwright", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-treasurer.cheshire.cartwright-r"}]},
+  "R|county-treasurer|Cheshire": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.county-treasurer.cheshire", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Cheshire", "candidates": [
+    {"name": "Cartwright", "party": "r", "votes": 5061, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-treasurer.cheshire.cartwright-r"},
+    {"name": "Weed", "party": "d", "votes": 7, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-treasurer.cheshire.weed-d"},
+    {"name": "Filiault", "party": "d", "votes": 8, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-treasurer.cheshire.filiault-d"}]},
+  "D|register-of-deeds|Cheshire": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-deeds.cheshire", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Tilton", "party": "d", "votes": 8734, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-deeds.cheshire.tilton-d"}]},
+  "R|register-of-deeds|Cheshire": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.register-of-deeds.cheshire", "count_from": "the places' sum", "scatter": 89, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Tilton", "party": "d", "votes": 25, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.register-of-deeds.cheshire.tilton-d"}]},
+  "D|register-of-probate|Cheshire": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-probate.cheshire", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "LaPlante", "party": "d", "votes": 8602, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-probate.cheshire.laplante-d"}]},
+  "R|register-of-probate|Cheshire": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.register-of-probate.cheshire", "count_from": "the places' sum", "scatter": 71, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "LaPlante", "party": "d", "votes": 10, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.register-of-probate.cheshire.laplante-d"}]},
+  "D|sheriff|Cheshire": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.sheriff.cheshire", "count_from": "the places' sum", "scatter": 42, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Rivera", "party": "d", "votes": 8939, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.sheriff.cheshire.rivera-d"},
+    {"name": "DiMezzo", "party": "r", "votes": 8, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.cheshire.dimezzo-r"}]},
+  "R|sheriff|Cheshire": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.sheriff.cheshire", "count_from": "the places' sum", "scatter": 115, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Cheshire", "candidates": [
+    {"name": "DiMezzo", "party": "r", "votes": 4211, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.sheriff.cheshire.dimezzo-r"},
+    {"name": "Rivera", "party": "d", "votes": 159, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.cheshire.rivera-d"},
+    {"name": "Earl Nelson", "party": "", "votes": 351, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.cheshire.earl-nelson"}]},
+  "D|county-attorney|Hillsborough": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-attorney.hillsborough", "count_from": "the places' sum", "scatter": 101, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Conlon", "party": "d", "votes": 32386, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-attorney.hillsborough.conlon-d"},
+    {"name": "Coughlin", "party": "r", "votes": 71, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-attorney.hillsborough.coughlin-r"},
+    {"name": "Hynes", "party": "r", "votes": 14, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-attorney.hillsborough.hynes-r"}]},
+  "R|county-attorney|Hillsborough": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.county-attorney.hillsborough", "count_from": "the places' sum", "scatter": 58, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Coughlin", "party": "r", "votes": 20038, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-attorney.hillsborough.coughlin-r"},
+    {"name": "Hynes", "party": "r", "votes": 13630, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-attorney.hillsborough.hynes-r"},
+    {"name": "Conlon", "party": "d", "votes": 32, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-attorney.hillsborough.conlon-d"}]},
+  "D|county-commissioner|Hillsborough|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.hillsborough-1", "count_from": "the places' sum", "scatter": 46, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Hopwood", "party": "d", "votes": 10216, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.hillsborough-1.hopwood-d"},
+    {"name": "Pappas", "party": "r", "votes": 33, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.hillsborough-1.pappas-r"}]},
+  "R|county-commissioner|Hillsborough|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2020-09-08.primary-r.county-commissioner.hillsborough-1", "count_from": "the places' sum", "scatter": 82, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Pappas", "party": "r", "votes": 9516, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-commissioner.hillsborough-1.pappas-r"},
+    {"name": "Hopwood", "party": "d", "votes": 7, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.hillsborough-1.hopwood-d"}]},
+  "D|county-commissioner|Hillsborough|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.hillsborough-2", "count_from": "the places' sum", "scatter": 26, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Hansberry", "party": "d", "votes": 5827, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.hillsborough-2.hansberry-d"},
+    {"name": "Lisle", "party": "d", "votes": 3086, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.hillsborough-2.lisle-d"},
+    {"name": "Soucy", "party": "r", "votes": 8, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.hillsborough-2.soucy-r"}]},
+  "R|county-commissioner|Hillsborough|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2020-09-08.primary-r.county-commissioner.hillsborough-2", "count_from": "the places' sum", "scatter": 34, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Soucy", "party": "r", "votes": 8883, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-commissioner.hillsborough-2.soucy-r"},
+    {"name": "Hansberry", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.hillsborough-2.hansberry-d"},
+    {"name": "Lisle", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.hillsborough-2.lisle-d"}]},
+  "D|county-commissioner|Hillsborough|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.hillsborough-3", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Ketteridge", "party": "d", "votes": 6910, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.hillsborough-3.ketteridge-d"},
+    {"name": "Radhakrishnan", "party": "d", "votes": 5781, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.hillsborough-3.radhakrishnan-d"},
+    {"name": "Rowe", "party": "r", "votes": 12, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.hillsborough-3.rowe-r"}]},
+  "R|county-commissioner|Hillsborough|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2020-09-08.primary-r.county-commissioner.hillsborough-3", "count_from": "the places' sum", "scatter": 23, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Rowe", "party": "r", "votes": 12565, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-commissioner.hillsborough-3.rowe-r"},
+    {"name": "Ketteridge", "party": "d", "votes": 10, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.hillsborough-3.ketteridge-d"},
+    {"name": "Radhakrishnan", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.hillsborough-3.radhakrishnan-d"}]},
+  "D|county-treasurer|Hillsborough": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-treasurer.hillsborough", "count_from": "the places' sum", "scatter": 71, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Bryk", "party": "d", "votes": 32258, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-treasurer.hillsborough.bryk-d"},
+    {"name": "Fredette", "party": "r", "votes": 57, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-treasurer.hillsborough.fredette-r"}]},
+  "R|county-treasurer|Hillsborough": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.county-treasurer.hillsborough", "count_from": "the places' sum", "scatter": 105, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Fredette", "party": "r", "votes": 31607, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-treasurer.hillsborough.fredette-r"},
+    {"name": "Bryk", "party": "d", "votes": 20, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-treasurer.hillsborough.bryk-d"}]},
+  "D|register-of-deeds|Hillsborough": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-deeds.hillsborough", "count_from": "the places' sum", "scatter": 48, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Hillsborough", "candidates": [
+    {"name": "Crowell", "party": "d", "votes": 22547, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-deeds.hillsborough.crowell-d"},
+    {"name": "O'Connell", "party": "d", "votes": 10446, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.register-of-deeds.hillsborough.o-connell-d"},
+    {"name": "Flanagan", "party": "r", "votes": 17, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.register-of-deeds.hillsborough.flanagan-r"},
+    {"name": "Sapienza", "party": "r", "votes": 21, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.register-of-deeds.hillsborough.sapienza-r"}]},
+  "R|register-of-deeds|Hillsborough": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.register-of-deeds.hillsborough", "count_from": "the places' sum", "scatter": 47, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Hillsborough", "candidates": [
+    {"name": "Flanagan", "party": "r", "votes": 18906, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.register-of-deeds.hillsborough.flanagan-r"},
+    {"name": "Sapienza", "party": "r", "votes": 13195, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.register-of-deeds.hillsborough.sapienza-r"},
+    {"name": "Crowell", "party": "d", "votes": 13, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.register-of-deeds.hillsborough.crowell-d"},
+    {"name": "O'Connell", "party": "d", "votes": 10, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.register-of-deeds.hillsborough.o-connell-d"}]},
+  "D|register-of-probate|Hillsborough": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-probate.hillsborough", "count_from": "the places' sum", "scatter": 55, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Ropp", "party": "d", "votes": 32632, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-probate.hillsborough.ropp-d"},
+    {"name": "Moreau", "party": "r", "votes": 20, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.register-of-probate.hillsborough.moreau-r"},
+    {"name": "Recupero", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.register-of-probate.hillsborough.recupero-r"}]},
+  "R|register-of-probate|Hillsborough": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.register-of-probate.hillsborough", "count_from": "the places' sum", "scatter": 62, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Moreau", "party": "r", "votes": 21806, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.register-of-probate.hillsborough.moreau-r"},
+    {"name": "Recupero", "party": "r", "votes": 9385, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.register-of-probate.hillsborough.recupero-r"},
+    {"name": "Ropp", "party": "d", "votes": 23, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.register-of-probate.hillsborough.ropp-d"}]},
+  "D|sheriff|Hillsborough": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.sheriff.hillsborough", "count_from": "the places' sum", "scatter": 144, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Barry", "party": "d", "votes": 32390, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.sheriff.hillsborough.barry-d"},
+    {"name": "Connelly", "party": "r", "votes": 71, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.hillsborough.connelly-r"},
+    {"name": "Holmes", "party": "r", "votes": 12, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.hillsborough.holmes-r"}]},
+  "R|sheriff|Hillsborough": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.sheriff.hillsborough", "count_from": "the places' sum", "scatter": 80, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Connelly", "party": "r", "votes": 26437, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.sheriff.hillsborough.connelly-r"},
+    {"name": "Holmes", "party": "r", "votes": 6915, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.hillsborough.holmes-r"},
+    {"name": "Barry", "party": "d", "votes": 78, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.hillsborough.barry-d"}]},
+  "D|county-attorney|Rockingham": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-attorney.rockingham", "count_from": "the places' sum", "scatter": 79, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Briden", "party": "d", "votes": 28381, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-attorney.rockingham.briden-d"},
+    {"name": "Conway", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-attorney.rockingham.conway-r"}]},
+  "R|county-attorney|Rockingham": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.county-attorney.rockingham", "count_from": "the places' sum", "scatter": 102, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Conway", "party": "r", "votes": 30430, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-attorney.rockingham.conway-r"},
+    {"name": "Briden", "party": "d", "votes": 12, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-attorney.rockingham.briden-d"}]},
+  "D|county-commissioner|Rockingham|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.rockingham-1", "count_from": "the places' sum", "scatter": 31, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Bodi", "party": "d", "votes": 2521, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.rockingham-1.bodi-d"},
+    {"name": "Coyle", "party": "d", "votes": 9261, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.rockingham-1.coyle-d"},
+    {"name": "St. James", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.rockingham-1.st-james-d"},
+    {"name": "Premo", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.rockingham-1.premo-r"}]},
+  "R|county-commissioner|Rockingham|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2020-09-08.primary-r.county-commissioner.rockingham-1", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Rockingham", "candidates": [
+    {"name": "Premo", "party": "r", "votes": 2779, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.rockingham-1.premo-r"},
+    {"name": "St.James", "party": "r", "votes": 7241, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-commissioner.rockingham-1.st-james-r"},
+    {"name": "Bodi", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.rockingham-1.bodi-d"},
+    {"name": "Coyle", "party": "d", "votes": 5, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.rockingham-1.coyle-d"}]},
+  "D|county-commissioner|Rockingham|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.rockingham-3", "count_from": "the places' sum", "scatter": 13, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "D'Angelo", "party": "d", "votes": 7203, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.rockingham-3.d-angelo-d"},
+    {"name": "Breton", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.rockingham-3.breton-r"},
+    {"name": "Chirichiello", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.rockingham-3.chirichiello-r"},
+    {"name": "Fairbanks", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.rockingham-3.fairbanks-r"}]},
+  "R|county-commissioner|Rockingham|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2020-09-08.primary-r.county-commissioner.rockingham-3", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Rockingham", "candidates": [
+    {"name": "Breton", "party": "r", "votes": 3501, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.rockingham-3.breton-r"},
+    {"name": "Chirichiello", "party": "r", "votes": 4256, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-commissioner.rockingham-3.chirichiello-r"},
+    {"name": "Fairbanks", "party": "r", "votes": 2934, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.rockingham-3.fairbanks-r"},
+    {"name": "D'Angelo", "party": "d", "votes": 3, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-commissioner.rockingham-3.d-angelo-d"}]},
+  "D|county-treasurer|Rockingham": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-treasurer.rockingham", "count_from": "the places' sum", "scatter": 52, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Quinn", "party": "d", "votes": 28280, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-treasurer.rockingham.quinn-d"},
+    {"name": "Priestley", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-treasurer.rockingham.priestley-r"}]},
+  "R|county-treasurer|Rockingham": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.county-treasurer.rockingham", "count_from": "the places' sum", "scatter": 52, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Priestley", "party": "r", "votes": 30005, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.county-treasurer.rockingham.priestley-r"},
+    {"name": "Quinn", "party": "d", "votes": 14, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.county-treasurer.rockingham.quinn-d"}]},
+  "D|register-of-deeds|Rockingham": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-deeds.rockingham", "count_from": "the places' sum", "scatter": 66, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "McCord", "party": "d", "votes": 28330, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-deeds.rockingham.mccord-d"},
+    {"name": "Stacey", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.register-of-deeds.rockingham.stacey-r"}]},
+  "R|register-of-deeds|Rockingham": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.register-of-deeds.rockingham", "count_from": "the places' sum", "scatter": 70, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Stacey", "party": "r", "votes": 30490, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.register-of-deeds.rockingham.stacey-r"},
+    {"name": "McCord", "party": "d", "votes": 12, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.register-of-deeds.rockingham.mccord-d"}]},
+  "D|register-of-probate|Rockingham": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-probate.rockingham", "count_from": "the places' sum", "scatter": 46, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Davidson", "party": "d", "votes": 28146, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-probate.rockingham.davidson-d"},
+    {"name": "Tweedie", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.register-of-probate.rockingham.tweedie-r"}]},
+  "R|register-of-probate|Rockingham": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.register-of-probate.rockingham", "count_from": "the places' sum", "scatter": 76, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Tweedie", "party": "r", "votes": 29561, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.register-of-probate.rockingham.tweedie-r"},
+    {"name": "Davidson", "party": "d", "votes": 15, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.register-of-probate.rockingham.davidson-d"}]},
+  "D|sheriff|Rockingham": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.sheriff.rockingham", "count_from": "the places' sum", "scatter": 200, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Rivard", "party": "d", "votes": 27538, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.sheriff.rockingham.rivard-d"},
+    {"name": "Coyle", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.rockingham.coyle-r"},
+    {"name": "Massahos", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.rockingham.massahos-r"}]},
+  "R|sheriff|Rockingham": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.sheriff.rockingham", "count_from": "the places' sum", "scatter": 58, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Rockingham", "candidates": [
+    {"name": "Coyle", "party": "r", "votes": 11249, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.rockingham.coyle-r"},
+    {"name": "Massahos", "party": "r", "votes": 22874, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.sheriff.rockingham.massahos-r"},
+    {"name": "Rivard", "party": "d", "votes": 10, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.rockingham.rivard-d"}]},
+  "D|county-attorney|Strafford": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-attorney.strafford", "count_from": "the places' sum", "scatter": 30, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Velardi", "party": "d", "votes": 13397, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-attorney.strafford.velardi-d"}]},
+  "R|county-attorney|Strafford": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.county-attorney.strafford", "count_from": "the places' sum", "scatter": 104, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Velardi", "party": "d", "votes": 70, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.county-attorney.strafford.velardi-d"}]},
+  "D|county-commissioner|Strafford": {"party": "d", "office": "county-commissioner", "district": null, "seats": null, "contest": "2020-09-08.primary-d.county-commissioner.strafford", "count_from": "the places' sum", "scatter": 59, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Strafford", "candidates": [
+    {"name": "Rollo", "party": "d", "votes": 11324, "write_in": false, "nominated": null, "id": "2020-09-08.primary-d.county-commissioner.strafford.rollo-d"},
+    {"name": "Maglaras", "party": "d", "votes": 10806, "write_in": false, "nominated": null, "id": "2020-09-08.primary-d.county-commissioner.strafford.maglaras-d"},
+    {"name": "Watson", "party": "d", "votes": 10468, "write_in": false, "nominated": null, "id": "2020-09-08.primary-d.county-commissioner.strafford.watson-d"}]},
+  "R|county-commissioner|Strafford": {"party": "r", "office": "county-commissioner", "district": null, "seats": null, "contest": "2020-09-08.primary-r.county-commissioner.strafford", "count_from": "the places' sum", "scatter": null, "undervotes": null, "overvotes": null, "printed_totals": 8, "county": "Strafford", "recounted": true, "candidates": [
+    {"name": "Rollo", "party": "d", "votes": 38, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.county-commissioner.strafford.rollo-d"},
+    {"name": "Maglaras", "party": "d", "votes": 97, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.county-commissioner.strafford.maglaras-d"},
+    {"name": "Watson", "party": "d", "votes": 417, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.county-commissioner.strafford.watson-d"},
+    {"name": "Cintavey", "party": "", "votes": 30, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.county-commissioner.strafford.cintavey"}]},
+  "D|county-treasurer|Strafford": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-treasurer.strafford", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Arnold", "party": "d", "votes": 13471, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-treasurer.strafford.arnold-d"}]},
+  "R|county-treasurer|Strafford": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.county-treasurer.strafford", "count_from": "the places' sum", "scatter": 117, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Arnold", "party": "d", "votes": 42, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.county-treasurer.strafford.arnold-d"}]},
+  "D|register-of-deeds|Strafford": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-deeds.strafford", "count_from": "the places' sum", "scatter": 14, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Berube", "party": "d", "votes": 13516, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-deeds.strafford.berube-d"}]},
+  "R|register-of-deeds|Strafford": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.register-of-deeds.strafford", "count_from": "the places' sum", "scatter": 102, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Berube", "party": "d", "votes": 65, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.register-of-deeds.strafford.berube-d"}]},
+  "D|register-of-probate|Strafford": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-probate.strafford", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Bay", "party": "d", "votes": 13098, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-probate.strafford.bay-d"}]},
+  "R|register-of-probate|Strafford": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.register-of-probate.strafford", "count_from": "the places' sum", "scatter": 132, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Bay", "party": "d", "votes": 28, "write_in": false, "nominated": null, "id": "2020-09-08.primary-r.register-of-probate.strafford.bay-d"}]},
+  "D|sheriff|Strafford": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.sheriff.strafford", "count_from": "the places' sum", "scatter": 33, "undervotes": null, "overvotes": null, "printed_totals": 7, "county": "Strafford", "candidates": [
+    {"name": "Brave", "party": "d", "votes": 5894, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.sheriff.strafford.brave-d"},
+    {"name": "Drysdale", "party": "d", "votes": 1775, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.strafford.drysdale-d"},
+    {"name": "Hayes", "party": "d", "votes": 4343, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.strafford.hayes-d"},
+    {"name": "Macaione", "party": "d", "votes": 1958, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.strafford.macaione-d"},
+    {"name": "Callaghan", "party": "r", "votes": 53, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.strafford.callaghan-r"},
+    {"name": "Estes", "party": "r", "votes": 32, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.sheriff.strafford.estes-r"}]},
+  "R|sheriff|Strafford": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2020-09-08.primary-r.sheriff.strafford", "count_from": "the places' sum", "scatter": 32, "undervotes": null, "overvotes": null, "printed_totals": 7, "county": "Strafford", "candidates": [
+    {"name": "Callaghan", "party": "r", "votes": 4847, "write_in": false, "nominated": true, "id": "2020-09-08.primary-r.sheriff.strafford.callaghan-r"},
+    {"name": "Estes", "party": "r", "votes": 4442, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.strafford.estes-r"},
+    {"name": "Brave", "party": "d", "votes": 77, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.strafford.brave-d"},
+    {"name": "Drysdale", "party": "d", "votes": 37, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.strafford.drysdale-d"},
+    {"name": "Hayes", "party": "d", "votes": 30, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.strafford.hayes-d"},
+    {"name": "Macaione", "party": "d", "votes": 273, "write_in": false, "nominated": false, "id": "2020-09-08.primary-r.sheriff.strafford.macaione-d"}]},
+  "D|county-attorney|Sullivan": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-attorney.sullivan", "count_from": "the places' sum", "scatter": 40, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Hathaway", "party": "r", "votes": 95, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-attorney.sullivan.hathaway-r"}]},
+  "D|county-commissioner|Sullivan|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.sullivan-1", "count_from": "the places' sum", "scatter": 49, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Ray Gagnon", "party": "", "votes": 393, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.sullivan-1.ray-gagnon"},
+    {"name": "Joe Osgood", "party": "", "votes": 40, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.sullivan-1.joe-osgood"}]},
+  "D|county-commissioner|Sullivan|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2020-09-08.primary-d.county-commissioner.sullivan-2", "count_from": "the places' sum", "scatter": 16, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Irwin", "party": "d", "votes": 3701, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.county-commissioner.sullivan-2.irwin-d"},
+    {"name": "Nelson", "party": "r", "votes": 25, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.county-commissioner.sullivan-2.nelson-r"}]},
+  "D|county-treasurer|Sullivan": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.county-treasurer.sullivan", "count_from": "the places' sum", "scatter": 42, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Sanderson", "party": "r", "votes": 26, "write_in": false, "nominated": null, "id": "2020-09-08.primary-d.county-treasurer.sullivan.sanderson-r"}]},
+  "D|register-of-deeds|Sullivan": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-deeds.sullivan", "count_from": "the places' sum", "scatter": 35, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Gibson", "party": "r", "votes": 45, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-deeds.sullivan.gibson-r"}]},
+  "D|register-of-probate|Sullivan": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.register-of-probate.sullivan", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Eames", "party": "d", "votes": 3553, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.register-of-probate.sullivan.eames-d"},
+    {"name": "Rodd Ward", "party": "", "votes": 0, "write_in": false, "nominated": false, "id": "2020-09-08.primary-d.register-of-probate.sullivan.rodd-ward"}]},
+  "D|sheriff|Sullivan": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2020-09-08.primary-d.sheriff.sullivan", "count_from": "the places' sum", "scatter": 53, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Simonds", "party": "r", "votes": 164, "write_in": false, "nominated": true, "id": "2020-09-08.primary-d.sheriff.sullivan.simonds-r"}]}
  }
 }

@@ -1,6 +1,6 @@
 {
  "_about": [
-   "What the Secretary of State's State Primary results files say of the State Representative and State Senate races, each party's primary its own race, read by src/parse/parse_sos_primary_results.py from the files in _source and held to the same year's general election (collected/election_<year>.json). Nothing in it is this project's decision but the nominees, which the files do not mark: the candidates with the most votes, as many as the race has seats and none with no votes; null where the count does not settle it.",
+   "What the Secretary of State's State Primary results files say, each party's primary its own race: the State Representative and State Senate races, read by src/parse/parse_sos_primary_results.py and held to the same year's general election (collected/election_<year>.json), and Governor, United States Senator, Representative in Congress, Executive Councilor and the county offices, read by src/parse/parse_sos_primary_offices.py; each from the files in _source. Nothing in it is this project's decision but the nominees, which the files do not mark: the candidates with the most votes, as many as the race has seats and none with no votes; null where the count does not settle it.",
    "Write the file again by running the reader, never by hand: --check says where the saved files and this disagree."
  ],
  "_notes": [
@@ -151,7 +151,66 @@
    "2016-sp-state-senate-1-24-democratic.xls, district 22: the general election has no file for the State Senate, so the race is the primary file's alone, its towns as it spells them",
    "2016-sp-state-senate-1-24-democratic.xls, district 23: the general election has no file for the State Senate, so the race is the primary file's alone, its towns as it spells them",
    "2016-sp-state-senate-1-24-democratic.xls, district 24: the general election has no file for the State Senate, so the race is the primary file's alone, its towns as it spells them",
-   "2016-sp-state-senate-1-24-democratic.xls: 485 empty cell(s) under a candidate, read as none"
+   "2016-sp-state-senate-1-24-democratic.xls: 485 empty cell(s) under a candidate, read as none",
+   "2016-governor-democratic.xls, sheet 'dsum-belkgov', row 36: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2016-governor-democratic.xls, sheet 'hillsborough', row 57: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "the democratic Governor primary: 1314 empty cell(s) under a candidate, read as none",
+   "2016-sp-governor-republican.xls, sheet 'rsum-belkgov', row 36: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2016-sp-governor-republican.xls, sheet 'coos', row 50: the file's footnote '*corrections received from clerk'; the figures are those it prints",
+   "2016-sp-governor-republican.xls, sheet 'hillsborough', row 57: the file's footnote '*corrections received from clerk'; the figures are those it prints",
+   "the republican Governor primary: 1417 empty cell(s) under a candidate, read as none",
+   "2016-sp-u.s.-senate-democratic.xls, sheet 'rsum-belkgov', row 36: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2016-sp-u.s.-senate-democratic.xls, sheet 'hillsborough', row 57: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "the democratic United States Senator primary: 1389 empty cell(s) under a candidate, read as none",
+   "2016-sp-u.s.-senate-republican.xls, sheet 'rsum-belkgov', row 36: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2016-sp-u.s.-senate-republican.xls, sheet 'coos', row 50: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2016-sp-u.s.-senate-republican.xls, sheet 'hillsborough', row 57: the file's footnote '*corrections received from clerk'; the figures are those it prints",
+   "2016-sp-u.s.-senate-republican.xls, sheet 'merrimack', row 45: the file's footnote '*corrections received from clerk'; the figures are those it prints",
+   "the republican United States Senator primary: 233 empty cell(s) under a candidate, read as none",
+   "2016-sp-executive-council-1-5-democratic.xls, sheet 'dcouncil4', row 36: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2016-sp-executive-council-1-5-democratic.xls: 107 empty cell(s) under a candidate, read as none",
+   "2016-sp-executive-council-1-5-republican-.xls, sheet 'rcouncil1', row 141: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2016-sp-executive-council-1-5-republican-.xls, sheet 'rcouncil4', row 36: the file's footnote '*corrections received from clerk'; the figures are those it prints",
+   "2016-sp-executive-council-1-5-republican-.xls: 250 empty cell(s) under a candidate, read as none",
+   "congressional-district-1-democratic.xlsx, sheet 'Con 1 dem', row 120: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "congressional-district-1-democratic.xlsx: 492 empty cell(s) under a candidate, read as none",
+   "congressional-district-1-republican16.xlsx, sheet 'Con1 Rep', row 120: the file's footnote '*corrections received from clerk'; the figures are those it prints",
+   "congressional-district-1-republican16.xlsx: 1 empty cell(s) under a candidate, read as none",
+   "2016-sp-carroll-county-democratic.xls, sheet 'rcarroll', row 51: D|county-commissioner|Carroll|2: No Election; no race is read",
+   "2016-sp-carroll-county-republican.xls, sheet 'rcarroll', row 51: the file counts no scattered write-ins, so whether a write-in it does not name won could not be checked",
+   "2016-09-13.primary-r.county-attorney.carroll: R|county-attorney|Carroll: O'Rourke-Andruzzi not settled by the count -- a tie for the last place, or the write-ins nobody named (76) could have taken it",
+   "2016-sp-carroll-county-republican.xls, sheet 'rcarroll', row 51: R|county-commissioner|Carroll|2: No Election; no race is read",
+   "2016-sp-coos-county-democratic.xls, sheet 'rcoos', row 100: D|county-commissioner|Coos|3: No Election; no race is read",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 102: Bean's Grant prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 103: Bean's Purchase prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 107: Chandler's Purchase prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 111: Crawford's Purchase prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 112: Cutt's Grant prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 120: Green's Grant prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 121: Hadley's Purchase prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 123: Kilkenny prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 125: Low & Burbank's Gt. prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 126: Martin's Location prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 131: Pinkham's Grant prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 134: Sargent's Purchase prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 141: Thompson & Mes's Pur. prints only a 0 under county-commissioner|Coos|2, whose other cells it leaves empty; read as no row of that race",
+   "2016-09-13.primary-r.county-attorney.coos: R|county-attorney|Coos: McCormick not settled by the count -- a tie for the last place, or the write-ins nobody named (56) could have taken it",
+   "2016-09-13.primary-r.county-commissioner.coos-1: R|county-commissioner|Coos|1: Grenier not settled by the count -- a tie for the last place, or the write-ins nobody named (7) could have taken it",
+   "2016-sp-coos-county-republican.xls, sheet 'rcoos', row 100: R|county-commissioner|Coos|3: No Election; no race is read",
+   "2016-sp-hillsborough-county-democratic.xls, sheet 'dhillsborough', row 166: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2016-sp-hillsborough-county-republican.xls, sheet 'rhillsborough', row 166: the file's footnote '*corrections receivd from clerk'; the figures are those it prints",
+   "2016-09-13.primary-d.sheriff.merrimack: D|sheriff|Merrimack: Hilliard not settled by the count -- a tie for the last place, or the write-ins nobody named (273) could have taken it",
+   "2016-09-13.primary-d.county-attorney.merrimack: D|county-attorney|Merrimack: Murray not settled by the count -- a tie for the last place, or the write-ins nobody named (217) could have taken it",
+   "2016-09-13.primary-d.county-commissioner.merrimack-2: D|county-commissioner|Merrimack|2: Asplund-Walsh not settled by the count -- a tie for the last place, or the write-ins nobody named (45) could have taken it",
+   "2016-sp-merrimack-county-democratic.xls, sheet 'rmerrimack', row 89: D|county-commissioner|Merrimack|1: No Election; no race is read",
+   "2016-sp-merrimack-county-republican.xls, sheet 'rmerrimack', row 130: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2016-sp-merrimack-county-republican.xls, sheet 'rmerrimack', row 89: R|county-commissioner|Merrimack|1: No Election; no race is read",
+   "2016-09-13.primary-d.sheriff.rockingham: D|sheriff|Rockingham: Greg Warner not settled by the count -- a tie for the last place, or the write-ins nobody named (311) could have taken it",
+   "2016-sp-rockingham-county-democratic.xls, sheet 'drockingham', row 96: D|county-commissioner|Rockingham|3: No Election; no race is read",
+   "2016-sp-rockingham-county-republican.xls, sheet 'rrockingham', row 96: R|county-commissioner|Rockingham|3: No Election; no race is read",
+   "2016-09-13.primary-d.county-treasurer.sullivan: D|county-treasurer|Sullivan: Sanderson not settled by the count -- a tie for the last place, or the write-ins nobody named (34) could have taken it",
+   "2016-sp-sullivan-county-democratic.xls, sheet 'rsullivan', row 47: D|county-commissioner|Sullivan|1: No Election; no race is read",
+   "2016-sp-sullivan-county-republicanl.xls, sheet 'rsullivan', row 47: R|county-commissioner|Sullivan|1: No Election; no race is read"
  ],
  "_refused": [
    {
@@ -181,6 +240,54 @@
    {
      "file": "2016-sp-state-senate-1-24-republican.xls",
      "why": "2016-sp-state-senate-1-24-republican.xls, sheet 'rsenate12-15', row 36: 'Newman, Jeff' in column 5 is neither a candidate (\"Name, d\") nor Undervotes, Overvotes or Write-Ins"
+   },
+   {
+     "file": "congressional-district-2-republican16.xlsx",
+     "why": "congressional-district-2-republican16.xlsx, sheet 'Con2 Rep', row 18: Bath twice under one header"
+   },
+   {
+     "file": "2016-sp-belknap-county-democraticl.xls",
+     "why": "2016-sp-belknap-county-democraticl.xls, sheet 'rbelknap', row 2: [None, 'Belknap County Offices - Democratc'] before the sheet's titles name the State and Belknap County's offices"
+   },
+   {
+     "file": "2016-sp-belknap-county-republican.xls",
+     "why": "2016-sp-belknap-county-republican.xls, sheet 'rbelknap', row 46: a \"No Election\" mark among county-commissioner|Belknap|1's candidates"
+   },
+   {
+     "file": "2016-sp-cheshire-county-democratic.xls",
+     "why": "2016-sp-cheshire-county-democratic.xls, sheet 'rcheshire', row 35: two names in column 8's header"
+   },
+   {
+     "file": "2016-sp-cheshire-county-republican.xls",
+     "why": "2016-sp-cheshire-county-republican.xls, sheet 'rcheshire', row 35: two names in column 8's header"
+   },
+   {
+     "file": "2016-sp-coos-county-democratic.xls",
+     "race": "D|register-of-probate|Coos",
+     "why": "2016-sp-coos-county-democratic.xls, sheet 'rcoos', row 76: 1 in column 9, which no header names"
+   },
+   {
+     "file": "2016-sp-grafton-county-democratic.xls",
+     "why": "2016-sp-grafton-county-democratic.xls, sheet 'rgrafton', row 51: a header row that names no candidate"
+   },
+   {
+     "file": "2016-sp-grafton-county-republican.xls",
+     "why": "2016-sp-grafton-county-republican.xls, sheet 'rgrafton', row 51: a header row that names no candidate"
+   },
+   {
+     "file": "2016-sp-strafford-county-democratic.xls",
+     "why": "2016-sp-strafford-county-democratic.xls, sheet 'rstrafford', row 3: the header's day is 2015-09-13, not the election of 2016-09-13"
+   },
+   {
+     "file": "2016-sp-strafford-county-republican.xls",
+     "why": "2016-sp-strafford-county-republican.xls, sheet 'rstrafford', row 3: the header's day is 2015-09-13, not the election of 2016-09-13"
+   }
+ ],
+ "_disagreements": [
+   {
+     "check": "a county's row in the summary is its block's Totals",
+     "what": "Rockingham: write_ins_scattered, the summary prints 7, the county's Totals say 70",
+     "where": "2016-sp-u.s.-senate-democratic.xls, sheet 'rsum-belkgov', row 12; 2016-sp-u.s.-senate-democratic.xls, sheet 'rockingham', row 46"
    }
  ],
  "_source": [
@@ -198,12 +305,134 @@
   {"file": "records/sources/2016-sp-straffprd-house-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "55a8720ea606ff7e4653414e7e65392fc6166c922f7d69ac66dea7824a9c953c"},
   {"file": "records/sources/2016-sp-sullivan-house-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "e5c3e1e051ce69811647688a1f3d42d0375997689e2bb85ed34685cae2085985"},
   {"file": "records/sources/2016-sp-sullivan-house-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "db3a8dc8f850b7f337fbbe4937438ee68c46ad65a44cf42b7b77cbcd59d305a7"},
-  {"file": "records/sources/2016-sp-state-senate-1-24-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "6e155ae73ffb5ea6275b845541d89eb1d404b7fbdb4fb34fe80ad8d3f86567db"}
+  {"file": "records/sources/2016-sp-state-senate-1-24-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "6e155ae73ffb5ea6275b845541d89eb1d404b7fbdb4fb34fe80ad8d3f86567db"},
+  {"file": "records/sources/2016-governor-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "06ab84431a781fedad179c09e0a6b78a13e93e60cf242ff65c4f770b584e0c24"},
+  {"file": "records/sources/2016-sp-governor-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "603be46b1e6dc850f75394bb42f8ab308b20a014b408d0111df8292401183ba6"},
+  {"file": "records/sources/2016-sp-u.s.-senate-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "2d736c9f533fd25d97f962246599f778d4429985db92fe4ddc9ce59c5717c705"},
+  {"file": "records/sources/2016-sp-u.s.-senate-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "b8fec737834ee8f7621e5638c463d4aa09eca3a62464debe0827038ba1ac2d78"},
+  {"file": "records/sources/2016-sp-executive-council-1-5-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "29a281cd38d429df8572508b65e18bcd4c193bfbeb38a5a36987ff3524b775e1"},
+  {"file": "records/sources/2016-sp-executive-council-1-5-republican-.xls", "url": null, "saved": "2026-11-11", "sha256": "63c9615f59d5b58985666088518be37e19dea669033564cd2995e520e747a436"},
+  {"file": "records/sources/congressional-district-1-democratic.xlsx", "url": null, "saved": "2026-11-11", "sha256": "e9aa3b197ffb3ee13792dfdd2309cd57c2abb7b2bf5986147f986b6798f0e584"},
+  {"file": "records/sources/congressional-district-2-democratic.xlsx", "url": null, "saved": "2026-11-11", "sha256": "17eacebc2538294113eb012ea2d2c104363e891c0d8725e701cafba4f2fa6761"},
+  {"file": "records/sources/congressional-district-1-republican16.xlsx", "url": null, "saved": "2026-11-11", "sha256": "93949353cbea41dcae06ce3d0a9f891b01fa972e65bc2235f72b7287e394eb3a"},
+  {"file": "records/sources/2016-sp-carroll-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "ddd723fc8533347bd9f467330ec58e04c29ab50286ad0b15bcc48a8c21ac6ea7"},
+  {"file": "records/sources/2016-sp-carroll-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "39279492482dad1d8fffa9423b8a74bb0f659be1d8b26625a1c8015b52368873"},
+  {"file": "records/sources/2016-sp-coos-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "4da194c9e43446dfa954172ef634012f774955398c1972c536efa8d919efac80"},
+  {"file": "records/sources/2016-sp-coos-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "f6b0e28c00ec1e39a005ed08d0ac8f65b1b4ed016aaab753e4f9c592f66624f6"},
+  {"file": "records/sources/2016-sp-hillsborough-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "44d39a6222cfca7d76bdcf4fedf726dc564b2f22c698b7726b7df5e39d4ba8d6"},
+  {"file": "records/sources/2016-sp-hillsborough-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "95a1850afe26b0e152ebc728bc54e551272b81aaffeda57e49e35e7f38efd7c3"},
+  {"file": "records/sources/2016-sp-merrimack-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "b1636003297355897c8e7f0e64ea8398f419cd97593d0407670f513c1157e13a"},
+  {"file": "records/sources/2016-sp-merrimack-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "aa376c2c8e48b664aa1100ad45ccf501aab6ea68f406d66681c7ccaf3d00c54d"},
+  {"file": "records/sources/2016-sp-rockingham-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "b602208aeda0be4b4f08562ad74c545b298ea41adfde53024dc8769db910f702"},
+  {"file": "records/sources/2016-sp-rockingham-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "c1190b5b8e982b38b981fbce129a9ed62bc8b80baeb073b797160edc581ddd2f"},
+  {"file": "records/sources/2016-sp-sullivan-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "6cb71ba0197f941edf761960e321b496e93ca0856826be7744b06a180ff22e5b"},
+  {"file": "records/sources/2016-sp-sullivan-county-republicanl.xls", "url": null, "saved": "2026-11-11", "sha256": "999969cab136eb75ea4f62453c85e592a5b8f1e409d7eeb5e96236dd3c118042"}
  ],
  "election": "2016-09-13",
  "general": "2016-11-08",
  "term": "2017-2018",
  "races": {
+  "D|governor": {"party": "d", "office": "governor", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.governor.statewide", "count_from": "the summary's Totals", "scatter": 159, "undervotes": null, "overvotes": null, "printed_totals": 114, "candidates": [
+    {"name": "Mark Connolly", "party": "d", "votes": 14878, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.governor.statewide.mark-connolly-d"},
+    {"name": "Derek Dextraze", "party": "d", "votes": 563, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.governor.statewide.derek-dextraze-d"},
+    {"name": "Ian Freeman", "party": "d", "votes": 1076, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.governor.statewide.ian-freeman-d"},
+    {"name": "Steve Marchand", "party": "d", "votes": 18285, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.governor.statewide.steve-marchand-d"},
+    {"name": "Colin Van Ostern", "party": "d", "votes": 37759, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.governor.statewide.colin-van-ostern-d"},
+    {"name": "Frank Edelbut", "party": "r", "votes": 89, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.governor.statewide.frank-edelbut-r"},
+    {"name": "Jeanie Forrester", "party": "r", "votes": 100, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.governor.statewide.jeanie-forrester-r"},
+    {"name": "Ted Gatsas", "party": "r", "votes": 334, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.governor.statewide.ted-gatsas-r"},
+    {"name": "Jonathan Lavoie", "party": "r", "votes": 11, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.governor.statewide.jonathan-lavoie-r"},
+    {"name": "Chris Sununu", "party": "r", "votes": 200, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.governor.statewide.chris-sununu-r"}]},
+  "R|governor": {"party": "r", "office": "governor", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.governor.statewide", "count_from": "the summary's Totals", "scatter": 199, "undervotes": null, "overvotes": null, "printed_totals": 105, "candidates": [
+    {"name": "Frank Edelblut", "party": "r", "votes": 33161, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.governor.statewide.frank-edelblut-r"},
+    {"name": "Jeanie Forrester", "party": "r", "votes": 19634, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.governor.statewide.jeanie-forrester-r"},
+    {"name": "Ted Gatsas", "party": "r", "votes": 22961, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.governor.statewide.ted-gatsas-r"},
+    {"name": "Jonathan Lavoie", "party": "r", "votes": 1438, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.governor.statewide.jonathan-lavoie-r"},
+    {"name": "Chris Sununu", "party": "r", "votes": 34194, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.governor.statewide.chris-sununu-r"},
+    {"name": "Mark Connolly", "party": "d", "votes": 71, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.governor.statewide.mark-connolly-d"},
+    {"name": "Derek Dextraze", "party": "d", "votes": 5, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.governor.statewide.derek-dextraze-d"},
+    {"name": "Ian Freeman", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.governor.statewide.ian-freeman-d"},
+    {"name": "Steve Marchand", "party": "d", "votes": 100, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.governor.statewide.steve-marchand-d"},
+    {"name": "Colin Van Ostern", "party": "d", "votes": 100, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.governor.statewide.colin-van-ostern-d"}]},
+  "D|us-senate": {"party": "d", "office": "us-senate", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.us-senate.statewide", "count_from": "the summary's Totals", "scatter": 470, "undervotes": null, "overvotes": null, "printed_totals": 54, "candidates": [
+    {"name": "Maggie Hassan", "party": "d", "votes": 70374, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.us-senate.statewide.maggie-hassan-d"},
+    {"name": "Tom Alciere", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-senate.statewide.tom-alciere-r"},
+    {"name": "Kelly Ayotte", "party": "r", "votes": 775, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-senate.statewide.kelly-ayotte-r"},
+    {"name": "Gerard Beloin", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-senate.statewide.gerard-beloin-r"},
+    {"name": "Stanley M. Emanuel", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-senate.statewide.stanley-m-emanuel-r"},
+    {"name": "Jim Rubens", "party": "r", "votes": 67, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-senate.statewide.jim-rubens-r"}]},
+  "R|us-senate": {"party": "r", "office": "us-senate", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.us-senate.statewide", "count_from": "the summary's Totals", "scatter": 167, "undervotes": null, "overvotes": null, "printed_totals": 77, "candidates": [
+    {"name": "Tom Alciere", "party": "r", "votes": 1586, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.us-senate.statewide.tom-alciere-r"},
+    {"name": "Kelly Ayotte", "party": "r", "votes": 86676, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.us-senate.statewide.kelly-ayotte-r"},
+    {"name": "Gerard Beloin", "party": "r", "votes": 1255, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.us-senate.statewide.gerard-beloin-r"},
+    {"name": "Stanley M. Emanuel", "party": "r", "votes": 1187, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.us-senate.statewide.stanley-m-emanuel-r"},
+    {"name": "Jim Rubens", "party": "r", "votes": 19156, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.us-senate.statewide.jim-rubens-r"},
+    {"name": "Maggie Hassan", "party": "d", "votes": 301, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.us-senate.statewide.maggie-hassan-d"}]},
+  "D|us-house|1": {"party": "d", "office": "us-house", "district": 1, "seats": 1, "contest": "2016-09-13.primary-d.us-house.1", "count_from": "the places' sum", "scatter": 236, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Carol Shea-Porter", "party": "d", "votes": 32409, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.us-house.1.carol-shea-porter-d"},
+    {"name": "Rich Ashooh", "party": "r", "votes": 88, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.1.rich-ashooh-r"},
+    {"name": "Michael Callis", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.1.michael-callis-r"},
+    {"name": "Jamieson Gradert", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.1.jamieson-gradert-r"},
+    {"name": "Frank Guinta", "party": "r", "votes": 59, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.1.frank-guinta-r"},
+    {"name": "Robert Risley", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.1.robert-risley-r"}]},
+  "R|us-house|1": {"party": "r", "office": "us-house", "district": 1, "seats": 1, "contest": "2016-09-13.primary-r.us-house.1", "count_from": "the places' sum", "scatter": 62, "undervotes": null, "overvotes": null, "printed_totals": 7, "candidates": [
+    {"name": "Rich Ashooh", "party": "r", "votes": 25678, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.us-house.1.rich-ashooh-r"},
+    {"name": "Michael Callis", "party": "r", "votes": 2243, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.us-house.1.michael-callis-r"},
+    {"name": "Jamieson Gradert", "party": "r", "votes": 1031, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.us-house.1.jamieson-gradert-r"},
+    {"name": "Frank Guinta", "party": "r", "votes": 26400, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.us-house.1.frank-guinta-r"},
+    {"name": "Robert Risley", "party": "r", "votes": 1347, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.us-house.1.robert-risley-r"},
+    {"name": "Carol Shea-Porter", "party": "d", "votes": 49, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.us-house.1.carol-shea-porter-d"}]},
+  "D|us-house|2": {"party": "d", "office": "us-house", "district": 2, "seats": 1, "contest": "2016-09-13.primary-d.us-house.2", "count_from": "the places' sum", "scatter": 177, "undervotes": null, "overvotes": null, "printed_totals": 9, "candidates": [
+    {"name": "Ann McLane Kuster", "party": "d", "votes": 36683, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.us-house.2.ann-mclane-kuster-d"},
+    {"name": "Eric P. Estevez", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.2.eric-p-estevez-r"},
+    {"name": "Jack B. Flanagan", "party": "r", "votes": 19, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.2.jack-b-flanagan-r"},
+    {"name": "Walter W. Kelly", "party": "r", "votes": 7, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.2.walter-w-kelly-r"},
+    {"name": "Jim Lawrence", "party": "r", "votes": 29, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.2.jim-lawrence-r"},
+    {"name": "Andy Martin", "party": "r", "votes": 7, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.2.andy-martin-r"},
+    {"name": "Jay Mercer", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.2.jay-mercer-r"},
+    {"name": "Casey Newell", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.us-house.2.casey-newell-r"}]},
+  "D|executive-council|1": {"party": "d", "office": "executive-council", "district": 1, "seats": 1, "contest": "2016-09-13.primary-d.executive-council.1", "count_from": "the places' sum", "scatter": 25, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Michael J. Cryans", "party": "d", "votes": 14443, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.executive-council.1.michael-j-cryans-d"},
+    {"name": "Paul Carreiro", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.1.paul-carreiro-r"},
+    {"name": "Joseph D. Kenney", "party": "r", "votes": 28, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.1.joseph-d-kenney-r"}]},
+  "R|executive-council|1": {"party": "r", "office": "executive-council", "district": 1, "seats": 1, "contest": "2016-09-13.primary-r.executive-council.1", "count_from": "the places' sum", "scatter": 40, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Paul Carreiro", "party": "r", "votes": 4113, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.1.paul-carreiro-r"},
+    {"name": "Joseph D. Kenney", "party": "r", "votes": 16961, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.executive-council.1.joseph-d-kenney-r"},
+    {"name": "Michael J. Cryans", "party": "d", "votes": 46, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.1.michael-j-cryans-d"}]},
+  "D|executive-council|2": {"party": "d", "office": "executive-council", "district": 2, "seats": 1, "contest": "2016-09-13.primary-d.executive-council.2", "count_from": "the places' sum", "scatter": 39, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Shawn Mickelonis", "party": "d", "votes": 1474, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.2.shawn-mickelonis-d"},
+    {"name": "John D. Shea", "party": "d", "votes": 5342, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.2.john-d-shea-d"},
+    {"name": "Andru Volinsky", "party": "d", "votes": 9063, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.executive-council.2.andru-volinsky-d"},
+    {"name": "Sam Cataldo", "party": "r", "votes": 6, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.2.sam-cataldo-r"}]},
+  "R|executive-council|2": {"party": "r", "office": "executive-council", "district": 2, "seats": 1, "contest": "2016-09-13.primary-r.executive-council.2", "count_from": "the places' sum", "scatter": 74, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Sam Cataldo", "party": "r", "votes": 13004, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.executive-council.2.sam-cataldo-r"},
+    {"name": "Shawn Mickelonis", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.2.shawn-mickelonis-d"},
+    {"name": "John D. Shea", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.2.john-d-shea-d"},
+    {"name": "Andru Volinsky", "party": "d", "votes": 14, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.2.andru-volinsky-d"}]},
+  "D|executive-council|3": {"party": "d", "office": "executive-council", "district": 3, "seats": 1, "contest": "2016-09-13.primary-d.executive-council.3", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Joshua Bourdon", "party": "d", "votes": 3928, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.3.joshua-bourdon-d"},
+    {"name": "Beth Roth", "party": "d", "votes": 7683, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.executive-council.3.beth-roth-d"},
+    {"name": "Kevin Coyle", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.3.kevin-coyle-r"},
+    {"name": "Russell Prescott", "party": "r", "votes": 15, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.3.russell-prescott-r"}]},
+  "R|executive-council|3": {"party": "r", "office": "executive-council", "district": 3, "seats": 1, "contest": "2016-09-13.primary-r.executive-council.3", "count_from": "the places' sum", "scatter": 23, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Kevin Coyle", "party": "r", "votes": 6902, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.3.kevin-coyle-r"},
+    {"name": "Russell Prescott", "party": "r", "votes": 11507, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.executive-council.3.russell-prescott-r"},
+    {"name": "Joshua Bourdon", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.3.joshua-bourdon-d"},
+    {"name": "Beth Roth", "party": "d", "votes": 8, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.3.beth-roth-d"}]},
+  "D|executive-council|4": {"party": "d", "office": "executive-council", "district": 4, "seats": 1, "contest": "2016-09-13.primary-d.executive-council.4", "count_from": "the places' sum", "scatter": 36, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Christopher C. Pappas", "party": "d", "votes": 12434, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.executive-council.4.christopher-c-pappas-d"},
+    {"name": "Jim Adams", "party": "r", "votes": 11, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.4.jim-adams-r"},
+    {"name": "Joseph Kelly Levasseur", "party": "r", "votes": 26, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.4.joseph-kelly-levasseur-r"}]},
+  "R|executive-council|4": {"party": "r", "office": "executive-council", "district": 4, "seats": 1, "contest": "2016-09-13.primary-r.executive-council.4", "count_from": "the places' sum", "scatter": 37, "undervotes": null, "overvotes": null, "printed_totals": 2, "candidates": [
+    {"name": "Jim Adams", "party": "r", "votes": 9719, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.4.jim-adams-r"},
+    {"name": "Joseph Kelly Levasseur", "party": "r", "votes": 10599, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.executive-council.4.joseph-kelly-levasseur-r"},
+    {"name": "Christopher C. Pappas", "party": "d", "votes": 30, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.4.christopher-c-pappas-d"}]},
+  "D|executive-council|5": {"party": "d", "office": "executive-council", "district": 5, "seats": 1, "contest": "2016-09-13.primary-d.executive-council.5", "count_from": "the places' sum", "scatter": 22, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Dan Weeks", "party": "d", "votes": 11290, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.executive-council.5.dan-weeks-d"},
+    {"name": "Dave Wheeler", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.executive-council.5.dave-wheeler-r"}]},
+  "R|executive-council|5": {"party": "r", "office": "executive-council", "district": 5, "seats": 1, "contest": "2016-09-13.primary-r.executive-council.5", "count_from": "the places' sum", "scatter": 91, "undervotes": null, "overvotes": null, "printed_totals": 2, "candidates": [
+    {"name": "Dave Wheeler", "party": "r", "votes": 16285, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.executive-council.5.dave-wheeler-r"},
+    {"name": "Dan Weeks", "party": "d", "votes": 13, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.executive-council.5.dan-weeks-d"}]},
   "D|S|1": {"party": "d", "seats": 1, "floterial": null, "towns": ["Atkinson and Gilmanton Ac. Gt.", "Bath", "Bean's Grant", "Bean's Purchase", "Benton", "Berlin", "Bethlehem", "Cambridge", "Carroll", "Chandler's Purchase", "Clarksville", "Colebrook", "Columbia", "Crawford's Purchase", "Cutt's Grant", "Dalton", "Dix's Grant", "Dixville", "Dummer", "Easton", "Errol", "Erving's Location", "Franconia", "Gorham", "Green's Grant", "Hadley's Purchase", "Jefferson", "Kilkenny", "Lancaster", "Landaff", "Lincoln", "Lisbon", "Littleton", "Livermore", "Low and Burbank's Grant", "Lyman", "Martin's Location", "Milan", "Millsfield", "Monroe", "Northumberland", "Odell", "Pinkham's Grant", "Pittsburg", "Randolph", "Sargent's Purchase", "Second College Grant", "Shelburne", "Stark", "Stewartstown", "Stratford", "Success", "Sugar Hill", "Thompson & Meserve's Pur.", "Thornton", "Wentworth's Location", "Whitefield", "Woodstock"], "scatter": null, "printed_totals": 1, "candidates": [
     {"name": "Woodburn", "party": "d", "votes": 2761, "write_in": false, "nominated": true},
     {"name": "McPhaul", "party": "r", "votes": 0, "write_in": false, "nominated": false},
@@ -1785,6 +2014,249 @@
     {"name": "Smith", "party": "r", "votes": 2, "write_in": false, "nominated": false}]},
   "R|H|Sullivan|11": {"party": "r", "seats": 1, "floterial": true, "towns": ["Acworth", "Charlestown", "Goshen", "Langdon", "Lempster", "Washington"], "scatter": 7, "printed_totals": 3, "surnames": true, "candidates": [
     {"name": "Smith", "party": "r", "votes": 639, "write_in": false, "nominated": true},
-    {"name": "Tuthill", "party": "d", "votes": 1, "write_in": false, "nominated": false}]}
+    {"name": "Tuthill", "party": "d", "votes": 1, "write_in": false, "nominated": false}]},
+  "D|county-attorney|Carroll": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-attorney.carroll", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "O'Rourke-Andruzzi", "party": "d", "votes": 2336, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-attorney.carroll.o-rourke-andruzzi-d"}]},
+  "R|county-attorney|Carroll": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-attorney.carroll", "count_from": "the places' sum", "scatter": 76, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "O'Rourke-Andruzzi", "party": "d", "votes": 40, "write_in": false, "nominated": null, "id": "2016-09-13.primary-r.county-attorney.carroll.o-rourke-andruzzi-d"}]},
+  "D|county-commissioner|Carroll|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.carroll-1", "count_from": "the places' sum", "scatter": 70, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Hounsell", "party": "r", "votes": 22, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.carroll-1.hounsell-r"},
+    {"name": "Weiss, B", "party": "", "votes": 276, "write_in": true, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.carroll-1.weiss-b-write-in"}]},
+  "R|county-commissioner|Carroll|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.carroll-1", "count_from": "the places' sum", "scatter": 79, "undervotes": null, "overvotes": null, "printed_totals": 1, "county": "Carroll", "candidates": [
+    {"name": "Hounsell", "party": "r", "votes": 4070, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.carroll-1.hounsell-r"}]},
+  "D|county-commissioner|Carroll|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.carroll-3", "count_from": "the places' sum", "scatter": 22, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Albee", "party": "d", "votes": 2411, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.carroll-3.albee-d"},
+    {"name": "Bevard", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.carroll-3.bevard-r"}]},
+  "R|county-commissioner|Carroll|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.carroll-3", "count_from": "the places' sum", "scatter": null, "undervotes": null, "overvotes": null, "printed_totals": 1, "county": "Carroll", "candidates": [
+    {"name": "Bevard", "party": "r", "votes": 4040, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.carroll-3.bevard-r"},
+    {"name": "Albee", "party": "d", "votes": 25, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.carroll-3.albee-d"}]},
+  "D|county-treasurer|Carroll": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-treasurer.carroll", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Hill", "party": "d", "votes": 2373, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-treasurer.carroll.hill-d"}]},
+  "R|county-treasurer|Carroll": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-treasurer.carroll", "count_from": "the places' sum", "scatter": 46, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Hill", "party": "d", "votes": 6, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-treasurer.carroll.hill-d"},
+    {"name": "Joe Costello", "party": "", "votes": 47, "write_in": true, "nominated": true, "id": "2016-09-13.primary-r.county-treasurer.carroll.joe-costello-write-in"}]},
+  "D|register-of-deeds|Carroll": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-deeds.carroll", "count_from": "the places' sum", "scatter": 46, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Scott", "party": "r", "votes": 112, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-deeds.carroll.scott-r"}]},
+  "R|register-of-deeds|Carroll": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-deeds.carroll", "count_from": "the places' sum", "scatter": 15, "undervotes": null, "overvotes": null, "printed_totals": 1, "county": "Carroll", "candidates": [
+    {"name": "Scott", "party": "r", "votes": 4446, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.register-of-deeds.carroll.scott-r"}]},
+  "D|register-of-probate|Carroll": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-probate.carroll", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Mock", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.register-of-probate.carroll.mock-r"},
+    {"name": "Craig", "party": "d", "votes": 2365, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-probate.carroll.craig-d"}]},
+  "R|register-of-probate|Carroll": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-probate.carroll", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 1, "county": "Carroll", "candidates": [
+    {"name": "Mock", "party": "r", "votes": 4430, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.register-of-probate.carroll.mock-r"},
+    {"name": "Craig", "party": "d", "votes": 22, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-probate.carroll.craig-d"}]},
+  "D|sheriff|Carroll": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.sheriff.carroll", "count_from": "the places' sum", "scatter": 36, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Richardi", "party": "r", "votes": 712, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.sheriff.carroll.richardi-r"},
+    {"name": "Freudenberg", "party": "r", "votes": 57, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.sheriff.carroll.freudenberg-r"}]},
+  "R|sheriff|Carroll": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.sheriff.carroll", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Richardi", "party": "r", "votes": 4060, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.sheriff.carroll.richardi-r"},
+    {"name": "Freudenberg", "party": "r", "votes": 1388, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.sheriff.carroll.freudenberg-r"}]},
+  "D|county-attorney|Coos": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-attorney.coos", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "McCormick", "party": "d", "votes": 1681, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-attorney.coos.mccormick-d"},
+    {"name": "Kelley", "party": "d", "votes": 1680, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-attorney.coos.kelley-d"}]},
+  "R|county-attorney|Coos": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-attorney.coos", "count_from": "the places' sum", "scatter": 56, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "McCormick", "party": "d", "votes": 32, "write_in": false, "nominated": null, "id": "2016-09-13.primary-r.county-attorney.coos.mccormick-d"}]},
+  "D|county-commissioner|Coos|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.coos-1", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Grenier", "party": "d", "votes": 643, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.coos-1.grenier-d"}]},
+  "R|county-commissioner|Coos|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.coos-1", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Grenier", "party": "d", "votes": 6, "write_in": false, "nominated": null, "id": "2016-09-13.primary-r.county-commissioner.coos-1.grenier-d"}]},
+  "D|county-commissioner|Coos|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.coos-2", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "Fredrick", "party": "d", "votes": 518, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.coos-2.fredrick-d"},
+    {"name": "Brady", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.coos-2.brady-r"}]},
+  "R|county-commissioner|Coos|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.coos-2", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "Brady", "party": "r", "votes": 895, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.coos-2.brady-r"},
+    {"name": "Fredrick", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.coos-2.fredrick-d"}]},
+  "D|county-treasurer|Coos": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-treasurer.coos", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Collins", "party": "r", "votes": 9, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-treasurer.coos.collins-r"}]},
+  "R|county-treasurer|Coos": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-treasurer.coos", "count_from": "the places' sum", "scatter": 28, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Collins", "party": "r", "votes": 2089, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-treasurer.coos.collins-r"}]},
+  "D|register-of-deeds|Coos": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-deeds.coos", "count_from": "the places' sum", "scatter": 27, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "Fortin", "party": "r", "votes": 42, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.register-of-deeds.coos.fortin-r"},
+    {"name": "Batchelder", "party": "r", "votes": 54, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-deeds.coos.batchelder-r"}]},
+  "R|register-of-deeds|Coos": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-deeds.coos", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Fortin", "party": "r", "votes": 941, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-deeds.coos.fortin-r"},
+    {"name": "Batchelder", "party": "r", "votes": 1349, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.register-of-deeds.coos.batchelder-r"}]},
+  "R|register-of-probate|Coos": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-probate.coos", "count_from": "the places' sum", "scatter": 0, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "Peterson", "party": "r", "votes": 2117, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.register-of-probate.coos.peterson-r"},
+    {"name": "Gair", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-probate.coos.gair-d"}]},
+  "D|sheriff|Coos": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.sheriff.coos", "count_from": "the places' sum", "scatter": 83, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Valerino", "party": "r", "votes": 137, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.sheriff.coos.valerino-r"}]},
+  "R|sheriff|Coos": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.sheriff.coos", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Valerino", "party": "r", "votes": 2136, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.sheriff.coos.valerino-r"}]},
+  "D|county-attorney|Hillsborough": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-attorney.hillsborough", "count_from": "the places' sum", "scatter": 46, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Corriveau", "party": "d", "votes": 16623, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-attorney.hillsborough.corriveau-d"},
+    {"name": "Hogan", "party": "r", "votes": 16, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-attorney.hillsborough.hogan-r"},
+    {"name": "Sweeney", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-attorney.hillsborough.sweeney-r"}]},
+  "R|county-attorney|Hillsborough": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-attorney.hillsborough", "count_from": "the places' sum", "scatter": 35, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Hogan", "party": "r", "votes": 15908, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-attorney.hillsborough.hogan-r"},
+    {"name": "Sweeney", "party": "r", "votes": 8452, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-attorney.hillsborough.sweeney-r"},
+    {"name": "Corriveau", "party": "d", "votes": 6, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-attorney.hillsborough.corriveau-d"}]},
+  "D|county-commissioner|Hillsborough|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.hillsborough-1", "count_from": "the places' sum", "scatter": 26, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Seibert", "party": "d", "votes": 5967, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.hillsborough-1.seibert-d"},
+    {"name": "Pappas", "party": "r", "votes": 18, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.hillsborough-1.pappas-r"}]},
+  "R|county-commissioner|Hillsborough|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.hillsborough-1", "count_from": "the places' sum", "scatter": 35, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Pappas", "party": "r", "votes": 8507, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.hillsborough-1.pappas-r"},
+    {"name": "Seibert", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.hillsborough-1.seibert-d"}]},
+  "D|county-commissioner|Hillsborough|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.hillsborough-2", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Bergeron", "party": "d", "votes": 4369, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.hillsborough-2.bergeron-d"},
+    {"name": "Ziehm", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.hillsborough-2.ziehm-r"}]},
+  "R|county-commissioner|Hillsborough|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.hillsborough-2", "count_from": "the places' sum", "scatter": 25, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Ziehm", "party": "r", "votes": 5821, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.hillsborough-2.ziehm-r"},
+    {"name": "Bergeron", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.hillsborough-2.bergeron-d"}]},
+  "D|county-commissioner|Hillsborough|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.hillsborough-3", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Ladmer", "party": "d", "votes": 6186, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.hillsborough-3.ladmer-d"},
+    {"name": "Mannino", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.hillsborough-3.mannino-r"},
+    {"name": "Rowe", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.hillsborough-3.rowe-r"}]},
+  "R|county-commissioner|Hillsborough|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.hillsborough-3", "count_from": "the places' sum", "scatter": 13, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Mannino", "party": "r", "votes": 3229, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.hillsborough-3.mannino-r"},
+    {"name": "Rowe", "party": "r", "votes": 6071, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.hillsborough-3.rowe-r"},
+    {"name": "Ladmer", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.hillsborough-3.ladmer-d"}]},
+  "D|county-treasurer|Hillsborough": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-treasurer.hillsborough", "count_from": "the places' sum", "scatter": 45, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Hopwood", "party": "d", "votes": 16285, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-treasurer.hillsborough.hopwood-d"},
+    {"name": "Fredette", "party": "r", "votes": 14, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-treasurer.hillsborough.fredette-r"}]},
+  "R|county-treasurer|Hillsborough": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-treasurer.hillsborough", "count_from": "the places' sum", "scatter": 59, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Fredette", "party": "r", "votes": 23938, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-treasurer.hillsborough.fredette-r"},
+    {"name": "Hopwood", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-treasurer.hillsborough.hopwood-d"}]},
+  "D|register-of-deeds|Hillsborough": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-deeds.hillsborough", "count_from": "the places' sum", "scatter": 27, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Wright", "party": "d", "votes": 16504, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-deeds.hillsborough.wright-d"},
+    {"name": "Crowell", "party": "r", "votes": 10, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.register-of-deeds.hillsborough.crowell-r"},
+    {"name": "Coughlin", "party": "r", "votes": 10, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.register-of-deeds.hillsborough.coughlin-r"}]},
+  "R|register-of-deeds|Hillsborough": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-deeds.hillsborough", "count_from": "the places' sum", "scatter": 36, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Crowell", "party": "r", "votes": 8635, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-deeds.hillsborough.crowell-r"},
+    {"name": "Coughlin", "party": "r", "votes": 14828, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.register-of-deeds.hillsborough.coughlin-r"},
+    {"name": "Wright", "party": "d", "votes": 3, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-deeds.hillsborough.wright-d"}]},
+  "D|register-of-probate|Hillsborough": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-probate.hillsborough", "count_from": "the places' sum", "scatter": 33, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Bryk", "party": "d", "votes": 16248, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-probate.hillsborough.bryk-d"},
+    {"name": "Perry", "party": "r", "votes": 13, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.register-of-probate.hillsborough.perry-r"}]},
+  "R|register-of-probate|Hillsborough": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-probate.hillsborough", "count_from": "the places' sum", "scatter": 61, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Perry", "party": "r", "votes": 23058, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.register-of-probate.hillsborough.perry-r"},
+    {"name": "Bryk", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-probate.hillsborough.bryk-d"}]},
+  "D|sheriff|Hillsborough": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.sheriff.hillsborough", "count_from": "the places' sum", "scatter": 62, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Hardy", "party": "r", "votes": 29, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.sheriff.hillsborough.hardy-r"},
+    {"name": "Barry", "party": "d", "votes": 16658, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.sheriff.hillsborough.barry-d"}]},
+  "R|sheriff|Hillsborough": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.sheriff.hillsborough", "count_from": "the places' sum", "scatter": 120, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Hardy", "party": "r", "votes": 24432, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.sheriff.hillsborough.hardy-r"},
+    {"name": "Barry", "party": "d", "votes": 74, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.sheriff.hillsborough.barry-d"}]},
+  "D|county-attorney|Merrimack": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-attorney.merrimack", "count_from": "the places' sum", "scatter": 217, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Murray", "party": "r", "votes": 52, "write_in": false, "nominated": null, "id": "2016-09-13.primary-d.county-attorney.merrimack.murray-r"}]},
+  "R|county-attorney|Merrimack": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-attorney.merrimack", "count_from": "the places' sum", "scatter": 22, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Murray", "party": "r", "votes": 10647, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-attorney.merrimack.murray-r"}]},
+  "D|county-commissioner|Merrimack|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.merrimack-2", "count_from": "the places' sum", "scatter": 45, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Asplund-Walsh", "party": "r", "votes": 14, "write_in": false, "nominated": null, "id": "2016-09-13.primary-d.county-commissioner.merrimack-2.asplund-walsh-r"}]},
+  "R|county-commissioner|Merrimack|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.merrimack-2", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Asplund-Walsh", "party": "r", "votes": 3553, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.merrimack-2.asplund-walsh-r"}]},
+  "D|county-commissioner|Merrimack|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.merrimack-3", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Merrimack", "candidates": [
+    {"name": "McMahon", "party": "d", "votes": 3315, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.merrimack-3.mcmahon-d"},
+    {"name": "Kidder", "party": "r", "votes": 96, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.merrimack-3.kidder-r"},
+    {"name": "Spaulding", "party": "r", "votes": 6, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.merrimack-3.spaulding-r"}]},
+  "R|county-commissioner|Merrimack|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.merrimack-3", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Merrimack", "candidates": [
+    {"name": "Kidder", "party": "r", "votes": 1974, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.merrimack-3.kidder-r"},
+    {"name": "Spaulding", "party": "r", "votes": 2853, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.merrimack-3.spaulding-r"},
+    {"name": "McMahon", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.merrimack-3.mcmahon-d"}]},
+  "D|county-treasurer|Merrimack": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-treasurer.merrimack", "count_from": "the places' sum", "scatter": 21, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Rodriguez", "party": "d", "votes": 8755, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-treasurer.merrimack.rodriguez-d"},
+    {"name": "Hammond", "party": "r", "votes": 16, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-treasurer.merrimack.hammond-r"}]},
+  "R|county-treasurer|Merrimack": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-treasurer.merrimack", "count_from": "the places' sum", "scatter": 25, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Hammond", "party": "r", "votes": 10450, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-treasurer.merrimack.hammond-r"},
+    {"name": "Rodriguez", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-treasurer.merrimack.rodriguez-d"}]},
+  "D|register-of-deeds|Merrimack": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-deeds.merrimack", "count_from": "the places' sum", "scatter": 15, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Davis", "party": "d", "votes": 8934, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-deeds.merrimack.davis-d"},
+    {"name": "Guay", "party": "r", "votes": 67, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.register-of-deeds.merrimack.guay-r"}]},
+  "R|register-of-deeds|Merrimack": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-deeds.merrimack", "count_from": "the places' sum", "scatter": 23, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Guay", "party": "r", "votes": 10947, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.register-of-deeds.merrimack.guay-r"},
+    {"name": "Davis", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-deeds.merrimack.davis-d"}]},
+  "D|register-of-probate|Merrimack": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-probate.merrimack", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Soderstrom", "party": "d", "votes": 8778, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-probate.merrimack.soderstrom-d"},
+    {"name": "Bradstreet", "party": "r", "votes": 33, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.register-of-probate.merrimack.bradstreet-r"}]},
+  "R|register-of-probate|Merrimack": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-probate.merrimack", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Bradstreet", "party": "r", "votes": 10564, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.register-of-probate.merrimack.bradstreet-r"},
+    {"name": "Soderstrom", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-probate.merrimack.soderstrom-d"}]},
+  "D|sheriff|Merrimack": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.sheriff.merrimack", "count_from": "the places' sum", "scatter": 273, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Hilliard", "party": "r", "votes": 146, "write_in": false, "nominated": null, "id": "2016-09-13.primary-d.sheriff.merrimack.hilliard-r"}]},
+  "R|sheriff|Merrimack": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.sheriff.merrimack", "count_from": "the places' sum", "scatter": 60, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Hilliard", "party": "r", "votes": 11189, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.sheriff.merrimack.hilliard-r"}]},
+  "D|county-attorney|Rockingham": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-attorney.rockingham", "count_from": "the places' sum", "scatter": 31, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Rockingham", "candidates": [
+    {"name": "Patenaude", "party": "d", "votes": 12124, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-attorney.rockingham.patenaude-d"},
+    {"name": "Groskey", "party": "r", "votes": 54, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-attorney.rockingham.groskey-r"},
+    {"name": "Conway", "party": "r", "votes": 21, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-attorney.rockingham.conway-r"}]},
+  "R|county-attorney|Rockingham": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-attorney.rockingham", "count_from": "the places' sum", "scatter": 13, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Rockingham", "candidates": [
+    {"name": "Grosky", "party": "r", "votes": 10971, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-attorney.rockingham.grosky-r"},
+    {"name": "Conway", "party": "r", "votes": 12770, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-attorney.rockingham.conway-r"},
+    {"name": "Patenaude", "party": "d", "votes": 5, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-attorney.rockingham.patenaude-d"}]},
+  "D|county-commissioner|Rockingham|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.rockingham-1", "count_from": "the places' sum", "scatter": 13, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "McLane", "party": "d", "votes": 5160, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.rockingham-1.mclane-d"},
+    {"name": "St. James", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.rockingham-1.st-james-r"}]},
+  "R|county-commissioner|Rockingham|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.rockingham-1", "count_from": "the places' sum", "scatter": 15, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "St. James", "party": "r", "votes": 6557, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.rockingham-1.st-james-r"},
+    {"name": "McLane", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.rockingham-1.mclane-d"}]},
+  "D|county-commissioner|Rockingham|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.rockingham-2", "count_from": "the places' sum", "scatter": 15, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Stewart", "party": "d", "votes": 3980, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.rockingham-2.stewart-d"},
+    {"name": "Tomarello", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.rockingham-2.tomarello-r"}]},
+  "R|county-commissioner|Rockingham|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.rockingham-2", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Tombarello", "party": "r", "votes": 6732, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.rockingham-2.tombarello-r"},
+    {"name": "Stewart", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.rockingham-2.stewart-d"}]},
+  "D|county-treasurer|Rockingham": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-treasurer.rockingham", "count_from": "the places' sum", "scatter": 14, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Ahearn", "party": "d", "votes": 12333, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-treasurer.rockingham.ahearn-d"},
+    {"name": "Buck", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-treasurer.rockingham.buck-r"}]},
+  "R|county-treasurer|Rockingham": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-treasurer.rockingham", "count_from": "the places' sum", "scatter": 47, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Buck", "party": "r", "votes": 19998, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-treasurer.rockingham.buck-r"},
+    {"name": "Ahearn", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-treasurer.rockingham.ahearn-d"}]},
+  "D|register-of-deeds|Rockingham": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-deeds.rockingham", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Thomas", "party": "d", "votes": 12159, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-deeds.rockingham.thomas-d"},
+    {"name": "Stacey", "party": "r", "votes": 19, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.register-of-deeds.rockingham.stacey-r"}]},
+  "R|register-of-deeds|Rockingham": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-deeds.rockingham", "count_from": "the places' sum", "scatter": 41, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Stacey", "party": "r", "votes": 20611, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.register-of-deeds.rockingham.stacey-r"},
+    {"name": "Thomas", "party": "d", "votes": 5, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-deeds.rockingham.thomas-d"}]},
+  "D|register-of-probate|Rockingham": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-probate.rockingham", "count_from": "the places' sum", "scatter": 16, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Davidson", "party": "d", "votes": 12114, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-probate.rockingham.davidson-d"},
+    {"name": "Sytek", "party": "r", "votes": 7, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.register-of-probate.rockingham.sytek-r"}]},
+  "R|register-of-probate|Rockingham": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-probate.rockingham", "count_from": "the places' sum", "scatter": 46, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Sytek", "party": "r", "votes": 20528, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.register-of-probate.rockingham.sytek-r"},
+    {"name": "Davidson", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-probate.rockingham.davidson-d"}]},
+  "D|sheriff|Rockingham": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.sheriff.rockingham", "count_from": "the places' sum", "scatter": 311, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Rockingham", "candidates": [
+    {"name": "Baldwin", "party": "r", "votes": 135, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.sheriff.rockingham.baldwin-r"},
+    {"name": "Lovejoy", "party": "r", "votes": 53, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.sheriff.rockingham.lovejoy-r"},
+    {"name": "Hureau", "party": "r", "votes": 273, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.sheriff.rockingham.hureau-r"},
+    {"name": "Greg Warner", "party": "", "votes": 304, "write_in": true, "nominated": null, "id": "2016-09-13.primary-d.sheriff.rockingham.greg-warner-write-in"}]},
+  "R|sheriff|Rockingham": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.sheriff.rockingham", "count_from": "the places' sum", "scatter": 41, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Rockingham", "candidates": [
+    {"name": "Baldwin", "party": "r", "votes": 4494, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.sheriff.rockingham.baldwin-r"},
+    {"name": "Lovejoy", "party": "r", "votes": 8406, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.sheriff.rockingham.lovejoy-r"},
+    {"name": "Hureau", "party": "r", "votes": 10022, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.sheriff.rockingham.hureau-r"}]},
+  "D|county-attorney|Sullivan": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-attorney.sullivan", "count_from": "the places' sum", "scatter": 28, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Hathaway", "party": "r", "votes": 62, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-attorney.sullivan.hathaway-r"}]},
+  "R|county-attorney|Sullivan": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-attorney.sullivan", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Hathaway", "party": "r", "votes": 2726, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-attorney.sullivan.hathaway-r"}]},
+  "D|county-commissioner|Sullivan|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.sullivan-2", "count_from": "the places' sum", "scatter": 26, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Nelson", "party": "r", "votes": 30, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.sullivan-2.nelson-r"}]},
+  "R|county-commissioner|Sullivan|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.sullivan-2", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Nelson", "party": "r", "votes": 2583, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.sullivan-2.nelson-r"}]},
+  "D|county-commissioner|Sullivan|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2016-09-13.primary-d.county-commissioner.sullivan-3", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Phinizy", "party": "d", "votes": 1930, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.county-commissioner.sullivan-3.phinizy-d"},
+    {"name": "Hebert", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.county-commissioner.sullivan-3.hebert-d"}]},
+  "R|county-commissioner|Sullivan|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2016-09-13.primary-r.county-commissioner.sullivan-3", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Hebert", "party": "r", "votes": 2467, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-commissioner.sullivan-3.hebert-r"},
+    {"name": "Phinizy", "party": "d", "votes": 6, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.county-commissioner.sullivan-3.phinizy-d"}]},
+  "D|county-treasurer|Sullivan": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.county-treasurer.sullivan", "count_from": "the places' sum", "scatter": 34, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Sanderson", "party": "r", "votes": 17, "write_in": false, "nominated": null, "id": "2016-09-13.primary-d.county-treasurer.sullivan.sanderson-r"}]},
+  "R|county-treasurer|Sullivan": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.county-treasurer.sullivan", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Sanderson", "party": "r", "votes": 2606, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.county-treasurer.sullivan.sanderson-r"}]},
+  "D|register-of-deeds|Sullivan": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-deeds.sullivan", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Janet Gibson", "party": "", "votes": 91, "write_in": true, "nominated": false, "id": "2016-09-13.primary-d.register-of-deeds.sullivan.janet-gibson-write-in"},
+    {"name": "Reed", "party": "d", "votes": 1908, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-deeds.sullivan.reed-d"}]},
+  "R|register-of-deeds|Sullivan": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-deeds.sullivan", "count_from": "the places' sum", "scatter": 89, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Gibson, J", "party": "", "votes": 289, "write_in": true, "nominated": true, "id": "2016-09-13.primary-r.register-of-deeds.sullivan.gibson-j-write-in"},
+    {"name": "Reed", "party": "d", "votes": 71, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-deeds.sullivan.reed-d"}]},
+  "D|register-of-probate|Sullivan": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.register-of-probate.sullivan", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Diane Davis", "party": "", "votes": 31, "write_in": true, "nominated": false, "id": "2016-09-13.primary-d.register-of-probate.sullivan.diane-davis-write-in"},
+    {"name": "Adrian", "party": "d", "votes": 1885, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.register-of-probate.sullivan.adrian-d"}]},
+  "R|register-of-probate|Sullivan": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.register-of-probate.sullivan", "count_from": "the places' sum", "scatter": 59, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Davis, D", "party": "", "votes": 139, "write_in": true, "nominated": true, "id": "2016-09-13.primary-r.register-of-probate.sullivan.davis-d-write-in"},
+    {"name": "Adrian", "party": "d", "votes": 6, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.register-of-probate.sullivan.adrian-d"}]},
+  "D|sheriff|Sullivan": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-d.sheriff.sullivan", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "O'Hearne", "party": "d", "votes": 1940, "write_in": false, "nominated": true, "id": "2016-09-13.primary-d.sheriff.sullivan.o-hearne-d"},
+    {"name": "Simonds", "party": "r", "votes": 127, "write_in": false, "nominated": false, "id": "2016-09-13.primary-d.sheriff.sullivan.simonds-r"}]},
+  "R|sheriff|Sullivan": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2016-09-13.primary-r.sheriff.sullivan", "count_from": "the places' sum", "scatter": 16, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Simonds", "party": "r", "votes": 2817, "write_in": false, "nominated": true, "id": "2016-09-13.primary-r.sheriff.sullivan.simonds-r"},
+    {"name": "O'Hearne", "party": "d", "votes": 60, "write_in": false, "nominated": false, "id": "2016-09-13.primary-r.sheriff.sullivan.o-hearne-d"}]}
  }
 }

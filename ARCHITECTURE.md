@@ -2349,6 +2349,20 @@ have taken, is null and said; places no named candidate won are `"open"`.
 Each race is held to the same year's general election, its seats and towns
 (`collected/election_<year>.json`), and a file or race it cannot read is
 listed in `_refused` with where, the rest of the year written.
+The primaries for Governor, United States Senator, Congress, the Council and
+the county offices are read by `src/parse/parse_sos_primary_offices.py` into
+the same file (keys `R|governor`, `D|us-house|1`, `R|sheriff|Belknap`), which
+the House and Senate reader writes, so that one writer writes a year whole.
+It is the other offices' reader's rules given the primary's day:
+`parse_sos_offices`'s `Block` reads a primary's empty cell as none,
+`settle_statewide` and `settle_block` take the primary's rule and its contest
+word (`primary-r`) from that day (`contest_kind`), `district_blocks` and
+`read_county` take a primary's titles and files, and a summary's Totals that
+print nothing under a candidate no county wrote in are its counties' rows.
+2018's primary files print the day at the end of the State's title
+(`state_title`), and a primary's sheet that prints no day under titles that
+name the primary is read as the primary's, and said. A file that disagrees
+with itself is recorded in the year's `_disagreements`, never corrected.
 `_primary_read_again` holds the committed files to the saved ones.
 `src/parse/score_members_elect.py` replays the rule on 2024 as of Election
 Day -- sitting and former members from the roll calls before it, each at the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-17.3
+# GRANITE_VERSION: 2026-11-17.4
 """
 The Secretary of State's count of a general election's races for Governor,
 United States Senator, Representative in Congress, Executive Councilor and
@@ -165,6 +165,12 @@ STATEWIDE_FILE = re.compile(r"^(?P<y>\d{4})-(?:ge-)?(?P<office>governor|us-senat
 SUMMARY = re.compile(r"^summary by counties$", re.I)
 COUNTY_HEAD = re.compile(r"^(?P<c>[A-Za-z]+)(?:\s+county)?$", re.I)
 TITLE = re.compile(r"\bstate of new hampshire\b", re.I)
+# A State Primary's title of 2018: "New Hampshire Primary Election - September
+# 11, 2018", "New Hampshire - Primary Election - September 11,2018", "State of
+# New Hampshire - Primary Election - September 11, 2018": the State, and the
+# day at its end, where the office's row and the header print none.
+PRIMARY_TITLE = re.compile(r"\bnew hampshire\b.*\bprimary election\b(?:\s*-\s*(?P<day>.+))?$",
+                           re.I)
 # "November 3,2020" (2020's Grafton and Strafford sheets): the day written
 # out with no space after the comma, read as the day it names.
 DAY_TIGHT = re.compile(r"^(?P<m>[A-Za-z]+) (?P<d>\d{1,2}),\s*(?P<y>\d{4})$")
@@ -181,6 +187,9 @@ NO_BLOCK = {
 DAY_TYPOS = {
     ("2018-ge-governor.xls", "carroll gov"): "its other sheets and its name say 6 November 2018",
     ("2018-ge-governor.xls", "grafton gov"): "its other sheets and its name say 6 November 2018",
+    # The State Primary's (parse_sos_primary_offices).
+    ("2024-sp-governor-republican_2.xlsx", "Sull Gov"):
+        "it prints the 2022 primary's day, and its other sheets print 10 September 2024",
 }
 
 
@@ -247,11 +256,12 @@ HEADER_FIXES = {
 }
 
 
-def heads(row, where, legacy, notes=None):
+def heads(row, where, legacy, notes=None, primary=False):
     """The columns a header row names, as parse_sos_results.entities reads
     them, each given its row kind: candidate, write_in_named, or one of the
     counts that are no candidate's. A header cell HEADER_FIXES names is read
-    as it says, and said in `notes`."""
+    as it says, and said in `notes`. `primary`: a State Primary's header,
+    whose name with no party entities reads and flags."""
     row = list(row)
     name = where.split(",")[0]
     for c, v in enumerate(row):
@@ -261,7 +271,7 @@ def heads(row, where, legacy, notes=None):
             if notes is not None:
                 notes.append(f"{where}: the header prints {v!r}, read as {fix[0]!r}: {fix[1]}")
     out = []
-    for e in PSR.entities(row, 1, where, legacy):
+    for e in PSR.entities(row, 1, where, legacy, primary):
         if e.get("blc") is not None or e.get("header_count") is not None:
             raise Refused(f"{where}: a BLC column or a count in a header, which these files are "
                           "not known to print")
@@ -269,6 +279,9 @@ def heads(row, where, legacy, notes=None):
             kind = META_KINDS[e["meta"]]
         else:
             kind = "write_in_named" if e["write_in"] else "candidate"
+        if primary and notes is not None and e.get("typo"):
+            # What entities read past in a State Primary's header, said.
+            notes.append(f"{where}: the header prints {e['typo'][0]!r}, read as {e['typo'][1]}")
         out.append(dict(e, kind=kind))
     return out
 
@@ -338,12 +351,15 @@ class Block:
     columns (`cols`) are each entity's count and, where a RECOUNT column
     follows it, the recount's: (entity, 0) and (entity, 1). `span` is the
     columns the block owns, where a sheet holds several side by side (the
-    county offices); None for all of them."""
+    county offices); None for all of them. `primary`: a State Primary's
+    block (parse_sos_primary_offices), whose empty cell under a candidate is
+    none, as parse_sos_results.Block has it; blank_named counts them."""
 
-    def __init__(self, label, ents, where, path, sheet, span=None):
+    def __init__(self, label, ents, where, path, sheet, span=None, primary=False):
         self.label, self.ents, self.where = label, ents, where
         self.path, self.sheet, self.span = path, sheet, span
         self.rows, self.totals, self.notes = [], None, []
+        self.primary, self.blank_named = primary, 0
         self.cols = [(e, k) for e in ents for k in (0, 1) if k == 0 or e["recount"] is not None]
 
     def at(self, where):
@@ -386,6 +402,15 @@ class Block:
                 raise Refused(f"{where}: {place} twice under one header")
             seen.add(place)
             got[place] = [cell(row, e, k, where) for e, k in self.cols]
+            if self.primary:
+                # A STATE PRIMARY'S EMPTY CELL UNDER A CANDIDATE IS NONE (18
+                # November 2026): its files name every candidate any place
+                # wrote in, of any party, and print a count only where a vote
+                # came. Its Totals' empty cell is no figure printed.
+                for i, (e, _k) in enumerate(self.cols):
+                    if got[place][i] is None and e["kind"] in VOTE_KINDS:
+                        got[place][i] = 0
+                        self.blank_named += 1
         if not got:
             raise Refused(f"{self.where}: a header with no rows of counts under it")
         printed = [None] * len(self.cols)
@@ -432,6 +457,16 @@ class Block:
         return got, printed, bad
 
 
+def contest_kind(election):
+    """(the contest's word, the rule that marks its winners, the key it marks
+    them under): ("general", parse_sos_results.elect, "elected"), or a State
+    Primary's, which its day carries (parse_sos_primary_results.Primary):
+    ("primary-r", nominate, "nominated")."""
+    if getattr(election, "party", None) is None:
+        return "general", PSR.elect, "elected"
+    return election.contest, election.choose, election.mark
+
+
 def col_label(e, k):
     """A column's name: the entity's, and " (recount)" for its recount's."""
     return label(e) + (" (recount)" if k else "")
@@ -451,26 +486,51 @@ def place_name(v):
 
 # ---- the statewide offices -------------------------------------------------------
 
+def state_title(text, election):
+    """(whether `text` is the State's title row, the day its end prints or
+    None): TITLE's, or a State Primary's PRIMARY_TITLE (2018), whose day is
+    then read off its end."""
+    if TITLE.search(text):
+        m = PRIMARY_TITLE.search(text) if hasattr(election, "party") else None
+        return True, (day_of(m.group("day").strip()) if m and m.group("day") else None)
+    if hasattr(election, "party"):
+        m = PRIMARY_TITLE.search(text)
+        if m:
+            return True, day_of(m.group("day").strip()) if m.group("day") else None
+    return False, None
+
+
 def title_rows(rows, path, sheet, election, office, at, notes):
     """The index of the first row after a sheet's titles, which must say
-    the State of New Hampshire, the office and the election's day."""
+    the State of New Hampshire, the office and the election's day (a State
+    Primary's of 2018 at the end of the State's title: state_title)."""
     said_state = said_office = False
+    titled = None
     for i, row in enumerate(rows):
         row = trimmed(row)
         if not row:
             continue
         cells = [c for c in row if c is not None]
         text = " ".join(str(c) for c in cells if isinstance(c, str))
-        if TITLE.search(text) and len(cells) == 1:
+        is_state, day_said = state_title(text, election)
+        if is_state and len(cells) == 1:
             years = re.findall(r"\b(?:19|20)\d\d\b", text)
             if years and years != [str(election.year)]:
                 raise Refused(f"{at(i)}: {text!r} is the title of another election")
-            said_state = True
+            said_state, titled = True, day_said
             continue
         strs = [c for c in cells if isinstance(c, str)]
         if strs and office["title"].match(strs[-1].strip()):
-            day = next((day_of(c) for c in cells if day_of(c) is not None), None)
-            if day != election:
+            day = next((day_of(c) for c in cells if day_of(c) is not None), titled)
+            if day is None and said_state and hasattr(election, "party"):
+                # A STATE PRIMARY'S SHEET THAT PRINTS NO DAY (2018's Democratic
+                # and Libertarian Governor; 2022's Republican Governor), under a
+                # title that names the primary and an office row that names its
+                # party: read as the primary's, and said. A day that is another
+                # is refused, as ever, unless DAY_TYPOS names it.
+                notes.append(f"{at(i)}: the sheet prints no day; read as the primary of "
+                             f"{election}, which its titles name")
+            elif day != election:
                 why = DAY_TYPOS.get((path.name, sheet))
                 if why is None:
                     raise Refused(f"{at(i)}: the sheet's day is {day}, not the election of "
@@ -511,7 +571,10 @@ def statewide_blocks(path, office, election, legacy, notes):
                     COUNTY_HEAD.match(head.strip()).group("c").title()
                 if name != "summary" and name not in COUNTIES:
                     raise Refused(f"{at(i)}: {head!r} names no county of New Hampshire")
-                cur = Block(name, heads(row, at(i), legacy), at(i), path, sheet)
+                primary = hasattr(election, "party")
+                cur = Block(name, heads(row, at(i), legacy, notes if primary else None, primary),
+                            at(i), path, sheet,
+                            primary=hasattr(election, "party"))
                 out.append(cur)
                 continue
             if cur is None:
@@ -611,7 +674,8 @@ def read_statewide(root, year, key, election, notes):
 
 def settle_statewide(year, key, election, summ, by_county, read, notes):
     office = OFFICES[key]
-    contest = f"{election.isoformat()}.general.{key}.statewide"
+    kind, choose, mark = contest_kind(election)
+    contest = f"{election.isoformat()}.{kind}.{key}.statewide"
     cols = summ.ents
     for b in [summ, *by_county.values()]:
         if any(e["recount"] is not None for e in b.ents):
@@ -676,14 +740,21 @@ def settle_statewide(year, key, election, summ, by_county, read, notes):
     for i, e in enumerate(cols):
         if e["kind"] not in VOTE_KINDS:
             continue
-        if printed[i] is None:
+        votes = printed[i]
+        if votes is None and summ.primary:
+            # A State Primary's summary prints no Totals under a candidate no
+            # county wrote in: the counties' rows are the count, and said.
+            votes = sum(rows[c][i] or 0 for c in COUNTIES)
+            notes.append(f"{summ.totals[1]}: the summary's Totals print no figure for "
+                         f"{label(e)}; read as its counties' rows, {votes:,}")
+        if votes is None:
             raise Refused(f"{summ.totals[1]}: the summary's Totals print no figure for {label(e)}")
-        cands.append({"name": e["name"], "party": e["party"], "votes": printed[i],
+        cands.append({"name": e["name"], "party": e["party"], "votes": votes,
                       "write_in": e["kind"] == "write_in_named"})
     meta = {k: next((printed[i] for i, e in enumerate(cols) if e["kind"] == k), None)
             for k in META_KINDS.values()}
     where = f"the {year} {office['name']}"
-    shown = PSR.elect(cands, 1, where, meta["write_ins_scattered"])
+    shown = choose(cands, 1, where, meta["write_ins_scattered"])
     # The race's count is the summary's; every other figure the files print
     # must elect the same.
     alts = {"the counties' rows in the summary": [sum(rows[c][i] or 0 for c in COUNTIES)
@@ -700,7 +771,7 @@ def settle_statewide(year, key, election, summ, by_county, read, notes):
             if e["kind"] in VOTE_KINDS:
                 other.append(dict(cands[k], votes=fig[i]))
                 k += 1
-        if [c["elected"] for c in PSR.elect(other, 1, where)] != [c["elected"] for c in shown]:
+        if [c[mark] for c in choose(other, 1, where)] != [c[mark] for c in shown]:
             raise Refused(f"{where}: {name} elects someone other than the summary's Totals do")
     for c in shown:
         c["id"] = candidate_id(contest, c)
@@ -760,17 +831,19 @@ def district_files(root, year, key):
             "missing": missing, "replaced": replaced}
 
 
-def district_blocks(path, key, election, legacy, notes):
+def district_blocks(path, key, election, legacy, notes, office=None):
     """{district: Block} of one file of a district office: a sheet a
     district, its titles the State and "Congressional District 1" or
     "Executive Council - District No. 1", then a header row whose first cell
-    is the election's day, a row per town or ward, and Totals."""
-    office = DISTRICT_OFFICES[key]
+    is the election's day, a row per town or ward, and Totals. `office`, its
+    name and the title of its sheets, is DISTRICT_OFFICES[key] unless given
+    (a State Primary's titles name the party)."""
+    office = office or DISTRICT_OFFICES[key]
     out = {}
     for sheet, rows in PSR.sheets(path):
         def at(i, sheet=sheet):
             return f"{path.name}, sheet {sheet!r}, row {i + 1}"
-        n, said_state, cur = None, False, None
+        n, said_state, cur, titled = None, False, None, None
         for i, row in enumerate(rows):
             row = trimmed(row)
             if not row:
@@ -779,23 +852,27 @@ def district_blocks(path, key, election, legacy, notes):
             cells = [c for c in row if c is not None]
             if cur is None:
                 one = cells[0].strip() if len(cells) == 1 and isinstance(cells[0], str) else None
-                if one and TITLE.search(one):
+                is_state, day_said = state_title(one, election) if one else (False, None)
+                if is_state:
                     years = re.findall(r"\b(?:19|20)\d\d\b", one)
                     if years and years != [str(election.year)]:
                         raise Refused(f"{at(i)}: {one!r} is the title of another election")
-                    said_state = True
+                    said_state, titled = True, day_said
                     continue
                 m = office["title"].match(one) if one else None
                 if m and n is None:
                     n = int(m.group(1))
                     continue
-                day = day_of(head)
+                # A State Primary's header of 2018 begins with nothing, the day
+                # being at the end of the State's title.
+                day = day_of(head) if head is not None or titled is None else titled
                 if said_state and n is not None and day is not None:
                     if day != election:
                         raise Refused(f"{at(i)}: the header's day is {day}, not the election of "
                                       f"{election}")
-                    cur = Block(f"district {n}", heads(row, at(i), legacy, notes), at(i), path,
-                                sheet)
+                    cur = Block(f"district {n}", heads(row, at(i), legacy, notes,
+                                                       hasattr(election, "party")), at(i), path,
+                                sheet, primary=hasattr(election, "party"))
                     continue
                 raise Refused(f"{at(i)}: {row!r} before the sheet's titles name the State and "
                               f"the {office['name']}'s district, and a header begins with the day")
@@ -828,7 +905,8 @@ def settle_block(key, district, block, election, seats, notes):
     one), and a race that the printed Totals would give to someone else is
     refused. `seats` None is a race the file prints no number of seats for:
     its counts are kept, and no one is marked elected."""
-    contest = f"{election.isoformat()}.general.{key}.{ETR.slug(str(district))}"
+    kind, choose, mark = contest_kind(election)
+    contest = f"{election.isoformat()}.{kind}.{key}.{ETR.slug(str(district))}"
     got, printed, bad = block.read()
     notes.extend(block.notes)
     sums = [sum(v[i] or 0 for v in got.values()) for i in range(len(block.cols))]
@@ -842,15 +920,15 @@ def settle_block(key, district, block, election, seats, notes):
             meta[e["kind"]] = sums[block.race_col(e)]
     where = block.where
     if seats is None:
-        shown = [dict(c, elected=None) for c in cands]
+        shown = [dict(c, **{mark: None}) for c in cands]
     else:
-        shown = PSR.elect(cands, seats, where, meta["write_ins_scattered"])
+        shown = choose(cands, seats, where, meta["write_ins_scattered"])
         if bad:
             alt = [dict(c, votes=printed[block.race_col(e)]
                         if printed[block.race_col(e)] is not None else c["votes"])
                    for c, e in zip(cands, votes)]
-            if [c["elected"] for c in PSR.elect(alt, seats, where)] != [
-                    c["elected"] for c in shown]:
+            if [c[mark] for c in choose(alt, seats, where)] != [
+                    c[mark] for c in shown]:
                 raise Refused(f"{where}: a column adds up differently from the file's Totals, "
                               "and the two figures elect different people")
         if meta["write_ins_scattered"] is None:
@@ -911,6 +989,10 @@ COUNTY_LABELS = [
 COMMISSIONER_DISTRICT = re.compile(r"^dist(?:rict|\.)\s*(?:no\.?\s*)?(\d)$", re.I)
 NO_ELECTION = re.compile(r"\bno election\b", re.I)
 COUNTY_TITLE = re.compile(r"^(?P<c>[A-Za-z]+) county offices$", re.I)
+# A State Primary's: "Belknap County Offices - Republican", and 2026's "COOS
+# COUNTY County Offices - Democratic".
+PRIMARY_COUNTY_TITLE = re.compile(r"^(?P<c>[A-Za-z]+)(?: county)? county offices\s*-?\s*"
+                                  r"(?P<p>democratic|republican|libertarian)$", re.I)
 
 
 def county_label(v):
@@ -982,9 +1064,10 @@ def county_sections(path, county, election, notes):
                         raise Refused(f"{at(i)}: {one!r} is the title of another election")
                     said_state = True
                     continue
-                m = COUNTY_TITLE.match(one or "")
+                party = getattr(election, "party", None)
+                m = (PRIMARY_COUNTY_TITLE if party else COUNTY_TITLE).match(one or "")
                 if m:
-                    if m.group("c").title() != county:
+                    if m.group("c").title() != county or (party and m.group("p").lower() != party):
                         raise Refused(f"{at(i)}: {one!r} in {county} County's file")
                     said_county = True
                     continue
@@ -1057,11 +1140,13 @@ def county_groups(header, where):
             for n, c in enumerate(cols)]
 
 
-def read_county(root, year, election, notes):
+def read_county(root, year, election, notes, files=None):
     """({race key: race}, [files read], [disagreements], [counties with no
-    file], [{"race", "where"}: a district the file marks "No Election"])."""
+    file], [{"race", "where"}: a district the file marks "No Election"]).
+    `files` is ({county: path}, [(earlier, later)]), county_files' unless
+    given (a State Primary's, one party's)."""
     legacy = year <= LEGACY_UNTIL
-    files, replaced = county_files(root, year)
+    files, replaced = county_files(root, year) if files is None else files
     notes.extend(f"{new.name} is read, and replaces {old.name}: the Secretary of State's later "
                  "upload of the same results" for old, new in replaced)
     races, read, bad, quiet, refused = {}, [], [], [], []
@@ -1115,7 +1200,9 @@ def read_county(root, year, election, notes):
                     raise Refused(f"{marks[0]}: a \"No Election\" mark among {key}'s candidates")
                 if key in races:
                     raise Refused(f"{gw}: {key} twice in {county} County's file")
-                block = Block(key, heads(cand_row, gw, legacy, notes), gw, path, sheet, span=span)
+                block = Block(key, heads(cand_row, gw, legacy, notes, hasattr(election, "party")),
+                              gw, path, sheet, span=span,
+                              primary=hasattr(election, "party"))
                 block.totals = totals
                 named = [c for c in span if cand_row[c]]
                 for p, row, w in places:

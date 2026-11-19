@@ -1,6 +1,6 @@
 {
  "_about": [
-   "What the Secretary of State's State Primary results files say of the State Representative and State Senate races, each party's primary its own race, read by src/parse/parse_sos_primary_results.py from the files in _source and held to the same year's general election (collected/election_<year>.json). Nothing in it is this project's decision but the nominees, which the files do not mark: the candidates with the most votes, as many as the race has seats and none with no votes; null where the count does not settle it.",
+   "What the Secretary of State's State Primary results files say, each party's primary its own race: the State Representative and State Senate races, read by src/parse/parse_sos_primary_results.py and held to the same year's general election (collected/election_<year>.json), and Governor, United States Senator, Representative in Congress, Executive Councilor and the county offices, read by src/parse/parse_sos_primary_offices.py; each from the files in _source. Nothing in it is this project's decision but the nominees, which the files do not mark: the candidates with the most votes, as many as the race has seats and none with no votes; null where the count does not settle it.",
    "Write the file again by running the reader, never by hand: --check says where the saved files and this disagree."
  ],
  "_notes": [
@@ -148,7 +148,139 @@
    "2018-sp-state-senate-1-24-republican_0.xls, sheet 'rsenate1', row 2: the file's note under the Totals says no votes were cast in 19 place(s) it gives no row: Atkinson and Gilmanton Academy Grant; Bean's Grant; Bean's Purchase; Chandler's Purchase; Crawford's Purchase; Cutt's Grant; Dix's Grant; Erving's Location; Green's Grant; Hadley's Purchase; Livermore; Low and Burbank's Grant; Martin's Location; Odell; Pinkham's Grant; Sargent's Purchase; Second College Grant; Success; Thompson and Meserve's Purchase; read as places of the race with no count",
    "2018-sp-state-senate-1-24-republican_0.xls, sheet 'rsenate1', row 45: the file's footnote '*correction received from clerk' belongs to the place it stars; its figures are those the file prints",
    "2018-sp-state-senate-1-24-republican_0.xls, district 4: R|S|4: Phyllis Woods not settled by the count -- a tie for the last place, or the write-ins nobody named (93) could have taken it",
-   "2018-sp-state-senate-1-24-republican_0.xls: 16 empty cell(s) under a candidate, read as none"
+   "2018-sp-state-senate-1-24-republican_0.xls: 16 empty cell(s) under a candidate, read as none",
+   "2018-sp-governor-democratic_0.xls, sheet 'dgrafgov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "2018-sp-governor-democratic_0.xls, sheet 'dcheshgov', row 34: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "the democratic Governor primary: 19 empty cell(s) under a candidate, read as none",
+   "2018-sp-governor-libertarian_0.xls, sheet 'lsum-belkgov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "2018-sp-governor-libertarian_0.xls, sheet 'lcarrollgov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "2018-sp-governor-libertarian_0.xls, sheet 'lcheshgov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "2018-sp-governor-libertarian_0.xls, sheet 'lcoosgov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "2018-sp-governor-libertarian_0.xls, sheet 'lgrafgov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "2018-sp-governor-libertarian_0.xls, sheet 'lhillsgov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "2018-sp-governor-libertarian_0.xls, sheet 'lmerrgov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "2018-sp-governor-libertarian_0.xls, sheet 'lrockgov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "2018-sp-governor-libertarian_0.xls, sheet 'lstragov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "2018-sp-governor-libertarian_0.xls, sheet 'lsullgov', row 2: the sheet prints no day; read as the primary of 2018-09-11, which its titles name",
+   "the republican Governor primary: 1 empty cell(s) under a candidate, read as none",
+   "2018-sp-executive-council-1-5-democratic-_0.xls, sheet 'dcouncil1', row 141: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2018-sp-executive-council-1-5-democratic-_0.xls, sheet 'dcouncil2', row 84: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2018-sp-executive-council-1-5-democratic-_0.xls, sheet 'dcouncil5', row 47: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2018-sp-executive-council-1-5-democratic-_0.xls: 88 empty cell(s) under a candidate, read as none",
+   "2018-09-11.primary-l.executive-council.2: L|executive-council|2: James S. Beard not settled by the count -- a tie for the last place, or the write-ins nobody named (8) could have taken it",
+   "2018-09-11.primary-l.executive-council.3: L|executive-council|3: Russell Prescott not settled by the count -- a tie for the last place, or the write-ins nobody named (8) could have taken it",
+   "2018-sp-executive-council-1-5-republican-_0.xls, sheet 'rcouncil1', row 141: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2018-sp-executive-council-1-5-republican-_0.xls: 4 empty cell(s) under a candidate, read as none",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Naomi Andrews', read as the candidate 'Naomi Andrews', whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Paul Cardinal', read as the candidate 'Paul Cardinal', whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Mark S. MacKenzie', read as the candidate 'Mark S. MacKenzie', whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'William Martin', read as the candidate 'William Martin', whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Deaglan McEachern', read as the candidate 'Deaglan McEachern', whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Mindi Messmer', read as the candidate 'Mindi Messmer', whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints \"Terence O'Rourke\", read as the candidate \"Terence O'Rourke\", whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Chris Pappas', read as the candidate 'Chris Pappas', whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Levi Sanders', read as the candidate 'Levi Sanders', whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Lincoln Soldati', read as the candidate 'Lincoln Soldati', whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Maura Sullivan', read as the candidate 'Maura Sullivan', whose party the file leaves out",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 120: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2018-sp-congressional-district-1-democratic_0.xlsx, sheet 'Con1 Rep', row 3: the file counts no scattered write-ins, so whether a write-in it does not name won could not be checked",
+   "2018-sp-congressional-district-2-libertarian_0.xlsx, sheet 'Con2 Rep', row 3: the header prints 'Tom Alciere', read as the candidate 'Tom Alciere', whose party the file leaves out",
+   "2018-sp-congressional-district-2-libertarian_0.xlsx, sheet 'Con2 Rep', row 3: the header prints \"Justin O'Donnell\", read as the candidate \"Justin O'Donnell\", whose party the file leaves out",
+   "2018-sp-congressional-district-1-republican_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Michael Callis', read as the candidate 'Michael Callis', whose party the file leaves out",
+   "2018-sp-congressional-district-1-republican_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Bruce Crochetiere', read as the candidate 'Bruce Crochetiere', whose party the file leaves out",
+   "2018-sp-congressional-district-1-republican_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Jeffory W. Denaro', read as the candidate 'Jeffory W. Denaro', whose party the file leaves out",
+   "2018-sp-congressional-district-1-republican_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Eddie Edwards', read as the candidate 'Eddie Edwards', whose party the file leaves out",
+   "2018-sp-congressional-district-1-republican_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Andy Martin', read as the candidate 'Andy Martin', whose party the file leaves out",
+   "2018-sp-congressional-district-1-republican_0.xlsx, sheet 'Con1 Rep', row 3: the header prints 'Andy Sanborn', read as the candidate 'Andy Sanborn', whose party the file leaves out",
+   "2018-sp-congressional-district-1-republican_0.xlsx, sheet 'Con1 Rep', row 120: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2018-sp-congressional-district-1-republican_0.xlsx, sheet 'Con1 Rep', row 3: the file counts no scattered write-ins, so whether a write-in it does not name won could not be checked",
+   "2018-sp-congressional-district-2-republican_0.xlsx, sheet 'Con2 Rep', row 3: the header prints 'Brian Belanger', read as the candidate 'Brian Belanger', whose party the file leaves out",
+   "2018-sp-congressional-district-2-republican_0.xlsx, sheet 'Con2 Rep', row 3: the header prints 'Gerard Beloin', read as the candidate 'Gerard Beloin', whose party the file leaves out",
+   "2018-sp-congressional-district-2-republican_0.xlsx, sheet 'Con2 Rep', row 3: the header prints 'Lynne Blankenbeker', read as the candidate 'Lynne Blankenbeker', whose party the file leaves out",
+   "2018-sp-congressional-district-2-republican_0.xlsx, sheet 'Con2 Rep', row 3: the header prints 'Robert Burns', read as the candidate 'Robert Burns', whose party the file leaves out",
+   "2018-sp-congressional-district-2-republican_0.xlsx, sheet 'Con2 Rep', row 3: the header prints 'Stewart I. Levenson', read as the candidate 'Stewart I. Levenson', whose party the file leaves out",
+   "2018-sp-congressional-district-2-republican_0.xlsx, sheet 'Con2 Rep', row 3: the header prints 'Jay Mercer', read as the candidate 'Jay Mercer', whose party the file leaves out",
+   "2018-sp-congressional-district-2-republican_0.xlsx, sheet 'Con2 Rep', row 3: the header prints 'Steven Negron', read as the candidate 'Steven Negron', whose party the file leaves out",
+   "2018-sp-congressional-district-2-republican_0.xlsx, sheet 'Con2 Rep', row 212: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2018-sp-congressional-district-2-republican_0.xlsx, sheet 'Con2 Rep', row 3: the file counts no scattered write-ins, so whether a write-in it does not name won could not be checked",
+   "2018-sp-belknap-county-democratic_0.xls, sheet 'dbelknap', row 26: county-commissioner|Belknap|2 is labelled, with no candidate and no count under it and no \"No Election\" mark; no race is read",
+   "2018-09-11.primary-d.sheriff.belknap: D|sheriff|Belknap: Moyer not settled by the count -- a tie for the last place, or the write-ins nobody named (99) could have taken it",
+   "2018-09-11.primary-d.county-attorney.belknap: D|county-attorney|Belknap: Livernois not settled by the count -- a tie for the last place, or the write-ins nobody named (45) could have taken it",
+   "2018-09-11.primary-d.county-treasurer.belknap: D|county-treasurer|Belknap: Muzzey not settled by the count -- a tie for the last place, or the write-ins nobody named (38) could have taken it",
+   "2018-09-11.primary-d.register-of-deeds.belknap: D|register-of-deeds|Belknap: McGrath not settled by the count -- a tie for the last place, or the write-ins nobody named (29) could have taken it",
+   "2018-09-11.primary-d.register-of-probate.belknap: D|register-of-probate|Belknap: Glassman not settled by the count -- a tie for the last place, or the write-ins nobody named (30) could have taken it",
+   "2018-sp-belknap-county-democratic_0.xls, sheet 'dbelknap', row 26: D|county-commissioner|Belknap|2: no candidate and no count; no race is read",
+   "2018-sp-belknap-county-libertarian_0.xls, sheet 'lbelknap', row 4: the file counts no scattered write-ins, so whether a write-in it does not name won could not be checked",
+   "2018-sp-belknap-county-libertarian_0.xls, sheet 'lbelknap', row 4: the file counts no scattered write-ins, so whether a write-in it does not name won could not be checked",
+   "2018-sp-belknap-county-libertarian_0.xls, sheet 'lbelknap', row 4: the file counts no scattered write-ins, so whether a write-in it does not name won could not be checked",
+   "2018-sp-belknap-county-libertarian_0.xls, sheet 'lbelknap', row 4: the file counts no scattered write-ins, so whether a write-in it does not name won could not be checked",
+   "2018-sp-belknap-county-libertarian_0.xls, sheet 'lbelknap', row 26: county-commissioner|Belknap|2 is labelled, with no candidate and no count under it and no \"No Election\" mark; no race is read",
+   "2018-09-11.primary-l.sheriff.belknap: L|sheriff|Belknap: 1 place(s) no named candidate won; the write-ins nobody named come to 2, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-l.county-commissioner.belknap-1: L|county-commissioner|Belknap|1: 1 place(s) no named candidate won; the write-ins nobody named come to 1, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-l.county-commissioner.belknap-3: L|county-commissioner|Belknap|3: 1 place(s) no named candidate won; the write-ins nobody named come to 1, and whether one of them was nominated is not in the file",
+   "2018-sp-belknap-county-libertarian_0.xls, sheet 'lbelknap', row 26: L|county-commissioner|Belknap|2: no candidate and no count; no race is read",
+   "2018-09-11.primary-d.county-treasurer.carroll: D|county-treasurer|Carroll: Costello not settled by the count -- a tie for the last place, or the write-ins nobody named (37) could have taken it",
+   "2018-09-11.primary-d.register-of-probate.carroll: D|register-of-probate|Carroll: Lavender not settled by the count -- a tie for the last place, or the write-ins nobody named (33) could have taken it",
+   "2018-09-11.primary-d.county-commissioner.carroll-2: D|county-commissioner|Carroll|2: Babson not settled by the count -- a tie for the last place, or the write-ins nobody named (41) could have taken it",
+   "2018-sp-carroll-county-democratic_0.xls, sheet 'dcarroll', row 28: D|county-commissioner|Carroll|3: No Election; no race is read",
+   "2018-09-11.primary-r.county-attorney.carroll: R|county-attorney|Carroll: O'Rourke-Andruzzi not settled by the count -- a tie for the last place, or the write-ins nobody named (90) could have taken it",
+   "2018-sp-carroll-county-republican_0.xls, sheet 'rcarroll', row 28: R|county-commissioner|Carroll|3: No Election; no race is read",
+   "2018-sp-cheshire-county-democratic_0.xls, sheet 'dcheshire', row 98: the file's footnote '*corrections received from clerk'; the figures are those it prints",
+   "2018-sp-cheshire-county-democratic_0.xls, sheet 'dcheshire', row 68: D|county-commissioner|Cheshire|2: No Election; no race is read",
+   "2018-09-11.primary-l.county-attorney.cheshire: L|county-attorney|Cheshire: 1 place(s) no named candidate won; the write-ins nobody named come to 1, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-l.register-of-probate.cheshire: L|register-of-probate|Cheshire: 1 place(s) no named candidate won; the write-ins nobody named come to 3, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-l.county-commissioner.cheshire-3: L|county-commissioner|Cheshire|3: 1 place(s) no named candidate won; the write-ins nobody named come to 1, and whether one of them was nominated is not in the file",
+   "2018-sp-cheshire-county-libertarian_0.xls, sheet 'lcheshire', row 68: L|county-commissioner|Cheshire|2: No Election; no race is read",
+   "2018-09-11.primary-r.county-attorney.cheshire: R|county-attorney|Cheshire: McLaughlin not settled by the count -- a tie for the last place, or the write-ins nobody named (86) could have taken it",
+   "2018-09-11.primary-r.county-treasurer.cheshire: R|county-treasurer|Cheshire: Clark not settled by the count -- a tie for the last place, or the write-ins nobody named (68) could have taken it",
+   "2018-09-11.primary-r.register-of-deeds.cheshire: R|register-of-deeds|Cheshire: Tilton not settled by the count -- a tie for the last place, or the write-ins nobody named (67) could have taken it",
+   "2018-09-11.primary-r.register-of-probate.cheshire: R|register-of-probate|Cheshire: LaPlante not settled by the count -- a tie for the last place, or the write-ins nobody named (57) could have taken it",
+   "2018-sp-cheshire-county-republican_0.xls, sheet 'rcheshire', row 68: R|county-commissioner|Cheshire|2: No Election; no race is read",
+   "2018-09-11.primary-d.county-treasurer.coos: D|county-treasurer|Coos: Collins not settled by the count -- a tie for the last place, or the write-ins nobody named (27) could have taken it",
+   "2018-09-11.primary-d.register-of-probate.coos: D|register-of-probate|Coos: Peterson not settled by the count -- a tie for the last place, or the write-ins nobody named (26) could have taken it",
+   "2018-09-11.primary-d.county-commissioner.coos-2: D|county-commissioner|Coos|2: Brady not settled by the count -- a tie for the last place, or the write-ins nobody named (12) could have taken it",
+   "2018-09-11.primary-d.county-commissioner.coos-3: D|county-commissioner|Coos|3: 1 place(s) no named candidate won; the write-ins nobody named come to 15, and whether one of them was nominated is not in the file",
+   "2018-sp-coos-county-democratic_0.xls, sheet 'dcoos', row 100: D|county-commissioner|Coos|1: No Election; no race is read",
+   "2018-09-11.primary-l.county-treasurer.coos: L|county-treasurer|Coos: 1 place(s) no named candidate won; the write-ins nobody named come to 1, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-l.county-commissioner.coos-3: L|county-commissioner|Coos|3: 1 place(s) no named candidate won; the write-ins nobody named come to 3, and whether one of them was nominated is not in the file",
+   "2018-sp-coos-county-libertarian_0.xls, sheet 'lcoos', row 100: L|county-commissioner|Coos|1: No Election; no race is read",
+   "2018-09-11.primary-r.county-treasurer.coos: R|county-treasurer|Coos: Jacobs not settled by the count -- a tie for the last place, or the write-ins nobody named (6) could have taken it",
+   "2018-sp-coos-county-republican_0.xls, sheet 'rcoos', row 100: R|county-commissioner|Coos|1: No Election; no race is read",
+   "2018-09-11.primary-l.county-attorney.grafton: L|county-attorney|Grafton: Hornick, Greyes not settled by the count -- a tie for the last place, or the write-ins nobody named (2) could have taken it",
+   "2018-09-11.primary-l.county-treasurer.grafton: L|county-treasurer|Grafton: Hill not settled by the count -- a tie for the last place, or the write-ins nobody named (4) could have taken it",
+   "2018-09-11.primary-l.register-of-deeds.grafton: L|register-of-deeds|Grafton: Bailey, Monahan not settled by the count -- a tie for the last place, or the write-ins nobody named (3) could have taken it",
+   "2018-09-11.primary-l.register-of-probate.grafton: L|register-of-probate|Grafton: Mirski, Brown not settled by the count -- a tie for the last place, or the write-ins nobody named (4) could have taken it",
+   "2018-09-11.primary-l.county-commissioner.grafton-1: L|county-commissioner|Grafton|1: 1 place(s) no named candidate won; the write-ins nobody named come to 2, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-l.county-commissioner.grafton-2: L|county-commissioner|Grafton|2: Subjeck, Lauer not settled by the count -- a tie for the last place, or the write-ins nobody named (1) could have taken it",
+   "2018-09-11.primary-l.county-commissioner.grafton-3: L|county-commissioner|Grafton|3: 1 place(s) no named candidate won; the write-ins nobody named come to 1, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-r.county-treasurer.grafton: R|county-treasurer|Grafton: Hill not settled by the count -- a tie for the last place, or the write-ins nobody named (226) could have taken it",
+   "2018-09-11.primary-r.county-commissioner.grafton-1: R|county-commissioner|Grafton|1: Piper not settled by the count -- a tie for the last place, or the write-ins nobody named (15) could have taken it",
+   "2018-sp-hillsborough-county-democratic_0.xls, sheet 'dhillsborough', row 166: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2018-09-11.primary-d.register-of-deeds.hillsborough: D|register-of-deeds|Hillsborough: Sapienza not settled by the count -- a tie for the last place, or the write-ins nobody named (755) could have taken it",
+   "2018-09-11.primary-d.county-commissioner.hillsborough-1: D|county-commissioner|Hillsborough|1: Pappas not settled by the count -- a tie for the last place, or the write-ins nobody named (354) could have taken it",
+   "2018-sp-merrimack-county-democratic_0.xls, sheet 'dmerrimack', row 130: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2018-sp-merrimack-county-democratic_0.xls, sheet 'dmerrimack', row 89: D|county-commissioner|Merrimack|2: No Election; no race is read",
+   "2018-09-11.primary-l.county-attorney.merrimack: L|county-attorney|Merrimack: Halvorsen not settled by the count -- a tie for the last place, or the write-ins nobody named (4) could have taken it",
+   "2018-09-11.primary-l.county-treasurer.merrimack: L|county-treasurer|Merrimack: Kidder not settled by the count -- a tie for the last place, or the write-ins nobody named (5) could have taken it",
+   "2018-09-11.primary-l.register-of-deeds.merrimack: L|register-of-deeds|Merrimack: Brack not settled by the count -- a tie for the last place, or the write-ins nobody named (5) could have taken it",
+   "2018-09-11.primary-l.register-of-probate.merrimack: L|register-of-probate|Merrimack: Bradstreet not settled by the count -- a tie for the last place, or the write-ins nobody named (4) could have taken it",
+   "2018-09-11.primary-l.county-commissioner.merrimack-1: L|county-commissioner|Merrimack|1: 1 place(s) no named candidate won; the write-ins nobody named come to 5, and whether one of them was nominated is not in the file",
+   "2018-sp-merrimack-county-libertarian_0.xls, sheet 'lmerrimack', row 89: L|county-commissioner|Merrimack|2: No Election; no race is read",
+   "2018-09-11.primary-r.county-commissioner.merrimack-1: R|county-commissioner|Merrimack|1: Reardon not settled by the count -- a tie for the last place, or the write-ins nobody named (101) could have taken it",
+   "2018-sp-merrimack-county-republican_0.xls, sheet 'rmerrimack', row 89: R|county-commissioner|Merrimack|2: No Election; no race is read",
+   "2018-sp-rockingham-county-libertarian_0.xls, sheet 'lrockingham', row 104: Derry prints only a 0 under county-commissioner|Rockingham|3, whose other cells it leaves empty; read as no row of that race",
+   "2018-09-11.primary-l.county-commissioner.rockingham-3: L|county-commissioner|Rockingham|3: Coyle not settled by the count -- a tie for the last place, or the write-ins nobody named (1) could have taken it",
+   "2018-sp-rockingham-county-libertarian_0.xls, sheet 'lrockingham', row 96: L|county-commissioner|Rockingham|1: No Election; no race is read",
+   "2018-sp-strafford-county-democratic_0.xls, sheet 'dstrafford', row 35: county-commissioner|Strafford elects more than one at large and the file prints no number of seats, so the count is kept and no one is marked elected",
+   "2018-09-11.primary-d.county-commissioner.strafford: D|county-commissioner|Strafford: Rollo, Maglaras, Watson not settled by the count -- a tie for the last place, or the write-ins nobody named (59) could have taken it",
+   "2018-sp-strafford-county-libertarian_0.xls, sheet 'lstrafford', row 35: county-commissioner|Strafford elects more than one at large and the file prints no number of seats, so the count is kept and no one is marked elected",
+   "2018-09-11.primary-l.sheriff.strafford: L|sheriff|Strafford: Dubois not settled by the count -- a tie for the last place, or the write-ins nobody named (7) could have taken it",
+   "2018-09-11.primary-l.county-attorney.strafford: L|county-attorney|Strafford: 1 place(s) no named candidate won; the write-ins nobody named come to 3, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-l.county-treasurer.strafford: L|county-treasurer|Strafford: 1 place(s) no named candidate won; the write-ins nobody named come to 3, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-l.register-of-deeds.strafford: L|register-of-deeds|Strafford: 1 place(s) no named candidate won; the write-ins nobody named come to 5, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-l.register-of-probate.strafford: L|register-of-probate|Strafford: 1 place(s) no named candidate won; the write-ins nobody named come to 4, and whether one of them was nominated is not in the file",
+   "2018-09-11.primary-l.county-commissioner.strafford: L|county-commissioner|Strafford: Rollo, Maglaras, Watson not settled by the count -- a tie for the last place, or the write-ins nobody named (7) could have taken it",
+   "2018-sp-sullivan-county-republican_0.xls, sheet 'rsullivan', row 26: R|county-commissioner|Sullivan|2: No Election; no race is read"
  ],
  "_refused": [
    {
@@ -170,6 +302,56 @@
    {
      "file": "2018-sp-state-senate-1-24-libertarian_0.xls",
      "why": "2018-sp-state-senate-1-24-libertarian_0.xls, sheet 'lsenate2', row 1: 'New Hampshire Primary Election - September 12, 2018' names a day that is not the primary of 2018-09-11"
+   },
+   {
+     "file": "2018-sp-congressional-district-2-democratic_0.xlsx",
+     "why": "2018-sp-congressional-district-2-democratic_0.xlsx, sheet 'Con2 Rep', row 2: [datetime.date(2018, 9, 11)] before the sheet's titles name the State and the Representative in Congress's district, and a header begins with the day"
+   },
+   {
+     "file": "2018-sp-congressional-district-1-libertarian_0.xlsx",
+     "why": "2018-sp-congressional-district-1-libertarian_0.xlsx, sheet 'Con1 Rep', row 2: [datetime.date(2018, 9, 11)] before the sheet's titles name the State and the Representative in Congress's district, and a header begins with the day"
+   },
+   {
+     "file": "2018-sp-carroll-county-libertarian_0.xls",
+     "why": "2018-sp-carroll-county-libertarian_0.xls, sheet 'lcarroll', row 15: ['Jackson', None, None, None, '(no votes for entire worksheet)'] among the places, before their Totals"
+   },
+   {
+     "file": "2018-sp-cheshire-county-libertarian_0.xls",
+     "race": "L|county-commissioner|Cheshire|1",
+     "why": "2018-sp-cheshire-county-libertarian_0.xls, sheet 'lcheshire', row 91: 1 in column 5, which no header names"
+   },
+   {
+     "file": "2018-sp-hillsborough-county-libertarian_0.xls",
+     "why": "2018-sp-hillsborough-county-libertarian_0.xls, sheet 'lhillsborough', row 4: 'Olding (w-in)*' in column 3 is neither a candidate (\"Name, d\") nor Undervotes, Overvotes or Write-Ins"
+   },
+   {
+     "file": "2018-sp-merrimack-county-libertarian_0.xls",
+     "race": "L|county-commissioner|Merrimack|3",
+     "why": "2018-sp-merrimack-county-libertarian_0.xls, sheet 'lmerrimack', row 89: a header with no rows of counts under it"
+   },
+   {
+     "file": "2018-sp-rockingham-county-democratic_0.xls",
+     "why": "2018-sp-rockingham-county-democratic_0.xls, sheet 'drockingham', row 48: '*refused nomination' where a header's first cell is empty or the day"
+   },
+   {
+     "file": "2018-sp-strafford-county-republican_0.xls",
+     "why": "2018-sp-strafford-county-republican_0.xls, sheet 'rstrafford', row 66: a header that names no county office"
+   },
+   {
+     "file": "2018-sp-sullivan-county-democratic_0.xls",
+     "why": "2018-sp-sullivan-county-democratic_0.xls, sheet 'dsullivan': a header with no Totals row under it"
+   }
+ ],
+ "_disagreements": [
+   {
+     "check": "a county's row in the summary is its block's Totals",
+     "what": "Hillsborough: Jilletta Jarvis, l, the summary prints 2, the county's Totals say 1",
+     "where": "2018-sp-governor-democratic_0.xls, sheet 'dsum-belkgov', row 10; 2018-sp-governor-democratic_0.xls, sheet 'dhillsgov', row 55"
+   },
+   {
+     "check": "a column's places sum to the file's Totals",
+     "what": "district 5: Dave Wheeler, r, the places add up to 4, the file's Totals say 2",
+     "where": "2018-sp-executive-council-1-5-libertarian-_0.xls, sheet 'lcouncil5', row 45"
    }
  ],
  "_source": [
@@ -200,12 +382,155 @@
   {"file": "records/sources/2018-sp-house-sullivan-libertarian_0.xls", "url": null, "saved": "2026-11-11", "sha256": "487a7188f0e9174da1f5589811f6feb1ced252d89ba8d350a5da67a7a2e1df04"},
   {"file": "records/sources/2018-sp-house-sullivan-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "88f8835fbecfdfc884917c7cbd0ea0888a6987ec24562ac0ff8aac0ca71bf46b"},
   {"file": "records/sources/2018-sp-state-senate-1-24-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "7520547d3f0cc6a9fe771c244b7fd5144935572a66ce0bb90ac129984c61c3fd"},
-  {"file": "records/sources/2018-sp-state-senate-1-24-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "5fa457f58e570f6e5f28c75d9eb6bcb5fc38717b0d1ca641774a3c1f6459e8d2"}
+  {"file": "records/sources/2018-sp-state-senate-1-24-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "5fa457f58e570f6e5f28c75d9eb6bcb5fc38717b0d1ca641774a3c1f6459e8d2"},
+  {"file": "records/sources/2018-sp-governor-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "5eb9c3de34fe01cecf264867da40d772b9fa5366713383fc8a822ba74c3200b5"},
+  {"file": "records/sources/2018-sp-governor-libertarian_0.xls", "url": null, "saved": "2026-11-11", "sha256": "885db5b3d79c2f004a0cb768c3a3fe1e323bd002278a9f314b72906524d7602b"},
+  {"file": "records/sources/2018-sp-governor-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "8b946d676f3c163151a20d840835a5b5522b78a75866e50badb199e8f7e2832b"},
+  {"file": "records/sources/2018-sp-executive-council-1-5-democratic-_0.xls", "url": null, "saved": "2026-11-11", "sha256": "0266b43e3824fda28c6b22e1d7f24c7a3999cecd0ffa13ffea7ccfdacb9c1d9b"},
+  {"file": "records/sources/2018-sp-executive-council-1-5-libertarian-_0.xls", "url": null, "saved": "2026-11-11", "sha256": "f117727b9d610e6e44f58d0935a184d31efb1cb10043da781a7324d53b20d317"},
+  {"file": "records/sources/2018-sp-executive-council-1-5-republican-_0.xls", "url": null, "saved": "2026-11-11", "sha256": "5c538b1674b7f74ca42df679dc0a57d9503e00aa26cb85192468bf7424443e9c"},
+  {"file": "records/sources/2018-sp-congressional-district-1-democratic_0.xlsx", "url": null, "saved": "2026-11-11", "sha256": "cb16f28cdc21f07babfbeeeac395042d8f62a1dc064a0287279ec7b129c0fe2c"},
+  {"file": "records/sources/2018-sp-congressional-district-2-libertarian_0.xlsx", "url": null, "saved": "2026-11-11", "sha256": "906cb093ddb919b44b2d03f6c0f0e1c1ff79ced6638a77445e8edc019f1b392b"},
+  {"file": "records/sources/2018-sp-congressional-district-1-republican_0.xlsx", "url": null, "saved": "2026-11-11", "sha256": "21a1b98649497bf1e2b8d6f506842b34f6ed7bd1b35acb2f0af186b964757b2b"},
+  {"file": "records/sources/2018-sp-congressional-district-2-republican_0.xlsx", "url": null, "saved": "2026-11-11", "sha256": "5e219a8eb155a7b8b58359ad32401a705a86f384bce0727314ed111f8b67d1f9"},
+  {"file": "records/sources/2018-sp-belknap-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "e0e0efe9ffb573ea8621bf9c8d66d725702a04937caf70db4a249b5ffee18b0d"},
+  {"file": "records/sources/2018-sp-belknap-county-libertarian_0.xls", "url": null, "saved": "2026-11-11", "sha256": "62fc47c4016f1fb483809a9ad9a8b5304fcc77811e30ec222cbd0abdd1a1220e"},
+  {"file": "records/sources/2018-sp-carroll-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "ba43877992e0e776893c316ded75ae016ee3d849f5b023ac208a7df7f5213c47"},
+  {"file": "records/sources/2018-sp-carroll-county-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "8075fa3ecc30ad8bb52ee56f367c67bab9a79e194466e969e8de21a3919c7ad5"},
+  {"file": "records/sources/2018-sp-cheshire-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "94140fc9196328bacea5e2267497326eaf39c5d4acf48fb2a6686da3c11a1927"},
+  {"file": "records/sources/2018-sp-cheshire-county-libertarian_0.xls", "url": null, "saved": "2026-11-11", "sha256": "cd01aa5404222da4f470330f6e42a66c7aea7500074c7a258312f6a0315e6e51"},
+  {"file": "records/sources/2018-sp-cheshire-county-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "14a57349a8ef60205d674b1c276c56e77cbf500d2a326be4cf00c9a8c6050a43"},
+  {"file": "records/sources/2018-sp-coos-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "d550ae4f6a803c1f54d84f5a471219ccb2b380b01781b2b13c7cd0b823d35830"},
+  {"file": "records/sources/2018-sp-coos-county-libertarian_0.xls", "url": null, "saved": "2026-11-11", "sha256": "ff2894938096dbc6ea2b97824c8e7170be9b78f831842b63877e1cb33093ed41"},
+  {"file": "records/sources/2018-sp-coos-county-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "e67e29e2952973cd78aee5d2ccc60db3917ebfc1d171d5cfc4f7d2be062a1fbd"},
+  {"file": "records/sources/2018-sp-grafton-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "63aea2148feb06bd8336023042e9fb1c04efc585b8ce4549b9fd1697a8503d67"},
+  {"file": "records/sources/2018-sp-grafton-county-libertarian_0.xls", "url": null, "saved": "2026-11-11", "sha256": "d51cfcce99c56f830d80f67038e226bf1d3e4bccd42392d09c298685922d9fb6"},
+  {"file": "records/sources/2018-sp-grafton-county-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "d33753338bc9fe26f4a60b8382a11adac2ae461bf217a1431133cb982bf39f33"},
+  {"file": "records/sources/2018-sp-hillsborough-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "fa543e2bd4ea82af2329a3029c4398f5a65ab9c58839bab95cca2ac5ce7bf622"},
+  {"file": "records/sources/2018-sp-hillsborough-county-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "4dd16dd020ae9e37a1adece8c616ad5290ee6425e3c381b18a0ff6c3f74efa87"},
+  {"file": "records/sources/2018-sp-merrimack-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "b288d2e65898489d05986c5e03da23ffb5faf2ca16d0ed25179e8c2a18656eb1"},
+  {"file": "records/sources/2018-sp-merrimack-county-libertarian_0.xls", "url": null, "saved": "2026-11-11", "sha256": "9910b07d51b0417ebbb7c9e7d624bd12215a03e0203e0df8bfac01dc7044e06f"},
+  {"file": "records/sources/2018-sp-merrimack-county-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "b9cdb13d6b4aca0b534c885c6825cb510d19f15189f5016b9fba4a12c5afbeaa"},
+  {"file": "records/sources/2018-sp-rockingham-county-libertarian_0.xls", "url": null, "saved": "2026-11-11", "sha256": "449feba1dfe61a8487d4d7a13d68ecbf2c983e5a91f93ec1a051227532397cfe"},
+  {"file": "records/sources/2018-sp-strafford-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "a1f9cb0bedacf624eb8fb01a4e24d57cf59b7554df3af6baa11dcca8d8d4935f"},
+  {"file": "records/sources/2018-sp-strafford-county-libertarian_0.xls", "url": null, "saved": "2026-11-11", "sha256": "dc1304ec94e4033692301e34840067db0bc60d6bd353a656655751f875ac1016"},
+  {"file": "records/sources/2018-sp-sullivan-county-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "558b10c051ec9de6108758f8a72d8473605f23dcf1bca0970b4cf2bc9f5a7ab2"}
  ],
  "election": "2018-09-11",
  "general": "2018-11-06",
  "term": "2019-2020",
  "races": {
+  "D|governor": {"party": "d", "office": "governor", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.governor.statewide", "count_from": "the summary's Totals", "scatter": 167, "undervotes": null, "overvotes": null, "printed_totals": 66, "candidates": [
+    {"name": "Molly Kelly", "party": "d", "votes": 80599, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.governor.statewide.molly-kelly-d"},
+    {"name": "Steve Marchand", "party": "d", "votes": 41612, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.governor.statewide.steve-marchand-d"},
+    {"name": "Aaron Day", "party": "l", "votes": 8, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.governor.statewide.aaron-day-l"},
+    {"name": "Jilletta Jarvis", "party": "l", "votes": 17, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.governor.statewide.jilletta-jarvis-l"},
+    {"name": "Chris Sununu", "party": "r", "votes": 563, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.governor.statewide.chris-sununu-r"}]},
+  "L|governor": {"party": "l", "office": "governor", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.governor.statewide", "count_from": "the summary's Totals", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 66, "candidates": [
+    {"name": "Aaron Day", "party": "l", "votes": 487, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.governor.statewide.aaron-day-l"},
+    {"name": "Jilletta Jarvis", "party": "l", "votes": 576, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.governor.statewide.jilletta-jarvis-l"},
+    {"name": "Molly, Kelly", "party": "d", "votes": 9, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.governor.statewide.molly-kelly-d"},
+    {"name": "Steve Marchand", "party": "d", "votes": 6, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.governor.statewide.steve-marchand-d"},
+    {"name": "Chris Sununu", "party": "r", "votes": 21, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.governor.statewide.chris-sununu-r"}]},
+  "R|governor": {"party": "r", "office": "governor", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.governor.statewide", "count_from": "the summary's Totals", "scatter": 692, "undervotes": null, "overvotes": null, "printed_totals": 66, "candidates": [
+    {"name": "Chris Sununu", "party": "r", "votes": 91025, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.governor.statewide.chris-sununu-r"},
+    {"name": "Molly Kelly", "party": "d", "votes": 577, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.governor.statewide.molly-kelly-d"},
+    {"name": "Steve Marchand", "party": "d", "votes": 160, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.governor.statewide.steve-marchand-d"},
+    {"name": "Aaron Day", "party": "l", "votes": 90, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.governor.statewide.aaron-day-l"},
+    {"name": "Jilletta Jarvis", "party": "l", "votes": 39, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.governor.statewide.jilletta-jarvis-l"}]},
+  "D|us-house|1": {"party": "d", "office": "us-house", "district": 1, "seats": 1, "contest": "2018-09-11.primary-d.us-house.1", "count_from": "the places' sum", "scatter": null, "undervotes": null, "overvotes": null, "printed_totals": 11, "candidates": [
+    {"name": "Naomi Andrews", "party": "", "votes": 4546, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.us-house.1.naomi-andrews"},
+    {"name": "Paul Cardinal", "party": "", "votes": 328, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.us-house.1.paul-cardinal"},
+    {"name": "Mark S. MacKenzie", "party": "", "votes": 765, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.us-house.1.mark-s-mackenzie"},
+    {"name": "William Martin", "party": "", "votes": 235, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.us-house.1.william-martin"},
+    {"name": "Deaglan McEachern", "party": "", "votes": 1686, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.us-house.1.deaglan-mceachern"},
+    {"name": "Mindi Messmer", "party": "", "votes": 6143, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.us-house.1.mindi-messmer"},
+    {"name": "Terence O'Rourke", "party": "", "votes": 667, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.us-house.1.terence-o-rourke"},
+    {"name": "Chris Pappas", "party": "", "votes": 27350, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.us-house.1.chris-pappas"},
+    {"name": "Levi Sanders", "party": "", "votes": 1160, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.us-house.1.levi-sanders"},
+    {"name": "Lincoln Soldati", "party": "", "votes": 2003, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.us-house.1.lincoln-soldati"},
+    {"name": "Maura Sullivan", "party": "", "votes": 19560, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.us-house.1.maura-sullivan"}]},
+  "R|us-house|1": {"party": "r", "office": "us-house", "district": 1, "seats": 1, "contest": "2018-09-11.primary-r.us-house.1", "count_from": "the places' sum", "scatter": null, "undervotes": null, "overvotes": null, "printed_totals": 6, "candidates": [
+    {"name": "Michael Callis", "party": "", "votes": 1272, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.1.michael-callis"},
+    {"name": "Bruce Crochetiere", "party": "", "votes": 780, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.1.bruce-crochetiere"},
+    {"name": "Jeffory W. Denaro", "party": "", "votes": 983, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.1.jeffory-w-denaro"},
+    {"name": "Eddie Edwards", "party": "", "votes": 23763, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.us-house.1.eddie-edwards"},
+    {"name": "Andy Martin", "party": "", "votes": 2126, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.1.andy-martin"},
+    {"name": "Andy Sanborn", "party": "", "votes": 20852, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.1.andy-sanborn"}]},
+  "L|us-house|2": {"party": "l", "office": "us-house", "district": 2, "seats": 1, "contest": "2018-09-11.primary-l.us-house.2", "count_from": "the places' sum", "scatter": 23, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Tom Alciere", "party": "", "votes": 146, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.us-house.2.tom-alciere"},
+    {"name": "Justin O'Donnell", "party": "", "votes": 426, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.us-house.2.justin-o-donnell"}]},
+  "R|us-house|2": {"party": "r", "office": "us-house", "district": 2, "seats": 1, "contest": "2018-09-11.primary-r.us-house.2", "count_from": "the places' sum", "scatter": null, "undervotes": null, "overvotes": null, "printed_totals": 7, "candidates": [
+    {"name": "Brian Belanger", "party": "", "votes": 2421, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.2.brian-belanger"},
+    {"name": "Gerard Beloin", "party": "", "votes": 630, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.2.gerard-beloin"},
+    {"name": "Lynne Blankenbeker", "party": "", "votes": 9858, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.2.lynne-blankenbeker"},
+    {"name": "Robert Burns", "party": "", "votes": 6802, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.2.robert-burns"},
+    {"name": "Stewart I. Levenson", "party": "", "votes": 10952, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.2.stewart-i-levenson"},
+    {"name": "Jay Mercer", "party": "", "votes": 1234, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.us-house.2.jay-mercer"},
+    {"name": "Steven Negron", "party": "", "votes": 11195, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.us-house.2.steven-negron"}]},
+  "D|executive-council|1": {"party": "d", "office": "executive-council", "district": 1, "seats": 1, "contest": "2018-09-11.primary-d.executive-council.1", "count_from": "the places' sum", "scatter": 62, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Michael J. Cryans", "party": "d", "votes": 21979, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.executive-council.1.michael-j-cryans-d"},
+    {"name": "Tobin Menard", "party": "l", "votes": 3, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.1.tobin-menard-l"},
+    {"name": "Joseph D. Kenney", "party": "r", "votes": 57, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.1.joseph-d-kenney-r"},
+    {"name": "Kim Strathdee", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.1.kim-strathdee-r"}]},
+  "L|executive-council|1": {"party": "l", "office": "executive-council", "district": 1, "seats": 1, "contest": "2018-09-11.primary-l.executive-council.1", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Tobin Menard", "party": "l", "votes": 189, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.executive-council.1.tobin-menard-l"},
+    {"name": "Joseph D. Kenney", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.1.joseph-d-kenney-r"},
+    {"name": "Kim Strathdee", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.1.kim-strathdee-r"},
+    {"name": "Michael J. Cryans", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.1.michael-j-cryans-d"}]},
+  "R|executive-council|1": {"party": "r", "office": "executive-council", "district": 1, "seats": 1, "contest": "2018-09-11.primary-r.executive-council.1", "count_from": "the places' sum", "scatter": 29, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Joseph D. Kenney", "party": "r", "votes": 14758, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.executive-council.1.joseph-d-kenney-r"},
+    {"name": "Kim Strathdee", "party": "r", "votes": 3875, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.1.kim-strathdee-r"},
+    {"name": "Michael J. Cryans", "party": "d", "votes": 35, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.1.michael-j-cryans-d"},
+    {"name": "Tobin Menard", "party": "l", "votes": 2, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.1.tobin-menard-l"}]},
+  "D|executive-council|2": {"party": "d", "office": "executive-council", "district": 2, "seats": 1, "contest": "2018-09-11.primary-d.executive-council.2", "count_from": "the places' sum", "scatter": 58, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Andru Volinsky", "party": "d", "votes": 25111, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.executive-council.2.andru-volinsky-d"},
+    {"name": "James S. Beard", "party": "r", "votes": 22, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.2.james-s-beard-r"}]},
+  "L|executive-council|2": {"party": "l", "office": "executive-council", "district": 2, "seats": 1, "contest": "2018-09-11.primary-l.executive-council.2", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "James S. Beard", "party": "r", "votes": 5, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.executive-council.2.james-s-beard-r"},
+    {"name": "Andru Volinsky", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.2.andru-volinsky-d"}]},
+  "R|executive-council|2": {"party": "r", "office": "executive-council", "district": 2, "seats": 1, "contest": "2018-09-11.primary-r.executive-council.2", "count_from": "the places' sum", "scatter": 68, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "James S. Beard", "party": "r", "votes": 13233, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.executive-council.2.james-s-beard-r"},
+    {"name": "Andru Volinsky", "party": "d", "votes": 41, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.2.andru-volinsky-d"}]},
+  "D|executive-council|3": {"party": "d", "office": "executive-council", "district": 3, "seats": 1, "contest": "2018-09-11.primary-d.executive-council.3", "count_from": "the places' sum", "scatter": 39, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Joe Pace", "party": "d", "votes": 19776, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.executive-council.3.joe-pace-d"},
+    {"name": "Russell Prescott", "party": "r", "votes": 8, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.3.russell-prescott-r"}]},
+  "L|executive-council|3": {"party": "l", "office": "executive-council", "district": 3, "seats": 1, "contest": "2018-09-11.primary-l.executive-council.3", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Russell Prescott", "party": "r", "votes": 6, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.executive-council.3.russell-prescott-r"},
+    {"name": "Joe Pace", "party": "d", "votes": 3, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.3.joe-pace-d"}]},
+  "R|executive-council|3": {"party": "r", "office": "executive-council", "district": 3, "seats": 1, "contest": "2018-09-11.primary-r.executive-council.3", "count_from": "the places' sum", "scatter": 54, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Russell Prescott", "party": "r", "votes": 17940, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.executive-council.3.russell-prescott-r"},
+    {"name": "Joe Pace", "party": "d", "votes": 24, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.3.joe-pace-d"}]},
+  "D|executive-council|4": {"party": "d", "office": "executive-council", "district": 4, "seats": 1, "contest": "2018-09-11.primary-d.executive-council.4", "count_from": "the places' sum", "scatter": 31, "undervotes": null, "overvotes": null, "printed_totals": 6, "candidates": [
+    {"name": "Gray Chynoweth", "party": "d", "votes": 11142, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.executive-council.4.gray-chynoweth-d"},
+    {"name": "Garth Corriveau", "party": "d", "votes": 8855, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.4.garth-corriveau-d"},
+    {"name": "Jane Cormier", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.4.jane-cormier-r"},
+    {"name": "Ted Gatsas", "party": "r", "votes": 46, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.4.ted-gatsas-r"},
+    {"name": "Richard Tomasso", "party": "l", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.4.richard-tomasso-l"}]},
+  "L|executive-council|4": {"party": "l", "office": "executive-council", "district": 4, "seats": 1, "contest": "2018-09-11.primary-l.executive-council.4", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 6, "candidates": [
+    {"name": "Richard Tomasso", "party": "l", "votes": 184, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.executive-council.4.richard-tomasso-l"},
+    {"name": "Jane Cormier", "party": "r", "votes": 6, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.4.jane-cormier-r"},
+    {"name": "Ted Gatsas", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.4.ted-gatsas-r"},
+    {"name": "Gray Chynoweth", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.4.gray-chynoweth-d"},
+    {"name": "Garth Corriveau", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.4.garth-corriveau-d"}]},
+  "R|executive-council|4": {"party": "r", "office": "executive-council", "district": 4, "seats": 1, "contest": "2018-09-11.primary-r.executive-council.4", "count_from": "the places' sum", "scatter": 23, "undervotes": null, "overvotes": null, "printed_totals": 6, "candidates": [
+    {"name": "Jane Cormier", "party": "r", "votes": 6529, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.4.jane-cormier-r"},
+    {"name": "Ted Gatsas", "party": "r", "votes": 12956, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.executive-council.4.ted-gatsas-r"},
+    {"name": "Gray Chynoweth", "party": "d", "votes": 14, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.4.gray-chynoweth-d"},
+    {"name": "Garth Corriveau", "party": "d", "votes": 11, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.4.garth-corriveau-d"},
+    {"name": "Richard Tomasso", "party": "l", "votes": 4, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.4.richard-tomasso-l"}]},
+  "D|executive-council|5": {"party": "d", "office": "executive-council", "district": 5, "seats": 1, "contest": "2018-09-11.primary-d.executive-council.5", "count_from": "the places' sum", "scatter": 21, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Debora B. Pignatelli", "party": "d", "votes": 19678, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.executive-council.5.debora-b-pignatelli-d"},
+    {"name": "Dave Wheeler", "party": "r", "votes": 8, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.5.dave-wheeler-r"},
+    {"name": "Brian Chabot", "party": "l", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.executive-council.5.brian-chabot-l"}]},
+  "L|executive-council|5": {"party": "l", "office": "executive-council", "district": 5, "seats": 1, "contest": "2018-09-11.primary-l.executive-council.5", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Brian Chabot", "party": "l", "votes": 230, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.executive-council.5.brian-chabot-l"},
+    {"name": "Dave Wheeler", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.5.dave-wheeler-r"},
+    {"name": "Debora B. Pignatelli", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.executive-council.5.debora-b-pignatelli-d"}]},
+  "R|executive-council|5": {"party": "r", "office": "executive-council", "district": 5, "seats": 1, "contest": "2018-09-11.primary-r.executive-council.5", "count_from": "the places' sum", "scatter": 59, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Dave Wheeler", "party": "r", "votes": 15956, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.executive-council.5.dave-wheeler-r"},
+    {"name": "Debora B. Pignatelli", "party": "d", "votes": 25, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.5.debora-b-pignatelli-d"},
+    {"name": "Brian Chabot", "party": "l", "votes": 7, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.executive-council.5.brian-chabot-l"}]},
   "D|S|1": {"party": "d", "seats": 1, "floterial": false, "towns": ["Atkinson and Gilmanton Ac. Gt.", "Bath", "Bean's Grant", "Bean's Purchase", "Benton", "Berlin", "Bethlehem", "Cambridge", "Carroll", "Chandler's Purchase", "Clarksville", "Colebrook", "Columbia", "Crawford's Purchase", "Cutt's Grant", "Dalton", "Dix's Grant", "Dixville", "Dummer", "Easton", "Errol", "Erving's Location", "Franconia", "Gorham", "Green's Grant", "Hadley's Purchase", "Jefferson", "Kilkenny", "Lancaster", "Landaff", "Lincoln", "Lisbon", "Littleton", "Livermore", "Low and Burbank's Grant", "Lyman", "Martin's Location", "Milan", "Millsfield", "Monroe", "Northumberland", "Odell", "Pinkham's Grant", "Pittsburg", "Randolph", "Sargent's Purchase", "Second College Grant", "Shelburne", "Stark", "Stewartstown", "Stratford", "Success", "Sugar Hill", "Thompson & Meserve's Pur.", "Thornton", "Wentworth's Location", "Whitefield", "Woodstock"], "scatter": 96, "printed_totals": 4, "candidates": [
     {"name": "Woodburn", "party": "d", "votes": 2354, "write_in": false, "nominated": true},
     {"name": "Kelly", "party": "", "votes": 1014, "write_in": true, "nominated": false},
@@ -2934,6 +3259,420 @@
     {"name": "Cragin", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Sullivan|11": {"party": "r", "seats": 1, "floterial": true, "towns": ["Acworth", "Charlestown", "Goshen", "Langdon", "Lempster", "Washington"], "scatter": 5, "printed_totals": 3, "surnames": true, "candidates": [
     {"name": "Steven Smith", "party": "r", "votes": 573, "write_in": false, "nominated": true},
-    {"name": "Cragin", "party": "d", "votes": 2, "write_in": false, "nominated": false}]}
+    {"name": "Cragin", "party": "d", "votes": 2, "write_in": false, "nominated": false}]},
+  "D|county-attorney|Belknap": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-attorney.belknap", "count_from": "the places' sum", "scatter": 45, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Livernois", "party": "r", "votes": 39, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.county-attorney.belknap.livernois-r"}]},
+  "L|county-attorney|Belknap": {"party": "l", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-attorney.belknap", "count_from": "the places' sum", "scatter": null, "undervotes": null, "overvotes": null, "printed_totals": 0, "county": "Belknap", "open": 1, "candidates": [
+    {"name": "Livermore", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-attorney.belknap.livermore-r"}]},
+  "D|county-commissioner|Belknap|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.belknap-1", "count_from": "the places' sum", "scatter": 39, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Belknap", "candidates": [
+    {"name": "Gallagher", "party": "r", "votes": 16, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.belknap-1.gallagher-r"},
+    {"name": "DeVoy II", "party": "r", "votes": 43, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.belknap-1.devoy-ii-r"},
+    {"name": "T. Tardif", "party": "r", "votes": 13, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.belknap-1.t-tardif-r"},
+    {"name": "Bill Whalen", "party": "", "votes": 141, "write_in": true, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.belknap-1.bill-whalen-write-in"}]},
+  "L|county-commissioner|Belknap|1": {"party": "l", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.belknap-1", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 0, "county": "Belknap", "open": 1, "candidates": [
+    {"name": "Gallagher", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.belknap-1.gallagher-r"},
+    {"name": "DeVoy II", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.belknap-1.devoy-ii-r"},
+    {"name": "Tardif", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.belknap-1.tardif-r"}]},
+  "D|county-commissioner|Belknap|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.belknap-3", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Taylor", "party": "r", "votes": 86, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.belknap-3.taylor-r"}]},
+  "L|county-commissioner|Belknap|3": {"party": "l", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.belknap-3", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 0, "county": "Belknap", "open": 1, "candidates": [
+    {"name": "Taylor", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.belknap-3.taylor-r"}]},
+  "D|county-treasurer|Belknap": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-treasurer.belknap", "count_from": "the places' sum", "scatter": 38, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Muzzey", "party": "r", "votes": 7, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.county-treasurer.belknap.muzzey-r"}]},
+  "L|county-treasurer|Belknap": {"party": "l", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-treasurer.belknap", "count_from": "the places' sum", "scatter": null, "undervotes": null, "overvotes": null, "printed_totals": 0, "county": "Belknap", "open": 1, "candidates": [
+    {"name": "Muzzey", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-treasurer.belknap.muzzey-r"}]},
+  "D|register-of-deeds|Belknap": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-deeds.belknap", "count_from": "the places' sum", "scatter": 29, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "McGrath", "party": "r", "votes": 17, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.register-of-deeds.belknap.mcgrath-r"}]},
+  "L|register-of-deeds|Belknap": {"party": "l", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-deeds.belknap", "count_from": "the places' sum", "scatter": null, "undervotes": null, "overvotes": null, "printed_totals": 0, "county": "Belknap", "open": 1, "candidates": [
+    {"name": "McGrath", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-deeds.belknap.mcgrath-r"}]},
+  "D|register-of-probate|Belknap": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-probate.belknap", "count_from": "the places' sum", "scatter": 30, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Glassman", "party": "r", "votes": 7, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.register-of-probate.belknap.glassman-r"}]},
+  "L|register-of-probate|Belknap": {"party": "l", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-probate.belknap", "count_from": "the places' sum", "scatter": null, "undervotes": null, "overvotes": null, "printed_totals": 0, "county": "Belknap", "open": 1, "candidates": [
+    {"name": "Glassman", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-probate.belknap.glassman-r"}]},
+  "D|sheriff|Belknap": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.sheriff.belknap", "count_from": "the places' sum", "scatter": 99, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Moyer", "party": "r", "votes": 88, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.sheriff.belknap.moyer-r"}]},
+  "L|sheriff|Belknap": {"party": "l", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.sheriff.belknap", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 0, "county": "Belknap", "open": 1, "candidates": [
+    {"name": "Moyer", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.sheriff.belknap.moyer-r"}]},
+  "D|county-attorney|Carroll": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-attorney.carroll", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "O'Rourke-Andruzzi", "party": "d", "votes": 4291, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-attorney.carroll.o-rourke-andruzzi-d"}]},
+  "R|county-attorney|Carroll": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-attorney.carroll", "count_from": "the places' sum", "scatter": 90, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "O'Rourke-Andruzzi", "party": "d", "votes": 32, "write_in": false, "nominated": null, "id": "2018-09-11.primary-r.county-attorney.carroll.o-rourke-andruzzi-d"}]},
+  "D|county-commissioner|Carroll|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.carroll-1", "count_from": "the places' sum", "scatter": 20, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Carroll", "candidates": [
+    {"name": "Weiss", "party": "d", "votes": 3654, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.carroll-1.weiss-d"},
+    {"name": "Hounsell", "party": "r", "votes": 10, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.carroll-1.hounsell-r"},
+    {"name": "McCarthy", "party": "r", "votes": 14, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.carroll-1.mccarthy-r"}]},
+  "R|county-commissioner|Carroll|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.carroll-1", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Hounsell", "party": "r", "votes": 2035, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-commissioner.carroll-1.hounsell-r"},
+    {"name": "McCarthy", "party": "r", "votes": 2445, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.carroll-1.mccarthy-r"}]},
+  "D|county-commissioner|Carroll|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.carroll-2", "count_from": "the places' sum", "scatter": 41, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Babson", "party": "r", "votes": 14, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.county-commissioner.carroll-2.babson-r"}]},
+  "R|county-commissioner|Carroll|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.carroll-2", "count_from": "the places' sum", "scatter": 23, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Babson", "party": "r", "votes": 3968, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.carroll-2.babson-r"}]},
+  "D|county-treasurer|Carroll": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-treasurer.carroll", "count_from": "the places' sum", "scatter": 37, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Costello", "party": "r", "votes": 18, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.county-treasurer.carroll.costello-r"}]},
+  "R|county-treasurer|Carroll": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-treasurer.carroll", "count_from": "the places' sum", "scatter": 15, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Costello", "party": "r", "votes": 4110, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-treasurer.carroll.costello-r"}]},
+  "D|register-of-deeds|Carroll": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-deeds.carroll", "count_from": "the places' sum", "scatter": 33, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Scott", "party": "r", "votes": 126, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.register-of-deeds.carroll.scott-r"}]},
+  "R|register-of-deeds|Carroll": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-deeds.carroll", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Scott", "party": "r", "votes": 4257, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-deeds.carroll.scott-r"}]},
+  "D|register-of-probate|Carroll": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-probate.carroll", "count_from": "the places' sum", "scatter": 33, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Lavender", "party": "r", "votes": 16, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.register-of-probate.carroll.lavender-r"}]},
+  "R|register-of-probate|Carroll": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-probate.carroll", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Lavender", "party": "r", "votes": 4033, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-probate.carroll.lavender-r"}]},
+  "D|sheriff|Carroll": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.sheriff.carroll", "count_from": "the places' sum", "scatter": 70, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Richardi", "party": "r", "votes": 113, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.sheriff.carroll.richardi-r"}]},
+  "R|sheriff|Carroll": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.sheriff.carroll", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Richardi", "party": "r", "votes": 4420, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.sheriff.carroll.richardi-r"}]},
+  "D|county-attorney|Cheshire": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-attorney.cheshire", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "McLaughlin", "party": "d", "votes": 7268, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-attorney.cheshire.mclaughlin-d"}]},
+  "L|county-attorney|Cheshire": {"party": "l", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-attorney.cheshire", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "open": 1, "candidates": [
+    {"name": "McLaughlin", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-attorney.cheshire.mclaughlin-d"}]},
+  "R|county-attorney|Cheshire": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-attorney.cheshire", "count_from": "the places' sum", "scatter": 86, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "McLaughlin", "party": "d", "votes": 15, "write_in": false, "nominated": null, "id": "2018-09-11.primary-r.county-attorney.cheshire.mclaughlin-d"}]},
+  "D|county-commissioner|Cheshire|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.cheshire-1", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Wozmak", "party": "d", "votes": 2042, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.cheshire-1.wozmak-d"},
+    {"name": "Graves", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.cheshire-1.graves-r"}]},
+  "R|county-commissioner|Cheshire|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.cheshire-1", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Graves", "party": "r", "votes": 950, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.cheshire-1.graves-r"},
+    {"name": "Wozmak", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-commissioner.cheshire-1.wozmak-d"}]},
+  "D|county-commissioner|Cheshire|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.cheshire-3", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Englund", "party": "d", "votes": 2449, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.cheshire-3.englund-d"},
+    {"name": "Cartwright", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.cheshire-3.cartwright-r"}]},
+  "L|county-commissioner|Cheshire|3": {"party": "l", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.cheshire-3", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "open": 1, "candidates": [
+    {"name": "Cartwright", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.cheshire-3.cartwright-r"},
+    {"name": "Englund", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.cheshire-3.englund-d"}]},
+  "R|county-commissioner|Cheshire|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.cheshire-3", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Cartwright", "party": "r", "votes": 1460, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.cheshire-3.cartwright-r"},
+    {"name": "Englund", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-commissioner.cheshire-3.englund-d"}]},
+  "D|county-treasurer|Cheshire": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-treasurer.cheshire", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Clark", "party": "d", "votes": 7177, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-treasurer.cheshire.clark-d"},
+    {"name": "Kelly III", "party": "l", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-treasurer.cheshire.kelly-iii-l"}]},
+  "L|county-treasurer|Cheshire": {"party": "l", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-treasurer.cheshire", "count_from": "the places' sum", "scatter": 0, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Kelly III", "party": "l", "votes": 70, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.county-treasurer.cheshire.kelly-iii-l"},
+    {"name": "Clark", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-treasurer.cheshire.clark-d"}]},
+  "R|county-treasurer|Cheshire": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-treasurer.cheshire", "count_from": "the places' sum", "scatter": 68, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Clark", "party": "d", "votes": 9, "write_in": false, "nominated": null, "id": "2018-09-11.primary-r.county-treasurer.cheshire.clark-d"},
+    {"name": "Kelly III", "party": "l", "votes": 4, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-treasurer.cheshire.kelly-iii-l"}]},
+  "D|register-of-deeds|Cheshire": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-deeds.cheshire", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Tilton", "party": "d", "votes": 7200, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.register-of-deeds.cheshire.tilton-d"},
+    {"name": "Lester", "party": "l", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-deeds.cheshire.lester-l"}]},
+  "L|register-of-deeds|Cheshire": {"party": "l", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-deeds.cheshire", "count_from": "the places' sum", "scatter": 0, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Lester", "party": "l", "votes": 71, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.register-of-deeds.cheshire.lester-l"},
+    {"name": "Tilton", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-deeds.cheshire.tilton-d"}]},
+  "R|register-of-deeds|Cheshire": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-deeds.cheshire", "count_from": "the places' sum", "scatter": 67, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Tilton", "party": "d", "votes": 13, "write_in": false, "nominated": null, "id": "2018-09-11.primary-r.register-of-deeds.cheshire.tilton-d"},
+    {"name": "Lester", "party": "l", "votes": 2, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.register-of-deeds.cheshire.lester-l"}]},
+  "D|register-of-probate|Cheshire": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-probate.cheshire", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "LaPlante", "party": "d", "votes": 7085, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.register-of-probate.cheshire.laplante-d"}]},
+  "L|register-of-probate|Cheshire": {"party": "l", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-probate.cheshire", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "open": 1, "candidates": [
+    {"name": "LaPlante", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-probate.cheshire.laplante-d"}]},
+  "R|register-of-probate|Cheshire": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-probate.cheshire", "count_from": "the places' sum", "scatter": 57, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "LaPlante", "party": "d", "votes": 7, "write_in": false, "nominated": null, "id": "2018-09-11.primary-r.register-of-probate.cheshire.laplante-d"}]},
+  "D|sheriff|Cheshire": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.sheriff.cheshire", "count_from": "the places' sum", "scatter": 21, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Rivera", "party": "d", "votes": 7614, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.sheriff.cheshire.rivera-d"},
+    {"name": "Nelson", "party": "r", "votes": 56, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.sheriff.cheshire.nelson-r"}]},
+  "L|sheriff|Cheshire": {"party": "l", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.sheriff.cheshire", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Cheshire", "candidates": [
+    {"name": "Nelson", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.sheriff.cheshire.nelson-r"},
+    {"name": "Rivera", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.sheriff.cheshire.rivera-d"},
+    {"name": "DiMezzo", "party": "", "votes": 9, "write_in": true, "nominated": true, "id": "2018-09-11.primary-l.sheriff.cheshire.dimezzo-write-in"}]},
+  "R|sheriff|Cheshire": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.sheriff.cheshire", "count_from": "the places' sum", "scatter": 15, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Nelson", "party": "r", "votes": 3476, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.sheriff.cheshire.nelson-r"},
+    {"name": "Rivera", "party": "d", "votes": 63, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.sheriff.cheshire.rivera-d"}]},
+  "D|county-attorney|Coos": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-attorney.coos", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "McCormick", "party": "d", "votes": 2167, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-attorney.coos.mccormick-d"},
+    {"name": "Jacobs", "party": "d", "votes": 2032, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-attorney.coos.jacobs-d"}]},
+  "L|county-attorney|Coos": {"party": "l", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-attorney.coos", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "McCormick", "party": "d", "votes": 4, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.county-attorney.coos.mccormick-d"},
+    {"name": "Collins", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-attorney.coos.collins-r"}]},
+  "R|county-attorney|Coos": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-attorney.coos", "count_from": "the places' sum", "scatter": 35, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "McCormick", "party": "d", "votes": 22, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-attorney.coos.mccormick-d"},
+    {"name": "Collins", "party": "r", "votes": 1677, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-attorney.coos.collins-r"}]},
+  "D|county-commissioner|Coos|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.coos-2", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Brady", "party": "r", "votes": 5, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.county-commissioner.coos-2.brady-r"}]},
+  "L|county-commissioner|Coos|2": {"party": "l", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.coos-2", "count_from": "the places' sum", "scatter": 0, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "open": 1, "candidates": [
+    {"name": "Brady", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.coos-2.brady-r"}]},
+  "R|county-commissioner|Coos|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.coos-2", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Brady", "party": "r", "votes": 701, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.coos-2.brady-r"}]},
+  "D|county-commissioner|Coos|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.coos-3", "count_from": "the places' sum", "scatter": 15, "undervotes": null, "overvotes": null, "printed_totals": 1, "county": "Coos", "open": 1, "candidates": [
+    {"name": "Swanson", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.coos-3.swanson-r"}]},
+  "L|county-commissioner|Coos|3": {"party": "l", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.coos-3", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "open": 1, "candidates": [
+    {"name": "Swanson", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.coos-3.swanson-r"}]},
+  "R|county-commissioner|Coos|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.coos-3", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Samson", "party": "r", "votes": 553, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.coos-3.samson-r"}]},
+  "D|county-treasurer|Coos": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-treasurer.coos", "count_from": "the places' sum", "scatter": 27, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Collins", "party": "r", "votes": 20, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.county-treasurer.coos.collins-r"}]},
+  "L|county-treasurer|Coos": {"party": "l", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-treasurer.coos", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "open": 1, "candidates": [
+    {"name": "Jacobs", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-treasurer.coos.jacobs-d"}]},
+  "R|county-treasurer|Coos": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-treasurer.coos", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Jacobs", "party": "d", "votes": 2, "write_in": false, "nominated": null, "id": "2018-09-11.primary-r.county-treasurer.coos.jacobs-d"}]},
+  "D|register-of-deeds|Coos": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-deeds.coos", "count_from": "the places' sum", "scatter": 36, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "Rideout", "party": "r", "votes": 40, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-deeds.coos.rideout-r"},
+    {"name": "Nathan Morin", "party": "", "votes": 158, "write_in": true, "nominated": true, "id": "2018-09-11.primary-d.register-of-deeds.coos.nathan-morin-write-in"}]},
+  "L|register-of-deeds|Coos": {"party": "l", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-deeds.coos", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Rideout", "party": "r", "votes": 6, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.register-of-deeds.coos.rideout-r"}]},
+  "R|register-of-deeds|Coos": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-deeds.coos", "count_from": "the places' sum", "scatter": 20, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Rideout", "party": "r", "votes": 1694, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-deeds.coos.rideout-r"}]},
+  "D|register-of-probate|Coos": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-probate.coos", "count_from": "the places' sum", "scatter": 26, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Peterson", "party": "r", "votes": 14, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.register-of-probate.coos.peterson-r"}]},
+  "L|register-of-probate|Coos": {"party": "l", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-probate.coos", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Peterson", "party": "r", "votes": 4, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.register-of-probate.coos.peterson-r"}]},
+  "R|register-of-probate|Coos": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-probate.coos", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Peterson", "party": "r", "votes": 1683, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-probate.coos.peterson-r"}]},
+  "D|sheriff|Coos": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.sheriff.coos", "count_from": "the places' sum", "scatter": 63, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Valerino", "party": "r", "votes": 111, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.sheriff.coos.valerino-r"}]},
+  "L|sheriff|Coos": {"party": "l", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.sheriff.coos", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Valerino", "party": "r", "votes": 4, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.sheriff.coos.valerino-r"}]},
+  "R|sheriff|Coos": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.sheriff.coos", "count_from": "the places' sum", "scatter": 13, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Valerino", "party": "r", "votes": 1659, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.sheriff.coos.valerino-r"}]},
+  "D|county-attorney|Grafton": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-attorney.grafton", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Greyes", "party": "d", "votes": 1872, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-attorney.grafton.greyes-d"},
+    {"name": "Hornick", "party": "d", "votes": 5935, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-attorney.grafton.hornick-d"}]},
+  "L|county-attorney|Grafton": {"party": "l", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-attorney.grafton", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Hornick", "party": "d", "votes": 2, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-attorney.grafton.hornick-d"},
+    {"name": "Greyes", "party": "d", "votes": 2, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-attorney.grafton.greyes-d"}]},
+  "R|county-attorney|Grafton": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-attorney.grafton", "count_from": "the places' sum", "scatter": 107, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Hornick", "party": "d", "votes": 209, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-attorney.grafton.hornick-d"},
+    {"name": "Greyes", "party": "d", "votes": 66, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-attorney.grafton.greyes-d"}]},
+  "D|county-commissioner|Grafton|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.grafton-1", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Piper", "party": "d", "votes": 2908, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.grafton-1.piper-d"}]},
+  "L|county-commissioner|Grafton|1": {"party": "l", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.grafton-1", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "open": 1, "candidates": [
+    {"name": "Piper", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.grafton-1.piper-d"}]},
+  "R|county-commissioner|Grafton|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.grafton-1", "count_from": "the places' sum", "scatter": 15, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Piper", "party": "d", "votes": 1, "write_in": false, "nominated": null, "id": "2018-09-11.primary-r.county-commissioner.grafton-1.piper-d"}]},
+  "D|county-commissioner|Grafton|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.grafton-2", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Lauer", "party": "d", "votes": 2380, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.grafton-2.lauer-d"},
+    {"name": "Subjeck", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.grafton-2.subjeck-r"}]},
+  "L|county-commissioner|Grafton|2": {"party": "l", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.grafton-2", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Subjeck", "party": "r", "votes": 1, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-commissioner.grafton-2.subjeck-r"},
+    {"name": "Lauer", "party": "d", "votes": 1, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-commissioner.grafton-2.lauer-d"}]},
+  "R|county-commissioner|Grafton|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.grafton-2", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Subjeck", "party": "r", "votes": 1616, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.grafton-2.subjeck-r"},
+    {"name": "Lauer", "party": "d", "votes": 19, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-commissioner.grafton-2.lauer-d"}]},
+  "D|county-commissioner|Grafton|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.grafton-3", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Morris", "party": "d", "votes": 2480, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.grafton-3.morris-d"},
+    {"name": "Ahern Jr", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.grafton-3.ahern-jr-r"}]},
+  "L|county-commissioner|Grafton|3": {"party": "l", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.grafton-3", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "open": 1, "candidates": [
+    {"name": "Ahern Jr", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.grafton-3.ahern-jr-r"},
+    {"name": "Morris", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.grafton-3.morris-d"}]},
+  "R|county-commissioner|Grafton|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.grafton-3", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Ahern Jr", "party": "r", "votes": 2059, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.grafton-3.ahern-jr-r"},
+    {"name": "Morris", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-commissioner.grafton-3.morris-d"}]},
+  "D|county-treasurer|Grafton": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-treasurer.grafton", "count_from": "the places' sum", "scatter": 25, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Hill", "party": "d", "votes": 7509, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-treasurer.grafton.hill-d"}]},
+  "L|county-treasurer|Grafton": {"party": "l", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-treasurer.grafton", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Hill", "party": "d", "votes": 2, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-treasurer.grafton.hill-d"}]},
+  "R|county-treasurer|Grafton": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-treasurer.grafton", "count_from": "the places' sum", "scatter": 226, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Hill", "party": "d", "votes": 17, "write_in": false, "nominated": null, "id": "2018-09-11.primary-r.county-treasurer.grafton.hill-d"}]},
+  "D|register-of-deeds|Grafton": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-deeds.grafton", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Grafton", "candidates": [
+    {"name": "Monahan", "party": "d", "votes": 4658, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.register-of-deeds.grafton.monahan-d"},
+    {"name": "Gesler", "party": "d", "votes": 2578, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-deeds.grafton.gesler-d"},
+    {"name": "Bailey", "party": "r", "votes": 6, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-deeds.grafton.bailey-r"}]},
+  "L|register-of-deeds|Grafton": {"party": "l", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-deeds.grafton", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Grafton", "candidates": [
+    {"name": "Bailey", "party": "r", "votes": 2, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.register-of-deeds.grafton.bailey-r"},
+    {"name": "Monahan", "party": "d", "votes": 2, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.register-of-deeds.grafton.monahan-d"},
+    {"name": "Gesler", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-deeds.grafton.gesler-d"}]},
+  "R|register-of-deeds|Grafton": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-deeds.grafton", "count_from": "the places' sum", "scatter": 28, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Grafton", "candidates": [
+    {"name": "Bailey", "party": "r", "votes": 4294, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-deeds.grafton.bailey-r"},
+    {"name": "Monahan", "party": "d", "votes": 38, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.register-of-deeds.grafton.monahan-d"},
+    {"name": "Gesler", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.register-of-deeds.grafton.gesler-d"}]},
+  "D|register-of-probate|Grafton": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-probate.grafton", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Brown", "party": "d", "votes": 7652, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.register-of-probate.grafton.brown-d"},
+    {"name": "Mirski", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-probate.grafton.mirski-r"}]},
+  "L|register-of-probate|Grafton": {"party": "l", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-probate.grafton", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Mirski", "party": "r", "votes": 1, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.register-of-probate.grafton.mirski-r"},
+    {"name": "Brown", "party": "d", "votes": 1, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.register-of-probate.grafton.brown-d"}]},
+  "R|register-of-probate|Grafton": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-probate.grafton", "count_from": "the places' sum", "scatter": 14, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Mirski", "party": "r", "votes": 4238, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-probate.grafton.mirski-r"},
+    {"name": "Brown", "party": "d", "votes": 7, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.register-of-probate.grafton.brown-d"}]},
+  "D|sheriff|Grafton": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.sheriff.grafton", "count_from": "the places' sum", "scatter": 24, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Grafton", "candidates": [
+    {"name": "Stiegler", "party": "d", "votes": 3618, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.sheriff.grafton.stiegler-d"},
+    {"name": "Austin", "party": "d", "votes": 3249, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.sheriff.grafton.austin-d"},
+    {"name": "Dutile", "party": "r", "votes": 126, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.sheriff.grafton.dutile-r"}]},
+  "L|sheriff|Grafton": {"party": "l", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.sheriff.grafton", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Grafton", "candidates": [
+    {"name": "Dutile", "party": "r", "votes": 8, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.sheriff.grafton.dutile-r"},
+    {"name": "Stiegler", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.sheriff.grafton.stiegler-d"},
+    {"name": "Austin", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.sheriff.grafton.austin-d"}]},
+  "R|sheriff|Grafton": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.sheriff.grafton", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Grafton", "candidates": [
+    {"name": "Dutile", "party": "r", "votes": 4559, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.sheriff.grafton.dutile-r"},
+    {"name": "Stiegler", "party": "d", "votes": 128, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.sheriff.grafton.stiegler-d"},
+    {"name": "Austin", "party": "d", "votes": 56, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.sheriff.grafton.austin-d"}]},
+  "D|county-attorney|Hillsborough": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-attorney.hillsborough", "count_from": "the places' sum", "scatter": 67, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Conlon", "party": "d", "votes": 27643, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-attorney.hillsborough.conlon-d"},
+    {"name": "Hogan", "party": "r", "votes": 18, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-attorney.hillsborough.hogan-r"}]},
+  "R|county-attorney|Hillsborough": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-attorney.hillsborough", "count_from": "the places' sum", "scatter": 82, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Hogan", "party": "r", "votes": 22696, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-attorney.hillsborough.hogan-r"},
+    {"name": "Conlon", "party": "d", "votes": 18, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-attorney.hillsborough.conlon-d"}]},
+  "D|county-commissioner|Hillsborough|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.hillsborough-1", "count_from": "the places' sum", "scatter": 354, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Pappas", "party": "r", "votes": 111, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.county-commissioner.hillsborough-1.pappas-r"}]},
+  "R|county-commissioner|Hillsborough|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.hillsborough-1", "count_from": "the places' sum", "scatter": 59, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Pappas", "party": "r", "votes": 7508, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.hillsborough-1.pappas-r"}]},
+  "D|county-commissioner|Hillsborough|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.hillsborough-2", "count_from": "the places' sum", "scatter": 28, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Bergeron", "party": "d", "votes": 7319, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.hillsborough-2.bergeron-d"}]},
+  "R|county-commissioner|Hillsborough|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.hillsborough-2", "count_from": "the places' sum", "scatter": 232, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Bergeron", "party": "d", "votes": 72, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-commissioner.hillsborough-2.bergeron-d"},
+    {"name": "M. Soucy", "party": "", "votes": 364, "write_in": true, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.hillsborough-2.m-soucy-write-in"}]},
+  "D|county-commissioner|Hillsborough|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.hillsborough-3", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Spratt", "party": "d", "votes": 10745, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.hillsborough-3.spratt-d"},
+    {"name": "Rowe", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.hillsborough-3.rowe-r"}]},
+  "R|county-commissioner|Hillsborough|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.hillsborough-3", "count_from": "the places' sum", "scatter": 16, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Rowe", "party": "r", "votes": 8789, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.hillsborough-3.rowe-r"},
+    {"name": "Spratt", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-commissioner.hillsborough-3.spratt-d"}]},
+  "D|county-treasurer|Hillsborough": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-treasurer.hillsborough", "count_from": "the places' sum", "scatter": 55, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Bryk", "party": "d", "votes": 27384, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-treasurer.hillsborough.bryk-d"},
+    {"name": "Fredette", "party": "r", "votes": 24, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-treasurer.hillsborough.fredette-r"}]},
+  "R|county-treasurer|Hillsborough": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-treasurer.hillsborough", "count_from": "the places' sum", "scatter": 50, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Fredette", "party": "r", "votes": 22759, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-treasurer.hillsborough.fredette-r"},
+    {"name": "Bryk", "party": "d", "votes": 9, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-treasurer.hillsborough.bryk-d"}]},
+  "D|register-of-deeds|Hillsborough": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-deeds.hillsborough", "count_from": "the places' sum", "scatter": 755, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Kaplan", "party": "r", "votes": 25, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-deeds.hillsborough.kaplan-r"},
+    {"name": "Sapienza", "party": "r", "votes": 46, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.register-of-deeds.hillsborough.sapienza-r"},
+    {"name": "Crowell", "party": "r", "votes": 16, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-deeds.hillsborough.crowell-r"}]},
+  "R|register-of-deeds|Hillsborough": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-deeds.hillsborough", "count_from": "the places' sum", "scatter": 49, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Kaplan", "party": "r", "votes": 6682, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.register-of-deeds.hillsborough.kaplan-r"},
+    {"name": "Sapienza", "party": "r", "votes": 7915, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-deeds.hillsborough.sapienza-r"},
+    {"name": "Crowell", "party": "r", "votes": 7286, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.register-of-deeds.hillsborough.crowell-r"}]},
+  "D|register-of-probate|Hillsborough": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-probate.hillsborough", "count_from": "the places' sum", "scatter": 52, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Ropp", "party": "d", "votes": 27294, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.register-of-probate.hillsborough.ropp-d"},
+    {"name": "Levasseur", "party": "r", "votes": 15, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-probate.hillsborough.levasseur-r"}]},
+  "R|register-of-probate|Hillsborough": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-probate.hillsborough", "count_from": "the places' sum", "scatter": 134, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Levasseur", "party": "r", "votes": 22320, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-probate.hillsborough.levasseur-r"},
+    {"name": "Ropp", "party": "d", "votes": 23, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.register-of-probate.hillsborough.ropp-d"}]},
+  "D|sheriff|Hillsborough": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.sheriff.hillsborough", "count_from": "the places' sum", "scatter": 794, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Hardy", "party": "r", "votes": 393, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.sheriff.hillsborough.hardy-r"},
+    {"name": "Barry", "party": "", "votes": 1393, "write_in": true, "nominated": true, "id": "2018-09-11.primary-d.sheriff.hillsborough.barry-write-in"}]},
+  "R|sheriff|Hillsborough": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.sheriff.hillsborough", "count_from": "the places' sum", "scatter": 131, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Hardy", "party": "r", "votes": 23122, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.sheriff.hillsborough.hardy-r"}]},
+  "D|county-attorney|Merrimack": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-attorney.merrimack", "count_from": "the places' sum", "scatter": 369, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Merrimack", "candidates": [
+    {"name": "Halvorsen", "party": "r", "votes": 188, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-attorney.merrimack.halvorsen-r"},
+    {"name": "Schultz-Price", "party": "r", "votes": 71, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-attorney.merrimack.schultz-price-r"},
+    {"name": "Robin Davis", "party": "", "votes": 1389, "write_in": true, "nominated": true, "id": "2018-09-11.primary-d.county-attorney.merrimack.robin-davis-write-in"}]},
+  "L|county-attorney|Merrimack": {"party": "l", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-attorney.merrimack", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Schultz-Price", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-attorney.merrimack.schultz-price-r"},
+    {"name": "Halvorsen", "party": "r", "votes": 3, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-attorney.merrimack.halvorsen-r"}]},
+  "R|county-attorney|Merrimack": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-attorney.merrimack", "count_from": "the places' sum", "scatter": 25, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Schultz-Price", "party": "r", "votes": 3890, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-attorney.merrimack.schultz-price-r"},
+    {"name": "Halvorsen", "party": "r", "votes": 6536, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-attorney.merrimack.halvorsen-r"}]},
+  "D|county-commissioner|Merrimack|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.merrimack-1", "count_from": "the places' sum", "scatter": 20, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Reardon", "party": "d", "votes": 5033, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.merrimack-1.reardon-d"}]},
+  "L|county-commissioner|Merrimack|1": {"party": "l", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.merrimack-1", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 0, "county": "Merrimack", "open": 1, "candidates": [
+    {"name": "Reardon", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.merrimack-1.reardon-d"}]},
+  "R|county-commissioner|Merrimack|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.merrimack-1", "count_from": "the places' sum", "scatter": 101, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Reardon", "party": "d", "votes": 29, "write_in": false, "nominated": null, "id": "2018-09-11.primary-r.county-commissioner.merrimack-1.reardon-d"}]},
+  "D|county-commissioner|Merrimack|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-d.county-commissioner.merrimack-3", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Duval", "party": "d", "votes": 5097, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-commissioner.merrimack-3.duval-d"},
+    {"name": "Spaulding", "party": "r", "votes": 8, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-commissioner.merrimack-3.spaulding-r"}]},
+  "R|county-commissioner|Merrimack|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.merrimack-3", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Spaulding", "party": "r", "votes": 4169, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.merrimack-3.spaulding-r"},
+    {"name": "Duval", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-commissioner.merrimack-3.duval-d"}]},
+  "D|county-treasurer|Merrimack": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-treasurer.merrimack", "count_from": "the places' sum", "scatter": 24, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Bernier", "party": "d", "votes": 13265, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-treasurer.merrimack.bernier-d"},
+    {"name": "Kidder", "party": "r", "votes": 30, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-treasurer.merrimack.kidder-r"}]},
+  "L|county-treasurer|Merrimack": {"party": "l", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-treasurer.merrimack", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Kidder", "party": "r", "votes": 2, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-treasurer.merrimack.kidder-r"},
+    {"name": "Bernier", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-treasurer.merrimack.bernier-d"}]},
+  "R|county-treasurer|Merrimack": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-treasurer.merrimack", "count_from": "the places' sum", "scatter": 20, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Kidder", "party": "r", "votes": 9801, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-treasurer.merrimack.kidder-r"},
+    {"name": "Bernier", "party": "d", "votes": 13, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-treasurer.merrimack.bernier-d"}]},
+  "D|register-of-deeds|Merrimack": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-deeds.merrimack", "count_from": "the places' sum", "scatter": 40, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Cragin", "party": "d", "votes": 13291, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.register-of-deeds.merrimack.cragin-d"},
+    {"name": "Brack", "party": "r", "votes": 28, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-deeds.merrimack.brack-r"}]},
+  "L|register-of-deeds|Merrimack": {"party": "l", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-deeds.merrimack", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Brack", "party": "r", "votes": 2, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.register-of-deeds.merrimack.brack-r"},
+    {"name": "Cragin", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-deeds.merrimack.cragin-d"}]},
+  "R|register-of-deeds|Merrimack": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-deeds.merrimack", "count_from": "the places' sum", "scatter": 29, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Brack", "party": "r", "votes": 9663, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-deeds.merrimack.brack-r"},
+    {"name": "Cragin", "party": "d", "votes": 13, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.register-of-deeds.merrimack.cragin-d"}]},
+  "D|register-of-probate|Merrimack": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-probate.merrimack", "count_from": "the places' sum", "scatter": 15, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Davis", "party": "d", "votes": 13279, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.register-of-probate.merrimack.davis-d"},
+    {"name": "Bradstreet", "party": "r", "votes": 30, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-probate.merrimack.bradstreet-r"}]},
+  "L|register-of-probate|Merrimack": {"party": "l", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-probate.merrimack", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 0, "county": "Merrimack", "candidates": [
+    {"name": "Bradstreet", "party": "r", "votes": 3, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.register-of-probate.merrimack.bradstreet-r"},
+    {"name": "Davis", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-probate.merrimack.davis-d"}]},
+  "R|register-of-probate|Merrimack": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-probate.merrimack", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Bradstreet", "party": "r", "votes": 9782, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-probate.merrimack.bradstreet-r"},
+    {"name": "Davis", "party": "d", "votes": 10, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.register-of-probate.merrimack.davis-d"}]},
+  "D|sheriff|Merrimack": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.sheriff.merrimack", "count_from": "the places' sum", "scatter": 64, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Merrimack", "candidates": [
+    {"name": "Montray Jr", "party": "r", "votes": 58, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.sheriff.merrimack.montray-jr-r"},
+    {"name": "Hilliard", "party": "r", "votes": 421, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.sheriff.merrimack.hilliard-r"},
+    {"name": "Rodriguez", "party": "d", "votes": 12456, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.sheriff.merrimack.rodriguez-d"}]},
+  "L|sheriff|Merrimack": {"party": "l", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.sheriff.merrimack", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Montray Jr", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.sheriff.merrimack.montray-jr-r"},
+    {"name": "Hilliard", "party": "r", "votes": 8, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.sheriff.merrimack.hilliard-r"},
+    {"name": "Rodriguez", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.sheriff.merrimack.rodriguez-d"}]},
+  "R|sheriff|Merrimack": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.sheriff.merrimack", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Merrimack", "candidates": [
+    {"name": "Montray Jr", "party": "r", "votes": 1908, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.sheriff.merrimack.montray-jr-r"},
+    {"name": "Hilliard", "party": "r", "votes": 9025, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.sheriff.merrimack.hilliard-r"},
+    {"name": "Rodriguez", "party": "d", "votes": 8, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.sheriff.merrimack.rodriguez-d"}]},
+  "L|county-attorney|Rockingham": {"party": "l", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-attorney.rockingham", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Conway", "party": "r", "votes": 5, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.county-attorney.rockingham.conway-r"}]},
+  "L|county-commissioner|Rockingham|2": {"party": "l", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.rockingham-2", "count_from": "the places' sum", "scatter": 0, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Tombarello", "party": "r", "votes": 2, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.county-commissioner.rockingham-2.tombarello-r"},
+    {"name": "Roth", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.rockingham-2.roth-d"}]},
+  "L|county-commissioner|Rockingham|3": {"party": "l", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-l.county-commissioner.rockingham-3", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Coyle", "party": "r", "votes": 1, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-commissioner.rockingham-3.coyle-r"},
+    {"name": "Bourdon", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-commissioner.rockingham-3.bourdon-d"}]},
+  "L|county-treasurer|Rockingham": {"party": "l", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-treasurer.rockingham", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Priestley", "party": "r", "votes": 4, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.county-treasurer.rockingham.priestley-r"}]},
+  "L|register-of-deeds|Rockingham": {"party": "l", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-deeds.rockingham", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Stacey", "party": "r", "votes": 5, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.register-of-deeds.rockingham.stacey-r"}]},
+  "L|register-of-probate|Rockingham": {"party": "l", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-probate.rockingham", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Rockingham", "candidates": [
+    {"name": "Poutre", "party": "l", "votes": 90, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.register-of-probate.rockingham.poutre-l"},
+    {"name": "Tweedie", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-probate.rockingham.tweedie-r"},
+    {"name": "Davidson", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-probate.rockingham.davidson-d"}]},
+  "L|sheriff|Rockingham": {"party": "l", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.sheriff.rockingham", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Rockingham", "candidates": [
+    {"name": "Newcomb", "party": "r", "votes": 7, "write_in": false, "nominated": true, "id": "2018-09-11.primary-l.sheriff.rockingham.newcomb-r"},
+    {"name": "Baldwin", "party": "r", "votes": 6, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.sheriff.rockingham.baldwin-r"},
+    {"name": "Massahos", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.sheriff.rockingham.massahos-r"}]},
+  "D|county-attorney|Strafford": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-attorney.strafford", "count_from": "the places' sum", "scatter": 20, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Velardi", "party": "d", "votes": 10896, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-attorney.strafford.velardi-d"}]},
+  "L|county-attorney|Strafford": {"party": "l", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-attorney.strafford", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "open": 1, "candidates": [
+    {"name": "Velardi", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-attorney.strafford.velardi-d"}]},
+  "D|county-commissioner|Strafford": {"party": "d", "office": "county-commissioner", "district": null, "seats": null, "contest": "2018-09-11.primary-d.county-commissioner.strafford", "count_from": "the places' sum", "scatter": 59, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Strafford", "candidates": [
+    {"name": "Rollo", "party": "d", "votes": 9567, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.county-commissioner.strafford.rollo-d"},
+    {"name": "Maglaras", "party": "d", "votes": 9029, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.county-commissioner.strafford.maglaras-d"},
+    {"name": "Watson", "party": "d", "votes": 8749, "write_in": false, "nominated": null, "id": "2018-09-11.primary-d.county-commissioner.strafford.watson-d"}]},
+  "L|county-commissioner|Strafford": {"party": "l", "office": "county-commissioner", "district": null, "seats": null, "contest": "2018-09-11.primary-l.county-commissioner.strafford", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Strafford", "candidates": [
+    {"name": "Rollo", "party": "d", "votes": 0, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-commissioner.strafford.rollo-d"},
+    {"name": "Maglaras", "party": "d", "votes": 0, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-commissioner.strafford.maglaras-d"},
+    {"name": "Watson", "party": "d", "votes": 0, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.county-commissioner.strafford.watson-d"}]},
+  "D|county-treasurer|Strafford": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.county-treasurer.strafford", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "candidates": [
+    {"name": "Arnold", "party": "d", "votes": 11082, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.county-treasurer.strafford.arnold-d"},
+    {"name": "Karoutas", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.county-treasurer.strafford.karoutas-r"}]},
+  "L|county-treasurer|Strafford": {"party": "l", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.county-treasurer.strafford", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "open": 1, "candidates": [
+    {"name": "Karoutas", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-treasurer.strafford.karoutas-r"},
+    {"name": "Arnold", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.county-treasurer.strafford.arnold-d"}]},
+  "D|register-of-deeds|Strafford": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-deeds.strafford", "count_from": "the places' sum", "scatter": 16, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Berube", "party": "d", "votes": 11075, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.register-of-deeds.strafford.berube-d"}]},
+  "L|register-of-deeds|Strafford": {"party": "l", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-deeds.strafford", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "open": 1, "candidates": [
+    {"name": "Berube", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-deeds.strafford.berube-d"}]},
+  "D|register-of-probate|Strafford": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.register-of-probate.strafford", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "candidates": [
+    {"name": "Sweeney", "party": "d", "votes": 10830, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.register-of-probate.strafford.sweeney-d"},
+    {"name": "Sirois", "party": "r", "votes": 6, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.register-of-probate.strafford.sirois-r"}]},
+  "L|register-of-probate|Strafford": {"party": "l", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.register-of-probate.strafford", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "open": 1, "candidates": [
+    {"name": "Sirois", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-probate.strafford.sirois-r"},
+    {"name": "Sweeney", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.register-of-probate.strafford.sweeney-d"}]},
+  "D|sheriff|Strafford": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-d.sheriff.strafford", "count_from": "the places' sum", "scatter": 38, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "candidates": [
+    {"name": "Dubois", "party": "d", "votes": 10887, "write_in": false, "nominated": true, "id": "2018-09-11.primary-d.sheriff.strafford.dubois-d"},
+    {"name": "Macaione Jr", "party": "r", "votes": 62, "write_in": false, "nominated": false, "id": "2018-09-11.primary-d.sheriff.strafford.macaione-jr-r"}]},
+  "L|sheriff|Strafford": {"party": "l", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-l.sheriff.strafford", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "candidates": [
+    {"name": "Macaione Jr", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2018-09-11.primary-l.sheriff.strafford.macaione-jr-r"},
+    {"name": "Dubois", "party": "d", "votes": 1, "write_in": false, "nominated": null, "id": "2018-09-11.primary-l.sheriff.strafford.dubois-d"}]},
+  "R|county-attorney|Sullivan": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-attorney.sullivan", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Hathaway", "party": "r", "votes": 2467, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-attorney.sullivan.hathaway-r"}]},
+  "R|county-commissioner|Sullivan|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.sullivan-1", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Barrette", "party": "r", "votes": 1534, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.sullivan-1.barrette-r"},
+    {"name": "Herrell", "party": "r", "votes": 902, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.county-commissioner.sullivan-1.herrell-r"}]},
+  "R|county-commissioner|Sullivan|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2018-09-11.primary-r.county-commissioner.sullivan-3", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Hebert", "party": "r", "votes": 2372, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-commissioner.sullivan-3.hebert-r"}]},
+  "R|county-treasurer|Sullivan": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.county-treasurer.sullivan", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Sanderson", "party": "r", "votes": 2458, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.county-treasurer.sullivan.sanderson-r"}]},
+  "R|register-of-deeds|Sullivan": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-deeds.sullivan", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Gibson", "party": "r", "votes": 2499, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-deeds.sullivan.gibson-r"}]},
+  "R|register-of-probate|Sullivan": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.register-of-probate.sullivan", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "O'Hearne", "party": "r", "votes": 2406, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.register-of-probate.sullivan.o-hearne-r"},
+    {"name": "Gagnon", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2018-09-11.primary-r.register-of-probate.sullivan.gagnon-d"}]},
+  "R|sheriff|Sullivan": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2018-09-11.primary-r.sheriff.sullivan", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Simonds", "party": "r", "votes": 2533, "write_in": false, "nominated": true, "id": "2018-09-11.primary-r.sheriff.sullivan.simonds-r"}]}
  }
 }

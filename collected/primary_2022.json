@@ -1,6 +1,6 @@
 {
  "_about": [
-   "What the Secretary of State's State Primary results files say of the State Representative and State Senate races, each party's primary its own race, read by src/parse/parse_sos_primary_results.py from the files in _source and held to the same year's general election (collected/election_<year>.json). Nothing in it is this project's decision but the nominees, which the files do not mark: the candidates with the most votes, as many as the race has seats and none with no votes; null where the count does not settle it.",
+   "What the Secretary of State's State Primary results files say, each party's primary its own race: the State Representative and State Senate races, read by src/parse/parse_sos_primary_results.py and held to the same year's general election (collected/election_<year>.json), and Governor, United States Senator, Representative in Congress, Executive Councilor and the county offices, read by src/parse/parse_sos_primary_offices.py; each from the files in _source. Nothing in it is this project's decision but the nominees, which the files do not mark: the candidates with the most votes, as many as the race has seats and none with no votes; null where the count does not settle it.",
    "Write the file again by running the reader, never by hand: --check says where the saved files and this disagree."
  ],
  "_notes": [
@@ -61,7 +61,83 @@
    "2022-sp-state-senate-1-24-democratic_1.xls, sheet 'dsenate 22-24', row 9: the file's footnote '*correction received from clerk' belongs to the place it stars; its figures are those the file prints",
    "2022-sp-state-senate-1-24-democratic_1.xls: 339 empty cell(s) under a candidate, read as none",
    "2022-sp-state-senate-1-24-republican_1.xls, district 5: the file names 'Dorchestesr', read as Dorchester, the one place of S|5 it names no other way",
-   "2022-sp-state-senate-1-24-republican_1.xls, district 21: R|S|21: Kwoka not settled by the count -- a tie for the last place, or the write-ins nobody named (136) could have taken it"
+   "2022-sp-state-senate-1-24-republican_1.xls, district 21: R|S|21: Kwoka not settled by the count -- a tie for the last place, or the write-ins nobody named (136) could have taken it",
+   "2022-sp-governor-democratic_3.xls, sheet 'drockgov', row 46: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2022-sp-governor-democratic_3.xls, sheet 'dsum-belkgov', row 14: the summary's Totals print no figure for Richard McMenammon, r; read as its counties' rows, 0",
+   "the democratic Governor primary: 1600 empty cell(s) under a candidate, read as none",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 2: the sheet prints no day; read as the primary of 2022-09-13, which its titles name",
+   "2022-sp-governor-republican_1.xls, sheet 'rcheshgov', row 2: the sheet prints no day; read as the primary of 2022-09-13, which its titles name",
+   "2022-sp-governor-republican_1.xls, sheet 'rcoosgov', row 2: the sheet prints no day; read as the primary of 2022-09-13, which its titles name",
+   "2022-sp-governor-republican_1.xls, sheet 'rgrafgov', row 2: the sheet prints no day; read as the primary of 2022-09-13, which its titles name",
+   "2022-sp-governor-republican_1.xls, sheet 'rhillsgov', row 2: the sheet prints no day; read as the primary of 2022-09-13, which its titles name",
+   "2022-sp-governor-republican_1.xls, sheet 'rmerrgov', row 2: the sheet prints no day; read as the primary of 2022-09-13, which its titles name",
+   "2022-sp-governor-republican_1.xls, sheet 'rrockgov', row 2: the sheet prints no day; read as the primary of 2022-09-13, which its titles name",
+   "2022-sp-governor-republican_1.xls, sheet 'rstragov', row 2: the sheet prints no day; read as the primary of 2022-09-13, which its titles name",
+   "2022-sp-governor-republican_1.xls, sheet 'sullivan', row 2: the sheet prints no day; read as the primary of 2022-09-13, which its titles name",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 4: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 5: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 6: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 7: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 8: '1' in column 8 is a count written as text; read as 1",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 9: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 10: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 11: '2' in column 8 is a count written as text; read as 2",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 12: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 13: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 14: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 15: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 16: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 17: '1' in column 8 is a count written as text; read as 1",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 18: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 19: '0' in column 8 is a count written as text; read as 0",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 20: '3' in column 8 is a count written as text; read as 3",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 21: '3' in column 8 is a count written as text; read as 3",
+   "2022-sp-governor-republican_1.xls, sheet 'rcarrollgov', row 22: '1' in column 8 is a count written as text; read as 1",
+   "2022-sp-governor-republican_1.xls, sheet 'rrockgov', row 46: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2022-sp-executive-council-1-5-democratic-_2.xls, sheet 'dcouncil3', row 41: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2022-sp-congressional-district-1-democratic.xlsx: 938 empty cell(s) under a candidate, read as none",
+   "2022-sp-congressional-district-2-democratic_1.xlsx, sheet 'Con2 Dem', row 216: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2022-sp-congressional-district-2-democratic_1.xlsx: 1361 empty cell(s) under a candidate, read as none",
+   "2022-sp-belknap-county-democratic.xls, sheet 'rbelknap', row 25: D|county-commissioner|Belknap|1: No Election; no race is read",
+   "2022-sp-belknap-county-republican.xls, sheet 'rbelknap', row 25: R|county-commissioner|Belknap|1: No Election; no race is read",
+   "2022-09-13.primary-d.county-treasurer.carroll: D|county-treasurer|Carroll: Costello not settled by the count -- a tie for the last place, or the write-ins nobody named (55) could have taken it",
+   "2022-sp-carroll-county-democratic_0.xls, sheet 'rcarroll', row 28: D|county-commissioner|Carroll|2: No Election; no race is read",
+   "2022-09-13.primary-r.county-attorney.carroll: R|county-attorney|Carroll: Andruzzi not settled by the count -- a tie for the last place, or the write-ins nobody named (137) could have taken it",
+   "2022-sp-carroll-county-republican.xls, sheet 'rcarroll', row 28: R|county-commissioner|Carroll|2: No Election; no race is read",
+   "2022-sp-cheshire-county-democratic.xlsx, sheet 'rcheshire', row 67: D|county-commissioner|Cheshire|1: No Election; no race is read",
+   "2022-09-13.primary-r.county-attorney.cheshire: R|county-attorney|Cheshire: McLaughlin not settled by the count -- a tie for the last place, or the write-ins nobody named (122) could have taken it",
+   "2022-09-13.primary-r.county-treasurer.cheshire: R|county-treasurer|Cheshire: Weed not settled by the count -- a tie for the last place, or the write-ins nobody named (147) could have taken it",
+   "2022-09-13.primary-r.register-of-probate.cheshire: R|register-of-probate|Cheshire: LaPlante not settled by the count -- a tie for the last place, or the write-ins nobody named (74) could have taken it",
+   "2022-sp-cheshire-county-republican.xls, sheet 'rcheshire', row 67: R|county-commissioner|Cheshire|1: No Election; no race is read",
+   "2022-09-13.primary-r.county-attorney.coos: R|county-attorney|Coos: Sylvestre / not settled by the count -- a tie for the last place, or the write-ins nobody named (48) could have taken it",
+   "2022-sp-coos-county-republican.xls, sheet 'rcoos', row 99: R|county-commissioner|Coos|3: No Election; no race is read",
+   "2022-sp-grafton-county-republican.xls, sheet 'rgrafton', row 4: the header prints 'Steve Tatham', read as the candidate 'Steve Tatham', whose party the file leaves out",
+   "2022-sp-grafton-county-republican.xls, sheet 'rgrafton', row 4: the header prints 'McLaughlin', read as the candidate 'McLaughlin', whose party the file leaves out",
+   "2022-sp-grafton-county-republican.xls, sheet 'rgrafton', row 4: the header prints 'Brian Dear', read as the candidate 'Brian Dear', whose party the file leaves out",
+   "2022-09-13.primary-r.county-attorney.grafton: R|county-attorney|Grafton: Hornick not settled by the count -- a tie for the last place, or the write-ins nobody named (131) could have taken it",
+   "2022-09-13.primary-r.county-treasurer.grafton: R|county-treasurer|Grafton: Brian Dear not settled by the count -- a tie for the last place, or the write-ins nobody named (121) could have taken it",
+   "2022-09-13.primary-r.county-commissioner.grafton-1: R|county-commissioner|Grafton|1: Piper not settled by the count -- a tie for the last place, or the write-ins nobody named (18) could have taken it",
+   "2022-09-13.primary-d.sheriff.hillsborough: D|sheriff|Hillsborough: Connelly not settled by the count -- a tie for the last place, or the write-ins nobody named (561) could have taken it",
+   "2022-09-13.primary-d.county-commissioner.hillsborough-1: D|county-commissioner|Hillsborough|1: Pappas not settled by the count -- a tie for the last place, or the write-ins nobody named (157) could have taken it",
+   "2022-09-13.primary-d.county-commissioner.hillsborough-2: D|county-commissioner|Hillsborough|2: Soucy not settled by the count -- a tie for the last place, or the write-ins nobody named (164) could have taken it",
+   "2022-sp-hillsborough-county-republican_0.xls, sheet 'rhillsborough', row 56: the file's footnote '*correction received from clerk'; the figures are those it prints",
+   "2022-09-13.primary-d.county-attorney.merrimack: D|county-attorney|Merrimack: Halvorsen not settled by the count -- a tie for the last place, or the write-ins nobody named (365) could have taken it",
+   "2022-sp-merrimack-county-democratic_0.xls, sheet 'rmerrimack', row 89: D|county-commissioner|Merrimack|1: No Election; no race is read",
+   "2022-09-13.primary-r.county-commissioner.merrimack-3: R|county-commissioner|Merrimack|3: David Lovlien not settled by the count -- a tie for the last place, or the write-ins nobody named (162) could have taken it",
+   "2022-sp-merrimack-county-republican.xls, sheet 'rmerrimack', row 89: R|county-commissioner|Merrimack|1: No Election; no race is read",
+   "2022-sp-rockingham-county-republican.xls, sheet 'rrockingham', row 96: R|county-commissioner|Rockingham|3: No Election; no race is read",
+   "2022-sp-strafford-county-republican_0.xls, sheet 'rstrafford', row 66: county-commissioner|Strafford elects more than one at large and the file prints no number of seats, so the count is kept and no one is marked elected",
+   "2022-09-13.primary-r.sheriff.strafford: R|sheriff|Strafford: Brave not settled by the count -- a tie for the last place, or the write-ins nobody named (320) could have taken it",
+   "2022-09-13.primary-r.county-attorney.strafford: R|county-attorney|Strafford: Velardi not settled by the count -- a tie for the last place, or the write-ins nobody named (124) could have taken it",
+   "2022-09-13.primary-r.county-commissioner.strafford: R|county-commissioner|Strafford: Cullen, Otterson, DeLemus, Rollo, Maglaras, Watson not settled by the count -- a tie for the last place, or the write-ins nobody named (58) could have taken it",
+   "2022-sp-sullivan-county-democratic.xls, sheet 'rsullivan', row 4: the header prints 'Hathaway r', read as Hathaway, r",
+   "2022-09-13.primary-d.sheriff.sullivan: D|sheriff|Sullivan: Simonds not settled by the count -- a tie for the last place, or the write-ins nobody named (55) could have taken it",
+   "2022-09-13.primary-d.county-treasurer.sullivan: D|county-treasurer|Sullivan: Sanderson not settled by the count -- a tie for the last place, or the write-ins nobody named (29) could have taken it",
+   "2022-09-13.primary-d.register-of-deeds.sullivan: D|register-of-deeds|Sullivan: Gibson not settled by the count -- a tie for the last place, or the write-ins nobody named (28) could have taken it",
+   "2022-09-13.primary-d.county-commissioner.sullivan-2: D|county-commissioner|Sullivan|2: Nelson not settled by the count -- a tie for the last place, or the write-ins nobody named (23) could have taken it",
+   "2022-09-13.primary-d.county-commissioner.sullivan-3: D|county-commissioner|Sullivan|3: Hebert not settled by the count -- a tie for the last place, or the write-ins nobody named (20) could have taken it",
+   "2022-sp-sullivan-county-democratic.xls, sheet 'rsullivan', row 48: D|county-commissioner|Sullivan|1: No Election; no race is read",
+   "2022-sp-sullivan-county-republican.xls, sheet 'rsullivan', row 48: R|county-commissioner|Sullivan|1: No Election; no race is read"
  ],
  "_refused": [
    {
@@ -97,6 +173,29 @@
    {
      "file": "2022-sp-house-rockingham-republican_4.xls",
      "why": "2022-sp-house-rockingham-republican_4.xls, sheet 'rrockrep', row 89: '*correction received from clerk', a starred row that is not a footnote of one cell"
+   },
+   {
+     "file": "2022-sp-uss-democratic_4.xls",
+     "why": "2022-sp-uss-democratic_4.xls, sheet 'dsum-belkuss', row 3: 'Vikram M., r *' in column 11 is neither a candidate (\"Name, d\") nor Undervotes, Overvotes or Write-Ins"
+   },
+   {
+     "file": "2022-sp-uss-republican_1.xls",
+     "why": "2022-sp-uss-republican_1.xls, sheet 'rsum-belkuss', row 3: 'Vikram M., r *' in column 8 is neither a candidate (\"Name, d\") nor Undervotes, Overvotes or Write-Ins"
+   },
+   {
+     "file": "2022-sp-executive-council-1-5-republican-_0.xls",
+     "why": "2022-sp-executive-council-1-5-republican-_0.xls, sheet 'rcouncil2', row 3: 'Michael J. Cryans,' in column 4 is neither a candidate (\"Name, d\") nor Undervotes, Overvotes or Write-Ins"
+   },
+   {
+     "file": "2022-sp-coos-county-democratic.xls",
+     "why": "2022-sp-coos-county-democratic.xls, sheet 'rcoos', row 4: a header row that names no candidate"
+   }
+ ],
+ "_disagreements": [
+   {
+     "check": "a column's places sum to the file's Totals",
+     "what": "district 2: Anne McLane Kuster, d, the places add up to 114, the file's Totals say 125",
+     "where": "2022-sp-congressional-district-2-republican_0.xlsx, sheet 'Con2 Rep', row 215"
    }
  ],
  "_source": [
@@ -115,12 +214,114 @@
   {"file": "records/sources/2022-sp-house-sullivan-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "e27c1919fa1e414f2e4cc5939b24bf63678db11aafb0844e1c95e7861afefcfd"},
   {"file": "records/sources/2022-sp-house-sullivan-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "937f65be80a6e46bed93c2e1fe557a6dc9ff0736d4cc5edd4e5fc6ccd00efefc"},
   {"file": "records/sources/2022-sp-state-senate-1-24-democratic_1.xls", "url": null, "saved": "2026-11-11", "sha256": "d56f8ff1c9fd72ff17b01611cb1eabeca11f26340d44a849846c50dd0747dc14"},
-  {"file": "records/sources/2022-sp-state-senate-1-24-republican_1.xls", "url": null, "saved": "2026-11-11", "sha256": "4f1d48993f7e20c3321904531ac8fe4649cc2992457693b9ccd28ca48ec803f4"}
+  {"file": "records/sources/2022-sp-state-senate-1-24-republican_1.xls", "url": null, "saved": "2026-11-11", "sha256": "4f1d48993f7e20c3321904531ac8fe4649cc2992457693b9ccd28ca48ec803f4"},
+  {"file": "records/sources/2022-sp-governor-democratic_3.xls", "url": null, "saved": "2026-11-11", "sha256": "12d7b3d180faa154653d243c2d2a4ecf9726cfdb9141cc5d36e0ed6bcf706be7"},
+  {"file": "records/sources/2022-sp-governor-republican_1.xls", "url": null, "saved": "2026-11-11", "sha256": "400feee4aef334d7e1eb166c769151a25ae5d74a4de03817632902840ea7bca0"},
+  {"file": "records/sources/2022-sp-executive-council-1-5-democratic-_2.xls", "url": null, "saved": "2026-11-11", "sha256": "054dadb9632405c8fdc044ad370a9e123e373328944d31f490ec7aeb4be57bae"},
+  {"file": "records/sources/2022-sp-congressional-district-1-democratic.xlsx", "url": null, "saved": "2026-11-11", "sha256": "251da7809640050d0b5140b39ba2ec0f6e32aeea1bed4f90db89789f270eba25"},
+  {"file": "records/sources/2022-sp-congressional-district-2-democratic_1.xlsx", "url": null, "saved": "2026-11-11", "sha256": "856b0e14aacb6455772cb7e4cb24af33dd2bb5c1357a37e8a04b16e60811da1f"},
+  {"file": "records/sources/2022-sp-congressional-district-1-republican_0.xlsx", "url": null, "saved": "2026-11-11", "sha256": "d419e199f2b663a30ce65c99d228f08eeb068c35c3845f0e5f8807c31e66cbcf"},
+  {"file": "records/sources/2022-sp-congressional-district-2-republican_0.xlsx", "url": null, "saved": "2026-11-11", "sha256": "b5a575a196b82bb721a2500520f086c2038ad8de87336343f5509633a1759951"},
+  {"file": "records/sources/2022-sp-belknap-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "85dc52bd84f14dd8ffe8be216fce518564c2850a56885f71e780caf3df5b6134"},
+  {"file": "records/sources/2022-sp-belknap-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "c31b97e58b3d12ead9d89eb644f95d347c163ea4ad24724ca18e794a3b6d2a6f"},
+  {"file": "records/sources/2022-sp-carroll-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "8efcc87fe3f9c2aece57a134c8b5306e8d72fc8c39a21536468bb3e894739b63"},
+  {"file": "records/sources/2022-sp-carroll-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "c90fbeb2abdd91e48dcad85709fce65d2553c248342a0adfe4bd5160e223a2cc"},
+  {"file": "records/sources/2022-sp-cheshire-county-democratic.xlsx", "url": null, "saved": "2026-11-11", "sha256": "d473ac97a5de79d5684029ac2bde83c3bd572d2f2a1ecb17110746e313cff5c0"},
+  {"file": "records/sources/2022-sp-cheshire-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "2c8fd6cae029636255a29a2811092d0f49f93488827844511d4cb53f94117c06"},
+  {"file": "records/sources/2022-sp-coos-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "2c83d237eb6e2377bedfd031506503a1aafb24138744a861a879ccb4b6dd2a48"},
+  {"file": "records/sources/2022-sp-grafton-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "61aacc67ca6bc8f062acbb52fdd315479d5fd5c6289bf20cff6ef86f3590b01b"},
+  {"file": "records/sources/2022-sp-grafton-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "61525e61b4b0f4ac5ad73eb36f5331b286c78449ab27b76daa19d3cf230337bf"},
+  {"file": "records/sources/2022-sp-hillsborough-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "2f78096331845bf47ac3ec5e11d1e24816437ad076bb48cdcf6c83232d1b47a5"},
+  {"file": "records/sources/2022-sp-hillsborough-county-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "9894579e37f65797b014acd0792e8f0a68e762f6dd23b3f413e9c357747ed392"},
+  {"file": "records/sources/2022-sp-merrimack-county-democratic_0.xls", "url": null, "saved": "2026-11-11", "sha256": "dafb7e952a98afe05571d02dd1aabd55bd8f7d5efc1228ed6fd438842416549e"},
+  {"file": "records/sources/2022-sp-merrimack-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "127bba5eead99794786804befbca981af4f6ed000b03af0090c1d7189d28941f"},
+  {"file": "records/sources/2022-sp-rockingham-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "91b19a519a255899044e6d64c7ce55f645d95747ff39ef29d14d37556eaf9c5b"},
+  {"file": "records/sources/2022-sp-strafford-county-republican_0.xls", "url": null, "saved": "2026-11-11", "sha256": "48faf20d9446f2433f7c7b5565fc8ea5dba9f01e83c40ccfdd83aa51a812fa25"},
+  {"file": "records/sources/2022-sp-sullivan-county-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "9c0d546c44bca4b826d1c07c6e89447cb9a7cadceebdcaf6ca5746366b95c0ab"},
+  {"file": "records/sources/2022-sp-sullivan-county-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "ff33d3cdef4d55cbf27f62f4b8ea53e8436c4192aa1f4461aff9ed7378df4b9d"}
  ],
  "election": "2022-09-13",
  "general": "2022-11-08",
  "term": "2023-2024",
  "races": {
+  "D|governor": {"party": "d", "office": "governor", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.governor.statewide", "count_from": "the summary's Totals", "scatter": 445, "undervotes": null, "overvotes": null, "printed_totals": 67, "candidates": [
+    {"name": "Tom Sherman", "party": "d", "votes": 83205, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.governor.statewide.tom-sherman-d"},
+    {"name": "Julian Acciard", "party": "r", "votes": 15, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.governor.statewide.julian-acciard-r"},
+    {"name": "Jay Lewis", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.governor.statewide.jay-lewis-r"},
+    {"name": "Richard McMenammon", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.governor.statewide.richard-mcmenammon-r"},
+    {"name": "Thaddeus Riley", "party": "r", "votes": 25, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.governor.statewide.thaddeus-riley-r"},
+    {"name": "Chris Sununu", "party": "r", "votes": 1963, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.governor.statewide.chris-sununu-r"},
+    {"name": "Karen Testerman", "party": "r", "votes": 52, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.governor.statewide.karen-testerman-r"}]},
+  "R|governor": {"party": "r", "office": "governor", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.governor.statewide", "count_from": "the summary's Totals", "scatter": 214, "undervotes": null, "overvotes": null, "printed_totals": 88, "candidates": [
+    {"name": "Julian Acciard", "party": "r", "votes": 2906, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.governor.statewide.julian-acciard-r"},
+    {"name": "Jay Lewis", "party": "r", "votes": 1318, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.governor.statewide.jay-lewis-r"},
+    {"name": "Richard McMenammon", "party": "r", "votes": 817, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.governor.statewide.richard-mcmenammon-r"},
+    {"name": "Thaddeus Riley", "party": "r", "votes": 11107, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.governor.statewide.thaddeus-riley-r"},
+    {"name": "Chris Sununu", "party": "r", "votes": 113443, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.governor.statewide.chris-sununu-r"},
+    {"name": "Karen Testerman", "party": "r", "votes": 14473, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.governor.statewide.karen-testerman-r"},
+    {"name": "Tom Sherman", "party": "d", "votes": 160, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.governor.statewide.tom-sherman-d"}]},
+  "D|us-house|1": {"party": "d", "office": "us-house", "district": 1, "seats": 1, "contest": "2022-09-13.primary-d.us-house.1", "count_from": "the places' sum", "scatter": 152, "undervotes": null, "overvotes": null, "printed_totals": 11, "candidates": [
+    {"name": "Chris Pappas", "party": "d", "votes": 41990, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.us-house.1.chris-pappas-d"},
+    {"name": "Tom Alciere", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.1.tom-alciere-r"},
+    {"name": "Tim Baxter", "party": "r", "votes": 19, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.1.tim-baxter-r"},
+    {"name": "Gail Huff Brown", "party": "r", "votes": 42, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.1.gail-huff-brown-r"},
+    {"name": "Mark Kilbane", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.1.mark-kilbane-r"},
+    {"name": "Karoline Leavitt", "party": "r", "votes": 72, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.1.karoline-leavitt-r"},
+    {"name": "Mary Maxwell", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.1.mary-maxwell-r"},
+    {"name": "Matt Mowers", "party": "r", "votes": 72, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.1.matt-mowers-r"},
+    {"name": "Russell Prescott", "party": "r", "votes": 15, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.1.russell-prescott-r"},
+    {"name": "Kevin Rondeau", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.1.kevin-rondeau-r"},
+    {"name": "Gilead R. Towne", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.1.gilead-r-towne-r"}]},
+  "R|us-house|1": {"party": "r", "office": "us-house", "district": 1, "seats": 1, "contest": "2022-09-13.primary-r.us-house.1", "count_from": "the places' sum", "scatter": 259, "undervotes": null, "overvotes": null, "printed_totals": 12, "candidates": [
+    {"name": "Tom Alciere", "party": "r", "votes": 342, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.1.tom-alciere-r"},
+    {"name": "Tim Baxter", "party": "r", "votes": 6970, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.1.tim-baxter-r"},
+    {"name": "Gail Huff Brown", "party": "r", "votes": 12999, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.1.gail-huff-brown-r"},
+    {"name": "Mark Kilbane", "party": "r", "votes": 347, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.1.mark-kilbane-r"},
+    {"name": "Karoline Leavitt", "party": "r", "votes": 25931, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.us-house.1.karoline-leavitt-r"},
+    {"name": "Mary Maxwell", "party": "r", "votes": 673, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.1.mary-maxwell-r"},
+    {"name": "Matt Mowers", "party": "r", "votes": 19072, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.1.matt-mowers-r"},
+    {"name": "Russell Prescott", "party": "r", "votes": 7551, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.1.russell-prescott-r"},
+    {"name": "Kevin Rondeau", "party": "r", "votes": 610, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.1.kevin-rondeau-r"},
+    {"name": "Gilead R. Towne", "party": "r", "votes": 466, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.1.gilead-r-towne-r"},
+    {"name": "Chris Pappas", "party": "d", "votes": 181, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.1.chris-pappas-d"}]},
+  "D|us-house|2": {"party": "d", "office": "us-house", "district": 2, "seats": 1, "contest": "2022-09-13.primary-d.us-house.2", "count_from": "the places' sum", "scatter": 162, "undervotes": null, "overvotes": null, "printed_totals": 9, "candidates": [
+    {"name": "Ann McLane Kuster", "party": "d", "votes": 48630, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.us-house.2.ann-mclane-kuster-d"},
+    {"name": "Scott Black", "party": "r", "votes": 7, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.2.scott-black-r"},
+    {"name": "Robert Burns", "party": "r", "votes": 52, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.2.robert-burns-r"},
+    {"name": "Michael Callis", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.2.michael-callis-r"},
+    {"name": "George Hansel", "party": "r", "votes": 49, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.2.george-hansel-r"},
+    {"name": "Jay Mercer", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.2.jay-mercer-r"},
+    {"name": "Dean A Poirier", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.2.dean-a-poirier-r"},
+    {"name": "Lily Tang Williams", "party": "r", "votes": 45, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.us-house.2.lily-tang-williams-r"}]},
+  "R|us-house|2": {"party": "r", "office": "us-house", "district": 2, "seats": 1, "contest": "2022-09-13.primary-r.us-house.2", "count_from": "the places' sum", "scatter": 449, "undervotes": null, "overvotes": null, "printed_totals": 9, "candidates": [
+    {"name": "Scott Black", "party": "r", "votes": 2211, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.2.scott-black-r"},
+    {"name": "Robert Burns", "party": "r", "votes": 21065, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.us-house.2.robert-burns-r"},
+    {"name": "Michael Callis", "party": "r", "votes": 1133, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.2.michael-callis-r"},
+    {"name": "George Hansel", "party": "r", "votes": 19024, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.2.george-hansel-r"},
+    {"name": "Jay Mercer", "party": "r", "votes": 2085, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.2.jay-mercer-r"},
+    {"name": "Dean A Poirier", "party": "r", "votes": 2047, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.2.dean-a-poirier-r"},
+    {"name": "Lily Tang Williams", "party": "r", "votes": 15729, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.2.lily-tang-williams-r"},
+    {"name": "Anne McLane Kuster", "party": "d", "votes": 114, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.us-house.2.anne-mclane-kuster-d"}]},
+  "D|executive-council|1": {"party": "d", "office": "executive-council", "district": 1, "seats": 1, "contest": "2022-09-13.primary-d.executive-council.1", "count_from": "the places' sum", "scatter": 51, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Dana S. Hilliard", "party": "d", "votes": 15971, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.executive-council.1.dana-s-hilliard-d"},
+    {"name": "Joseph D. Kenney", "party": "r", "votes": 57, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.executive-council.1.joseph-d-kenney-r"}]},
+  "D|executive-council|2": {"party": "d", "office": "executive-council", "district": 2, "seats": 1, "contest": "2022-09-13.primary-d.executive-council.2", "count_from": "the places' sum", "scatter": 43, "undervotes": null, "overvotes": null, "printed_totals": 6, "candidates": [
+    {"name": "Michael J. Cryans", "party": "d", "votes": 4244, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.executive-council.2.michael-j-cryans-d"},
+    {"name": "Bradford P. Todd", "party": "d", "votes": 1206, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.executive-council.2.bradford-p-todd-d"},
+    {"name": "Cinde Warmington", "party": "d", "votes": 21040, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.executive-council.2.cinde-warmington-d"},
+    {"name": "Harold French", "party": "r", "votes": 20, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.executive-council.2.harold-french-r"},
+    {"name": "Kim Strathdee", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.executive-council.2.kim-strathdee-r"}]},
+  "D|executive-council|3": {"party": "d", "office": "executive-council", "district": 3, "seats": 1, "contest": "2022-09-13.primary-d.executive-council.3", "count_from": "the places' sum", "scatter": 28, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Katherine Harake", "party": "d", "votes": 16288, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.executive-council.3.katherine-harake-d"},
+    {"name": "Janet Stevens", "party": "r", "votes": 21, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.executive-council.3.janet-stevens-r"}]},
+  "D|executive-council|4": {"party": "d", "office": "executive-council", "district": 4, "seats": 1, "contest": "2022-09-13.primary-d.executive-council.4", "count_from": "the places' sum", "scatter": 37, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Kevin J. Cavanaugh", "party": "d", "votes": 13789, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.executive-council.4.kevin-j-cavanaugh-d"},
+    {"name": "Ted Gatsas", "party": "r", "votes": 37, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.executive-council.4.ted-gatsas-r"},
+    {"name": "Terese Grinnell", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.executive-council.4.terese-grinnell-r"}]},
+  "D|executive-council|5": {"party": "d", "office": "executive-council", "district": 5, "seats": 1, "contest": "2022-09-13.primary-d.executive-council.5", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Shoshanna Kelley", "party": "d", "votes": 13504, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.executive-council.5.shoshanna-kelley-d"},
+    {"name": "Anne Copp", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.executive-council.5.anne-copp-r"},
+    {"name": "Dave Wheeler", "party": "r", "votes": 33, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.executive-council.5.dave-wheeler-r"}]},
   "D|S|1": {"party": "d", "seats": 1, "floterial": false, "towns": ["Atk. & Gil. Academy Grant", "Bath", "Benton", "Berlin", "Bethlehem", "Cambridge", "Carroll", "Clarksville", "Colebrook", "Columbia", "Dalton", "Dix's Grant", "Dixville", "Dummer", "Easton", "Ellsworth", "Errol", "Erving's Location", "Franconia", "Gorham", "Haverhill", "Jefferson", "Kilkenny", "Lancaster", "Landaff", "Lisbon", "Littleton", "Low & Burbank's Grant", "Lyman", "Milan", "Millsfield", "Monroe", "Northumberland", "Odell", "Piermont", "Pittsburg", "Randolph", "Rumney", "Second College Gt", "Shelburne", "Stark", "Stewartstown", "Stratford", "Success", "Sugar Hill", "Warren", "Wentworth's Loc.", "Whitefield", "Woodstock"], "scatter": 12, "printed_totals": 1, "candidates": [
     {"name": "Tucker", "party": "d", "votes": 2978, "write_in": false, "nominated": true},
     {"name": "Gendreau", "party": "r", "votes": 19, "write_in": false, "nominated": false}]},
@@ -1598,6 +1799,339 @@
     {"name": "Stone", "party": "r", "votes": 1394, "write_in": false, "nominated": true},
     {"name": "Bettencourt", "party": "r", "votes": 1309, "write_in": false, "nominated": true},
     {"name": "Lovett Jr", "party": "d", "votes": 5, "write_in": false, "nominated": false},
-    {"name": "Damon", "party": "d", "votes": 9, "write_in": false, "nominated": false}]}
+    {"name": "Damon", "party": "d", "votes": 9, "write_in": false, "nominated": false}]},
+  "D|county-attorney|Belknap": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-attorney.belknap", "count_from": "the places' sum", "scatter": 30, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Livernois", "party": "r", "votes": 43, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-attorney.belknap.livernois-r"}]},
+  "R|county-attorney|Belknap": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-attorney.belknap", "count_from": "the places' sum", "scatter": 26, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Livernois", "party": "r", "votes": 8107, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-attorney.belknap.livernois-r"}]},
+  "D|county-commissioner|Belknap|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.belknap-2", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Wendelboe", "party": "r", "votes": 8, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.belknap-2.wendelboe-r"},
+    {"name": "Waring", "party": "r", "votes": 35, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.belknap-2.waring-r"}]},
+  "R|county-commissioner|Belknap|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.belknap-2", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Wendelboe", "party": "r", "votes": 1000, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.belknap-2.wendelboe-r"},
+    {"name": "Waring", "party": "r", "votes": 1636, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.belknap-2.waring-r"}]},
+  "D|county-commissioner|Belknap|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.belknap-3", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Belknap", "candidates": [
+    {"name": "Leadbeater", "party": "d", "votes": 910, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.belknap-3.leadbeater-d"},
+    {"name": "Bernier", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.belknap-3.bernier-r"},
+    {"name": "Hodges", "party": "r", "votes": 22, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.belknap-3.hodges-r"},
+    {"name": "Shurtleff", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.belknap-3.shurtleff-r"}]},
+  "R|county-commissioner|Belknap|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.belknap-3", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Belknap", "candidates": [
+    {"name": "Bernier", "party": "r", "votes": 539, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.belknap-3.bernier-r"},
+    {"name": "Hodges", "party": "r", "votes": 2007, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.belknap-3.hodges-r"},
+    {"name": "Shurtleff", "party": "r", "votes": 612, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.belknap-3.shurtleff-r"},
+    {"name": "Leadbeater", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.belknap-3.leadbeater-d"}]},
+  "D|county-treasurer|Belknap": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-treasurer.belknap", "count_from": "the places' sum", "scatter": 26, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Muzzey", "party": "r", "votes": 28, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-treasurer.belknap.muzzey-r"}]},
+  "R|county-treasurer|Belknap": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-treasurer.belknap", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Muzzey", "party": "r", "votes": 8120, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-treasurer.belknap.muzzey-r"}]},
+  "D|register-of-deeds|Belknap": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-deeds.belknap", "count_from": "the places' sum", "scatter": 29, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "McGrath", "party": "r", "votes": 56, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-deeds.belknap.mcgrath-r"},
+    {"name": "Alan Glassman", "party": "", "votes": 30, "write_in": true, "nominated": false, "id": "2022-09-13.primary-d.register-of-deeds.belknap.alan-glassman-write-in"}]},
+  "R|register-of-deeds|Belknap": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-deeds.belknap", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "McGrath", "party": "r", "votes": 8095, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-deeds.belknap.mcgrath-r"}]},
+  "D|register-of-probate|Belknap": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-probate.belknap", "count_from": "the places' sum", "scatter": 25, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Abear", "party": "r", "votes": 10, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-probate.belknap.abear-r"},
+    {"name": "Glassman", "party": "r", "votes": 97, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-probate.belknap.glassman-r"}]},
+  "R|register-of-probate|Belknap": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-probate.belknap", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Abear", "party": "r", "votes": 3203, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-probate.belknap.abear-r"},
+    {"name": "Glassman", "party": "r", "votes": 5319, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-probate.belknap.glassman-r"}]},
+  "D|sheriff|Belknap": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.sheriff.belknap", "count_from": "the places' sum", "scatter": 62, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "MacFadzen", "party": "r", "votes": 355, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.sheriff.belknap.macfadzen-r"},
+    {"name": "Wright", "party": "r", "votes": 171, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.sheriff.belknap.wright-r"}]},
+  "R|sheriff|Belknap": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.sheriff.belknap", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "MacFadzen", "party": "r", "votes": 4790, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.sheriff.belknap.macfadzen-r"},
+    {"name": "Wright", "party": "r", "votes": 4942, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.sheriff.belknap.wright-r"}]},
+  "D|county-attorney|Carroll": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-attorney.carroll", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Andruzzi", "party": "d", "votes": 3590, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-attorney.carroll.andruzzi-d"}]},
+  "R|county-attorney|Carroll": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-attorney.carroll", "count_from": "the places' sum", "scatter": 137, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Andruzzi", "party": "d", "votes": 20, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-attorney.carroll.andruzzi-d"}]},
+  "D|county-commissioner|Carroll|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.carroll-1", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Heard", "party": "d", "votes": 3570, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.carroll-1.heard-d"},
+    {"name": "McCarthy", "party": "r", "votes": 15, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.carroll-1.mccarthy-r"}]},
+  "R|county-commissioner|Carroll|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.carroll-1", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "McCarthy", "party": "r", "votes": 5603, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.carroll-1.mccarthy-r"},
+    {"name": "Heard", "party": "d", "votes": 5, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.carroll-1.heard-d"}]},
+  "D|county-commissioner|Carroll|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.carroll-3", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Swanick", "party": "d", "votes": 3584, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.carroll-3.swanick-d"},
+    {"name": "Plache", "party": "r", "votes": 11, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.carroll-3.plache-r"}]},
+  "R|county-commissioner|Carroll|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.carroll-3", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Plache", "party": "r", "votes": 5438, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.carroll-3.plache-r"},
+    {"name": "Swanick", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.carroll-3.swanick-d"}]},
+  "D|county-treasurer|Carroll": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-treasurer.carroll", "count_from": "the places' sum", "scatter": 55, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Costello", "party": "r", "votes": 28, "write_in": false, "nominated": null, "id": "2022-09-13.primary-d.county-treasurer.carroll.costello-r"}]},
+  "R|county-treasurer|Carroll": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-treasurer.carroll", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Costello", "party": "r", "votes": 5605, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-treasurer.carroll.costello-r"}]},
+  "D|register-of-deeds|Carroll": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-deeds.carroll", "count_from": "the places' sum", "scatter": 43, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Scott", "party": "r", "votes": 156, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-deeds.carroll.scott-r"}]},
+  "R|register-of-deeds|Carroll": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-deeds.carroll", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Scott", "party": "r", "votes": 5751, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-deeds.carroll.scott-r"}]},
+  "D|register-of-probate|Carroll": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-probate.carroll", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Butler", "party": "d", "votes": 3624, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-probate.carroll.butler-d"},
+    {"name": "Lavender", "party": "r", "votes": 12, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-probate.carroll.lavender-r"}]},
+  "R|register-of-probate|Carroll": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-probate.carroll", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Lavender", "party": "r", "votes": 5558, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-probate.carroll.lavender-r"},
+    {"name": "Butler", "party": "d", "votes": 8, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-probate.carroll.butler-d"}]},
+  "D|sheriff|Carroll": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.sheriff.carroll", "count_from": "the places' sum", "scatter": 65, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Richardi", "party": "r", "votes": 572, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.sheriff.carroll.richardi-r"},
+    {"name": "Worthley", "party": "r", "votes": 11, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.sheriff.carroll.worthley-r"}]},
+  "R|sheriff|Carroll": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.sheriff.carroll", "count_from": "the places' sum", "scatter": 16, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Richardi", "party": "r", "votes": 4450, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.sheriff.carroll.richardi-r"},
+    {"name": "Worthley", "party": "r", "votes": 2261, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.sheriff.carroll.worthley-r"}]},
+  "D|county-attorney|Cheshire": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-attorney.cheshire", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "McLaughlin", "party": "d", "votes": 6285, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-attorney.cheshire.mclaughlin-d"}]},
+  "R|county-attorney|Cheshire": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-attorney.cheshire", "count_from": "the places' sum", "scatter": 122, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "McLaughlin", "party": "d", "votes": 21, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-attorney.cheshire.mclaughlin-d"}]},
+  "D|county-commissioner|Cheshire|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.cheshire-2", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Clark", "party": "d", "votes": 2476, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.cheshire-2.clark-d"},
+    {"name": "Ferrantello", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.cheshire-2.ferrantello-r"}]},
+  "R|county-commissioner|Cheshire|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.cheshire-2", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Ferrantello", "party": "r", "votes": 844, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.cheshire-2.ferrantello-r"},
+    {"name": "Clark", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.cheshire-2.clark-d"}]},
+  "D|county-commissioner|Cheshire|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.cheshire-3", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Englund", "party": "d", "votes": 2320, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.cheshire-3.englund-d"},
+    {"name": "Plante", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.cheshire-3.plante-r"}]},
+  "R|county-commissioner|Cheshire|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.cheshire-3", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Plante", "party": "r", "votes": 1928, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.cheshire-3.plante-r"},
+    {"name": "Englund", "party": "d", "votes": 3, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.cheshire-3.englund-d"}]},
+  "D|county-treasurer|Cheshire": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-treasurer.cheshire", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Weed", "party": "d", "votes": 6352, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-treasurer.cheshire.weed-d"}]},
+  "R|county-treasurer|Cheshire": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-treasurer.cheshire", "count_from": "the places' sum", "scatter": 147, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Weed", "party": "r", "votes": 7, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-treasurer.cheshire.weed-r"}]},
+  "D|register-of-deeds|Cheshire": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-deeds.cheshire", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Tilton", "party": "d", "votes": 6281, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-deeds.cheshire.tilton-d"},
+    {"name": "Santonastaso", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-deeds.cheshire.santonastaso-r"}]},
+  "R|register-of-deeds|Cheshire": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-deeds.cheshire", "count_from": "the places' sum", "scatter": 23, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Santonastaso", "party": "r", "votes": 4099, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-deeds.cheshire.santonastaso-r"},
+    {"name": "Tilton", "party": "d", "votes": 13, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-deeds.cheshire.tilton-d"}]},
+  "D|register-of-probate|Cheshire": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-probate.cheshire", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "LaPlante", "party": "d", "votes": 6157, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-probate.cheshire.laplante-d"}]},
+  "R|register-of-probate|Cheshire": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-probate.cheshire", "count_from": "the places' sum", "scatter": 74, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "LaPlante", "party": "d", "votes": 5, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.register-of-probate.cheshire.laplante-d"}]},
+  "D|sheriff|Cheshire": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.sheriff.cheshire", "count_from": "the places' sum", "scatter": 32, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Rivera", "party": "d", "votes": 6326, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.sheriff.cheshire.rivera-d"},
+    {"name": "Pratt Jr", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.sheriff.cheshire.pratt-jr-r"},
+    {"name": "Selander", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.sheriff.cheshire.selander-r"}]},
+  "R|sheriff|Cheshire": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.sheriff.cheshire", "count_from": "the places' sum", "scatter": 56, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Pratt Jr", "party": "r", "votes": 3812, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.sheriff.cheshire.pratt-jr-r"},
+    {"name": "Selander", "party": "r", "votes": 1369, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.sheriff.cheshire.selander-r"},
+    {"name": "Rivera", "party": "d", "votes": 61, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.sheriff.cheshire.rivera-d"}]},
+  "R|county-attorney|Coos": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-attorney.coos", "count_from": "the places' sum", "scatter": 48, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "McCormick", "party": "d", "votes": 43, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-attorney.coos.mccormick-d"},
+    {"name": "Sylvestre /", "party": "", "votes": 45, "write_in": true, "nominated": null, "id": "2022-09-13.primary-r.county-attorney.coos.sylvestre-write-in"}]},
+  "R|county-commissioner|Coos|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.coos-1", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Theberge", "party": "r", "votes": 583, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.coos-1.theberge-r"}]},
+  "R|county-commissioner|Coos|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.coos-2", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Brady", "party": "r", "votes": 935, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.coos-2.brady-r"}]},
+  "R|county-treasurer|Coos": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-treasurer.coos", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Collins", "party": "r", "votes": 2642, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-treasurer.coos.collins-r"}]},
+  "R|register-of-deeds|Coos": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-deeds.coos", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Rideout", "party": "r", "votes": 2708, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-deeds.coos.rideout-r"}]},
+  "R|register-of-probate|Coos": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-probate.coos", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Peterson", "party": "r", "votes": 2691, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-probate.coos.peterson-r"}]},
+  "R|sheriff|Coos": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.sheriff.coos", "count_from": "the places' sum", "scatter": 27, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Coos", "candidates": [
+    {"name": "Valerino", "party": "r", "votes": 2674, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.sheriff.coos.valerino-r"}]},
+  "D|county-attorney|Grafton": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-attorney.grafton", "count_from": "the places' sum", "scatter": 23, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Hornick", "party": "d", "votes": 7699, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-attorney.grafton.hornick-d"}]},
+  "R|county-attorney|Grafton": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-attorney.grafton", "count_from": "the places' sum", "scatter": 131, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Hornick", "party": "d", "votes": 24, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-attorney.grafton.hornick-d"}]},
+  "D|county-commissioner|Grafton|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.grafton-1", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Piper", "party": "d", "votes": 3457, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.grafton-1.piper-d"}]},
+  "R|county-commissioner|Grafton|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.grafton-1", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 0, "county": "Grafton", "candidates": [
+    {"name": "Piper", "party": "d", "votes": 3, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-commissioner.grafton-1.piper-d"}]},
+  "D|county-commissioner|Grafton|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.grafton-2", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Grafton", "candidates": [
+    {"name": "McLeod", "party": "d", "votes": 2275, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.grafton-2.mcleod-d"},
+    {"name": "Bjelobrk", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.grafton-2.bjelobrk-r"},
+    {"name": "Libby", "party": "r", "votes": 13, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.grafton-2.libby-r"}]},
+  "R|county-commissioner|Grafton|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.grafton-2", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Grafton", "candidates": [
+    {"name": "Bjelobrk", "party": "r", "votes": 716, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.grafton-2.bjelobrk-r"},
+    {"name": "Libby", "party": "r", "votes": 1768, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.grafton-2.libby-r"},
+    {"name": "McLeod", "party": "d", "votes": 0, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.grafton-2.mcleod-d"}]},
+  "D|county-commissioner|Grafton|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.grafton-3", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Morris", "party": "d", "votes": 2001, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.grafton-3.morris-d"},
+    {"name": "Ahern Jr", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.grafton-3.ahern-jr-r"}]},
+  "R|county-commissioner|Grafton|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.grafton-3", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Ahern Jr", "party": "r", "votes": 2549, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.grafton-3.ahern-jr-r"},
+    {"name": "Morris", "party": "d", "votes": 5, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.grafton-3.morris-d"}]},
+  "D|county-treasurer|Grafton": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-treasurer.grafton", "count_from": "the places' sum", "scatter": 25, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Hill", "party": "d", "votes": 7544, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-treasurer.grafton.hill-d"}]},
+  "R|county-treasurer|Grafton": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-treasurer.grafton", "count_from": "the places' sum", "scatter": 121, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Grafton", "candidates": [
+    {"name": "McLaughlin", "party": "", "votes": 43, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-treasurer.grafton.mclaughlin"},
+    {"name": "Hill", "party": "d", "votes": 7, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-treasurer.grafton.hill-d"},
+    {"name": "Brian Dear", "party": "", "votes": 69, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-treasurer.grafton.brian-dear"}]},
+  "D|register-of-deeds|Grafton": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-deeds.grafton", "count_from": "the places' sum", "scatter": 42, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Monahan", "party": "d", "votes": 7584, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-deeds.grafton.monahan-d"},
+    {"name": "Randlett", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-deeds.grafton.randlett-r"}]},
+  "R|register-of-deeds|Grafton": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-deeds.grafton", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Randlett", "party": "r", "votes": 5560, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-deeds.grafton.randlett-r"},
+    {"name": "Monahan", "party": "d", "votes": 13, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-deeds.grafton.monahan-d"}]},
+  "D|register-of-probate|Grafton": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-probate.grafton", "count_from": "the places' sum", "scatter": 321, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Chuck Townsend", "party": "", "votes": 342, "write_in": true, "nominated": true, "id": "2022-09-13.primary-d.register-of-probate.grafton.chuck-townsend-write-in"},
+    {"name": "Ingbretson", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-probate.grafton.ingbretson-r"}]},
+  "R|register-of-probate|Grafton": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-probate.grafton", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Ingbretson", "party": "r", "votes": 5317, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-probate.grafton.ingbretson-r"}]},
+  "D|sheriff|Grafton": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.sheriff.grafton", "count_from": "the places' sum", "scatter": 40, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Stiegler", "party": "d", "votes": 7565, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.sheriff.grafton.stiegler-d"}]},
+  "R|sheriff|Grafton": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.sheriff.grafton", "count_from": "the places' sum", "scatter": 215, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Steve Tatham", "party": "", "votes": 271, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.sheriff.grafton.steve-tatham"},
+    {"name": "Stiegler", "party": "d", "votes": 90, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.sheriff.grafton.stiegler-d"}]},
+  "D|county-attorney|Hillsborough": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-attorney.hillsborough", "count_from": "the places' sum", "scatter": 377, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "N Sarwark", "party": "", "votes": 1023, "write_in": true, "nominated": true, "id": "2022-09-13.primary-d.county-attorney.hillsborough.n-sarwark-write-in"},
+    {"name": "Coughlin", "party": "r", "votes": 98, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-attorney.hillsborough.coughlin-r"}]},
+  "R|county-attorney|Hillsborough": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-attorney.hillsborough", "count_from": "the places' sum", "scatter": 101, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Coughlin", "party": "r", "votes": 30056, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-attorney.hillsborough.coughlin-r"}]},
+  "D|county-commissioner|Hillsborough|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.hillsborough-1", "count_from": "the places' sum", "scatter": 157, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Clayton", "party": "", "votes": 8, "write_in": true, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.hillsborough-1.clayton-write-in"},
+    {"name": "Pappas", "party": "r", "votes": 81, "write_in": false, "nominated": null, "id": "2022-09-13.primary-d.county-commissioner.hillsborough-1.pappas-r"}]},
+  "R|county-commissioner|Hillsborough|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.hillsborough-1", "count_from": "the places' sum", "scatter": 90, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Pappas", "party": "r", "votes": 8558, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.hillsborough-1.pappas-r"}]},
+  "D|county-commissioner|Hillsborough|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.hillsborough-2", "count_from": "the places' sum", "scatter": 164, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Soucy", "party": "r", "votes": 16, "write_in": false, "nominated": null, "id": "2022-09-13.primary-d.county-commissioner.hillsborough-2.soucy-r"}]},
+  "R|county-commissioner|Hillsborough|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.hillsborough-2", "count_from": "the places' sum", "scatter": 41, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Soucy", "party": "r", "votes": 8309, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.hillsborough-2.soucy-r"}]},
+  "D|county-commissioner|Hillsborough|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.hillsborough-3", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Radhakrish-nan", "party": "d", "votes": 8355, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.hillsborough-3.radhakrish-nan-d"},
+    {"name": "Rowe", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.hillsborough-3.rowe-r"}]},
+  "R|county-commissioner|Hillsborough|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.hillsborough-3", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Rowe", "party": "r", "votes": 11918, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.hillsborough-3.rowe-r"},
+    {"name": "Radhakrishnan", "party": "d", "votes": 6, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.hillsborough-3.radhakrishnan-d"}]},
+  "D|county-treasurer|Hillsborough": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-treasurer.hillsborough", "count_from": "the places' sum", "scatter": 364, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "R Manzo", "party": "", "votes": 993, "write_in": true, "nominated": true, "id": "2022-09-13.primary-d.county-treasurer.hillsborough.r-manzo-write-in"},
+    {"name": "Fredette", "party": "r", "votes": 72, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-treasurer.hillsborough.fredette-r"}]},
+  "R|county-treasurer|Hillsborough": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-treasurer.hillsborough", "count_from": "the places' sum", "scatter": 108, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Fredette", "party": "r", "votes": 29488, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-treasurer.hillsborough.fredette-r"}]},
+  "D|register-of-deeds|Hillsborough": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-deeds.hillsborough", "count_from": "the places' sum", "scatter": 21, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Hillsborough", "candidates": [
+    {"name": "Crowell", "party": "d", "votes": 20355, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-deeds.hillsborough.crowell-d"},
+    {"name": "Hogan", "party": "r", "votes": 23, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-deeds.hillsborough.hogan-r"},
+    {"name": "Moreau", "party": "r", "votes": 11, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-deeds.hillsborough.moreau-r"},
+    {"name": "Sapienza", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-deeds.hillsborough.sapienza-r"}]},
+  "R|register-of-deeds|Hillsborough": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-deeds.hillsborough", "count_from": "the places' sum", "scatter": 64, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Hillsborough", "candidates": [
+    {"name": "Hogan", "party": "r", "votes": 12906, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-deeds.hillsborough.hogan-r"},
+    {"name": "Moreau", "party": "r", "votes": 11324, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-deeds.hillsborough.moreau-r"},
+    {"name": "Sapienza", "party": "r", "votes": 6231, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-deeds.hillsborough.sapienza-r"},
+    {"name": "Crowell", "party": "d", "votes": 16, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-deeds.hillsborough.crowell-d"}]},
+  "D|register-of-probate|Hillsborough": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-probate.hillsborough", "count_from": "the places' sum", "scatter": 32, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Bryk", "party": "d", "votes": 19958, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-probate.hillsborough.bryk-d"},
+    {"name": "Graham", "party": "r", "votes": 27, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-probate.hillsborough.graham-r"}]},
+  "R|register-of-probate|Hillsborough": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-probate.hillsborough", "count_from": "the places' sum", "scatter": 83, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Graham", "party": "r", "votes": 28918, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-probate.hillsborough.graham-r"},
+    {"name": "Bryk", "party": "d", "votes": 15, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-probate.hillsborough.bryk-d"}]},
+  "D|sheriff|Hillsborough": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.sheriff.hillsborough", "count_from": "the places' sum", "scatter": 561, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Connelly", "party": "r", "votes": 76, "write_in": false, "nominated": null, "id": "2022-09-13.primary-d.sheriff.hillsborough.connelly-r"}]},
+  "R|sheriff|Hillsborough": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.sheriff.hillsborough", "count_from": "the places' sum", "scatter": 191, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Connelly", "party": "r", "votes": 30250, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.sheriff.hillsborough.connelly-r"}]},
+  "D|county-attorney|Merrimack": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-attorney.merrimack", "count_from": "the places' sum", "scatter": 365, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Halvorsen", "party": "r", "votes": 90, "write_in": false, "nominated": null, "id": "2022-09-13.primary-d.county-attorney.merrimack.halvorsen-r"}]},
+  "R|county-attorney|Merrimack": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-attorney.merrimack", "count_from": "the places' sum", "scatter": 53, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Halvorsen", "party": "r", "votes": 11945, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-attorney.merrimack.halvorsen-r"}]},
+  "D|county-commissioner|Merrimack|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.merrimack-2", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Karrick Jr", "party": "d", "votes": 3743, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.merrimack-2.karrick-jr-d"},
+    {"name": "Trachy", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-commissioner.merrimack-2.trachy-r"}]},
+  "R|county-commissioner|Merrimack|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.merrimack-2", "count_from": "the places' sum", "scatter": 21, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Trachy", "party": "r", "votes": 4893, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.merrimack-2.trachy-r"},
+    {"name": "Karrick Jr", "party": "d", "votes": 6, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.merrimack-2.karrick-jr-d"}]},
+  "D|county-commissioner|Merrimack|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.merrimack-3", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Newsom", "party": "d", "votes": 2703, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-commissioner.merrimack-3.newsom-d"}]},
+  "R|county-commissioner|Merrimack|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.merrimack-3", "count_from": "the places' sum", "scatter": 162, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "David Lovlien", "party": "", "votes": 50, "write_in": true, "nominated": null, "id": "2022-09-13.primary-r.county-commissioner.merrimack-3.david-lovlien-write-in"},
+    {"name": "Newsom", "party": "d", "votes": 16, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.merrimack-3.newsom-d"}]},
+  "D|county-treasurer|Merrimack": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-treasurer.merrimack", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Cragin", "party": "d", "votes": 11144, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-treasurer.merrimack.cragin-d"},
+    {"name": "Heath", "party": "r", "votes": 26, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-treasurer.merrimack.heath-r"}]},
+  "R|county-treasurer|Merrimack": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-treasurer.merrimack", "count_from": "the places' sum", "scatter": 33, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Heath", "party": "r", "votes": 12027, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-treasurer.merrimack.heath-r"},
+    {"name": "Cragin", "party": "d", "votes": 16, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-treasurer.merrimack.cragin-d"}]},
+  "D|register-of-deeds|Merrimack": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-deeds.merrimack", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Merrimack", "candidates": [
+    {"name": "Davis", "party": "d", "votes": 11158, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-deeds.merrimack.davis-d"},
+    {"name": "Spaulding", "party": "r", "votes": 26, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-deeds.merrimack.spaulding-r"},
+    {"name": "Kaplan", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-deeds.merrimack.kaplan-r"}]},
+  "R|register-of-deeds|Merrimack": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-deeds.merrimack", "count_from": "the places' sum", "scatter": 20, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Merrimack", "candidates": [
+    {"name": "Kaplan", "party": "r", "votes": 5417, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-deeds.merrimack.kaplan-r"},
+    {"name": "Spaulding", "party": "r", "votes": 7076, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-deeds.merrimack.spaulding-r"},
+    {"name": "Davis", "party": "d", "votes": 15, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-deeds.merrimack.davis-d"}]},
+  "D|register-of-probate|Merrimack": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-probate.merrimack", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Bradstreet", "party": "d", "votes": 11248, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-probate.merrimack.bradstreet-d"},
+    {"name": "Maltzie", "party": "r", "votes": 13, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-probate.merrimack.maltzie-r"}]},
+  "R|register-of-probate|Merrimack": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-probate.merrimack", "count_from": "the places' sum", "scatter": 35, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Maltzie", "party": "r", "votes": 11804, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-probate.merrimack.maltzie-r"},
+    {"name": "Bradstreet", "party": "d", "votes": 23, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-probate.merrimack.bradstreet-d"}]},
+  "D|sheriff|Merrimack": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.sheriff.merrimack", "count_from": "the places' sum", "scatter": 43, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Croft", "party": "d", "votes": 10936, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.sheriff.merrimack.croft-d"},
+    {"name": "Mitchell", "party": "r", "votes": 82, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.sheriff.merrimack.mitchell-r"}]},
+  "R|sheriff|Merrimack": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.sheriff.merrimack", "count_from": "the places' sum", "scatter": 264, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Mitchell", "party": "r", "votes": 11869, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.sheriff.merrimack.mitchell-r"},
+    {"name": "Croft", "party": "d", "votes": 175, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.sheriff.merrimack.croft-d"}]},
+  "R|county-attorney|Rockingham": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-attorney.rockingham", "count_from": "the places' sum", "scatter": 129, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Conway", "party": "r", "votes": 30963, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-attorney.rockingham.conway-r"},
+    {"name": "Clark", "party": "d", "votes": 42, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-attorney.rockingham.clark-d"}]},
+  "R|county-commissioner|Rockingham|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.rockingham-1", "count_from": "the places' sum", "scatter": 31, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Sawyer", "party": "r", "votes": 8503, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.rockingham-1.sawyer-r"},
+    {"name": "Coyle", "party": "d", "votes": 9, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.rockingham-1.coyle-d"}]},
+  "R|county-commissioner|Rockingham|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.rockingham-2", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Rockingham", "candidates": [
+    {"name": "Baldwin", "party": "r", "votes": 2319, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.rockingham-2.baldwin-r"},
+    {"name": "Goddu", "party": "r", "votes": 3360, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.rockingham-2.goddu-r"},
+    {"name": "Iworsky", "party": "r", "votes": 2274, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.rockingham-2.iworsky-r"},
+    {"name": "O'Connor", "party": "r", "votes": 2484, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-commissioner.rockingham-2.o-connor-r"}]},
+  "R|county-treasurer|Rockingham": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-treasurer.rockingham", "count_from": "the places' sum", "scatter": 80, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Priestley", "party": "r", "votes": 30323, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-treasurer.rockingham.priestley-r"}]},
+  "R|register-of-deeds|Rockingham": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-deeds.rockingham", "count_from": "the places' sum", "scatter": 132, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Stacey", "party": "r", "votes": 30498, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-deeds.rockingham.stacey-r"},
+    {"name": "McCord", "party": "d", "votes": 15, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-deeds.rockingham.mccord-d"}]},
+  "R|register-of-probate|Rockingham": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-probate.rockingham", "count_from": "the places' sum", "scatter": 84, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Massahos", "party": "r", "votes": 29648, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-probate.rockingham.massahos-r"},
+    {"name": "Lewis", "party": "d", "votes": 11, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-probate.rockingham.lewis-d"}]},
+  "R|sheriff|Rockingham": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.sheriff.rockingham", "count_from": "the places' sum", "scatter": 169, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Massahos", "party": "r", "votes": 31548, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.sheriff.rockingham.massahos-r"},
+    {"name": "Coyle", "party": "d", "votes": 20, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.sheriff.rockingham.coyle-d"}]},
+  "R|county-attorney|Strafford": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-attorney.strafford", "count_from": "the places' sum", "scatter": 124, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Velardi", "party": "d", "votes": 58, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-attorney.strafford.velardi-d"}]},
+  "R|county-commissioner|Strafford": {"party": "r", "office": "county-commissioner", "district": null, "seats": null, "contest": "2022-09-13.primary-r.county-commissioner.strafford", "count_from": "the places' sum", "scatter": 58, "undervotes": null, "overvotes": null, "printed_totals": 7, "county": "Strafford", "candidates": [
+    {"name": "Cullen", "party": "r", "votes": 5842, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-commissioner.strafford.cullen-r"},
+    {"name": "Otterson", "party": "r", "votes": 5615, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-commissioner.strafford.otterson-r"},
+    {"name": "DeLemus", "party": "r", "votes": 6097, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-commissioner.strafford.delemus-r"},
+    {"name": "Rollo", "party": "d", "votes": 17, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-commissioner.strafford.rollo-d"},
+    {"name": "Maglaras", "party": "d", "votes": 27, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-commissioner.strafford.maglaras-d"},
+    {"name": "Watson", "party": "d", "votes": 20, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.county-commissioner.strafford.watson-d"}]},
+  "R|county-treasurer|Strafford": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-treasurer.strafford", "count_from": "the places' sum", "scatter": 26, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "candidates": [
+    {"name": "Beaudoin", "party": "r", "votes": 7056, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-treasurer.strafford.beaudoin-r"},
+    {"name": "Arnold", "party": "d", "votes": 13, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-treasurer.strafford.arnold-d"}]},
+  "R|register-of-deeds|Strafford": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-deeds.strafford", "count_from": "the places' sum", "scatter": 27, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "candidates": [
+    {"name": "Smith", "party": "r", "votes": 7466, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-deeds.strafford.smith-r"},
+    {"name": "Berube", "party": "d", "votes": 15, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-deeds.strafford.berube-d"}]},
+  "R|register-of-probate|Strafford": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-probate.strafford", "count_from": "the places' sum", "scatter": 28, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Sirois", "party": "r", "votes": 7436, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-probate.strafford.sirois-r"}]},
+  "R|sheriff|Strafford": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.sheriff.strafford", "count_from": "the places' sum", "scatter": 320, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Brave", "party": "d", "votes": 72, "write_in": false, "nominated": null, "id": "2022-09-13.primary-r.sheriff.strafford.brave-d"}]},
+  "D|county-attorney|Sullivan": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-attorney.sullivan", "count_from": "the places' sum", "scatter": 1, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Buckey", "party": "d", "votes": 2816, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.county-attorney.sullivan.buckey-d"},
+    {"name": "Hathaway", "party": "r", "votes": 27, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.county-attorney.sullivan.hathaway-r"}]},
+  "R|county-attorney|Sullivan": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-attorney.sullivan", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Hathaway", "party": "r", "votes": 3396, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-attorney.sullivan.hathaway-r"},
+    {"name": "Buckey", "party": "d", "votes": 11, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.county-attorney.sullivan.buckey-d"}]},
+  "D|county-commissioner|Sullivan|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.sullivan-2", "count_from": "the places' sum", "scatter": 23, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Nelson", "party": "r", "votes": 17, "write_in": false, "nominated": null, "id": "2022-09-13.primary-d.county-commissioner.sullivan-2.nelson-r"}]},
+  "R|county-commissioner|Sullivan|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.sullivan-2", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Nelson", "party": "r", "votes": 3366, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.sullivan-2.nelson-r"}]},
+  "D|county-commissioner|Sullivan|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-d.county-commissioner.sullivan-3", "count_from": "the places' sum", "scatter": 20, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Hebert", "party": "r", "votes": 13, "write_in": false, "nominated": null, "id": "2022-09-13.primary-d.county-commissioner.sullivan-3.hebert-r"}]},
+  "R|county-commissioner|Sullivan|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2022-09-13.primary-r.county-commissioner.sullivan-3", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Hebert", "party": "r", "votes": 3291, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-commissioner.sullivan-3.hebert-r"}]},
+  "D|county-treasurer|Sullivan": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.county-treasurer.sullivan", "count_from": "the places' sum", "scatter": 29, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Sanderson", "party": "r", "votes": 19, "write_in": false, "nominated": null, "id": "2022-09-13.primary-d.county-treasurer.sullivan.sanderson-r"}]},
+  "R|county-treasurer|Sullivan": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.county-treasurer.sullivan", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Sanderson", "party": "r", "votes": 3358, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.county-treasurer.sullivan.sanderson-r"}]},
+  "D|register-of-deeds|Sullivan": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-deeds.sullivan", "count_from": "the places' sum", "scatter": 28, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Gibson", "party": "r", "votes": 20, "write_in": false, "nominated": null, "id": "2022-09-13.primary-d.register-of-deeds.sullivan.gibson-r"}]},
+  "R|register-of-deeds|Sullivan": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-deeds.sullivan", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Gibson", "party": "r", "votes": 3396, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-deeds.sullivan.gibson-r"}]},
+  "D|register-of-probate|Sullivan": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.register-of-probate.sullivan", "count_from": "the places' sum", "scatter": 2, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Eames", "party": "d", "votes": 2702, "write_in": false, "nominated": true, "id": "2022-09-13.primary-d.register-of-probate.sullivan.eames-d"},
+    {"name": "Ward", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2022-09-13.primary-d.register-of-probate.sullivan.ward-r"}]},
+  "R|register-of-probate|Sullivan": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.register-of-probate.sullivan", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Ward", "party": "r", "votes": 3311, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.register-of-probate.sullivan.ward-r"},
+    {"name": "Eames", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2022-09-13.primary-r.register-of-probate.sullivan.eames-d"}]},
+  "D|sheriff|Sullivan": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-d.sheriff.sullivan", "count_from": "the places' sum", "scatter": 55, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Simonds", "party": "r", "votes": 42, "write_in": false, "nominated": null, "id": "2022-09-13.primary-d.sheriff.sullivan.simonds-r"}]},
+  "R|sheriff|Sullivan": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2022-09-13.primary-r.sheriff.sullivan", "count_from": "the places' sum", "scatter": 25, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Simonds", "party": "r", "votes": 3502, "write_in": false, "nominated": true, "id": "2022-09-13.primary-r.sheriff.sullivan.simonds-r"}]}
  }
 }

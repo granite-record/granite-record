@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-18.1
+# GRANITE_VERSION: 2026-11-18.2
 """
 The Secretary of State's count of the State Primary's State Representative
 and State Senate races, 2016 to 2026, each party's primary its own contest,
-read into collected/primary_<year>.json (the elections display's data: every
+read into collected/primary_<year>.json beside the other offices' primaries,
+which parse_sos_primary_offices reads and this writes (the elections display's data: every
 official's whole election record, primaries included, the owner's word of
 19 November 2026). Nothing on the site reads these files yet.
 
@@ -70,8 +71,9 @@ a race it cannot settle is refused alone, and listed. The rest of the year is
 written. Files of the primary that are not these races (presidential
 primaries, ballots cast, names on the checklist, delegates to a party's
 convention, and the other offices, which parse_sos_primary_offices reads)
-are not read: --not-read lists those on disk, with why. They are not in the
-document, which says only what its own files say, wherever it is run.
+are not read: --not-read lists those on disk that neither reader reads,
+with why. They are not in the document, which says only what its own files
+say, wherever it is run.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -135,9 +137,6 @@ NOTE_OPENS = re.compile(r"^no votes cast\s*:\s*", re.I)
 # The other files of a primary, by what their names say, with why each is not
 # read here. Read in this order; the first that matches says.
 NOT_READ = [
-    (re.compile(r"-sp-(?:governor|u\.?s\.?-senate|united-states-senate|uss|us-senator|"
-                r"congressional-district|executive-council|county-offices|[a-z]+-county)"),
-     "another office's primary, which parse_sos_primary_offices reads"),
     (re.compile(r"-sp-ballots-?cast"), "the ballots cast, which is no race"),
     (re.compile(r"-sp-names-on-checklist"), "the names on the checklist, which is no race"),
     (re.compile(r"-sp-delegate-"), "delegates to a party's state convention, which is a party's "
@@ -166,6 +165,8 @@ class Primary(datetime.date):
         d += datetime.timedelta(days=7)
         self = super().__new__(cls, d.year, d.month, d.day)
         self.party = party
+        # The contest's word in a race's id (parse_sos_offices.contest_kind): "primary-r".
+        self.contest = f"primary-{PARTIES[party]}"
         self.choose = nominate
         self.mark = "nominated"
         return self
@@ -227,22 +228,15 @@ def file_party(name):
 
 def source_files(root, year):
     """{"house": {(county, party): path}, "senate": {party: [path, ...]},
-    "replaced": [(earlier, later)], "not_read": [(path, why)]}."""
+    "replaced": [(earlier, later)]}."""
     d = Path(root) / SOURCES
-    house, senate, replaced, not_read = {}, {}, [], []
+    house, senate, replaced = {}, {}, []
     for p in sorted(d.glob(f"{year}-*")) if d.is_dir() else []:
-        if PP_FILE.match(p.name):
-            not_read.append((p, "the presidential primary, which is out of these readers' scope"))
-            continue
         if "-sp-" not in p.name:
             continue
         got = file_party(p.name)
         if got is None:
-            why = next((w for rx, w in NOT_READ if rx.search(p.name)), None)
-            if why is None:
-                raise Refused(f"{p.name}: a primary file whose name says neither a race read "
-                              "here nor one of the files not read (NOT_READ)")
-            not_read.append((p, why))
+            # Another office's (parse_sos_primary_offices), or one of NOT_READ (unread()).
             continue
         kind, where, party = got
         if kind == "house":
@@ -253,7 +247,7 @@ def source_files(root, year):
             senate.setdefault(party, []).append(p)
     out = {"house": {k: PSR.latest(ps, f"{k[0]}'s {k[1]} House primary", replaced)
                      for k, ps in sorted(house.items())},
-           "senate": {}, "replaced": replaced, "not_read": not_read}
+           "senate": {}, "replaced": replaced}
     for party, ps in sorted(senate.items()):
         parts = {}
         for p in ps:
@@ -266,6 +260,27 @@ def source_files(root, year):
         out["senate"][party] = [PSR.latest(v, f"the {party} Senate primary for "
                                               f"{PSR.span_words(s)}", replaced)
                                 for s, v in sorted(parts.items())]
+    return out
+
+
+def unread(root, year):
+    """[(path, why)]: the year's primary files on disk that neither reader
+    reads -- the presidential primary's, and every -sp- file this reader and
+    parse_sos_primary_offices leave, each with NOT_READ's why, or that no
+    reader knows its name."""
+    import parse_sos_primary_offices as PO
+    d = Path(root) / SOURCES
+    files = source_files(root, year)
+    known = {p for p in files["house"].values()} | {p for ps in files["senate"].values()
+                                                     for p in ps}
+    known |= {old for old, _new in files["replaced"]} | PO.files_known(root, year)
+    out = []
+    for p in sorted(d.glob(f"{year}-*")) if d.is_dir() else []:
+        if PP_FILE.match(p.name):
+            out.append((p, "the presidential primary, which is out of these readers' scope"))
+        elif "-sp-" in p.name and p not in known:
+            out.append((p, next((w for rx, w in NOT_READ if rx.search(p.name)),
+                                "a name neither primary reader knows")))
     return out
 
 
@@ -532,14 +547,22 @@ def read_year(root, year):
             if blanks:
                 notes.append(f"{path.name}: {blanks} empty cell(s) under a candidate, read as "
                              "none")
+    import parse_sos_primary_offices as PO
+    others, also, said, alone, bad = PO.read_year(root, year)
+    races.update(others)
+    read += also
+    notes += said
+    refused += alone
     doc = {"_about": [
-                "What the Secretary of State's State Primary results files say of the State "
-                "Representative and State Senate races, each party's primary its own race, read "
-                "by src/parse/parse_sos_primary_results.py from the files in _source and held to "
-                "the same year's general election (collected/election_<year>.json). Nothing in "
-                "it is this project's decision but the nominees, which the files do not mark: "
-                "the candidates with the most votes, as many as the race has seats and none "
-                "with no votes; null where the count does not settle it.",
+                "What the Secretary of State's State Primary results files say, each party's "
+                "primary its own race: the State Representative and State Senate races, read by "
+                "src/parse/parse_sos_primary_results.py and held to the same year's general "
+                "election (collected/election_<year>.json), and Governor, United States "
+                "Senator, Representative in Congress, Executive Councilor and the county "
+                "offices, read by src/parse/parse_sos_primary_offices.py; each from the files "
+                "in _source. Nothing in it is this project's decision but the nominees, which "
+                "the files do not mark: the candidates with the most votes, as many as the race "
+                "has seats and none with no votes; null where the count does not settle it.",
                 "Write the file again by running the reader, never by hand: --check says where "
                 "the saved files and this disagree."],
            "_source": [PSR.described(p, root) for p in read],
@@ -551,19 +574,33 @@ def read_year(root, year):
         doc["_notes"] = notes
     if refused:
         doc["_refused"] = refused
+    if bad:
+        # A file that disagrees with itself, recorded with where, never corrected.
+        doc["_disagreements"] = bad
     return doc
 
 
+# The statewide and district offices first, in this order; then the Senate
+# and the House; then the county offices, by county.
+OFFICE_ORDER = ("governor", "us-senate", "us-house", "executive-council")
+
+
 def race_order(key):
+    """A race's place in the file: its office's, then the party's."""
     party, rest = key.split("|", 1)
-    return (BME.race_order(rest), party)
+    parts = rest.split("|")
+    if parts[0] in OFFICE_ORDER:
+        return (0, (OFFICE_ORDER.index(parts[0]), int(parts[1]) if len(parts) > 1 else 0), party)
+    if BME.KEY_RE.match(rest):
+        return (1, BME.race_order(rest), party)
+    return (2, (parts[1], parts[0], int(parts[2]) if len(parts) > 2 else 0), party)
 
 
 def dumps(doc):
     """The document as one race to a line or few, so that a diff is the race
     it moved and no more."""
     out = ["{"]
-    for k in ("_about", "_notes", "_refused"):
+    for k in ("_about", "_notes", "_refused", "_disagreements"):
         if doc.get(k):
             out.append(f' "{k}": ' + json.dumps(doc[k], ensure_ascii=False, indent=2)
                        .replace("\n", "\n ") + ",")
@@ -600,13 +637,15 @@ def same_but_days(a, b):
 def summary(doc):
     races = doc["races"]
     house = [k for k in races if "|H|" in k]
+    senate = [k for k in races if "|S|" in k]
     cands = [c for r in races.values() for c in r["candidates"]]
-    return (f"{len(doc['_source'])} files read; {len(house)} House races and "
-            f"{len(races) - len(house)} Senate; {len(cands)} candidates, "
+    return (f"{len(doc['_source'])} files read; {len(house)} House races, {len(senate)} Senate "
+            f"and {len(races) - len(house) - len(senate)} of other offices; {len(cands)} candidates, "
             f"{sum(c['nominated'] is True for c in cands)} nominated, "
             f"{sum(c['nominated'] is None for c in cands)} not settled; "
             f"{sum(r['printed_totals'] for r in races.values())} printed Totals held; "
-            f"{len(doc.get('_refused') or [])} refused")
+            f"{len(doc.get('_refused') or [])} refused; "
+            f"{len(doc.get('_disagreements') or [])} disagreement(s) recorded")
 
 
 def years_on_disk(root="."):
@@ -630,7 +669,7 @@ def main():
         ap.error("--year or --all")
     if a.not_read:
         for y in years:
-            for p, why in source_files(".", y)["not_read"]:
+            for p, why in unread(".", y):
                 print(f"{p.name}: {why}")
         return 0
     bad = 0

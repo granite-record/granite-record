@@ -1,6 +1,6 @@
 {
  "_about": [
-   "What the Secretary of State's State Primary results files say of the State Representative and State Senate races, each party's primary its own race, read by src/parse/parse_sos_primary_results.py from the files in _source and held to the same year's general election (collected/election_<year>.json). Nothing in it is this project's decision but the nominees, which the files do not mark: the candidates with the most votes, as many as the race has seats and none with no votes; null where the count does not settle it.",
+   "What the Secretary of State's State Primary results files say, each party's primary its own race: the State Representative and State Senate races, read by src/parse/parse_sos_primary_results.py and held to the same year's general election (collected/election_<year>.json), and Governor, United States Senator, Representative in Congress, Executive Councilor and the county offices, read by src/parse/parse_sos_primary_offices.py; each from the files in _source. Nothing in it is this project's decision but the nominees, which the files do not mark: the candidates with the most votes, as many as the race has seats and none with no votes; null where the count does not settle it.",
    "Write the file again by running the reader, never by hand: --check says where the saved files and this disagree."
  ],
  "_notes": [
@@ -90,7 +90,71 @@
    "2026-sp-state-senate-10-11-republican.xlsx: 14 empty cell(s) under a candidate, read as none",
    "2026-sp-state-senate-14-16-republican.xlsx: 8 empty cell(s) under a candidate, read as none",
    "2026-sp-state-senate-17-18-republican.xlsx: 10 empty cell(s) under a candidate, read as none",
-   "2026-sp-state-senate-19-21-republican.xlsx: 14 empty cell(s) under a candidate, read as none"
+   "2026-sp-state-senate-19-21-republican.xlsx: 14 empty cell(s) under a candidate, read as none",
+   "the democratic Governor primary: 698 empty cell(s) under a candidate, read as none",
+   "the republican Governor primary: 98 empty cell(s) under a candidate, read as none",
+   "the democratic United States Senator primary: 1324 empty cell(s) under a candidate, read as none",
+   "2026-sp-executive-council-1-democratic.xlsx: 89 empty cell(s) under a candidate, read as none",
+   "2026-sp-executive-council-2-democratic.xlsx: 188 empty cell(s) under a candidate, read as none",
+   "2026-sp-executive-council-3-democratic.xlsx: 56 empty cell(s) under a candidate, read as none",
+   "2026-sp-executive-council-4-democratic.xlsx: 72 empty cell(s) under a candidate, read as none",
+   "2026-sp-executive-council-5-democratic.xlsx: 29 empty cell(s) under a candidate, read as none",
+   "2026-sp-executive-council-1-republican.xlsx: 54 empty cell(s) under a candidate, read as none",
+   "2026-sp-executive-council-2-republican.xlsx: 66 empty cell(s) under a candidate, read as none",
+   "2026-sp-executive-council-3-republican.xlsx: 24 empty cell(s) under a candidate, read as none",
+   "2026-sp-executive-council-4-republican.xlsx: 12 empty cell(s) under a candidate, read as none",
+   "2026-sp-executive-council-5-republican.xlsx: 26 empty cell(s) under a candidate, read as none",
+   "2026-sp-congressional-district-1-democratic.xlsx: 506 empty cell(s) under a candidate, read as none",
+   "2026-sp-congressional-district-2-democratic.xlsx: 814 empty cell(s) under a candidate, read as none",
+   "2026-sp-congressional-district-1-republican.xlsx: 826 empty cell(s) under a candidate, read as none",
+   "2026-sp-congressional-district-2-republican.xlsx: 305 empty cell(s) under a candidate, read as none",
+   "2026-09-08.primary-d.sheriff.belknap: D|sheriff|Belknap: Bill Wright not settled by the count -- a tie for the last place, or the write-ins nobody named (153) could have taken it",
+   "2026-09-08.primary-d.register-of-deeds.belknap: D|register-of-deeds|Belknap: Mo Baxley not settled by the count -- a tie for the last place, or the write-ins nobody named (126) could have taken it",
+   "2026-09-08.primary-d.county-commissioner.belknap-1: D|county-commissioner|Belknap|1: Peter John Spanos not settled by the count -- a tie for the last place, or the write-ins nobody named (60) could have taken it",
+   "2026-09-08.primary-d.county-commissioner.belknap-2: D|county-commissioner|Belknap|2: Glen A. Waring not settled by the count -- a tie for the last place, or the write-ins nobody named (41) could have taken it",
+   "2026-sp-county-offices-belknap-democratic.xlsx, sheet 'dbelknap gov', row 65: D|county-commissioner|Belknap|3: No Election; no race is read",
+   "2026-09-08.primary-r.county-attorney.belknap: R|county-attorney|Belknap: Keith Gerard Cormier not settled by the count -- a tie for the last place, or the write-ins nobody named (276) could have taken it",
+   "2026-sp-county-offices-belknap-republican_0.xlsx, sheet 'dbelknap gov', row 65: R|county-commissioner|Belknap|3: No Election; no race is read",
+   "2026-09-08.primary-d.county-attorney.carroll: D|county-attorney|Carroll: Keith D. Blair not settled by the count -- a tie for the last place, or the write-ins nobody named (66) could have taken it",
+   "2026-09-08.primary-d.register-of-deeds.carroll: D|register-of-deeds|Carroll: Karen I. Rines not settled by the count -- a tie for the last place, or the write-ins nobody named (85) could have taken it",
+   "2026-sp-county-offices-cheshire-democratic.xlsx, sheet 'dcheshire gov', row 98: D|county-commissioner|Cheshire|3: No Election; no race is read",
+   "2026-09-08.primary-r.sheriff.cheshire: R|sheriff|Cheshire: Eli Rivera not settled by the count -- a tie for the last place, or the write-ins nobody named (149) could have taken it",
+   "2026-09-08.primary-r.county-attorney.cheshire: R|county-attorney|Cheshire: D. Chris McLaughlin not settled by the count -- a tie for the last place, or the write-ins nobody named (69) could have taken it",
+   "2026-09-08.primary-r.county-treasurer.cheshire: R|county-treasurer|Cheshire: Jack Wozmak not settled by the count -- a tie for the last place, or the write-ins nobody named (74) could have taken it",
+   "2026-09-08.primary-r.register-of-deeds.cheshire: R|register-of-deeds|Cheshire: Anna Z. Tilton not settled by the count -- a tie for the last place, or the write-ins nobody named (57) could have taken it",
+   "2026-09-08.primary-r.register-of-probate.cheshire: R|register-of-probate|Cheshire: Jeremy LaPlante not settled by the count -- a tie for the last place, or the write-ins nobody named (55) could have taken it",
+   "2026-09-08.primary-r.county-commissioner.cheshire-2: R|county-commissioner|Cheshire|2: Terry M. Clark not settled by the count -- a tie for the last place, or the write-ins nobody named (20) could have taken it",
+   "2026-sp-county-offices-cheshire-republican.xlsx, sheet 'dcheshire gov', row 98: R|county-commissioner|Cheshire|3: No Election; no race is read",
+   "2026-sp-county-offices-coos-democratic.xlsx, sheet 'dcoos gov', row 5: D|county-commissioner|Coos|2: No Election; no race is read",
+   "2026-sp-county-offices-coos-republican.xlsx, sheet 'dcoos gov', row 5: R|county-commissioner|Coos|2: No Election; no race is read",
+   "2026-sp-county-offices-grafton-democratic.xlsx, sheet 'dgrafton gov', row 143: D|county-commissioner|Grafton|2: No Election; no race is read",
+   "2026-09-08.primary-r.sheriff.grafton: R|sheriff|Grafton: Jillian E. Myers not settled by the count -- a tie for the last place, or the write-ins nobody named (237) could have taken it",
+   "2026-09-08.primary-r.register-of-probate.grafton: R|register-of-probate|Grafton: Sharon Modjeska not settled by the count -- a tie for the last place, or the write-ins nobody named (102) could have taken it",
+   "2026-09-08.primary-r.county-commissioner.grafton-1: R|county-commissioner|Grafton|1: George Sykes not settled by the count -- a tie for the last place, or the write-ins nobody named (7) could have taken it",
+   "2026-sp-county-offices-grafton-republican.xlsx, sheet 'dgrafton gov', row 143: R|county-commissioner|Grafton|2: No Election; no race is read",
+   "2026-09-08.primary-d.sheriff.hillsborough: D|sheriff|Hillsborough: Brian Newcomb not settled by the count -- a tie for the last place, or the write-ins nobody named (1,500) could have taken it",
+   "2026-sp-county-offices-merrimack-democratic.xlsx, sheet 'dmerrimack gov', row 131: D|county-commissioner|Merrimack|3: No Election; no race is read",
+   "2026-09-08.primary-r.county-treasurer.merrimack: R|county-treasurer|Merrimack: Dianne E. Schuett not settled by the count -- a tie for the last place, or the write-ins nobody named (403) could have taken it",
+   "2026-09-08.primary-r.register-of-probate.merrimack: R|register-of-probate|Merrimack: Alyssa Ehl not settled by the count -- a tie for the last place, or the write-ins nobody named (271) could have taken it",
+   "2026-09-08.primary-r.county-commissioner.merrimack-1: R|county-commissioner|Merrimack|1: Steve Shurtleff not settled by the count -- a tie for the last place, or the write-ins nobody named (105) could have taken it",
+   "2026-sp-county-offices-merrimack-republican.xlsx, sheet 'dmerrimack gov', row 131: R|county-commissioner|Merrimack|3: No Election; no race is read",
+   "2026-09-08.primary-d.sheriff.rockingham: D|sheriff|Rockingham: Chuck Massahos not settled by the count -- a tie for the last place, or the write-ins nobody named (1,128) could have taken it",
+   "2026-09-08.primary-d.register-of-deeds.rockingham: D|register-of-deeds|Rockingham: Cathy Stacey not settled by the count -- a tie for the last place, or the write-ins nobody named (810) could have taken it",
+   "2026-09-08.primary-d.county-commissioner.rockingham-3: D|county-commissioner|Rockingham|3: Thomas Tombarello not settled by the count -- a tie for the last place, or the write-ins nobody named (228) could have taken it",
+   "2026-sp-county-offices-rockingham-democratic.xlsx, sheet 'drockingham gov', row 140: D|county-commissioner|Rockingham|2: No Election; no race is read",
+   "2026-09-08.primary-r.county-commissioner.rockingham-1: R|county-commissioner|Rockingham|1: Kate Coyle not settled by the count -- a tie for the last place, or the write-ins nobody named (301) could have taken it",
+   "2026-sp-county-offices-rockingham-republican.xlsx, sheet 'drockingham gov', row 140: R|county-commissioner|Rockingham|2: No Election; no race is read",
+   "2026-09-08.primary-d.county-commissioner.strafford-3: D|county-commissioner|Strafford|3: Heath Howard not settled by the count -- a tie for the last place, or the write-ins nobody named (328) could have taken it",
+   "2026-09-08.primary-r.county-attorney.strafford: R|county-attorney|Strafford: Emily C. Garod not settled by the count -- a tie for the last place, or the write-ins nobody named (117) could have taken it",
+   "2026-09-08.primary-r.county-treasurer.strafford: R|county-treasurer|Strafford: Pamela J. Arnold not settled by the count -- a tie for the last place, or the write-ins nobody named (144) could have taken it",
+   "2026-09-08.primary-r.register-of-deeds.strafford: R|register-of-deeds|Strafford: Catherine A. Berube not settled by the count -- a tie for the last place, or the write-ins nobody named (127) could have taken it",
+   "2026-09-08.primary-r.register-of-probate.strafford: R|register-of-probate|Strafford: Nancy Sirois not settled by the count -- a tie for the last place, or the write-ins nobody named (124) could have taken it",
+   "2026-09-08.primary-r.county-commissioner.strafford-2: R|county-commissioner|Strafford|2: George Maglaras not settled by the count -- a tie for the last place, or the write-ins nobody named (47) could have taken it",
+   "2026-09-08.primary-d.sheriff.sullivan: D|sheriff|Sullivan: James Ethan Yazinski not settled by the count -- a tie for the last place, or the write-ins nobody named (128) could have taken it",
+   "2026-09-08.primary-d.county-treasurer.sullivan: D|county-treasurer|Sullivan: Michael Sanderson not settled by the count -- a tie for the last place, or the write-ins nobody named (80) could have taken it",
+   "2026-sp-county-offices-sullivan-democratic.xlsx, sheet 'dsullivan gov', row 68: D|county-commissioner|Sullivan|3: No Election; no race is read",
+   "2026-09-08.primary-r.county-attorney.sullivan: R|county-attorney|Sullivan: Christine Hilliard not settled by the count -- a tie for the last place, or the write-ins nobody named (111) could have taken it",
+   "2026-sp-county-offices-sullivan-republican.xlsx, sheet 'dsullivan gov', row 68: R|county-commissioner|Sullivan|3: No Election; no race is read"
  ],
  "_refused": [
    {
@@ -100,6 +164,67 @@
    {
      "file": "2026-sp-house-strafford-democratic.xlsx",
      "why": "2026-sp-house-strafford-democratic.xlsx, sheet 'rstrarep', row 13: Linda R. Adamo's column adds up to 363 and the file's Totals say 666"
+   },
+   {
+     "file": "2026-sp-us-senator-summary-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   },
+   {
+     "file": "2026-sp-us-senator-belknap-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   },
+   {
+     "file": "2026-sp-us-senator-carroll-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   },
+   {
+     "file": "2026-sp-us-senator-cheshire-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   },
+   {
+     "file": "2026-sp-us-senator-coos-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   },
+   {
+     "file": "2026-sp-us-senator-grafton-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   },
+   {
+     "file": "2026-sp-us-senator-hillsborough-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   },
+   {
+     "file": "2026-sp-us-senator-merrimack-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   },
+   {
+     "file": "2026-sp-us-senator-rockingham-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   },
+   {
+     "file": "2026-sp-us-senator-strafford-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   },
+   {
+     "file": "2026-sp-us-senator-sullivan-republican.xlsx",
+     "why": "2026-sp-us-senator-belknap-republican.xlsx, sheet 'belknap', row 3: the column 'Richard A. McMenamon II, r' matches no column of the summary's header"
+   }
+ ],
+ "_disagreements": [
+   {
+     "check": "a county's row in the summary is its block's Totals",
+     "what": "Carroll: write_ins_scattered, the summary prints 56, the county's Totals say 65",
+     "where": "2026-sp-governor-summary-democratic.xlsx, sheet 'Sheet1', row 5; 2026-sp-governor-carroll-democratic.xlsx, sheet 'dcarroll gov', row 23"
+   },
+   {
+     "check": "a county's row in the summary is its block's Totals",
+     "what": "Coos: write_ins_scattered, the summary prints 21, the county's Totals say 22",
+     "where": "2026-sp-governor-summary-democratic.xlsx, sheet 'Sheet1', row 7; 2026-sp-governor-coos-democratic.xlsx, sheet 'dcoos gov', row 47"
+   },
+   {
+     "check": "a county's row in the summary is its block's Totals",
+     "what": "Rockingham: write_ins_scattered, the summary prints 499, the county's Totals say 512",
+     "where": "2026-sp-governor-summary-democratic.xlsx, sheet 'Sheet1', row 11; 2026-sp-governor-rockingham-democratic.xlsx, sheet 'drockingham gov', row 45"
    }
  ],
  "_source": [
@@ -150,12 +275,185 @@
   {"file": "records/sources/2026-sp-state-senate-14-16-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "3a57181ed711f17cac25d4e8ecf65f40abbc88d180ebfa465e4a8c27c8ab0702"},
   {"file": "records/sources/2026-sp-state-senate-17-18-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "78ddebb466dfdc231194d5aaf552fd8314d9c79e59e1ce40e9e08919d546c7fb"},
   {"file": "records/sources/2026-sp-state-senate-19-21-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "4de553561efd67110fa9b8cc94a58c8df74a72083d212a9fc6331fee8bfc737a"},
-  {"file": "records/sources/2026-sp-state-senate-22-24-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "d671889abff38a32cfb735040a25ece6111b3794e791c6d5cba8cf3bd38bd2c4"}
+  {"file": "records/sources/2026-sp-state-senate-22-24-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "d671889abff38a32cfb735040a25ece6111b3794e791c6d5cba8cf3bd38bd2c4"},
+  {"file": "records/sources/2026-sp-governor-summary-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "2e3125dbbb0561c656f63aeb85c23bc25b7ad85dc3809d42dfb92ead461dac19"},
+  {"file": "records/sources/2026-sp-governor-belknap-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "b9a28b2606ccda54b505bfa49aefedaeed4db4395c4025f02a9aefc9ad3b5c62"},
+  {"file": "records/sources/2026-sp-governor-carroll-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "e33af1786c20e57b05253fc46c452cd3f2bb9f8c219da345e3af212af1ed0d5a"},
+  {"file": "records/sources/2026-sp-governor-cheshire-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "ebccb474c4cf3f7fd24f91304eaa663c69c7921226b260add060eac51c253803"},
+  {"file": "records/sources/2026-sp-governor-coos-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "5e0b251603ab441ee0e85bdcee991364389291653709c119f3e7e1f4b679d524"},
+  {"file": "records/sources/2026-sp-governor-grafton-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "220417182b402595f52491c333f68f053dc93c67031cd1fded5b011a9954ed5f"},
+  {"file": "records/sources/2026-sp-governor-hillsborough-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "1f6e085a570ce14cca213e5daf6aa57d6cfb0145c414c644b1c6f348674ac96f"},
+  {"file": "records/sources/2026-sp-governor-merrimack-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "c0f2aba7caf0501780bc127d1b348c97c9426e5731d32e4eb81f823ecc4792be"},
+  {"file": "records/sources/2026-sp-governor-rockingham-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "bb74b92f22a88f0972bc387349ef2e0c471fb8f0d972a0b3829df31598e553fc"},
+  {"file": "records/sources/2026-sp-governor-strafford-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "20a02718266d18b5a5c9d9c3e6e9fd1fe5d231940c194d6a5d65625f3a749f11"},
+  {"file": "records/sources/2026-sp-governor-sullivan-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "c39b9bbdd524744c89736758978ee8f3fbfa1ffe8e43c25ce3a3e7736a3b3d26"},
+  {"file": "records/sources/2026-sp-governor-summary-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "184fe578087f85fee7d242772b1d1494fa41b48eee85bdc275a846a7fdfec105"},
+  {"file": "records/sources/2026-sp-governor-belknap-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "eb8b0516de02e64bf66e8935dde38febb870e76fbaf46cce0ac75f264714341a"},
+  {"file": "records/sources/2026-sp-governor-carroll-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "4f04ca022022342896050770afb2ea731a05348a9bb1ad5265c40567847c540d"},
+  {"file": "records/sources/2026-sp-governor-cheshire-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "79034ae481aae8595e59cac7256bfa1731c3275f171693c38b212f4d34682f6f"},
+  {"file": "records/sources/2026-sp-governor-coos-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "850bf5bab857fc595525553a4ea9d01eabfcd77d9e5d71651d7dbd04147ca4bb"},
+  {"file": "records/sources/2026-sp-governor-grafton-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "03dfa0d313c2f0ed115bc5e6c073b5d38743b383720dea387477e7ce116d3be0"},
+  {"file": "records/sources/2026-sp-governor-hillsborough-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "9fdbad31dcc6c3d5cc921288515d1044c30f28dd3606264a925d570da2cb46c8"},
+  {"file": "records/sources/2026-sp-governor-merrimack-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "d7be4535e743d673674a9f222a488d664087b112ebf8cda489eee2abb525c970"},
+  {"file": "records/sources/2026-sp-governor-rockingham-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "18f647f417e078d541b4911a432838aaefefd7d0666dfbece5b01ef630670722"},
+  {"file": "records/sources/2026-sp-governor-strafford-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "c51308522294207d6a7b82c8a75fcbbfa37b77dc7f76dd5b32fab3a0a9c83438"},
+  {"file": "records/sources/2026-sp-governor-sullivan-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "c05e0e4a4908e2ca7edd5746bd7e35332528c2b8988758b90fbaa3c3abb929f9"},
+  {"file": "records/sources/2026-sp-us-senator-summary-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "11a1473e19961b90e1a850fe7209bd03240eb29cd8a360c34acff9e2514fb74f"},
+  {"file": "records/sources/2026-sp-us-senator-belknap-democratic_0.xlsx", "url": null, "saved": "2026-11-10", "sha256": "a1738ef13c4010f11056faa7ad99b5e2b95d73577ffc46bd7e56bd16b2a21b49"},
+  {"file": "records/sources/2026-sp-us-senator-carroll-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "d3c9626de93fbb47ca31e4b4eae1173d454d1571dbd31a1658f21a1b3176866b"},
+  {"file": "records/sources/2026-sp-us-senator-cheshire-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "0220a1f2c8396213c17f2d48dec2ac80dab7c1b72d7169257f9195fd514da4c6"},
+  {"file": "records/sources/2026-sp-us-senator-coos-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "6ec58be901764ba17a94d0a22b4baf175411b5049b7f365b7625ed8a9da27bd1"},
+  {"file": "records/sources/2026-sp-us-senator-grafton-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "4a59fd15a399bdca88317ad258409823dc4493db23ff4ad83b3f990a78c95afa"},
+  {"file": "records/sources/2026-sp-us-senator-hillsborough-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "ebe24f9366f8651ed2c48e1fb873fe576a9453f59b6ec050a53dbab7d97a19ae"},
+  {"file": "records/sources/2026-sp-us-senator-merrimack-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "4d80ed340ce24acf5e17c7e7b3f364d369d11056832125ab13d9daaad91672bd"},
+  {"file": "records/sources/2026-sp-us-senator-rockingham-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "a45c2aa98268818cc6025343459b37095609aa9a95c60c3cbf7e91cfc999df4b"},
+  {"file": "records/sources/2026-sp-us-senator-strafford-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "e621fbc7f8ff60bf9a68f4e89a6931a8cdc38d0e0ed8c1d385d402394d00dc78"},
+  {"file": "records/sources/2026-sp-us-senator-sullivan-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "73fbb0300b7f6f0c68f1620f02280a85827b9aabe7fd56b11a571667aa38f4d3"},
+  {"file": "records/sources/2026-sp-executive-council-1-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "3c872cf54bda91013996e842fec9ac80194b4ebf7e6867a32fd9d3bffbcb3c14"},
+  {"file": "records/sources/2026-sp-executive-council-2-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "741fd3c12a1970ccc5f2fd18895b972e597a80530b356930a8015d2308f866a0"},
+  {"file": "records/sources/2026-sp-executive-council-3-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "3adc3cac6da50856c541e95750eb4c42bb66a9f9745ba451727d5a06fe7fb623"},
+  {"file": "records/sources/2026-sp-executive-council-4-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "665931a85a42ac4f7f0453c39210fa315040bfad75241094fcca29264ca28b88"},
+  {"file": "records/sources/2026-sp-executive-council-5-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "9e760cffdedbc99987b02a2837ee3e15222396a8ef8b0ec3f7d36707ca2877d1"},
+  {"file": "records/sources/2026-sp-executive-council-1-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "93b255b46164329315b3a79d98ad76253311e5ee155d85f0b03ee78e738679b8"},
+  {"file": "records/sources/2026-sp-executive-council-2-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "b3bd28e1c824c9cf5582537d811ad125d2b4776f78a1c7f177b0def2192183d8"},
+  {"file": "records/sources/2026-sp-executive-council-3-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "c9ed122d1dab4eed61206e31edbfeb05da209f3f3875178e334af344369543a4"},
+  {"file": "records/sources/2026-sp-executive-council-4-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "3182054842e01751937c4ec3d8701ec5f9770f2de1755d6a209d637a1ca8facb"},
+  {"file": "records/sources/2026-sp-executive-council-5-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "d8dc458b05a34bb7745876904b6e4ce794f879504dba90ef57efe36c47b8a130"},
+  {"file": "records/sources/2026-sp-congressional-district-1-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "a1a739a4554a27c0d878fb48c5dc1b6a286b93d084d93463cdfdbf64f0d5a546"},
+  {"file": "records/sources/2026-sp-congressional-district-2-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "4b6182004affb992af2e3f1b2beea832fc7e6fa7264f4eb32ecb6c526dfdfb81"},
+  {"file": "records/sources/2026-sp-congressional-district-1-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "61692aba79d99d362c28ef0c144323b99f22580f8e81bea05c4f1cc24895a97e"},
+  {"file": "records/sources/2026-sp-congressional-district-2-republican.xlsx", "url": null, "saved": "2026-11-10", "sha256": "1cd5bb4d4e2a13bdd2d1def58e664c77be1bc983df7842d0645766b429b6eac8"},
+  {"file": "records/sources/2026-sp-county-offices-belknap-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "f47fbf6126a3a68c2116bae525ed6a45951cde8a36ccc7ea02910b5803f3a6a8"},
+  {"file": "records/sources/2026-sp-county-offices-belknap-republican_0.xlsx", "url": null, "saved": "2026-11-11", "sha256": "bc5086b3d6ea4d3aba848911c154ae6b2fb03aefe7c2a6299eebc04f58e0ef94"},
+  {"file": "records/sources/2026-sp-county-offices-carroll-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "64ef3bac9f110addc135964ff4546fce0371cc420d38efc139c3fd1ca23250ad"},
+  {"file": "records/sources/2026-sp-county-offices-carroll-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "1f9c26663fd2f6dc1c9b9aeafdf35e6417d7b89499af797d55e14fad42545414"},
+  {"file": "records/sources/2026-sp-county-offices-cheshire-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "24144a4be6288d9e925cbccb2fd6c52767ed5ce466c090cfac24f28cd4658c43"},
+  {"file": "records/sources/2026-sp-county-offices-cheshire-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "31c1ec733f775c1932d3f931d24fd6b75e04a93b8f8bc3fe10b7aee99d054cfc"},
+  {"file": "records/sources/2026-sp-county-offices-coos-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "59981d53cf682c3d2e53b9e77c21322685f07f8e8ffeeadb6a6682954dc4c0e2"},
+  {"file": "records/sources/2026-sp-county-offices-coos-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "9459cabdab630da25796fe22da1bd926da86bce7658e0da2358276393c483980"},
+  {"file": "records/sources/2026-sp-county-offices-grafton-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "548f6785c2574e2df03ce9dc7f7960e0f9cae0f21bcb97d1e1bcd62e177289bb"},
+  {"file": "records/sources/2026-sp-county-offices-grafton-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "2ccaf303e4c3d4c5c12e60b0178b4ceb16d82ffed2e1a390ae6f55f1afb75da1"},
+  {"file": "records/sources/2026-sp-county-offices-hillsborough-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "92cf7268a51de15b9ef3fe84db054b4de4e60d1842fd2139e36569cd58291c03"},
+  {"file": "records/sources/2026-sp-county-offices-hillsborough-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "2d5df345bb9170ef8379b467b41cb06949394ca75ebab38c0f4d795408a281c3"},
+  {"file": "records/sources/2026-sp-county-offices-merrimack-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "cc04b680deee997e3bef43da58da398270076561a81690d132a375645eb94a7c"},
+  {"file": "records/sources/2026-sp-county-offices-merrimack-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "197ff1c847e71e9725b7aaf91d73e1c84903e9fefa8110007c36cf7d76bdcc1f"},
+  {"file": "records/sources/2026-sp-county-offices-rockingham-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "fccf8794c0353c54232c218c787858c1f5655ab4c1104c3d6d84e4eefc87efc8"},
+  {"file": "records/sources/2026-sp-county-offices-rockingham-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "ba91e374289be8f39371f104bbc458381ff2b510e43ad68ea8d956f568b9a152"},
+  {"file": "records/sources/2026-sp-county-offices-strafford-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "6d65d3235a749be62f5f934f2c630faea3203a8461c1ab82d9cf23b839547ba1"},
+  {"file": "records/sources/2026-sp-county-offices-strafford-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "9a4f929aad3f6080af7334647afed0e21a05ee8f99bc7f4eaf93333245232350"},
+  {"file": "records/sources/2026-sp-county-offices-sullivan-democratic.xlsx", "url": null, "saved": "2026-11-10", "sha256": "4f75e8eb800ebb914ffb995a66ebd3055a90c82014f3d3349bda2dfeed9d5c16"},
+  {"file": "records/sources/2026-sp-county-offices-sullivan-republican.xlsx", "url": null, "saved": "2026-11-11", "sha256": "4336b41b5e8c435ca18b83be15bbb3c4b37e4a0954fb22f0366f8aa282e8d5c1"}
  ],
  "election": "2026-09-08",
  "general": "2026-11-03",
  "term": "2027-2028",
  "races": {
+  "D|governor": {"party": "d", "office": "governor", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.governor.statewide", "count_from": "the summary's Totals", "scatter": 2150, "undervotes": null, "overvotes": null, "printed_totals": 55, "candidates": [
+    {"name": "Cinde Warmington", "party": "d", "votes": 126626, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.governor.statewide.cinde-warmington-d"},
+    {"name": "Kelly Ayotte", "party": "r", "votes": 2643, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.governor.statewide.kelly-ayotte-r"},
+    {"name": "Shaun Fife", "party": "r", "votes": 10, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.governor.statewide.shaun-fife-r"},
+    {"name": "Bob Wayne McClory", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.governor.statewide.bob-wayne-mcclory-r"}]},
+  "R|governor": {"party": "r", "office": "governor", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.governor.statewide", "count_from": "the summary's Totals", "scatter": 362, "undervotes": null, "overvotes": null, "printed_totals": 55, "candidates": [
+    {"name": "Kelly Ayotte", "party": "r", "votes": 100920, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.governor.statewide.kelly-ayotte-r"},
+    {"name": "Shaun Fife", "party": "r", "votes": 4418, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.governor.statewide.shaun-fife-r"},
+    {"name": "Bob Wayne McClory", "party": "r", "votes": 3890, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.governor.statewide.bob-wayne-mcclory-r"},
+    {"name": "Cinde Warmington", "party": "d", "votes": 283, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.governor.statewide.cinde-warmington-d"}]},
+  "D|us-senate": {"party": "d", "office": "us-senate", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.us-senate.statewide", "count_from": "the summary's Totals", "scatter": 111, "undervotes": null, "overvotes": null, "printed_totals": 154, "candidates": [
+    {"name": "David Jarvis", "party": "d", "votes": 1212, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.david-jarvis-d"},
+    {"name": "Karishma Manzur", "party": "d", "votes": 50321, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.karishma-manzur-d"},
+    {"name": "Chris Pappas", "party": "d", "votes": 100088, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.us-senate.statewide.chris-pappas-d"},
+    {"name": "Maxwell L. Saal", "party": "d", "votes": 932, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.maxwell-l-saal-d"},
+    {"name": "John Vail", "party": "d", "votes": 956, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.john-vail-d"},
+    {"name": "Tom Alciere", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.tom-alciere-r"},
+    {"name": "Scott P. Brown", "party": "r", "votes": 38, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.scott-p-brown-r"},
+    {"name": "Sky Danley", "party": "r", "votes": 6, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.sky-danley-r"},
+    {"name": "Andy Martin", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.andy-martin-r"},
+    {"name": "Mary Maxwell", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.mary-maxwell-r"},
+    {"name": "Richard A. McMenamon II", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.richard-a-mcmenamon-ii-r"},
+    {"name": "Sabrina Ann Smith", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.sabrina-ann-smith-r"},
+    {"name": "John E. Sununu", "party": "r", "votes": 198, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-senate.statewide.john-e-sununu-r"}]},
+  "D|us-house|1": {"party": "d", "office": "us-house", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.us-house.1", "count_from": "the places' sum", "scatter": 72, "undervotes": null, "overvotes": null, "printed_totals": 15, "candidates": [
+    {"name": "Carleigh Beriont", "party": "d", "votes": 18032, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.carleigh-beriont-d"},
+    {"name": "Sarah E. Chadzynski", "party": "d", "votes": 1170, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.sarah-e-chadzynski-d"},
+    {"name": "Bill Conlin", "party": "d", "votes": 455, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.bill-conlin-d"},
+    {"name": "Matthew Emerson", "party": "d", "votes": 348, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.matthew-emerson-d"},
+    {"name": "Heath Howard", "party": "d", "votes": 848, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.heath-howard-d"},
+    {"name": "Stefany Shaheen", "party": "d", "votes": 29571, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.us-house.1.stefany-shaheen-d"},
+    {"name": "Sarah Bella Spinosa", "party": "d", "votes": 555, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.sarah-bella-spinosa-d"},
+    {"name": "Maura C. Sullivan", "party": "d", "votes": 27859, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.maura-c-sullivan-d"},
+    {"name": "Christian Urrutia", "party": "d", "votes": 1220, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.christian-urrutia-d"},
+    {"name": "Lindsey Anderson", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.lindsey-anderson-r"},
+    {"name": "Melissa Bailey", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.melissa-bailey-r"},
+    {"name": "Brian D. Cole", "party": "r", "votes": 13, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.brian-d-cole-r"},
+    {"name": "Anthony DiLorenzo", "party": "r", "votes": 19, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.anthony-dilorenzo-r"},
+    {"name": "Hollie Noveletsky", "party": "r", "votes": 9, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.1.hollie-noveletsky-r"}]},
+  "R|us-house|1": {"party": "r", "office": "us-house", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.us-house.1", "count_from": "the places' sum", "scatter": 138, "undervotes": null, "overvotes": null, "printed_totals": 15, "candidates": [
+    {"name": "Lindsey Anderson", "party": "r", "votes": 1935, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.lindsey-anderson-r"},
+    {"name": "Melissa Bailey", "party": "r", "votes": 2313, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.melissa-bailey-r"},
+    {"name": "Brian D. Cole", "party": "r", "votes": 8050, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.brian-d-cole-r"},
+    {"name": "Anthony DiLorenzo", "party": "r", "votes": 29409, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.us-house.1.anthony-dilorenzo-r"},
+    {"name": "Hollie Noveletsky", "party": "r", "votes": 14980, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.hollie-noveletsky-r"},
+    {"name": "Carleigh Beriont", "party": "d", "votes": 39, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.carleigh-beriont-d"},
+    {"name": "Sarah E. Chadzynski", "party": "d", "votes": 5, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.sarah-e-chadzynski-d"},
+    {"name": "Bill Conlin", "party": "d", "votes": 3, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.bill-conlin-d"},
+    {"name": "Matthew Emerson", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.matthew-emerson-d"},
+    {"name": "Heath Howard", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.heath-howard-d"},
+    {"name": "Stefany Shaheen", "party": "d", "votes": 125, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.stefany-shaheen-d"},
+    {"name": "Sarah Bella Spinosa", "party": "d", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.sarah-bella-spinosa-d"},
+    {"name": "Maura C. Sullivan", "party": "d", "votes": 130, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.maura-c-sullivan-d"},
+    {"name": "Christian Urrutia", "party": "d", "votes": 9, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.1.christian-urrutia-d"}]},
+  "D|us-house|2": {"party": "d", "office": "us-house", "district": 2, "seats": 1, "contest": "2026-09-08.primary-d.us-house.2", "count_from": "the places' sum", "scatter": 109, "undervotes": null, "overvotes": null, "printed_totals": 7, "candidates": [
+    {"name": "Paige Beauchemin", "party": "d", "votes": 13205, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.2.paige-beauchemin-d"},
+    {"name": "Maggie Goodlander", "party": "d", "votes": 59817, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.us-house.2.maggie-goodlander-d"},
+    {"name": "Michael Antony Callis", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.2.michael-antony-callis-r"},
+    {"name": "Dan Nicholson", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.2.dan-nicholson-r"},
+    {"name": "Victor Orlando", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.2.victor-orlando-r"},
+    {"name": "Lily Tang Williams", "party": "r", "votes": 33, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.us-house.2.lily-tang-williams-r"}]},
+  "R|us-house|2": {"party": "r", "office": "us-house", "district": 2, "seats": 1, "contest": "2026-09-08.primary-r.us-house.2", "count_from": "the places' sum", "scatter": 182, "undervotes": null, "overvotes": null, "printed_totals": 7, "candidates": [
+    {"name": "Michael Anthony Callis", "party": "r", "votes": 3808, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.2.michael-anthony-callis-r"},
+    {"name": "Dan Nicholson", "party": "r", "votes": 6471, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.2.dan-nicholson-r"},
+    {"name": "Victor Orlando", "party": "r", "votes": 6309, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.2.victor-orlando-r"},
+    {"name": "Lily Tang Williams", "party": "r", "votes": 31402, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.us-house.2.lily-tang-williams-r"},
+    {"name": "Paige Beauchemin", "party": "d", "votes": 20, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.2.paige-beauchemin-d"},
+    {"name": "Maggie Goodlander", "party": "d", "votes": 226, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.us-house.2.maggie-goodlander-d"}]},
+  "D|executive-council|1": {"party": "d", "office": "executive-council", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.executive-council.1", "count_from": "the places' sum", "scatter": 77, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Luz Bay", "party": "d", "votes": 26664, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.executive-council.1.luz-bay-d"},
+    {"name": "Joseph D. Kenney", "party": "r", "votes": 47, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.executive-council.1.joseph-d-kenney-r"}]},
+  "R|executive-council|1": {"party": "r", "office": "executive-council", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.executive-council.1", "count_from": "the places' sum", "scatter": 102, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Joseph D. Kenney", "party": "r", "votes": 20775, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.executive-council.1.joseph-d-kenney-r"},
+    {"name": "Luz Bay", "party": "d", "votes": 62, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.executive-council.1.luz-bay-d"}]},
+  "D|executive-council|2": {"party": "d", "office": "executive-council", "district": 2, "seats": 1, "contest": "2026-09-08.primary-d.executive-council.2", "count_from": "the places' sum", "scatter": 83, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Karen Liot Hill", "party": "d", "votes": 32639, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.executive-council.2.karen-liot-hill-d"},
+    {"name": "Tobin Menard", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.executive-council.2.tobin-menard-r"},
+    {"name": "Kim Strathdee", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.executive-council.2.kim-strathdee-r"}]},
+  "R|executive-council|2": {"party": "r", "office": "executive-council", "district": 2, "seats": 1, "contest": "2026-09-08.primary-r.executive-council.2", "count_from": "the places' sum", "scatter": 81, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Tobin Menard", "party": "r", "votes": 7407, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.executive-council.2.tobin-menard-r"},
+    {"name": "Kim Strathdee", "party": "r", "votes": 6139, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.executive-council.2.kim-strathdee-r"},
+    {"name": "Karen Liot Hill", "party": "d", "votes": 54, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.executive-council.2.karen-liot-hill-d"}]},
+  "D|executive-council|3": {"party": "d", "office": "executive-council", "district": 3, "seats": 1, "contest": "2026-09-08.primary-d.executive-council.3", "count_from": "the places' sum", "scatter": 51, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Lisa Kennedy Sheldon", "party": "d", "votes": 26836, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.executive-council.3.lisa-kennedy-sheldon-d"},
+    {"name": "Janet Stevens", "party": "r", "votes": 19, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.executive-council.3.janet-stevens-r"},
+    {"name": "Gregory Whirley", "party": "r", "votes": 6, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.executive-council.3.gregory-whirley-r"}]},
+  "R|executive-council|3": {"party": "r", "office": "executive-council", "district": 3, "seats": 1, "contest": "2026-09-08.primary-r.executive-council.3", "count_from": "the places' sum", "scatter": 47, "undervotes": null, "overvotes": null, "printed_totals": 4, "candidates": [
+    {"name": "Janet Stevens", "party": "r", "votes": 15153, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.executive-council.3.janet-stevens-r"},
+    {"name": "Gregory Whirley", "party": "r", "votes": 7561, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.executive-council.3.gregory-whirley-r"},
+    {"name": "Lisa Kennedy Sheldon", "party": "d", "votes": 26, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.executive-council.3.lisa-kennedy-sheldon-d"}]},
+  "D|executive-council|4": {"party": "d", "office": "executive-council", "district": 4, "seats": 1, "contest": "2026-09-08.primary-d.executive-council.4", "count_from": "the places' sum", "scatter": 91, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Jim O'Connell", "party": "d", "votes": 22817, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.executive-council.4.jim-o-connell-d"},
+    {"name": "Terese M. Bastarache", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.executive-council.4.terese-m-bastarache-r"},
+    {"name": "Harriet E. Cady", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.executive-council.4.harriet-e-cady-r"},
+    {"name": "John Stephen", "party": "r", "votes": 35, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.executive-council.4.john-stephen-r"}]},
+  "R|executive-council|4": {"party": "r", "office": "executive-council", "district": 4, "seats": 1, "contest": "2026-09-08.primary-r.executive-council.4", "count_from": "the places' sum", "scatter": 37, "undervotes": null, "overvotes": null, "printed_totals": 5, "candidates": [
+    {"name": "Terese M. Bastarache", "party": "r", "votes": 2543, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.executive-council.4.terese-m-bastarache-r"},
+    {"name": "Harriet E. Cady", "party": "r", "votes": 1877, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.executive-council.4.harriet-e-cady-r"},
+    {"name": "John Stephen", "party": "r", "votes": 14261, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.executive-council.4.john-stephen-r"},
+    {"name": "Jim O'Connell", "party": "d", "votes": 33, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.executive-council.4.jim-o-connell-d"}]},
+  "D|executive-council|5": {"party": "d", "office": "executive-council", "district": 5, "seats": 1, "contest": "2026-09-08.primary-d.executive-council.5", "count_from": "the places' sum", "scatter": 37, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Melanie Levesque", "party": "d", "votes": 22744, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.executive-council.5.melanie-levesque-d"},
+    {"name": "Dave Wheeler", "party": "r", "votes": 15, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.executive-council.5.dave-wheeler-r"}]},
+  "R|executive-council|5": {"party": "r", "office": "executive-council", "district": 5, "seats": 1, "contest": "2026-09-08.primary-r.executive-council.5", "count_from": "the places' sum", "scatter": 108, "undervotes": null, "overvotes": null, "printed_totals": 3, "candidates": [
+    {"name": "Dave Wheeler", "party": "r", "votes": 17495, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.executive-council.5.dave-wheeler-r"},
+    {"name": "Melanie Levesque", "party": "d", "votes": 29, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.executive-council.5.melanie-levesque-d"}]},
   "D|S|1": {"party": "d", "seats": 1, "floterial": false, "towns": ["Atk. & Gil. Academy Grant", "Bath", "Benton", "Berlin", "Bethlehem", "Cambridge", "Carroll", "Clarksville", "Colebrook", "Columbia", "Dalton", "Dix's Grant", "Dixville", "Dummer", "Easton", "Ellsworth", "Errol", "Erving's Location", "Franconia", "Gorham", "Haverhill", "Jefferson", "Kilkenny", "Lancaster", "Landaff", "Lisbon", "Littleton", "Low & Burbank's Grant", "Lyman", "Milan", "Millsfield", "Monroe", "Northumberland", "Odell", "Piermont", "Pittsburg", "Randolph", "Rumney", "Second College Gt", "Shelburne", "Stark", "Stewartstown", "Stratford", "Success", "Sugar Hill", "Warren", "Wentworth's Loc.", "Whitefield", "Woodstock"], "scatter": 28, "printed_totals": 3, "candidates": [
     {"name": "Cathleen A. Fountain", "party": "d", "votes": 4218, "write_in": false, "nominated": true},
     {"name": "David Rochefort", "party": "r", "votes": 8, "write_in": false, "nominated": false}]},
@@ -1859,6 +2157,375 @@
     {"name": "Jonathan F. Stone", "party": "r", "votes": 1177, "write_in": false, "nominated": true},
     {"name": "Sebastian Zyzdorf", "party": "r", "votes": 556, "write_in": false, "nominated": false},
     {"name": "Hope Damon", "party": "d", "votes": 8, "write_in": false, "nominated": false},
-    {"name": "Samuel Deering", "party": "d", "votes": 7, "write_in": false, "nominated": false}]}
+    {"name": "Samuel Deering", "party": "d", "votes": 7, "write_in": false, "nominated": false}]},
+  "D|county-attorney|Belknap": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-attorney.belknap", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Keith Gerard Cormier", "party": "d", "votes": 5663, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-attorney.belknap.keith-gerard-cormier-d"}]},
+  "R|county-attorney|Belknap": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-attorney.belknap", "count_from": "the places' sum", "scatter": 276, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Keith Gerard Cormier", "party": "d", "votes": 240, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-attorney.belknap.keith-gerard-cormier-d"},
+    {"name": "Norm Silber", "party": "", "votes": 136, "write_in": true, "nominated": false, "id": "2026-09-08.primary-r.county-attorney.belknap.norm-silber-write-in"}]},
+  "D|county-commissioner|Belknap|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.belknap-1", "count_from": "the places' sum", "scatter": 60, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Peter John Spanos", "party": "r", "votes": 8, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.county-commissioner.belknap-1.peter-john-spanos-r"}]},
+  "R|county-commissioner|Belknap|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.belknap-1", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Peter John Spanos", "party": "r", "votes": 2072, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.belknap-1.peter-john-spanos-r"}]},
+  "D|county-commissioner|Belknap|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.belknap-2", "count_from": "the places' sum", "scatter": 41, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Glen A. Waring", "party": "r", "votes": 7, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.county-commissioner.belknap-2.glen-a-waring-r"}]},
+  "R|county-commissioner|Belknap|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.belknap-2", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Glen A. Waring", "party": "r", "votes": 1805, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.belknap-2.glen-a-waring-r"}]},
+  "D|county-treasurer|Belknap": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-treasurer.belknap", "count_from": "the places' sum", "scatter": 27, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Jason Sproul", "party": "d", "votes": 5608, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-treasurer.belknap.jason-sproul-d"}]},
+  "R|county-treasurer|Belknap": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-treasurer.belknap", "count_from": "the places' sum", "scatter": 267, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Jason Sproul", "party": "d", "votes": 59, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-treasurer.belknap.jason-sproul-d"},
+    {"name": "Travis O'Hara", "party": "", "votes": 330, "write_in": true, "nominated": true, "id": "2026-09-08.primary-r.county-treasurer.belknap.travis-o-hara-write-in"}]},
+  "D|register-of-deeds|Belknap": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-deeds.belknap", "count_from": "the places' sum", "scatter": 126, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Laura Lapointe", "party": "r", "votes": 27, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.register-of-deeds.belknap.laura-lapointe-r"},
+    {"name": "Mo Baxley", "party": "", "votes": 78, "write_in": true, "nominated": null, "id": "2026-09-08.primary-d.register-of-deeds.belknap.mo-baxley-write-in"}]},
+  "R|register-of-deeds|Belknap": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-deeds.belknap", "count_from": "the places' sum", "scatter": 13, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Laura Lapointe", "party": "r", "votes": 5679, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-deeds.belknap.laura-lapointe-r"}]},
+  "D|register-of-probate|Belknap": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-probate.belknap", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Ruth Larson", "party": "d", "votes": 5590, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-probate.belknap.ruth-larson-d"}]},
+  "R|register-of-probate|Belknap": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-probate.belknap", "count_from": "the places' sum", "scatter": 109, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Ruth Larson", "party": "d", "votes": 27, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-probate.belknap.ruth-larson-d"},
+    {"name": "Kristie Sullivan", "party": "", "votes": 273, "write_in": true, "nominated": true, "id": "2026-09-08.primary-r.register-of-probate.belknap.kristie-sullivan-write-in"}]},
+  "D|sheriff|Belknap": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.sheriff.belknap", "count_from": "the places' sum", "scatter": 153, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Belknap", "candidates": [
+    {"name": "Bill Wright", "party": "r", "votes": 78, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.sheriff.belknap.bill-wright-r"},
+    {"name": "Jack Christos", "party": "", "votes": 52, "write_in": true, "nominated": false, "id": "2026-09-08.primary-d.sheriff.belknap.jack-christos-write-in"}]},
+  "R|sheriff|Belknap": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.sheriff.belknap", "count_from": "the places' sum", "scatter": 41, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Belknap", "candidates": [
+    {"name": "Bill Wright", "party": "r", "votes": 6082, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.sheriff.belknap.bill-wright-r"}]},
+  "D|county-attorney|Carroll": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-attorney.carroll", "count_from": "the places' sum", "scatter": 66, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Keith D. Blair", "party": "r", "votes": 32, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.county-attorney.carroll.keith-d-blair-r"}]},
+  "R|county-attorney|Carroll": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-attorney.carroll", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Keith D. Blair", "party": "r", "votes": 4758, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-attorney.carroll.keith-d-blair-r"}]},
+  "D|county-commissioner|Carroll|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.carroll-1", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Wharton Sinkler", "party": "d", "votes": 5191, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.carroll-1.wharton-sinkler-d"},
+    {"name": "Gene G. Chandler", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.carroll-1.gene-g-chandler-r"}]},
+  "R|county-commissioner|Carroll|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.carroll-1", "count_from": "the places' sum", "scatter": 25, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Gene G. Chandler", "party": "r", "votes": 4906, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.carroll-1.gene-g-chandler-r"},
+    {"name": "Wharton Sinkler", "party": "d", "votes": 13, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.carroll-1.wharton-sinkler-d"}]},
+  "D|county-commissioner|Carroll|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.carroll-2", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Tom Randell", "party": "d", "votes": 5180, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.carroll-2.tom-randell-d"},
+    {"name": "Chuck McGee", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.carroll-2.chuck-mcgee-r"}]},
+  "R|county-commissioner|Carroll|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.carroll-2", "count_from": "the places' sum", "scatter": 30, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Chuck McGee", "party": "r", "votes": 4819, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.carroll-2.chuck-mcgee-r"},
+    {"name": "Tom Randell", "party": "d", "votes": 9, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.carroll-2.tom-randell-d"}]},
+  "D|county-commissioner|Carroll|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.carroll-3", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Michael Parton", "party": "d", "votes": 5088, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.carroll-3.michael-parton-d"},
+    {"name": "Harold B. Parker", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.carroll-3.harold-b-parker-r"}]},
+  "R|county-commissioner|Carroll|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.carroll-3", "count_from": "the places' sum", "scatter": 16, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Harold B. Parker", "party": "r", "votes": 4776, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.carroll-3.harold-b-parker-r"},
+    {"name": "Michael Parton", "party": "d", "votes": 10, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.carroll-3.michael-parton-d"}]},
+  "D|county-treasurer|Carroll": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-treasurer.carroll", "count_from": "the places' sum", "scatter": 73, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Andrea Picard", "party": "r", "votes": 76, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-treasurer.carroll.andrea-picard-r"},
+    {"name": "Matt Sawyer, Jr.", "party": "r", "votes": 18, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-treasurer.carroll.matt-sawyer-jr-r"}]},
+  "R|county-treasurer|Carroll": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-treasurer.carroll", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 6, "county": "Carroll", "recounted": true, "candidates": [
+    {"name": "Andrea Picard", "party": "r", "votes": 2510, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-treasurer.carroll.andrea-picard-r"},
+    {"name": "Matt Sawyer, Jr.", "party": "r", "votes": 2522, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-treasurer.carroll.matt-sawyer-jr-r"}]},
+  "D|register-of-deeds|Carroll": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-deeds.carroll", "count_from": "the places' sum", "scatter": 85, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Karen I. Rines", "party": "r", "votes": 50, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.register-of-deeds.carroll.karen-i-rines-r"}]},
+  "R|register-of-deeds|Carroll": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-deeds.carroll", "count_from": "the places' sum", "scatter": 11, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Karen I. Rines", "party": "r", "votes": 4937, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-deeds.carroll.karen-i-rines-r"}]},
+  "D|register-of-probate|Carroll": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-probate.carroll", "count_from": "the places' sum", "scatter": 52, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Brett I. Williams", "party": "r", "votes": 7, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.register-of-probate.carroll.brett-i-williams-r"},
+    {"name": "Steve Woodcock", "party": "", "votes": 371, "write_in": true, "nominated": true, "id": "2026-09-08.primary-d.register-of-probate.carroll.steve-woodcock-write-in"}]},
+  "R|register-of-probate|Carroll": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-probate.carroll", "count_from": "the places' sum", "scatter": 32, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Carroll", "candidates": [
+    {"name": "Brett I. Williams", "party": "r", "votes": 4763, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-probate.carroll.brett-i-williams-r"}]},
+  "D|sheriff|Carroll": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.sheriff.carroll", "count_from": "the places' sum", "scatter": 80, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Domenic M. Richardi", "party": "r", "votes": 999, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.sheriff.carroll.domenic-m-richardi-r"},
+    {"name": "Justin Worthley", "party": "r", "votes": 25, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.sheriff.carroll.justin-worthley-r"}]},
+  "R|sheriff|Carroll": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.sheriff.carroll", "count_from": "the places' sum", "scatter": 24, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Carroll", "candidates": [
+    {"name": "Domenic M. Richardi", "party": "r", "votes": 3409, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.sheriff.carroll.domenic-m-richardi-r"},
+    {"name": "Justin Worthley", "party": "r", "votes": 2103, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.sheriff.carroll.justin-worthley-r"}]},
+  "D|county-attorney|Cheshire": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-attorney.cheshire", "count_from": "the places' sum", "scatter": 4, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "David Jenkins", "party": "d", "votes": 2564, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-attorney.cheshire.david-jenkins-d"},
+    {"name": "D. Chris McLaughlin", "party": "d", "votes": 5470, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-attorney.cheshire.d-chris-mclaughlin-d"}]},
+  "R|county-attorney|Cheshire": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-attorney.cheshire", "count_from": "the places' sum", "scatter": 69, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "David Jenkins", "party": "d", "votes": 36, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-attorney.cheshire.david-jenkins-d"},
+    {"name": "D. Chris McLaughlin", "party": "d", "votes": 63, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-attorney.cheshire.d-chris-mclaughlin-d"}]},
+  "D|county-commissioner|Cheshire|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.cheshire-1", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Benjamin Tilton", "party": "d", "votes": 1974, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.cheshire-1.benjamin-tilton-d"},
+    {"name": "Kate Day", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.cheshire-1.kate-day-r"}]},
+  "R|county-commissioner|Cheshire|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.cheshire-1", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Cheshire", "candidates": [
+    {"name": "Kate Day", "party": "r", "votes": 1106, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.cheshire-1.kate-day-r"},
+    {"name": "Benjamin Tilton", "party": "d", "votes": 3, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.cheshire-1.benjamin-tilton-d"}]},
+  "D|county-commissioner|Cheshire|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.cheshire-2", "count_from": "the places' sum", "scatter": 17, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Terry M. Clark", "party": "d", "votes": 3037, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.cheshire-2.terry-m-clark-d"}]},
+  "R|county-commissioner|Cheshire|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.cheshire-2", "count_from": "the places' sum", "scatter": 20, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Terry M. Clark", "party": "d", "votes": 8, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-commissioner.cheshire-2.terry-m-clark-d"}]},
+  "D|county-treasurer|Cheshire": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-treasurer.cheshire", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Jack Wozmak", "party": "d", "votes": 8064, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-treasurer.cheshire.jack-wozmak-d"}]},
+  "R|county-treasurer|Cheshire": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-treasurer.cheshire", "count_from": "the places' sum", "scatter": 74, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Jack Wozmak", "party": "d", "votes": 12, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-treasurer.cheshire.jack-wozmak-d"}]},
+  "D|register-of-deeds|Cheshire": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-deeds.cheshire", "count_from": "the places' sum", "scatter": 14, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Anna Z. Tilton", "party": "d", "votes": 8096, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-deeds.cheshire.anna-z-tilton-d"}]},
+  "R|register-of-deeds|Cheshire": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-deeds.cheshire", "count_from": "the places' sum", "scatter": 57, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Anna Z. Tilton", "party": "d", "votes": 21, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.register-of-deeds.cheshire.anna-z-tilton-d"}]},
+  "D|register-of-probate|Cheshire": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-probate.cheshire", "count_from": "the places' sum", "scatter": 14, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Jeremy LaPlante", "party": "d", "votes": 7983, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-probate.cheshire.jeremy-laplante-d"}]},
+  "R|register-of-probate|Cheshire": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-probate.cheshire", "count_from": "the places' sum", "scatter": 55, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Jeremy LaPlante", "party": "d", "votes": 12, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.register-of-probate.cheshire.jeremy-laplante-d"}]},
+  "D|sheriff|Cheshire": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.sheriff.cheshire", "count_from": "the places' sum", "scatter": 35, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Eli Rivera", "party": "d", "votes": 8271, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.sheriff.cheshire.eli-rivera-d"}]},
+  "R|sheriff|Cheshire": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.sheriff.cheshire", "count_from": "the places' sum", "scatter": 149, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Cheshire", "candidates": [
+    {"name": "Eli Rivera", "party": "d", "votes": 79, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.sheriff.cheshire.eli-rivera-d"}]},
+  "D|county-commissioner|Coos|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.coos-1", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "Eamon Kelley", "party": "d", "votes": 702, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.coos-1.eamon-kelley-d"},
+    {"name": "Robert Theberge", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.coos-1.robert-theberge-r"}]},
+  "R|county-commissioner|Coos|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.coos-1", "count_from": "the places' sum", "scatter": 15, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "Robert Theberge", "party": "r", "votes": 553, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.coos-1.robert-theberge-r"},
+    {"name": "Eamon Kelley", "party": "d", "votes": 2, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.coos-1.eamon-kelley-d"}]},
+  "D|county-commissioner|Coos|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.coos-3", "count_from": "the places' sum", "scatter": 28, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "Michael Cote", "party": "r", "votes": 26, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.coos-3.michael-cote-r"},
+    {"name": "Ray Gorman", "party": "r", "votes": 43, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.coos-3.ray-gorman-r"}]},
+  "R|county-commissioner|Coos|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.coos-3", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Coos", "candidates": [
+    {"name": "Michael Cote", "party": "r", "votes": 525, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.coos-3.michael-cote-r"},
+    {"name": "Ray Gorman", "party": "r", "votes": 545, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.coos-3.ray-gorman-r"}]},
+  "D|county-attorney|Grafton": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-attorney.grafton", "count_from": "the places' sum", "scatter": 22, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Martha Ann Hornick", "party": "d", "votes": 9420, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-attorney.grafton.martha-ann-hornick-d"}]},
+  "R|county-attorney|Grafton": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-attorney.grafton", "count_from": "the places' sum", "scatter": 129, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Martha Ann Hornick", "party": "d", "votes": 47, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-attorney.grafton.martha-ann-hornick-d"},
+    {"name": "Matthew Bjelobrk", "party": "", "votes": 143, "write_in": true, "nominated": true, "id": "2026-09-08.primary-r.county-attorney.grafton.matthew-bjelobrk-write-in"}]},
+  "D|county-commissioner|Grafton|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.grafton-1", "count_from": "the places' sum", "scatter": 9, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "George Sykes", "party": "d", "votes": 3668, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.grafton-1.george-sykes-d"}]},
+  "R|county-commissioner|Grafton|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.grafton-1", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "George Sykes", "party": "d", "votes": 4, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-commissioner.grafton-1.george-sykes-d"}]},
+  "D|county-commissioner|Grafton|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.grafton-3", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Katie Hedberg", "party": "d", "votes": 3043, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.grafton-3.katie-hedberg-d"},
+    {"name": "Kimberly Chandonnet", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.grafton-3.kimberly-chandonnet-r"}]},
+  "R|county-commissioner|Grafton|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.grafton-3", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Kimberly Chandonnet", "party": "r", "votes": 1921, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.grafton-3.kimberly-chandonnet-r"},
+    {"name": "Katie Hedberg", "party": "d", "votes": 7, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.grafton-3.katie-hedberg-d"}]},
+  "D|county-treasurer|Grafton": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-treasurer.grafton", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Michael J. Cryans", "party": "d", "votes": 9676, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-treasurer.grafton.michael-j-cryans-d"},
+    {"name": "Brian Dear", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-treasurer.grafton.brian-dear-r"}]},
+  "R|county-treasurer|Grafton": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-treasurer.grafton", "count_from": "the places' sum", "scatter": 18, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Brian Dear", "party": "r", "votes": 4186, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-treasurer.grafton.brian-dear-r"},
+    {"name": "Michael J. Cryans", "party": "d", "votes": 27, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-treasurer.grafton.michael-j-cryans-d"}]},
+  "D|register-of-deeds|Grafton": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-deeds.grafton", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Brie Choate", "party": "d", "votes": 9458, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-deeds.grafton.brie-choate-d"},
+    {"name": "Kelley Jean Monahan", "party": "r", "votes": 21, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.register-of-deeds.grafton.kelley-jean-monahan-r"}]},
+  "R|register-of-deeds|Grafton": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-deeds.grafton", "count_from": "the places' sum", "scatter": 23, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Grafton", "candidates": [
+    {"name": "Kelley Jean Monahan", "party": "r", "votes": 4433, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-deeds.grafton.kelley-jean-monahan-r"},
+    {"name": "Brie Choate", "party": "d", "votes": 18, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-deeds.grafton.brie-choate-d"}]},
+  "D|register-of-probate|Grafton": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-probate.grafton", "count_from": "the places' sum", "scatter": 16, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Sharon Modjeska", "party": "d", "votes": 9364, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-probate.grafton.sharon-modjeska-d"}]},
+  "R|register-of-probate|Grafton": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-probate.grafton", "count_from": "the places' sum", "scatter": 102, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Sharon Modjeska", "party": "d", "votes": 16, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.register-of-probate.grafton.sharon-modjeska-d"}]},
+  "D|sheriff|Grafton": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.sheriff.grafton", "count_from": "the places' sum", "scatter": 69, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Jillian E. Myers", "party": "d", "votes": 8985, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.sheriff.grafton.jillian-e-myers-d"}]},
+  "R|sheriff|Grafton": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.sheriff.grafton", "count_from": "the places' sum", "scatter": 237, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Grafton", "candidates": [
+    {"name": "Jillian E. Myers", "party": "d", "votes": 90, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.sheriff.grafton.jillian-e-myers-d"}]},
+  "D|county-attorney|Hillsborough": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-attorney.hillsborough", "count_from": "the places' sum", "scatter": 88, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Travis Bennett", "party": "d", "votes": 33814, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-attorney.hillsborough.travis-bennett-d"},
+    {"name": "John J. Coughlin", "party": "r", "votes": 35, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-attorney.hillsborough.john-j-coughlin-r"}]},
+  "R|county-attorney|Hillsborough": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-attorney.hillsborough", "count_from": "the places' sum", "scatter": 76, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "John J. Coughlin", "party": "r", "votes": 24371, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-attorney.hillsborough.john-j-coughlin-r"},
+    {"name": "Travis Bennett", "party": "d", "votes": 23, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-attorney.hillsborough.travis-bennett-d"}]},
+  "D|county-commissioner|Hillsborough|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.hillsborough-1", "count_from": "the places' sum", "scatter": 41, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Pierre A. Cetoute", "party": "d", "votes": 10695, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.hillsborough-1.pierre-a-cetoute-d"},
+    {"name": "Toni Pappas", "party": "r", "votes": 57, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.hillsborough-1.toni-pappas-r"}]},
+  "R|county-commissioner|Hillsborough|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.hillsborough-1", "count_from": "the places' sum", "scatter": 59, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Toni Pappas", "party": "r", "votes": 6799, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.hillsborough-1.toni-pappas-r"},
+    {"name": "Pierre A. Cetoute", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.hillsborough-1.pierre-a-cetoute-d"}]},
+  "D|county-commissioner|Hillsborough|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.hillsborough-2", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Sherry Dutzy", "party": "d", "votes": 9174, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.hillsborough-2.sherry-dutzy-d"},
+    {"name": "David G. Fredette", "party": "r", "votes": 12, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.hillsborough-2.david-g-fredette-r"}]},
+  "R|county-commissioner|Hillsborough|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.hillsborough-2", "count_from": "the places' sum", "scatter": 26, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "David G. Fredette", "party": "r", "votes": 7030, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.hillsborough-2.david-g-fredette-r"},
+    {"name": "Sherry Dutzy", "party": "d", "votes": 5, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.hillsborough-2.sherry-dutzy-d"}]},
+  "D|county-commissioner|Hillsborough|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.hillsborough-3", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Julie Radhakrishnan", "party": "d", "votes": 13866, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.hillsborough-3.julie-radhakrishnan-d"},
+    {"name": "Robert H. Rowe", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.hillsborough-3.robert-h-rowe-r"}]},
+  "R|county-commissioner|Hillsborough|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.hillsborough-3", "count_from": "the places' sum", "scatter": 29, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Robert H. Rowe", "party": "r", "votes": 10090, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.hillsborough-3.robert-h-rowe-r"},
+    {"name": "Julie Radhakrishnan", "party": "d", "votes": 8, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.hillsborough-3.julie-radhakrishnan-d"}]},
+  "D|county-treasurer|Hillsborough": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-treasurer.hillsborough", "count_from": "the places' sum", "scatter": 62, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Beverly Cotton", "party": "d", "votes": 34288, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-treasurer.hillsborough.beverly-cotton-d"},
+    {"name": "Christopher Maidment", "party": "r", "votes": 11, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-treasurer.hillsborough.christopher-maidment-r"}]},
+  "R|county-treasurer|Hillsborough": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-treasurer.hillsborough", "count_from": "the places' sum", "scatter": 80, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Christopher Maidment", "party": "r", "votes": 23805, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-treasurer.hillsborough.christopher-maidment-r"},
+    {"name": "Beverly Cotton", "party": "d", "votes": 21, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-treasurer.hillsborough.beverly-cotton-d"}]},
+  "D|register-of-deeds|Hillsborough": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-deeds.hillsborough", "count_from": "the places' sum", "scatter": 55, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Mary Ann Crowell", "party": "d", "votes": 34325, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-deeds.hillsborough.mary-ann-crowell-d"},
+    {"name": "Dennis Hogan", "party": "r", "votes": 15, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.register-of-deeds.hillsborough.dennis-hogan-r"}]},
+  "R|register-of-deeds|Hillsborough": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-deeds.hillsborough", "count_from": "the places' sum", "scatter": 62, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Dennis Hogan", "party": "r", "votes": 24304, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-deeds.hillsborough.dennis-hogan-r"},
+    {"name": "Mary Ann Crowell", "party": "d", "votes": 26, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-deeds.hillsborough.mary-ann-crowell-d"}]},
+  "D|register-of-probate|Hillsborough": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-probate.hillsborough", "count_from": "the places' sum", "scatter": 67, "undervotes": 3, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "June Trisciani", "party": "d", "votes": 34602, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-probate.hillsborough.june-trisciani-d"},
+    {"name": "Ross W. Terrio", "party": "r", "votes": 12, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.register-of-probate.hillsborough.ross-w-terrio-r"}]},
+  "R|register-of-probate|Hillsborough": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-probate.hillsborough", "count_from": "the places' sum", "scatter": 61, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Hillsborough", "candidates": [
+    {"name": "Ross W. Terrio", "party": "r", "votes": 24035, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-probate.hillsborough.ross-w-terrio-r"},
+    {"name": "June Trisciani", "party": "d", "votes": 23, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-probate.hillsborough.june-trisciani-d"}]},
+  "D|sheriff|Hillsborough": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.sheriff.hillsborough", "count_from": "the places' sum", "scatter": 1500, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Hillsborough", "candidates": [
+    {"name": "Brian Newcomb", "party": "r", "votes": 119, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.sheriff.hillsborough.brian-newcomb-r"},
+    {"name": "Blaine Hanson,", "party": "", "votes": 9, "write_in": true, "nominated": false, "id": "2026-09-08.primary-d.sheriff.hillsborough.blaine-hanson-write-in"},
+    {"name": "Bill Barry,", "party": "", "votes": 86, "write_in": true, "nominated": false, "id": "2026-09-08.primary-d.sheriff.hillsborough.bill-barry-write-in"},
+    {"name": "Joe Steinhauser,", "party": "", "votes": 29, "write_in": true, "nominated": false, "id": "2026-09-08.primary-d.sheriff.hillsborough.joe-steinhauser-write-in"}]},
+  "R|sheriff|Hillsborough": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.sheriff.hillsborough", "count_from": "the places' sum", "scatter": 161, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Hillsborough", "candidates": [
+    {"name": "Brian Newcomb", "party": "r", "votes": 24205, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.sheriff.hillsborough.brian-newcomb-r"}]},
+  "D|county-attorney|Merrimack": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-attorney.merrimack", "count_from": "the places' sum", "scatter": 43, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Merrimack", "candidates": [
+    {"name": "Steven Endres", "party": "d", "votes": 16113, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-attorney.merrimack.steven-endres-d"},
+    {"name": "Meg Hagaman", "party": "r", "votes": 94, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-attorney.merrimack.meg-hagaman-r"},
+    {"name": "Jon Raiche", "party": "r", "votes": 14, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-attorney.merrimack.jon-raiche-r"},
+    {"name": "Sarah Rogers", "party": "r", "votes": 34, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-attorney.merrimack.sarah-rogers-r"}]},
+  "R|county-attorney|Merrimack": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-attorney.merrimack", "count_from": "the places' sum", "scatter": 24, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Merrimack", "candidates": [
+    {"name": "Meg Hagaman", "party": "r", "votes": 4307, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-attorney.merrimack.meg-hagaman-r"},
+    {"name": "Jon Raiche", "party": "r", "votes": 2771, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-attorney.merrimack.jon-raiche-r"},
+    {"name": "Sarah Rogers", "party": "r", "votes": 3777, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-attorney.merrimack.sarah-rogers-r"},
+    {"name": "Steven Endres", "party": "d", "votes": 26, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-attorney.merrimack.steven-endres-d"}]},
+  "D|county-commissioner|Merrimack|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.merrimack-1", "count_from": "the places' sum", "scatter": 16, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Steve Shurtleff", "party": "d", "votes": 6876, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.merrimack-1.steve-shurtleff-d"}]},
+  "R|county-commissioner|Merrimack|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.merrimack-1", "count_from": "the places' sum", "scatter": 105, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Steve Shurtleff", "party": "d", "votes": 17, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-commissioner.merrimack-1.steve-shurtleff-d"}]},
+  "D|county-commissioner|Merrimack|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.merrimack-2", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Merrimack", "candidates": [
+    {"name": "Vincent S. Ribas", "party": "d", "votes": 5172, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.merrimack-2.vincent-s-ribas-d"},
+    {"name": "Richard Bilodeau", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.merrimack-2.richard-bilodeau-r"},
+    {"name": "Harold F. French", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.merrimack-2.harold-f-french-r"}]},
+  "R|county-commissioner|Merrimack|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.merrimack-2", "count_from": "the places' sum", "scatter": 21, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Merrimack", "candidates": [
+    {"name": "Richard Bilodeau", "party": "r", "votes": 1627, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.merrimack-2.richard-bilodeau-r"},
+    {"name": "Harold F. French", "party": "r", "votes": 2559, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.merrimack-2.harold-f-french-r"},
+    {"name": "Vincent S. Ribas", "party": "d", "votes": 14, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.merrimack-2.vincent-s-ribas-d"}]},
+  "D|county-treasurer|Merrimack": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-treasurer.merrimack", "count_from": "the places' sum", "scatter": 37, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Kathleen Donnelly", "party": "d", "votes": 9871, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-treasurer.merrimack.kathleen-donnelly-d"},
+    {"name": "Dianne E. Schuett", "party": "d", "votes": 5854, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-treasurer.merrimack.dianne-e-schuett-d"}]},
+  "R|county-treasurer|Merrimack": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-treasurer.merrimack", "count_from": "the places' sum", "scatter": 403, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Kathleen Donnelly", "party": "d", "votes": 32, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-treasurer.merrimack.kathleen-donnelly-d"},
+    {"name": "Dianne E. Schuett", "party": "d", "votes": 39, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-treasurer.merrimack.dianne-e-schuett-d"}]},
+  "D|register-of-deeds|Merrimack": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-deeds.merrimack", "count_from": "the places' sum", "scatter": 20, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Erica S. Davis", "party": "d", "votes": 16598, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-deeds.merrimack.erica-s-davis-d"},
+    {"name": "Samantha Morse", "party": "r", "votes": 6, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.register-of-deeds.merrimack.samantha-morse-r"}]},
+  "R|register-of-deeds|Merrimack": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-deeds.merrimack", "count_from": "the places' sum", "scatter": 50, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Samantha Morse", "party": "r", "votes": 9492, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-deeds.merrimack.samantha-morse-r"},
+    {"name": "Erica S. Davis", "party": "d", "votes": 36, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-deeds.merrimack.erica-s-davis-d"}]},
+  "D|register-of-probate|Merrimack": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-probate.merrimack", "count_from": "the places' sum", "scatter": 22, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Merrimack", "candidates": [
+    {"name": "Jane Bradstreet", "party": "d", "votes": 16843, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-probate.merrimack.jane-bradstreet-d"}]},
+  "R|register-of-probate|Merrimack": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-probate.merrimack", "count_from": "the places' sum", "scatter": 271, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Merrimack", "candidates": [
+    {"name": "Jane Bradstreet", "party": "d", "votes": 60, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-probate.merrimack.jane-bradstreet-d"},
+    {"name": "Alyssa Ehl", "party": "", "votes": 112, "write_in": true, "nominated": null, "id": "2026-09-08.primary-r.register-of-probate.merrimack.alyssa-ehl-write-in"}]},
+  "D|sheriff|Merrimack": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.sheriff.merrimack", "count_from": "the places' sum", "scatter": 70, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Merrimack", "candidates": [
+    {"name": "Peter Shephard", "party": "d", "votes": 16424, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.sheriff.merrimack.peter-shephard-d"},
+    {"name": "Frank T. Cassidy", "party": "r", "votes": 37, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.sheriff.merrimack.frank-t-cassidy-r"},
+    {"name": "Jason Gerhard", "party": "r", "votes": 6, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.sheriff.merrimack.jason-gerhard-r"},
+    {"name": "Ben Weir", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.sheriff.merrimack.ben-weir-r"}]},
+  "R|sheriff|Merrimack": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.sheriff.merrimack", "count_from": "the places' sum", "scatter": 43, "undervotes": null, "overvotes": null, "printed_totals": 5, "county": "Merrimack", "candidates": [
+    {"name": "Frank T. Cassidy", "party": "r", "votes": 6913, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.sheriff.merrimack.frank-t-cassidy-r"},
+    {"name": "Jason Gerhard", "party": "r", "votes": 1849, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.sheriff.merrimack.jason-gerhard-r"},
+    {"name": "Ben Weir", "party": "r", "votes": 1650, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.sheriff.merrimack.ben-weir-r"},
+    {"name": "Peter Shephard", "party": "d", "votes": 121, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.sheriff.merrimack.peter-shephard-d"}]},
+  "D|county-attorney|Rockingham": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-attorney.rockingham", "count_from": "the places' sum", "scatter": 58, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Robert Wilson", "party": "d", "votes": 29601, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-attorney.rockingham.robert-wilson-d"},
+    {"name": "Patricia G. Conway", "party": "r", "votes": 31, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-attorney.rockingham.patricia-g-conway-r"}]},
+  "R|county-attorney|Rockingham": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-attorney.rockingham", "count_from": "the places' sum", "scatter": 88, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Patricia G. Conway", "party": "r", "votes": 24642, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-attorney.rockingham.patricia-g-conway-r"},
+    {"name": "Robert Wilson", "party": "d", "votes": 21, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-attorney.rockingham.robert-wilson-d"}]},
+  "D|county-commissioner|Rockingham|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.rockingham-1", "count_from": "the places' sum", "scatter": 74, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Kate Coyle", "party": "d", "votes": 14827, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.rockingham-1.kate-coyle-d"}]},
+  "R|county-commissioner|Rockingham|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.rockingham-1", "count_from": "the places' sum", "scatter": 301, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Kate Coyle", "party": "d", "votes": 9, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-commissioner.rockingham-1.kate-coyle-d"}]},
+  "D|county-commissioner|Rockingham|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.rockingham-3", "count_from": "the places' sum", "scatter": 228, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Thomas Tombarello", "party": "r", "votes": 45, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.county-commissioner.rockingham-3.thomas-tombarello-r"}]},
+  "R|county-commissioner|Rockingham|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.rockingham-3", "count_from": "the places' sum", "scatter": 51, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Thomas Tombarello", "party": "r", "votes": 9580, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.rockingham-3.thomas-tombarello-r"}]},
+  "D|county-treasurer|Rockingham": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-treasurer.rockingham", "count_from": "the places' sum", "scatter": 72, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Kevin Coyle", "party": "d", "votes": 29781, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-treasurer.rockingham.kevin-coyle-d"},
+    {"name": "Scott Priestley", "party": "r", "votes": 15, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-treasurer.rockingham.scott-priestley-r"}]},
+  "R|county-treasurer|Rockingham": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-treasurer.rockingham", "count_from": "the places' sum", "scatter": 69, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Scott Priestley", "party": "r", "votes": 24605, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-treasurer.rockingham.scott-priestley-r"},
+    {"name": "Kevin Coyle", "party": "d", "votes": 25, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-treasurer.rockingham.kevin-coyle-d"}]},
+  "D|register-of-deeds|Rockingham": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-deeds.rockingham", "count_from": "the places' sum", "scatter": 810, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Cathy Stacey", "party": "r", "votes": 101, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.register-of-deeds.rockingham.cathy-stacey-r"}]},
+  "R|register-of-deeds|Rockingham": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-deeds.rockingham", "count_from": "the places' sum", "scatter": 111, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Rockingham", "candidates": [
+    {"name": "Cathy Stacey", "party": "r", "votes": 24878, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-deeds.rockingham.cathy-stacey-r"}]},
+  "D|register-of-probate|Rockingham": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-probate.rockingham", "count_from": "the places' sum", "scatter": 45, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Rockingham", "candidates": [
+    {"name": "Douglas Marino", "party": "d", "votes": 28995, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-probate.rockingham.douglas-marino-d"},
+    {"name": "Shawn Faber", "party": "r", "votes": 0, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.register-of-probate.rockingham.shawn-faber-r"},
+    {"name": "Jon Stark", "party": "r", "votes": 8, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.register-of-probate.rockingham.jon-stark-r"}]},
+  "R|register-of-probate|Rockingham": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-probate.rockingham", "count_from": "the places' sum", "scatter": 63, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Rockingham", "candidates": [
+    {"name": "Shawn Faber", "party": "r", "votes": 7637, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-probate.rockingham.shawn-faber-r"},
+    {"name": "Jon Stark", "party": "r", "votes": 15753, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-probate.rockingham.jon-stark-r"},
+    {"name": "Douglas Marino", "party": "d", "votes": 18, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-probate.rockingham.douglas-marino-d"}]},
+  "D|sheriff|Rockingham": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.sheriff.rockingham", "count_from": "the places' sum", "scatter": 1128, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Paul Bean", "party": "r", "votes": 53, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.sheriff.rockingham.paul-bean-r"},
+    {"name": "Chuck Massahos", "party": "r", "votes": 266, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.sheriff.rockingham.chuck-massahos-r"}]},
+  "R|sheriff|Rockingham": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.sheriff.rockingham", "count_from": "the places' sum", "scatter": 75, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Rockingham", "candidates": [
+    {"name": "Paul Bean", "party": "r", "votes": 6134, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.sheriff.rockingham.paul-bean-r"},
+    {"name": "Chuck Massahos", "party": "r", "votes": 21535, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.sheriff.rockingham.chuck-massahos-r"}]},
+  "D|county-attorney|Strafford": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-attorney.strafford", "count_from": "the places' sum", "scatter": 40, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Emily C. Garod", "party": "d", "votes": 14623, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-attorney.strafford.emily-c-garod-d"}]},
+  "R|county-attorney|Strafford": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-attorney.strafford", "count_from": "the places' sum", "scatter": 117, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Emily C. Garod", "party": "d", "votes": 35, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-attorney.strafford.emily-c-garod-d"}]},
+  "D|county-commissioner|Strafford|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.strafford-1", "count_from": "the places' sum", "scatter": 19, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Strafford", "candidates": [
+    {"name": "John Frank Scruton", "party": "d", "votes": 3520, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.strafford-1.john-frank-scruton-d"},
+    {"name": "Leslie Feliciano", "party": "r", "votes": 12, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.strafford-1.leslie-feliciano-r"},
+    {"name": "Susan J. Rice", "party": "r", "votes": 3, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.strafford-1.susan-j-rice-r"}]},
+  "R|county-commissioner|Strafford|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.strafford-1", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Strafford", "candidates": [
+    {"name": "Leslie Feliciano", "party": "r", "votes": 1133, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.strafford-1.leslie-feliciano-r"},
+    {"name": "Susan J. Rice", "party": "r", "votes": 1668, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.strafford-1.susan-j-rice-r"},
+    {"name": "John Frank Scruton", "party": "d", "votes": 4, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.strafford-1.john-frank-scruton-d"}]},
+  "D|county-commissioner|Strafford|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.strafford-2", "count_from": "the places' sum", "scatter": 44, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "George Maglaras", "party": "d", "votes": 6660, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.strafford-2.george-maglaras-d"}]},
+  "R|county-commissioner|Strafford|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.strafford-2", "count_from": "the places' sum", "scatter": 47, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "George Maglaras", "party": "d", "votes": 36, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-commissioner.strafford-2.george-maglaras-d"}]},
+  "D|county-commissioner|Strafford|3": {"party": "d", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.strafford-3", "count_from": "the places' sum", "scatter": 328, "undervotes": null, "overvotes": null, "printed_totals": 4, "county": "Strafford", "candidates": [
+    {"name": "Robert J. Drew", "party": "r", "votes": 8, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.strafford-3.robert-j-drew-r"},
+    {"name": "Sean M. Leavitt", "party": "r", "votes": 4, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.strafford-3.sean-m-leavitt-r"},
+    {"name": "Heath Howard", "party": "", "votes": 324, "write_in": true, "nominated": null, "id": "2026-09-08.primary-d.county-commissioner.strafford-3.heath-howard-write-in"}]},
+  "R|county-commissioner|Strafford|3": {"party": "r", "office": "county-commissioner", "district": 3, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.strafford-3", "count_from": "the places' sum", "scatter": 21, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "candidates": [
+    {"name": "Robert J. Drew", "party": "r", "votes": 1217, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.strafford-3.robert-j-drew-r"},
+    {"name": "Sean M. Leavitt", "party": "r", "votes": 1343, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.strafford-3.sean-m-leavitt-r"}]},
+  "D|county-treasurer|Strafford": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-treasurer.strafford", "count_from": "the places' sum", "scatter": 41, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Pamela J. Arnold", "party": "d", "votes": 14684, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-treasurer.strafford.pamela-j-arnold-d"}]},
+  "R|county-treasurer|Strafford": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-treasurer.strafford", "count_from": "the places' sum", "scatter": 144, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Pamela J. Arnold", "party": "d", "votes": 21, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-treasurer.strafford.pamela-j-arnold-d"}]},
+  "D|register-of-deeds|Strafford": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-deeds.strafford", "count_from": "the places' sum", "scatter": 28, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Catherine A. Berube", "party": "d", "votes": 14827, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-deeds.strafford.catherine-a-berube-d"}]},
+  "R|register-of-deeds|Strafford": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-deeds.strafford", "count_from": "the places' sum", "scatter": 127, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Catherine A. Berube", "party": "d", "votes": 47, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.register-of-deeds.strafford.catherine-a-berube-d"}]},
+  "D|register-of-probate|Strafford": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-probate.strafford", "count_from": "the places' sum", "scatter": 27, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Strafford", "candidates": [
+    {"name": "Jan Nedelka", "party": "d", "votes": 14673, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-probate.strafford.jan-nedelka-d"}]},
+  "R|register-of-probate|Strafford": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-probate.strafford", "count_from": "the places' sum", "scatter": 124, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "candidates": [
+    {"name": "Jan Nedelka", "party": "d", "votes": 15, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-probate.strafford.jan-nedelka-d"},
+    {"name": "Nancy Sirois", "party": "", "votes": 114, "write_in": true, "nominated": null, "id": "2026-09-08.primary-r.register-of-probate.strafford.nancy-sirois-write-in"}]},
+  "D|sheriff|Strafford": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.sheriff.strafford", "count_from": "the places' sum", "scatter": 53, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "candidates": [
+    {"name": "Kathryn L. Mone", "party": "d", "votes": 14788, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.sheriff.strafford.kathryn-l-mone-d"},
+    {"name": "Richard Krauss", "party": "r", "votes": 14, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.sheriff.strafford.richard-krauss-r"}]},
+  "R|sheriff|Strafford": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.sheriff.strafford", "count_from": "the places' sum", "scatter": 48, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Strafford", "candidates": [
+    {"name": "Richard Krauss", "party": "r", "votes": 6561, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.sheriff.strafford.richard-krauss-r"},
+    {"name": "Kathryn L Mone", "party": "d", "votes": 52, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.sheriff.strafford.kathryn-l-mone-d"}]},
+  "D|county-attorney|Sullivan": {"party": "d", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-attorney.sullivan", "count_from": "the places' sum", "scatter": 6, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Christine Hilliard", "party": "d", "votes": 3799, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-attorney.sullivan.christine-hilliard-d"}]},
+  "R|county-attorney|Sullivan": {"party": "r", "office": "county-attorney", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-attorney.sullivan", "count_from": "the places' sum", "scatter": 111, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Christine Hilliard", "party": "d", "votes": 17, "write_in": false, "nominated": null, "id": "2026-09-08.primary-r.county-attorney.sullivan.christine-hilliard-d"}]},
+  "D|county-commissioner|Sullivan|1": {"party": "d", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.sullivan-1", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Benjamin Nelson", "party": "d", "votes": 3844, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.sullivan-1.benjamin-nelson-d"},
+    {"name": "Joe Osgood", "party": "r", "votes": 2, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.sullivan-1.joe-osgood-r"}]},
+  "R|county-commissioner|Sullivan|1": {"party": "r", "office": "county-commissioner", "district": 1, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.sullivan-1", "count_from": "the places' sum", "scatter": 29, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Joe Osgood", "party": "r", "votes": 2582, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.sullivan-1.joe-osgood-r"},
+    {"name": "Benjamin Nelson", "party": "d", "votes": 16, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.sullivan-1.benjamin-nelson-d"}]},
+  "D|county-commissioner|Sullivan|2": {"party": "d", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-d.county-commissioner.sullivan-2", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Jim Bednar", "party": "d", "votes": 3729, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.county-commissioner.sullivan-2.jim-bednar-d"},
+    {"name": "Bennie Nelson", "party": "r", "votes": 5, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.county-commissioner.sullivan-2.bennie-nelson-r"}]},
+  "R|county-commissioner|Sullivan|2": {"party": "r", "office": "county-commissioner", "district": 2, "seats": 1, "contest": "2026-09-08.primary-r.county-commissioner.sullivan-2", "count_from": "the places' sum", "scatter": 12, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Bennie Nelson", "party": "r", "votes": 2487, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-commissioner.sullivan-2.bennie-nelson-r"},
+    {"name": "Jim Bednar", "party": "d", "votes": 9, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.county-commissioner.sullivan-2.jim-bednar-d"}]},
+  "D|county-treasurer|Sullivan": {"party": "d", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.county-treasurer.sullivan", "count_from": "the places' sum", "scatter": 80, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Michael Sanderson", "party": "r", "votes": 13, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.county-treasurer.sullivan.michael-sanderson-r"}]},
+  "R|county-treasurer|Sullivan": {"party": "r", "office": "county-treasurer", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.county-treasurer.sullivan", "count_from": "the places' sum", "scatter": 7, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "Michael Sanderson", "party": "r", "votes": 2530, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.county-treasurer.sullivan.michael-sanderson-r"}]},
+  "D|register-of-deeds|Sullivan": {"party": "d", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-deeds.sullivan", "count_from": "the places' sum", "scatter": 5, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Je Austin", "party": "d", "votes": 3688, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-deeds.sullivan.je-austin-d"},
+    {"name": "Renee Simino", "party": "r", "votes": 17, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.register-of-deeds.sullivan.renee-simino-r"}]},
+  "R|register-of-deeds|Sullivan": {"party": "r", "office": "register-of-deeds", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-deeds.sullivan", "count_from": "the places' sum", "scatter": 3, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Renee Simino", "party": "r", "votes": 2555, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-deeds.sullivan.renee-simino-r"},
+    {"name": "Je Austin", "party": "d", "votes": 6, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-deeds.sullivan.je-austin-d"}]},
+  "D|register-of-probate|Sullivan": {"party": "d", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.register-of-probate.sullivan", "count_from": "the places' sum", "scatter": 8, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Loren David Howard", "party": "d", "votes": 3743, "write_in": false, "nominated": true, "id": "2026-09-08.primary-d.register-of-probate.sullivan.loren-david-howard-d"},
+    {"name": "Rodd Ward", "party": "r", "votes": 1, "write_in": false, "nominated": false, "id": "2026-09-08.primary-d.register-of-probate.sullivan.rodd-ward-r"}]},
+  "R|register-of-probate|Sullivan": {"party": "r", "office": "register-of-probate", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.register-of-probate.sullivan", "count_from": "the places' sum", "scatter": 10, "undervotes": null, "overvotes": null, "printed_totals": 3, "county": "Sullivan", "candidates": [
+    {"name": "Rodd Ward", "party": "r", "votes": 2503, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.register-of-probate.sullivan.rodd-ward-r"},
+    {"name": "Loren David Howard", "party": "d", "votes": 7, "write_in": false, "nominated": false, "id": "2026-09-08.primary-r.register-of-probate.sullivan.loren-david-howard-d"}]},
+  "D|sheriff|Sullivan": {"party": "d", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-d.sheriff.sullivan", "count_from": "the places' sum", "scatter": 128, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "James Ethan Yazinski", "party": "r", "votes": 20, "write_in": false, "nominated": null, "id": "2026-09-08.primary-d.sheriff.sullivan.james-ethan-yazinski-r"}]},
+  "R|sheriff|Sullivan": {"party": "r", "office": "sheriff", "district": null, "seats": 1, "contest": "2026-09-08.primary-r.sheriff.sullivan", "count_from": "the places' sum", "scatter": 27, "undervotes": null, "overvotes": null, "printed_totals": 2, "county": "Sullivan", "candidates": [
+    {"name": "James Ethan Yazinski", "party": "r", "votes": 2578, "write_in": false, "nominated": true, "id": "2026-09-08.primary-r.sheriff.sullivan.james-ethan-yazinski-r"}]}
  }
 }
