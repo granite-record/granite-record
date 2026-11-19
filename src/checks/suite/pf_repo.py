@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1041,7 +1041,6 @@ _IMPORT_CYCLES_KNOWN = {
     ("build_past_roster", "past_roll"),
     ("caption_span", "segment_markers"),
     ("civics", "legislative_year"),
-    ("docket_vocab", "narrative"),
     ("parse_sos_primary_offices", "parse_sos_primary_results"),
     ("proceedings", "terms"),
 }
@@ -1061,6 +1060,7 @@ _IMPORTS_CUT = {
     ("text_sponsors", "fetch_legislation"),                     # legislation_text.py
     ("extract_amendments", "fetch_committee_reports"),
     ("interim_statements", "fetch_committee_reports"),          # committee_report_text.py
+    ("docket_vocab", "narrative"),                              # docket_lines.py
 }
 
 
