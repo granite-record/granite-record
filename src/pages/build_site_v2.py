@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.287
+# GRANITE_VERSION: 2026-09-05.288
 """
 Generate the faceted site from real General Court data.
 
@@ -13540,6 +13540,7 @@ def main():
                                former=former, links=links,
                                hearing_reports=hearing_reports,
                                term_rosters=term_rosters,
+                               people=sponsor_people,
                                numbers={str(_n): str(_q.get("person") or "")
                                         for _q in ((register or {}).get("people") or [])
                                         for _n in (_q.get("numbers") or [])},
@@ -13551,8 +13552,7 @@ def main():
                                ballots=load_ballots(BALLOTS, bills),
                                rc_cards=rc_cards, moments=floor_moments,
                                record_chambers=record_chambers, id_parties=id_parties,
-                               tagging=tagging, voters=voters,
-                               people=sponsor_people)
+                               tagging=tagging, voters=voters)
     add_related(out, index)
     add_same_number(out, index, notes)
     # NO index.json (retired 5 October 2026). It was every row below in one
