@@ -151,6 +151,8 @@ The record and its own pages:
 - `build_elections`: each general election's official results, a page each,
   under Officials;
 - `build_member_elections`: the Elections tab of each member's own file.
+- `election_margin`: a race's margin, defined once: the label, band and figures every
+  election card, filter, order and summary takes.
 
 The hubs and the sections:
 
