@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.360
+// GRANITE_VERSION: 2026-09-07.361
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10262,12 +10262,21 @@ function memberElectionTab(m){
 // member's own row marked er-me; headed here by the election's day, linked to
 // the race on that page as the row was.
 // A primary (the owner, 19 November 2026) is headed by its party's ballot and
-// its day, and links nowhere: no page of the primaries is built yet.
+// its day, and links nowhere: no page of the primaries is built yet. A special
+// election (the owner's "Yes to all 9", the same day) is headed "Special
+// election" and its day, a tie's re-run saying so; its primary "Special
+// primary" and its party's ballot; neither links anywhere on this site.
 function electionCard(r){
   const href=`/elections/${esc(r.d)}-general#${esc(r.a)}`;
   const ballot=r.pp==="D"?tr("race.primary_d","Democratic primary"):r.pp==="R"
     ?tr("race.primary_r","Republican primary"):tr("race.primary_l","Libertarian primary");
+  const sballot=r.pp==="D"?tr("race.special_primary_d","Special primary (Democratic)"):r.pp==="R"
+    ?tr("race.special_primary_r","Special primary (Republican)"):tr("race.special_primary","Special primary");
+  const tie=r.tie?", "+tr("race.special_tie","held after the {year} tie (House Resolution {n})",
+    {year:r.tie.y,n:r.tie.hr}):"";
   const when=r.st==="primary"?`<p class="er-when">${esc(ballot)}, ${esc(dateWords(r.d))}</p>`
+    :r.st==="special"?`<p class="er-when">${esc(tr("race.special","Special election"))}, ${esc(dateWords(r.d))}${esc(tie)}</p>`
+    :r.st==="special-primary"?`<p class="er-when">${esc(sballot)}, ${esc(dateWords(r.d))}</p>`
     :`<p class="er-when"><a href="${href}">${esc(dateWords(r.d))}</a></p>`;
   return String(r.c).replace(/^<article\b[^>]*>/,m=>m+when);
 }
@@ -10300,7 +10309,11 @@ function renderMemberElections(m){
   // The incumbent's asterisk (the owner, 19 November 2026), said once under the cards.
   const inc=["H","S"].filter(c=>rows.some(r=>r.c&&r.inc===c)).map(c=>`<p class="src er-incl">${
     c==="H"?tr("race.inc_h","* held a seat in the House on election day."):tr("race.inc_s","* held a seat in the Senate on election day.")}</p>`).join("");
-  const days=[...new Set(rows.filter(r=>r.st!=="primary").map(r=>r.d))];
+  const days=[...new Set(rows.filter(r=>!r.st).map(r=>r.d))];
+  // The special elections, each its Secretary of State page.
+  const sp=rows.filter(r=>r.st==="special"&&r.u);
+  const spsrc=sp.map(r=>`<a href="${esc(r.u)}">${esc(tr("race.special_of","special election of {date}",
+    {date:dateWords(r.d)}))}</a>`).join(", ");
   const src=days.map(d=>`<a href="/elections/${esc(d)}-general">${esc(
     tr("race.year","{year} general election",{year:d.slice(0,4)}))}</a>`).join(", ");
   // A row with no card (a file written before the cards) keeps the table.
@@ -10311,14 +10324,14 @@ function renderMemberElections(m){
   const cyc=[...new Set(cards.map(r=>r.cy||r.d.slice(0,4)))];
   const stack=cyc.map(y=>`<h3 class="er-cycle">${esc(y)}</h3><div class="er-cards er-stack">${
     cards.filter(r=>(r.cy||r.d.slice(0,4))===y).map(electionCard).join("")}</div>`).join("");
-  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}${prim?" "+tr("race.intro_primary","A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; its leader is marked Most votes."):""}</p>
+  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}${prim?" "+tr("race.intro_primary","A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; its leader is marked Most votes."):""}${sp.length?" "+tr("race.intro_special","A special election is shown under the election cycle of the term whose seat it filled, by its date, with its primary under it."):""}</p>
     ${electionUpcoming(m.up)}${stack}${inc}${plain.length?`
     <table class="votes vfull"><thead><tr><th>${esc(tr("race.col_election","Election"))}</th>
       <th>${esc(tr("race.col_race","Race"))}</th><th>${esc(tr("race.col_result","Result"))}</th>
       <th>${esc(tr("race.col_votes","Votes"))}</th></tr></thead>
       <tbody>${plain.map(electionRow).join("")}</tbody></table>`:""}
     <p class="src">${tr("race.omitted","A race this member lost appears only where the name and the district match the record exactly; any other is left off.")}
-      ${days.length?tr("race.source","Source: the New Hampshire Secretary of State&rsquo;s official results, shown on the elections pages: {years}. Each row links to its race there.",{years:src}):""}${prim?" "+tr("race.source_primary","The primaries are from the Secretary of State&rsquo;s State Primary results files: {years}; no page of them is on this site yet.",{years:esc(prim)}):""}</p>`;
+      ${days.length?tr("race.source","Source: the New Hampshire Secretary of State&rsquo;s official results, shown on the elections pages: {years}. Each row links to its race there.",{years:src}):""}${prim?" "+tr("race.source_primary","The primaries are from the Secretary of State&rsquo;s State Primary results files: {years}; no page of them is on this site yet.",{years:esc(prim)}):""}${sp.length?" "+tr("race.source_special","The special elections are from the Secretary of State&rsquo;s page of each: {list}.",{list:spsrc}):""}</p>`;
 }
 
 function renderMember(m){

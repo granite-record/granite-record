@@ -2510,8 +2510,13 @@ card is `race_card`'s with `primary=` the ballot's party: the leader Most votes,
 never nominated, the label with no letter, the votes the file lists for another
 party's candidates left off and said in the note. The tab is one column of
 cards under a heading for each election cycle, strictly newest first: a cycle's
-general, then its primary under it (`sort_rows`, `cycle_of`; a special, when one
-is read, is to carry its cycle in `cy`). An uncontested race is a card too,
+general, then its primary under it (`sort_rows`, `cycle_of`). A special election
+and its party primaries (`special_rows`, from `collected/specials.json`) carry
+in `cy` the cycle of the general that elected the term whose seat they fill, so
+the March 2026 special sits under 2024 above that cycle's general; each is
+headed "Special election" or "Special primary" and links no elections page, and a
+candidate is linked by the certain rule around that term (`special_window`: the
+term, or the one before or after on the same lines). An uncontested race is a card too,
 labelled Unopposed (19 November 2026). On an Unopposed card, here and on the
 elections pages, the scattered write-ins are a row of their own ("Write-ins")
 and every share is of all the votes cast with them; a contested card keeps them

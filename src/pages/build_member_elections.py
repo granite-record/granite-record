@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.10
+# GRANITE_VERSION: 2026-11-10.11
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -84,9 +84,29 @@ lists for another party's candidates are left off the card and said in its
 note. The leader is "Most votes", never nominated; the label has no letter.
 A race with no more candidates than seats is a card too, labelled Unopposed.
 
+THE SPECIAL ELECTIONS (the owner, 19 November 2026, "Yes to all 9" of
+reports/money-specials-design/specials-and-upcoming.md, A2 and A5).
+collected/specials.json (src/parse/parse_sos_specials.py, read from the
+Secretary of State's pages) is read too: each special a card ("st":
+"special"), and each of its party primaries one ("st": "special-primary",
+"pp" the party), by the same race_card and margin. A member is linked only on
+the certain rule above, around the term the special fills: the name theirs
+letter for letter and the seat theirs in that term or the one before or after
+on the same lines (special_window, which says why the winner's rule is no
+narrower). A middle initial the
+roster does not carry is not the same name: such a winner goes to the
+owner's list, never a looser match. Each row carries "cy", the cycle of the
+general that elected the term whose seat it fills, and "u", the
+Secretary of State's page; a tie's re-run "tie" (the tied year and the House
+resolution). Nothing is said of whom a winner replaced: no page says (A5.5).
+Nobody on a special's card is marked an incumbent: held_on is of a general
+election's term.
+
 THE ORDER (the owner, 19 November 2026): strictly newest first, under a
 heading for each election cycle (app.js), a cycle's general and then its
-primary; one column of cards.
+primary; one column of cards. A special is under the cycle of the term whose
+seat it fills, by its day (A5.4): the March 2026 special under 2024, above
+that cycle's general, its primary under it.
 
 UPCOMING ELECTIONS (the owner, 19 November 2026, "Yes to all 9" of
 reports/money-specials-design/specials-and-upcoming.md, A3): "up" in the
@@ -210,14 +230,18 @@ class Roster:
                 found.append(f"{p['label']} [{p['id']}]")
         return ", ".join(sorted(set(found)))
 
-    def certain(self, name, key, election, race=None, party=""):
+    def certain(self, name, key, election, race=None, party="", window=None):
         """([members], why not): the members a printed name in race `key` is,
-        by the strict rule. One member only is a match."""
+        by the strict rule. One member only is a match. `window`, the terms a
+        seat held counts in, is the general election's (the term before and
+        the term after) unless given: a special's is its own (special_window)."""
         year = int(election[:4])
         after = BME.term_after(year)
         # The term before is on the old districts for the election of 2022: no
         # evidence of a seat in the new map (BME.on_this_map).
-        window = {t for t in (BME.term_before(after), after) if BME.on_this_map(t, year)}
+        given = window is not None
+        if not given:
+            window = {t for t in (BME.term_before(after), after) if BME.on_this_map(t, year)}
         if (race or {}).get("surnames"):
             return self.surname_match(name, key, window, race, party)
         same = self.by_name.get(nfc_fold(name), [])
@@ -236,7 +260,8 @@ class Roster:
             else:
                 terms = sorted(t for t, k in p["held"] if k == key)
                 why.append(f"{p['label']} [{p['id']}] held {BME.race_words(key)} in {', '.join(terms) or 'a term not on record'}, "
-                           f"not the term before or after {election[:4]}")
+                           + (f"not {' or '.join(sorted(window))}" if given else
+                              f"not the term before or after {election[:4]}"))
         return [], "; ".join(why)
 
 
@@ -555,10 +580,146 @@ def upcoming_seats(sitting, newest, roster_term, today):
 
 def cycle_of(row):
     """The election cycle a row is drawn under on the tab (app.js groups by it):
-    a general's or a primary's own year. A special election, when one is read,
-    is to carry the cycle of the term whose seat it fills, and so sits among
-    that cycle's rows by its day."""
+    a general's or a primary's own year. A special election and its primary
+    carry the cycle of the term whose seat it fills ("cy"), and so sit among
+    that cycle's rows by their day."""
     return row.get("cy") or row["d"][:4]
+
+
+SPECIALS = "specials.json"
+
+
+def specials_on_file(collected):
+    """[(special, [its candidacies], [(primary, [its candidacies]), ...], the
+    Secretary of State's page)] of collected/specials.json
+    (src/parse/parse_sos_specials.py), oldest first; [] where it is not there."""
+    p = Path(collected) / SPECIALS
+    if not p.is_file():
+        return []
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    pages = {s["file"]: s.get("address") or "" for s in doc.get("_source") or []}
+    cands = defaultdict(list)
+    for x in doc.get("candidacy") or []:
+        cands[x["contest"]].append(x)
+    contests = doc.get("contest") or []
+    out = []
+    for c in sorted((c for c in contests if c.get("stage") == "special"), key=lambda c: c["contest"]):
+        prims = [(q, cands[q["contest"]]) for q in contests if q.get("for") == c["contest"]]
+        out.append((c, cands[c["contest"]], sorted(prims, key=lambda q: q[0]["contest"]),
+                    pages.get(c.get("source"), "")))
+    return out
+
+
+def special_race(contest, cands, general):
+    """A special's race, or its primary's, as race_card draws one: its candidacies
+    as a results file's candidates (most votes first), one seat, the district's
+    towns and floterial from the race of the general that elected the term
+    (`general`), "recounted" where its votes are a recount's. A primary's leader
+    is "nominated", as the State Primary reader marks one: the most votes, alone;
+    a tie at the top settles nothing (null)."""
+    out = [{"name": x["printed"], "party": x.get("party") or "", "votes": x["votes"],
+            "write_in": bool(x.get("write_in"))} for x in cands]
+    out.sort(key=lambda c: (-c["votes"], c["name"]))
+    if contest["stage"] == "primary":
+        top = max((c["votes"] for c in out), default=0)
+        lead = [c for c in out if c["votes"] == top and top > 0]
+        for c in out:
+            c["nominated"] = (True if len(lead) == 1 else None) if any(c is x for x in lead) else False
+    else:
+        won = {x["printed"] for x in cands if x.get("elected")}
+        for c in out:
+            c["elected"] = c["name"] in won
+    race = {"seats": contest["seats"], "floterial": bool((general or {}).get("floterial")),
+            "towns": list((general or {}).get("towns") or []), "scatter": 0, "candidates": out}
+    if contest.get("recounted"):
+        race["recounted"] = True
+    return race
+
+
+def special_window(term, cycle):
+    """The terms in which a seat held is evidence for a candidate of a special in
+    `term`: that term and the one before and after, each on the lines the term
+    was elected on (BME.on_this_map) -- the general's rule (a seat held the term
+    before or after), around the term the special fills. The winner too: the
+    design's "the seat in that term" alone links few, because a member sworn in
+    mid-term often prints no seat on a bill of that term (David Fracht, sworn in
+    on 6 September 2023, has Grafton 16 on record for 2025-2026 only), and the
+    same name letter for letter in the same district on the same lines a term
+    later is the evidence a general election's loss is shown on."""
+    a = int(term[:4])
+    return {t for t in (BME.term_before(term), term, f"{a + 2}-{a + 3}") if BME.on_this_map(t, cycle)}
+
+
+def special_rows(specials, generals, roster, people=None):
+    """({member id: [row, ...]}, [report line, ...]) of the special elections
+    (specials_on_file), each candidate linked by the certain rule in the term
+    the special fills (special_window) and nowhere else. `generals` is {term:
+    collected/election_<year>.json} of the generals on file, which give each
+    district's towns and the tie a re-run follows."""
+    rows, report = defaultdict(list), []
+    for sp, cands, prims, page in specials:
+        term, key = sp["term"], (sp.get("keys") or {}).get("results")
+        cycle = int(term[:4]) - 1
+        if not key or not BME.KEY_RE.match(key):
+            continue
+        general = ((generals.get(term) or {}).get("races") or {}).get(key)
+        extra = {"cy": str(cycle)}
+        if page:
+            extra["u"] = page
+        tie = {}
+        cause = sp.get("cause") or {}
+        if cause.get("kind") == "tie" and cause.get("of") and cause.get("resolution"):
+            tie = {"y": cause["of"][:4], "hr": cause["resolution"].rsplit(" ", 1)[-1]}
+
+        def link(c, day, race, where):
+            got, why = roster.certain(c["name"], key, day, race, c.get("party"),
+                                      window=special_window(term, cycle))
+            if got:
+                return got[0]
+            near = near_members(c["name"], key, people) if people else ""
+            if near or why:
+                report.append((day, where, c["name"], near,
+                               why or "no member of exactly that name; the name fits only loosely"))
+            return None
+
+        race = special_race(sp, cands, general)
+        winner = next((c for c in race["candidates"] if c.get("elected")), None)
+        found = {c["name"]: link(c, sp["election"], race, key) for c in race["candidates"]}
+        me = {"seats": race["seats"], "elected": []}
+        if winner is not None:
+            e = {"n": BE.same_name(winner["name"])}
+            m = found.get(winner["name"])
+            if m:
+                e.update(id=m["id"], s=m["slug"])
+            me["elected"].append(e)
+        for c in race["candidates"]:
+            m = found.get(c["name"])
+            if m is None:
+                continue
+            row = race_row(sp["election"], key, race, me, c, c is winner, frozenset())
+            row.update(st="special", **extra)
+            if tie:
+                row["tie"] = tie
+            row["c"] = BE.race_card(key, race, me, {}, {}, sp["election"], {}, mine=BE.same_name(c["name"]),
+                                    anchor=False)
+            rows[m["id"]].append(row)
+        for pc, pcands in prims:
+            ballot = str(pc.get("party") or "").upper()
+            prace = special_race(pc, pcands, general)
+            for c in prace["candidates"]:
+                m = link(c, pc["election"], prace, f"{ballot} special primary {key}")
+                if m is None:
+                    continue
+                row = {"d": pc["election"], "st": "special-primary", "pp": ballot, "k": key,
+                       "a": BE.race_id(key), "r": "most" if c.get("nominated") is True else "not",
+                       "v": c["votes"], "s": prace["seats"]}
+                if prace.get("floterial"):
+                    row["fl"] = 1
+                row.update(extra)
+                row["c"] = BE.race_card(key, prace, {}, {}, {}, pc["election"], {}, mine=BE.same_name(c["name"]),
+                                        anchor=False, primary=ballot)
+                rows[m["id"]].append(row)
+    return rows, report
 
 
 def sort_rows(rows):
@@ -598,6 +759,14 @@ def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT, up=N
     # The primaries (the owner, 19 November 2026): each on the member's own party's ballot.
     for day, doc in primaries_on_file(collected):
         got, rep = primary_rows(day, doc, roster)
+        for mid, rows in got.items():
+            by_member[mid] += rows
+        report += rep
+    # The special elections and their primaries (the owner, 19 November 2026).
+    specials = specials_on_file(collected)
+    if specials:
+        got, rep = special_rows(specials, {r.get("term"): r for _e, _p, r in items}, roster,
+                                BME.People(sitting, former, ()))
         for mid, rows in got.items():
             by_member[mid] += rows
         report += rep
@@ -719,7 +888,8 @@ def main():
     wins = sum(1 for rs in by_member.values() for r in rs if r["r"] == "won")
     lost = sum(1 for rs in by_member.values() for r in rs if r["r"] == "lost")
     prim = sum(1 for rs in by_member.values() for r in rs if r.get("st") == "primary")
-    rows = sum(len(rs) for rs in by_member.values()) - prim
+    spec = sum(1 for rs in by_member.values() for r in rs if r.get("st") in ("special", "special-primary"))
+    rows = sum(len(rs) for rs in by_member.values()) - prim - spec
     rp = Path(a.report)
     try:
         rp.parent.mkdir(parents=True, exist_ok=True)
@@ -727,9 +897,11 @@ def main():
         said = f"{len(report)} to settle in {rp.as_posix()}"
     except OSError as e:
         said = f"{len(report)} to settle (the report could not be written: {e})"
+    wins -= sum(1 for rs in by_member.values() for r in rs if r.get("st") == "special" and r["r"] == "won")
+    lost -= sum(1 for rs in by_member.values() for r in rs if r.get("st") == "special" and r["r"] == "lost")
     print(f"member elections: {len(by_member)} members, {rows} rows ({wins} won, {lost} lost, "
-          f"{rows - wins - lost} not final or tied) and {prim} primary rows; {changed} member files "
-          f"changed; {said}")
+          f"{rows - wins - lost} not final or tied), {prim} primary rows and {spec} special-election "
+          f"rows; {changed} member files changed; {said}")
     nxt = next_general(today)
     print(f"member elections: upcoming elections on {len(up)} members' tabs"
           + (f", for the general election of {nxt.isoformat()}" if nxt else

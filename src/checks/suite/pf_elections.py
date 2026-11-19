@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.31
+# GRANITE_VERSION: 2026-11-16.32
 """
 preflight's checks of members-elect and election results.
 
@@ -2218,6 +2218,103 @@ def _member_elections_cycles(BMEL):
         ("2026", ["2026-11-03"]), ("2024", ["2024-11-05", "2024-09-10"])], f"the cycles: {got}"
     assert html.count('class="er-cards"') == 0 and html.count("er-stack") == 2, "a list of cards is not stacked"
     return "ok", "2026's general under 2026; 2024's general, then its primary, under 2024; one column at every width"
+
+
+@check("build", "a member's Elections tab shows a special election and its primary under the cycle of the "
+       "term whose seat it filled, by date, strictly newest first -- the March 2026 special under 2024, "
+       "above that cycle's general -- headed Special election and Special primary, by the same cards, "
+       "margin and certain rule, and links nowhere on the site",
+       needs=("build_member_elections",))
+def _member_elections_specials(BMEL):
+    """The owner, 19 November 2026 ("Yes to all 9" of reports/money-specials-design/
+    specials-and-upcoming.md, A2, A5.4 and A5.5), on a made-up court and a made-up
+    collected/specials.json in the reader's shapes: Bea Zane (sitting, Carroll 7) won the special
+    of 10 March 2026 (2,207 to 2,042) after the Democratic special primary of 20 January; Max
+    Teller (a former member, Coos 5) is printed "Max D. Teller" on the Coos 5 special, which is
+    not his name letter for letter, so it is on nobody's tab and goes to the owner's list; a
+    candidate printed as the roster's Bea Zane in another district gets nothing.
+
+    Zane's rows: the special (st special, cy 2024, Elected, D+3.9, the margin's rule) and its
+    primary (st special-primary, Most votes, Unopposed); sorted with her 2026 general, 2024
+    general and 2024 primary, the order is 2026's general, then under 2024 the special, its
+    primary, the 2024 general and its primary. app.js draws headings 2026 and 2024 in that order,
+    heads the cards "Special election, " and "Special primary (Democratic), " with no link to an
+    elections page, says a tie's re-run, and names the Secretary of State's page in its sources.
+    Nothing on a card says whom the winner replaced."""
+    sitting = [_mel_member("5001", "Zane", "Bea", "H", "Carroll", "7")]
+    former = [_mel_member("5002", "Teller", "Max", "H", "Coos", "5", "former", ["2025-2026"])]
+    roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
+    sp = "2026-03-10.special.house.carroll-7"
+    pr = "2026-01-20.primary-d.house.carroll-7"
+    c5 = "2025-11-04.special.house.coos-5"
+
+    def x(contest, name, party, votes, **more):
+        return dict({"candidacy": f"{contest}.{name.lower().replace(' ', '-')}", "contest": contest,
+                     "printed": name, "party": party, "votes": votes, "person": None, "source": "m"}, **more)
+    doc = {"_source": [{"file": "records/sources/specials/a.txt", "address": "https://example.org/sp/a"},
+                       {"file": "records/sources/specials/b.txt", "address": "https://example.org/sp/b"}],
+           "contest": [
+               {"contest": c5, "election": "2025-11-04", "stage": "special", "office": "house",
+                "district": "house:2022:coos-5", "seats": 1, "term": "2025-2026", "recounted": "2025-11-10",
+                "keys": {"results": "H|Coos|5"}, "source": "records/sources/specials/b.txt"},
+               {"contest": sp, "election": "2026-03-10", "stage": "special", "office": "house",
+                "district": "house:2022:carroll-7", "seats": 1, "term": "2025-2026",
+                "cause": {"kind": "tie", "resolution": "House Resolution 6", "of": "2024-11-05.general.house.carroll-7"},
+                "keys": {"results": "H|Carroll|7"}, "source": "records/sources/specials/a.txt"},
+               {"contest": pr, "election": "2026-01-20", "stage": "primary", "party": "d", "office": "house",
+                "district": "house:2022:carroll-7", "seats": 1, "term": "2025-2026", "for": sp,
+                "keys": {"results": "H|Carroll|7"}, "source": "records/sources/specials/a.txt"}],
+           "candidacy": [x(c5, "Max D. Teller", "r", 878, elected=True, first_count=878),
+                         x(c5, "Bea Zane", "d", 873, elected=False, first_count=864),
+                         x(sp, "Bea Zane", "d", 2207, elected=True), x(sp, "Dee Bloom", "r", 2042, elected=False),
+                         x(pr, "Bea Zane", "d", 615)]}
+    generals = {"2025-2026": {"races": {
+        "H|Carroll|7": {"seats": 1, "floterial": True, "towns": ["Lambda", "Mu"], "candidates": []},
+        "H|Coos|5": {"seats": 2, "floterial": False, "towns": ["Kappa"], "candidates": []}}}}
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / BMEL.SPECIALS).write_text(json.dumps(doc), encoding="utf-8")
+        specials = BMEL.specials_on_file(d)
+    rows, report = BMEL.special_rows(specials, generals, roster, BMEL.BME.People(sitting, former, ()))
+    assert sorted(rows) == ["5001"], f"the special rows are for {sorted(rows)}, not Zane alone"
+    got = {(r["d"], r["st"]): r for r in rows["5001"]}
+    s, p = got.get(("2026-03-10", "special")), got.get(("2026-01-20", "special-primary"))
+    assert s and p and len(rows["5001"]) == 2, f"Zane's special rows: {sorted(got)}"
+    assert (s["cy"], s["r"], s["v"], s["k"], s.get("fl"), s.get("u"), s.get("tie")) == (
+        "2024", "won", 2207, "H|Carroll|7", 1, "https://example.org/sp/a", {"y": "2024", "hr": "6"}), f"the special's row: {s}"
+    assert '<span class="chip er-mg pt-D">D+3.9</span>' in s["c"] and "Elected" in s["c"] and "1 seat" in s["c"] \
+        and "Lambda, Mu" in s["c"] and 'class="er-row er-me"' in s["c"], f"the special's card: {s['c']}"
+    assert (p["cy"], p["pp"], p["r"], p["v"]) == ("2024", "D", "most", 615) and "Unopposed" in p["c"] \
+        and "Most votes" in p["c"] and "Elected" not in p["c"], f"the special primary's row: {p}"
+    assert "5002" not in rows and any(r[2] == "Max D. Teller" for r in report), (
+        f"Max D. Teller, not his name letter for letter, is not listed for the owner: {report}")
+    assert any(r[2] == "Bea Zane" and "not Coos 5" in r[4] for r in report), (
+        f"Zane's name in Coos 5, a seat she never held, is not listed with why: {report}")
+    order = BMEL.sort_rows(rows["5001"] + [
+        {"d": "2026-11-03", "k": "H|Carroll|7", "a": "r", "r": "won", "v": 1, "s": 1, "c": "<article></article>"},
+        {"d": "2024-11-05", "k": "H|Carroll|7", "a": "r", "r": "lost", "v": 1, "s": 1, "c": "<article></article>"},
+        {"d": "2024-09-10", "k": "H|Carroll|7", "a": "r", "st": "primary", "pp": "D", "r": "most", "v": 1, "s": 1,
+         "c": "<article></article>"}])
+    assert [r["d"] for r in order] == ["2026-11-03", "2026-03-10", "2026-01-20", "2024-11-05", "2024-09-10"], (
+        f"the order: {[r['d'] for r in order]}")
+    html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": order}) + ")",
+                   names=("renderMemberElections",))
+    if html is None:
+        return "ok", "the rows, cards and order held in Python; node, app.js or the stub is not here for the tab"
+    heads = re.findall(r'<h3 class="er-cycle">([^<]+)</h3>', html)
+    assert heads == ["2026", "2024"], f"the tab's headings: {heads}"
+    when = re.findall(r'<p class="er-when">(.*?)</p>', html)
+    assert when[1].startswith("Special election, ") and "held after the 2024 tie (House Resolution 6)" in when[1] \
+        and when[2].startswith("Special primary (Democratic), ") and "<a " not in when[1] + when[2], (
+        f"the specials' heads: {when}")
+    assert "/elections/2026-03-10" not in html and "/elections/2026-01-20" not in html, "a special links an elections page"
+    assert '<a href="https://example.org/sp/a">special election of ' in html and "A special election is shown" in html, (
+        f"the tab's notes for a special: {html[-900:]}")
+    flat = re.sub(r"<[^>]+>", " ", html).lower()
+    assert not re.search(r"\b(replac|vacan|resign|predecessor)", flat), "the tab says whom a winner replaced"
+    return "ok", ("Zane's special (Elected, D+3.9) and its primary (Most votes, Unopposed) under 2024, above that "
+                  "cycle's general, 2026's general first; Max D. Teller listed for the owner, not linked; headed "
+                  "Special election and Special primary, the tie's re-run said, no elections-page link, the "
+                  "Secretary of State's page cited, nothing of whom a winner replaced")
 
 
 @check("build", "a member's Elections tab opens on the seat's upcoming elections -- the filing period, primary "
