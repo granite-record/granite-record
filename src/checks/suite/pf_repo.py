@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -2838,6 +2838,66 @@ def _rehearsal_runs_built_checks():
     return "ok", ("the night's preflight.py --built runs in the copy on a full build, and NT and A1 "
                   "fail on a hold-tier failure or checks that did not run, as built_checks_held "
                   "does on made-up verdicts")
+
+
+def _rehearsal_unanswered(night_tree, rehearse_tree):
+    """(the scripts nightly.py can start outside weekly(), those
+    tests/rehearse_turn.py's Nights.fake answers, those it does not, and
+    whether a script it does not answer still stops it). A script the night
+    starts is every bare `name.py` string in nightly.py -- a list it runs,
+    TERM_FILES, an EXITS key -- but for a path built with `/`, and none
+    within weekly(), whose steps the rehearsal never takes."""
+    parent = {c: p for p in ast.walk(night_tree) for c in ast.iter_child_nodes(p)}
+
+    def in_weekly(n):
+        while n in parent:
+            n = parent[n]
+            if isinstance(n, ast.FunctionDef) and n.name == "weekly":
+                return True
+        return False
+    started = {n.value for n in ast.walk(night_tree)
+               if isinstance(n, ast.Constant) and isinstance(n.value, str)
+               and re.fullmatch(r"\w+\.py", n.value)
+               and not isinstance(parent.get(n), ast.BinOp) and not in_weekly(n)}
+    fake = next((f for c in ast.walk(rehearse_tree) if isinstance(c, ast.ClassDef)
+                 and c.name == "Nights" for f in c.body
+                 if isinstance(f, ast.FunctionDef) and f.name == "fake"), None)
+    assert fake is not None, "tests/rehearse_turn.py has no Nights.fake"
+    answered = set()
+    for n in ast.walk(fake):
+        if isinstance(n, ast.Compare) and isinstance(n.left, ast.Name) and n.left.id == "name":
+            for op, right in zip(n.ops, n.comparators):
+                vals = right.elts if isinstance(op, ast.In) and isinstance(
+                    right, (ast.Tuple, ast.List, ast.Set)) else [right] if isinstance(
+                    op, ast.Eq) else []
+                answered |= {v.value for v in vals if isinstance(v, ast.Constant)}
+    stops = any(isinstance(n, ast.Raise) and "does not " in ast.unparse(n)
+                and "stand in for" in ast.unparse(n) for n in ast.walk(fake))
+    return started, answered, sorted(started - answered), stops
+
+
+@check("files", "the turn's rehearsal stands in for every script an ordinary or a New term "
+       "night can start")
+def _rehearsal_answers_every_night_step():
+    """THE REHEARSAL HAD NOT RUN SINCE 16 OCTOBER (18 November 2026). ceed854c
+    gave the night three fetches of the current term from the database
+    (TERM_FILES: fetch_reports_db.py, fetch_testimony_db.py and
+    fetch_status_db.py, through take_term_data), and Nights.fake, which stops
+    the rehearsal at any step it does not stand in for, had no answer for
+    them: the first night of the November rehearsal stopped on
+    fetch_reports_db.py, and nothing had said so for a month. Held here: every
+    script nightly.py names outside weekly() is answered by Nights.fake, by
+    `name == ...` or `name in (...)`, and a script it does not answer still
+    stops the rehearsal rather than run."""
+    started, answered, missing, stops = _rehearsal_unanswered(
+        _parsed(_paths.locate("nightly.py")), _parsed(_paths.locate("tests/rehearse_turn.py")))
+    assert len(started) >= 15, f"only {len(started)} scripts read off nightly.py: {sorted(started)}"
+    assert not missing, ("nightly.py can start " + ", ".join(missing) + ", which "
+                         "tests/rehearse_turn.py's Nights.fake does not stand in for: the rehearsal "
+                         "stops on its first night. Answer each there")
+    assert stops, "Nights.fake no longer stops the rehearsal at a step it does not stand in for"
+    return "ok", (f"all {len(started)} scripts nightly.py can start outside weekly() are answered "
+                  f"by the rehearsal's Nights.fake, and any other stops it")
 
 
 # ---- a run for a change, and the fast path's checks (9 October 2026) ----------

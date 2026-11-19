@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.12
+# GRANITE_VERSION: 2026-10-05.13
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -27,7 +27,9 @@ machine gets it), and every night of the rehearsal writes only there. Nothing
 is asked of anybody: the General Court's export and database are answered by
 this script from files it makes, a socket that tries to connect fails, the
 proxies are dead, GRANITE_NO_BUCKET is set, and a step of the night this does
-not stand in for stops the rehearsal rather than run.
+not stand in for stops the rehearsal rather than run (and preflight's
+_rehearsal_answers_every_night_step fails while nightly.py names a script,
+outside weekly(), that Nights.fake does not answer).
 
 WHY (5 October 2026)
 
@@ -499,10 +501,28 @@ class Nights:
             rc = self.dbday()
         elif name == "fetch_archive_db.py":
             rc = self.study(args, cwd)
-        elif name in ("fetch_lsrs.py",):
+        elif name in ("fetch_reports_db.py", "fetch_testimony_db.py", "fetch_status_db.py",
+                      "fetch_committee_reports.py", "extract_amendments.py",
+                      "calendar_meetings.py"):
+            # The readers take_json starts (TERM_FILES, and the calendars'
+            # readers in take_document_files): as fetch_archive_db.py is
+            # answered, taken and nothing moves. take_json seeded the --out
+            # with the installed copy where it seeds, and it is left as it is,
+            # so the installed file comes back byte for byte; where it does
+            # not seed there is no file, and the night says "not taken".
+            rc = 0
+        elif name in ("fetch_lsrs.py", "extract_calendar_text.py"):
             rc = 0
         elif name == "fetch_calendar_archive.py":
             rc = 1
+        elif name == "compile_reports.py":
+            # The laptop's step (not on --runner): nothing to pull, and no
+            # triage file, which the night reports as REPORTS FAILED.
+            rc = 1
+        elif name == "check_live.py":
+            # deploy()'s check of the live site, on the laptop (--runner
+            # deploys through upload_and_check, which is answered above).
+            rc = 0
         elif name == "gc_changes.py":
             out = Path(args[args.index("--out") + 1])
             out.parent.mkdir(exist_ok=True)
