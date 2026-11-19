@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.69
+# GRANITE_VERSION: 2026-09-04.70
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1836,13 +1836,33 @@ def ballot_member(mid, year, when, legs, rosters, former):
     m = legs.get(mid)
     if not m:
         return None
-    term = P.vote_term(year, when)
-    for t, roster in sorted(rosters):
-        if t >= term:
-            if mid in roster:
-                return roster[mid]
-            return None if mid in former else m
+    near = nearest_roster(P.vote_term(year, when), rosters)
+    if near:
+        roster = near[1]
+        if mid in roster:
+            return roster[mid]
+        return None if mid in former else m
     return m
+
+
+def nearest_roster(term, rosters):
+    """(term, roster) of the frozen roster nearest at or after `term`, from
+    [(term, roster)] (frozen_rosters), or None: the witness of who sat where
+    in `term` once the installed roster is a later House's (ballot_member;
+    score_members_elect.Record, 19 November 2026)."""
+    return next(((t, r) for t, r in sorted(rosters, key=lambda x: x[0]) if t >= term), None)
+
+
+def frozen_rosters(root, terms):
+    """[(term, roster)] for `terms` (freeze_term.own_roster_terms), each read
+    by read_roster from frozen/<term>/day/, as the installed one is."""
+    out = []
+    for t in terms:
+        day = Path(root) / "frozen" / t / "day"
+        counties = {r[0]: {"name": r[1], "abbr": r[2].rstrip(".")}
+                    for r in rows(day / "Counties.txt", 3)}
+        out.append((t, read_roster(day, counties)))
+    return out
 
 
 def read_roster(folder, counties, report=None):
@@ -2069,12 +2089,8 @@ def main():
     # (legislators.json) is the installed one. Before any of that, nothing
     # here moves.
     roster_terms = [] if frozen else freeze_term.own_roster_terms(d)
-    year_legs, term_rosters = {}, []
-    for _t in roster_terms:
-        _day = d / "frozen" / _t / "day"
-        _fc = {r[0]: {"name": r[1], "abbr": r[2].rstrip(".")} for r in rows(_day / "Counties.txt", 3)}
-        _roster = read_roster(_day, _fc)
-        term_rosters.append((_t, _roster))
+    year_legs, term_rosters = {}, frozen_rosters(d, roster_terms)
+    for _t, _roster in term_rosters:
         for _y in freeze_term.term_years(_t):
             year_legs[_y] = _roster
     md, term_legs, sess_roster = sd, legs, {}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of members-elect and election results.
 
@@ -3952,6 +3952,44 @@ def _elect_2024_scored(SME):
                   f"({s['kinds']['sitting']} sitting, {s['kinds']['former']} returning); "
                   f"{left} left for the person, {len(s['unlinked_known'])} of them people the "
                   "record knew; none wrong")
+
+
+@check("code", "members-elect's score: after the turn a term's seat is the one the nearest frozen roster "
+       "gives, and before it the roster's last as ever", needs=("score_members_elect", "build_data"))
+def _elect_score_frozen_seat(SME, build_data):
+    """The rehearsal of the turn, 19 November 2026: once the fake 2027 House
+    was installed, score_members_elect read a continuing member's 2025-2026
+    seat off site/legislators.json, the new House's, and the member it moved
+    out of Rockingham 13 was "no member of the next term in that seat has
+    the surname" -- a warning on the real night for anyone re-elected to
+    another seat. Held on a Record made by hand: B sat for Rockingham 13 in
+    2025-2026 (the frozen roster) and sits for Rockingham 10 now; P sat for
+    Hillsborough 43, left, and sits for Hillsborough 40 now. With the frozen
+    roster their seats in 2025-2026 and 2023-2024 are the ones then; with
+    none -- every night before the turn -- the installed roster's, as ever."""
+    def record(frozen):
+        rec = SME.Record.__new__(SME.Record)
+        rec.gone = {"P": {"county": "Hillsborough", "district": "43"}}
+        rec.rows = {**rec.gone, "B": {"county": "Rock", "district": "10"},
+                    "P": {"county": "Hills", "district": "40"}}
+        rec.old, rec.text = {}, {}
+        rec.frozen, rec.nearest = frozen, build_data.nearest_roster
+        return rec
+    froze = [("2025-2026", {"B": {"county": "Rockingham", "district": "13"}})]
+    got = {(m, t, bool(f)): record(f).seat(m, t, "H", "2025-2026")
+           for f in (froze, []) for m in ("B", "P") for t in ("2025-2026", "2023-2024")}
+    want = {("B", "2025-2026", True): ("H", "Rockingham", "13", "the term's frozen roster"),
+            ("B", "2023-2024", True): ("H", "Rockingham", "13", "a later seat"),
+            ("P", "2025-2026", True): ("H", "Hillsborough", "43", "the roster, the record's last"),
+            ("P", "2023-2024", True): ("H", "Hillsborough", "43", "a later seat"),
+            ("B", "2025-2026", False): ("H", "Rockingham", "10", "the roster, the record's last"),
+            ("B", "2023-2024", False): ("H", "Rockingham", "10", "a later seat"),
+            ("P", "2025-2026", False): ("H", "Hillsborough", "40", "the roster, the record's last"),
+            ("P", "2023-2024", False): ("H", "Hillsborough", "40", "a later seat")}
+    bad = [f"{k}: {got[k]} where {v}" for k, v in want.items() if got[k] != v]
+    assert not bad, "a seat read off the wrong roster: " + "; ".join(bad)
+    return "ok", ("after the turn B's 2023-2026 seat is Rockingham 13 and P's Hillsborough 43, as they "
+                  "sat; with no frozen roster both read the installed roster's, as before")
 
 
 @check("build", "members-elect on the pages: nothing drawn on 2 December, before the election or "
