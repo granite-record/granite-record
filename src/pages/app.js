@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.350
+// GRANITE_VERSION: 2026-09-07.351
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2467,7 +2467,12 @@ function sponsorHintLine(list){
    Housing: the reader is still typing it); or where every word of its name
    was typed, with others besides ("affordable housing" offers Housing). A
    filter already chosen is not offered again, and a bill number or a statute
-   offers nothing.
+   offers nothing. A committee or a tag is offered on a solid match only
+   (the owner, 18 November 2026: "only with a solid match so that ordinary
+   searches don't accidentally have an unrelated dropdown pop-up"): a word
+   begun counts for it only where it begins one word of all the term's
+   names, so "trans" offers no committee and no tag by name (filterOffers'
+   `only`).
 
    WHAT CHOOSING ONE DOES. What ticking it in the list does -- the list
    narrows, its group opens with the tick in it, the address names it -- and
@@ -2514,15 +2519,22 @@ function foFit(typed,open,name){
 // The filters offered for what is typed, best first: each group a filter's
 // key, its values as [value, name, count], and `say(name, value)`, the
 // offer's words in HTML. Each offer carries `rest`, the words typed that it
-// does not stand for.
+// does not stand for. A group with `only`, a Set of the words of every name
+// offered beside it (foVocab), is offered on a solid match only: a word
+// still being typed counts as begun only where every word of those names it
+// begins is one word, or that word made longer ("envir" is Environment's,
+// and Environmental's; "trans" begins Transit, Transfer, Transparency and
+// Transportation, so offers none of them).
 function filterOffers(q,groups){
   const raw=String(q||""),typed=foWords(raw),open=!/\s$/.test(raw);
   if(raw.trim().length<FO_MIN||!typed.length)return [];
-  const out=[];
+  const out=[],last=typed[typed.length-1];
+  const several=only=>{const s=new Set();for(const w of only)if(w.startsWith(last))s.add(stem(w));
+    return s.size>1&&!Array.from(s).some(a=>Array.from(s).every(b=>b.startsWith(a)));};
   for(const g of groups){
-    const found=[];
+    const found=[],begun=open&&!(g.only&&several(g.only));
     for(const [v,name,n] of g.values||[]){
-      const fit=foFit(typed,open,name);
+      const fit=foFit(typed,begun,name);
       if(fit)found.push({key:g.key,v,name,n,how:fit.how,html:g.say(name,v),
         rest:typed.filter((_,i)=>!fit.used.includes(i)).join(" ")});
     }
@@ -2530,6 +2542,13 @@ function filterOffers(q,groups){
     out.push(...found.slice(0,g.most||FO_KIND));
   }
   return out.slice(0,FO_MOST);
+}
+// The words of filters' names, [value, name, ...] each, put into `only`:
+// filterOffers' reading of what a word half typed may begin. A chamber's
+// word names no subject, and is left out as foFit leaves it out.
+function foVocab(only,values){
+  for(const x of values||[])for(const w of foWords(x[1]))if(!FO_CHAMBER.has(w))only.add(w);
+  return only;
 }
 // The box `inp` and a list under it, made a combobox. `o.offers(text)` gives
 // the offers, `o.choose(offer)` takes one; Return is the caller's, which asks
@@ -2613,13 +2632,20 @@ function billOffers(q){
     const inYear=IDX.filter(inTermOf);
     const vals=k=>{const c={};inYear.forEach(b=>facetVals(b,k).forEach(v=>{
       if(v&&!sel[k].has(v))c[v]=(c[v]||0)+1;}));return Object.keys(c).map(v=>[v,v,c[v]]);};
-    const offers=filterOffers(q,[
-      {key:"topic",values:vals("topic"),say:offerTopic},
+    const topics=vals("topic"),
       // "House No Committee Assignment" is a filter, and no committee.
-      {key:"committee",values:vals("committee").filter(x=>!/\bno committee\b/i.test(x[0])),
-       say:offerCommittee}]);
+      committees=vals("committee").filter(x=>!/\bno committee\b/i.test(x[0]));
+    // A committee or a tag on a solid match only (the owner, 18 November
+    // 2026), against the words of every name the term offers (filterOffers).
+    const only=foVocab(foVocab(new Set(),topics),committees);
     // TAGS:BEGIN
-    tagOffers(q,offers,vals);
+    foVocab(only,vals("tag").map(([v])=>[v,(tagOf(v)||{}).name||v]));
+    // TAGS:END
+    const offers=filterOffers(q,[
+      {key:"topic",values:topics,say:offerTopic},
+      {key:"committee",values:committees,say:offerCommittee,only}]);
+    // TAGS:BEGIN
+    tagOffers(q,offers,vals,only);
     // TAGS:END
     const who=sponsorOffer(q,inYear,vals);
     if(who){offers.unshift(who);offers.splice(FO_MOST);}
@@ -2723,13 +2749,14 @@ function sponsorOffer(q,rows,vals){
    tag whose name the words typed begin, as a topic or a committee is
    offered; and first, where the whole search is a word that leads to a tag
    or a topic ("weed": the topic Cannabis), that one, standing for all of
-   it. `offers` is billOffers' list, which this adds to, and `vals` its
-   reading of a filter's values in the term. */
-function tagOffers(q,offers,vals){
+   it. `offers` is billOffers' list, which this adds to, `vals` its
+   reading of a filter's values in the term, and `only` the words of the
+   term's names: a tag, like a committee, on a solid match only. */
+function tagOffers(q,offers,vals,only){
   if(!TAGLIST.length)return;
   const named=t=>tr("bills.offer_tag","All bills tagged <b>{name}</b>",{name:esc(t)});
   const tv=vals("tag").map(([v,_n,c])=>[v,(tagOf(v)||{}).name||v,c]);
-  const byName=filterOffers(q,[{key:"tag",values:tv,say:named}]);
+  const byName=filterOffers(q,[{key:"tag",values:tv,say:named,only}]);
   const to=TAGWORDS.get(tagKey(q))||"",at=to.indexOf(":"),k=to.slice(0,at),v=to.slice(at+1);
   const first=[];
   if(k==="tag"&&tv.some(x=>x[0]===v)&&!byName.some(o=>o.v===v))
