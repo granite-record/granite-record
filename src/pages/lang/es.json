@@ -26765,11 +26765,6 @@
    "es": "En sesión",
    "state": "draft"
   },
-  "state.last": {
-   "en": "Last Session Day:",
-   "es": "Último día de sesión:",
-   "state": "draft"
-  },
   "state.next": {
    "en": "Next:",
    "es": "Próximo:",

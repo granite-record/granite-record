@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.291
+# GRANITE_VERSION: 2026-09-04.292
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3726,9 +3726,6 @@ def state_box(S, lang="en", today=None, events=None):
                   (S.get("phase") or "").lower(), ("off", S.get("phase") or ""))
         ms = (S.get("milestones") or [{}])[0]
 
-        def fdy(d):
-            """"Aug 19, 2026", the form HOME_JS's fdy() writes."""
-            return esc(_shell.date_words(d or "", "medium", lang))
         stale = (S.get("stale_days") or 0) > 45
         # THE SAME BOX THE SCRIPT DRAWS, line for line. This copy is what a
         # reader without JavaScript and every crawler get. It once had no last
@@ -3739,9 +3736,9 @@ def state_box(S, lang="en", today=None, events=None):
         static_state = (
             f'<div class="statebox {ph[0]}"><div class="stateline">'
             f'<span class="dot"></span><b>{esc(ph[1])}</b>'
-            + (f'<span class="statemeta">{say(lang, "state.last", "Last Session Day:")} '
-               f'{fdy(S["last_session"])}</span>'
-               if S.get("last_session") else "")
+            # NO "LAST SESSION DAY" LINE (the owner, 19 November 2026): the
+            # House and Senate recordings under the box name the last session
+            # day already.
             + "</div>"
             + (f'<p class="statehead">{_record(S["headline"], lang)}</p>'
                if S.get("headline") else "")
@@ -4214,7 +4211,6 @@ HOME_JS = """
 // In the page's language: window.GR_LANG on a Spanish page, English
 // where it is not set.
 const fd=d=>dateWords(d||"","short",window.GR_LANG);
-const fdy=d=>dateWords(d||"","medium",window.GR_LANG);
 // THE RECORD'S OWN WORDS on a page in another language are marked English
 // (i18n.py): a bill's title and the line of its history.
 const REC=window.GR_LANG&&window.GR_LANG!=="en"?' lang="en"':"";
@@ -4298,9 +4294,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   if(_state&&_state.querySelector(".statebox")){/* already drawn */}
   else if(_state)_state.innerHTML=`
     <div class="statebox ${ph[0]}">
-      <div class="stateline"><span class="dot"></span><b>${esc(ph[1])}</b>
-        ${S.last_session?`<span class="statemeta">${tr("state.last","Last Session Day:")}
-          ${fdy(S.last_session)}</span>`:""}</div>
+      <div class="stateline"><span class="dot"></span><b>${esc(ph[1])}</b></div>
       ${S.headline?`<p class="statehead"${REC}>${esc(S.headline)}</p>`:""}
       ${S.note?`<p class="statenote"${ES_ON&&S.note_es?"":REC}>${KEPT(S.note,S.note_es)}</p>`:""}
       ${ms?`<p class="statenote"><b>${tr("state.next","Next:")} ${KEPT(ms.label,ms.label_es)}</b>, ${fd(ms.date).replace(/[.]$/,"")}.

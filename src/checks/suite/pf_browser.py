@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -2307,17 +2307,20 @@ def _status_box_parity():
     # counted the days off the total -- so there is nothing left for the two
     # copies to disagree about. What this check is for is the pair drifting
     # apart, and a line removed from both is not drift.
+    # NOR THE LAST SESSION DAY (the owner, 19 November 2026): the House and
+    # Senate recordings under the box name it already. Gone from both copies
+    # in one edit, so neither may bring it back alone.
+    assert "state.last" not in js and "state.last" not in py, (
+        "the status box draws \"Last Session Day\" again; the owner took it off "
+        "on 19 November 2026 (the recordings under it name the day)")
     for what, needle_py, needle_js in (
-            ("the last floor session", 'S["last_session"]', "S.last_session"),
             # The date is kept hidden for the stale warning since the person
             # asked for no "Summary Updated" line (25 October 2026).
             ("the summary's date", 'data-updated="{esc(S.get("updated")', 'data-updated="${esc(S.updated'),
             ("the stale warning", "stale_days", "S.stale_days")):
         assert needle_js in js, f"HOME_JS no longer draws {what}"
         assert needle_py in py, f"the server-rendered status box lost {what}"
-    assert "fdy(S.last_session)" in js and 'fdy(S["last_session"])' in py, \
-        "the two copies write the last floor session's date differently"
-    return "ok", "floor session, hearings, date and stale warning in both copies"
+    return "ok", "the summary's date and stale warning in both copies; no last session day in either"
 
 
 @check("frontend", "tab strips keep the keyboard's place and a page opens on its own first tab")
