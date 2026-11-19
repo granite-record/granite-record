@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.354
+// GRANITE_VERSION: 2026-09-07.355
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10175,13 +10175,16 @@ function renderMemberElections(m){
   const rows=m.elections||[];
   if(!rows.length)return "";
   const prim=[...new Set(rows.filter(r=>r.st==="primary").map(r=>r.d.slice(0,4)))].join(", ");
+  // The incumbent's asterisk (the owner, 19 November 2026), said once under the cards.
+  const inc=["H","S"].filter(c=>rows.some(r=>r.c&&r.inc===c)).map(c=>`<p class="src er-incl">${
+    c==="H"?tr("race.inc_h","* held a seat in the House on election day."):tr("race.inc_s","* held a seat in the Senate on election day.")}</p>`).join("");
   const days=[...new Set(rows.filter(r=>r.st!=="primary").map(r=>r.d))];
   const src=days.map(d=>`<a href="/elections/${esc(d)}-general">${esc(
     tr("race.year","{year} general election",{year:d.slice(0,4)}))}</a>`).join(", ");
   // A row with no card (a file written before the cards) keeps the table.
   const cards=rows.filter(r=>r.c), plain=rows.filter(r=>!r.c);
   return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}${prim?" "+tr("race.intro_primary","A primary is shown on the member&rsquo;s own party&rsquo;s ballot, listed before that year&rsquo;s general election; its leader is marked Most votes."):""}</p>
-    ${cards.length?`<div class="er-cards">${cards.map(electionCard).join("")}</div>`:""}${plain.length?`
+    ${cards.length?`<div class="er-cards">${cards.map(electionCard).join("")}</div>`:""}${inc}${plain.length?`
     <table class="votes vfull"><thead><tr><th>${esc(tr("race.col_election","Election"))}</th>
       <th>${esc(tr("race.col_race","Race"))}</th><th>${esc(tr("race.col_result","Result"))}</th>
       <th>${esc(tr("race.col_votes","Votes"))}</th></tr></thead>

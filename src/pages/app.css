@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.400 */
+/* GRANITE_VERSION: 2026-09-07.401 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -10055,6 +10055,9 @@ text-wrap:balance}
 .er-c{font-weight:400;font-variant-numeric:tabular-nums}
 .er-filt .er-count{flex-basis:100%;margin:0;font-size:var(--t-ui);color:var(--ink-2)}
 .er-filt .er-count:empty{display:none}
+/* AN INCUMBENT'S ASTERISK after the name (build_elections.inc_mark), its words in its title
+   and in the one line under the cards (.er-incl). */
+.er-inc{text-decoration:none;font-weight:600;color:var(--ink);cursor:help}
 
 /* ==== THE VOTES PAGE (/votes; app.js, THE VOTES PAGE) ====================
    The search box across the page, the filters in a row of the bill search's

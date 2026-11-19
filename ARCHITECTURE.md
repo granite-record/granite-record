@@ -2469,6 +2469,15 @@ never nominated, the label with no letter, the votes the file lists for another
 party's candidates left off and said in the note. A year's primary is listed
 before its general (19 November 2026).
 
+Every race card, on the elections pages and the tab, marks * a candidate who held
+a seat in the race's chamber on election day (`build_member_elections.incumbents`):
+the member is found as the tab finds one (the page's own link for a winner, the
+owner's hand-file match, else `Roster.certain`), and held a seat of that chamber
+in the term sitting that day by the roster's seat or the seats their bills print
+(`entities.printed_tenures`); a former member whose last recorded day is before
+the election's year had left. A candidate the rule cannot place is not marked.
+One line under the cards says what the mark is.
+
 The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
 gives `find.json` a row of the kind `elect` for each new member-elect with a
 provisional page and each former member elected again, named with the

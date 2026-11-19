@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.20
+# GRANITE_VERSION: 2026-11-16.21
 """
 preflight's checks of members-elect and election results.
 
@@ -1272,7 +1272,7 @@ def _elections_page(BE, BME):
                 got = {}
                 for row in rows:
                     name = re.sub(r"<[^>]+>", "", row.split('<span class="er-n">')[0])
-                    name = re.sub(r"\s*\([A-Z/]*\)\s*|\s*write-in\s*|\s*Elected\s*|\s*Tied for the last seat\s*",
+                    name = re.sub(r"\s*\([A-Z/]*\)\s*|\s*\*\s*|\s*write-in\s*|\s*Elected\s*|\s*Tied for the last seat\s*",
                                   " ", name).strip()
                     n = int(re.search(r'<span class="er-n">([\d,]+)', row).group(1).replace(",", ""))
                     got[name] = (n, "Elected</span>" in row, re.search(r'href="legislator/([^"]+?)(?:\.html)?"', row))
@@ -2037,7 +2037,10 @@ def _member_elections_cards(BMEL, BME, BE):
             for r in rs:
                 want = BE.race_card(r["k"], res["races"][r["k"]], races_me[r["k"]], res,
                                     BE.totals_notes(res), res["election"], hand,
-                                    mine=BE.same_name(roster.members[mid]["name"]), anchor=False)
+                                    mine=BE.same_name(roster.members[mid]["name"]), anchor=False,
+                                    inc=BMEL.incumbents(r["k"], res["races"][r["k"]], res["election"], roster,
+                                                        {e["n"]: e for e in races_me[r["k"]]["elected"]},
+                                                        hand["matches"].get(r["k"]) or {}))
                 assert r.get("c") == want, f"{mid} {r['d']}: the tab's card is not race_card's"
                 got.setdefault(mid, []).append(r)
     assert got, "no member has a row on the made-up court"
@@ -2165,6 +2168,103 @@ def _member_primaries_on_file(BMEL, BME):
         and "Keith Mistretta" not in card and "1 candidate of another party, with 0 votes, is not shown." in card, (
             f"Wade's 2024 primary card: {card}")
     return "ok", f"Wade's one primary of 2024 and 2026 as the owner described it; {n} primary rows in those two years"
+
+
+@check("build", "a race card marks * each candidate who held a seat in the race's chamber on election day, "
+       "on a certain match only, and says once under the cards what the mark is",
+       needs=("build_member_elections", "build_elections", "build_members_elect"))
+def _election_incumbents(BMEL, BE, BME):
+    """The owner, 19 November 2026, on the made-up court of _mel_world. 2026's Senate 5: Ida Beck,
+    sitting in the Senate, is marked and Rob Cole is not. 2024's Rockingham 1: Bob Lowe, who held
+    it in 2023-2024, is marked; Ann Hart, who sits for it only from 2025, is not (a newcomer); nor
+    Olly Old (2001-2002). A former member whose last recorded day is in the first year of the
+    term had left before the election, and is not marked; a sitting Representative running for
+    the Senate is not marked there (the House is not the race's chamber); a namesake of a member
+    in another district is no match. The card draws the asterisk with its words; the page's
+    House tab says it once; the tab's cards in node say it once, by chamber."""
+    sitting, former, districts, r24, r26 = _mel_world()
+    former = former + [_mel_member("2005", "Gone", "Gil", "H", "Rockingham", "2", "former")]
+    former[-1]["served"]["last"] = "6/1/2023"
+    roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
+
+    def c(name, votes, party="r"):
+        return {"name": name, "party": party, "votes": votes, "write_in": False, "elected": None}
+    got = {
+        "S|5 2026": BMEL.incumbents("S|5", r26["races"]["S|5"], "2026-11-03", roster),
+        "H1 2024": BMEL.incumbents("H|Rockingham|1", r24["races"]["H|Rockingham|1"], "2024-11-05", roster),
+        "H2 2024": BMEL.incumbents("H|Rockingham|2", {"seats": 1, "candidates": [c("Gil Gone", 10), c("Dee Moss", 9)]},
+                                   "2024-11-05", roster),
+        # Fay Ives, a sitting Representative, wins the Senate seat: the page links her, and she held
+        # no seat of the Senate on election day.
+        "S|6 2026": BMEL.incumbents("S|6", {"seats": 1, "candidates": [dict(c("Fay Ives", 10), elected=True),
+                                                                       c("Joe Kay", 9)]},
+                                    "2026-11-03", roster, {"Fay Ives": {"n": "Fay Ives", "id": "1003"}}),
+        "H4 2026": BMEL.incumbents("H|Rockingham|4", {"seats": 1, "candidates": [c("Dee Moss", 10), c("Nan Pike", 9)]},
+                                   "2026-11-03", roster),
+    }
+    assert got == {"S|5 2026": {"Ida Beck"}, "H1 2024": {"Bob Lowe"}, "H2 2024": set(), "S|6 2026": {"Joe Kay"},
+                   "H4 2026": {"Nan Pike"}}, f"the incumbents: {got}"
+    card = BE.race_card("S|5", r26["races"]["S|5"], {}, r26, {}, "2026-11-03", inc=got["S|5 2026"])
+    assert ('Ida Beck <span class="mtag">(R)</span></span> <abbr class="er-inc" title="held a seat in the Senate '
+            'on election day">*</abbr>') in card and card.count("er-inc") == 1, f"the Senate card: {card}"
+    body = BE.page_body(r24["election"], r24, {k: {"seats": r["seats"], "elected": [], "not_final": 0}
+                                               for k, r in r24["races"].items()}, {}, {}, "site", [], True,
+                        {"H|Rockingham|1": got["H1 2024"]})
+    house = body.split('id="house"', 1)[1]
+    assert house.count('class="er-inc"') == 1 and house.count(
+        '<p class="src er-incl">* held a seat in the House on election day.</p>') == 1, (
+        "the House tab does not mark Bob Lowe once and say what the mark is once")
+    plain = BE.page_body(r24["election"], r24, {k: {"seats": r["seats"], "elected": [], "not_final": 0}
+                                                for k, r in r24["races"].items()}, {}, {}, "site", [], True)
+    assert "er-incl" not in plain and "er-inc" not in plain, "a page with nobody marked says what the mark is"
+    html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": [
+        {"d": "2026-11-03", "k": "S|5", "a": "r-s-5", "r": "won", "v": 9000, "s": 1, "c": card, "inc": "S"},
+        {"d": "2024-11-05", "k": "H|Rockingham|1", "a": "r-h-rockingham-1", "r": "lost", "v": 1500, "s": 1,
+         "c": card, "inc": "H"}]}) + ")", names=("renderMemberElections",))
+    if html is None:
+        return "ok", "the marks held in Python; node, app.js or the stub is not here for the tab"
+    assert html.count("* held a seat in the Senate on election day.") == 1 and \
+        html.count("* held a seat in the House on election day.") == 1, f"the tab's legend: {html[-600:]}"
+    return "ok", ("Beck and Lowe marked, Hart (a newcomer), Old, a member gone before the election, a "
+                  "namesake and a Representative in a Senate race not; the card's asterisk, the page's "
+                  "one line and the tab's one line a chamber")
+
+
+@check("data", "on today's roster and results, the incumbents' marks fall where the record says: Alice Wade "
+       "not in 2024, when she was first elected, and marked in 2026; the marks counted by year",
+       needs=("build_member_elections", "build_members_elect", "build_elections"))
+def _election_incumbents_on_file(BMEL, BME, BE):
+    """The owner's own case of 19 November 2026 on a built site's roster (site/legislators.json,
+    former.json, meta.json) and collected/election_<year>.json, with the bills' seat history where
+    text_sponsors.json is on disk (BME.load_history): Wade (11286) first won Strafford 15 in 2024
+    and is not marked there, and is marked in Strafford 21 in 2026 (sitting in 2025-2026)."""
+    site = Path("site")
+    need = [site / "legislators.json", site / "former.json", site / "meta.json", site / "districts.json"]
+    if not all(p.is_file() for p in need):
+        return "skip", "not here: " + ", ".join(p.as_posix() for p in need if not p.is_file())
+    import build_date
+    sitting, former, meta, districts = (json.loads(p.read_text(encoding="utf-8")) for p in need)
+    history = BME.load_history(BME.SPONSORS_DEFAULT)
+    roster = BMEL.Roster(sitting, former, meta.get("terms") or [], history)
+    if "11286" not in roster.members:
+        return "skip", "Alice Wade (11286) is not on this roster"
+    by_year, wade = {}, {}
+    items = BE.elections_on_file("collected")
+    for election, _p, doc in items:
+        # The page's own way: the winners members_elect links, then the hand file, then the rule.
+        races_me, _rep, hand = BE.decided(doc, sitting, former, districts, BME.HAND_DEFAULT,
+                                          build_date.today().isoformat(), BE.settled_in(items, election), history)
+        n = 0
+        for k, race in doc["races"].items():
+            drawn = {e["n"]: e for e in (races_me.get(k) or {}).get("elected") or []}
+            inc = BMEL.incumbents(k, race, election, roster, drawn, (hand.get("matches") or {}).get(k) or {})
+            n += len(inc)
+            if k in ("H|Strafford|15", "H|Strafford|21") and "Alice Wade" in {c["name"] for c in race["candidates"]}:
+                wade[election[:4]] = "Alice Wade" in inc
+        by_year[election[:4]] = n
+    assert wade == {"2024": False, "2026": True}, f"Wade's marks: {wade}"
+    return "ok", ("Wade unmarked in 2024 and marked in 2026; marks by year: "
+                  + ", ".join(f"{y} {n}" for y, n in sorted(by_year.items())))
 
 
 # THE ELECTIONS BEFORE 2024 (10 November 2026; branch dec/results-2016-2022). The

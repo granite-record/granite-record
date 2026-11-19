@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.11
+# GRANITE_VERSION: 2026-11-07.12
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -306,7 +306,22 @@ def bill_href(site, term, bill):
 
 # ------------------------------------------------------------------ drawing ---
 
-def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=False):
+INC_WORDS = {"H": "held a seat in the House on election day",
+             "S": "held a seat in the Senate on election day"}
+
+
+def inc_mark(chamber):
+    """The asterisk after an incumbent's name, its words in its title."""
+    return f' <abbr class="er-inc" title="{INC_WORDS[chamber]}">*</abbr>'
+
+
+def inc_legend(chamber):
+    """The one line under a list of cards that marks any (the owner, 19 November 2026)."""
+    return f'<p class="src er-incl">* {INC_WORDS[chamber]}.</p>'
+
+
+def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=False, inc=frozenset(),
+                   chamber="H"):
     """The race's rows, most votes first. `mine` is the candidate a member's
     Elections tab is about (same_name), whose row is marked er-me.
 
@@ -319,7 +334,11 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=Fal
 
     A PRIMARY (`primary`, a member's Elections tab): the reader's leaders,
     "nominated": true, are marked Most votes -- never "nominated", which the
-    files do not say (the design's decision 4) -- and nothing is Elected."""
+    files do not say (the design's decision 4) -- and nothing is Elected.
+
+    AN INCUMBENT (`inc`, same_name of each, build_member_elections.incumbents:
+    a certain match who held a seat of the race's chamber on election day) has
+    an asterisk after the name."""
     shown = [c for c in race["candidates"] if same_name(c["name"]) not in held]
     cands = sorted(shown, key=lambda c: (-c["votes"], c["name"]))
     top = max((c["votes"] for c in cands), default=0) or 1
@@ -340,6 +359,7 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=Fal
         out.append(
             '<li class="er-row' + (" er-me" if mine and same_name(c["name"]) == mine else "")
             + '"><span class="er-who">' + C.pchip(chipm)
+            + (inc_mark(chamber) if same_name(c["name"]) in inc else "")
             + (' <span class="er-wi">write-in</span>' if c.get("write_in") else "")
             + (" " + C.chip("Elected") if won else "")
             + (" " + C.chip("Most votes") if most else "")
@@ -425,7 +445,7 @@ def margin_data(m):
 
 
 def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=None, anchor=True,
-              primary=""):
+              primary="", inc=frozenset()):
     """One race as its card. The elections page draws every race so; a
     member's Elections tab draws each race the member is in by this same
     function (build_member_elections), with `mine` their candidate's name
@@ -480,7 +500,7 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
     return (f'<article class="er-race"{at}>'
             f'<div class="er-hd"><{h}>{E(race_name(key, race))}</{h}>{margin_chip(m)}</div>'
             f'<p class="er-meta">{" &middot; ".join(E(x) if not x.startswith("<b>") else x for x in meta)}</p>'
-            f'<ul class="er-rows">{candidate_rows(race, elected_names, held, mine, bool(primary))}</ul>'
+            f'<ul class="er-rows">{candidate_rows(race, elected_names, held, mine, bool(primary), inc, key[0])}</ul>'
             + margin_line(m, seats, not me.get("not_final"), bool(primary))
             + status_lines(me)
             + "".join(f'<p class="er-note">{n}</p>' for n in notes)
@@ -867,7 +887,7 @@ def tabs_html(panels):
             + "".join(panes))
 
 
-def county_groups(keys, races, decided_races, results, tnotes, election, hand):
+def county_groups(keys, races, decided_races, results, tnotes, election, hand, inc=None):
     by = {}
     for k in sorted(keys, key=BME.race_order):
         by.setdefault(BME.KEY_RE.match(k).group(1), []).append(k)
@@ -877,7 +897,8 @@ def county_groups(keys, races, decided_races, results, tnotes, election, hand):
                    f'<span>{len(ks)} district{"s" if len(ks) != 1 else ""}</span></h3>'
                    '<div class="er-cards">'
                    + "".join(race_card(k, races[k], decided_races.get(k) or {}, results, tnotes,
-                                       election, hand, h="h4") for k in ks) + "</div>")
+                                       election, hand, h="h4", inc=(inc or {}).get(k, frozenset()))
+                             for k in ks) + "</div>")
     return "".join(out)
 
 
@@ -891,8 +912,12 @@ def not_on_file_words(results):
     return " and ".join(parts)
 
 
-def page_body(election, results, decided_races, report, hand, site, ballots, settled=False):
+def page_body(election, results, decided_races, report, hand, site, ballots, settled=False, inc=None):
+    """The page. `inc` is {race key: the incumbents' same_name}
+    (build_member_elections.incumbents), each marked * on its card, with one
+    line under the tab's cards saying what the mark is."""
     races = results["races"]
+    inc = {k: v - held_names(hand, k) for k, v in (inc or {}).items()}
     path = page_path(election)
     senate = [k for k in races if k.startswith("S|")]
     house = [k for k in races if k.startswith("H|")]
@@ -942,12 +967,13 @@ def page_body(election, results, decided_races, report, hand, site, ballots, set
                        margin_filter("senate", senate, races, election, hand)
                        + '<div class="er-cards">' + "".join(
                            race_card(k, races[k], decided_races.get(k) or {}, results, tnotes,
-                                     election, hand)
-                           for k in sorted(senate, key=BME.race_order)) + "</div>" + flat))
+                                     election, hand, inc=inc.get(k, frozenset()))
+                           for k in sorted(senate, key=BME.race_order)) + "</div>" + flat
+                       + (inc_legend("S") if any(inc.get(k) for k in senate) else "")))
     panels.append(("house", f'State House <span class="ofn">({len(house)})</span>',
                    margin_filter("house", house, races, election, hand) + find
-                   + county_groups(house, races, decided_races, results, tnotes, election, hand)
-                   + flat))
+                   + county_groups(house, races, decided_races, results, tnotes, election, hand, inc)
+                   + flat + (inc_legend("H") if any(inc.get(k) for k in house) else "")))
     if ballots:
         panels.append(("questions", f'Ballot Questions <span class="ofn">({len(ballots)})</span>',
                        ballot_block(ballots, site, results)))
@@ -1030,6 +1056,12 @@ def build(site, base, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT
     new.mkdir()
     made, urls, warn = [], [], []
     pages = provisional(site)
+    # The incumbents' marks are the member tab's rule (build_member_elections.incumbents),
+    # imported here and not at the top: that module imports this one.
+    import build_member_elections as BMEL
+    meta_p = site / "meta.json"
+    terms = (json.loads(meta_p.read_text(encoding="utf-8")).get("terms") or []) if meta_p.is_file() else []
+    roster = BMEL.Roster(sitting, former, terms, history)
     for election, _p, results in items:
         settled = settled_in(items, election)
         races_me, report, hand = decided(results, sitting, former, districts, hand_path, today,
@@ -1039,7 +1071,11 @@ def build(site, base, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT
             warn.append(f"{election}: no recount_deadline in {Path(hand_path).as_posix()}, so every "
                         "race but a recounted one reads Result not final")
         ballots = question_cards(election, BALLOTS, Path(collected) / QUESTIONS.name)
-        body = page_body(election, results, races_me, report, hand, site, ballots, settled)
+        inc = {k: BMEL.incumbents(k, r, election, roster,
+                                  {e["n"]: e for e in (races_me.get(k) or {}).get("elected") or []},
+                                  (hand.get("matches") or {}).get(k) or {})
+               for k, r in results["races"].items()}
+        body = page_body(election, results, races_me, report, hand, site, ballots, settled, inc)
         year = year_of(election)
         path = page_path(election)
         write_page(site, base, path,
