@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.17
+# GRANITE_VERSION: 2026-11-16.18
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -1595,9 +1595,6 @@ def _party_table(BE, EN, PE, ST):
 #   words  the English the translations file gives each of the table's keys
 #   css    the stylesheet's party inks and tints in each theme, and every class that draws one
 _PARTY_COPIES = (
-    ("src/parse/build_data.py", "PARTY", "py", "name"),
-    ("src/fetch/gc_db/fetch_members_db.py", "PARTY", "py", "name"),
-    ("src/fetch/gc_db/fetch_committee_members_db.py", "PARTY", "py", "name"),
     ("src/pages/build_session_pages.py", "PARTY_LETTER", "py", "spelling"),
     ("src/fetch/gc_web/fetch_rollcall_parties.py", "PARTY", "py", "spelling"),
     ("src/pages/build_site_v2.py", "MANUAL_PARTY", "py", "spelling"),
@@ -1867,6 +1864,9 @@ _PARTY_READERS = (
     ("src/pages/build_site_v2.py", "PARTY_FULL", "party_words", ("name",)),
     ("src/pages/officials_tabs.py", "PARTY_OF", "party_words", ("name",)),
     ("src/pages/structured.py", "PARTY_NAME", "party_words", ("party_name",)),
+    ("src/parse/build_data.py", "PARTY", "party_words", ("name",)),
+    ("src/fetch/gc_db/fetch_members_db.py", "PARTY", "party_words", ("name",)),
+    ("src/fetch/gc_db/fetch_committee_members_db.py", "PARTY", "party_words", ("name",)),
 )
 
 

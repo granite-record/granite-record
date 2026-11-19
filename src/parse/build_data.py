@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.70
+# GRANITE_VERSION: 2026-09-04.71
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -42,10 +42,12 @@ import json
 import names
 import proceedings as P
 import rollcall_parser as RP
+import state_settings as ST
 import re
 from collections import Counter, defaultdict
 
-PARTY = {"R": "Republican", "D": "Democrat", "I": "Independent", "L": "Libertarian"}
+# A member's party in the roster's words, by its letter: the state's one table of parties.
+PARTY = ST.party_words("name")
 
 
 
