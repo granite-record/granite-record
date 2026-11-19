@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.36
+# GRANITE_VERSION: 2026-11-16.37
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -6688,6 +6688,74 @@ def _former_seat_from_bills(B2):
     return "ok", ("Hutchinson Rock 73 -> Rockingham 8 with a 301 from the old address; the person's "
                   "seat, a seat already right, an abbreviated county, and moves onto another page's "
                   "or a sitting member's address left alone; a recorded address kept for good")
+
+
+@check("build", "a former member's label names the seat they held in their last term on record, or no district where that is not known, and their page does not move",
+       needs=("build_site_v2", "parse_districts", "state_settings"))
+def _former_label_is_the_last_terms_seat(B2, PDIST, ST):
+    """last_term_labels (19 November 2026). Carlos E. Gonzalez's page read "Rep. Carlos E.
+    Gonzalez (R - Hills 48)": the person's correction gives him the seat the journals print in
+    2001-2002, and his last term, 2015-2016, was on the 2012 lines, which number Hillsborough's
+    districts to 45. And three corrected members of 2015-2016 (Andrew Christie Jr., Robert H.
+    Rowe, John L. Balcom) were labelled with their 1999-2002 seats where their last term's bills
+    print another. Held, on made-up members against the district table of the tracked files:
+    the last term's bills' one seat over a corrected one; no district where the record's seat is
+    no district of the last term's lines, House or Senate; the record's seat kept where it is a
+    district of those lines, where the bills print two seats, and before 2013, when no table of
+    the lines is on file; and no page address moves. And the build applies it, and the row keeps
+    the address it is given."""
+    import ast
+    import copy
+    def row(mid, name, county, dist, chamber="H"):
+        return {"id": mid, "name": name, "chamber": chamber, "party": "R", "party_code": "R",
+                "county": county, "district": dist, "county_abbr": "Hills" if county == "Hillsborough" else "",
+                "former": True}
+    def ballots(mid, *years):
+        return [{"member_id": mid, "year": str(y), "date": f"3/1/{y}", "body": "H"} for y in years]
+    former = {"376341": row("376341", "Gonzalez, Carlos E.", "Hillsborough", "48"),
+              "374900": row("374900", "Christie, Andrew, Jr.", "Rockingham", "22"),
+              "1": row("1", "Kept, Kay", "Hillsborough", "22"),
+              "2": row("2", "Early, Ed", "Hillsborough", "48"),
+              "3": row("3", "Two, Tess", "Hillsborough", "14"),
+              "4": row("4", "Senator, Sal", "", "30", chamber="S"),
+              "5": row("5", "Today, Tim", "Hillsborough", "48")}
+    votes = {"376341": ballots("376341", 2001, 2015, 2016), "374900": ballots("374900", 1999, 2015),
+             "1": ballots("1", 2017), "2": ballots("2", 2001), "3": ballots("3", 2015),
+             "4": ballots("4", 2019), "5": ballots("5", 2025)}
+    record = ({("2015-2016", "374900"): ("H", "Rockingham", "37"),
+               ("2001-2002", "376341"): ("H", "Hillsborough", "48")}, {("2015-2016", "3")}, {})
+    table = PDIST.table(_paths.ROOT, ST.SETTINGS)
+    was = {k: B2._member_address(m) for k, m in former.items()}
+    got, changed = B2.last_term_labels(copy.deepcopy(former), votes, record, table)
+
+    def label(m):
+        return B2.member_labels(m.get("name"), chamber=m.get("chamber"), party=m.get("party_code"),
+                                district=m.get("district"), county=m.get("county"),
+                                county_abbr=m.get("county_abbr"))["display_full"]
+    said = {k: label(m) for k, m in got.items()}
+    assert said["376341"] == "Rep. Carlos E. Gonzalez (R)", said["376341"]
+    assert said["374900"] == "Rep. Andrew Christie Jr. (R - Rock 37)", said["374900"]
+    assert said["4"] == "Sen. Sal Senator (R)" and got["4"]["district"] == "", got["4"]
+    for k in ("1", "2", "3"):
+        assert got[k] == former[k], f"{k} changed: {got[k]}"
+    assert said["5"] == "Rep. Tim Today (R)", "a seat that is no district of today's lines was kept"
+    assert set(changed) == {"376341", "374900", "4", "5"} and changed["376341"] == ("Hillsborough 48", "no district"), changed
+    assert {k: B2._member_address(m) for k, m in got.items()} == was, "a former member's page moved"
+    assert got["376341"]["slug"] == "carlos-e-gonzalez-hills-48" and got["376341"]["county"] == "Hillsborough"
+    # The build applies it, after the seats are dated and the addresses kept, and a row keeps its address.
+    text = _source(_paths.locate("build_site_v2.py"))
+    tree = _parsed(_paths.locate("build_site_v2.py"))
+    main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    calls = [n.func.id for n in ast.walk(main) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]
+    assert "last_term_labels" in calls and calls.index("keep_moved") < calls.index("last_term_labels") \
+        and calls.index("last_term_labels") < calls.index("build_legislators"), "main does not label former members by their last term"
+    bl = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "build_legislators")
+    assert '"slug": m.get("slug") or member_slug(m, lab)}' in ast.get_source_segment(text, bl), (
+        "build_legislators does not keep the address a former member's row is given")
+    return "ok", ("Gonzalez's Hills 48 of 2001-2002, no district of 2015-2016's lines, is no district; a corrected "
+                  "Rock 22 is the Rock 37 the last term's bills print; a Senate 30 and today's Hills 48, no "
+                  "district of their lines, none; a seat of the lines, two printed seats and a term before 2013 "
+                  "as they were; no page moves; main applies it before the pages are written")
 
 
 @check("build", "a former member's last vote is the last of their last term, whatever day the "
