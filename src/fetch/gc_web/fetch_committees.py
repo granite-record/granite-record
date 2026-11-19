@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Every standing committee, from the two pages that list them.
 
@@ -73,7 +73,6 @@ MEMBER_LINK = re.compile(
     re.I)
 ROLE = re.compile(r"^\s*(?P<role>V\s*Chair(?:man|woman)?|Chair(?:man|woman)?|"
                   r"Clerk|Ranking Member)\s+(?P<who>.+)$", re.I)
-AIDE = re.compile(r"Committee Aide:\s*(?:<[^>]+>)*\s*([^<\n]{2,50})", re.I)
 PHONE = re.compile(r"Phone:\s*(?:<[^>]+>)*\s*\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})", re.I)
 PLACE = re.compile(r"Location:\s*(?:<[^>]+>)*\s*([^<\n]{1,40})", re.I)
 

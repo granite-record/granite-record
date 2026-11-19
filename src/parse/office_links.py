@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 Who holds an office the legislature's record does not number: the rule that links a holder of
 an office -- a governor, a councilor, a member of Congress, a county officer -- to a person of
@@ -306,10 +306,6 @@ def _agreements(ev):
     if ev["party"][0] == "agree":
         got.append("party")
     return [g for g in got if g in AGREEMENTS]
-
-
-def _hard(ev):
-    return ev["middle"][0] == "differ" or ev["suffix"][0] == "differ" or ev["incompatible"][0] == "clash"
 
 
 def _words(ev):

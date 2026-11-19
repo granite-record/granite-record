@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-24.3
+# GRANITE_VERSION: 2026-10-24.4
 """
 What the home page's Latest Activity holds: the latest meetings, each with
 the bills it took up and what was done to each there.
@@ -130,11 +130,6 @@ def _code(name, body):
     chamber's letter first, which is all at_meeting reads of it, and its name
     as the docket writes it, which the reports and the meetings share."""
     return (body or "").strip().upper()[:1] + "|" + re.sub(r"\s+", " ", (name or "").strip().lower())
-
-
-def _int(v):
-    s = str(v if v is not None else "").strip()
-    return int(s) if s.isdigit() else None
 
 
 def committee_rows(rows, histories, today):

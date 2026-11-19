@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-18.2
+# GRANITE_VERSION: 2026-11-18.3
 """
 The Secretary of State's count of the State Primary's State Representative
 and State Senate races, 2016 to 2026, each party's primary its own contest,
@@ -170,12 +170,6 @@ class Primary(datetime.date):
         self.choose = nominate
         self.mark = "nominated"
         return self
-
-
-def primary_day(year):
-    """The second Tuesday of September of `year`, as a plain date."""
-    p = Primary(year, "democratic")
-    return datetime.date(p.year, p.month, p.day)
 
 
 # ---- the winners -----------------------------------------------------------------

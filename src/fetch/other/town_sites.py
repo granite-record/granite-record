@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.13
+# GRANITE_VERSION: 2026-09-20.14
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -116,7 +116,6 @@ AGENTS = {
     "browser": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
 }
-AGENT = AGENTS["project"]
 
 
 def headers(agent):

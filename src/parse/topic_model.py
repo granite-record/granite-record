@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.15
+# GRANITE_VERSION: 2026-09-16.16
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 src/parse/topic_model.py --apply              # write topics_assigned.json
@@ -843,7 +843,6 @@ def features(rec, text):
 
 FAMILIES = ("w", "b", "w1", "sk", "c", "k", "a", "ab", "a1", "h",
             "r", "rs", "ro")
-TEXT_FAMILIES = ("a", "ab", "a1", "h", "r", "rs", "ro")
 
 # ---------------------------------------------------------------------- model
 

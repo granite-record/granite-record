@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.34
+# GRANITE_VERSION: 2026-09-04.35
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -635,9 +635,6 @@ VACATED_RE = re.compile(
 VACATED_FROM_TO_RE = re.compile(
     r"^\s*Vacated\s+from\s+(?:(?!\b(?i:re-?ref|ref|introduced)\w*\b)[^;,])+?\s+to\s+"
     r"(?P<committee>[A-Z][^,;]*?)\s*(?:[,;]|$)")
-
-# "Committee Report: Ought to Pass, 01/30/2025, Vote 5-0;  SC 7"
-CMTE_REPORT_RE = re.compile(r"Committee Report:\s*(?P<rec>[^,(]+)")
 
 # Effective-date extraction for referral ordering
 INTRODUCED_RE = re.compile(r"Introduced(?:\s+\(in recess of\))?\s+(?P<date>\d{1,2}/\d{1,2}/\d{4})")

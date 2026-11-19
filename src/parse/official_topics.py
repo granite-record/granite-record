@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.2
+# GRANITE_VERSION: 2026-11-12.3
 """
 The General Court's own subject code as an archived bill's topic.
 
@@ -45,7 +45,6 @@ import re
 from collections import Counter, defaultdict
 
 PAST = Path("db/past")
-SUBJECTS = Path("data/subjects.json")
 
 
 def _bill_no(s):
