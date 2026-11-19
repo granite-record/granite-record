@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.8
+# GRANITE_VERSION: 2026-11-07.9
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -58,6 +58,15 @@ leaves out Orange), the card says so in plain words and shows the towns'
 sum, which is what the collected file holds. Every other note the reader
 made is listed, as it wrote it, under "Notes on the Files".
 
+THE MARGIN IS election_margin.py's, the one rule (the elections display
+design of 19 November 2026, approved that day): each card's label at its top
+right in the party chip's shape ("R+1.3", "R+0.7 over R", Unopposed, Tied),
+the gap in votes and the votes that would have changed it under the rows; on
+the House and Senate tabs, margin buttons with their counts and an order,
+smallest margin first, which the overview's Smallest Margins lists the first
+eight of. A race whose winner the owner holds back has no margin shown: it
+would say who won. Figures only: never "close", "safe" or "competitive".
+
 NOTHING LIVE. No election-night source, no projection, no race call: the
 owner's decision of 7 November 2026 leaves the night's source for nearer
 2028.
@@ -80,6 +89,7 @@ import build_district_map as BDM
 import build_members_elect as BME
 import build_town_pages as BT
 import components as C
+import election_margin as EM
 import i18n
 import shell as S
 
@@ -344,18 +354,71 @@ def status_lines(me):
     return out
 
 
+def margin_of(key, race, election, hand=None):
+    """The race's margin, election_margin's (the one rule), or None where a
+    winner of the race is held back: its label and its gap would say who won."""
+    if held_names(hand or {}, key):
+        return None
+    return EM.margin(race, EM.results_contest(election, key))
+
+
+def margin_chip(m):
+    """The margin's label in the one chip, coloured by the last winner's party
+    as the party chip is (pt-R, pt-D, pt-I); a cross-nomination, a party with
+    no colour of its own, Unopposed and Tied on the neutral chip; none for a
+    race with no margin."""
+    if not m or not m.get("label"):
+        return ""
+    p = m["label"].split("+")[0] if m["status"] == "contested" else ""
+    return C.chip(EM.words(m), "er-mg" + (f" pt-{p}" if p in ("R", "D", "I") else ""))
+
+
+def margin_line(m, seats, final):
+    """The figures beside the label (the owner's of 11 November 2026): the gap
+    in votes and the points and, once the result is final, the votes that
+    would have changed it, floor(gap/2)+1 (election_margin.flip). Figures only."""
+    if not m or m["status"] != "contested":
+        return ""
+    g = m["gap"]
+    gap = f'<b>{g:,} vote{"s" if g != 1 else ""}</b>, {m["points"]:.1f} points'
+    if not final:
+        return (f'<p class="er-out">The gap {"between the first two" if seats == 1 else "at the last seat"} '
+                f"is {gap}.</p>")
+    n = EM.flip(m)
+    if seats == 1:
+        return (f'<p class="er-out">Won by {gap}. {n:,} voter{"s" if n != 1 else ""} choosing the '
+                "other way would have changed the result.</p>")
+    return (f'<p class="er-out">The last seat by {gap}. {n:,} vote{"s" if n != 1 else ""} moved from '
+            "the last winner to the first out would have changed the result.</p>")
+
+
+def margin_data(m):
+    """The card's data-band, data-points and data-gap, which the page's filter
+    and order read (MARGIN_JS): the points of a tie are 0, of a race with no
+    margin nothing. (A County filter is to add data-county beside them.)"""
+    s = (m or {}).get("status")
+    pts = f'{m["points"]:.1f}' if s == "contested" else "0" if s == "tie" else ""
+    gap = str(m["gap"]) if s in ("contested", "tie") else ""
+    return f' data-band="{EM.band(m)}" data-points="{pts}" data-gap="{gap}"'
+
+
 def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=None, anchor=True):
     """One race as its card. The elections page draws every race so; a
     member's Elections tab draws each race the member is in by this same
     function (build_member_elections), with `mine` their candidate's name
     (same_name) to mark their row, and anchor=False: the card there is no
-    link's target, and one race may be on the tab for two elections."""
+    link's target, and one race may be on the tab for two elections. Its
+    margin's label is at the top right of either (margin_chip), and the gap
+    under the rows (margin_line); the page's card also carries the margin for
+    its filter (margin_data)."""
     elected_names = {e["n"]: e for e in me.get("elected") or []}
     held = held_names(hand or {}, key)
     towns = race.get("towns") or []
     seats = race["seats"]
+    m = margin_of(key, race, election, hand)
     meta = [", ".join(towns), f'{seats} seat{"s" if seats != 1 else ""}']
-    if len(race["candidates"]) <= seats:
+    if len(race["candidates"]) <= seats and not (m and m["status"] == "unopposed"):
+        # Said once: the chip says it wherever it is drawn.
         meta.append("Unopposed")
     if race.get("recounted"):
         meta.append("<b>Recounted</b>")
@@ -381,11 +444,13 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
     if scatter:
         foot.append(f'{scatter:,} scattered write-in vote{"s" if scatter != 1 else ""} '
                     f'{"are" if scatter != 1 else "is"} not shown.')
-    at = f' id="{race_id(key)}" data-towns="{E(" | ".join(towns).lower())}"' if anchor else ""
+    at = (f' id="{race_id(key)}" data-towns="{E(" | ".join(towns).lower())}"' + margin_data(m)
+          if anchor else "")
     return (f'<article class="er-race"{at}>'
-            f'<{h}>{E(race_name(key, race))}</{h}>'
+            f'<div class="er-hd"><{h}>{E(race_name(key, race))}</{h}>{margin_chip(m)}</div>'
             f'<p class="er-meta">{" &middot; ".join(E(x) if not x.startswith("<b>") else x for x in meta)}</p>'
             f'<ul class="er-rows">{candidate_rows(race, elected_names, held, mine)}</ul>'
+            + margin_line(m, seats, not me.get("not_final"))
             + status_lines(me)
             + "".join(f'<p class="er-note">{n}</p>' for n in notes)
             + (f'<p class="er-foot">{" ".join(foot)}</p>' if foot else "")
@@ -432,24 +497,48 @@ def chamber_block(name, t, partial=""):
             + bar + f'<ul class="l-barkey">{key}</ul></figure></section>')
 
 
-def closest(races, decided_races, path, hand, n=8):
+def closest(races, decided_races, path, hand, n=8, election=None):
+    """The `n` races of smallest margin, the order the page's "Smallest margin
+    first" takes (election_margin.order_key): a tie, then by points, then by
+    votes. A race with a held winner, or none contested, is not among them."""
     rows = []
     for k, r in races.items():
-        if held_names(hand, k) or k not in decided_races:
+        if k not in decided_races:
             continue
-        c = sorted(r["candidates"], key=lambda c: -c["votes"])
-        if len(c) > r["seats"]:
-            rows.append((c[r["seats"] - 1]["votes"] - c[r["seats"]]["votes"], BME.race_order(k), k, r))
+        mg = margin_of(k, r, election or "", hand)
+        if mg and mg["status"] in ("contested", "tie"):
+            rows.append((EM.order_key(mg), BME.race_order(k), k, r, mg))
     rows.sort(key=lambda x: (x[0], x[1]))
     out = []
-    for m, _o, k, r in rows[:n]:
+    for _key, _o, k, r, mg in rows[:n]:
+        m = mg["gap"]
         me = decided_races.get(k) or {}
         tags = (" " + C.chip("Recounted") if r.get("recounted") else "") + \
                (" " + C.chip("Result not final") if me.get("not_final") else "")
         said = ("<span>tied for the last seat</span>" if m == 0 else
                 f'<span>last seat by <b>{m:,}</b> vote{"s" if m != 1 else ""}</span>')
-        out.append(f'<li><a href="{path}#{race_id(k)}">{E(race_name(k, r))}</a>{said}{tags}</li>')
+        out.append(f'<li><a href="{path}#{race_id(k)}">{E(race_name(k, r))}</a>{margin_chip(mg)}'
+                   f"{said}{tags}</li>")
     return '<ol class="er-close">' + "".join(out) + "</ol>"
+
+
+def margin_filter(pane, keys, races, election, hand):
+    """The margin buttons, each with the number of the pane's races it shows,
+    and the order, above a pane's cards (the design's decisions 5 and 7: words
+    are figures only). Hidden until the page's script (MARGIN_JS) shows it, so
+    a reader without one meets no control that does nothing."""
+    bands = Counter(EM.band(margin_of(k, races[k], election, hand)) for k in keys)
+    btns = [("", "Any", len(keys))] + [(b, w, bands.get(b, 0)) for b, w in EM.BANDS]
+    return (f'<div class="er-filt bfilt" id="er-mf-{pane}" data-pane="{pane}" hidden>'
+            f'<div class="er-mfl"><span class="er-lab" id="er-mfl-{pane}">Margin</span>'
+            f'<div class="wkchips er-seg" role="group" aria-labelledby="er-mfl-{pane}">'
+            + "".join(f'<button type="button" data-band="{b}" aria-pressed="{"true" if not b else "false"}">'
+                      f'{w} <span class="er-c">{n:,}</span></button>' for b, w, n in btns)
+            + "</div></div>"
+            f'<label>Order<select id="er-mo-{pane}"><option value="district">By district</option>'
+            '<option value="small">Smallest margin first</option>'
+            '<option value="large">Largest margin first</option></select></label>'
+            f'<p class="count er-count" role="status"></p></div>')
 
 
 def deadline_line(hand, report, election, settled=False):
@@ -681,18 +770,54 @@ def map_html(election, words):
             "})();</script>")
 
 
-FIND_JS = """<script>
+# THE FILTER AND THE ORDER OF A PANE'S RACES (the elections display design of
+# 19 November 2026, asks 2 and 3): the margin buttons (margin_filter) show the
+# races of one band, the Order sorts every race of the pane by its margin into
+# one list (.er-flat) and By district puts each back in its county, and the
+# House's town box narrows them by a town or ward. One script for all three,
+# since each hides cards; a link carrying data-order (the overview's Smallest
+# Margins) opens a pane in that order.
+MARGIN_JS = """<script id="er-margin-js">
 (function(){
-  var box=document.getElementById("er-find"),say=document.getElementById("er-found");
-  if(!box)return;
-  box.hidden=false;
-  var cards=[].slice.call(document.querySelectorAll("#house .er-race"));
-  box.querySelector("input").addEventListener("input",function(){
-    var q=this.value.trim().toLowerCase(),n=0;
-    cards.forEach(function(c){var on=!q||c.dataset.towns.indexOf(q)>=0;c.hidden=!on;if(on)n++;});
-    say.textContent=q?(n===1?"1 race":n+" races")+" with a town or ward matching \\u201c"+this.value.trim()+"\\u201d":"";
-    [].slice.call(document.querySelectorAll("#house .er-county")).forEach(function(h){
-      var g=h.nextElementSibling;h.hidden=!!q&&!(g&&g.querySelector(".er-race:not([hidden])"));});
+  var each=function(s,r){return [].slice.call((r||document).querySelectorAll(s));};
+  each(".er-filt").forEach(function(f){
+    var pane=document.getElementById(f.getAttribute("data-pane"));
+    if(!pane)return;
+    var cards=each(".er-race",pane),home=cards.map(function(c){return c.parentNode;});
+    var flat=pane.querySelector(".er-flat"),heads=each(".er-county",pane),btns=each("button[data-band]",f);
+    var sel=f.querySelector("select"),say=f.querySelector(".er-count"),box=pane.querySelector(".er-find");
+    var find=box&&box.querySelector("input"),band="";
+    f.hidden=false;if(box)box.hidden=false;
+    var num=function(c,k){var v=c.getAttribute("data-"+k);return v===null||v===""?null:+v;};
+    var by=function(up){return function(a,b){
+      var x=num(a,"points"),y=num(b,"points");
+      if(x===null||y===null)return (x===null)-(y===null)||cards.indexOf(a)-cards.indexOf(b);
+      return (up?x-y:y-x)||(up?num(a,"gap")-num(b,"gap"):num(b,"gap")-num(a,"gap"))||cards.indexOf(a)-cards.indexOf(b);};};
+    function apply(){
+      var q=find?find.value.trim().toLowerCase():"",ord=sel?sel.value:"district",n=0;
+      cards.forEach(function(c){
+        var on=(!band||c.getAttribute("data-band")===band)&&(!q||(c.getAttribute("data-towns")||"").indexOf(q)>=0);
+        c.hidden=!on;if(on)n++;});
+      if(ord==="district"||!flat){
+        cards.forEach(function(c,i){home[i].appendChild(c);});
+        if(flat)flat.hidden=true;
+        heads.forEach(function(h){var g=h.nextElementSibling;
+          h.hidden=!cards.some(function(c){return c.parentNode===g&&!c.hidden;});if(g)g.hidden=h.hidden;});
+      }else{
+        cards.slice().sort(by(ord==="small")).forEach(function(c){flat.appendChild(c);});
+        flat.hidden=false;
+        heads.forEach(function(h){h.hidden=true;if(h.nextElementSibling)h.nextElementSibling.hidden=true;});
+      }
+      say.textContent=band||q?n+" of "+cards.length+" races"+(q?" with a town or ward matching \\u201c"+find.value.trim()+"\\u201d":""):"";
+    }
+    btns.forEach(function(b){b.addEventListener("click",function(){
+      band=b.getAttribute("data-band");
+      btns.forEach(function(x){x.setAttribute("aria-pressed",x===b?"true":"false");});apply();});});
+    if(sel)sel.addEventListener("change",apply);
+    if(find)find.addEventListener("input",apply);
+    each("a[data-order]").forEach(function(a){if(a.getAttribute("data-pane")!==pane.id)return;
+      a.addEventListener("click",function(){if(sel)sel.value=a.getAttribute("data-order");band="";
+        btns.forEach(function(x){x.setAttribute("aria-pressed",x.getAttribute("data-band")===""?"true":"false");});apply();});});
   });
 })();
 </script>"""
@@ -761,9 +886,14 @@ def page_body(election, results, decided_races, report, hand, site, ballots, set
            "a district that elected both parties, or a candidate both nominated, is striped. A district "
            "with no final winner shown is hatched; choose a district to see what is still to come.</p>"
            + map_html(election, MAP_WORDS) + "</section>" if drawn_map else "")
-        + '<section class="ofpart"><h3 class="er-h">Closest Races</h3>'
-          '<p class="src">By how many votes the last seat was won, fewest first.</p>'
-        + closest(races, decided_races, path, hand) + "</section>")
+        + '<section class="ofpart"><h3 class="er-h">Smallest Margins</h3>'
+          '<p class="src">The last seat&rsquo;s margin in points, the lead of the last winner over the '
+          "first out, smallest first, with the gap in votes.</p>"
+        + closest(races, decided_races, path, hand, election=election)
+        + '<p class="src">' + " &middot; ".join(
+            f'<a href="{path}#er-mf-{p}" data-order="small" data-pane="{p}">Every {w} race, smallest margin '
+            "first</a>" for p, w, ks in (("senate", "State Senate", senate), ("house", "State House", house))
+            if ks) + "</p></section>")
     notes = [n for n in results.get("_notes") or [] if not TOTALS_NOTE.match(n)]
     if notes:
         overview += ('<section class="ofpart"><h3 class="er-h">Notes on the Files</h3>'
@@ -771,19 +901,22 @@ def page_body(election, results, decided_races, report, hand, site, ballots, set
                      "them, in its own words. A printed total that leaves out a town is said on its "
                      "race&rsquo;s card instead.</p><ul class=\"er-notes\">"
                      + "".join(f"<li>{E(n)}</li>" for n in notes) + "</ul></section>")
+    # The town box's count is the margin filter's line (MARGIN_JS), which says both.
     find = ('<div class="er-find" id="er-find" hidden><label for="er-q">Find a town or ward</label>'
-            '<input id="er-q" type="search" autocomplete="off" placeholder="A town or ward">'
-            '<p class="count" id="er-found" role="status"></p></div>')
+            '<input id="er-q" type="search" autocomplete="off" placeholder="A town or ward"></div>')
+    flat = '<div class="er-cards er-flat" hidden></div>'
     panels = [("overview", "Overview", overview)]
     if senate:
         panels.append(("senate", f'State Senate <span class="ofn">({len(senate)})</span>',
-                       '<div class="er-cards">' + "".join(
+                       margin_filter("senate", senate, races, election, hand)
+                       + '<div class="er-cards">' + "".join(
                            race_card(k, races[k], decided_races.get(k) or {}, results, tnotes,
                                      election, hand)
-                           for k in sorted(senate, key=BME.race_order)) + "</div>"))
+                           for k in sorted(senate, key=BME.race_order)) + "</div>" + flat))
     panels.append(("house", f'State House <span class="ofn">({len(house)})</span>',
-                   find + county_groups(house, races, decided_races, results, tnotes, election,
-                                        hand)))
+                   margin_filter("house", house, races, election, hand) + find
+                   + county_groups(house, races, decided_races, results, tnotes, election, hand)
+                   + flat))
     if ballots:
         panels.append(("questions", f'Ballot Questions <span class="ofn">({len(ballots)})</span>',
                        ballot_block(ballots, site, results)))
@@ -811,7 +944,7 @@ def page_body(election, results, decided_races, report, hand, site, ballots, set
             + f"<span>{sources_line(results)} {deadline_line(hand, report, election, settled)}</span></div>"
             '<p class="src er-other">The Governor, the Executive Council, Congress and the county '
             "offices are not on this page yet: their results files have not been read.</p>"
-            + tabs_html(panels) + BT.TABS_JS + FIND_JS + "</div>")
+            + tabs_html(panels) + BT.TABS_JS + MARGIN_JS + "</div>")
 
 
 def index_body(items):

@@ -2443,6 +2443,24 @@ Hillsborough District 11"), with the member-elect sentence beside it
 `GR_ELECT`). Both end on the day they take office, by the build's day and the
 reader's clock.
 
+A race's margin is one function's, `src/pages/election_margin.py` (the
+elections display design of 19 November 2026): the two-way lead of the last
+winner over the first out, in points to one decimal, labelled with the last
+winner's printed letters ("R+1.3", "R+0.7 over R" where both share a party,
+Unopposed, Tied, none with no seat count; a primary's with no letter). The
+elections page draws it at the top right of each race's card in the one chip,
+with the gap in votes and the votes that would have changed it under the rows,
+and so does a member's Elections tab, whose cards are the page's own; each card
+on the page carries `data-band`, `data-points` and `data-gap`, which the House
+and Senate tabs' margin buttons, with their counts, and Order read
+(`build_elections.MARGIN_JS`, which also runs the House's town box); the
+overview's Smallest Margins is that order's first eight. A race whose winner the
+owner holds back shows no margin. preflight holds the rule on made-up races
+(`_margin_rule`), every race on file against a second hand and the design's
+measure (`_margins_on_file`), the page and its script in node
+(`_elections_margins_page`) and a built site's pages against the data
+(`_elections_margins_built`).
+
 The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
 gives `find.json` a row of the kind `elect` for each new member-elect with a
 provisional page and each former member elected again, named with the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.17
+# GRANITE_VERSION: 2026-11-16.18
 """
 preflight's checks of members-elect and election results.
 
@@ -1502,6 +1502,325 @@ def _margins_on_file(EM):
                   "edge by the label's rounding")
 
 
+def _mg_tree(html):
+    """A page's markup as a tree node can rebuild ([tag, attrs, children]; a text is a string),
+    its scripts left out: what _MG_NODE drives the page's own script on."""
+    from html.parser import HTMLParser
+    void = {"input", "br", "img", "link", "meta", "hr", "source", "wbr"}
+
+    class P(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.root = ["#root", {}, []]
+            self.stack, self.skip = [self.root], 0
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "script":
+                self.skip += 1
+                return
+            n = [tag, {k: (v if v is not None else "") for k, v in attrs}, []]
+            self.stack[-1][2].append(n)
+            if tag not in void:
+                self.stack.append(n)
+
+        def handle_endtag(self, tag):
+            if tag == "script":
+                self.skip -= 1
+                return
+            if tag not in void and len(self.stack) > 1 and self.stack[-1][0] == tag:
+                self.stack.pop()
+
+        def handle_data(self, d):
+            if not self.skip and d:
+                self.stack[-1][2].append(d)
+    p = P()
+    p.feed(html)
+    return p.root
+
+
+# The elections page's markup rebuilt in node, just deep enough for its margin script: elements
+# with their attributes, children and parents, the hidden attribute, a select's and an input's
+# value, listeners, and querySelector(All) of the compound and descendant selectors the script
+# uses. Each pane's buttons are pressed in turn, the order chosen, a town typed, and what is
+# shown read back.
+_MG_NODE = r"""
+const ids = {};
+function sel1(s) { const m = /^([a-z0-9]+)?((?:[.#][\w-]+|\[[^\]]+\])*)$/.exec(s); if (!m) throw new Error("selector " + s);
+  const parts = m[2].match(/[.#][\w-]+|\[[^\]]+\]/g) || [];
+  return x => x.tag && (!m[1] || x.tag === m[1]) && parts.every(p => {
+    if (p[0] === ".") return (" " + (x.attrs.class || "") + " ").includes(" " + p.slice(1) + " ");
+    if (p[0] === "#") return x.attrs.id === p.slice(1);
+    const a = /^\[([\w-]+)(?:=["']?([^"'\]]*)["']?)?\]$/.exec(p);
+    return a[2] === undefined ? a[1] in x.attrs : x.attrs[a[1]] === a[2]; }); }
+function matcher(sel) { const chain = sel.trim().split(/\s+/).map(sel1);
+  return x => { if (!chain[chain.length - 1](x)) return false; let i = chain.length - 2, y = x.parentNode;
+    while (i >= 0 && y) { if (chain[i](y)) i--; y = y.parentNode; } return i < 0; }; }
+function node(t) {
+  if (typeof t === "string") return {text: t, parentNode: null};
+  const n = {tag: t[0], attrs: Object.assign({}, t[1]), children: [], parentNode: null, on: {},
+    getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+    setAttribute(k, v) { this.attrs[k] = String(v); },
+    appendChild(c) { if (c.parentNode) c.parentNode.children = c.parentNode.children.filter(z => z !== c);
+      c.parentNode = this; this.children.push(c); return c; },
+    addEventListener(k, f) { (this.on[k] = this.on[k] || []).push(f); },
+    fire(k) { (this.on[k] || []).forEach(f => f({target: this, preventDefault() {}})); },
+    querySelectorAll(s) { const m = matcher(s), out = [];
+      const walk = y => (y.children || []).forEach(c => { if (c.tag && m(c)) out.push(c); if (c.tag) walk(c); });
+      walk(this); return out; },
+    querySelector(s) { return this.querySelectorAll(s)[0] || null; },
+    get nextElementSibling() { const k = this.parentNode ? this.parentNode.children.filter(c => c.tag) : [];
+      return k[k.indexOf(this) + 1] || null; },
+    get id() { return this.attrs.id || ""; },
+    get hidden() { return "hidden" in this.attrs; },
+    set hidden(v) { if (v) this.attrs.hidden = ""; else delete this.attrs.hidden; }};
+  Object.defineProperty(n, "textContent", {get() { return n.children.map(c => c.tag ? c.textContent : c.text).join(""); },
+    set(v) { n.children = [{text: String(v), parentNode: n}]; }});
+  if (n.tag === "select") { const o = (t[2] || []).filter(c => typeof c !== "string" && c[0] === "option");
+    n.value = (o.find(c => "selected" in c[1]) || o[0] || [0, {value: ""}])[1].value; }
+  if (n.tag === "input") n.value = n.attrs.value || "";
+  if (n.attrs.id) ids[n.attrs.id] = n;
+  (t[2] || []).forEach(c => n.appendChild(node(c)));
+  return n;
+}
+const root = node(TREE);
+global.document = {getElementById: k => ids[k] || null, querySelectorAll: s => root.querySelectorAll(s),
+  querySelector: s => root.querySelector(s)};
+new Function(SCRIPT)();
+const out = {panes: {}};
+for (const f of root.querySelectorAll(".er-filt")) {
+  const pane = ids[f.getAttribute("data-pane")], cards = pane.querySelectorAll(".er-race");
+  const shown = () => cards.filter(c => !c.hidden && !c.parentNode.hidden).map(c => c.attrs.id);
+  const say = () => f.querySelector(".er-count").textContent;
+  const p = out.panes[pane.attrs.id] = {unhidden: !f.hidden, all: shown(), buttons: []};
+  for (const b of f.querySelectorAll("button[data-band]")) {
+    b.fire("click");
+    p.buttons.push({band: b.attrs["data-band"], said: +b.querySelector(".er-c").textContent.replace(/,/g, ""),
+      shown: shown(), bands: shown().map(i => ids[i].attrs["data-band"]), say: say(),
+      pressed: f.querySelectorAll("button[data-band]").filter(x => x.attrs["aria-pressed"] === "true").length,
+      me: b.attrs["aria-pressed"]});
+  }
+  f.querySelector("button[data-band]").fire("click");
+  const s = f.querySelector("select"), flat = pane.querySelector(".er-flat");
+  const inflat = () => flat.children.filter(c => c.tag).map(c => c.attrs.id);
+  s.value = "small"; s.fire("change");
+  p.small = inflat(); p.small_heads = pane.querySelectorAll(".er-county").filter(h => !h.hidden).length;
+  p.small_shown = shown();
+  s.value = "large"; s.fire("change"); p.large = inflat();
+  s.value = "district"; s.fire("change");
+  p.district = cards.map(c => [c.attrs.id, c.parentNode.attrs.class]); p.back = shown();
+  p.district_heads = pane.querySelectorAll(".er-county").filter(h => !h.hidden).length;
+  const q = pane.querySelector(".er-find input");
+  if (q) { q.value = "alton"; q.fire("input"); p.alton = shown(); p.alton_say = say();
+    p.alton_heads = pane.querySelectorAll(".er-county").filter(h => !h.hidden).length;
+    q.value = ""; q.fire("input"); }
+}
+const link = root.querySelectorAll("a[data-order]").find(a => a.attrs["data-pane"] === "house");
+link.fire("click"); out.link = root.querySelectorAll(".er-flat").map(x => x.hidden);
+console.log(JSON.stringify(out));
+"""
+
+
+def _mg_results():
+    """A made-up election, every band and status in it: a tie and an under-5 in the Senate; in
+    the House, two counties with under 5, 5 to 10, 10 to 20, 20 or more, unopposed, a same-party
+    last seat, a held winner and a named write-in first out."""
+    def race(seats, towns, *cands, scatter=0):
+        return {"seats": seats, "floterial": False, "towns": list(towns), "scatter": scatter,
+                "candidates": [{"name": n, "party": p, "votes": v, "write_in": bool(w[:1] and w[0]),
+                                "elected": None} for n, p, v, *w in cands]}
+    races = {
+        "S|1": race(1, ["Alton"], ("Ann Ames", "r", 500), ("Bo Bell", "d", 500)),
+        "S|2": race(1, ["Barnstead"], ("Cy Cole", "d", 5150), ("Di Dunn", "r", 4850)),
+        "H|Belknap|1": race(1, ["Alton"], ("Ed Eaton", "r", 1524), ("Fay Fox", "d", 1485)),
+        "H|Belknap|2": race(2, ["Barnstead", "Gilmanton"], ("Gus Gale", "d", 2250), ("Hal Hart", "r", 2220),
+                            ("Ike Ives", "r", 2187), ("Jo Jay", "d", 1921)),
+        "H|Belknap|3": race(1, ["Alton"], ("Kit Kaye", "d", 1639), scatter=12),
+        "H|Belknap|4": race(1, ["Belmont"], ("Lu Lane", "r", 600), ("Mo Moss", "d", 400)),
+        "H|Carroll|1": race(1, ["Albany"], ("Ned Nye", "d", 560), ("Ola Orr", "r", 440)),
+        "H|Carroll|2": race(1, ["Bartlett"], ("Pam Park", "r", 860), ("Quin Quay", "d", 140)),
+        "H|Carroll|3": race(1, ["Conway"], ("Ray Roe", "r", 540), ("Sue Sims", "d", 460)),
+        "H|Carroll|4": race(1, ["Eaton"], ("Ty Tate", "d", 900), ("Una Urn", "", 100, True)),
+    }
+    for k, r in races.items():
+        best = sorted(r["candidates"], key=lambda c: -c["votes"])
+        for i, c in enumerate(best):
+            c["elected"] = None if k == "S|1" else i < r["seats"]
+    return {"election": "2026-11-03", "term": "2027-2028", "races": races,
+            "_source": [{"file": "made-up.xlsx", "saved": "2026-11-05"}], "_notes": []}
+
+
+@check("build", "the elections page carries each race's margin: the label at the top right of every card in "
+       "the party chip's shape, the gap and the votes that would change it, the margin buttons each "
+       "showing as many races as it counts in node, the order smallest margin first, and the button "
+       "counts the data's own bands", needs=("build_elections", "election_margin"))
+def _elections_margins_page(BE, EM):
+    """The elections display design of 19 November 2026, asks 2 and 3, on a made-up election
+    (_mg_results) drawn by build_elections.page_body itself:
+
+    - each card's chip says election_margin's words (R+1.3, R+0.7 over R, Unopposed, Tied), in
+      the party chip's family where the party has one, at the top right (.er-hd beside the
+      name), and carries data-band, data-points and data-gap; a held winner's race has none;
+    - the figures under the rows: "Won by 39 votes, 1.3 points. 20 voters ..." for one seat,
+      "The last seat by 33 votes, 0.7 points. 17 votes moved ..." for more, and before the
+      result is final the gap alone;
+    - each pane's buttons count its races by band, as the data's own bands come to (the
+      results' races less the held one), Any all of them;
+    - in node, the page's own script (MARGIN_JS) on the page's own markup: each button shows
+      exactly the races it counts and presses itself alone; Smallest margin first lists every
+      race of the pane in election_margin's order (the tie first, the unopposed and the held
+      last) with the county heads hidden, Largest the contested the other way, By district puts
+      each back in its county; the town box narrows with the count said; the overview's link
+      opens the House in that order;
+    - the overview's Smallest Margins is that order's first eight, each with its label;
+    - no word of "close", "safe" or "competitive" in what a reader reads; the member tab's card
+      (anchor=False) carries the label and no filter data."""
+    res = _mg_results()
+    races = res["races"]
+    hand = {"held": {"H|Belknap|4": {"Lu Lane": "held"}}}
+    me = {k: {"seats": r["seats"], "elected": [], "not_final": 0} for k, r in races.items()}
+    body = BE.page_body(res["election"], res, me, {}, hand, "site", [], settled=True)
+    want = {k: (None if k == "H|Belknap|4" else
+                EM.margin(r, EM.results_contest(res["election"], k))) for k, r in races.items()}
+    for k, m in want.items():
+        card = re.search(r'<article class="er-race" id="' + re.escape(BE.race_id(k)) + r'"[^>]*>.*?</article>',
+                         body, re.S).group(0)
+        attrs = dict(re.findall(r'(data-band|data-points|data-gap)="([^"]*)"', card.split(">", 1)[0]))
+        chip = re.search(r'<div class="er-hd"><(h[34])>[^<]*</\1>(<span class="chip er-mg([^"]*)">([^<]*)</span>)?'
+                         r"</div>", card)
+        assert chip, f"{k}: no head with the name and the label at its right: {card[:300]}"
+        if m is None:
+            assert not chip.group(2) and attrs == {"data-band": "", "data-points": "", "data-gap": ""} \
+                and "Won by" not in card and "votes moved" not in card, (
+                    f"{k}, its winner held: the margin says who won: {card[:400]}")
+            continue
+        p = m["label"].split("+")[0] if m["status"] == "contested" else ""
+        assert chip.group(4) == EM.words(m) and chip.group(3) == (f" pt-{p}" if p in ("R", "D", "I") else ""), (
+            f"{k}: the chip says {chip.group(4)!r} ({chip.group(3)!r}), the rule {EM.words(m)!r}")
+        assert attrs == {"data-band": EM.band(m), "data-gap": "" if m["gap"] is None else str(m["gap"]),
+                         "data-points": f"{m['points']:.1f}" if m["points"] is not None else
+                         ("0" if m["status"] == "tie" else "")}, f"{k}: the card's data {attrs}, the margin {m}"
+    one = re.search(r'id="r-h-belknap-1".*?</article>', body, re.S).group(0)
+    two = re.search(r'id="r-h-belknap-2".*?</article>', body, re.S).group(0)
+    assert ('<p class="er-out">Won by <b>39 votes</b>, 1.3 points. 20 voters choosing the other way would '
+            "have changed the result.</p>") in one, f"Belknap 1's figures: {one[-400:]}"
+    assert ('<p class="er-out">The last seat by <b>33 votes</b>, 0.7 points. 17 votes moved from the last '
+            "winner to the first out would have changed the result.</p>") in two and "R+0.7 over R" in two, (
+        f"Belknap 2's figures: {two[-400:]}")
+    early = BE.race_card("H|Belknap|1", races["H|Belknap|1"], {"seats": 1, "elected": [], "not_final": 1},
+                         res, {}, res["election"])
+    assert "The gap between the first two is <b>39 votes</b>, 1.3 points.</p>" in early \
+        and "would have changed" not in early, f"a race not final says what would have changed it: {early}"
+    tab = BE.race_card("H|Belknap|1", races["H|Belknap|1"], me["H|Belknap|1"], res, {}, res["election"],
+                       mine=BE.same_name("Ed Eaton"), anchor=False)
+    assert tab.startswith('<article class="er-race"><div class="er-hd"><h3>Belknap District 1</h3>'
+                          '<span class="chip er-mg pt-R">R+1.3</span></div>') and "data-band" not in tab, (
+        f"the member tab's card: {tab[:200]}")
+    # The buttons' counts are the data's own bands.
+    panes = {"senate": [k for k in races if k.startswith("S|")], "house": [k for k in races if k.startswith("H|")]}
+    for pane, keys in panes.items():
+        f = re.search(r'<div class="er-filt bfilt" id="er-mf-' + pane + r'".*?</select></label>', body, re.S).group(0)
+        said = dict(re.findall(r'data-band="([^"]*)" aria-pressed="[a-z]+">[^<]*<span class="er-c">([\d,]+)</span>', f))
+        data = {b: sum(1 for k in keys if want[k] and EM.band(want[k]) == b) for b, _w in EM.BANDS}
+        assert {b: int(n) for b, n in said.items()} == dict(data, **{"": len(keys)}), (
+            f"the {pane} buttons count {said}; the data's bands are {data} of {len(keys)}")
+    order = sorted([k for k in races if want[k] and want[k]["status"] in ("contested", "tie")],
+                   key=lambda k: (EM.order_key(want[k]), k.startswith("H|"), k))
+    listed = re.findall(r'<li><a href="[^"]*#(r-[a-z0-9-]+)">[^<]*</a><span class="chip er-mg[^"]*">([^<]*)</span>',
+                        body.split("Smallest Margins", 1)[1].split("</ol>", 1)[0])
+    assert [i for i, _w in listed] == [BE.race_id(k) for k in order][:8] and \
+        [w for _i, w in listed] == [EM.words(want[k]) for k in order][:8], (
+            f"Smallest Margins lists {listed}; the order is {order[:8]}")
+    text = re.sub(r"<[^>]+>", " ", re.sub(r"<script.*?</script>", "", body, flags=re.S)).lower()
+    for w in ("close", "safe", "competitive"):
+        assert not re.search(r"\b" + w, text), f"the page says {w!r}"
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "ok", "labels, figures, data and counts held in Python; node is not here for the script"
+    from pf_harness import _node_file
+    script = BE.MARGIN_JS.split(">", 1)[1].rsplit("</script>", 1)[0]
+    prog = f"const SCRIPT = {json.dumps(script)};\nconst TREE = {json.dumps(_mg_tree(body))};\n" + _MG_NODE
+    r = _node_file(node, prog, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, "the page's margin script stopped: " + (r.stderr or "").strip()[-400:]
+    out = json.loads(r.stdout.strip().splitlines()[-1])
+    for pane, keys in panes.items():
+        p = out["panes"][pane]
+        ids = [BE.race_id(k) for k in sorted(keys, key=BE.BME.race_order)]
+        assert p["unhidden"] and sorted(p["all"]) == sorted(ids), f"{pane}: the filter or a card is hidden at first"
+        for b in p["buttons"]:
+            assert b["said"] == len(b["shown"]) and b["me"] == "true" and b["pressed"] == 1, (
+                f"{pane}, the {b['band'] or 'Any'} button counts {b['said']} and shows {b['shown']}")
+            assert not b["band"] or set(b["bands"]) <= {b["band"]}, f"{pane}, {b['band']}: shows {b['bands']}"
+            assert b["say"] == ("" if not b["band"] else f"{b['said']} of {len(keys)} races"), (
+                f"{pane}, {b['band'] or 'Any'}: the count line says {b['say']!r}")
+        small = [BE.race_id(k) for k in sorted(keys, key=lambda k: (
+            EM.order_key(want[k]) if want[k] else (2, 0, 0), BE.BME.race_order(k)))]
+        assert p["small"] == small and p["small_heads"] == 0 and sorted(p["small_shown"]) == sorted(ids), (
+            f"{pane}, smallest margin first: {p['small']}, the rule {small}, {p['small_heads']} county heads shown")
+        contested = [i for i in p["large"] if any(BE.race_id(k) == i and want[k] and want[k]["status"] == "contested"
+                                                  for k in keys)]
+        pts = [float(re.search(r'id="' + i + r'"[^>]*data-points="([\d.]+)"', body).group(1)) for i in contested]
+        assert pts == sorted(pts, reverse=True) and len(p["large"]) == len(keys), (
+            f"{pane}, largest margin first: {p['large']}")
+        assert p["back"] == ids or sorted(p["back"]) == sorted(ids), f"{pane}: By district shows {p['back']}"
+        assert [c for c, cls in p["district"] if "er-flat" in cls] == [] and p["district_heads"] == (
+            2 if pane == "house" else 0), f"{pane}: By district left {p['district']}"
+        if pane == "house":
+            alton = sorted(BE.race_id(k) for k in keys if "Alton" in races[k]["towns"])
+            assert sorted(p["alton"]) == alton and p["alton_say"].startswith(f"{len(alton)} of {len(keys)} races with a town") \
+                and p["alton_heads"] == 1, f"the town box: {p['alton']}, {p['alton_say']!r}, {p['alton_heads']} heads"
+    assert out["link"] == [True, False], f"the overview's link does not open the House smallest first: {out['link']}"
+    return "ok", (f"{len(races)} made-up races: every label and its family, the figures for one seat, for "
+                  "two and before the result is final, the held winner's race without them, each "
+                  "button's count the data's band and the races it shows in node, smallest and largest "
+                  "first, back by district, the town box, the overview's eight and its link")
+
+
+@check("data", "on the built elections pages every card's margin is election_margin's of the results "
+       "file's race, and each House and Senate button counts the data's own races of its band",
+       needs=("build_elections", "election_margin", "build_members_elect"))
+def _elections_margins_built(BE, EM, BME):
+    """site/elections/<day>-general.html, where a build has written them, held to
+    collected/election_<year>.json: each card's data-points, data-band and label are the margin
+    of its race, none where the owner holds a winner back (corrections/members_elect.json), and
+    each pane's buttons count its races by band as the file's own races come to."""
+    pages = sorted(Path("site/elections").glob("*-general.html"))
+    if not pages:
+        return "skip", "no site/elections/<day>-general.html here: no build has drawn the elections pages"
+    files = {doc["election"]: doc for _e, _p, doc in BE.elections_on_file("collected")}
+    said, total = [], {}
+    for page in pages:
+        day = page.name[:10]
+        doc = files.get(day)
+        assert doc, f"{page.name} has no results file in collected/"
+        hand = BME.read_hand(BME.HAND_DEFAULT, day)[0]
+        html = page.read_text(encoding="utf-8")
+        bands = {}
+        for k, race in doc["races"].items():
+            m = BE.margin_of(k, race, day, hand)
+            head = re.search(r'<article class="er-race" id="' + re.escape(BE.race_id(k)) + r'"[^>]*>', html)
+            assert head, f"{page.name}: no card for {k}"
+            got = dict(re.findall(r'(data-band|data-points)="([^"]*)"', head.group(0)))
+            pts = "" if not m else f"{m['points']:.1f}" if m["status"] == "contested" else "0" if m["status"] == "tie" else ""
+            assert got == {"data-band": EM.band(m), "data-points": pts}, f"{page.name} {k}: {got}, the margin {m}"
+            pane = "senate" if k.startswith("S|") else "house"
+            bands.setdefault(pane, {}).setdefault(EM.band(m), 0)
+            bands[pane][EM.band(m)] += 1
+        for pane, b in bands.items():
+            f = re.search(r'id="er-mf-' + pane + r'".*?</select>', html, re.S)
+            assert f, f"{page.name}: no margin filter on the {pane} tab"
+            counts = {k: int(v.replace(",", "")) for k, v in re.findall(
+                r'data-band="([^"]*)" aria-pressed="[a-z]+">[^<]*<span class="er-c">([\d,]+)</span>', f.group(0))}
+            want = {x: b.get(x, 0) for x, _w in EM.BANDS}
+            want[""] = sum(b.values())
+            assert counts == want, f"{page.name} {pane}: the buttons count {counts}; the file's races {want}"
+            for x in want:
+                total[x] = total.get(x, 0) + want[x]
+        said.append(day[:4])
+    return "ok", (f"{len(pages)} pages ({', '.join(said)}), every card and button the data's; the House "
+                  "and Senate buttons together: " + ", ".join(
+                      f"{w} {total.get(x, 0):,}" for x, w in [("", "Any")] + list(EM.BANDS)))
+
+
 # A MEMBER'S ELECTIONS TAB (the owner's design of 10 November 2026; src/pages/
 # build_member_elections.py). A small made-up roster and two made-up elections,
 # so that every rule is held without a built site.
@@ -1684,7 +2003,7 @@ def _member_elections_cards(BMEL, BME, BE):
         and "Result not final" not in beck[1]["c"], "the card of a race not final lost its recount line"
     # The elections page's own card is as it was: anchored, no row marked.
     page = BE.race_card("S|5", r26["races"]["S|5"], {}, r26, {}, "2026-11-03")
-    assert page.startswith('<article class="er-race" id="r-s-5" data-towns="alpha | beta">') \
+    assert page.startswith('<article class="er-race" id="r-s-5" data-towns="alpha | beta" data-band=') \
         and not re.search(r"\ber-me(?![\w-])", page), f"the elections page's card changed: {page[:120]}"
     # app.js draws the cards, newest first, each headed by its day linked to the race.
     html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": beck}) + ")",

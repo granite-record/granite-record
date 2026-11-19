@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.5
+# GRANITE_VERSION: 2026-11-10.6
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -70,8 +70,10 @@ candidates. A race whose winner the owner holds back has neither. Where a race
 is a recount's, the row says so; the first count is not on file. And "c", the
 race's card as the elections page draws it (build_elections.race_card, the
 same function), with the member's own row marked, which is what the tab
-draws (the owner, 18 November 2026); the fields above stay for a reader of
-the JSON and for a row with no card.
+draws (the owner, 18 November 2026), its margin's label and figures with it
+(build_elections.margin_chip, election_margin.py's one rule, 19 November
+2026); the fields above stay for a reader of the JSON and for a row with no
+card.
 
 Nothing here asks the network.
 """

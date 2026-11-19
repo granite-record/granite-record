@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.399 */
+/* GRANITE_VERSION: 2026-09-07.400 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -10037,6 +10037,24 @@ text-wrap:balance}
 .er-close b{font-variant-numeric:tabular-nums}
 .er-notes li{font-size:var(--t-ui);margin:0 0 var(--sp-3)}
 .er-map{margin:var(--sp-4) 0}
+/* THE MARGIN (the elections display design of 19 November 2026; build_elections
+   margin_chip): the label is the one chip, at the top right of the race's card
+   beside its name, coloured as the last winner's party chip is. The buttons are
+   the Calendar's switch (.wkchips), here allowed to wrap; the Order the bill
+   search's select (.bfilt). A card list .er-cards is a grid, which the hidden
+   attribute alone does not hide. */
+.er-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-2) var(--sp-4);flex-wrap:wrap}
+.er-hd .er-mg{flex:none;font-variant-numeric:tabular-nums}
+.er-close .er-mg{font-variant-numeric:tabular-nums}
+.er-filt{margin:var(--sp-5) 0 var(--sp-4)}
+.er-filt[hidden],.er-cards[hidden]{display:none}
+.er-mfl{display:flex;flex-direction:column;gap:var(--sp-2);min-width:0}
+.er-lab{font-size:var(--t-sm);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+.er-filt .wkchips{max-width:none;width:auto;flex-wrap:wrap}
+.er-filt .wkchips button{flex:0 1 auto;padding:var(--sp-2) var(--sp-4)}
+.er-c{font-weight:400;font-variant-numeric:tabular-nums}
+.er-filt .er-count{flex-basis:100%;margin:0;font-size:var(--t-ui);color:var(--ink-2)}
+.er-filt .er-count:empty{display:none}
 
 /* ==== THE VOTES PAGE (/votes; app.js, THE VOTES PAGE) ====================
    The search box across the page, the filters in a row of the bill search's
