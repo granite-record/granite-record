@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of data checks with no module under test, for a person to sort.
 
@@ -436,6 +436,31 @@ def _search_index_built():
                        "nothing for")
     assert not bad, "the search index: " + "; ".join(bad[:4])
     real = [t for t in empty if re.fullmatch(r"\d{4}-\d{4}", t)]
+    # A NEW TERM'S FIRST NIGHTS (the rehearsal of the turn, 19 November
+    # 2026). The term turns on the first night the files show it, perhaps
+    # with Organization Day's resolutions alone, and a New term run never
+    # asks the database, so no text of its bills is on disk yet: its index is
+    # empty because there is nothing to read, which is what the docstring
+    # always allowed ("unless the term has no text at all"). The newest term
+    # is let through only while bill_text.json and archive_text.json hold the
+    # text of none of its bills; with the text of any one of them there, an
+    # empty index is still the build not reading it. Every older term must
+    # have words, text or no text.
+    waiting = []
+    newest = max((t for t in terms if re.fullmatch(r"\d{4}-\d{4}", t)), default="")
+    if newest in real:
+        ids = {r.get("id") for r in json.loads((site / "idx" / f"{newest}.json")
+                                               .read_text(encoding="utf-8"))
+               if isinstance(r, dict)}
+        held = 0
+        for p in (Path("bill_text.json"), Path("archive_text.json")):
+            if p.is_file():
+                by_bill = json.loads(p.read_text(encoding="utf-8")).get(newest) or {}
+                held += sum(1 for b, rec in by_bill.items()
+                            if b in ids and isinstance(rec, dict) and rec.get("text"))
+        if not held:
+            waiting = [f"{newest} ({len(ids):,} bills, none with its text on disk yet)"]
+            real.remove(newest)
     assert not real, (
         f"the search index of {', '.join(real)} is empty: no bill text was "
         "read for it, and its bills are found by title and topic only. "
@@ -445,7 +470,9 @@ def _search_index_built():
         f"{SEARCH_INDEX_MOST_ALL:,}: /search fetches them all")
     return "ok", (f"{len(terms)} terms, {entries:,} entries, {total:,} bytes in "
                   f"all and none over {SEARCH_INDEX_MOST:,}"
-                  + (f"; no text for {', '.join(empty)}, as expected" if empty else ""))
+                  + (f"; no text for {', '.join(empty)}, as expected" if empty else "")
+                  + (f"; {waiting[0]}: found by title and topic until its text is read"
+                     if waiting else ""))
 
 
 @check("data", "every bill request's prime sponsor and co-sponsors read as one person's name each, not "
