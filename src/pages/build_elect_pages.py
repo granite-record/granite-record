@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.10
+# GRANITE_VERSION: 2026-11-08.11
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -34,10 +34,12 @@ WHAT THIS WRITES
                           (race_source); "prior" ({"terms", "seat"}) where
                           the person confirmed their earlier service in the
                           hand file (build_members_elect.apply_prior); and
-                          "up", the seat's upcoming elections as a member's
-                          Elections tab has them (build_member_elections.
-                          upcoming), while the term they were elected to is
-                          the one the next general election ends. Nothing
+                          "up", the upcoming elections of the race they filed
+                          for, as a member's Elections tab has them
+                          (build_member_elections.upcoming), only where a
+                          filing is on record for their page
+                          (build_member_elections.filings_on_file; none is
+                          on disk yet). Nothing
                           else, and no id: a member-elect has none until the
                           General Court assigns one (the owner's rule of 30
                           October 2026, commit 776cbe70).
@@ -226,7 +228,7 @@ def confirmed_new(hand):
 
 
 def pages(results, sitting, former, districts, hand, today, takes_office, moved=None,
-          roster_term=None):
+          roster_term=None, filed=None):
     """(the pages, what to say, {old address: new address} for a person the
     roster has numbered at another address). `roster_term` is the site's
     newest term (site/meta.json): nobody is numbered until it is the
@@ -244,10 +246,9 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
     BME.apply_prior(races, (hand or {}).get("prior"))
     on_file, _ = BME.races_on_file(districts)
     sure = confirmed_new(hand)
-    # Their seat's next elections, while their term is the one those end (the owner, 19
-    # November 2026): the 2028 filing period, primary and general for a member-elect of 2026.
-    nxt = BMEL.next_general(today)
-    ahead = bool(nxt) and results.get("term") == BME.term_before(BME.term_after(nxt.year))
+    # The next elections of the race they have filed for, and only then (the owner, 19
+    # November 2026): `filed` is {page slug: race key}, build_member_elections.filings_on_file's.
+    filed = filed or {}
     # Numbered only once the roster is the new term's (the members-elect step's
     # own sign, site/meta.json's newest term), and from Organization Day.
     turned = roster_term is None or roster_term == results.get("term")
@@ -302,7 +303,7 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
             # November 2026: the page says whatever the record can fill in).
             result = race_result(results, key, races[key], e.get("n"), hand or {})
             source = race_source(key, results)
-            up = BMEL.upcoming(key, on_file, today) if ahead else None
+            up = BMEL.upcoming(filed[slug], on_file, today) if slug in filed else None
             out.append({"slug": slug, "name": e.get("n"), "party": e.get("p") or "",
                         "chamber": chamber, "county": county, "district": district, "race": key,
                         "towns": sorted((on_file.get(key) or {}).get("towns") or []),
@@ -354,9 +355,17 @@ def main():
     meta = BME.load_json(site / "meta.json", "the site's meta.json, which names its terms") \
         if (site / "meta.json").exists() else {}
     terms = meta.get("terms") if isinstance(meta, dict) else None
+    # Who has filed for the next general's primary: none on disk yet (filings_on_file).
+    nxt = BMEL.next_general(today.isoformat())
+    try:
+        filed = BMEL.filings_on_file(a.collected, nxt.year)["slug"] if nxt else {}
+    except BME.Refused as e:
+        print(f"  elect pages: REFUSED: {e}", file=sys.stderr)
+        return 1
     got, said, moves = pages(results, sitting, former, districts, hand,
                              today.isoformat(), takes_office.isoformat(), moved,
-                             roster_term=(terms or [None])[0] if isinstance(terms, list) else None)
+                             roster_term=(terms or [None])[0] if isinstance(terms, list) else None,
+                             filed=filed)
     doc = {"election": results["election"], "takes_office": takes_office.isoformat(),
            "sources": [s.get("url") for s in results.get("_source") or [] if s.get("url")],
            "pages": got,

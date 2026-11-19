@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.10
+# GRANITE_VERSION: 2026-11-10.11
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -88,19 +88,19 @@ THE ORDER (the owner, 19 November 2026): strictly newest first, under a
 heading for each election cycle (app.js), a cycle's general and then its
 primary; one column of cards.
 
-UPCOMING ELECTIONS (the owner, 19 November 2026, "Yes to all 9" of
-reports/money-specials-design/specials-and-upcoming.md, A3): "up" in the
-member's own file, which app.js draws above the newest cycle -- the seat, and
-the next state general election's filing period, primary and general, each
-a day key_dates works out from the text of the law in force on it (RSA
-655:14, 653:8, 653:7) and cites. Only days still ahead. The seat is the one
-the member holds in the term those elections end (upcoming_seats): from the
-day a general election is held until the roster is the next term's, the seat
-a winner of it was elected to (a member-elect: Alice Wade's Strafford 21 for
-2027-2028, where she sits for Strafford 15 until then), and otherwise the
-sitting member's own. A former member has none, and nor does a sitting
-member who is not returning. Never who is running or has filed: no saved
-filing list is read. A new member-elect's provisional page gets the same
+UPCOMING ELECTIONS, ONLY FOR A MEMBER WHO HAS FILED (the owner, 19 November
+2026: "Upcoming elections doesn't need to be included on members pages unless
+they have actually filed to run again in 2028"; the dates themselves are on the
+Calendar and the elections page, key_dates.election_dates). "up" in the
+member's own file, which app.js draws above the newest cycle: the race the
+member filed for, and the next state general election's filing period, primary
+and general still ahead, each a day key_dates works out from the text of the
+law in force on it (RSA 655:14, 653:8, 653:7) and cites. Written only for a
+member with a filing on record in collected/filings_<year>.json
+(filings_on_file, which says the file's shape) and a row on the tab. No such
+file is on disk: the Secretary of State's filing lists are published from the
+filing period (March 2028) and a later step is to read them. Until then no tab
+has the card. A new member-elect's provisional page is held to the same
 (build_elect_pages).
 
 Nothing here asks the network.
@@ -484,13 +484,58 @@ def near_members(name, key, people):
 
 def next_general(today):
     """The next state general election on or after `today` (ISO), by RSA
-    653:7, or None."""
-    t = KD._day(today)
-    for y in range(t.year, t.year + 3):
-        g = KD.state_general(y)
-        if g and g >= t:
-            return g
-    return None
+    653:7, or None (key_dates.next_general)."""
+    return KD.next_general(today)
+
+
+FILINGS = "filings_{year}.json"
+
+
+def filings_on_file(collected, year):
+    """{"person": {member id: race key}, "slug": {provisional page slug: race
+    key}}: who has filed for `year`'s state primary, from
+    collected/filings_<year>.json; both empty where there is no such file.
+
+    THE FILE IS A LATER STEP'S, AND NONE IS ON DISK (19 November 2026). It is
+    to be read from the Secretary of State's own lists of the filing period --
+    "Cumulative Filings", "Declarations of Intent" and "Withdrawals", PDFs on
+    the year's Election Details page -- each saved by a person with its
+    address, day and sha256, read whole or refused, as the results are. This
+    reads the shape that step is to write, and nothing else:
+
+        {"election": "2028-11-07", "primary": "2028-06-13",
+         "_source": [{"file": "records/sources/...pdf", "url": "...",
+                      "saved": "2028-03-11", "sha256": "..."}],
+         "filings": [{"race": "H|Strafford|21", "office": "State Representative",
+                      "name": "Alice Wade", "party": "d", "filed": "2028-03-06",
+                      "kind": "declaration of candidacy", "withdrew": "",
+                      "person": "11286"}]}
+
+    "race" is the race key the results use; "person" a member's id, or "slug"
+    a new member's provisional page, written only on a certain match (the
+    elections tab's rule); "withdrew" the day of a withdrawal, which takes the
+    filing off. A campaign-finance registration is never a filing. A file this
+    cannot read is refused (BME.Refused), never read in part."""
+    out = {"person": {}, "slug": {}}
+    p = Path(collected) / FILINGS.format(year=year)
+    if not p.is_file():
+        return out
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        rows = doc["filings"]
+        assert isinstance(rows, list)
+    except (ValueError, KeyError, TypeError, AssertionError) as e:
+        raise BME.Refused(f"{p.as_posix()} is no list of filings ({type(e).__name__}): "
+                          "no member's tab is given upcoming elections from it") from e
+    for f in rows:
+        race = str((f or {}).get("race") or "")
+        if not BME.KEY_RE.match(race) or f.get("withdrew"):
+            continue
+        if f.get("person"):
+            out["person"][str(f["person"])] = race
+        elif f.get("slug"):
+            out["slug"][str(f["slug"])] = race
+    return out
 
 
 def upcoming(key, races, today):
@@ -532,25 +577,20 @@ def upcoming(key, races, today):
     return up
 
 
-def upcoming_seats(sitting, newest, roster_term, today):
-    """({member id: seat key}, term) of the members who hold a seat in the
-    term the next general election ends: the sitting members' own seats where
-    the roster (`roster_term`, its newest) is that term, else the winners the
-    newest general election on file drew (`newest`: (results, races_me)),
-    where it elected that term. {} otherwise -- a former member has none, and
-    nor does a sitting member who is not returning."""
+def upcoming_for(by_member, collected, districts, today):
+    """{member id: upcoming()} of each member with a row on the tab (`by_member`)
+    who has filed for the next general's primary (filings_on_file), for the
+    race filed for. {} with no filing list: no card without a filing."""
     g = next_general(today)
     if g is None:
-        return {}, None
-    term = BME.term_before(BME.term_after(g.year))
-    if roster_term == term:
-        return {str(m.get("id")): BME.seat_of(m) for m in sitting or []
-                if m.get("id") and BME.seat_of(m)}, term
-    results, races_me = newest or (None, None)
-    if results and results.get("term") == term:
-        return {str(e["id"]): key for key, me in (races_me or {}).items()
-                for e in me.get("elected") or [] if e.get("id")}, term
-    return {}, term
+        return {}
+    races, _clash = BME.races_on_file(districts)
+    out = {}
+    for mid, key in filings_on_file(collected, g.year)["person"].items():
+        got = upcoming(key, races, today) if mid in by_member else None
+        if got:
+            out[mid] = got
+    return out
 
 
 def cycle_of(row):
@@ -569,8 +609,9 @@ def sort_rows(rows):
 
 def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT, up=None):
     """(rows by member id, report lines, elections) for the site folder.
-    Given a dict `up`, fills it with each member's upcoming elections
-    ({member id: upcoming()}), for the members with a row (upcoming_seats)."""
+    Given a dict `up`, fills it with the upcoming elections of each member with
+    a row who has filed for the next general's primary ({member id:
+    upcoming() of the race filed for}; filings_on_file)."""
     site = Path(site)
     sitting = BME.load_json(site / "legislators.json", "the sitting roster")
     former = BME.load_json(site / "former.json", "the former members")
@@ -582,12 +623,9 @@ def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT, up=N
     items = BE.elections_on_file(collected)
     by_member, report = defaultdict(list), []
     pages = BE.provisional(site)
-    newest = None
     for election, _p, results in items:
         races_me, _rep, hand = BE.decided(results, sitting, former, districts, hand_path, today,
                                           BE.settled_in(items, election), history)
-        if newest is None or election > newest[0]["election"]:
-            newest = (results, races_me)
         # A new winner's chip links to their provisional page, as on the elections page's card.
         BE.with_pages(races_me, pages.get(election))
         people = BME.People(sitting, former, BME.ballot_of(results))
@@ -619,13 +657,7 @@ def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT, up=N
         report.append((d, ", ".join(keys), p.get("name", ""), f"{p.get('label', mid)} [{mid}]",
                        "matched to more than one race of one election; shown in none"))
     if up is not None:
-        races, _clash = BME.races_on_file(districts)
-        seats, _term = upcoming_seats(sitting, newest,
-                                      terms[0] if isinstance(terms, list) and terms else None, today)
-        for mid, key in seats.items():
-            got = upcoming(key, races, today) if mid in by_member else None
-            if got:
-                up[mid] = got
+        up.update(upcoming_for(by_member, collected, districts, today))
     return {mid: sort_rows(rs) for mid, rs in by_member.items()}, report, [i[0] for i in items]
 
 
@@ -731,9 +763,12 @@ def main():
           f"{rows - wins - lost} not final or tied) and {prim} primary rows; {changed} member files "
           f"changed; {said}")
     nxt = next_general(today)
+    filed = (Path(a.collected) / FILINGS.format(year=nxt.year)) if nxt else None
     print(f"member elections: upcoming elections on {len(up)} members' tabs"
-          + (f", for the general election of {nxt.isoformat()}" if nxt else
-             "; RSA 653:7 gives no general election ahead"))
+          + (f", for the general election of {nxt.isoformat()}; " if nxt else
+             "; RSA 653:7 gives no general election ahead; ")
+          + (f"filings from {filed.as_posix()}" if filed and filed.is_file() else
+             "no filing list on disk, so no member has filed on record"))
     return 0
 
 

@@ -2505,17 +2505,23 @@ in the term sitting that day by the roster's seat or the seats their bills print
 the election's year had left. A candidate the rule cannot place is not marked.
 One line under the cards says what the mark is.
 
-Above the newest cycle the tab shows the seat's upcoming elections (19 November
-2026): the next state general election's filing period, primary and general,
-each a day `key_dates.in_force` works out from the words of the RSA text in force
-on it (RSA 655:14 and 653:8 as 2026, 44 amends them from 1 January 2028; RSA
-653:7) and cited to its section and act (`build_member_elections.upcoming`, the
-member file's `up`). The seat is the one the member holds in the term those
-elections end (`upcoming_seats`): a winner's of the newest general until the
-roster is the next term's, then the sitting member's own; a former member and a
-member not returning have none, and a new member-elect's provisional page has
-its own (`build_elect_pages`, `build_legislator_pages.upcoming_html`). Nothing is
-said of who runs or has filed.
+The next state general election's dates -- its primary's filing period, the
+primary and the general, those still ahead -- are on every week of the Calendar,
+under the week's arrows, and at the top of the elections page
+(`key_dates.election_dates` and `election_dates_html`; the owner, 19 November
+2026). Each is a day `key_dates.in_force` works out from the words of the RSA text
+in force on it (RSA 655:14 and 653:8 as 2026, 44 amends them from 1 January 2028;
+RSA 653:7), cited to its section and act as the key dates are. The filing period is
+a key date of the kind `election`, so the status box's next deadline, which is the
+legislature's, never names it.
+
+A member's Elections tab shows the same dates above its newest cycle only for a
+member who has filed for the next primary (`build_member_elections.upcoming_for`,
+the member file's `up`, for the race filed for): the filing must be on record in
+`collected/filings_<year>.json`, whose shape `filings_on_file` gives and which a
+later step is to read from the Secretary of State's filing lists. None is on disk,
+so today no tab has it; a new member-elect's provisional page is held to the same
+(`build_elect_pages`, `build_legislator_pages.upcoming_html`).
 
 The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
 gives `find.json` a row of the kind `elect` for each new member-elect with a
