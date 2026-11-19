@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of a bill's history as the site tells it (narrative.py).
 
@@ -13421,6 +13421,77 @@ def _election_law_in_force(KD):
                   "November 2028; filing 3-12 June 2026 and 3-10 March 2028; a made-up amendment of "
                   "2030 moves the day and is cited, and a text no rule reads dates nothing and is "
                   "said" + said)
+
+
+def _september_primaries(text):
+    """The sentences of `text` (tags out) that put a state primary in September without naming a
+    year before 2028, in English or Spanish: each would be untrue of 2028, when the primary is in
+    June (RSA 653:8 as 2026, 44:1 amends it)."""
+    out = []
+    plain = re.sub(r"<[^>]+>", " ", text)
+    for s in re.split(r"(?<=[.;!?])\s+|\\n|\n", plain):
+        low = s.lower()
+        if not (("primary" in low and "september" in low) or ("primaria" in low and "septiembre" in low)):
+            continue
+        if "presidential" in low or "presidencial" in low:
+            continue
+        if any(int(y) < 2028 for y in re.findall(r"\b(19\d\d|20\d\d)\b", s)):
+            continue
+        out.append(s.strip()[:160])
+    return out
+
+
+@check("frontend", "no page says the state primary of 2028 is in September: the key dates, the town pages' "
+                   "next election and the guides and Learn pages all take June 13, 2028 from RSA 653:8 "
+                   "as amended", needs=("key_dates", "build_town_pages"))
+def _primary_2028_not_september(KD, BT):
+    """The owner, 19 November 2026: a page that says the 2028 primary is in September states a
+    fact the law has changed (RSA 653:8 as 2026, 44:1 amends it: the second Tuesday in June from 1
+    January 2028). Held:
+
+    - the key dates as on 1 June 2027, when the Calendar's years first reach 2028: the State
+      primary on 13 June 2028 and on no day of September 2028;
+    - the town pages' next possible election (build_town_pages.next_possible_election), which ends
+      a town's "last election": after 15 May 2028 it is 13 June 2028, not 12 September, and after 1
+      August 2026 still 8 September 2026;
+    - the words of the guides, the Learn pages, the town pages and the site's Spanish (guides.py,
+      civics.py, learn_numbers.py, build_town_pages.py's strings, lang/es.json): no sentence puts a
+      state primary in September without naming a year before 2028. The reader is shown to find
+      one planted."""
+    from datetime import date
+    bad = []
+    evs = [(e.day, e.name) for e in KD.events(date(2027, 6, 1)) if e.rule == "primary"]
+    if ("2028-06-13", "State primary") not in evs or any(d.startswith("2028-09") for d, _n in evs):
+        bad.append(f"the key dates on 1 June 2027 put the primary on {evs}")
+    for day, want in ((date(2028, 5, 15), date(2028, 6, 13)), (date(2026, 8, 1), date(2026, 9, 8))):
+        got = BT.next_possible_election(day)
+        if got != want:
+            bad.append(f"after {day} the town pages' next possible election is {got}, not {want}")
+    planted = "Filing closes in June. The state primary is the second Tuesday in September."
+    assert _september_primaries(planted) == ["The state primary is the second Tuesday in September."], (
+        "the reader does not find a planted September primary")
+    assert not _september_primaries("The 2026 primary was September 8, 2026."), (
+        "the reader flags a primary of a year before 2028")
+    files = [Path("src/pages/guides.py"), Path("src/pages/civics.py"), Path("src/pages/learn_numbers.py")]
+    found = []
+    for f in files:
+        # A sentence the source splits over lines, "...the state primary " "is in September", whole.
+        joined = re.sub(r'"\s*\n\s*(?:f|r|rf|fr)?"', "", _source(f))
+        found += [f"{f.as_posix()}: {s}" for s in _september_primaries(joined)]
+    # The town pages' strings, not their comments (which tell this history).
+    town = "\n".join(line for line in _source(Path("src/pages/build_town_pages.py")).splitlines()
+                     if not line.lstrip().startswith("#"))
+    found += [f"build_town_pages.py: {s}" for s in _september_primaries(
+        "\n".join(re.findall(r'"([^"\n]{20,})"', town)))]
+    es = json.loads(_source(Path("src/pages/lang/es.json"))).get("strings") or {}
+    for key, v in es.items():
+        for side in ("en", "es"):
+            found += [f"lang/es.json {key} ({side}): {s}" for s in _september_primaries(str(v.get(side) or ""))]
+    bad += found
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"the key dates put 2028's primary on June 13 and none in September; the town pages' next "
+                  f"election after 15 May 2028 is June 13; {len(files) + 1} files of page words and "
+                  f"{len(es):,} Spanish strings put no state primary in September for 2028")
 
 
 @check("frontend", "the status box names the next deadline by its rule, on fixed days, in both "
