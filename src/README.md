@@ -42,7 +42,9 @@ proceedings in their recordings; `pages/` writes what a reader gets in
 `site/`; `checks/` looks and reports; `lib/` holds the few modules every
 stage shares; `ops/` holds the tools the workflows, the morning triage and a
 person run by path to keep the site running. Each folder's README says what
-is in it, what runs it, and what does not belong there.
+is in it, what runs it, and what does not belong there. `TWINS.md`, beside
+this file, lists the rules written both in Python and in JavaScript, and the
+check that holds each pair to one answer.
 
 **The move is in stages.** Stage 0 made the code able to live here and moved
 nothing. Stage 1 (7 October 2026) moved the 49 scripts nothing the night

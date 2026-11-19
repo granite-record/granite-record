@@ -58,7 +58,9 @@ page loads in its head before any script of its own, for what the browser
 draws. A helper is pure and thin: a plain value in, a string out. `preflight`
 runs both on every case in `tests/components_cases.json` and fails where they
 answer differently, where one has a helper the other has not, and where any
-part of a helper is reached by no case.
+part of a helper is reached by no case. The components are one pair of
+several: `src/TWINS.md` lists every rule written both here in Python and in a
+browser's or a Worker's script, and the check that holds each.
 
 Every chip but a person's is `chip(word, classes, size)`: a bill's status, a
 meeting's kind, a vote's result, a party's letter, the sign-ins, the finder's

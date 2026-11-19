@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -975,7 +975,8 @@ def _readme_unlisted(folder, root=None):
 
 
 @check("files", "the READMEs of src/lib, src/ops, src/pages, src/parse and src/hearings name "
-                 "every module in their folder, and src/pages's every browser file")
+                 "every module in their folder, and src/pages's every browser file; src/TWINS.md "
+                 "names checks and files that are there")
 def _shared_folder_readmes_list_every_module():
     """The audit of 14 November 2026 found src/lib/README.md leaving out
     people, spellings and state_settings, and src/ops/README.md leaving out
@@ -986,7 +987,8 @@ def _shared_folder_readmes_list_every_module():
     src/hearings the same: src/pages/README.md named 20 of its 72 code files,
     src/parse's 63 of 76 and src/hearings's 9 of 13. src/pages's browser
     files (.js, .css, .html) are held too, since the folder is flat and its
-    README is the only map of it."""
+    README is the only map of it. And src/TWINS.md, the register of the
+    twins written the same day, is held to the suite and the tree it names."""
     tmp = Path(tempfile.mkdtemp(prefix="gr-readme-"))
     try:
         _plant(tmp, {"src/lib/README.md": "`a` and `b.py`", "src/lib/a.py": "", "src/lib/b.py": "",
@@ -1001,8 +1003,27 @@ def _shared_folder_readmes_list_every_module():
                           if p.suffix in (".js", ".css", ".html") and f"`{p.name}`" not in pages]
     assert not any(said.values()), "a folder's README leaves out modules: " + "; ".join(
         f"{f}: {', '.join(m)}" for f, m in said.items() if m)
+    # src/TWINS.md, the register of the rules written in Python and in JavaScript (the same
+    # day), names the check that holds each pair: a check renamed or gone leaves a row that
+    # sends a reader to nothing, so every suite name it cites is one, and every path a file.
+    twins = _source("src/TWINS.md")
+    suite = set()
+    for f in _suite_files():
+        for n in _parsed(f).body:
+            if isinstance(n, ast.FunctionDef):
+                suite.add(n.name)
+            elif isinstance(n, ast.Assign):
+                suite |= {t.id for t in n.targets if isinstance(t, ast.Name)}
+    cited = set(re.findall(r"`(_[a-z][a-z0-9_]+|_[A-Z][A-Z_]+)`", twins))
+    gone = sorted(c for c in cited if c not in suite)
+    paths = set(re.findall(r"`((?:src|workers|functions|tests)/[\w./-]+)`", twins))
+    lost = sorted(p for p in paths if not (_paths.ROOT / p).exists())
+    assert cited and not gone and not lost, (
+        f"src/TWINS.md names {gone or 'no'} check that is not in the suite and {lost or 'no'} file "
+        "that is not here: put each row right")
     return "ok", (f"{', '.join(folders)}: every module named in its README, and every browser "
-                  "file of src/pages")
+                  f"file of src/pages; src/TWINS.md's {len(cited)} suite names and {len(paths)} "
+                  "paths are all there")
 
 
 def _project_modules(root=None):
