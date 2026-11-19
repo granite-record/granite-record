@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.2
+# GRANITE_VERSION: 2026-11-19.3
 """
 A town page's Elections tab (the owner, 19 November 2026: "Town pages should
 also have an elections tab organized by election and year which should
@@ -16,14 +16,17 @@ WHAT IT READS, and decides nothing about who won:
   collected/election_offices_<year>.json    Governor, US Senate, Congress, the
                                             Executive Council and the county
                                             offices, with every town's count
-  collected/primary_<year>.json             the State Primary (no town's count
-                                            is on file: the race's own count,
-                                            said so)
   collected/specials.json                   the special elections (the district's
                                             count: the Secretary of State's page
                                             gives none by town)
 and, to link a candidate to a member's page, the member tab's own rows
 (build_member_elections.build).
+
+NO STATE PRIMARY YET (the owner, 19 November 2026: a town shows only its own
+counts). collected/primary_<year>.json holds each primary race's total and no
+town's count, so the tab leaves the primaries off. They come back as one more
+kind of election entry when a reader keeps the primary files' per-town rows,
+as election_town_rows_<year>.csv keeps the general's.
 
 ONE PAGE, ITS OWN COUNTS. A town or a ward page is shown the rows the
 Secretary of State's files print for that town or that ward, never a
@@ -41,8 +44,7 @@ and says so in one line. A town's own ground does not move, so a town page
 shows every election on file.
 
 THE ORDER (the owner's request): a heading for each year, newest first; within
-a year the general, then the state primary, then each special election, by
-day, newest first. Within an election the offices as a ballot gives them:
+a year the general, then each special election, by day, newest first. Within an election the offices as a ballot gives them:
 Governor, US Senate, Congress, the Executive Council, the State Senate, the
 State House (each district, the floterial after the town's own), then the
 county offices.
@@ -261,7 +263,7 @@ def order_of(key):
 class Ledger:
     """Every election on file, by the page each place's rows belong to:
     {(town, ward): [election, ...]}, each election
-    {"day", "stage": general|primary|special, "party" (a primary's),
+    {"day", "stage": general|special, "party",
      "whole": True where the counts are the race's and not the town's,
      "races": [race, ...]} and each race
     {"key", "name", "seats", "href", "not_final", "recount", "page" (a
@@ -293,14 +295,14 @@ class Ledger:
 
 
 def sort_elections(elections):
-    """Newest year first; within a year the general, the state primary (its
-    parties in letter order), then the specials newest first; each
-    election's races in the ballot's order."""
-    stage = {"general": 0, "primary": 1, "special": 2}
+    """Newest year first; within a year the general, then the specials newest
+    first; each election's races in the ballot's order (a special's primaries
+    after it, by party)."""
+    stage = {"general": 0, "special": 1}
     out = sorted(elections, key=lambda e: (-int(e["day"][:4]), stage.get(e["stage"], 3),
                                           -int(e["day"].replace("-", ""))))
     for e in out:
-        # A primary's races by its party's ballot first: a voter takes one.
+        # A special's own race first, then its party primaries.
         e["races"].sort(key=lambda r: (r.get("ballot", ""),
                                        -int(r["day"].replace("-", "")) if r.get("day") else 0,
                                        order_of(r["key"])[0], bool(r.get("floterial")),
@@ -406,63 +408,10 @@ def add_offices(ledger, year, doc, final):
                 "cands": cands, "scatter": votes.get("write_ins_scattered", 0)})
 
 
-def add_primaries(ledger, doc, general_rows, offices_doc, links, county_of):
-    """One State Primary: each party's race on a town's ballot, with the
-    race's own count (no town's count is on file). A town votes in a
-    district's primary where the same year's general counts it in that
-    district (`general_rows`, `offices_doc`); a county office's where the
-    town is of the county (`county_of`); a statewide office everywhere."""
-    day = doc["election"]
-    year = int(day[:4])
-    members = defaultdict(set)   # race key of the general -> {page}
-    for key, places in general_rows.items():
-        for printed, spelt in places:
-            p = ledger.places.page_of(ledger.places.place_of(printed, spelt))
-            if p:
-                members[key].add(p)
-    for key, race in ((offices_doc or {}).get("races") or {}).items():
-        for row in race.get("places") or []:
-            p = ledger.places.page_of(ledger.places.place_of(row[1]))
-            if p:
-                members[key].add(p)
-    every = {(t, w) for t, ws in ledger.places.wards.items() for w in ws}
-    for pkey, race in (doc.get("races") or {}).items():
-        party, gkey = pkey.split("|", 1)
-        office = gkey.split("|")[0]
-        if office in ("governor", "us-senate", "president"):
-            pages = every
-        elif gkey in members:
-            pages = members[gkey]
-        elif office in ("sheriff", "county-attorney", "county-treasurer", "register-of-deeds",
-                        "register-of-probate"):
-            county = gkey.split("|")[1]
-            pages = {p for p in every if county_of.get(p) == county}
-        else:
-            continue
-        ballot = party.upper()
-        keep = [c for c in race.get("candidates") or []
-                if str(c.get("party") or "").lower() in (party.lower(), "")]
-        if not keep:
-            continue
-        hs = bool(BME.KEY_RE.match(gkey))
-        name = house_name(gkey, race.get("floterial") in (True, "True")) if hs else office_name(gkey, race)
-        cands = [{"name": c["name"], "party": str(c.get("party") or ""), "votes": c["votes"],
-                  "write_in": bool(c.get("write_in")),
-                  "most": c.get("nominated") is True,
-                  "slug": links.get((day, "primary", ballot, gkey, c["name"]), "") if hs else ""}
-                 for c in keep]
-        cands.sort(key=lambda c: (-c["votes"], c["name"]))
-        try:
-            seats = int(race.get("seats")) if race.get("seats") is not None else None
-        except (TypeError, ValueError):
-            seats = None
-        for p in pages:
-            if p[1] != "0" and year < WARDS_SINCE:
-                continue
-            ledger.election(p, day, "primary", "", whole=True)["races"].append({
-                "key": gkey, "ballot": ballot, "name": name, "party_word": PARTY_WORD.get(ballot, ballot),
-                "floterial": race.get("floterial") in (True, "True"), "seats": seats, "href": "",
-                "cands": cands, "scatter": int(race.get("scatter") or 0)})
+# THE STATE PRIMARY IS NOT ON THE TAB (the owner, 19 November 2026): a town shows only
+# its own counts, and the primary files hold none by town. It comes back here, read
+# from per-town primary rows, once a reader keeps them (as election_town_rows does the
+# general's), as one more election entry of stage "primary" under its year.
 
 
 def add_specials(ledger, specials, generals_rows, links):
@@ -501,7 +450,7 @@ def add_specials(ledger, specials, generals_rows, links):
                     "recounted": bool(contest.get("recounted")), "cands": rows, "scatter": 0})
 
 
-def member_links(by_member, items, primaries, specials):
+def member_links(by_member, items, specials):
     """{(day, stage, ballot, race key, printed name): member's page} of every
     candidacy a member's own Elections tab carries (build_member_elections.
     build's rows), found again by the same functions that put it there and
@@ -524,15 +473,6 @@ def member_links(by_member, items, primaries, specials):
             for c in race["candidates"]:
                 keep(BMEL.member_for(c, key, race, election, drawn, matches.get(key) or {}, roster),
                      (election, "general", "", key), c)
-    for day, doc, roster in primaries:
-        for pkey, race in doc["races"].items():
-            party, gkey = pkey.split("|", 1)
-            if not BME.KEY_RE.match(gkey):
-                continue
-            r = BMEL.primary_race(race)
-            for c in r["candidates"]:
-                got, _why = roster.certain(c["name"], gkey, day, r, c.get("party"))
-                keep(got[0] if got else None, (day, "primary", party.upper(), gkey), c)
     for sp, cands, prims, _page, roster in specials:
         key = (sp.get("keys") or {}).get("results")
         term = sp.get("term") or ""
@@ -575,13 +515,11 @@ def load(site, collected, hand_path, today, sponsors=None):
                                           BE.settled_in(items, election), history)
         BE.with_pages(races_me, pages.get(election))
         decided[election] = (results, races_me, hand)
-    primaries = BMEL.primaries_on_file(collected)
     specials = BMEL.specials_on_file(collected)
     links = member_links(by_member,
                          [(e, r, m, h, roster) for e, (r, m, h) in decided.items()],
-                         [(d, doc, roster) for d, doc in primaries],
                          [s + (roster,) for s in specials])
-    rows_by_year, offices_by_year, county_of = {}, {}, {}
+    rows_by_year = {}
     for year in years_on_file(collected):
         rows = read_town_rows(collected / TOWN_ROWS.format(year=year))
         rows_by_year[year] = rows
@@ -590,24 +528,14 @@ def load(site, collected, hand_path, today, sponsors=None):
             _r, races_me, hand = decided[results["election"]]
             add_house_senate(ledger, year, rows, results, races_me, hand, links,
                              lambda k, hand=hand: BE.held_names(hand, k))
-            for key, places in rows.items():
-                if key.startswith("H|"):
-                    for printed, spelt in places:
-                        p = ledger.places.page_of(ledger.places.place_of(printed, spelt))
-                        if p:
-                            county_of.setdefault(p, key.split("|")[1])
         off = collected / OFFICES.format(year=year)
         if off.is_file():
             doc = json.loads(off.read_text(encoding="utf-8"))
-            offices_by_year[year] = doc
             election = doc["election"]
             hand = decided.get(election, (None, None, {}))[2]
             final = BE.settled_in(items, election) if items else True
             final = final or not BME.recount_open(today, hand.get("recount_deadline"), election)
             add_offices(ledger, year, doc, final)
-    for day, doc in primaries:
-        y = int(day[:4])
-        add_primaries(ledger, doc, rows_by_year.get(y) or {}, offices_by_year.get(y), links, county_of)
     add_specials(ledger, specials, rows_by_year, links)
     pages_with = sum(1 for v in ledger.by_page.values() if v)
     words = (f"town elections: {pages_with} town and ward pages with an Elections tab, "
@@ -693,35 +621,22 @@ def race_card(race, primary=False):
 
 
 def election_title(e):
-    word = {"general": "General election", "primary": "State primary"}.get(e["stage"],
-                                                                         "Special election")
+    word = {"general": "General election"}.get(e["stage"], "Special election")
     return f"{word}, {long_day(e['day'])}"
 
 
 def election_html(e, label):
-    """One election: its heading, a line where its counts are the race's and
-    not the town's, then its races; a primary's under each party's ballot,
-    a special's primaries under it."""
+    """One election: its heading, then its races; a special's, the district's
+    count, says so, with its party primaries under it."""
     head = f'<h4 class="te-el">{E(election_title(e))}</h4>'
     if e["stage"] == "general":
         return head + f'<div class="er-cards te-cards">{"".join(race_card(r) for r in e["races"])}</div>'
-    # A PRIMARY OR A SPECIAL IS FOLDED under its heading: its counts are the whole
-    # race's, the same on every page that votes in it, and a town's own general is
-    # what the tab is for. The heading says how many races it holds.
+    # A SPECIAL IS FOLDED under its heading: its counts are the district's, the same
+    # on every page that votes in it, and a town's own general is what the tab is for.
+    # The heading says how many races it holds.
     n = len(e["races"])
     out = [f'<details class="te-more"><summary>{head}<span class="te-n">{n} race'
            f'{"s" if n != 1 else ""}, the whole race&rsquo;s counts</span></summary>']
-    if e["stage"] == "primary":
-        out.append(f'<p class="note te-whole">Each count is the whole race&rsquo;s: {E(label)}&rsquo;s '
-                   "own count of the primary is not on file yet.</p>")
-        groups = defaultdict(list)
-        for r in e["races"]:
-            groups[r.get("ballot", "")].append(r)
-        for ballot in sorted(groups):
-            out.append(f'<h5 class="te-ballot">{E(PARTY_WORD.get(ballot, ballot))} ballot</h5>'
-                       '<div class="er-cards te-cards">'
-                       + "".join(race_card(r, primary=True) for r in groups[ballot]) + "</div>")
-        return "".join(out) + "</details>"
     out.append('<p class="note te-whole">Each count is the whole district&rsquo;s: the Secretary '
                "of State&rsquo;s page of a special election gives none by town.</p>")
     for r in e["races"]:
@@ -738,6 +653,9 @@ def tab_cards(elections, label, ward_page=False):
     """The Elections tab's cards for build_town_pages.tabbed: a line saying
     whose counts these are, then a card for each year, newest first. [] where
     no election is on file for the page, so the tab is not drawn."""
+    # Only what the town counted, and the specials said as the district's: never a
+    # State Primary (NO STATE PRIMARY YET, above), whatever a caller hands in.
+    elections = [e for e in elections or [] if e.get("stage") in ("general", "special")]
     if not elections:
         return []
     years = defaultdict(list)

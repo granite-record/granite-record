@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of towns, districts and the map.
 
@@ -3385,14 +3385,17 @@ def _town_elections_places(TE):
 
 
 @check("build", "a town page's Elections tab: a heading per year, newest first; in a year the "
-                "general, the state primary, then the specials newest first; in an election the "
+                "general, then the specials newest first, and no State Primary (no town's count of "
+                "one is on file); in an election the "
                 "ballot's order, a floterial after the town's own district; the winner marked by "
                 "the race's outcome, never the town's; a member's chip linked only where the "
                 "member's own tab carries that very race",
        needs=("town_elections", "build_member_elections", "build_members_elect"))
 def _town_elections_order_and_marks(TE, BMEL, BME):
-    """On a made-up town: a race the town's leader lost, a primary, two specials in one
-    year and one in the next, and a member matched to a race their own tab does not carry.
+    """On a made-up town: a race the town's leader lost, a primary handed in (not drawn: a
+    town shows only its own counts, the owner, 19 November 2026, and the module reads no
+    primary file), two specials in one year and one in the next, and a member matched to a
+    race their own tab does not carry.
     Then on the files: every general race on every page marks as won exactly the race's
     winners, and the tab holds races where the town's leader lost, so that is tested."""
     def race(key, name, cands, seats=1, fl=False):
@@ -3429,9 +3432,20 @@ def _town_elections_order_and_marks(TE, BMEL, BME):
     assert years == ["2025", "2024"], f"the years read {years}"
     heads = re.findall(r'<h4 class="te-el">([^<]*)</h4>', html)
     assert heads == ["Special election, April 8, 2025", "General election, November 5, 2024",
-                     "State primary, September 10, 2024", "Special election, June 4, 2024",
-                     "Special election, March 12, 2024"], f"the elections read {heads}"
-    names = re.findall(r"<h5>([^<]*)</h5>", html.split("State primary")[0].split("General election")[1])
+                     "Special election, June 4, 2024", "Special election, March 12, 2024"], (
+        f"the elections read {heads}")
+    assert "P Q" not in html and "primary, September" not in html, "a State Primary is drawn"
+    import ast
+    tree = ast.parse(_source(Path(TE.__file__)))
+    docs = {id(n.body[0].value) for n in ast.walk(tree)
+            if isinstance(n, (ast.Module, ast.FunctionDef, ast.ClassDef)) and n.body
+            and isinstance(n.body[0], ast.Expr) and isinstance(n.body[0].value, ast.Constant)}
+    reads = [n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)
+             and n.attr in ("primaries_on_file", "primary_race", "PRIMARY_RE")]
+    reads += [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and id(n) not in docs
+              and isinstance(n.value, str) and n.value.startswith("primary_")]
+    assert not reads, f"town_elections.py reads the State Primary: {reads}"
+    names = re.findall(r"<h5>([^<]*)</h5>", html.split("Special election, June")[0].split("General election")[1])
     assert names == ["Governor", "State Senate, District 5", "State House, Grafton 12",
                      "State House, Grafton 9 (floterial)", "Grafton County Sheriff"], \
         f"the general's races read {names}"
@@ -3451,7 +3465,7 @@ def _town_elections_order_and_marks(TE, BMEL, BME):
             {"name": "Bo Win", "party": "r", "votes": 100, "elected": False},
             {"name": "Cy Odd", "party": "l", "votes": 7, "elected": False}]}}}
         by_member = {"1": [{"d": "2024-11-05", "k": "H|Grafton|12", "v": 900}], "2": []}
-        links = TE.member_links(by_member, [("2024-11-05", res, {}, {}, None)], [], [])
+        links = TE.member_links(by_member, [("2024-11-05", res, {}, {}, None)], [])
     finally:
         BMEL.member_for = keep_for
     assert links == {("2024-11-05", "general", "", "H|Grafton|12", "Ann Lead"): "ann-lead"}, \

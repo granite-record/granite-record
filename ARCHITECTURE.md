@@ -2534,8 +2534,8 @@ One line under the cards says what the mark is.
 
 A town or ward page has an Elections tab (the owner, 19 November 2026;
 `src/pages/town_elections.py`, called once by `build_town_pages.main`): a card
-for each year, newest first; in it the general, then the State Primary, then
-each special election, newest first. A general's races are the town's own count
+for each year, newest first; in it the general, then each special election,
+newest first. A general's races are the town's own count
 of every race on its ballot -- the House and Senate from
 `collected/election_town_rows_<year>.csv` (the rows the race's count is made of),
 Governor, US Senate, Congress, the Council and the county offices from the place
@@ -2544,9 +2544,11 @@ printed) -- in the ballot's order, a floterial after the town's own district.
 "Won the race" is the race's outcome: `members_elect`'s for the House and Senate,
 as the elections page decides it, the offices file's most votes for the rest,
 shown only once the election's results are final; no margin is drawn, because
-the race's would read as the town's. The primaries and specials carry no town's
-count on file, so each shows the whole race's, says so, and is folded under its
-heading. A printed place is read to the district table's town by the reader's
+the race's would read as the town's. A special carries no town's count on file,
+so it shows the district's, says so, and is folded under its heading. The State
+Primary is left off (the owner, 19 November 2026: a town shows only its own
+counts): `collected/primary_<year>.json` holds no town's count, and the primaries
+come back when a reader keeps their per-town rows. A printed place is read to the district table's town by the reader's
 spelling, "Ward"/"Wd"/" - Ward", or the unincorporated places' short forms
 (`Places.place_of`); a ward page shows the elections of 2022 on, the lines its
 districts are drawn on (the elections design's decision 13). A chip links to a
