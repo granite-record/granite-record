@@ -462,6 +462,7 @@
 "_rsa_passed_not_in_effect",
 "_filter_offers",
 "_filter_offers_person",
+"_filter_offers_solid",
 "_constitution_read",
 "_constitution_tab",
 "_cacr_articles",
