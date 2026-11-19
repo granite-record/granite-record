@@ -223,6 +223,9 @@ The helpers the builders share:
 - `components`: what the builders draw a person, a committee, a chip, a
   date and a time with (the twin of `components.js`), and `WORDBOOK`;
 - `i18n`: the site in Spanish, and how a translation stays current;
+- `translation_audit`: every word the code asks to be translated, read from
+  the source, and each catalog checked against it (preflight's and
+  `src/ops/translations.py`'s; no builder imports it);
 - `strip_js`: the browser's scripts as published, without their comments;
 - `structured`: what a search engine is told a page is about (schema.org);
 - `bill_order`: the order bill numbers are listed in;

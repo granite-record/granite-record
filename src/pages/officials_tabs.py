@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.23
+# GRANITE_VERSION: 2026-10-10.24
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -108,7 +108,7 @@ def said_text(lang, group, en):
 
 def data_words(off=None):
     """[(key, English, where)] of every word and sentence of the file's own
-    that a tab says, for i18n.code_words: the list a translation answers."""
+    that a tab says, for translation_audit.code_words: the list a translation answers."""
     if off is None:
         off = read_officials()
     out = []

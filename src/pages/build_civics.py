@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.94
+# GRANITE_VERSION: 2026-09-08.95
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1634,7 +1634,7 @@ def cards(items):
 # tabs"). The tabs' own words -- a heading, a line, a topic's title and
 # description, a source's label -- are written once, here and in civics.py,
 # and said in the page's language from the catalog (hub_words lists every one
-# for i18n.code_words); the names of the sites and of the trackers are their
+# for translation_audit.code_words); the names of the sites and of the trackers are their
 # own and stay as they are. The Learn pages and the official sites are in
 # English, and each tab says so once at its top.
 FOLLOW_HEADING = "Other Ways to Follow New Hampshire Legislation"
@@ -1692,7 +1692,7 @@ def _src_label(label):
 
 def hub_words():
     """[(key, English, where)] of every word the Learn and Official Sources
-    tabs say in their own words, for i18n.code_words: HUB_FIXED, each Learn
+    tabs say in their own words, for translation_audit.code_words: HUB_FIXED, each Learn
     page's title and description, the groups and their notes, Start Here's
     lines, the source groups and labels, and the trackers' lines."""
     where = "the Resources hub"

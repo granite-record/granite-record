@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.70
+# GRANITE_VERSION: 2026-10-11.71
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -10863,7 +10863,7 @@ def learn_translated(lang):
 
 def translated_words():
     """Every piece of every guide a language other than English has, and the
-    How-To Guides tab's words where one has the hub: what i18n.code_words
+    How-To Guides tab's words where one has the hub: what translation_audit.code_words
     asks a catalog to answer. A piece several guides share is listed once."""
     import i18n
     out, seen = [], set()
