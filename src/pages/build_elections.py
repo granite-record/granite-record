@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.13
+# GRANITE_VERSION: 2026-11-07.14
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -1022,13 +1022,23 @@ def page_body(election, results, decided_races, report, hand, site, ballots, set
             + tabs_html(panels) + BT.TABS_JS + MARGIN_JS + "</div>")
 
 
-def index_body(items):
+def index_body(items, today=None):
+    """The elections page: under its heading, the next election's dates
+    (key_dates.election_dates_html: the filing period, the state primary and
+    the general, each with its law, as the Calendar shows them; the owner,
+    19 November 2026), then each general election on file. No special
+    election is listed: none is on hand from a source (the specials' saved
+    pages are still to come). Nothing of candidates."""
+    import key_dates as KD
+    today = today or build_date.today()
+    upcoming = KD.election_dates_html(KD.election_dates(today), today, "en", "h2", "kdnext")
     rows = "".join(
         f'<li><a href="{page_path(e).lstrip("/")}">{year_of(e)} General Election</a>'
         f'<span>{E(C.date_words(e, "full"))}</span></li>' for e, _ in items)
     return ('<div class="officials er-page"><p class="er-crumb"><a href="officials.html">Officials</a>'
             " &rsaquo; Elections</p><h1>Elections</h1>"
-            '<p class="lead">The official results of each general election on file: every State Senate '
+            + upcoming
+            + '<p class="lead">The official results of each general election on file: every State Senate '
             "and State House race, from the Secretary of State&rsquo;s results files.</p>"
             f'<ul class="er-index">{rows}</ul></div>')
 
@@ -1108,7 +1118,7 @@ def build(site, base, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT
         urls.append(base.rstrip("/") + S.canon(path))
     write_page(site, base, INDEX, S.title_of("New Hampshire election results"),
                "The official results of each New Hampshire general election on file.",
-               index_body(made), new)
+               index_body(made, today), new)
     urls.append(base.rstrip("/") + INDEX)
     if dest.exists():
         shutil.rmtree(dest)

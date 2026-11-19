@@ -341,6 +341,11 @@
    "es": "Paso a la otra cámara desde el Senado",
    "state": "draft"
   },
+  "cal.kd.filing_primary": {
+   "en": "Filing period for the state primary",
+   "es": "Período de inscripción para la primaria estatal",
+   "state": "draft"
+  },
   "cal.kd.first_day": {
    "en": "{name} (first day)",
    "es": "{name} (primer día)",
@@ -459,6 +464,11 @@
   "cal.kd.town_meeting": {
    "en": "Town meeting day",
    "es": "Día de la asamblea municipal",
+   "state": "draft"
+  },
+  "cal.kd.upcoming": {
+   "en": "Upcoming elections",
+   "es": "Próximas elecciones",
    "state": "draft"
   },
   "cal.kd.veto_day": {

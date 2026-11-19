@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-24.7
+# GRANITE_VERSION: 2026-10-24.8
 """
 The key dates: the elections, town meeting day, and the legislature's own
 landmarks and deadlines, each with where it comes from. The home page's
@@ -453,6 +453,14 @@ PRIMARY = ("primary", "State primary",
            "Voters choose each party's candidates for November's general election.",
            "By law, {rule} of an even-numbered year",
            ("653:8",))
+# The primary's filing period (the owner, 19 November 2026: "The general info on
+# upcoming election deadlines should be included on the calendar and on the
+# elections page"), by RSA 655:14 as in force on its first day. An election's
+# date for voters and candidates, not one of the legislature's deadlines, so the
+# status box's next deadline (DEADLINE_KINDS) never names it.
+FILING = ("filing", "Filing period for the state primary",
+          "Candidates in each party&rsquo;s primary file their declarations of candidacy.",
+          "By law, between {rule}")
 
 
 def law_source(law):
@@ -482,7 +490,24 @@ def _by_rule(years):
                                html.escape(what).replace("&#x27;", "&rsquo;"),
                                words.format(rule=html.escape(rule_words(got[2].words)))
                                + f": {law_source(got[2])}.", rule, ""))
+            period = in_force("655:14", y)
+            if period:
+                rule, name, what, words = FILING
+                out.append(KeyDate(period[0].isoformat(), period[1].isoformat(), "election", name, "",
+                                   what, words.format(rule=html.escape(rule_words(period[2].words)))
+                                   + f": {law_source(period[2])}.", rule, ""))
     return out
+
+
+def next_general(today):
+    """The next state general election on or after `today` (a date or ISO
+    day), by RSA 653:7, or None."""
+    t = _day(today)
+    for y in range(t.year, t.year + 3):
+        g = state_general(y)
+        if g and g >= t:
+            return g
+    return None
 
 
 def _kind(st):
@@ -537,15 +562,19 @@ _EVENTS = {}
 def events(today=None, root=Path(".")):
     """Every key date, in date order: legislative_year's rows for the terms
     it checks on `today`, and the statutes' days from 2025 (the Calendar's
-    first year) to the year after `today`'s. Worked out once a run for a
-    day and a folder."""
+    first year) to the year after `today`'s, or to the next state general
+    election's year where that is later (from the autumn of a general
+    election's year, the next one's primary and filing period are the next
+    election dates). Worked out once a run for a day and a folder."""
     import build_date
     today = today or build_date.today()
     if isinstance(today, str):
         today = _day(today)
     k = (today.isoformat(), str(Path(root).resolve()))
     if k not in _EVENTS:
-        evs = _from_schedule(today, Path(root)) + _by_rule(range(2025, today.year + 2))
+        g = next_general(today + timedelta(days=1))
+        last = max(today.year + 1, g.year if g else 0)
+        evs = _from_schedule(today, Path(root)) + _by_rule(range(2025, last + 1))
         _EVENTS[k] = sorted(evs, key=lambda e: (e.day, KINDS.index(e.kind), e.name))
     return _EVENTS[k]
 
@@ -610,6 +639,8 @@ def _names(lang):
     return {
         "General election": say(lang, "cal.kd.general_election", "General election"),
         "State primary": say(lang, "cal.kd.state_primary", "State primary"),
+        "Filing period for the state primary": say(
+            lang, "cal.kd.filing_primary", "Filing period for the state primary"),
         "Town meeting day": say(lang, "cal.kd.town_meeting", "Town meeting day"),
         "Town meeting day in towns that chose April": say(
             lang, "cal.kd.town_april", "Town meeting day in towns that chose April"),
@@ -773,6 +804,62 @@ def no_deadline_line(evs, today):
     return ("  index.html: no deadline ahead of " + str(today)[:10] + " in "
             "legislative_year.TERMS, so the status box names none; the next term's "
             "deadlines are entered there when the chambers' calendars print them")
+
+
+# ---------------------------------------------------------------------------
+# THE NEXT ELECTION'S DATES (the owner, 19 November 2026: "The general info on
+# upcoming election deadlines should be included on the calendar and on the
+# elections page"): the filing period, the state primary and the general
+# election of the next state general election's year, those not yet past, as
+# the key dates carry them -- the Calendar's box and the elections page's
+# section are this list, so they never differ.
+# ---------------------------------------------------------------------------
+def election_dates(today, evs=None):
+    """[KeyDate] of the next state general election's year still ahead on
+    `today`: its primary's filing period (until its last day), its primary
+    and the general election, in date order. The general is legislative_year's
+    row where it holds the day, and RSA 653:7's own where it does not."""
+    t = _day(today)
+    g = next_general(t)
+    if g is None:
+        return []
+    evs = events(t) if evs is None else evs
+    y = str(g.year)
+    out = [e for e in evs if e.kind == "election" and e.rule in ("filing", "primary")
+           and e.day[:4] == y and (e.until or e.day) >= t.isoformat()]
+    gen = [e for e in evs if e.kind == "election" and e.day == g.isoformat()
+           and e.rule not in ("filing", "primary")]
+    if gen:
+        out.append(gen[0])
+    else:
+        law = in_force("653:7", g.year)[2]
+        out.append(KeyDate(g.isoformat(), "", "election", "General election", "",
+                           "Voters elect the state&rsquo;s senators and representatives, among others (RSA 653:1).",
+                           f"By law, {html.escape(rule_words(law.words))}: {law_source(law)}.",
+                           "general", ""))
+    return sorted(out, key=lambda e: e.day)
+
+
+def election_dates_html(kds, today, lang="en", h="h2", cls="kdnext"):
+    """The next election's dates as a short list under a heading, "Upcoming
+    elections": each its day (a filing period's first to last), its name and
+    its source line, the key date's own. Each row retires the day after its
+    last (until_attrs), so a page drawn ahead never shows one past. "" where
+    there is none."""
+    if not kds:
+        return ""
+    from components import date_span, date_words, until_attrs
+    rows = []
+    for e in kds:
+        last = e.until or e.day
+        when = date_span(e.day, e.until, "full", lang) if e.until else date_words(e.day, "full", lang)
+        gone = (_day(last) + timedelta(days=1)).isoformat()
+        rows.append(f'<li{until_attrs(gone, today)}><span class="kdnd">{_esc(when)}</span> '
+                    f'<span class="kdnn">{_esc(name(lang, e))}</span>'
+                    f'<span class="kdns">{e.src}</span></li>')
+    head = say(lang, "cal.kd.upcoming", "Upcoming elections")
+    return (f'<section class="{cls}" aria-label="{_attr(head)}"><{h}>{_esc(head)}</{h}>'
+            f'<ul>{"".join(rows)}</ul></section>')
 
 
 # ---------------------------------------------------------------------------
