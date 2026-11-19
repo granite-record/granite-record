@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -347,6 +347,54 @@ def _entity_primary_party(EN):
         return "skip", "the rule held; no collected/primary_<year>.json here to hold the readers' ids to"
     return "ok", (f"two primaries and a general hold, four faults each seen; {ids} primary races' ids "
                   f"in {len(files)} files are the model's")
+
+
+@check("build", "a special election is a contest of stage special, its primary names it (\"for\") and is "
+       "never a State Primary, its cause is a record's, and a recount's count and a write-in are a "
+       "candidacy's", needs=("entities",))
+def _entity_special_contest(EN):
+    """The specials design of 19 November 2026 (A2, decision 3; the owner's "Yes to all 9"):
+    contest gains "for" (a special's primary, pointing at its special), "cause" (a tie of the
+    general that elected the term, with the resolution, or a vacancy; only where a record states
+    it) and "recounted" (the recount's day); candidacy gains "votes", "first_count" and
+    "write_in". On the state's own settings, a made-up special of 2026, its Democratic primary
+    and the tied general it re-runs hold every rule and shape; a "for" on a general, a "for" at a
+    contest that is no special, a cause of a kind no record gives and a cause with a field it does
+    not have are each seen."""
+    offices = EN.offices(None)
+    sp = EN.contest_id("2026-03-10", "special", "house", "a-7")
+    pr = EN.contest_id("2026-01-20", "primary", "house", "a-7", "d")
+    gen = EN.contest_id("2024-11-05", "general", "house", "a-7")
+    base = {"office": offices, "contest": [
+        {"contest": gen, "election": "2024-11-05", "stage": "general", "office": "house", "district": None,
+         "seats": 1, "source": "m"},
+        {"contest": sp, "election": "2026-03-10", "stage": "special", "office": "house", "district": None,
+         "seats": 1, "recounted": "2026-03-16",
+         "cause": {"kind": "tie", "resolution": "House Resolution 9", "of": gen}, "source": "m"},
+        {"contest": pr, "election": "2026-01-20", "stage": "primary", "party": "d", "parties": ["D"],
+         "office": "house", "district": None, "seats": 1, "for": sp, "source": "m"}],
+        "candidacy": [
+            {"candidacy": EN.candidacy_id(sp, "Ann Example", "d"), "contest": sp, "printed": "Ann Example",
+             "party": "d", "parties": ["D"], "elected": True, "votes": 880, "first_count": 879,
+             "person": None, "source": "m"},
+            {"candidacy": EN.candidacy_id(pr, "Ann Example", "d"), "contest": pr, "printed": "Ann Example",
+             "party": "d", "parties": ["D"], "votes": 77, "write_in": True, "person": None, "source": "m"}]}
+    got = EN.problems(base)
+    assert got == [], f"a special, its primary and the tie it re-runs broke some rules: {got[:4]}"
+
+    def fault(what, i, change, words):
+        m = copy.deepcopy(base)
+        m["contest"][i].update(change)
+        said = EN.problems(m)
+        assert any(words in s for s in said), f"{what} was not seen ({said[:3]})"
+
+    fault("a general that names a contest it is for", 0, {"for": sp}, "names a contest it is for")
+    fault("a primary for a contest that is no special", 2, {"for": gen}, "which is no special")
+    fault("a cause of a kind no record gives", 1, {"cause": {"kind": "guess"}}, "not one of")
+    fault("a cause with a field it does not have", 1, {"cause": {"kind": "tie", "who": "x"}},
+          "a field its kind does not")
+    return "ok", ("a special with its recount and the tie it re-runs, its primary "
+                  "for it with a write-in, hold; four faults each seen")
 
 
 @check("files", "New Hampshire's offices and district kinds are data in the state's settings, and each article of the Constitution they name is one on file",
