@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.406 */
+/* GRANITE_VERSION: 2026-09-07.407 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -9954,7 +9954,9 @@ border-radius:var(--r-in);box-shadow:0 10px 26px var(--shadow);max-height:min(60
 :where(body.pg) .webinar .wbgo{display:inline-block;background:var(--pine);color:var(--on-pine);font-weight:600;
   text-decoration:none;border-radius:var(--r-in);padding:var(--sp-4) var(--sp-6)}
 :where(body.pg) .webinar .wbgo:hover,:where(body.pg) .webinar .wbgo:focus-visible{text-decoration:underline}
-@media (max-width:73.74875em){:where(body.pg) .hcols .webinar{order:4}}
+/* Under the cards in one column too (the owner, 19 November 2026): the cards'
+   order, and the page's own order after them. */
+@media (max-width:73.74875em){:where(body.pg) .hcols .webinar{order:5}}
 /* IN ONE COLUMN, UNDER ITS BOX. Below 1180px the columns dissolve and each
    block is placed by its own order (the hero 1-3, the search 4, the cards
    5); a block with none came first, so the hint stood over the logo on a

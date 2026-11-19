@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.15
+# GRANITE_VERSION: 2026-11-16.16
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -11728,20 +11728,23 @@ def _webinar_recording(BP):
         "the recording asks YouTube for something before Play is pressed")
     assert "wbrec [data-embed]" in BP.HOME_JS, "HOME_JS does not open the recording's Play"
     assert "(en inglés)" in es, "the Spanish home page does not say the recording is in English"
-    return "ok", ("registration until 11 November, then the recording under the search, played "
+    return "ok", ("registration until 11 November, then the recording under the cards, played "
                   "only on Play, in English and Spanish")
 
 
-@check("frontend", "the webinar stands under the home page's search, in both languages and at every width",
+@check("frontend", "the webinar stands under the home page's cards, in both languages and at every width",
        needs=("build_pages",))
-def _webinar_under_search(BP):
-    """The owner, 24 October 2026: "Could you move the webinar below the
-    search bar?" On the page as written -- which is the order on a desktop,
-    and the order a screen reader hears -- the box follows the search and its
-    line of help and comes before the cards, in English and in Spanish; below
-    1180px, where each block is placed by its own order (app.css), it takes
-    the search's, and so stands after it. Drawn on a day it is still shown
-    (GRANITE_BUILD_DATE, 24 October 2026)."""
+def _webinar_under_cards(BP):
+    """The owner, 19 November 2026: "move the webinar video block on the
+    homepage below the cards for bills, laws, officials, and resources" (it
+    stood under the search from 24 October). On the page as written -- which
+    is the order on a desktop, and the order a screen reader hears -- the box
+    follows the search, its line of help and the cards, and comes before the
+    common questions, in English and in Spanish; below 1180px, where each
+    block is placed by its own order (app.css), it takes the cards' order or
+    later, and so stands after them. Drawn on a day it is shown, as the
+    registration then (GRANITE_BUILD_DATE, 24 October 2026); the recording
+    is the same box."""
     was = os.environ.get("GRANITE_BUILD_DATE")
     os.environ["GRANITE_BUILD_DATE"] = "2026-10-24"
     try:
@@ -11753,19 +11756,19 @@ def _webinar_under_search(BP):
             os.environ["GRANITE_BUILD_DATE"] = was
     bad = []
     for lang, body in pages.items():
-        at = [body.find(x) for x in ('class="searchbig"', 'id="hqhint"', '<aside class="webinar"',
-                                     '<div class="entry">')]
+        at = [body.find(x) for x in ('class="searchbig"', 'id="hqhint"', '<div class="entry">',
+                                     '<aside class="webinar"')]
         if -1 in at or at != sorted(at):
-            bad.append(f"{lang}: the search, its help, the webinar and the cards stand at {at}")
+            bad.append(f"{lang}: the search, its help, the cards and the webinar stand at {at}")
     css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
     orders = {}
-    for sel in ("searchbig", "hqhint", "webinar"):
+    for sel in ("searchbig", "hqhint", "entry", "webinar"):
         m = re.search(r"\.hcols \." + sel + r"\b[^{]*\{order:(\d+)\}", css)
         orders[sel] = int(m.group(1)) if m else None
-    if None in orders.values() or orders["webinar"] < orders["searchbig"] or orders["webinar"] < orders["hqhint"]:
-        bad.append(f"below 1180px the webinar is ordered before the search: {orders}")
+    if None in orders.values() or orders["webinar"] < orders["entry"]:
+        bad.append(f"below 1180px the webinar is ordered before the cards: {orders}")
     assert not bad, "; ".join(bad)
-    return "ok", f"under the search and its help, before the cards, in English and Spanish; orders {orders}"
+    return "ok", f"under the search, its help and the cards, in English and Spanish; orders {orders}"
 
 
 @check("frontend", "a committee's Upcoming session says what a reader may do at a hearing, in the person's words, and the home page's Coming up no longer does")

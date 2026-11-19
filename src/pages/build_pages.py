@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.292
+# GRANITE_VERSION: 2026-09-04.293
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -4151,14 +4151,14 @@ def home_body(lang, has_lockup, static_state, static_up, static_recent, static_s
 </div>
 <p class="hqhint" id="hqhint">{say(lang, "home.try", "Try <b>HB 1</b>, <b>housing</b>, <b>Concord</b> or a legislator&rsquo;s name. It finds bills since 1989, legislators past and present, committees, towns and who represents them, subjects and how-to guides.")}</p>
 <p class="sr" id="hqsay" role="status"></p>
-<!-- THE WEBINAR UNDER THE SEARCH (the owner, 24 October 2026: "Could you
-     move the webinar below the search bar?"): the search is what the page
-     is for, and the box that retires on 11 November stands under it. -->
-{home_webinar(lang=lang)}
 <!-- EACH CARD WITH ITS SECTION'S DRAWING, the nav's own (Polish 1, 9 October
      2026): Bills, Officials, Laws and Resources since 17 October 2026
      (HOME_CARDS says why). -->
 {home_cards(lang)}
+<!-- THE WEBINAR'S RECORDING UNDER THE CARDS (the owner, 19 November 2026:
+     "move the webinar video block on the homepage below the cards for bills,
+     laws, officials, and resources"; under the search since 24 October). -->
+{home_webinar(lang=lang)}
 <!-- COMMON QUESTIONS, under the cards (the person, 18 October 2026: "a sort
      of top 3-5 guides for the most common inquiries"): a few guides, each by
      its title over a line saying what a reader will learn there, and All
