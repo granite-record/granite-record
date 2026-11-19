@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.12
+# GRANITE_VERSION: 2026-11-07.13
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -321,7 +321,7 @@ def inc_legend(chamber):
 
 
 def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=False, inc=frozenset(),
-                   chamber="H"):
+                   chamber="H", unopposed=False):
     """The race's rows, most votes first. `mine` is the candidate a member's
     Elections tab is about (same_name), whose row is marked er-me.
 
@@ -338,12 +338,19 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=Fal
 
     AN INCUMBENT (`inc`, same_name of each, build_member_elections.incumbents:
     a certain match who held a seat of the race's chamber on election day) has
-    an asterisk after the name."""
+    an asterisk after the name.
+
+    AN UNOPPOSED RACE (`unopposed`, the owner, 19 November 2026: "Unopposed
+    races like that can still show write-ins separately"): its scattered
+    write-ins are a row of their own, "Write-ins", under the candidates, and
+    every share is of all the votes cast, the write-ins included, whatever the
+    seats. Write-ins do not make it contested (the margin's rule)."""
     shown = [c for c in race["candidates"] if same_name(c["name"]) not in held]
     cands = sorted(shown, key=lambda c: (-c["votes"], c["name"]))
-    top = max((c["votes"] for c in cands), default=0) or 1
+    scatter = int(race.get("scatter") or 0)
+    top = max([c["votes"] for c in cands] + ([scatter] if unopposed else []), default=0) or 1
     counted = sum(c["votes"] for c in race["candidates"]) + (
-        int(race.get("scatter") or 0) + int(race.get("other_votes") or 0) if race["seats"] == 1 else 0)
+        scatter + int(race.get("other_votes") or 0) if race["seats"] == 1 or unopposed else 0)
     one = not held
     out = []
     for c in cands:
@@ -367,6 +374,12 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=Fal
             + f'</span><span class="er-n">{c["votes"]:,}{share}</span>'
             + f'<span class="er-b" aria-hidden="true"><i class="er-{bar_cls}" '
               f'style="width:{100 * c["votes"] / top:.1f}%"></i></span></li>')
+    if unopposed and scatter and not held:
+        share = f' <span>&middot; {100 * scatter / counted:.1f}%</span>' if counted else ""
+        out.append('<li class="er-row er-wirow"><span class="er-who">Write-ins</span>'
+                   f'<span class="er-n">{scatter:,}{share}</span>'
+                   f'<span class="er-b" aria-hidden="true"><i class="er-X" '
+                   f'style="width:{100 * scatter / top:.1f}%"></i></span></li>')
     return "".join(out)
 
 
@@ -481,13 +494,18 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
                     f"total, but its own town counts add up to {E(got[0])}, the count shown here: "
                     f"the file&rsquo;s total leaves out {E(got[2])}.")
     scatter = int(race.get("scatter") or 0)
+    unopp = bool(m and m["status"] == "unopposed")
     foot = []
-    if seats > 1:
+    if unopp and scatter:
+        # Its write-ins are a row (candidate_rows), and the shares are of every vote.
+        foot.append("Unopposed: a share is of all the votes cast, the write-ins included"
+                    + ("; each voter could choose up to " + str(seats) if seats > 1 else "") + ".")
+    elif seats > 1:
         foot.append(f"Each voter could choose up to {seats}, so a share is of all the votes cast for "
                     "the candidates listed; each bar is scaled to the most votes in the race.")
     if held:
         foot.append("A winner of this race is not shown here yet.")
-    if scatter:
+    if scatter and not unopp:
         foot.append(f'{scatter:,} scattered write-in vote{"s" if scatter != 1 else ""} '
                     f'{"are" if scatter != 1 else "is"} not shown.')
     other, n_other = race.get("other_votes"), race.get("other_rows") or 0
@@ -500,7 +518,7 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
     return (f'<article class="er-race"{at}>'
             f'<div class="er-hd"><{h}>{E(race_name(key, race))}</{h}>{margin_chip(m)}</div>'
             f'<p class="er-meta">{" &middot; ".join(E(x) if not x.startswith("<b>") else x for x in meta)}</p>'
-            f'<ul class="er-rows">{candidate_rows(race, elected_names, held, mine, bool(primary), inc, key[0])}</ul>'
+            f'<ul class="er-rows">{candidate_rows(race, elected_names, held, mine, bool(primary), inc, key[0], unopp)}</ul>'
             + margin_line(m, seats, not me.get("not_final"), bool(primary))
             + status_lines(me)
             + "".join(f'<p class="er-note">{n}</p>' for n in notes)

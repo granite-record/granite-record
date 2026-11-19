@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.22
+# GRANITE_VERSION: 2026-11-16.23
 """
 preflight's checks of members-elect and election results.
 
@@ -1871,6 +1871,48 @@ def _election_shares(BE):
             "the tab's intro does not say what a share in a race of several seats is of")
     return "ok", ("Strafford 21's 30.1% of the votes for the candidates listed, Strafford 15's 70.2% of "
                   "every vote, no share beside a held winner, the note and the intro in both languages")
+
+
+@check("build", "an unopposed race's card shows its scattered write-ins as a row of their own, every share of "
+       "all the votes cast with them, still labelled Unopposed; a contested card keeps them in its note",
+       needs=("build_elections",))
+def _election_unopposed_writeins(BE):
+    """The owner, 19 November 2026 ("Unopposed races like that can still show write-ins
+    separately"), on the real counts of 2024's Cheshire 1 (Dylan Germana 1,639, 12 scattered:
+    99.3% and Write-ins 0.7%) and Grafton 12 (four seats, four candidates, 19 scattered), a
+    named write-in standing alone (marked write-in, beside the Write-ins row), and a contested race
+    (its scattered votes still the note's)."""
+    def race(seats, scatter, *cands):
+        return {"seats": seats, "scatter": scatter, "towns": ["Keene Ward 1"], "candidates": [
+            {"name": n, "party": p, "votes": v, "write_in": bool(w), "elected": True} for n, p, v, *w in cands]}
+
+    def rows(card):
+        return [(re.sub(r"<[^>]+>", "", re.search(r'<span class="er-who">(.*?)</span><span class="er-n">', r, re.S)
+                        .group(1)).strip(), re.search(r'<span class="er-n">([\d,]+) <span>&middot; ([\d.]+)%', r).groups())
+                for r in re.findall(r'<li class="er-row[^"]*">(.*?)</li>', card, re.S)]
+    me = {"seats": 1, "elected": [], "not_final": 0}
+    card = BE.race_card("H|Cheshire|1", race(1, 12, ("Dylan Germana", "d", 1639)), me, {}, {}, "2024-11-05")
+    assert rows(card) == [("Dylan Germana (D)", ("1,639", "99.3")), ("Write-ins", ("12", "0.7"))], (
+        f"Cheshire 1's rows: {rows(card)}")
+    assert '<span class="chip er-mg">Unopposed</span>' in card and "scattered write-in" not in card \
+        and "a share is of all the votes cast, the write-ins included" in card, f"Cheshire 1's card: {card}"
+    g = BE.race_card("H|Grafton|12", race(4, 19, ("A", "d", 3000), ("B", "d", 2900), ("C", "d", 2800), ("D", "d", 2281)),
+                     dict(me, seats=4), {}, {}, "2024-11-05")
+    assert rows(g)[-1] == ("Write-ins", ("19", "0.2")) and rows(g)[0][1] == ("3,000", "27.3") and \
+        "could choose up to 4." in g, f"Grafton 12's rows: {rows(g)}"
+    big = BE.race_card("H|Grafton|13", race(2, 1000, ("A", "d", 600), ("B", "d", 400)), dict(me, seats=2), {}, {},
+                       "2024-11-05")
+    assert [r[1][1] for r in rows(big)] == ["30.0", "20.0", "50.0"], (
+        f"two seats unopposed, 1,000 written in: the shares are not of every vote: {rows(big)}")
+    w = BE.race_card("H|Rockingham|7", race(1, 41, ("Sam Wright", "", 212, True)), me, {}, {}, "2026-11-03")
+    assert [r[0] for r in rows(w)] == ["Sam Wright write-in", "Write-ins"] and "Unopposed" in w, (
+        f"a named write-in standing alone: {rows(w)}")
+    c = BE.race_card("H|Cheshire|9", race(1, 7, ("Rich Nalevanko", "r", 1524), ("Daniel Adams Eaton", "d", 1485)),
+                     me, {}, {}, "2024-11-05")
+    assert "Write-ins" not in c and "7 scattered write-in votes are not shown." in c and "R+1.3" in c, (
+        f"a contested card: {c[-300:]}")
+    return "ok", ("Cheshire 1: Dylan Germana 99.3%, Write-ins 12 (0.7%), Unopposed; Grafton 12's four and its "
+                  "19; a named write-in alone; a contested card's write-ins still in its note")
 
 
 # A MEMBER'S ELECTIONS TAB (the owner's design of 10 November 2026; src/pages/
