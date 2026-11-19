@@ -1086,6 +1086,16 @@ def constitution_targets(body):
     return PCON.cacr_targets(body, _CONSTITUTION[0])
 
 
+def sitting_labels(m):
+    """A roster member's labels as their own page gives them (build_legislators
+    and own_slug make them so): the Sponsor filter's list labels a member no
+    bill names this way (sponsor_roster.add_sitting)."""
+    return member_labels(m.get("name"), chamber=m.get("chamber"),
+                         party=m.get("party_code") or m.get("party"),
+                         district=m.get("district"), county=m.get("county"),
+                         county_abbr=m.get("county_abbr"))
+
+
 _OWN_SLUG = {}
 
 
@@ -13667,7 +13677,8 @@ def main():
     sponsor_people = {t: b for t, b in sponsor_people.items() if t in by_term}
     _sitting_term = max(bills) if bills else ""
     if _sitting_term in by_term and _sitting_term not in term_rosters:
-        SR.add_sitting(sponsor_people, _sitting_term, legs, former, own_slug, person_name)
+        SR.add_sitting(sponsor_people, _sitting_term, legs, former, own_slug, person_name,
+                       labels=sitting_labels)
     SR.write(out, sponsor_people)
     newest_ = max(by_term) if by_term else ""
     print(f"  idx/: {len(by_term)} terms, newest {newest_} "

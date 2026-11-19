@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.1
+# GRANITE_VERSION: 2026-11-19.2
 """
 The members the bill search's Sponsor filter lists, a term at a time:
 site/sponsors/<term>.json (the owner, 19 November 2026: "a dropdown list of
@@ -111,12 +111,20 @@ def note_bill(people, term, row, sp_list, prime, person_name):
              s.get("sort"), s.get("slug"), False)
 
 
-def add_sitting(people, term, legs, former, own_slug, person_name):
+def add_sitting(people, term, legs, former, own_slug, person_name, labels=None):
     """The term the sitting roster describes: every sitting member, with their
     towns, whether or not a bill names them; every member who served in it and
     holds no seat now, marked `f`; and each of them already listed, by their
     page, given the towns of their district. A former member's towns are their
-    district's as the sitting roster gives it, the term's plan being one."""
+    district's as the sitting roster gives it, the term's plan being one.
+
+    `labels` is how the member's own page labels them: a member -> member_labels
+    dict, which build_site_v2 passes (sitting_labels). The roster build_site_v2
+    reads (data/legislators.json, and former_roster's members) carries no
+    display_full -- the built site/legislators.json gains it later -- and on
+    the dry run of 19 November 2026 the 31 sitting members and the 2 who left
+    that no bill names were listed by their bare names, under no chamber.
+    Without `labels`, a member's own display_full or roster label is used."""
     if not term:
         return
     book = people.setdefault(term, {})
@@ -124,7 +132,9 @@ def add_sitting(people, term, legs, former, own_slug, person_name):
     sitting = {slug_of(m): m for m in (legs or {}).values() if slug_of(m)}
     towns_of_seat = {}
     for m in sitting.values():
-        seat = (str(m.get("chamber") or "")[:1], _seat(m.get("district_label")))
+        # The raw roster has no district_label either; its labels give one.
+        tag = ((labels(m) if labels else None) or {}).get("district_label") or m.get("district_label")
+        seat = (str(m.get("chamber") or "")[:1].upper(), _seat(tag))
         towns_of_seat.setdefault(seat, set()).update(m.get("towns") or [])
     left = {slug_of(m): m for m in (former or {}).values()
             if slug_of(m) and slug_of(m) not in sitting
@@ -136,8 +146,12 @@ def add_sitting(people, term, legs, former, own_slug, person_name):
         k = person_name(m.get("name") or "")
         if not k or k in book:
             continue
-        _add(book, k, m.get("display_full") or m.get("display") or k,
-             m.get("party_code") or m.get("party"), m.get("sort"), slug, False)
+        lab = (labels(m) if labels else None) or {}
+        label = lab.get("display_full") or m.get("display_full") or m.get("label") or m.get("display") or k
+        _add(book, k, label, m.get("party_code") or m.get("party"), lab.get("sort") or m.get("sort"), slug, False)
+        # A label that names no chamber still has the roster's.
+        if not book[k]["c"] and str(m.get("chamber") or "")[:1].upper() in ("H", "S"):
+            book[k]["c"] = str(m.get("chamber"))[:1].upper()
         listed.add(slug)
     for e in book.values():
         m = sitting.get(e["slug"])
