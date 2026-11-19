@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the stylesheet (app.css).
 
@@ -2394,10 +2394,11 @@ def _hearings_one_player():
     CALMER, AND VIDEOS AGAIN (the owner, 19 November 2026): each fact once --
     the day, the kind, the committee and the length are the chosen row's, so
     the player has no caption and the detail under it repeats none of them;
-    the bill's moments are the first line under the player, labelled, as play
-    buttons; the sign-ins are plain figures under "Public sign-ins", not the
-    chips that read as more buttons; "approximate" where a moment is
-    inferred."""
+    the bill's moments are the first line under the player, labelled, as round
+    play buttons; the sign-ins under "Public sign-ins", in their chips'
+    colours (the owner, after the screenshots: the round buttons tell the
+    times apart); "approximate" where a moment is inferred; the list's
+    heading the count, "3 recordings"."""
     st = [
         {"when": "2025-03-12", "time": "10:00", "what": "public hearing", "committee": "Judiciary", "body": "H",
          "venue": "LOB 206", "video_id": "VIDA", "state": "located", "start": 600.0, "end": 1500.0,
@@ -2445,7 +2446,8 @@ def _hearings_one_player():
         "the playlist is not in the order of the bill's story, each with its kind's chip")
     assert "2 h 3 min" in first and "House Judiciary" in first, "a row lacks its length or its committee"
     head = first[first.index('class="vwdetin"'):first.index('class="vwside"')]
-    for want in ("<b>58</b> support", "<b>2</b> oppose", "<b>60</b> signed in", '<h4 class="vwsh">Public sign-ins</h4>',
+    for want in ('<span class="chip sgn for">58 support</span>', '<span class="chip sgn against">2 oppose</span>',
+                 "60 signed in", '<h4 class="vwsh">Public sign-ins</h4>',
                  "Legislative Office Building 206", 'data-seek="h0_VIDA|600"', 'data-seek="h0_VIDA|1500"',
                  '<span class="vwml">Where this bill is in the recording</span>',
                  'aria-label="Play from 00:10:00, where it starts"', 'aria-label="Play from 00:25:00, where it ends"',
@@ -2455,7 +2457,7 @@ def _hearings_one_player():
     # EACH FACT ONCE: the row says the day, the kind and the committee, and
     # nothing under the player says them again; no caption under the player;
     # the counts are no chips; the moments come before the counts.
-    for gone in ("Mar 12, 2025", "Public Hearing", "House Judiciary", 'class="chip sgn', "vwcap"):
+    for gone in ("Mar 12, 2025", "Public Hearing", "House Judiciary", "vwcap"):
         assert gone not in head and (gone != "vwcap" or gone not in first), (
             f"the first sitting's detail says {gone!r} again: {head[:300]}")
     assert head.index('class="vwmoms"') < head.index('class="vwsg"'), "the sign-ins come before the moments"
@@ -2473,7 +2475,9 @@ def _hearings_one_player():
             f"the floor sitting's detail is not its vote, count and moments: {fl[:400]}")
     # The plain entry: the sitting before the channels, with its sign-ins.
     assert 'class="hplain"' in first and 'class="stn pend"' in first and "Jan 8, 2019" in first and \
-        "<b>5</b> signed in" in first and "No recording to play" in first, "a sitting with no recording lost its entry"
+        "5 signed in" in first and "No recording to play" in first, "a sitting with no recording lost its entry"
+    # The list's heading is the count (the owner, 19 November 2026).
+    assert '<h3 class="vwh" id="vwh">3 recordings</h3>' in first, "the recordings' heading is not the count alone"
     # The committee's list: the number, its moments and its chip on one line, the title under them.
     assert re.search(r'<a class="vwbn"[^>]*>HB 1</a><span class="vwmom"><span class="mjumps">.*?</span>'
                      r'<span class="vwout">.*?cstat.*?</span></span><span class="vwbt">a title</span>', line), (
@@ -2482,10 +2486,10 @@ def _hearings_one_player():
     css = _source("src/pages/app.css")
     assert ".vwbills .vwmom .chip,.vwres .chip{margin-left:0}" in css, (
         "app.css lets the outcome chip go to the right edge, away from the moments")
-    return "ok", ("one player and a playlist of the bill's recordings, no caption; under it the moments as "
-                  "labelled play buttons, then the time, room, vote and sign-ins as figures, nothing the row "
-                  "says said again; a sitting with no recording its own entry; the committee's moments and "
-                  "chip on one line")
+    return "ok", ("one player and a playlist of the bill's recordings headed by their count, no caption; "
+                  "under it the moments as labelled play buttons, then the time, room, vote and the sign-ins' "
+                  "chips under their heading, nothing the row says said again; a sitting with no recording "
+                  "its own entry; the committee's moments and chip on one line")
 
 
 @check("frontend", "a bill's Videos tab says Videos wherever a reader meets it, and keeps \"approximate\" "

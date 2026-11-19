@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.33
+# GRANITE_VERSION: 2026-11-16.34
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1863,6 +1863,9 @@ def _bill_tabs_one_line():
     chips = re.findall(r'class="mchip p-(\w)" translate="no"><a href="legislator/([^"]+)"', sec)
     assert chips == [("D", "ann-lee-sd-1"), ("R", "cy-doe-sd-3"), ("R", "bob-roe-hills-2")], (
         f"the Summary's sponsors are not the prime, then the co-sponsors, the prime's chamber first: {chips}")
+    # The count under the chips (the owner, 19 November 2026), not over them.
+    assert re.search(r'</div>\s*<p class="spcount">3 Sponsors \u00b7 <span title="Democrat">1 D</span>', sec) \
+        and sec.index("spcount") > sec.rindex('class="chosen"'), "the sponsors' count is not under their chips"
     assert '<i translate="yes">Prime</i>' in sec.split("cy-doe-sd-3")[0] and \
         re.findall(r'<h3 class="spch">(\w+)', sec) == ["Senators", "Representatives"], (
             "the prime is not labelled, or the chambers are not split under h3s")
@@ -3487,8 +3490,8 @@ def _invented_end_withheld(build_site_v2):
     return "ok", "a last mention within 30 s of the opening gives no end, committee or floor"
 
 
-@check("frontend", "a Senate hearing report draws closed on the Reports tab, under Public Hearing "
-       "Reports, speakers under their names", needs=("build_site_v2", "senate_hearing_reports"))
+@check("frontend", "a Senate hearing report draws closed on the Reports tab, among the committees' "
+       "reports, speakers under their names", needs=("build_site_v2", "senate_hearing_reports"))
 def _hearing_report_drawn(build_site_v2, senate_hearing_reports):
     """app.js in node, on two real reports as the build hands them over.
 
@@ -3499,11 +3502,11 @@ def _hearing_report_drawn(build_site_v2, senate_hearing_reports):
     over their own points; and a report that could not be split is drawn as
     the text it is, with no name put over anything.
 
-    ON THE REPORTS TAB SINCE 19 NOVEMBER 2026 (the owner): under Public
-    Hearing Reports, counted in the tab's count, and no longer on the Videos
-    tab, which says where it went where the report dates a sitting itself.
-    Its sections are h3s and its speakers h4s under the group's h2, its
-    committee named in words beside it.
+    ON THE REPORTS TAB SINCE 19 NOVEMBER 2026 (the owner): among the
+    committees' reports, as a "Public Hearing Report" under its committee's
+    h2, counted in the tab's count, and no longer on the Videos tab, which
+    says where it went where the report dates a sitting itself. Its sections
+    are h3s and its speakers h4s.
     """
     ext, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     if not (ext.exists() and stub.exists()):
@@ -3582,9 +3585,9 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
         "own words")
     assert "<h4>Liz Tentarelli, League of Women Voters N.H.</h4>" in one, (
         "a member of the public is not named as the report names her")
-    # h3 then h4: on the Reports tab the report is under its group's h2, so
-    # its sections are h3s and its speakers h4s, and the outline never skips
-    # a level.
+    # h3 then h4: on the Reports tab the report is under its committee's h2,
+    # so its sections are h3s and its speakers h4s, and the outline never
+    # skips a level.
     assert one.count("<h3>") >= 3 and one.count("<h4>") == 4 and \
         not re.search(r"<h[25][ >]", one), (
         f"{one.count('<h3>')} section headings and {one.count('<h4>')} "
@@ -3593,13 +3596,13 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
         "does not make clear who said which part" in prose, (
         "a report kept as text was drawn as speakers, or without saying why")
     # THE REPORTS TAB'S, NOT THE VIDEOS TAB'S: the player alone on Videos,
-    # the report under Public Hearing Reports, and counted there.
+    # the report a Public Hearing Report on Reports, and counted there.
     rep, repbare = re.sub(r"\s+", " ", out["rep"]), re.sub(r"\s+", " ", out["repbare"])
     assert 'class="player vwplay"' in tab and 'class="hrep"' not in tab, (
         "the Videos tab still draws the hearing report")
-    assert re.search(r'<section class="repgrp"><h2 class="sech">Public Hearing Reports</h2>.*'
-                     r'<p class="reph">Senate Election Law and Municipal Affairs Committee</p>.*'
-                     r'class="hrep"', rep), "the report is not under Public Hearing Reports on the Reports tab"
+    assert re.search(r'<span class="chip calkind k-hearing">Public Hearing Report</span></p>\s*'
+                     r'<h2 class="sech">Senate Election Law and Municipal Affairs Committee</h2>.*'
+                     r'class="hrep"', rep), "the report is not a Public Hearing Report on the Reports tab"
     assert out["count"] == 2, f"the Reports tab counts {out['count']} hearing reports, not 2"
     # "The recording ... is on the Videos tab" is true only where there is
     # one; fifteen reported hearings have none.
@@ -3618,8 +3621,8 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
         "a report under its own date does not say where the date came from: "
         + dated[:300])
     return "ok", ("closed, sized, attributed; a member in the chip, the "
-                  "public as named; prose kept as prose; on the Reports tab under "
-                  "Public Hearing Reports and counted, pointing at the recording only "
+                  "public as named; prose kept as prose; on the Reports tab as a "
+                  "Public Hearing Report and counted, pointing at the recording only "
                   "where there is one; a report the docket has no hearing for under "
                   "its own date on the Videos tab, saying where the report is")
 
@@ -3628,23 +3631,23 @@ _SOS_URL = ("https://gc.nh.gov/bill_status/legacy/bs2016/sos_archives.aspx?lsr=2
             "&sortoption=billnumber&txtsessionyear=2025&txtbillnumber=hb57")
 
 
-@check("frontend", "a bill's Reports tab holds Public Hearing Reports, then Executive Session Reports, "
-                   "each in the bill's order and all counted, a writer a chip only where the build named "
-                   "one, and the committee files linked once under them; a tab with no report still links "
-                   "them, counting none")
+@check("frontend", "a bill's Reports tab is one list, oldest first, a day's public hearing report before its "
+                   "executive session report, each saying which it is, all counted, a writer a chip only where "
+                   "the build named one, and the committee files linked once under them; a tab with no report "
+                   "still links them, counting none")
 def _report_groups():
-    """The owner, 19 November 2026: the Reports tab in two groups, headed
-    "Public hearing reports" and "Executive session reports", each in the
-    bill's order. The committees' reports -- the recommendation, the vote,
-    the reporting member, the reasoning -- are executive session reports; the
-    Senate's hearing reports, which the Videos tab drew under the player, are
-    public hearing reports. The tab counts both. The House's public hearing
-    report is a later source, so a group with nothing in it is not drawn. The
-    reporting member is a chip where build_site_v2.report_author named one
-    for certain (author_m), else the report's words. And once a bill, under
-    the groups, the Secretary of State's archive of the committee files
-    (sos_archives), marked as leaving the site; with no report at all the tab
-    still has it, and its count is none."""
+    """The owner, 19 November 2026. The Senate's hearing reports, which the
+    Videos tab drew under the player, are the Reports tab's with the
+    committees' reports, and the tab counts both. After the first
+    screenshots: "one chronological list, oldest at the top and newest at the
+    bottom, whatever the type", each report saying what it is -- a chip,
+    "Public Hearing Report" or "Executive Session Report", in the colours the
+    Videos tab's rows give those meetings -- and on one day the public hearing
+    before the executive session. The reporting member is a chip where
+    build_site_v2.report_author named one for certain (author_m), else the
+    report's words. And once a bill, under the list, the Secretary of State's
+    archive of the committee files (sos_archives), marked as leaving the
+    site; with no report at all the tab still has it, and its count is none."""
     hr = {"committee": "Senate Judiciary Committee", "heard": "2025-05-15",
           "sections": [{"label": "Testimony", "text": ["Said."]}]}
     d = {"stations": [
@@ -3661,10 +3664,12 @@ def _report_groups():
                           "committee": "Criminal Justice and Public Safety", "text": "Reasons.",
                           "author_m": {"label": "Rep. David Meuse (D - Rock 37)", "slug": "david-meuse-rock-37",
                                        "party_code": "D"}}]},
-            {"date": "2025-05-22", "dated": "signed", "body": "S", "cite": "SC 22A",
+            {"date": "2025-05-20", "dated": "signed", "body": "S", "cite": "SC 22A",
              "majority_recommendation": "OUGHT TO PASS WITH AMENDMENT",
              "reports": [{"side": "Committee", "author": "Senator Smith", "committee": "Judiciary",
                           "vote_yeas": 3, "vote_nays": 2, "text": ""}]}],
+         "docket_reports": [{"date": "2025-03-04", "body": "H", "committee": "Criminal Justice and Public Safety",
+                             "recommendation": "OUGHT TO PASS", "vote_yeas": 12, "vote_nays": 3}],
          "sos_archives": _SOS_URL}
     b = {"id": "HB57", "n": "HB 57", "term": "2025-2026", "year": 2025}
     js = ("(() => { const b = " + json.dumps(b) + ", d = " + json.dumps(d) + ", u = " + json.dumps(_SOS_URL) + ";"
@@ -3676,17 +3681,26 @@ def _report_groups():
     if got is None:
         return "skip", "node, app.js or the stub is not here"
     full = re.sub(r"\s+", " ", got["full"])
-    order = ["Public Hearing Reports", "May 15, 2025", "May 20, 2025", "Executive Session Reports",
-             "Jan 29, 2025", "May 22, 2025", "Secretary of State&rsquo;s archive"]
-    at = [full.find(w) for w in order]
-    assert -1 not in at and at == sorted(at), f"the tab's order is not the groups' and the bill's: {dict(zip(order, at))}"
-    assert re.findall(r'<h2 class="sech">([^<]+)</h2>', full) == ["Public Hearing Reports", "Executive Session Reports"] \
-        and full.count('<h3 class="reph">') == 2 and full.count('<p class="reph">') == 2, (
-            "the groups or their reports are not headed h2, then h3 or the hearing's committee in words")
-    assert got["count"] == 4, f"the tab counts {got['count']}, not the 2 written and 2 hearing reports"
+    # One list: each report's kind and its committee, oldest first; the
+    # written report of 29 January before the docket's of 4 March, and on 20
+    # May the public hearing's report before the executive session's.
+    said = re.findall(r'<p class="repkind"><span class="chip calkind (k-\w+)">([^<]+)</span></p>\s*'
+                      r'<h2 class="sech">([^<]+)</h2>', full)
+    assert said == [("k-exec", "Executive Session Report", "House Criminal Justice and Public Safety Committee"),
+                    ("k-exec", "Executive Session Report", "House Criminal Justice and Public Safety Committee"),
+                    ("k-hearing", "Public Hearing Report", "Senate Judiciary Committee"),
+                    ("k-hearing", "Public Hearing Report", "Senate Judiciary Committee"),
+                    ("k-exec", "Executive Session Report", "Senate Judiciary Committee")], (
+        f"the reports are not one list, oldest first, each with its kind: {said}")
+    days = [full.find(w) for w in ("Jan 29, 2025", "Mar 4, 2025", "May 15, 2025", "Secretary of State&rsquo;s archive")]
+    assert -1 not in days and days == sorted(days) and "repgrp" not in full \
+        and "Public Hearing Reports" not in full and "Executive Session Reports" not in full, (
+            "the tab still draws the two groups, or the days are out of order")
+    assert got["count"] == 5, f"the tab counts {got['count']}, not the 3 committee and 2 hearing reports"
     links = re.findall(r'<a href="([^"]+)" target="_blank" rel="noopener">Secretary of State&rsquo;s archive</a>', full)
-    assert links == [_SOS_URL.replace("&", "&amp;")] and full.count("sos_archives.aspx") == 1, (
-        f"the committee files are not linked once, as a link that leaves the site: {links}")
+    assert links == [_SOS_URL.replace("&", "&amp;")] and full.count("sos_archives.aspx") == 1 \
+        and full.rindex("</article>") < full.index("sos_archives.aspx"), (
+        f"the committee files are not linked once, under the reports, as a link that leaves the site: {links}")
     assert re.search(r'<p class="repby">[^<]*<span class="mchip p-D" translate="no"><a href="legislator/'
                      r'david-meuse-rock-37">Rep\. David Meuse <span class="mtag">\(D - Rock 37\)</span></a></span>', full) \
         and re.search(r'<p class="repby">\s*Senator Smith</p>', full), (
@@ -3696,9 +3710,9 @@ def _report_groups():
         and got["bareCount"] == 0, "a bill with no report lost its link, or counts it as a report"
     assert "Secretary of State" not in got["nolink"], "a bill with no archive address links one"
     assert re.search(r'data-t="3">Reports</button>', got["strip"]), "the Reports tab of a bill with only the link is counted, or gone"
-    return "ok", ("Public Hearing Reports then Executive Session Reports, each in date order, h2 over h3, "
-                  "4 counted; the named writer a chip and the unnamed one words; the archive linked once "
-                  "under them, and alone, uncounted, on a bill with no report")
+    return "ok", ("one list of five, oldest first, each with its kind's chip, a day's hearing report before its "
+                  "executive session's; 5 counted; the named writer a chip and the unnamed one words; the "
+                  "archive linked once under them, and alone, uncounted, on a bill with no report")
 
 
 @check("build", "a committee report's writer is a member's chip only where one member of the report's "

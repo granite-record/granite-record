@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.403 */
+/* GRANITE_VERSION: 2026-09-07.404 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -3340,15 +3340,10 @@ color:var(--ink-2);margin:0 0 var(--sp-4);font-family:var(--serif)}
    columns. */
 .rep{border-top:1px solid var(--rule);padding-top:var(--sp-5)}
 .rep .rephead{border-top:0;padding-top:0}
-/* THE TWO GROUPS (the owner, 19 November 2026): Public Hearing Reports and
-   Executive Session Reports, each an h2.sech, and under each a report's
-   committee as an h3 that the group's heading outranks. */
-.repgrp + .repgrp{margin-top:var(--sp-7)}
-.repgrp > .sech{margin:0 0 var(--sp-4)}
-/* The heading's own rule is the first report's: not a second line under it. */
-.repgrp > .sech + .rep{border-top:0;padding-top:0}
-@media (min-width:68.75em){.card.focus .repgrp > .sech + .rep{padding-top:0}}
-.reph{font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink);margin:0 0 var(--sp-2)}
+/* WHAT A REPORT IS (the owner, 19 November 2026): a public hearing's or an
+   executive session's, the meeting kind's chip over the committee's name. */
+.repkind{margin:0 0 var(--sp-2)}
+.repkind .chip{margin:0}
 /* The committees' own files, once a bill, under the reports. */
 .repsos{margin-top:var(--sp-7)}
 .repbody{max-width:var(--measure)}
@@ -3383,7 +3378,7 @@ color:var(--ink-2);margin:0 0 var(--sp-4);font-family:var(--serif)}
    pane's right edge and a reader can run an eye down four of them without
    reading a word. */
 @media (min-width:68.75em){
-  .card.focus .pane > .rep,.card.focus .repgrp > .rep{max-width:none;display:grid;
+  .card.focus .pane > .rep{max-width:none;display:grid;
     grid-template-columns:288px minmax(0,1fr);gap:0 46px;
     padding-top:var(--sp-7)}
   .card.focus .rep .rephead{margin:0}
@@ -3413,6 +3408,8 @@ margin:var(--sp-4) 0 0;max-width:var(--measure)}
 .spcount{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-5);
 font-variant-numeric:tabular-nums}
 .spgrp{margin-top:var(--sp-6)}
+/* On a bill's Summary the count is under the chips (19 November 2026). */
+.w4b .spcount{margin:var(--sp-4) 0 0}
 /* A chamber's names under the Summary's Sponsors, where they are of both
    (19 November 2026): an h3 the section's heading outranks. */
 .spch{margin:var(--sp-5) 0 var(--sp-3);font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
@@ -7491,8 +7488,8 @@ align-items:baseline;padding:var(--sp-3) 0;border-top:1px solid var(--rule)}
 /* A BILL'S VIDEOS TAB, CALMER (the owner, 19 November 2026). Its moments
    are the first line under the player, labelled, each a round play button
    in the accent -- not the 3px-cornered box with a bar every chip is, which
-   beside the sign-in chips read as two more counts. The sign-ins are plain
-   figures under a heading of their own (app.js, signinsPlain). */
+   beside the sign-in chips read as two more counts. The sign-ins keep their
+   chips, under a heading of their own (app.js, signinsHeaded). */
 .vwmoms{margin:0 0 var(--sp-4)}
 .vwml{flex-basis:100%;font-size:var(--t-ui);font-weight:600;color:var(--ink)}
 .vwjump{display:inline-flex;align-items:center;gap:var(--sp-2);border-radius:999px;
@@ -7502,9 +7499,8 @@ border-color:var(--pine);padding:var(--sp-1) var(--sp-5) var(--sp-1) var(--sp-4)
 .vwmoms .approx{font-style:normal;font-size:var(--t-sm);color:var(--ink-2)}
 .vwsg{margin:var(--sp-5) 0 0}
 .vwsh{margin:0 0 var(--sp-2);font:600 var(--t-ui)/1.4 var(--sans);color:var(--ink)}
-.vwsg .vwsign{display:block;margin:0;font-size:var(--t-ui);color:var(--ink-2);font-variant-numeric:tabular-nums}
-.vwsg .vwsign b{font-weight:600;color:var(--ink)}
-.vwsg .vwi,.vwdet .vwkinds .vwi{white-space:nowrap}
+.vwsg .vwsign{margin:0}
+.vwdet .vwkinds .vwi{white-space:nowrap}
 .stn .vwsg{margin-top:var(--sp-3)}
 /* The sittings with no recording to play, under the view: the old cards. */
 .hplain{margin-top:var(--sp-6)}

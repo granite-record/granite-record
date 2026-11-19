@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.357
+// GRANITE_VERSION: 2026-09-07.358
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4967,17 +4967,13 @@ const recChip=(rec,vote)=>tallyWhole(chip(titleWords(rec)+(vote?` (${vote})`:"")
 // "dated" is the difference between a fact and a number that looks like one:
 // with it the count is this hearing's, without it the database had the bill
 // but not this date and the figure covers every hearing the bill had.
-// ON THE VIDEOS TAB THE COUNTS ARE FIGURES UNDER THEIR OWN HEADING (the owner,
-// 19 November 2026): as chips beside the moments' buttons they read as more
-// buttons, and a reader could not tell the time from the testimony at a
-// glance. The docket's lines keep the chips (signins).
-const signinsPlain=t=>{
-  if(!t||!t.total)return "";
-  const n=x=>Number(x||0).toLocaleString();
-  const parts=[[t.support,"support"],[t.oppose,"oppose"],[t.neutral,"neutral"]].filter(x=>x[0])
-    .map(([v,w])=>`<b>${n(v)}</b> ${w}`)
-    .concat(`<b>${n(t.total)}</b> signed in${t.dated?"":" across this bill’s hearings"}`);
-  return `<div class="vwsg"><h4 class="vwsh">Public sign-ins</h4><p class="vwsign">${vwJoin(parts)}</p></div>`;
+// ON THE VIDEOS TAB THE COUNTS ARE UNDER A HEADING OF THEIR OWN, below the
+// moments (the owner, 19 November 2026), in their chips' colours as the
+// docket's lines draw them (signins): support green, oppose red, neutral
+// grey. The moments are round play buttons, which tells them apart.
+const signinsHeaded=t=>{
+  const s=signins(t);
+  return s?`<div class="vwsg"><h4 class="vwsh">Public sign-ins</h4><p class="vwsign">${s}</p></div>`:"";
 };
 const signins=t=>{
   if(!t||!t.total)return "";
@@ -6287,8 +6283,8 @@ function stationTitle(b,s){
     .filter(Boolean).join(" - ");
 }
 
-// THE SENATE COMMITTEE'S OWN REPORT OF THE HEARING, on the Reports tab under
-// Public Hearing Reports (19 November 2026; it was under the hearing's video).
+// THE SENATE COMMITTEE'S OWN REPORT OF THE HEARING, on the Reports tab among
+// the committees' reports (19 November 2026; it was under the hearing's video).
 //
 // A Senate committee's aide writes up every public hearing: who came, which
 // side each took, and what each said. The person decided on 24 September that
@@ -6323,9 +6319,8 @@ function hrSpeaker(sp){
   const also=(sp.also||[]).map(a=>`<span class="hrrole">${esc(a)}</span>`).join("");
   const pts=sp.points||[];
   // h4 UNDER THE SECTION'S h3 (19 November 2026): the report is on the
-  // Reports tab, under its group's h2; its committee is named beside it in
-  // words, not a heading, so the outline keeps to four levels (no h5 on the
-  // site).
+  // Reports tab, under its committee's h2, and the outline keeps to four
+  // levels (no h5 on the site).
   return `<section class="hrsp"><h4>${name}${also}</h4>${pts.length
     ?`<ul class="hrpts">${pts.map(hrPoint).join("")}</ul>`
     :`<p class="hrnone">The report lists no points under this name.</p>`}</section>`;
@@ -6507,7 +6502,7 @@ function hearingCard(b,s){
     <div class="w">${esc(dateWords(s.when))}${s.time?" at "+esc(clock(s.time)):""}${s.venue?" · "+esc(roomWords(s.venue)):""}</div>
     <div class="t">${esc(stationTitle(b,s))}</div>${inner}${
       /* The Senate's hearing report is the Reports tab's (19 November 2026). */
-      signinsPlain(s.testimony)}</div>`;
+      signinsHeaded(s.testimony)}</div>`;
 }
 
 // WHERE THE VIEW OPENS A SITTING'S RECORDING, and what to say of the moment
@@ -6606,8 +6601,8 @@ function hearingMoments(h,pid){
 // kind, the committee and the length, so under the player are only what it
 // does not -- the bill's moments, first, by the player they move; then the
 // time and the room, with the recording on YouTube; what was voted; and who
-// signed in, as figures under their own heading. The Senate's hearing report
-// is the Reports tab's.
+// signed in, under their own heading. The Senate's hearing report is the
+// Reports tab's.
 function hearingDetail(b,d,s,h,pid){
   const out=[hearingMoments(h,pid)];
   if(h.note)out.push(`<p class="vwnone">${esc(h.note[0].toUpperCase()+h.note.slice(1))}${/\.$/.test(h.note)?"":"."}</p>`);
@@ -6620,7 +6615,7 @@ function hearingDetail(b,d,s,h,pid){
   const oc=hearingOutcome(b,d,s);
   if(oc)out.push(`<p class="vwres">${oc}</p>`);
   out.push(motionsLine(s));
-  out.push(signinsPlain(s.testimony));
+  out.push(signinsHeaded(s.testimony));
   return out.join("");
 }
 // THE TAB IS A COMMITTEE'S VIDEOS TAB, FOR ONE BILL (the owner, 10 November
@@ -6651,7 +6646,8 @@ function hearingView(b,d,rec){
   // said the committee, the day and the length the chosen row says, and its
   // "On YouTube" is in the line under the player (hearingDetail).
   return videoView({who:b.n||b.id,key,rows,chosen:HEAR_CHOSEN[key]||rows[0].id,bare:true,
-    heading:`${rows.length.toLocaleString()} recording${rows.length===1?"":"s"}, in the order of the bill’s story`,
+    // THE COUNT AND NOTHING MORE (the owner, 19 November 2026).
+    heading:`${rows.length.toLocaleString()} recording${rows.length===1?"":"s"}`,
     href:()=>path,pid:r=>r.pid,onChoose:id=>{HEAR_CHOSEN[key]=id;},
     source:"Recordings from the General Court&rsquo;s House and Senate YouTube channels."});
 }
@@ -6772,12 +6768,12 @@ function renderReports(b,d,rsa){
   const repName=(cmte,body)=>{
     const n=[body,cmte].filter(Boolean).map(titleWords).join(" ");
     return /\bcommittee\b/i.test(n)?n:n+" Committee";};
-  // AN h3 UNDER ITS GROUP'S h2 (19 November 2026): the reports stand in two
-  // groups, each headed, and the committee's name is set smaller than the
-  // group's, as a heading under a heading.
-  const head=(r,cmte,body)=>`<div class="rephead">
+  // EACH REPORT SAYS WHAT IT IS (the owner, 19 November 2026), over its
+  // committee: a public hearing's report or an executive session's, in the
+  // chip the Videos tab's rows give those meetings (kindChips' colours).
+  const head=(r,cmte,body)=>`<div class="rephead">${repKind("exec")}
       ${[body,cmte].filter(Boolean).length
-        ? `<h3 class="reph">${esc(repName(cmte,body))}</h3>`:""}
+        ? `<h2 class="sech">${esc(repName(cmte,body))}</h2>`:""}
       <div class="repmeta">${when(r)}${cited(r)}</div></div>`;
 
   // ONE REPORT IS ONE ELEMENT, so that it can be laid out as one. The head
@@ -6846,9 +6842,9 @@ function renderReports(b,d,rsa){
           : e.note?"":`<p class="note" style="margin:0">${
              reportNoReasons(!!rec,!!committeeTally(e))}</p>`}
         </div>`;}).join("");
-    return between(r.date)+rep(head(r,cmte,r.body==="S"?"Senate":"House"),
+    return {date:r.date,rank:1,html:between(r.date)+rep(head(r,cmte,r.body==="S"?"Senate":"House"),
       (divided?`<p class="note">The committee split. Both reports are printed
-        below in the committee's own words.</p>`:"")+blocks);}).join("");
+        below in the committee's own words.</p>`:"")+blocks)};});
 
   // Reports the docket records and this site has no written text for. Once the
   // Senate's own reports came out of the General Court's database, 964 of
@@ -6865,35 +6861,40 @@ function renderReports(b,d,rsa){
     // it reads "MAJORITY 10" or "COMMITTEE 17-0".
     const amd=r.amendment?`<p class="note" style="margin:0 0 7px">Amendment ${
       esc(r.amendment)}${r.new_title?", which also changes the bill’s title":""}.</p>`:"";
-    return between(r.date)+rep(head(r,r.committee,r.body==="S"?"Senate":"House"),
+    return {date:r.date,rank:1,html:between(r.date)+rep(head(r,r.committee,r.body==="S"?"Senate":"House"),
       `<div class="repline">
         <span class="secsub">${esc(r.side||"Committee")}</span>${vote}
         ${r.recommendation?recChip(r.recommendation,r.vote_yeas!=null&&r.vote_nays!=null?`${r.vote_yeas}–${r.vote_nays}`:""):""}</div>
       ${amd}
       <p class="note" style="margin:var(--sp-5) 0 0">${r.body!=="S"&&termStartOf(d)&&termStartOf(d)<1997
         ? "The written report for this one is not on the site: the General Court’s online calendars, which print the reports, begin in 1997. This is what the docket records of it."
-        : "The written report for this one is not on the site; this is what the docket records of it."}</p>`);}).join("");
+        : "The written report for this one is not on the site; this is what the docket records of it."}</p>`)};});
 
-  // TWO GROUPS, EACH HEADED (the owner, 19 November 2026): what the
-  // committees wrote of their public hearings, then what they reported out of
-  // executive session -- the recommendation, the vote and the reasoning. Each
-  // in the bill's order. Only the Senate's hearing reports are on the site,
-  // so a group with nothing in it is not drawn; and a bill with no report of
-  // either kind says what it said before.
-  // A hearing report's committee is named in words, not an h3: its own
-  // sections are the h3s under the group (hearingReport).
-  const heard=heardReports(d).map(({r,s})=>rep(`<div class="rephead">
-      <p class="reph">${esc(r.committee||"Senate Committee")}</p>
+  // THE SENATE COMMITTEES' REPORTS OF THEIR PUBLIC HEARINGS (moved from the
+  // Videos tab, 19 November 2026), each headed as the committee reports are.
+  const heard=heardReports(d).map(({r,s})=>({date:r.heard||s.when,rank:0,html:rep(`<div class="rephead">
+      ${repKind("hearing")}<h2 class="sech">${esc(r.committee||"Senate Committee")}</h2>
       <div class="repmeta"><span class="secsub">${esc(dateWords(r.heard||s.when))}</span></div></div>`,
-    hearingReport(r,!!s.video_id))).join("");
+    hearingReport(r,!!s.video_id))}));
   const none=`<p class="note">No committee report on file. A report is recorded in the docket
       when a committee reports the bill out, and the reasoning behind it is printed
       in the House Calendar or filed with the Senate; neither has happened here yet.</p>`;
-  const group=(h,body)=>`<section class="repgrp"><h2 class="sech">${h}</h2>${body}</section>`;
-  return veto(d)+(heard?group("Public Hearing Reports",heard):"")
-    +((written||docket)?group("Executive Session Reports",written+docket)
-      :heard?group("Executive Session Reports",none):none)
-    +sosArchive(d);
+  // ONE LIST, OLDEST FIRST, WHATEVER THE KIND (the owner, 19 November 2026,
+  // in place of two groups of the same day): a day's public hearing before
+  // its executive session, and a report with no date last. The sort is
+  // stable, so reports of one kind and one day keep the order they came in.
+  const all=heard.concat(written,docket).sort((x,y)=>{
+    const a=x.date||"9999",c=y.date||"9999";
+    return a<c?-1:a>c?1:x.rank-y.rank;});
+  return veto(d)+(all.length?all.map(x=>x.html).join(""):none)+sosArchive(d);
+}
+// WHAT A REPORT IS, as a chip over its committee: the meeting it comes out of,
+// in the colours the Videos tab's rows give that kind of meeting (kindChips,
+// meeting_kinds.json's).
+const REP_KIND={hearing:["Public Hearing Report","public hearing"],exec:["Executive Session Report","executive session"]};
+function repKind(k){
+  const [word,meet]=REP_KIND[k], w=MEET_KIND[meet]||[];
+  return `<p class="repkind">${chip(word,`calkind ${w[1]||"k-other"}`)}</p>`;
 }
 // THE COMMITTEES' OWN FILES (the owner, 19 November 2026: "Link now, trimmed
 // PDFs later"): the Secretary of State's archive page listing the bill's
@@ -6961,12 +6962,14 @@ function renderSponsors(b,d){
     if(k)pc[k]=(pc[k]||0)+1;});
   const spParty=Object.keys(pc).sort().map(k=>
     `<span title="${esc(PARTY_NAME[k]||k)}">${pc[k]} ${esc(k)}</span>`).join(" \u00b7 ");
+  // THE COUNT UNDER THE CHIPS (the owner, 19 November 2026): over them it
+  // stood beside the section's heading and read as a second one.
   const sp=spAll.length?`
-    <p class="spcount">${spAll.length} Sponsor${spAll.length===1?"":"s"}${
-      spParty?` \u00b7 ${spParty}`:""}</p>
     ${spBlock(origin)}${spBlock(origin==="S"?"H":"S")}
     ${spRest.length?`${split?`<h3 class="spch">Chamber Not on File <span class="sechn">${spRest.length}</span></h3>`:""}
-      <div class="chosen">${spRest.map(pill).join(" ")}</div>`:""}`:"";
+      <div class="chosen">${spRest.map(pill).join(" ")}</div>`:""}
+    <p class="spcount">${spAll.length} Sponsor${spAll.length===1?"":"s"}${
+      spParty?` \u00b7 ${spParty}`:""}</p>`:"";
   // WHERE THE NAMES WERE READ. Before 2023 the only list on this site is the
   // sponsor line printed on the bill's own text (text_sponsors.py): the first
   // name there is taken as prime, and a name matched to nobody who cast a roll
