@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.29
+# GRANITE_VERSION: 2026-11-16.30
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -7211,6 +7211,48 @@ def _movers_of_a_finished_term(B):
                   "keep the seat of the term (Alexander's Hills 29, linked to his Hills 69 page), "
                   "Pat Gone is not the Newcomer Gone, two Lees and a member with no page stay "
                   "words; the current term as before; a term with no frozen roster links none")
+
+
+@check("build", "the members a finished term's story names stay linked after the turn, by the "
+                "seat held in that term", needs=("build_site_v2",))
+def _story_people_of_a_finished_term(B):
+    """The same fault as a roll call's mover (_movers_of_a_finished_term):
+    a bill's story linked the members it names only in the current term,
+    against the sitting roster, so at the turn 2025-2026's records would lose
+    their story_people (1,164 of them in the records of 7 November). The
+    story looks names up where the roll calls' movers are looked up
+    (mover_pool): after the turn, Rep. Joe Alexander with his Hills 29 of the
+    term, linked to his page as it is now; Rep. Gone the Pat Gone who left,
+    not the newcomer of that surname."""
+    def mem(i, last, first, dist, party):
+        return {"id": i, "name": f"{last}, {first}", "chamber": "H", "county": "Hillsborough",
+                "county_abbr": "Hills", "district": dist, "party_code": party}
+    then = {"1": mem("1", "Alexander", "Joe", "29", "R"), "5": mem("5", "Gone", "Pat", "3", "D")}
+    now = {"1": mem("1", "Alexander", "Joe", "69", "R"), "9": mem("9", "Gone", "Newcomer", "4", "R")}
+    people = {**now, "5": {**then["5"], "former": True}}
+    text = "Rep. Alexander moved to table; Rep. Gone offered a floor amendment."
+    keep_slugs, keep_spell = dict(B._OWN_SLUG), list(B._SPELLINGS)
+    try:
+        B._SPELLINGS[:] = [{}]
+        B._OWN_SLUG.clear()
+        pool, pages = B.mover_pool("2025-2026", "2027-2028", now, {"2025-2026": then}, people)
+        got = {p["text"]: (p["label"], p["slug"]) for p in B.story_people([text], pool, pages=pages)}
+        B._OWN_SLUG.clear()
+        today = B.story_people([text], then)
+    finally:
+        B._OWN_SLUG.clear()
+        B._OWN_SLUG.update(keep_slugs)
+        B._SPELLINGS[:] = keep_spell
+    want = {"Rep. Alexander": ("Rep. Joe Alexander (R - Hills 29)", "joe-alexander-hills-69"),
+            "Rep. Gone": ("Rep. Pat Gone (D - Hills 3)", "pat-gone-hills-3")}
+    assert got == want, f"a 2025-2026 story after the turn names {got}, not {want}"
+    assert [p["slug"] for p in today] == ["joe-alexander-hills-29", "pat-gone-hills-3"], (
+        f"the current term's story moved: {today}")
+    src = _source(_paths.locate("build_site_v2.py"))
+    assert "_mpool, pages=_mpages) if _mpool is not None else [])" in src, (
+        "build_bills no longer looks for the story's members among the term's own members")
+    return "ok", ("after the turn a 2025-2026 story names Alexander by Hills 29, linked to his "
+                  "page now, and Pat Gone, not the newcomer; the current term as before")
 
 
 @check("build", "the bill-text fetch saves only the bill it asked for, and stops when told no",

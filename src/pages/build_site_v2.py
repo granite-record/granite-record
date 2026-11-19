@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.283
+# GRANITE_VERSION: 2026-09-05.284
 """
 Generate the faceted site from real General Court data.
 
@@ -8599,13 +8599,14 @@ def mover_pool(term, current, legs, term_rosters, people):
 STORY_PERSON = re.compile(r"\b(Rep|Sen)\.\s+((?:[A-Z][\w'\u2019.-]*)(?:\s+[A-Z][\w'\u2019.-]*){0,2})")
 
 
-def story_people(texts, legs):
+def story_people(texts, legs, pages=None):
     """[{"text", "label", "slug"}]: each member the story names as the docket
     did -- a mover, the member who offered an amendment -- where the words
     can mean one sitting member of that chamber (mover_member). The page
     links them where they stand (the person, 10 October 2026: "movers in
     story text not linked"). A WRONG LINK IS WORSE THAN NO LINK, so a name
-    two members share stays words."""
+    two members share stays words. `legs` and `pages` are mover_pool's, as
+    for a roll call's mover."""
     out, seen = [], set()
     for text in texts:
         for m in STORY_PERSON.finditer(text or ""):
@@ -8614,7 +8615,7 @@ def story_people(texts, legs):
                 said = f"{hon}. {' '.join(words[:k])}".rstrip(".,")
                 if said in seen:
                     break
-                who = mover_member(said, "H" if hon == "Rep" else "S", legs)
+                who = mover_member(said, "H" if hon == "Rep" else "S", legs, pages=pages)
                 if who and who.get("slug") and who.get("label"):
                     seen.add(said)
                     out.append({"text": said, **who})
@@ -12527,15 +12528,16 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         _stages = (story["stages"] if story else
                    stages_told(narr, kind, row["passage"]) + ([ending] if ending else []))
         # The members the story names, for the page to link (story_people).
-        # The sitting roster's seat is the seat held at the time only in the
-        # current term, as for a roll call's mover, so only there.
+        # Among the term's own members with the seat each held then, as for a
+        # roll call's mover (mover_pool): the sitting roster in the current
+        # term, a finished term's frozen roster after the turn.
         # _story_who, NOT _people: that is every member and former member,
         # which bill_sponsor_list and the hearing record read for the bills
         # after this one; taking the name made it a list there, and the dry run
         # of 8f700a7 stopped in the site data ('list' object has no attribute
         # 'get') on the second current-term bill a sponsor list was read for.
         _story_who = (story_people([_narrative] + [s_.get("text") or "" for s_ in _stages or []],
-                                legs) if term == current else [])
+                                _mpool, pages=_mpages) if _mpool is not None else [])
         (_bd / f"{bid}.json").write_text(json.dumps({
             "id": bid, "year": year, "term": term,
             "title": b.get("title", ""),
