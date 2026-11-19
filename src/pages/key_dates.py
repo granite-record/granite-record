@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-24.6
+# GRANITE_VERSION: 2026-10-24.7
 """
 The key dates: the elections, town meeting day, and the legislature's own
 landmarks and deadlines, each with where it comes from. The home page's
@@ -397,6 +397,17 @@ def laws(sec):
     _sections_on_disk()
     row = _LAWS.get(TABLE_HERE.resolve(), {}).get(sec)
     return law_texts(sec, *row) if row else list(LAW_COPY.get(sec, ()))
+
+
+def law_href(sec):
+    """The address of the site's own page of RSA section `sec`
+    (build_rsa.href) where the table the Laws pages are built from holds it
+    (TABLE_HERE), as _law links it; "" where it does not."""
+    try:
+        import build_rsa
+    except Exception:                                        # noqa: BLE001
+        return ""
+    return build_rsa.href(sec) if sec.upper() in _sections_on_disk() else ""
 
 
 def _law(*addrs):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.43
+# GRANITE_VERSION: 2026-09-04.44
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -519,19 +519,54 @@ def elect_requests_pane(reqs, req_meta):
             '<div class="cards">' + "".join(request_card(r) for r in reqs) + "</div>")
 
 
+UP_NAMES = {"filing": "Filing period for the primary", "primary": "State primary",
+            "general": "General election"}
+
+
+def upcoming_html(u):
+    """A seat's upcoming elections as a member's Elections tab draws them
+    (app.js electionUpcoming), from build_member_elections.upcoming's "up":
+    the heading, and a card naming the seat (electionRace's words) with each
+    day, the election and its law. "" where there is none."""
+    if not u or not u.get("e"):
+        return ""
+    k = str(u.get("k") or "").split("|")
+    senate = k[0] == "S"
+    where = f"District {C.esc(k[1])}" if senate else f"{C.esc(k[1])} {C.esc(k[2] if len(k) > 2 else '')}"
+    seats = "1 seat" if u.get("s") == 1 else f"{C.esc(u.get('s'))} seats"
+    race = (f"{'Senate' if senate else 'House'}, {where}"
+            f' <span class="dim">({seats}{", floterial" if u.get("fl") else ""})</span>')
+    rows = []
+    for e in u["e"]:
+        law = (f'<a href="{C.esc(e["href"])}">RSA {C.esc(e["sec"])}</a>' if e.get("href")
+               else f"RSA {C.esc(e['sec'])}")
+        if e.get("act") and e.get("from"):
+            law = f"{law}, as amended by {C.esc(e['act'])}, from {C.esc(C.date_words(e['from'], 'full'))}"
+        day = C.date_span(e["d"], e["u"], "medium") if e.get("u") else C.date_words(e["d"])
+        rows.append(f'<li><span class="er-up-d">{C.esc(day)}</span>\n      '
+                    f'<span class="er-up-w">{C.esc(UP_NAMES.get(e["w"], e["w"]))}</span> '
+                    f'<span class="er-up-law">{law}</span></li>')
+    return ('<h3 class="er-cycle">Upcoming elections</h3><div class="er-cards er-stack">'
+            f'<article class="er-race er-up"><div class="er-hd"><h4>{race}</h4></div>'
+            f'<ul class="er-up-rows">{"".join(rows)}</ul></article></div>')
+
+
 def elect_elections_pane(p, doc):
     """The Elections tab: the race that elected them, as a member's Elections
     tab draws a race (election_row_html), the seats of the race still not
     final where there are any, in the members-elect block's words, and the
     source -- the Secretary of State's results, the day the race's file was
-    saved, and the elections page the row links to. "" where the list carries
-    no result (a page written before it did)."""
+    saved, and the elections page the row links to; and above the race, the
+    seat's upcoming elections (upcoming_html, from "up"). "" where the list
+    carries no result (a page written before it did)."""
     r = p.get("result")
     if not r:
         return ""
     out = ['<p class="src">The election that sent them to the General Court, as the Secretary of '
            "State counted it. A share is of every vote cast in the race, write-ins included; a "
            "race for more than one seat gives none, because a voter could choose several.</p>",
+           # Their seat's next elections, above the race, as on a member's tab.
+           upcoming_html(p.get("up")),
            '<table class="votes vfull"><thead><tr><th>Election</th>\n      <th>Race</th>'
            "<th>Result</th>\n      <th>Votes</th></tr></thead>\n      <tbody>"
            + election_row_html(r) + "</tbody></table>"]

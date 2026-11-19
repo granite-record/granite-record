@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.356
+// GRANITE_VERSION: 2026-09-07.357
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10171,6 +10171,28 @@ function electionCard(r){
     :`<p class="er-when"><a href="${href}">${esc(dateWords(r.d))}</a></p>`;
   return String(r.c).replace(/^<article\b[^>]*>/,m=>m+when);
 }
+// UPCOMING ELECTIONS (the owner, 19 November 2026, "Yes to all 9" of the
+// specials and upcoming elections design, A3): m.up, the seat the member holds
+// in the term the next general election ends and that election's filing
+// period, primary and general, each a day key_dates works out from the law in
+// force on it, with its section (build_member_elections.upcoming). Above the
+// newest cycle, as the newest thing on the tab. Never who is running.
+// build_legislator_pages.upcoming_html draws the same for a new member-elect.
+function electionUpcomingLaw(e){
+  const law=e.href?`<a href="${esc(e.href)}">RSA ${esc(e.sec)}</a>`:`RSA ${esc(e.sec)}`;
+  return e.act&&e.from?tr("race.up_amended","{law}, as amended by {act}, from {date}",
+    {law:law,act:esc(e.act),date:esc(dateWords(e.from,"full"))}):law;
+}
+function electionUpcoming(u){
+  if(!u||!(u.e||[]).length)return "";
+  const name={filing:tr("race.up_filing","Filing period for the primary"),
+    primary:tr("cal.kd.state_primary","State primary"),general:tr("cal.kd.general_election","General election")};
+  const rows=u.e.map(e=>`<li><span class="er-up-d">${esc(e.u?dateSpan(e.d,e.u,"medium"):dateWords(e.d))}</span>
+      <span class="er-up-w">${esc(name[e.w]||e.w)}</span> <span class="er-up-law">${electionUpcomingLaw(e)}</span></li>`).join("");
+  return `<h3 class="er-cycle">${esc(tr("race.up_head","Upcoming elections"))}</h3><div class="er-cards er-stack">`
+    +`<article class="er-race er-up"><div class="er-hd"><h4>${electionRace(u)}</h4></div>`
+    +`<ul class="er-up-rows">${rows}</ul></article></div>`;
+}
 function renderMemberElections(m){
   const rows=m.elections||[];
   if(!rows.length)return "";
@@ -10190,7 +10212,7 @@ function renderMemberElections(m){
   const stack=cyc.map(y=>`<h3 class="er-cycle">${esc(y)}</h3><div class="er-cards er-stack">${
     cards.filter(r=>(r.cy||r.d.slice(0,4))===y).map(electionCard).join("")}</div>`).join("");
   return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}${prim?" "+tr("race.intro_primary","A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; its leader is marked Most votes."):""}</p>
-    ${stack}${inc}${plain.length?`
+    ${electionUpcoming(m.up)}${stack}${inc}${plain.length?`
     <table class="votes vfull"><thead><tr><th>${esc(tr("race.col_election","Election"))}</th>
       <th>${esc(tr("race.col_race","Race"))}</th><th>${esc(tr("race.col_result","Result"))}</th>
       <th>${esc(tr("race.col_votes","Votes"))}</th></tr></thead>

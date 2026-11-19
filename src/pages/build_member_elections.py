@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.9
+# GRANITE_VERSION: 2026-11-10.10
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -88,6 +88,21 @@ THE ORDER (the owner, 19 November 2026): strictly newest first, under a
 heading for each election cycle (app.js), a cycle's general and then its
 primary; one column of cards.
 
+UPCOMING ELECTIONS (the owner, 19 November 2026, "Yes to all 9" of
+reports/money-specials-design/specials-and-upcoming.md, A3): "up" in the
+member's own file, which app.js draws above the newest cycle -- the seat, and
+the next state general election's filing period, primary and general, each
+a day key_dates works out from the text of the law in force on it (RSA
+655:14, 653:8, 653:7) and cites. Only days still ahead. The seat is the one
+the member holds in the term those elections end (upcoming_seats): from the
+day a general election is held until the roster is the next term's, the seat
+a winner of it was elected to (a member-elect: Alice Wade's Strafford 21 for
+2027-2028, where she sits for Strafford 15 until then), and otherwise the
+sitting member's own. A former member has none, and nor does a sitting
+member who is not returning. Never who is running or has filed: no saved
+filing list is read. A new member-elect's provisional page gets the same
+(build_elect_pages).
+
 Nothing here asks the network.
 """
 
@@ -105,6 +120,7 @@ from collections import defaultdict
 import build_date
 import build_elections as BE
 import build_members_elect as BME
+import key_dates as KD
 
 # The tab's rows are kept to what the page draws; the rest is in the race's card.
 REPORT_DEFAULT = Path("reports") / "elections_uncertain.md"
@@ -466,6 +482,77 @@ def near_members(name, key, people):
     return ", ".join(sorted(set(found)))
 
 
+def next_general(today):
+    """The next state general election on or after `today` (ISO), by RSA
+    653:7, or None."""
+    t = KD._day(today)
+    for y in range(t.year, t.year + 3):
+        g = KD.state_general(y)
+        if g and g >= t:
+            return g
+    return None
+
+
+def upcoming(key, races, today):
+    """The next state elections for seat `key` after `today` (ISO): {"k" the
+    seat, "s" its seats, "fl" 1 for a floterial, "e": [{"w" filing, primary or
+    general, "d" its day, "u" a period's last day, "sec" the RSA section, "act"
+    and "from" for a text an act put in force from a day, "href" its Laws page
+    where the build has it}, ...]}, soonest first, only those not yet past.
+    None where the seat is not in `races` (BME.races_on_file) or nothing is
+    ahead."""
+    race = (races or {}).get(key)
+    g = next_general(today)
+    if not race or g is None:
+        return None
+    out = []
+    for w, sec in (("filing", "655:14"), ("primary", "653:8"), ("general", "653:7")):
+        got = KD.in_force(sec, g.year)
+        if got is None or (w == "filing" and KD.state_primary(g.year) is None):
+            continue
+        first, last, law = got
+        if last.isoformat() < today:
+            continue
+        e = {"w": w, "d": first.isoformat()}
+        if last != first:
+            e["u"] = last.isoformat()
+        e["sec"] = sec
+        if law.act and law.since:
+            e["act"], e["from"] = law.act, law.since
+        href = KD.law_href(sec)
+        if href:
+            e["href"] = href
+        out.append(e)
+    if not out:
+        return None
+    up = {"k": key, "s": race["seats"]}
+    if race.get("floterial"):
+        up["fl"] = 1
+    up["e"] = out
+    return up
+
+
+def upcoming_seats(sitting, newest, roster_term, today):
+    """({member id: seat key}, term) of the members who hold a seat in the
+    term the next general election ends: the sitting members' own seats where
+    the roster (`roster_term`, its newest) is that term, else the winners the
+    newest general election on file drew (`newest`: (results, races_me)),
+    where it elected that term. {} otherwise -- a former member has none, and
+    nor does a sitting member who is not returning."""
+    g = next_general(today)
+    if g is None:
+        return {}, None
+    term = BME.term_before(BME.term_after(g.year))
+    if roster_term == term:
+        return {str(m.get("id")): BME.seat_of(m) for m in sitting or []
+                if m.get("id") and BME.seat_of(m)}, term
+    results, races_me = newest or (None, None)
+    if results and results.get("term") == term:
+        return {str(e["id"]): key for key, me in (races_me or {}).items()
+                for e in me.get("elected") or [] if e.get("id")}, term
+    return {}, term
+
+
 def cycle_of(row):
     """The election cycle a row is drawn under on the tab (app.js groups by it):
     a general's or a primary's own year. A special election, when one is read,
@@ -480,8 +567,10 @@ def sort_rows(rows):
     return sorted(rows, key=lambda r: (cycle_of(r), r["d"], r["k"].startswith("S|")), reverse=True)
 
 
-def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT):
-    """(rows by member id, report lines, elections) for the site folder."""
+def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT, up=None):
+    """(rows by member id, report lines, elections) for the site folder.
+    Given a dict `up`, fills it with each member's upcoming elections
+    ({member id: upcoming()}), for the members with a row (upcoming_seats)."""
     site = Path(site)
     sitting = BME.load_json(site / "legislators.json", "the sitting roster")
     former = BME.load_json(site / "former.json", "the former members")
@@ -493,9 +582,12 @@ def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT):
     items = BE.elections_on_file(collected)
     by_member, report = defaultdict(list), []
     pages = BE.provisional(site)
+    newest = None
     for election, _p, results in items:
         races_me, _rep, hand = BE.decided(results, sitting, former, districts, hand_path, today,
                                           BE.settled_in(items, election), history)
+        if newest is None or election > newest[0]["election"]:
+            newest = (results, races_me)
         # A new winner's chip links to their provisional page, as on the elections page's card.
         BE.with_pages(races_me, pages.get(election))
         people = BME.People(sitting, former, BME.ballot_of(results))
@@ -526,12 +618,21 @@ def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT):
         p = roster.members.get(mid, {})
         report.append((d, ", ".join(keys), p.get("name", ""), f"{p.get('label', mid)} [{mid}]",
                        "matched to more than one race of one election; shown in none"))
+    if up is not None:
+        races, _clash = BME.races_on_file(districts)
+        seats, _term = upcoming_seats(sitting, newest,
+                                      terms[0] if isinstance(terms, list) and terms else None, today)
+        for mid, key in seats.items():
+            got = upcoming(key, races, today) if mid in by_member else None
+            if got:
+                up[mid] = got
     return {mid: sort_rows(rs) for mid, rs in by_member.items()}, report, [i[0] for i in items]
 
 
-def write_member_files(site, by_member):
-    """Set "elections" in each member's own file; remove it from any that no
-    longer has one. Returns (files with rows, files changed, ids with no file)."""
+def write_member_files(site, by_member, up=None):
+    """Set "elections" in each member's own file, and "up" (upcoming) where
+    `up` has the member and the member has a row; remove either from any that
+    no longer has one. Returns (files changed, ids with no file)."""
     folder = Path(site) / "legislators"
     changed, missing = 0, []
     for mid in sorted(by_member):
@@ -543,14 +644,14 @@ def write_member_files(site, by_member):
         if not isinstance(doc, dict):
             continue
         want = by_member.get(mid)
-        if want:
-            if doc.get("elections") == want:
-                continue
-            doc["elections"] = want
-        elif "elections" in doc:
-            del doc["elections"]
-        else:
+        ahead = (up or {}).get(mid) if want else None
+        if doc.get("elections") == want and doc.get("up") == ahead:
             continue
+        for k, v in (("elections", want), ("up", ahead)):
+            if v:
+                doc[k] = v
+            else:
+                doc.pop(k, None)
         f.write_text(json.dumps(doc), encoding="utf-8")
         changed += 1
     return changed, missing
@@ -588,8 +689,9 @@ def main():
                     help="text_sponsors.json, which holds the seat each member printed each term")
     a = ap.parse_args()
     today = build_date.today().isoformat()
+    up = {}
     try:
-        by_member, report, elections = build(a.site, a.collected, Path(a.hand), today, a.sponsors)
+        by_member, report, elections = build(a.site, a.collected, Path(a.hand), today, a.sponsors, up)
     except BME.Refused as e:
         print(f"REFUSED: {e}", file=sys.stderr)
         return 1
@@ -609,7 +711,7 @@ def main():
         print("member elections: FAILED: results are on file and no member has a row, which "
               "no roster explains", file=sys.stderr)
         return 1
-    changed, missing = write_member_files(a.site, by_member)
+    changed, missing = write_member_files(a.site, by_member, up)
     if missing:
         # Said, not fatal: one member without a file is no reason to hold the build.
         print(f"member elections: WARNING {len(missing)} member(s) with rows have no "
@@ -628,6 +730,10 @@ def main():
     print(f"member elections: {len(by_member)} members, {rows} rows ({wins} won, {lost} lost, "
           f"{rows - wins - lost} not final or tied) and {prim} primary rows; {changed} member files "
           f"changed; {said}")
+    nxt = next_general(today)
+    print(f"member elections: upcoming elections on {len(up)} members' tabs"
+          + (f", for the general election of {nxt.isoformat()}" if nxt else
+             "; RSA 653:7 gives no general election ahead"))
     return 0
 
 

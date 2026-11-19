@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.9
+# GRANITE_VERSION: 2026-11-08.10
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -31,9 +31,13 @@ WHAT THIS WRITES
                           race not final, where there are any; "source", the
                           address of the Secretary of State's results and the
                           day the file the race was read from was saved
-                          (race_source); and "prior" ({"terms", "seat"}) where
+                          (race_source); "prior" ({"terms", "seat"}) where
                           the person confirmed their earlier service in the
-                          hand file (build_members_elect.apply_prior). Nothing
+                          hand file (build_members_elect.apply_prior); and
+                          "up", the seat's upcoming elections as a member's
+                          Elections tab has them (build_member_elections.
+                          upcoming), while the term they were elected to is
+                          the one the next general election ends. Nothing
                           else, and no id: a member-elect has none until the
                           General Court assigns one (the owner's rule of 30
                           October 2026, commit 776cbe70).
@@ -240,6 +244,10 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
     BME.apply_prior(races, (hand or {}).get("prior"))
     on_file, _ = BME.races_on_file(districts)
     sure = confirmed_new(hand)
+    # Their seat's next elections, while their term is the one those end (the owner, 19
+    # November 2026): the 2028 filing period, primary and general for a member-elect of 2026.
+    nxt = BMEL.next_general(today)
+    ahead = bool(nxt) and results.get("term") == BME.term_before(BME.term_after(nxt.year))
     # Numbered only once the roster is the new term's (the members-elect step's
     # own sign, site/meta.json's newest term), and from Organization Day.
     turned = roster_term is None or roster_term == results.get("term")
@@ -294,12 +302,14 @@ def pages(results, sitting, former, districts, hand, today, takes_office, moved=
             # November 2026: the page says whatever the record can fill in).
             result = race_result(results, key, races[key], e.get("n"), hand or {})
             source = race_source(key, results)
+            up = BMEL.upcoming(key, on_file, today) if ahead else None
             out.append({"slug": slug, "name": e.get("n"), "party": e.get("p") or "",
                         "chamber": chamber, "county": county, "district": district, "race": key,
                         "towns": sorted((on_file.get(key) or {}).get("towns") or []),
                         **({"result": result} if result else {}),
                         **({"source": source} if source else {}),
-                        **({"prior": e["prior"]} if e.get("prior") else {})})
+                        **({"prior": e["prior"]} if e.get("prior") else {}),
+                        **({"up": up} if up else {})})
     twice = {s for s, who in seen.items() if len(who) > 1}
     if twice:
         said += [f"{', '.join(seen[s])}: two new members-elect would share /legislator/{s}; "
