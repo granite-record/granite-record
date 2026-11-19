@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of towns, districts and the map.
 
@@ -3212,6 +3212,294 @@ process.stdout.write(JSON.stringify(out));
                   "the town's own address and the tab, without a history entry; "
                   "an address naming a section opens the tab holding it and lands on it"
                   + ("" if node else " (node absent: script not run)"))
+
+
+# ---- a town page's Elections tab (the owner, 19 November 2026; town_elections.py) ----
+
+def _te_world(TE, BME):
+    """The tab's general elections on file, built from collected/ alone: the district
+    table's towns and wards as the town rows of 2022 on spell them (the reader's own
+    reading, place_district_table), each House and Senate race's winners its results'
+    "elected" (members_elect's rule needs the roster, which a checkout lacks), the other
+    offices' the offices file's. Returns (ledger, {year: town rows}, {year: offices doc},
+    {year: results}); None where the files are not here."""
+    col = _paths.ROOT / "collected"
+    years = TE.years_on_file(col)
+    if not years:
+        return None
+    table = {}
+    for y in years:
+        if y < TE.WARDS_SINCE:
+            continue
+        with open(col / TE.TOWN_ROWS.format(year=y), encoding="utf-8", newline="") as f:
+            import csv
+            for r in csv.DictReader(f):
+                m = re.match(r"^(.*?) Ward (\d+)$", r["place_district_table"])
+                town, ward = (m.group(1), m.group(2)) if m else (r["place_district_table"], "0")
+                if town:
+                    table.setdefault(town, {})[ward] = {}
+    ledger = TE.Ledger(table)
+    rows, offices, results = {}, {}, {}
+    for y in years:
+        rows[y] = TE.read_town_rows(col / TE.TOWN_ROWS.format(year=y))
+        res = json.loads((col / TE.RESULTS.format(year=y)).read_text(encoding="utf-8"))
+        results[y] = res
+        me = {k: {"seats": r["seats"], "elected": [{"n": BME.reading_order(c["name"])}
+                                                   for c in r["candidates"] if c.get("elected") is True]}
+              for k, r in res["races"].items()}
+        TE.add_house_senate(ledger, y, rows[y], res, me, {}, {}, lambda k: frozenset())
+        off = col / TE.OFFICES.format(year=y)
+        if off.is_file():
+            offices[y] = json.loads(off.read_text(encoding="utf-8"))
+            TE.add_offices(ledger, y, offices[y], True)
+    return ledger, rows, offices, results
+
+
+def _te_drawn(html):
+    """{(year, election heading, race name): [(name, votes, marks)]} of a tab's general
+    elections, read off its HTML: the chip's name, the count and the chips after it."""
+    out = {}
+    for ysec in re.findall(r'<section class="twnsec twnwide te-year">(.*?)</section>', html, re.S):
+        year = re.match(r'<h3 class="twnh">(\d{4})</h3>', ysec).group(1)
+        for head, body in re.findall(r'<h4 class="te-el">([^<]*)</h4>(.*?)(?=<h4 class="te-el">|<details|$)',
+                                     ysec, re.S):
+            if not head.startswith("General election"):
+                continue
+            for name, rows in re.findall(r'<article class="er-race te-race"><div class="er-hd"><h5>([^<]*)'
+                                         r'</h5>.*?<ul class="er-rows">(.*?)</ul>', body, re.S):
+                got = []
+                for li in re.findall(r'<li class="er-row">(.*?)</li>', rows, re.S):
+                    who = re.search(r'translate="no">(?:<a href="[^"]*">)?(.*?)(?: <span class="mtag">|</a>|</span>)',
+                                    li).group(1)
+                    n = int(re.search(r'<span class="er-n">([\d,]+)', li).group(1).replace(",", ""))
+                    marks = re.findall(r'<span class="chip">([^<]*)</span>', li)
+                    got.append((who, n, tuple(marks)))
+                out[(year, head, name)] = got
+    return out
+
+
+@check("files", "a town page's Elections tab: every count of a general election is the town's or "
+                "the ward's own, as the Secretary of State's town rows and the other offices' place "
+                "rows print it, for every page and race of 2022 on",
+       needs=("town_elections", "build_members_elect"))
+def _town_elections_counts(TE, BME):
+    """Summed here again from the files, not from the tab's ledger: the House and Senate
+    town rows the race's own count is made of (in_race_count), read to a page by the
+    reader's own spelling of the place; the other offices' place rows whose printed name
+    is a page's town or "<town> Ward <n>" (or " - Ward <n>"), a candidate's recount
+    column where the file prints one. Each must be the count the tab prints for that page
+    and race, and every candidate the files count must be on the tab. Before 2022 a place's
+    spelling is the reading the tab makes (place_of), held by _town_elections_places."""
+    w = _te_world(TE, BME)
+    if w is None:
+        return "skip", "no collected/election_town_rows_*.csv in this checkout"
+    ledger, rows, offices, results = w
+    want = {}
+    import csv
+    for y in rows:
+        if y < TE.WARDS_SINCE:
+            continue
+        day = results[y]["election"]
+        with open(_paths.ROOT / "collected" / TE.TOWN_ROWS.format(year=y), encoding="utf-8",
+                  newline="") as f:
+            for r in csv.DictReader(f):
+                race = results[y]["races"].get(r["district_key"])
+                if race is None or r["in_race_count"] != "true" or r["row_kind"] not in (
+                        "candidate", "write_in_named"):
+                    continue
+                m = re.match(r"^(.*?) Ward (\d+)$", r["place_district_table"])
+                page = (m.group(1), m.group(2)) if m else (r["place_district_table"], "0")
+                d = want.setdefault((page, day, TE.house_name(r["district_key"], race.get("floterial"))), {})
+                d[r["candidate"]] = d.get(r["candidate"], 0) + int(r["votes"])
+    for y, doc in offices.items():
+        if y < TE.WARDS_SINCE:
+            continue
+        for key, race in doc["races"].items():
+            cols = race["columns"]
+            for c in race["candidates"]:
+                label = f"{c['name']}, {c['party']}" if c.get("party") else c["name"]
+                i = cols.index(label + " (recount)") if label + " (recount)" in cols else cols.index(label)
+                for p in race.get("places") or []:
+                    m = re.match(r"^(.*?)(?: - | )Ward (\d+)$", p[1])
+                    page = (m.group(1), m.group(2)) if m else (p[1], "0")
+                    if page not in {(t, wd) for t, ws in ledger.places.wards.items() for wd in ws}:
+                        continue
+                    d = want.setdefault((page, doc["election"], TE.office_name(key, race)), {})
+                    d[c["name"]] = d.get(c["name"], 0) + p[2][i]
+    bad, n_races, n_rows, pages = [], 0, 0, 0
+    for town, wards in ledger.places.wards.items():
+        for ward in wards:
+            label = f"{town}, Ward {ward}" if ward != "0" else town
+            drawn = _te_drawn("".join(TE.tab_cards(ledger.for_page(town, ward), label, ward != "0")))
+            pages += 1
+            for (page, day, name), cands in want.items():
+                if page != (town, ward):
+                    continue
+                year = day[:4]
+                head = f"General election, {TE.long_day(day)}"
+                got = drawn.get((year, head, name))
+                if got is None:
+                    bad.append(f"{label} {day} {name}: on file, not on the tab")
+                    continue
+                n_races += 1
+                g = {who.rsplit(" (", 1)[0]: n for who, n, _m in got}
+                for c in cands:
+                    n_rows += 1
+                    if g.get(c) != cands[c]:
+                        bad.append(f"{label} {day} {name} {c}: the tab says {g.get(c)}, the files "
+                                   f"{cands[c]}")
+    assert n_races > 2000, f"only {n_races} races compared: the reading of the files has gone wrong"
+    assert not bad, f"{len(bad)} count(s) on the tab are not the files': " + "; ".join(bad[:8])
+    return "ok", (f"{n_rows:,} candidates' counts in {n_races:,} races of 2022 on, over {pages} town "
+                  "and ward pages, are each the town rows' or the place rows' own sum")
+
+
+@check("files", "a town page's Elections tab reads every place the results files print to a town "
+                "of the district table, the short forms of the unincorporated places included, "
+                "and none to two", needs=("town_elections",))
+def _town_elections_places(TE):
+    """Every printed place in every town rows file and every other office's place rows
+    of 2016 on reads to a town of the table (here, the town rows' own spellings of 2022
+    on), a ward of a city with ward pages to that ward; the eight known odd forms each
+    to the town it names."""
+    w = _te_world(TE, imp("build_members_elect"))
+    if w is None:
+        return "skip", "no collected/election_town_rows_*.csv in this checkout"
+    ledger, _rows, _off, _res = w
+    known = {"At. & Gil Ac. Gt": "Atk. & Gil. Academy Grant",
+             "Atkinson & Gilmanton Ac Gt": "Atk. & Gil. Academy Grant",
+             "Thomp. and Mes's Pur.": "Thompson & Mes's Purchase",
+             "Thompson & Meserve's": "Thompson & Mes's Purchase",
+             "Low & Burbank's Gt.": "Low & Burbank's Grant",
+             "Laconia Wd 3": "Laconia", "Concord - Ward 10": "Concord"}
+    for printed, town in known.items():
+        got = ledger.places.place_of(printed)
+        assert got and got[0] == town, f"{printed!r} reads to {got}, not {town}"
+    assert ledger.places.place_of("Concord - Ward 10") == ("Concord", "10")
+    assert ledger.places.place_of("Nowhere Ward 3") is None
+    assert not ledger.unread, ("places read to no town: "
+                               + ", ".join(f"{k} ({', '.join(sorted(v))})"
+                                           for k, v in sorted(ledger.unread.items())))
+    return "ok", (f"{len(ledger.places.memo)} printed places, each read to one town or ward; "
+                  f"the {len(known)} odd forms tried each to its town")
+
+
+@check("build", "a town page's Elections tab: a heading per year, newest first; in a year the "
+                "general, the state primary, then the specials newest first; in an election the "
+                "ballot's order, a floterial after the town's own district; the winner marked by "
+                "the race's outcome, never the town's; a member's chip linked only where the "
+                "member's own tab carries that very race",
+       needs=("town_elections", "build_member_elections", "build_members_elect"))
+def _town_elections_order_and_marks(TE, BMEL, BME):
+    """On a made-up town: a race the town's leader lost, a primary, two specials in one
+    year and one in the next, and a member matched to a race their own tab does not carry.
+    Then on the files: every general race on every page marks as won exactly the race's
+    winners, and the tab holds races where the town's leader lost, so that is tested."""
+    def race(key, name, cands, seats=1, fl=False):
+        return {"key": key, "name": name, "seats": seats, "floterial": fl, "href": "", "cands": cands,
+                "scatter": 0, "unopposed": False}
+    gen = {"day": "2024-11-05", "stage": "general", "party": "", "whole": False, "races": [
+        race("H|Grafton|9", "State House, Grafton 9 (floterial)", [], fl=True),
+        race("sheriff|Grafton", "Grafton County Sheriff", []),
+        race("H|Grafton|12", "State House, Grafton 12", []),
+        race("governor", "Governor", [
+            {"name": "Ann Lead", "party": "d", "votes": 900, "won": False, "slug": ""},
+            {"name": "Bo Win", "party": "r", "votes": 100, "won": True, "slug": ""}]),
+        race("S|5", "State Senate, District 5", [])]}
+    for r in gen["races"]:
+        r["cands"] = r["cands"] or [{"name": "X Y", "party": "d", "votes": 1, "won": True, "slug": ""}]
+    els = [dict(gen, races=list(gen["races"])),
+           {"day": "2024-09-10", "stage": "primary", "party": "", "whole": True, "races": [
+               dict(race("governor", "Governor", [{"name": "P Q", "party": "r", "votes": 5, "most": True,
+                                                   "slug": ""}]), ballot="R")]},
+           {"day": "2024-03-12", "stage": "special", "party": "", "whole": True, "races": [
+               dict(race("H|Grafton|12", "State House, Grafton 12", [{"name": "S T", "party": "d", "votes": 3,
+                                                                      "won": True, "slug": ""}]),
+                    stage="special", day="2024-03-12", ballot="")]},
+           {"day": "2024-06-04", "stage": "special", "party": "", "whole": True, "races": [
+               dict(race("H|Grafton|9", "State House, Grafton 9", [{"name": "U V", "party": "r", "votes": 4,
+                                                                    "won": True, "slug": ""}]),
+                    stage="special", day="2024-06-04", ballot="")]},
+           {"day": "2025-04-08", "stage": "special", "party": "", "whole": True, "races": [
+               dict(race("H|Grafton|12", "State House, Grafton 12", [{"name": "W Z", "party": "d", "votes": 2,
+                                                                      "won": True, "slug": ""}]),
+                    stage="special", day="2025-04-08", ballot="")]}]
+    html = "".join(TE.tab_cards(TE.sort_elections(els), "Lyme"))
+    years = re.findall(r'<h3 class="twnh">(\d{4})</h3>', html)
+    assert years == ["2025", "2024"], f"the years read {years}"
+    heads = re.findall(r'<h4 class="te-el">([^<]*)</h4>', html)
+    assert heads == ["Special election, 8 April 2025", "General election, 5 November 2024",
+                     "State primary, 10 September 2024", "Special election, 4 June 2024",
+                     "Special election, 12 March 2024"], f"the elections read {heads}"
+    names = re.findall(r"<h5>([^<]*)</h5>", html.split("State primary")[0].split("General election")[1])
+    assert names == ["Governor", "State Senate, District 5", "State House, Grafton 12",
+                     "State House, Grafton 9 (floterial)", "Grafton County Sheriff"], \
+        f"the general's races read {names}"
+    gov = re.search(r"<h5>Governor</h5>.*?</ul>", html, re.S).group(0)
+    rows = re.findall(r'<li class="er-row">(.*?)</li>', gov, re.S)
+    assert "Ann Lead" in rows[0] and "Won the race" not in rows[0], \
+        "the town's leader, who lost the race, is marked as its winner"
+    assert "Bo Win" in rows[1] and "Won the race" in rows[1], "the race's winner is not marked"
+    # A member's chip: linked only where the member's own tab carries that race.
+    keep_for = BMEL.member_for
+    try:
+        BMEL.member_for = lambda c, *a, **k: {"Ann Lead": {"id": "1", "slug": "ann-lead"},
+                                              "Bo Win": {"id": "2", "slug": "bo-win"},
+                                              "Cy Odd": {"id": "1", "slug": "ann-lead"}}.get(c["name"])
+        res = {"races": {"H|Grafton|12": {"seats": 1, "candidates": [
+            {"name": "Ann Lead", "party": "d", "votes": 900, "elected": True},
+            {"name": "Bo Win", "party": "r", "votes": 100, "elected": False},
+            {"name": "Cy Odd", "party": "l", "votes": 7, "elected": False}]}}}
+        by_member = {"1": [{"d": "2024-11-05", "k": "H|Grafton|12", "v": 900}], "2": []}
+        links = TE.member_links(by_member, [("2024-11-05", res, {}, {}, None)], [], [])
+    finally:
+        BMEL.member_for = keep_for
+    assert links == {("2024-11-05", "general", "", "H|Grafton|12", "Ann Lead"): "ann-lead"}, \
+        f"linked {links}: only a race the member's own tab carries, at its own count, links"
+    linked = TE.race_card(race("H|Grafton|12", "State House, Grafton 12", [
+        {"name": "Ann Lead", "party": "d", "votes": 900, "won": True, "slug": "ann-lead"},
+        {"name": "Bo Win", "party": "r", "votes": 100, "won": False, "slug": ""}]))
+    assert linked.count("<a href=") == 1 and 'href="legislator/ann-lead"' in linked, \
+        "a chip is linked without a member, or not linked with one"
+    # On the files: the winners are the race's, wherever the town's leader lost.
+    w = _te_world(TE, BME)
+    if w is None:
+        return "ok", "order, marks and links held on a made-up town (no results in this checkout)"
+    ledger, _rows, offices, results = w
+    winners = {}
+    for y, res in results.items():
+        for k, r in res["races"].items():
+            winners[(res["election"], TE.house_name(k, r.get("floterial")))] = {
+                c["name"] for c in r["candidates"] if c.get("elected") is True}
+    for y, doc in offices.items():
+        for k, r in doc["races"].items():
+            winners[(doc["election"], TE.office_name(k, r))] = {
+                c["name"] for c in r["candidates"] if c.get("elected") is True}
+    bad, upsets, n = [], 0, 0
+    for town, wards in ledger.places.wards.items():
+        for ward in wards:
+            for e in ledger.for_page(town, ward):
+                if e["stage"] != "general":
+                    continue
+                for r in e["races"]:
+                    n += 1
+                    marked = {c["name"] for c in r["cands"] if c["won"] is True}
+                    want = winners[(e["day"], r["name"])] & {c["name"] for c in r["cands"]}
+                    if marked != want:
+                        bad.append(f"{town} {ward} {e['day']} {r['name']}: marked {sorted(marked)}, "
+                                   f"the race's winners {sorted(want)}")
+                    if r["seats"] == 1 and r["cands"] and r["cands"][0]["name"] not in want and want:
+                        upsets += 1
+                        card = TE.race_card(r)
+                        first = re.findall(r'<li class="er-row">(.*?)</li>', card, re.S)[0]
+                        if "Won the race" in first:
+                            bad.append(f"{town} {ward} {e['day']} {r['name']}: the town's leader is "
+                                       "drawn as the winner")
+    assert upsets > 100, f"only {upsets} races where a town's leader lost: the test is not testing"
+    assert not bad, f"{len(bad)} race(s) marked by the town, not the race: " + "; ".join(bad[:6])
+    return "ok", (f"order, marks and links held on a made-up town; on the files {n:,} general "
+                  f"races on the pages mark exactly the race's winners, {upsets:,} of them where "
+                  "the town's own leader lost")
 
 
 @check("build", "the Officials page's seven tabs say their short names, in both languages, over "
