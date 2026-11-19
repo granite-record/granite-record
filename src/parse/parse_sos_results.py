@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.10
+# GRANITE_VERSION: 2026-10-17.11
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -136,6 +136,11 @@ SENATE = re.compile(r"^state senate district\s+(\d+)$", re.I)
 # The election's day as the 2026 files write it, in text (as_day).
 DAY_WRITTEN = re.compile(r"^[A-Za-z]+ \d{1,2}, \d{4}$")
 REP_TITLE = re.compile(r"^state representatives?\s*-\s*([a-z]+)\s+county$", re.I)
+# A State Primary's House file names its party after the county: "State
+# Representatives - BELKNAP County - Democratic" (2016-2024), "... - COOS COUNTY
+# Republican" (2026). read_house holds it to the party it is read for.
+PRIMARY_REP_TITLE = re.compile(r"^state representatives?\s*-\s*([a-z]+)\s+county\s*-?\s*"
+                               r"(democratic|republican|libertarian)$", re.I)
 # A CANDIDATE IS A NAME, A COMMA AND THE PARTY'S LETTERS (17 October 2026):
 # "Mark Proulx,r" has no space, and "Raymond C. Peeples Jr., r" has a comma
 # of its own before it, so the last comma is the one that counts.
@@ -152,7 +157,10 @@ META = {"undervotes": "under", "overvotes": "over", "write-ins": "scatter"}
 # "Scatter", a named write-in as "Tofts w-in" (the surname, as they print every
 # name), and no Undervotes or Overvotes at all.
 LEGACY_META = dict(META, scatter="scatter")
-DASHES = re.compile(r"-[\s-]*")
+# A dash is a place no vote came from. The 2018 State Primary files print it
+# as the minus sign, U+2212 ("−"), where the general files print a hyphen
+# (18 November 2026); the two are read alike.
+DASHES = re.compile(r"[-\u2212][\s\-\u2212]*")
 # A later header of a district that prints no seats, "District No. 2".
 DISTRICT_BARE = re.compile(r"^district(?:\s+no\b\.?)?\s*(\d+)$", re.I)
 LEGACY_NO_COMMA = re.compile(r"^(?P<name>[^\W\d_].*?)\s+(?P<party>[rdil])$", re.I)
@@ -177,6 +185,8 @@ HEADER_TYPOS = {
         ("District No. 30 (1) FL", "the district table gives it one seat, and the file's rows "
          "hold two candidates and a count for one"),
 }
+# A State Primary's candidate printed with no party: one to four words, no digit.
+PRIMARY_NO_PARTY = re.compile(r"[^\W\d_][\w'’.\-]*(?: [^\W\d_][\w'’.\-]*){0,3}")
 LEGACY_WRITE_IN = re.compile(r"^(?P<name>\S.*?)\s+\(?w(?:rite)?-?in\)?$", re.I)
 LEGACY_SUFFIX = re.compile(r",\s*(jr|sr|ii|iii|iv)\.?$", re.I)
 TOTALS = "totals"
@@ -377,10 +387,11 @@ def place_key(s):
 
 # ---- one block: a header row and the rows under it ------------------------
 
-def entities(row, start, where, legacy=False):
+def entities(row, start, where, legacy=False, primary=False):
     """The columns a header row names: candidates and the three counts that
     are not a candidate's, each with the column of its recount where a
-    "RECOUNT" column follows it."""
+    "RECOUNT" column follows it. `primary`: a State Primary's header, where
+    a name of up to four words with no party is read (see below)."""
     out = []
     for c in range(start, len(row)):
         v = row[c]
@@ -446,6 +457,15 @@ def entities(row, start, where, legacy=False):
                             "typo": (v, f"the candidate {v.rstrip(',')!r}, whose party the file "
                                         "leaves out")})
                 continue
+        if not m and primary and PRIMARY_NO_PARTY.fullmatch(v):
+            # A NAME AND NO PARTY IN A STATE PRIMARY (18 November 2026): "Laura
+            # Lynch" (2016 Hillsborough 25), "Ed Decatur" (2020 Hillsborough
+            # 33), "Maxine Mosley" (2026 Hillsborough 16), where every other
+            # candidate carries a party: a candidate whose party the file
+            # leaves out, drawn with none and flagged, as "Sanborn" above.
+            out.append({"name": v, "party": "", "write_in": False, "col": c, "recount": None,
+                        "typo": (v, f"the candidate {v!r}, whose party the file leaves out")})
+            continue
         if not m:
             raise Refused(f"{where}: {v!r} in column {c + 1} is neither a candidate (\"Name, d\") "
                           "nor Undervotes, Overvotes or Write-Ins")
@@ -502,9 +522,13 @@ def column_letter(col):
 class Block:
     """A header row and the rows under it, to the next header."""
 
-    def __init__(self, ents, where, recount_figures=False, source=None, legacy=False):
+    def __init__(self, ents, where, recount_figures=False, source=None, legacy=False,
+                 primary=False):
         self.ents, self.where, self.rows, self.totals = ents, where, [], None
         self.recount_figures = recount_figures
+        # A State Primary's block (parse_sos_primary_results): an empty cell
+        # under a candidate is none (count), and blank_named counts them.
+        self.primary, self.blank_named = primary, 0
         # The 2016-2022 layout: "--" and a blank Scatter cell are none, counted in blank_scatter.
         self.legacy, self.blank_scatter = legacy, 0
         # A "Recount" row under the block's one town (read_house).
@@ -569,6 +593,14 @@ class Block:
         v = row[col] if col < len(row) else None
         if self.legacy and v is None and (ent or {}).get("header_count") is not None:
             v = ent["header_count"]
+        if self.primary and v is None and ent is not None and "name" in ent:
+            # A STATE PRIMARY'S EMPTY CELL UNDER A CANDIDATE IS NONE (18
+            # November 2026): the primary files name every candidate any place
+            # wrote in, of every party, and print a count only where a vote
+            # came, so most of a column is empty. Read as nought and counted;
+            # a Totals row's empty cell is no figure printed (read).
+            self.blank_named += 1
+            v = 0
         if self.legacy:
             # "--" (2020 Senate) and "- ---" (2020 Coos) are a place no vote came from.
             if isinstance(v, str) and DASHES.fullmatch(v):
@@ -635,6 +667,10 @@ class Block:
                 # A Totals row of the 2016-2022 layout leaves the write-ins' total
                 # blank where it adds none up: nothing is said to hold them to.
                 if self.legacy and blank_ok(e) and (col >= len(row) or row[col] is None):
+                    continue
+                # A State Primary's Totals row prints nothing under a candidate
+                # whom no place wrote in: no figure to hold the column to.
+                if self.primary and "name" in e and (col >= len(row) or row[col] is None):
                     continue
                 kept = self.blank_scatter
                 said = self.count(row, col, blank_ok(e), where, e)
@@ -765,10 +801,13 @@ def blank_ok(e):
 
 # ---- a district, from its blocks -------------------------------------------
 
-def district(blocks, seats, where):
+def district(blocks, seats, where, choose=None, mark="elected"):
     """{"towns", "candidates", "scatter", "recounted"} from a district's
     blocks: the first and any under it, and a whole recount's block, whose
-    figures replace the first count's."""
+    figures replace the first count's. `choose` marks the winners, elect()
+    unless given (a State Primary's reader gives its own), each under the
+    key `mark`."""
+    choose = choose or elect
     first = [b for b in blocks if not b.recount_figures]
     again = [b for b in blocks if b.recount_figures]
     if len(again) > 1:
@@ -838,21 +877,22 @@ def district(blocks, seats, where):
         # A recount block that prints no write-ins (a Recount row, 2022) leaves
         # the first count's.
         cands, scatter, recounted = c2, (s2 if s2 is not None else scatter), True
-    shown = elect(cands, seats, where, scatter)
+    shown = choose(cands, seats, where, scatter)
     disputed = {}
     for b in (again or first):
         disputed.update(b.disputed)
     if disputed:
         # Either figure for a column the file contradicts, and the same people win.
-        alt = elect([dict(c, votes=disputed.get(c["name"], c["votes"])) for c in cands], seats,
-                    where, scatter)
-        if [(c["name"], c["elected"]) for c in shown] != [(c["name"], c["elected"]) for c in alt]:
+        alt = choose([dict(c, votes=disputed.get(c["name"], c["votes"])) for c in cands], seats,
+                     where, scatter)
+        if [(c["name"], c[mark]) for c in shown] != [(c["name"], c[mark]) for c in alt]:
             raise Refused(f"{where}: a column adds up differently from the file's Totals "
                           f"({', '.join(sorted(disputed))}), and the two figures elect different "
                           "people")
     return {"towns": towns, "candidates": shown,
             "scatter": scatter, "recounted": recounted,
             "blank_scatter": sum(b.blank_scatter for b in blocks),
+            "blank_named": sum(b.blank_named for b in blocks),
             "notes": [n for b in blocks for n in b.notes],
             "town_rows": trows, "printed_totals": printed}
 
@@ -1072,7 +1112,11 @@ def recount_under_town(rows, i, cur, at):
 def read_house(path, county, election, legacy=False):
     """{district number: (seats, floterial, district record)} from one
     county's House file. `legacy` is the 2016-2022 layout (LEGACY_META): no
-    day in the file, a surname for a name, "Scatter" for the write-ins."""
+    day in the file, a surname for a name, "Scatter" for the write-ins.
+    `election` is the day; a State Primary's (parse_sos_primary_results)
+    carries the party it is read for as `.party` and its winners rule as
+    `.choose`, and its titles say the primary and that party."""
+    primary = getattr(election, "party", None)
     got = sheets(path)
     if legacy and path.suffix.lower() == ".html":
         # A results page: its tables are one county's rows, cut in two.
@@ -1087,22 +1131,34 @@ def read_house(path, county, election, legacy=False):
     if len(got) != 1:
         raise Refused(f"{path.name}: {len(got)} sheets where a county's House file has one")
     name, rows = got[0]
+    texts = []
+    if primary:
+        # A COUNT SAVED AS TEXT IN A STATE PRIMARY'S FILE ("55", 2022 Coos 1;
+        # "76", 2024 Coos): read as the number, from the fourth row on, and said.
+        rows = [list(r) for r in rows]
+        for i, r in enumerate(rows[3:], 3):
+            for c, v in enumerate(r):
+                if c and isinstance(v, str) and re.fullmatch(r"\d+", v.strip()):
+                    r[c] = int(v)
+                    texts.append(f"row {i + 1} column {c + 1} ({v!r})")
 
     def at(i):
         return f"{path.name}, sheet {name!r}, row {i + 1}"
     title = " ".join(str(c) for c in (rows[0] if rows else []) if c)
     # The 2016 files print no year in the title: the file's name says it then.
     years = re.findall(r"\b(?:19|20)\d\d\b", title)
-    if "general election" not in title.lower() or (
+    kind = "primary election" if primary else "general election"
+    if kind not in title.lower() or (
             years != [str(election.year)] if (years or not legacy) else False):
-        raise Refused(f"{at(0)}: {title!r} is not the title of the {election.year} general "
-                      "election")
+        raise Refused(f"{at(0)}: {title!r} is not the title of the {election.year} {kind}")
     # The 2016-2022 files sometimes shift the title one column right.
     second = next((c for c in (rows[1] if len(rows) > 1 else [])[:2 if legacy else 1] if c), "")
-    m = REP_TITLE.match(str(second))
-    if not m or m.group(1).lower() != county:
+    m = (PRIMARY_REP_TITLE if primary else REP_TITLE).match(str(second))
+    if not m or m.group(1).lower() != county or (
+            primary and m.group(2).lower() != primary.lower()):
         raise Refused(f"{at(1)}: {rows[1][:1] if len(rows) > 1 else []!r} is not \"State "
-                      f"Representatives - {county.upper()} County\"")
+                      f"Representatives - {county.upper()} County"
+                      + (f" - {primary.title()}" if primary else "") + "\"")
     if not legacy:
         day = as_day((rows[2] if len(rows) > 2 else [None])[0])
         if day != election:
@@ -1126,9 +1182,10 @@ def read_house(path, county, election, legacy=False):
                 fixed = "District" + head[first.end():]
                 if DISTRICT.match(fixed):
                     typo = (fixed, "the first word is one letter off District")
-        if not typo and legacy and isinstance(head, str):
+        if not typo and (legacy or primary) and isinstance(head, str):
             # "Dover Ward 15 (1)" for "District No. 15 (1)" (2020 Strafford):
             # a ward's name where the district's belongs, with seats after it.
+            # The 2024 State Primary's Strafford files print "Dover Ward 16 (1)".
             ward = re.match(r"^[A-Za-z ]+ Ward (\d+)\s*(\(\d+\)\s*(?:FL|F)?)$", head)
             if ward:
                 typo = (f"District No. {ward.group(1)} {ward.group(2)}",
@@ -1165,8 +1222,8 @@ def read_house(path, county, election, legacy=False):
             # candidates. It is the district's next block, not a second district.
             if legacy and not again and n in found and (seats, flo) == found[n][:2]:
                 cur = found[n]
-                cur[2].append(Block(entities(row, 1, at(i), legacy), at(i), source=(path, name),
-                                    legacy=legacy))
+                cur[2].append(Block(entities(row, 1, at(i), legacy, bool(primary)), at(i), source=(path, name),
+                                    legacy=legacy, primary=bool(primary)))
                 continue
             if again != (n in found):
                 raise Refused(f"{at(i)}: district {n} " + ("recounted before it is counted"
@@ -1177,8 +1234,8 @@ def read_house(path, county, election, legacy=False):
                 raise Refused(f"{at(i)}: the recount's seats or floterial mark are not the "
                               "first count's")
             cur = found[n]
-            cur[2].append(Block(entities(row, 1, at(i), legacy), at(i), recount_figures=again,
-                                source=(path, name), legacy=legacy))
+            cur[2].append(Block(entities(row, 1, at(i), legacy, bool(primary)), at(i), recount_figures=again,
+                                source=(path, name), legacy=legacy, primary=bool(primary)))
             if typo:
                 cur[2][-1].notes.append(f"{at(i)}: the header prints {row[0]!r}, read as "
                                         f"{typo[0]!r}: {typo[1]}")
@@ -1201,13 +1258,13 @@ def read_house(path, county, election, legacy=False):
             # again: in 2024 Rockingham 17's Windham prints its undervotes,
             # overvotes and write-ins on the row under the second header, in
             # the columns the first header named.
-            ents = entities(row, 1, at(i), legacy)
+            ents = entities(row, 1, at(i), legacy, bool(primary))
             taken = {c for e in ents for c in (e["col"], e["recount"]) if c is not None}
             named = {e["meta"] for e in ents if "meta" in e}
             ents += [dict(e) for e in cur[2][0].ents if "meta" in e and e["meta"] not in named
                      and not {e["col"], e["recount"]} & taken]
             cur[2].append(Block(ents, at(i), recount_figures=cur[2][-1].recount_figures,
-                                source=(path, name), legacy=legacy))
+                                source=(path, name), legacy=legacy, primary=bool(primary)))
             continue
         if legacy and isinstance(head, str) and head.lower() in ("recount",
                                                                   "court ordered recount"):
@@ -1259,12 +1316,17 @@ def read_house(path, county, election, legacy=False):
         cur[2][-1].rows.append((starless(head) if legacy else head, row, at(i)))
     if not found:
         raise Refused(f"{path.name}: no district in it")
+    if texts:
+        found[min(found)][2][0].notes.append(
+            f"{path.name}: {len(texts)} count(s) saved as text, read as the number: "
+            + ", ".join(texts))
     if spare:
         first = found[min(found)][2][0]
         first.notes.append(f"{path.name}: the sheet(s) {', '.join(map(repr, spare))} after the "
                            "county's are not read: a scratch table whose candidates are not those "
                            "the county's sheet counts for the district")
-    return {n: (seats, flo, district(blocks, seats, where))
+    return {n: (seats, flo, district(blocks, seats, where, getattr(election, "choose", None),
+                                     getattr(election, "mark", "elected")))
             for n, (seats, flo, blocks, where) in found.items()}
 
 
