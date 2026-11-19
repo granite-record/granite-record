@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.57
+# GRANITE_VERSION: 2026-09-09.58
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -65,6 +65,7 @@ import urllib.parse
 
 import build_date
 import components as C
+import key_dates as KD
 import shell as S
 import state_settings as ST
 import town_websites
@@ -1082,8 +1083,11 @@ def next_possible_election(day):
     The days are the statutes', read in db/NH_RSA.psv on 16 October 2026:
     the school district meetings that choose district officers, from 1 March
     (RSA 197:1); town elections on the second Tuesday of March, April or May
-    (RSA 669:1 and 40:14, X); the state primary on the second Tuesday of
-    September (RSA 653:8); the general election on the first Tuesday after
+    (RSA 669:1 and 40:14, X); the state primary by the text of RSA 653:8 in
+    force on its day, as key_dates.state_primary works it out -- the second
+    Tuesday of September until 2026, the second Tuesday of June from 2028 (2026,
+    44:1) -- and, in every year, the second Tuesday of September, which a city
+    may take for a primary of its own; the general election on the first Tuesday after
     the first Monday of November (RSA 653:7), which is also the day a charter
     town may elect in an odd year (RSA 669:1, II); and the presidential
     primary, whose day the Secretary of State sets (RSA 653:9).
@@ -1108,6 +1112,10 @@ def next_possible_election(day):
         nov = datetime.date(y, 11, 1)
         days += [datetime.date(y, 3, 1), tuesday(y, 3, 2), tuesday(y, 4, 2), tuesday(y, 5, 2),
                  tuesday(y, 9, 2), nov + datetime.timedelta(days=(0 - nov.weekday()) % 7 + 1)]
+        # The state primary moves to June from 2028 (key_dates.state_primary): a
+        # June primary ended the last election as surely as a September one.
+        if KD.state_primary(y):
+            days.append(KD.state_primary(y))
         if y % 4 == 0:
             days.append(datetime.date(y, 1, 1))
     return min(d for d in days if d > day)

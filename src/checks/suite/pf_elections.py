@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.28
+# GRANITE_VERSION: 2026-11-16.29
 """
 preflight's checks of members-elect and election results.
 
@@ -2218,6 +2218,126 @@ def _member_elections_cycles(BMEL):
         ("2026", ["2026-11-03"]), ("2024", ["2024-11-05", "2024-09-10"])], f"the cycles: {got}"
     assert html.count('class="er-cards"') == 0 and html.count("er-stack") == 2, "a list of cards is not stacked"
     return "ok", "2026's general under 2026; 2024's general, then its primary, under 2024; one column at every width"
+
+
+@check("build", "a member's Elections tab opens on the seat's upcoming elections -- the filing period, primary "
+       "and general, each the day its law gives with its section -- for a sitting member and a "
+       "member-elect, by the seat of the term those elections end, and for no former member",
+       needs=("build_member_elections", "build_elect_pages", "build_legislator_pages"))
+def _member_elections_upcoming(BMEL, EP, LP):
+    """The owner, 19 November 2026 ("Yes to all 9" of reports/money-specials-design/
+    specials-and-upcoming.md, A3 and decisions 6 to 8). Held on a made-up court:
+
+    - the seat (upcoming_seats): on 19 November 2026, with the roster still 2025-2026's and the
+      2026 results electing 2027-2028, Wade, sitting for Strafford 15 and elected to Strafford 21,
+      has Strafford 21; Beck, sitting and not elected, none; Cole, a former member elected again,
+      his new seat; Dunn, a former member, none. On 1 March 2027, the roster 2027-2028's, the
+      sitting members' own seats and no former member's;
+    - the days (upcoming): for 2028, 3-10 March (RSA 655:14 as 2026, 44:4 amends it), 13 June (RSA
+      653:8 as 2026, 44:1 amends it) and 7 November (RSA 653:7), soonest first; on 1 July 2028 the
+      general alone; on 1 October 2026, 2026's general alone (its filing and primary past);
+    - the file (write_member_files): "up" only beside a member's rows, and taken away when gone;
+    - the tab (app.js renderMemberElections, in node): "Upcoming elections" above the newest
+      cycle's heading, the seat in the tab's words, the three days and their law, nothing of who
+      runs; no heading at all without "up";
+    - a new member-elect (build_elect_pages.pages): "up" for the seat they were elected to, and
+      their page's Elections tab draws it as app.js does (build_legislator_pages.upcoming_html,
+      compared in node)."""
+    from datetime import date
+    bad = []
+    races = {"H|Strafford|21": {"seats": 3, "floterial": True}, "H|Strafford|15": {"seats": 2},
+             "S|5": {"seats": 1}}
+    sitting = [{"id": "1", "chamber": "H", "county": "Strafford", "district": "15"},
+               {"id": "2", "chamber": "H", "county": "Strafford", "district": "21"}]
+    results = {"election": "2026-11-03", "term": "2027-2028"}
+    races_me = {"H|Strafford|21": {"elected": [{"n": "Alice Wade", "k": "sitting", "id": "1"},
+                                               {"n": "New Person", "k": "new"}]},
+                "S|5": {"elected": [{"n": "Cy Cole", "k": "former", "id": "3"}]}}
+    got, term = BMEL.upcoming_seats(sitting, (results, races_me), "2025-2026", "2026-11-19")
+    if (got, term) != ({"1": "H|Strafford|21", "3": "S|5"}, "2027-2028"):
+        bad.append(f"on 19 November 2026 the seats are {got} for {term}: Wade's Strafford 21 and "
+                   "Cole's Senate 5 wanted, none for Beck (not elected) or Dunn (former)")
+    got, _t = BMEL.upcoming_seats(sitting, (results, races_me), "2027-2028", "2027-03-01")
+    if got != {"1": "H|Strafford|15", "2": "H|Strafford|21"}:
+        bad.append(f"on 1 March 2027, the roster 2027-2028's, the seats are {got}: the sitting members' own wanted")
+    up = BMEL.upcoming("H|Strafford|21", races, "2026-11-19")
+    want = {"k": "H|Strafford|21", "s": 3, "fl": 1, "e": [
+        {"w": "filing", "d": "2028-03-03", "u": "2028-03-10", "sec": "655:14", "act": "2026, 44:4",
+         "from": "2028-01-01"},
+        {"w": "primary", "d": "2028-06-13", "sec": "653:8", "act": "2026, 44:1", "from": "2028-01-01"},
+        {"w": "general", "d": "2028-11-07", "sec": "653:7"}]}
+    plain = dict(up or {}, e=[{k: v for k, v in e.items() if k != "href"} for e in (up or {}).get("e") or []])
+    if plain != want:
+        bad.append(f"Strafford 21's upcoming elections on 19 November 2026: {up}, not {want}")
+    for today, days in (("2028-07-01", ["2028-11-07"]), ("2026-10-01", ["2026-11-03"])):
+        got = [e["d"] for e in (BMEL.upcoming("S|5", races, today) or {}).get("e") or []]
+        if got != days:
+            bad.append(f"on {today} the days ahead are {got}, not {days}")
+    if BMEL.upcoming("H|Nowhere|9", races, "2026-11-19") is not None:
+        bad.append("a seat not in the district table has upcoming elections")
+    # The member's file: "up" beside rows only, and none left once they go.
+    with tempfile.TemporaryDirectory() as d:
+        folder = Path(d) / "legislators"
+        folder.mkdir()
+        for mid in ("1", "2", "3"):
+            (folder / f"{mid}.json").write_text(json.dumps({"id": mid}), encoding="utf-8")
+        row = {"d": "2026-11-03", "k": "H|Strafford|21", "a": "r-h-strafford-21", "r": "won", "v": 1, "s": 3}
+        BMEL.write_member_files(d, {"1": [row]}, {"1": up, "3": up})
+        docs = {m: json.loads((folder / f"{m}.json").read_text(encoding="utf-8")) for m in ("1", "2", "3")}
+        if docs["1"].get("up") != up or "up" in docs["2"] or "up" in docs["3"]:
+            bad.append("the files: 'up' is to stand beside a member's rows and nowhere else: "
+                       + str({m: "up" in v for m, v in docs.items()}))
+        BMEL.write_member_files(d, {"1": [row]}, {})
+        if "up" in json.loads((folder / "1.json").read_text(encoding="utf-8")):
+            bad.append("a rerun with no upcoming elections left 'up' in the member's file")
+    # A new member-elect's entry carries their seat's.
+    real = EP.BME.members_elect
+    EP.BME.members_elect = lambda *a, **k: (json.loads(json.dumps(_ME_RACES)), {})
+    try:
+        pages, _said, _moves = EP.pages(_ME_RESULTS, [], [], _ME_DISTRICTS, {}, "2026-11-20", "2026-12-02", {})
+    finally:
+        EP.BME.members_elect = real
+    by = {p["slug"]: p for p in pages}
+    gil = (by.get("gil-hart-sd-15") or {}).get("up") or {}
+    if gil.get("k") != "S|15" or [e["d"] for e in gil.get("e") or []] != ["2028-03-03", "2028-06-13", "2028-11-07"]:
+        bad.append(f"a new member-elect's upcoming elections: {gil}")
+    pane = LP.elect_elections_pane(by.get("gil-hart-sd-15") or {}, {"election": "2026-11-03"})
+    if pane.find("Upcoming elections") < 0 or pane.find("Upcoming elections") > pane.find("<table"):
+        bad.append("a new member-elect's Elections tab does not open on the seat's upcoming elections")
+    # The tab, in node.
+    card = '<article class="er-race"><div class="er-hd"><h3>Strafford District 21</h3></div></article>'
+    rows = [dict(row, c=card)]
+    js = (f"[scope.renderMemberElections({json.dumps({'elections': rows, 'up': up})}), "
+          f"scope.renderMemberElections({json.dumps({'elections': rows})}), "
+          f"scope.electionUpcoming({json.dumps(gil)})]")
+    out = _app_js(js, names=("renderMemberElections", "electionUpcoming"))
+    said = "node, app.js or the stub is not here for the tab"
+    if out is not None:
+        tab, bare, js_gil = out
+        flat = lambda s: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", s)).strip()  # noqa: E731
+        heads = re.findall(r'<h3 class="er-cycle">([^<]+)</h3>', tab)
+        if heads != ["Upcoming elections", "2026"]:
+            bad.append(f"the tab's headings are {heads}: Upcoming elections above 2026 wanted")
+        for words in ("House, Strafford 21 (3 seats, floterial)", "Mar 3–10, 2028 Filing period for the primary",
+                      "RSA 655:14, as amended by 2026, 44:4, from January 1, 2028",
+                      "Jun 13, 2028 State primary RSA 653:8, as amended by 2026, 44:1, from January 1, 2028",
+                      "Nov 7, 2028 General election RSA 653:7"):
+            if words not in flat(tab):
+                bad.append(f"the tab does not say {words!r}: {flat(tab)[:400]}")
+        block = tab.split("Upcoming elections</h3>", 1)[-1].split('<h3 class="er-cycle">2026', 1)[0]
+        if re.search(r"(?i)\b(running|run|runs|has filed|filed|candidates?)\b", flat(block)):
+            bad.append("the upcoming elections say something of who runs")
+        if "Upcoming" in bare:
+            bad.append("a member with no upcoming elections is given the heading")
+        if re.sub(r"\s+", " ", LP.upcoming_html(gil)) != re.sub(r"\s+", " ", js_gil):
+            bad.append(f"the member-elect page's upcoming elections are not app.js's: "
+                       f"{LP.upcoming_html(gil)!r} != {js_gil!r}")
+        said = "the tab draws them above 2026, and a member-elect's page as app.js does"
+    assert not bad, "; ".join(bad[:6])
+    return "ok", ("Wade's Strafford 21 and a returning former member's seat on 19 November 2026, none for a "
+                  "member not elected or a former member; the sitting members' own seats once the roster is "
+                  "2027-2028's; 3-10 March, 13 June and 7 November 2028 with their law, only those ahead; "
+                  "'up' only beside rows; " + said)
 
 
 @check("data", "on today's roster and results, Alice Wade's tab reads 2026's general, 2024's general, 2024's "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of a bill's history as the site tells it (narrative.py).
 
@@ -13228,8 +13228,10 @@ def _key_dates_sourced(KD, LY):
     town meeting on 11 March 2025, 10 March 2026 and 9 March 2027; Organization
     Day on 4 December 2024 and 2 December 2026; the general election on 5
     November 2024 and 3 November 2026; the state primary on 10 September 2024
-    and 8 September 2026, and none dated from 2028, when RSA 653:8 as this
-    disk prints it stops being the law; or where the list on 24 October 2026
+    and 8 September 2026, and on 13 June 2028, by RSA 653:8 as 2026, 44:1
+    amends it from 1 January 2028 (until 19 November 2026 this held that no
+    primary from 2028 was dated, the new text not having been read); or where
+    the list on 24 October 2026
     leaves out a date the owner named. Where db/NH_RSA.psv is on this disk, each
     statute key_dates.py computes from must still print its rule's words."""
     from datetime import date
@@ -13247,7 +13249,7 @@ def _key_dates_sourced(KD, LY):
              (KD.state_primary(2024), date(2024, 9, 10)),
              (KD.state_primary(2026), date(2026, 9, 8)),
              (KD.state_primary(2027), None),
-             (KD.state_primary(2028), None))
+             (KD.state_primary(2028), date(2028, 6, 13)))
     for got, want in known:
         if got != want:
             bad.append(f"a rule gives {got}, where the day is {want}")
@@ -13299,15 +13301,197 @@ def _key_dates_sourced(KD, LY):
                 bad.append(f"RSA {sec} is not in db/NH_RSA.psv")
             elif words.lower() not in secs[sec][1].lower():
                 bad.append(f"RSA {sec} no longer prints {words!r}: its rule is to be read again")
-        head = secs.get("653:8", ("", ""))[0]
-        until = re.search(r"effective until (\w+ \d+, \d{4})", head)
-        if until and until.group(1) != "January 1, 2028":
-            bad.append(f"RSA 653:8 as printed is in force until {until.group(1)}, and "
-                       "key_dates.PRIMARY_UNTIL says 1 January 2028")
         said = f"{len(KD_RSA_WORDS)} statutes print their rule in db/NH_RSA.psv"
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{n} key dates over three days, each with its source and a Spanish name; "
                   f"{len(known)} days the law fixes are their rule's; {said}")
+
+
+@check("frontend", "the election law's days are worked out from the text of the section in force on the "
+                   "day: the 2026 primary by RSA 653:8's old text, the 2028 one by its text as 2026, 44:1 "
+                   "amends it, the general by RSA 653:7, the filing period by RSA 655:14; a later "
+                   "amendment moves the day, and the copy kept for a bare clone is the table's",
+       needs=("key_dates",))
+def _election_law_in_force(KD):
+    """The owner, 19 November 2026 ("Yes to all 9" of the specials and upcoming elections design):
+    the 2028 primary is 13 June, by RSA 653:8 as 2026, 44:1 amends it from 1 January 2028, worked
+    out by the rule and not typed. key_dates.in_force works each text's day out from its words and
+    takes the text whose time in force holds that day. Held, three ways:
+
+    - by the copy (LAW_COPY, a folder with no table): the primary on 10 September 2024 and 8
+      September 2026 by the old text and 13 June 2028 by the new, none in 2027; the general on 8
+      November 2022 (a 1 November that is a Tuesday: the first Tuesday is not the day), 3 November
+      2026 and 7 November 2028; the filing period 3 to 12 June 2026, the Secretary of State's own
+      "Filing Period June 3-12, 2026", and 3 to 10 March 2028 by RSA 655:14 as 2026, 44:4 amends it;
+      the key date of 2028 cites the act and the day it took effect;
+    - in a folder whose table prints a made-up RSA 653:8 amended from 1 January 2030 to "the first
+      Tuesday in August", and an RSA 653:7 in words no rule reads: 12 September 2028 by the text in
+      force then, 6 August 2030 by the amendment, cited as amended by its act, and no general
+      election dated, which unread() says;
+    - where db/NH_RSA.psv is on this disk: the same days, and each text of the copy is the table's
+      -- the same texts, the same days in force and acts, its words among the table's."""
+    from datetime import date
+    import contextlib
+    import io
+    here, saved = os.getcwd(), set(KD.UNREAD)
+    bad = []
+
+    def days():
+        return {"primary": {y: KD.state_primary(y) for y in (2024, 2026, 2027, 2028)},
+                "general": {y: KD.state_general(y) for y in (2022, 2026, 2028)},
+                "filing": {y: KD.filing_period(y) for y in (2026, 2027, 2028)}}
+
+    want = {"primary": {2024: date(2024, 9, 10), 2026: date(2026, 9, 8), 2027: None,
+                        2028: date(2028, 6, 13)},
+            "general": {2022: date(2022, 11, 8), 2026: date(2026, 11, 3), 2028: date(2028, 11, 7)},
+            "filing": {2026: (date(2026, 6, 3), date(2026, 6, 12)), 2027: None,
+                       2028: (date(2028, 3, 3), date(2028, 3, 10))}}
+    old = "The state primary election shall be held on the second Tuesday in September of every even-numbered year."
+
+    def row(sec, source, body):
+        ch, n = sec.split(":")
+        return "|".join(["1", "LXIII", ch, f"{ch}-{n}", "TITLE LXIII ELECTIONS", f"CHAPTER {ch} X",
+                         f"Section {sec} Heading.", source, body[:40], body, "63", "u", ch, "", n, ""])
+    made = [row("653:8", "<p><b>Source.</b> 1979, 436:1. 2029, 9:1, eff. Jan. 1, 2030. </p>",
+                "<center>[RSA 653:8 effective until January 1, 2030; see also RSA 653:8 set out below.]"
+                f"</center> <b> 653:8 State Primary Election. &#150;</b> <codesect> {old} </codesect>"
+                "<center>[RSA 653:8 effective January 1, 2030; see also RSA 653:8 above.]</center> "
+                "<b> 653:8 State Primary Election. &#150;</b> <codesect> The state primary election "
+                "shall be held on the first Tuesday in August of every even-numbered year. </codesect>"),
+            row("653:7", "<p><b>Source.</b> 2029, 9:2, eff. Jan. 1, 2030. </p>",
+                "<codesect> The state general election shall be held on a day the secretary of state "
+                "sets. </codesect>")]
+    try:
+        with tempfile.TemporaryDirectory() as bare, tempfile.TemporaryDirectory() as other:
+            os.chdir(bare)
+            got = days()
+            if got != want:
+                bad.append(f"by the copy: {got}, where the days are {want}")
+            kd = {e.day: e.src for e in KD._by_rule([2026, 2028]) if e.rule == "primary"}
+            if sorted(kd) != ["2026-09-08", "2028-06-13"]:
+                bad.append(f"the primary's key dates of 2026 and 2028 are on {sorted(kd)}")
+            elif "as amended by 2026, 44:1, from January 1, 2028" not in kd["2028-06-13"] \
+                    or "second Tuesday in June" not in kd["2028-06-13"] \
+                    or "amended" in kd["2026-09-08"] or "September" not in kd["2026-09-08"]:
+                bad.append(f"the primary's sources: {kd}")
+            (Path(other) / "db").mkdir()
+            (Path(other) / "db" / "NH_RSA.psv").write_text("\n".join(made) + "\n", encoding="utf-8")
+            os.chdir(other)
+            KD.UNREAD.clear()
+            got = (KD.state_primary(2028), KD.state_primary(2030), KD.state_general(2030))
+            if got != (date(2028, 9, 12), date(2030, 8, 6), None):
+                bad.append(f"a table amending RSA 653:8 from 2030 gives {got}, where 12 September "
+                           "2028, 6 August 2030 and no general election are wanted")
+            src = {e.day: e.src for e in KD._by_rule([2030]) if e.rule == "primary"}
+            if "first Tuesday in August" not in src.get("2030-08-06", "") \
+                    or "as amended by 2029, 9:1, from January 1, 2030" not in src.get("2030-08-06", ""):
+                bad.append(f"the amended primary's source: {src}")
+            said = io.StringIO()
+            with contextlib.redirect_stdout(said):
+                KD.unread()
+            if "RSA 653:7" not in said.getvalue():
+                bad.append(f"a text no rule reads is not said: {said.getvalue()!r}")
+            # Out of the folders before they go: Windows keeps a folder that is in use.
+            os.chdir(here)
+        table = Path("db") / "NH_RSA.psv"
+        if table.is_file():
+            got = days()
+            if got != want:
+                bad.append(f"by db/NH_RSA.psv: {got}, where the days are {want}")
+            norm = lambda s: re.sub(r"\s+", " ", s).strip().lower()  # noqa: E731
+            for sec, copy in KD.LAW_COPY.items():
+                texts = KD.laws(sec)
+                if [(t.since, t.until, t.act) for t in texts] != [(c.since, c.until, c.act) for c in copy]:
+                    bad.append(f"RSA {sec}: the table's texts are {[(t.since, t.until, t.act) for t in texts]}, "
+                               f"the copy's {[(c.since, c.until, c.act) for c in copy]}: read it again")
+                    continue
+                for t, c in zip(texts, copy):
+                    if norm(c.words) not in norm(t.words):
+                        bad.append(f"RSA {sec} in force from {c.since or 'enactment'} no longer prints "
+                                   f"{c.words!r}: read it again")
+            said = f"; db/NH_RSA.psv gives the same days and prints the copy's {sum(len(c) for c in KD.LAW_COPY.values())} texts"
+        else:
+            said = "; db/NH_RSA.psv is not on this disk, so the copy is not compared with it"
+    finally:
+        os.chdir(here)
+        KD.UNREAD.clear()
+        KD.UNREAD.update(saved)
+    assert not bad, "; ".join(bad[:6])
+    return "ok", ("primary 8 September 2026 by the old text and 13 June 2028 by 2026, 44:1; general 7 "
+                  "November 2028; filing 3-12 June 2026 and 3-10 March 2028; a made-up amendment of "
+                  "2030 moves the day and is cited, and a text no rule reads dates nothing and is "
+                  "said" + said)
+
+
+def _september_primaries(text):
+    """The sentences of `text` (tags out) that put a state primary in September without naming a
+    year before 2028, in English or Spanish: each would be untrue of 2028, when the primary is in
+    June (RSA 653:8 as 2026, 44:1 amends it)."""
+    out = []
+    plain = re.sub(r"<[^>]+>", " ", text)
+    for s in re.split(r"(?<=[.;!?])\s+|\\n|\n", plain):
+        low = s.lower()
+        if not (("primary" in low and "september" in low) or ("primaria" in low and "septiembre" in low)):
+            continue
+        if "presidential" in low or "presidencial" in low:
+            continue
+        if any(int(y) < 2028 for y in re.findall(r"\b(19\d\d|20\d\d)\b", s)):
+            continue
+        out.append(s.strip()[:160])
+    return out
+
+
+@check("frontend", "no page says the state primary of 2028 is in September: the key dates, the town pages' "
+                   "next election and the guides and Learn pages all take June 13, 2028 from RSA 653:8 "
+                   "as amended", needs=("key_dates", "build_town_pages"))
+def _primary_2028_not_september(KD, BT):
+    """The owner, 19 November 2026: a page that says the 2028 primary is in September states a
+    fact the law has changed (RSA 653:8 as 2026, 44:1 amends it: the second Tuesday in June from 1
+    January 2028). Held:
+
+    - the key dates as on 1 June 2027, when the Calendar's years first reach 2028: the State
+      primary on 13 June 2028 and on no day of September 2028;
+    - the town pages' next possible election (build_town_pages.next_possible_election), which ends
+      a town's "last election": after 15 May 2028 it is 13 June 2028, not 12 September, and after 1
+      August 2026 still 8 September 2026;
+    - the words of the guides, the Learn pages, the town pages and the site's Spanish (guides.py,
+      civics.py, learn_numbers.py, build_town_pages.py's strings, lang/es.json): no sentence puts a
+      state primary in September without naming a year before 2028. The reader is shown to find
+      one planted."""
+    from datetime import date
+    bad = []
+    evs = [(e.day, e.name) for e in KD.events(date(2027, 6, 1)) if e.rule == "primary"]
+    if ("2028-06-13", "State primary") not in evs or any(d.startswith("2028-09") for d, _n in evs):
+        bad.append(f"the key dates on 1 June 2027 put the primary on {evs}")
+    for day, want in ((date(2028, 5, 15), date(2028, 6, 13)), (date(2026, 8, 1), date(2026, 9, 8))):
+        got = BT.next_possible_election(day)
+        if got != want:
+            bad.append(f"after {day} the town pages' next possible election is {got}, not {want}")
+    planted = "Filing closes in June. The state primary is the second Tuesday in September."
+    assert _september_primaries(planted) == ["The state primary is the second Tuesday in September."], (
+        "the reader does not find a planted September primary")
+    assert not _september_primaries("The 2026 primary was September 8, 2026."), (
+        "the reader flags a primary of a year before 2028")
+    files = [Path("src/pages/guides.py"), Path("src/pages/civics.py"), Path("src/pages/learn_numbers.py")]
+    found = []
+    for f in files:
+        # A sentence the source splits over lines, "...the state primary " "is in September", whole.
+        joined = re.sub(r'"\s*\n\s*(?:f|r|rf|fr)?"', "", _source(f))
+        found += [f"{f.as_posix()}: {s}" for s in _september_primaries(joined)]
+    # The town pages' strings, not their comments (which tell this history).
+    town = "\n".join(line for line in _source(Path("src/pages/build_town_pages.py")).splitlines()
+                     if not line.lstrip().startswith("#"))
+    found += [f"build_town_pages.py: {s}" for s in _september_primaries(
+        "\n".join(re.findall(r'"([^"\n]{20,})"', town)))]
+    es = json.loads(_source(Path("src/pages/lang/es.json"))).get("strings") or {}
+    for key, v in es.items():
+        for side in ("en", "es"):
+            found += [f"lang/es.json {key} ({side}): {s}" for s in _september_primaries(str(v.get(side) or ""))]
+    bad += found
+    assert not bad, "; ".join(bad[:6])
+    return "ok", (f"the key dates put 2028's primary on June 13 and none in September; the town pages' next "
+                  f"election after 15 May 2028 is June 13; {len(files) + 1} files of page words and "
+                  f"{len(es):,} Spanish strings put no state primary in September for 2028")
 
 
 @check("frontend", "the status box names the next deadline by its rule, on fixed days, in both "

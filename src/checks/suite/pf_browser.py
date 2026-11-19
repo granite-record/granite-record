@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -198,6 +198,13 @@ def _class_collisions():
         # election_row_html for the race on a new member-elect's provisional
         # page, held to app.js's row by _elect_page_member_form (16 November 2026)
         "v", "dim",
+        # AND THE TAB'S UPCOMING ELECTIONS (19 November 2026): a card in the race card's
+        # shape under a cycle's heading, which app.js's electionUpcoming draws on a
+        # member's tab and build_legislator_pages.upcoming_html on a new member-elect's
+        # page, held to app.js's by _member_elections_upcoming; .er-race and .er-hd are
+        # build_elections.race_card's, the card the tab's races already are
+        "er-cycle", "er-stack", "er-race", "er-hd", "er-up", "er-up-rows", "er-up-d", "er-up-w",
+        "er-up-law",
         # the feedback box
         "fbk", "fbknote",
         # a person chip's "(R - Rock 2)", which pchip writes in components.js

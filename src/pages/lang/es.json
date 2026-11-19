@@ -25803,6 +25803,21 @@
    "es": "Empate por el último escaño",
    "state": "draft"
   },
+  "race.up_amended": {
+   "en": "{law}, as amended by {act}, from {date}",
+   "es": "{law}, modificado por {act}, desde el {date}",
+   "state": "draft"
+  },
+  "race.up_filing": {
+   "en": "Filing period for the primary",
+   "es": "Período de inscripción para la primaria",
+   "state": "draft"
+  },
+  "race.up_head": {
+   "en": "Upcoming elections",
+   "es": "Próximas elecciones",
+   "state": "draft"
+  },
   "race.won": {
    "en": "Elected",
    "es": "Elegido/a",

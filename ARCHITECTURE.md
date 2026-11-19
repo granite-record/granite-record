@@ -2505,6 +2505,18 @@ in the term sitting that day by the roster's seat or the seats their bills print
 the election's year had left. A candidate the rule cannot place is not marked.
 One line under the cards says what the mark is.
 
+Above the newest cycle the tab shows the seat's upcoming elections (19 November
+2026): the next state general election's filing period, primary and general,
+each a day `key_dates.in_force` works out from the words of the RSA text in force
+on it (RSA 655:14 and 653:8 as 2026, 44 amends them from 1 January 2028; RSA
+653:7) and cited to its section and act (`build_member_elections.upcoming`, the
+member file's `up`). The seat is the one the member holds in the term those
+elections end (`upcoming_seats`): a winner's of the newest general until the
+roster is the next term's, then the sitting member's own; a former member and a
+member not returning have none, and a new member-elect's provisional page has
+its own (`build_elect_pages`, `build_legislator_pages.upcoming_html`). Nothing is
+said of who runs or has filed.
+
 The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
 gives `find.json` a row of the kind `elect` for each new member-elect with a
 provisional page and each former member elected again, named with the

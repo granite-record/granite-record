@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.402 */
+/* GRANITE_VERSION: 2026-09-07.403 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -10062,6 +10062,13 @@ text-wrap:balance}
    tab's full width at every width, under a heading for each election cycle. */
 .er-cards.er-stack{grid-template-columns:minmax(0,1fr)}
 .er-cycle{margin:var(--sp-6) 0 var(--sp-2);font:600 var(--t-h3)/1.3 var(--serif)}
+/* Upcoming elections (19 November 2026): the seat's next filing period, primary and
+   general, a day and its law to a line, in a card of the tab's own. */
+.er-up-rows{list-style:none;margin:var(--sp-3) 0 0;padding:0}
+.er-up-rows li{margin:0 0 var(--sp-3)}
+.er-up-rows li:last-child{margin-bottom:0}
+.er-up-d{font-weight:600;font-variant-numeric:tabular-nums;margin-right:var(--sp-2)}
+.er-up-law{display:block;font-size:var(--t-sm);color:var(--ink-2)}
 
 /* ==== THE VOTES PAGE (/votes; app.js, THE VOTES PAGE) ====================
    The search box across the page, the filters in a row of the bill search's
