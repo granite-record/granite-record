@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -2896,8 +2896,17 @@ def _rehearsal_answers_every_night_step():
                          "tests/rehearse_turn.py's Nights.fake does not stand in for: the rehearsal "
                          "stops on its first night. Answer each there")
     assert stops, "Nights.fake no longer stops the rehearsal at a step it does not stand in for"
+    # And its fetch_archive_db.py writes the columns beside the views, which
+    # take_views holds every view to: without them nothing was ever taken.
+    rt = _parsed(_paths.locate("tests/rehearse_turn.py"))
+    study = next((ast.unparse(f) for f in ast.walk(rt) if isinstance(f, ast.FunctionDef)
+                  and f.name == "study"), "")
+    assert '"_columns.json"' in study or "'_columns.json'" in study, (
+        "the rehearsal's fetch_archive_db.py (Nights.study) leaves no db/_columns.json beside the "
+        "views, so take_views refuses every one of them")
     return "ok", (f"all {len(started)} scripts nightly.py can start outside weekly() are answered "
-                  f"by the rehearsal's Nights.fake, and any other stops it")
+                  f"by the rehearsal's Nights.fake, any other stops it, and its database views "
+                  f"come with their columns")
 
 
 # ---- a run for a change, and the fast path's checks (9 October 2026) ----------

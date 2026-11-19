@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.13
+# GRANITE_VERSION: 2026-10-05.14
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -585,6 +585,11 @@ class Nights:
                 shutil.copy2(src, db / f"{v}.psv")
                 man[v] = {**(man_in.get(v) or {}), "rows": self.NI.count_lines(src)}
         (db / "_manifest.json").write_text(json.dumps(man), encoding="utf-8")
+        # The columns as installed, as the fetch writes them beside the views:
+        # without them take_views refuses every view ("its columns are not the
+        # ones db/_columns.json reads it by") and nothing was ever taken here.
+        if (Path("db") / "_columns.json").exists():
+            shutil.copy2(Path("db") / "_columns.json", db / "_columns.json")
         return 0
 
     def build(self, args):
