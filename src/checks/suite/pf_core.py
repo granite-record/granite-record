@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 The registry of preflight's checks, and what every module of the suite shares.
 
@@ -18,7 +18,9 @@ _answer, _settle, imp, _run); the seal on a child that must reach no network
 (_suite_files, _in_suite, _suite_namespaces, _SWITCHED); the repository's
 files read once and its scripts parsed once (_source, _parsed); what a run
 came out as and what reaches what (_OUTCOMES, _THIS_RUN, _reaching,
-_check_outcome); and the manifest of every check (_manifest). Each is as it
+_check_outcome); what a cache answered, told to the run's map of what each
+check read (_map_read, _map_kept); and the manifest of every check
+(_manifest). Each is as it
 stood in preflight.py, with the comment above it. This module uses no other
 module of the suite, and runs no check.
 """
@@ -401,6 +403,7 @@ def _source(path, errors="strict", root=None):
         if seen is None or seen[0] != (st.st_size, st.st_mtime_ns):
             seen = ((st.st_size, st.st_mtime_ns), f.read_text(encoding="utf-8", errors=errors))
             _SOURCE_TEXT[key] = seen
+        _map_read(f)
         texts.append(seen[1])
     return texts[0] if len(texts) == 1 else "".join(texts)
 
@@ -435,6 +438,7 @@ def _parsed_warned(path):
     p = Path(path)
     st = p.stat()
     key = (str(p.resolve()), st.st_size, st.st_mtime_ns)
+    _map_read(p)
     if key not in _PARSED:
         import warnings
         tree, seen = _parse_in_pieces(p.read_text(encoding="utf-8", errors="replace"))
@@ -658,13 +662,54 @@ _OUTCOMES = {}
 # module that runs the checks and the module that holds a check read the same
 # one when they are two.
 class _ThisRun:
-    """The run main() is making (above)."""
+    """The run main() is making (above), and `map`, the recorder of what each
+    check read and ran where the run keeps the map (pf_runner._MapRecorder),
+    None where it does not."""
 
     def __init__(self):
         self.chosen = None
+        self.map = None
 
 
 _THIS_RUN = _ThisRun()
+
+
+# WHAT A CACHE ANSWERS IS STILL READ (19 November 2026, the refactor's stage 1,
+# step 8). The map (pf_runner, "the map") watches every file a check opens and
+# every function of the repository it runs; but a file _source or _parsed
+# answers from this run's earlier read is not opened again, and work a
+# once-a-run helper kept (_once_a_run, the early builds, _read_once,
+# _site_records, _stripped) is not done again, so the second check to ask
+# would be recorded as reading nothing. _map_read tells the map a file was
+# read all the same; _map_kept is put around the place such a helper looks
+# for what it kept, and gives what the work read and ran to every check that
+# takes it, the first as the rest. Neither does anything where the run keeps
+# no map, and neither changes what a helper answers.
+def _map_read(path):
+    """Tell the run's map, where it keeps one, that the check running read
+    `path`, though this run's cache answered it."""
+    m = _THIS_RUN.map
+    if m is not None:
+        m.read(path)
+
+
+class _map_kept:
+    """`with _map_kept(key):` around a once-a-run helper's look for what it
+    kept under `key` (a str): what the work in the block reads and runs is
+    the key's, and every check that comes through the block takes it."""
+
+    def __init__(self, key):
+        self.key, self.m = key, _THIS_RUN.map
+
+    def __enter__(self):
+        if self.m is not None:
+            self.m.enter(self.key)
+        return self
+
+    def __exit__(self, *exc):
+        if self.m is not None:
+            self.m.leave(self.key)
+        return False
 
 
 def _reaching(names, skip=(), checks=None):

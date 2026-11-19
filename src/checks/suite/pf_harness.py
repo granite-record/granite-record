@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 The node harnesses: a page's script run in node as a browser runs it.
 
@@ -17,7 +17,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from pf_core import (_SWITCHED, _run, _source)
+from pf_core import (_SWITCHED, _map_kept, _run, _source)
 
 
 def _app_js(expr, names=("renderHearings", "archivedNote")):
@@ -171,6 +171,7 @@ def _stripped(js):
     import hashlib
     import strip_js
     key = (strip_js.strip, hashlib.sha256(js.encode("utf-8")).digest())
-    if key not in _STRIPPED:
-        _STRIPPED[key] = strip_js.strip(js)
+    with _map_kept("strip_js.strip of " + key[1].hex()[:16]):
+        if key not in _STRIPPED:
+            _STRIPPED[key] = strip_js.strip(js)
     return _STRIPPED[key]

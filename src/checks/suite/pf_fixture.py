@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 The fixture project and site that preflight's checks build and read, and what a
 run makes once.
@@ -23,7 +23,7 @@ from pathlib import Path
 import _paths
 import child
 
-from pf_core import (_reaching, _run, imp)
+from pf_core import (_map_kept, _reaching, _run, imp)
 
 
 # journal_motions.json for the site fixture: the vote on no bill of 6 March
@@ -956,12 +956,14 @@ _MADE_ONCE = {}
 
 def _once_a_run(what, make):
     """make() the first time this run asks for `what`; after that what it
-    returned, or raised."""
-    if what not in _MADE_ONCE:
-        try:
-            _MADE_ONCE[what] = (make(), None)
-        except Exception as e:                                  # noqa: BLE001
-            _MADE_ONCE[what] = (None, e)
+    returned, or raised. Where the run keeps the map, what make() read and
+    ran is given to every check that asks (pf_core._map_kept)."""
+    with _map_kept(what):
+        if what not in _MADE_ONCE:
+            try:
+                _MADE_ONCE[what] = (make(), None)
+            except Exception as e:                              # noqa: BLE001
+                _MADE_ONCE[what] = (None, e)
     got, err = _MADE_ONCE[what]
     if err is not None:
         raise err
@@ -1043,6 +1045,11 @@ def _fixture_site_whole(root):
 # that sets a variable or stands a stub in for run() for a moment, as several
 # do, cannot reach a build that is going on beside it.
 _EARLY = {}
+# The early builds' threads are named for it, and the run's map (pf_runner, "the
+# map") gives what they read and ran to _EARLY_MAP, which every check that takes
+# an early build takes.
+_EARLY_THREADS = "fixture"
+_EARLY_MAP = "the early builds"
 
 
 def _start_early_builds(only=None):
@@ -1062,7 +1069,7 @@ def _start_early_builds(only=None):
     env = dict(os.environ)
     day = date.today() - timedelta(days=2)
     stated = {build_date.ENV: day.isoformat()}
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=3, thread_name_prefix="fixture")
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=3, thread_name_prefix=_EARLY_THREADS)
     for what, brand, made_with in (("shared", True, env), ("nobrand", False, env),
                                    ("stated", True, stated)):
         if only is not None and what not in only:
@@ -1088,7 +1095,8 @@ def _early_build(what, made_with=None):
         return None
     del _EARLY[what]
     root, base, _env, started, future = got
-    ran = future.result()
+    with _map_kept(_EARLY_MAP):
+        ran = future.result()
     return root, base, ran, sorted({started, date.today()})
 
 

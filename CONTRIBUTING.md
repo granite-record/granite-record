@@ -301,6 +301,14 @@ Five tools for the time between those proofs, none of which replaces one.
   the manifest before and after is the same but for the fingerprints the
   change says it moves. Compare two manifests made by the same Python; each
   says which made it.
+- **What the checks were seen to do.** A run of every check of a kind
+  (`python3 preflight.py`, `--code`, `--data`, `--built`; never `--changed`)
+  also writes `logs/check-map-<kind>.json.gz`: for each check, the files of
+  the repository it read, listed and started and the functions it ran, its
+  Python children's with its own. It records and chooses nothing, and
+  `--no-map` leaves it out. `python3 src/checks/map_replay.py --map
+  logs/check-map-all.json.gz` reads it against the commits since a day and
+  says what choosing by it would have run, beside what `--changed` runs.
 - **A baseline once per commit.** `src/checks/site_manifest.py` keeps the
   sha256 manifest of a build, keyed by its commit, its stated day, its
   options and the data under it, so the "build before" of step 2 is made

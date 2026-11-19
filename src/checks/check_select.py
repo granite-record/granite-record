@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.3
+# GRANITE_VERSION: 2026-10-09.4
 """
 Which of preflight's checks a change can reach: `preflight.py --changed`.
 
@@ -324,7 +324,8 @@ def _tokens(strings):
     return mods, files
 
 
-def choose(checks, source, base=None, parse=None, root=".", changed=None, lines=None):
+def choose(checks, source, base=None, parse=None, root=".", changed=None, lines=None,
+           moved=None):
     """{"base", "changed", "run": {index: reason}, "core_missing": [...]}:
     which of `checks` (preflight's CHECKS, in order) a change since `base`
     can reach. `source` is the suite's files, preflight.py first and then
@@ -332,7 +333,10 @@ def choose(checks, source, base=None, parse=None, root=".", changed=None, lines=
     a parse of one (preflight hands its own, so that the run parses each
     file once). `changed` and `lines` stand in for git where a caller
     already knows them: `lines` as {a file's path from the root: [(first,
-    last)]}, or as a list of spans of the first file."""
+    last)]}, or as a list of spans of the first file. `moved` names, by
+    name, top-level definitions of the suite a change moved, beside those
+    its lines say: for a caller whose lines are of another version of the
+    suite than the one indexed (map_replay.py, which replays past commits)."""
     root = Path(root)
     parse = parse or (lambda p: ast.parse(Path(p).read_text(encoding="utf-8",
                                                              errors="replace")))
@@ -364,7 +368,7 @@ def choose(checks, source, base=None, parse=None, root=".", changed=None, lines=
     index = _INDEXES[key][1]
     moved_tops = {n for n, i in index.info.items()
                   if any(a <= i["span"][1] and i["span"][0] <= b
-                         for a, b in lines.get(i["file"], ()))}
+                         for a, b in lines.get(i["file"], ()))} | (set(moved or ()) & set(index.info))
     runner = sorted(moved_tops & RUNNER)
 
     run = {}

@@ -604,7 +604,9 @@ would be wrong within a day, and was. The checks are modules of
 `src/checks/suite/` by area, which `preflight.py` imports;
 the registry, the runner and the helpers they share -- the fixture among
 them -- are modules of `src/checks/suite/`, whose README says which holds
-what.
+what. A run of every check of a kind also records, for each check, the files
+it read and the functions it ran (`logs/check-map-<kind>.json.gz`), which
+`src/checks/map_replay.py` reads against past commits; it chooses nothing yet.
 
 **A person can overrule a generator, in files the generators cannot touch.**
 The files that are a person's are in `corrections/` and `review/`, which

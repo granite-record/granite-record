@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.952
+# GRANITE_VERSION: 2026-09-04.953
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -11,6 +11,8 @@ Run every check that needs no network, and report all of them at once.
     python3 preflight.py --manifest FILE
                                     # no check run: every check in run order, with
                                     #   two fingerprints of its code, into FILE
+    python3 preflight.py --no-map   # without the map of what each check read
+                                    #   and ran (logs/check-map-<kind>.json.gz)
 
 The failure this exists to prevent: twelve files change, the first one raises on
 line 3, and an hour goes into that one traceback while the other eleven stay
@@ -27,9 +29,11 @@ WHAT IT DOES NOT DO
 No network, no YouTube, no gencourt. It never runs a build and never writes
 anything into the project: the marker checks build a throwaway tree under the
 system temp directory and delete it. Running this cannot change the site and
-cannot lose anything. The one file it leaves is its own record of the run,
+cannot lose anything. The files it leaves are its own record of the run,
 logs/preflight-last.json, which handoff.py reads in place of running the
-checks a second time; git ignores logs/ and no build reads it. Outside the
+checks a second time, and the map of what each check read and ran,
+logs/check-map-<kind>.json.gz (src/checks/suite/pf_runner.py, "the map"); git
+ignores logs/ and no build reads either. Outside the
 project it keeps one more, in the system temp directory: its parse of the
 officials directory (_officials_read), made again whenever the PDF, its
 parser or the PDF library changes.
