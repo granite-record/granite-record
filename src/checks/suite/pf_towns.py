@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of towns, districts and the map.
 
@@ -3428,9 +3428,9 @@ def _town_elections_order_and_marks(TE, BMEL, BME):
     years = re.findall(r'<h3 class="twnh">(\d{4})</h3>', html)
     assert years == ["2025", "2024"], f"the years read {years}"
     heads = re.findall(r'<h4 class="te-el">([^<]*)</h4>', html)
-    assert heads == ["Special election, 8 April 2025", "General election, 5 November 2024",
-                     "State primary, 10 September 2024", "Special election, 4 June 2024",
-                     "Special election, 12 March 2024"], f"the elections read {heads}"
+    assert heads == ["Special election, April 8, 2025", "General election, November 5, 2024",
+                     "State primary, September 10, 2024", "Special election, June 4, 2024",
+                     "Special election, March 12, 2024"], f"the elections read {heads}"
     names = re.findall(r"<h5>([^<]*)</h5>", html.split("State primary")[0].split("General election")[1])
     assert names == ["Governor", "State Senate, District 5", "State House, Grafton 12",
                      "State House, Grafton 9 (floterial)", "Grafton County Sheriff"], \

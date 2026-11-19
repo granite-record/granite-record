@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.1
+# GRANITE_VERSION: 2026-11-19.2
 """
 A town page's Elections tab (the owner, 19 November 2026: "Town pages should
 also have an elections tab organized by election and year which should
@@ -81,6 +81,7 @@ from collections import defaultdict
 
 import build_members_elect as BME
 import components as C
+import state_settings as ST
 
 E = C.esc
 YEARS_RE = re.compile(r"^election_town_rows_(\d{4})\.csv$")
@@ -103,7 +104,8 @@ OFFICE_NAME = {"president": "President", "governor": "Governor", "us-senate": "U
                "register-of-deeds": "Register of Deeds", "register-of-probate": "Register of Probate",
                "county-commissioner": "County Commissioner"}
 COUNTS = ("undervotes", "overvotes", "write_ins_scattered")
-PARTY_WORD = {"D": "Democratic", "R": "Republican", "L": "Libertarian"}
+# A ballot's party in words, the state's one party table's ("Democratic ballot").
+PARTY_WORD = {k: v.get("adjective") or k for k, v in ST.PARTY.items()}
 
 
 # ------------------------------------------------------------------ places ---
@@ -620,10 +622,8 @@ def load(site, collected, hand_path, today, sponsors=None):
 # ----------------------------------------------------------------- drawing ---
 
 def long_day(iso):
-    """"2024-11-05" -> "5 November 2024"."""
-    import datetime
-    d = datetime.date.fromisoformat(iso)
-    return f"{d.day} {d.strftime('%B')} {d.year}"
+    """"2024-11-05" -> "November 5, 2024": the site's one formatter, in a sentence's form."""
+    return C.date_words(iso, "full")
 
 
 def cand_rows(race, primary=False):
