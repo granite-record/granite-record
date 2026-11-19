@@ -211,7 +211,11 @@ file with that night's build, whose sha256 list the night keeps as a state
 file (`archive/night-site.json.gz`, `nightly.NIGHT_SITE`; never a dry run's or
 a New term run's), less the files that carry a time and the changes files: a
 difference is a warning in the week's verdict, naming the first files, and
-holds no night.
+holds no night. Since 19 November 2026 it also measures the private bucket,
+read only, by top-level prefix (`cloud.py bucket-size`): files, bytes, the
+oldest file and the change since last week go into the week's results, and a
+prefix a lifecycle rule should empty (`nights/`, `logs/`, `replaced/`) that
+holds a file older than the rule keeps is a warning.
 
 **The current term's data, from the database** (since 16 October 2026). After
 the day's files and the study committees, a night that fetches takes from the

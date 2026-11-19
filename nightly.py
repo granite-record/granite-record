@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.104
+# GRANITE_VERSION: 2026-09-04.105
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1733,6 +1733,9 @@ def main():
     ap.add_argument("--cold", metavar="OUTCOME", default=None,
                     help="(--weekly --close) the cold build step's outcome: its record is folded "
                          "into the week's verdict, a warning where it differs or did not finish")
+    ap.add_argument("--bucket", metavar="OUTCOME", default=None,
+                    help="(--weekly --close) the bucket-size step's outcome: its record of the "
+                         "bucket's size by prefix is folded into the week's verdict")
     ap.add_argument("--new-term", action="store_true",
                     help="(--runner) the night, or the weekly job, a term turns over: the "
                          "General Court's smaller files accepted, once")
@@ -5897,6 +5900,9 @@ def site_manifest(site, out, walk=None):
 # too (build_date.utcnow), which would move the times it publishes.
 NIGHT_SITE = Path("archive/night-site.json.gz")
 COLD_RECORD = Path("logs/cold-build.json")
+# The weekly's record of the bucket's size by prefix (cloud.BUCKET_RECORD,
+# THE BUCKET'S SIZE, BY PREFIX), which --close folds into the week's verdict.
+BUCKET_RECORD = Path("logs/bucket-size.json")
 COLD_NAMED = 8                  # the files a difference names, first by path
 # What the aside leaves out, at the folder's top only: the build's cache, which
 # is what "cold" means, and the lock. Not site/: the kit brings site/committees.json,
@@ -8110,6 +8116,27 @@ def close_verdict(a):
         if cold_warns(cold):
             v["warnings"] = list(v.get("warnings") or []) + [f"the cold build {said}"]
         gh_summary([f"- the cold build {said}"])
+    # THE BUCKET'S SIZE, BY PREFIX (cloud.py bucket-size, the weekly's step
+    # before its fetches): into the week's results, which the morning triage
+    # reads, with "bucket" the record and its warnings -- a lifecycle rule
+    # that is not deleting -- among the week's. Never into whether the week
+    # was clean or its job failed. A record of another run, or none, is said
+    # with the step's outcome; told nothing (an older workflow), nothing is.
+    told_bucket = getattr(a, "bucket", None)
+    if a.weekly and told_bucket is not None:
+        size = load_json(BUCKET_RECORD)
+        if isinstance(size, dict) and str(size.get("run_id") or "") == str(rid or "") \
+                and size.get("said"):
+            said = str(size["said"])
+            v["bucket"] = {k: x for k, x in size.items() if k not in ("before", "said")}
+            v["warnings"] = list(v.get("warnings") or []) + [str(w) for w in
+                                                             size.get("warnings") or []]
+        else:
+            said = ("not measured: the bucket-size step left no record this week "
+                    f"(its step: {told_bucket or 'no outcome'})")
+        v.setdefault("results", {})["the bucket"] = said
+        # The run's page is public: the total, not the prefixes.
+        gh_summary([f"- the bucket: {said.split(': ', 1)[0]}"])
     if failed:
         v["clean"] = False
         v.setdefault("not_clean", []).append("workflow steps that did not succeed: "

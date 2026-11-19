@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the bucket and the refusals (cloud.py, refusal.py).
 
@@ -2244,6 +2244,156 @@ def _cloud_dry_weekly(CL, NI):
                   "under dry-run/, a refusal, a hold and its own verdict, and none of its lists, "
                   "the week's verdict or the census; pull says the verdict is a dry run's and "
                   "leaves its logs; a weekly of main sends as before")
+
+
+@check("cloud", "the weekly measures the bucket by its top-level prefixes, read only, folds it "
+       "into the week's results, and warns of a prefix its lifecycle rule should empty that "
+       "holds files older than the rule keeps", needs=("cloud", "nightly"))
+def _cloud_bucket_size(CL, NI):
+    """THE BUCKET'S SIZE, BY PREFIX (cloud.py; the refactor's ops inventory, item 13). On a
+    folder bucket -- never the real one -- with files under kit/, nights/, logs/, replaced/,
+    backup/ and the top level, metadata under .meta/, and dates set: bucket-size counts each
+    prefix's files and bytes and its oldest file's age, leaves .meta/ out, and changes nothing
+    in the bucket; it warns, one line each, exactly for nights/ and replaced/, whose oldest files
+    are past their rule and a day, and not for logs/ at its rule and a day; it says the change
+    since last week's record, read from the week's verdict where state-down puts it. The
+    weekly's --close folds a record of its own run into the week's results, verdict and
+    warnings, leaving clean and the exit alone, and says "not measured" for another run's or
+    none; R2Bucket's dated listing reads the date R2 gives with each key; the paths agree; and
+    weekly.yml runs it after kit-up, before the verdict, carrying on past its failure."""
+    import contextlib
+    import io
+    import types
+    from datetime import datetime, timezone
+    tmp = Path(tempfile.mkdtemp(prefix="gr-bucketsize-"))
+    here = os.getcwd()
+    saved_env = {k: os.environ.get(k) for k in ("GITHUB_RUN_ID", "GITHUB_ACTIONS",
+                                                "GITHUB_STEP_SUMMARY", "GITHUB_OUTPUT",
+                                                "GITHUB_SHA")}
+    day = 86400
+    try:
+        for k in saved_env:
+            os.environ.pop(k, None)
+        os.environ["GITHUB_RUN_ID"] = "4242"
+        bucket, root = tmp / "bucket", tmp / "root"
+        now = datetime.now().timestamp()
+        for key, size, age in (("kit/Docket.txt", 3000, 0), ("kit/db/a.psv", 2000, 40),
+                               ("state/last-night.json", 100, 0),
+                               ("nights/901/site.tar.gz", 50000, 9), ("nights/905/site.json", 10, 1),
+                               ("logs/2026-10-19/nightly-2026-10-19.log", 70, 31.5),
+                               ("replaced/2026-10-17/kit/Docket.txt", 900, 32.5),
+                               ("backup/manifest.json", 400, 60), ("README.txt", 5, 3),
+                               (".meta/kit/Docket.txt.json", 99, 0)):
+            p = bucket.joinpath(*key.split("/"))
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b"x" * size)
+            os.utime(p, (now - age * day, now - age * day))
+        (root / "archive").mkdir(parents=True)
+        (root / CL.BUCKET_LAST_WEEK).write_text(json.dumps({"run_id": "4100", "bucket": {
+            "at": "2026-11-12T23:30:00", "bytes": 40000, "files": 7,
+            "prefixes": {"nights/": {"files": 1, "bytes": 30000, "oldest_days": 2}}}}),
+            encoding="utf-8")
+        before = {p.relative_to(bucket).as_posix(): (p.stat().st_size, p.stat().st_mtime_ns)
+                  for p in bucket.rglob("*") if p.is_file()}
+        code, out = _cloud_call(CL, "bucket-size", "--local-bucket", str(bucket), "--root",
+                                str(root))
+        assert code == 0, out[-400:]
+        after = {p.relative_to(bucket).as_posix(): (p.stat().st_size, p.stat().st_mtime_ns)
+                 for p in bucket.rglob("*") if p.is_file()}
+        assert after == before, "bucket-size changed the bucket"
+        rec = json.loads((root / CL.BUCKET_RECORD).read_text(encoding="utf-8"))
+        pre = rec["prefixes"]
+        assert {p: (e["files"], e["bytes"]) for p, e in pre.items()} == {
+            "nights/": (2, 50010), "kit/": (2, 5000), "replaced/": (1, 900),
+            "backup/": (1, 400), "state/": (1, 100), "logs/": (1, 70), CL.BUCKET_TOP: (1, 5)}, pre
+        assert list(pre)[0] == "nights/" and rec["files"] == 9 and rec["bytes"] == 56485, rec
+        assert (pre["nights/"]["oldest_days"], pre["replaced/"]["oldest_days"],
+                pre["logs/"]["oldest_days"], pre["kit/"]["oldest_days"]) == (9, 32, 31, 40), pre
+        warned = rec["warnings"]
+        assert len(warned) == 2 and warned[0].startswith("The bucket's nights/ holds a file 9 days "
+                                                         "old") and \
+            warned[1].startswith("The bucket's replaced/ holds a file 32 days old") and \
+            all("\n" not in w and len(w) <= 300 and "check the rule" in w for w in warned), warned
+        assert rec["run_id"] == "4242" and rec["before"]["bytes"] == 40000 and \
+            rec["said"].startswith("56.48 KB in 9 files (+16.48 KB since 2026-11-12): nights/ "
+                                   "50.01 KB, kit/ 5.00 KB"), rec["said"]
+        assert "WARNING The bucket's nights/" in out and "kept in logs/bucket-size.json" in out, out
+
+        # The week's last word, as the weekly's --close gives it.
+        os.chdir(root)
+        NI.write_json(NI.WEEKLY_VERDICT, {"kind": "weekly", "run_id": "4242", "clean": True,
+                                          "results": {"committees": "installed"}})
+
+        def close(told="success", outcomes=("weekly=success",)):
+            with contextlib.redirect_stdout(io.StringIO()):
+                c = NI.close_verdict(types.SimpleNamespace(weekly=True, dry_run=False, cold=None,
+                                                           bucket=told, outcome=list(outcomes)))
+            return c, json.loads(Path(NI.WEEKLY_VERDICT).read_text(encoding="utf-8"))
+        c, v = close(None)
+        assert c == 0 and "the bucket" not in v["results"] and "bucket" not in v, \
+            ("a week told nothing of the bucket (an older workflow) says it", v)
+        NI.write_json(NI.WEEKLY_VERDICT, {"kind": "weekly", "run_id": "4242", "clean": True,
+                                          "results": {"committees": "installed"}})
+        c, v = close()
+        assert c == 0 and v["clean"] and v["results"]["the bucket"] == rec["said"] and \
+            v["bucket"]["prefixes"] == pre and "before" not in v["bucket"] and \
+            all(w in v.get("warnings", []) for w in warned), ("the week's verdict", c, v)
+        # ... which next week's bucket-size reads as last week's.
+        os.chdir(here)
+        Path(root / CL.BUCKET_LAST_WEEK).write_text(json.dumps(v), encoding="utf-8")
+        code, out = _cloud_call(CL, "bucket-size", "--local-bucket", str(bucket), "--root",
+                                str(root))
+        nxt = json.loads((root / CL.BUCKET_RECORD).read_text(encoding="utf-8"))
+        assert code == 0 and nxt["before"]["bytes"] == rec["bytes"] and \
+            "(+0 bytes since " in nxt["said"], nxt["said"]
+        os.chdir(root)
+        os.environ["GITHUB_RUN_ID"] = "4243"
+        NI.write_json(NI.WEEKLY_VERDICT, {"kind": "weekly", "run_id": "4243", "clean": True,
+                                          "results": {}})
+        c, v = close("failure")
+        assert c == 0 and v["results"]["the bucket"].startswith("not measured") and \
+            v["results"]["the bucket"].endswith("(its step: failure)") and \
+            "bucket" not in v and not v.get("warnings"), ("another run's record was taken", v)
+        os.chdir(here)
+    finally:
+        os.chdir(here)
+        for k, val in saved_env.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
+        shutil.rmtree(tmp, ignore_errors=True)
+    # R2's listing gives each key's date, which dated() reads.
+    class Pages:
+        def paginate(self, *, Bucket, Prefix=""):
+            assert Bucket == "b" and Prefix == ""
+            yield {"Contents": [{"Key": "kit/a", "Size": 3, "LastModified":
+                                 datetime(2026, 11, 1, tzinfo=timezone.utc)}]}
+            yield {"KeyCount": 0}
+    r2 = object.__new__(CL.R2Bucket)
+    r2.bucket, r2.s3 = "b", types.SimpleNamespace(get_paginator=lambda name: Pages())
+    assert r2.dated("") == {"kit/a": (3, datetime(2026, 11, 1, tzinfo=timezone.utc).timestamp())}
+    assert CL.BUCKET_RECORD == NI.BUCKET_RECORD.as_posix() and \
+        CL.BUCKET_LAST_WEEK == NI.WEEKLY_VERDICT.as_posix() and \
+        any(e.get("path") == CL.BUCKET_LAST_WEEK for e in
+            json.loads(_source(CL.KIT_FILE)).get("state") or []), \
+        "the record's path, or last week's verdict's, is not the same in cloud.py and nightly.py"
+    wf = _SWITCHED.workflow_dir / "weekly.yml"
+    if wf.is_file():
+        steps = _wf_steps(_wf_code(_wf_jobs(_source(wf)).get("weekly", [])))
+        at = {k: n for n, st in enumerate(steps) for k in ("bucket-size", "kit-up", "--close")
+              if any(f"cloud.py {k}" in ln or f"nightly.py --runner --weekly {k}" in ln
+                     for ln in st)}
+        step = "\n".join(steps[at["bucket-size"]]) if "bucket-size" in at else ""
+        sid = re.search(r"^        id:\s*(\S+)", step, re.M)
+        assert step and sid and at["kit-up"] < at["bucket-size"] < at["--close"] and \
+            "continue-on-error: true" in step and "if: always()" in step, (
+                "weekly.yml does not measure the bucket after kit-up and before its verdict, "
+                "carrying on past a failure", at)
+        assert f'--bucket "${{{{ steps.{sid.group(1)}.outcome }}}}"' in \
+            "\n".join(steps[at["--close"]]), "the weekly verdict is not told the bucket step's outcome"
+    return "ok", ("7 prefixes counted with their oldest file, .meta/ left out, the bucket "
+                  "unchanged; nights/ at 9 days and replaced/ at 32 warn, logs/ at 31 does not; "
+                  "the change since last week's verdict said; folded into the week's results, "
+                  "verdict and warnings, clean and exit untouched; another run's record not "
+                  "taken; R2's dates read; weekly.yml measures it after kit-up")
 
 
 def _fake_s3():

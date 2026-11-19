@@ -213,6 +213,25 @@ jobs:
           python src/ops/cloud.py kit-up
           exit $LASTEXITCODE
 
+      # THE BUCKET'S SIZE, BY PREFIX (cloud.py says why): one listing of the
+      # whole bucket, read only, after the week's own files have gone back,
+      # into logs/bucket-size.json, which the weekly verdict folds into the
+      # week's results and warnings. It carries on past its own failure: a
+      # listing that fails is said there as not measured, and fails nothing.
+      - name: The bucket's size, by prefix
+        id: bucketsize
+        if: always() && steps.statedown.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          python src/ops/cloud.py bucket-size
+          exit $LASTEXITCODE
+
       # The cold build (above): the folder set aside, built and compared, after
       # the week's own files have gone back. Its outcome goes to the verdict
       # apart from the week's own steps (--cold), so it never fails the week.
@@ -231,6 +250,7 @@ jobs:
         run: |
           python nightly.py --runner --weekly --close `
             --cold "${{ steps.cold.outcome }}" `
+            --bucket "${{ steps.bucketsize.outcome }}" `
             --outcome "state-down=${{ steps.statedown.outcome }}" `
             --outcome "kit-down=${{ steps.kitdown.outcome }}" `
             --outcome "weekly=${{ steps.weekly.outcome }}" `
