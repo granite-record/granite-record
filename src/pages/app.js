@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.358
+// GRANITE_VERSION: 2026-09-07.359
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -6768,12 +6768,13 @@ function renderReports(b,d,rsa){
   const repName=(cmte,body)=>{
     const n=[body,cmte].filter(Boolean).map(titleWords).join(" ");
     return /\bcommittee\b/i.test(n)?n:n+" Committee";};
-  // EACH REPORT SAYS WHAT IT IS (the owner, 19 November 2026), over its
-  // committee: a public hearing's report or an executive session's, in the
-  // chip the Videos tab's rows give those meetings (kindChips' colours).
-  const head=(r,cmte,body)=>`<div class="rephead">${repKind("exec")}
+  // EACH REPORT SAYS WHAT IT IS (the owner, 19 November 2026), under its
+  // committee and over its date: a public hearing's report or an executive
+  // session's, in the chip the Videos tab's rows give those meetings
+  // (kindChips' colours). The committee, the chip, the date, the calendar.
+  const head=(r,cmte,body)=>`<div class="rephead">
       ${[body,cmte].filter(Boolean).length
-        ? `<h2 class="sech">${esc(repName(cmte,body))}</h2>`:""}
+        ? `<h2 class="sech">${esc(repName(cmte,body))}</h2>`:""}${repKind("exec")}
       <div class="repmeta">${when(r)}${cited(r)}</div></div>`;
 
   // ONE REPORT IS ONE ELEMENT, so that it can be laid out as one. The head
@@ -6873,7 +6874,7 @@ function renderReports(b,d,rsa){
   // THE SENATE COMMITTEES' REPORTS OF THEIR PUBLIC HEARINGS (moved from the
   // Videos tab, 19 November 2026), each headed as the committee reports are.
   const heard=heardReports(d).map(({r,s})=>({date:r.heard||s.when,rank:0,html:rep(`<div class="rephead">
-      ${repKind("hearing")}<h2 class="sech">${esc(r.committee||"Senate Committee")}</h2>
+      <h2 class="sech">${esc(r.committee||"Senate Committee")}</h2>${repKind("hearing")}
       <div class="repmeta"><span class="secsub">${esc(dateWords(r.heard||s.when))}</span></div></div>`,
     hearingReport(r,!!s.video_id))}));
   const none=`<p class="note">No committee report on file. A report is recorded in the docket
@@ -6888,7 +6889,7 @@ function renderReports(b,d,rsa){
     return a<c?-1:a>c?1:x.rank-y.rank;});
   return veto(d)+(all.length?all.map(x=>x.html).join(""):none)+sosArchive(d);
 }
-// WHAT A REPORT IS, as a chip over its committee: the meeting it comes out of,
+// WHAT A REPORT IS, as a chip under its committee: the meeting it comes out of,
 // in the colours the Videos tab's rows give that kind of meeting (kindChips,
 // meeting_kinds.json's).
 const REP_KIND={hearing:["Public Hearing Report","public hearing"],exec:["Executive Session Report","executive session"]};

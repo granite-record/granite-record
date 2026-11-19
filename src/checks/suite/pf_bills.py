@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.34
+# GRANITE_VERSION: 2026-11-16.35
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -3600,8 +3600,8 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
     rep, repbare = re.sub(r"\s+", " ", out["rep"]), re.sub(r"\s+", " ", out["repbare"])
     assert 'class="player vwplay"' in tab and 'class="hrep"' not in tab, (
         "the Videos tab still draws the hearing report")
-    assert re.search(r'<span class="chip calkind k-hearing">Public Hearing Report</span></p>\s*'
-                     r'<h2 class="sech">Senate Election Law and Municipal Affairs Committee</h2>.*'
+    assert re.search(r'<h2 class="sech">Senate Election Law and Municipal Affairs Committee</h2>\s*'
+                     r'<p class="repkind"><span class="chip calkind k-hearing">Public Hearing Report</span></p>.*'
                      r'class="hrep"', rep), "the report is not a Public Hearing Report on the Reports tab"
     assert out["count"] == 2, f"the Reports tab counts {out['count']} hearing reports, not 2"
     # "The recording ... is on the Videos tab" is true only where there is
@@ -3683,9 +3683,12 @@ def _report_groups():
     full = re.sub(r"\s+", " ", got["full"])
     # One list: each report's kind and its committee, oldest first; the
     # written report of 29 January before the docket's of 4 March, and on 20
-    # May the public hearing's report before the executive session's.
-    said = re.findall(r'<p class="repkind"><span class="chip calkind (k-\w+)">([^<]+)</span></p>\s*'
-                      r'<h2 class="sech">([^<]+)</h2>', full)
+    # May the public hearing's report before the executive session's. Each
+    # head reads the committee, its kind's chip, then the date and the
+    # calendar (the owner's approval, 19 November 2026).
+    said = [(k, w, c) for c, k, w in re.findall(
+        r'<h2 class="sech">([^<]+)</h2>\s*<p class="repkind"><span class="chip calkind (k-\w+)">([^<]+)</span></p>'
+        r'\s*<div class="repmeta"><span class="secsub">', full)]
     assert said == [("k-exec", "Executive Session Report", "House Criminal Justice and Public Safety Committee"),
                     ("k-exec", "Executive Session Report", "House Criminal Justice and Public Safety Committee"),
                     ("k-hearing", "Public Hearing Report", "Senate Judiciary Committee"),
@@ -3710,7 +3713,8 @@ def _report_groups():
         and got["bareCount"] == 0, "a bill with no report lost its link, or counts it as a report"
     assert "Secretary of State" not in got["nolink"], "a bill with no archive address links one"
     assert re.search(r'data-t="3">Reports</button>', got["strip"]), "the Reports tab of a bill with only the link is counted, or gone"
-    return "ok", ("one list of five, oldest first, each with its kind's chip, a day's hearing report before its "
+    return "ok", ("one list of five, oldest first, each the committee, its kind's chip, the date and the "
+                  "calendar, a day's hearing report before its "
                   "executive session's; 5 counted; the named writer a chip and the unnamed one words; the "
                   "archive linked once under them, and alone, uncounted, on a bill with no report")
 

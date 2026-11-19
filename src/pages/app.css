@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.404 */
+/* GRANITE_VERSION: 2026-09-07.405 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -3341,7 +3341,8 @@ color:var(--ink-2);margin:0 0 var(--sp-4);font-family:var(--serif)}
 .rep{border-top:1px solid var(--rule);padding-top:var(--sp-5)}
 .rep .rephead{border-top:0;padding-top:0}
 /* WHAT A REPORT IS (the owner, 19 November 2026): a public hearing's or an
-   executive session's, the meeting kind's chip over the committee's name. */
+   executive session's, the meeting kind's chip under the committee's name and
+   over the date. */
 .repkind{margin:0 0 var(--sp-2)}
 .repkind .chip{margin:0}
 /* The committees' own files, once a bill, under the reports. */
