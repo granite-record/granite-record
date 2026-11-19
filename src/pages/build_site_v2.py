@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.289
+# GRANITE_VERSION: 2026-09-05.290
 """
 Generate the faceted site from real General Court data.
 
@@ -1165,29 +1165,9 @@ def member_slug(m, lab):
 # district with it. A member resolved from a roll call page may have neither,
 # and "(?)" beside a name is worse than a name on its own. A House district
 # with no county is likewise omitted: "Rock. 13" locates a seat, "13" does not.
-# Without the trailing point, which is the form data/legislators.json's own
-# county_abbr carries. A member drawn from the roster read "Hills 12" and
-# one drawn from here read "Hills. 6", so the punctuation tracked exactly
-# who had left office.
-COUNTY_ABBR = {**ST.COUNTY_ABBR_LOWER, "co\u00f6s": "Coos"}
-# EITHER SPELLING RESOLVES, because the sources do not agree on which they
-# store. member_party.json writes a seat already abbreviated -- 622 rows say
-# "Hills", 440 "Rock", 212 "Merr", and so on through all nine that shorten --
-# and this map is keyed on the full name, so .get() missed and the seat was
-# dropped out of the label altogether: 228 sponsor rows read "Rep. Jane Smith
-# (R)" where every other row on the same bill reads "(R - Hills 12)".
-#
-# 62 of those 228 are filled from former_members.json by way of build_data's
-# roll-call pass, and the seat it carries is the one that member held LAST,
-# not the one they held when the bill was filed. That is a fact about where
-# the seat comes from and cannot be told apart here -- district_tag is handed
-# a county and a number and no provenance -- so it is fixed upstream or not at
-# all, and is written down rather than guessed at.
-#
-# A trailing point is allowed on the way in because Counties.txt writes
-# "Hills." and the roster writes "Hills"; what comes out is always the
-# roster's spelling, so the punctuation stops tracking who has left office.
-COUNTY_OF = {**COUNTY_ABBR, **{v.lower(): v for v in COUNTY_ABBR.values()}}
+# The seat's county as the roster spells it (COUNTY_ABBR, COUNTY_OF) and the district
+# a label carries (district_tag) are parts.py's, which officials_tabs reads too.
+from parts import COUNTY_ABBR, COUNTY_OF, district_tag
 HONORIFIC = {"H": "Rep.", "S": "Sen."}
 
 _TITLE_RE = re.compile(r"^(?:rep|sen|representative|senator)\.?\s+", re.I)
@@ -1288,19 +1268,6 @@ def roster_name_keys(members):
     for how, k, ms in clashes:
         (by_sort if how == "sort name" else by_name).pop(k, None)
     return by_sort, by_name, clashes
-
-
-def district_tag(chamber, district, county=None, county_abbr=None):
-    d = str(district or "").strip()
-    # The bill status page pads a district ("Carr 07"); nobody says it so.
-    d = d.lstrip("0") or d if d.isdigit() else d
-    if not d:
-        return ""
-    if chamber == "S":
-        return f"SD{d}"
-    ab = (county_abbr or "").strip() or COUNTY_OF.get(
-        (county or "").strip().rstrip(".").lower(), "")
-    return f"{ab} {d}" if ab else ""
 
 
 def member_labels(name, chamber=None, party=None, district=None, county=None,

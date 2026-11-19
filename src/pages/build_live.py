@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.13
+# GRANITE_VERSION: 2026-10-30.14
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -46,10 +46,13 @@ import shutil
 
 import build_calendar as BC
 import build_date
-import build_pages as BP
 import live_gen as LG
+import parts as P
 import shell as S
 import state_settings as ST
+# A committee's title stems in the recordings: live_hook's, whose committee pages read
+# them, and named here as build_live.past_stems.
+from live_hook import past_stems
 
 AHEAD = 4                  # weekdays after today
 # LINKED IS THE OWNER'S SWITCH (workers/live/SWITCH_ON.md, step 5): whether the
@@ -110,24 +113,10 @@ def weekdays(today, n):
     return out
 
 
-def past_stems(root=Path(".")):
-    """{canonical committee: {title stems}} from every video index (proceedings.video_indexes)."""
-    import build_manifest as BM
-    import proceedings
-    out = {}
-    for p in proceedings.video_indexes(root):
-        with p.open(encoding="utf-8", newline="") as f:
-            for row in csv.DictReader(f):
-                c = (row.get("parsed_committee") or "").strip()
-                if c and row.get("title"):
-                    out.setdefault(BM.canon(c), set()).add(LG.stem(row["title"]))
-    return out
-
-
 def kind_of(key, rows):
     if key.name in BC.FLOOR.values():
         return "floor"
-    if BP.is_conference(key):
+    if P.is_conference(key):
         return "conference"
     if any(r.get("study") for r in rows):
         return "study"
@@ -135,7 +124,7 @@ def kind_of(key, rows):
 
 
 def match_of(key, rows, kind, history):
-    chamber = "".join(BP.card_bodies(key, rows))
+    chamber = "".join(P.card_bodies(key, rows))
     if kind == "floor":
         return [{"H": "house session", "S": "senate session"}[c] for c in chamber if c in "HS"]
     if kind == "conference":
@@ -160,12 +149,12 @@ def schedule(site, today, weeks=None, history=None):
         day = (weeks.get(BC.week_key(d)) or {}).get(iso) or {}
         rows = []
         for key in BC.in_order(day):
-            html, _missing = BP.cal_days({iso: [key]}, day, titles, years, code,
-                                         lambda dd: BC.day_words(dd, today), S.E, level=3)
+            html, _missing = P.cal_days({iso: [key]}, day, titles, years, code,
+                                        lambda dd: BC.day_words(dd, today), S.E, level=3)
             card = CARD.search(html)
             meet = day[key]
             kind = kind_of(key, meet)
-            chamber = "".join(BP.card_bodies(key, meet))
+            chamber = "".join(P.card_bodies(key, meet))
             if kind == "floor":
                 # The day's dated address (the owner retired /session/<B>/today
                 # on 30 October 2026): the record's page, or from live/session
@@ -175,7 +164,7 @@ def schedule(site, today, weeks=None, history=None):
                 h = HREF.search(card.group(0) if card else "")
                 href = f"/{h.group(1)}" if h else None
             rows.append({"id": f"{chamber}|{key.name}|{key.bill or ''}|{iso}", "chamber": chamber, "kind": kind,
-                         "name": BP.card_name(key), "href": href, "card": card.group(0) if card else "",
+                         "name": P.card_name(key), "href": href, "card": card.group(0) if card else "",
                          "match": match_of(key, meet, kind, history)})
         days[iso] = rows
         if nxt is None and d > today and rows:

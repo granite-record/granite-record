@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the calendar.
 
@@ -2445,7 +2445,7 @@ def _calendar_study_committees():
         day = weeks["2026-W36"]["2026-09-02"]
         # No chamber in the key: the docket's row carries the BILL's chamber
         # and the database copy's none, and keyed on either they were two.
-        one = BC.BP.Meet("2026-09-02", "", long, "")
+        one = BC.P.Meet("2026-09-02", "", long, "")
         assert list(day) == [one], (
             f"HB 1763's study committee on 2 September is {list(day)}, not one "
             "card under the committee's own name")

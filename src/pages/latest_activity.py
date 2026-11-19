@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-24.4
+# GRANITE_VERSION: 2026-10-24.5
 """
 What the home page's Latest Activity holds: the latest meetings, each with
 the bills it took up and what was done to each there.
@@ -26,7 +26,7 @@ On 24 October 2026 the box was HB 1710 twice, SB 193 twice and SB 441: three
 bills, and the meeting each was voted at named by none of them.
 
 ONE ITEM A MEETING, AS COMING UP HAS THEM. A committee's day -- whatever kinds
-of sitting it held, as build_pages.meeting_key keys a card of Coming up and of
+of sitting it held, as parts.meeting_key keys a card of Coming up and of
 the Calendar, which a committee's page also lists one entry a day under
 #day-<date> -- or a chamber's sitting, which has a page of its own. Each bill
 the meeting took up is in it once, with what was done to it there.
@@ -66,12 +66,12 @@ import committee_acts as CA
 import proceedings as P
 
 # Meetings kept in home.json, newest first. The page shows fewer
-# (build_pages.RECENT_SHOWN); the rest are there for a page that is read a day
+# (parts.RECENT_SHOWN); the rest are there for a page that is read a day
 # or two after it was built, and for a check.
 LIMIT = 12
 # Bills kept for each meeting the page does not show, against a page read a
 # day or two after its build. A meeting it shows keeps every bill, up to
-# build_pages.RECENT_BILLS, since its card opens on all of them (the owner,
+# parts.RECENT_BILLS, since its card opens on all of them (the owner,
 # 24 October 2026: "the ability to click it for a dropdown to list all the
 # bills from that session"); "and N more" counts from `n` past that. A House
 # sitting takes up a hundred and more, and home.json is fetched by every
@@ -239,7 +239,7 @@ def latest(rows, histories, today, bills=None, limit=LIMIT, kept=BILLS_KEPT,
          kinds of sitting, in the day's order], "time", "last" (the first and
          last slots, "HH:MM"; absent on a sitting), "n": every bill it took
          up, "bills": [{"bill", "term", "year", "n", "title", "did"?}] the
-         first `kept` of them, or build_pages.RECENT_BILLS for each of the
+         first `kept` of them, or parts.RECENT_BILLS for each of the
          first RECENT_SHOWN, the meetings the home page shows}
 
     `rows` is proceedings.csv's (proceedings.load), `histories`
@@ -250,7 +250,7 @@ def latest(rows, histories, today, bills=None, limit=LIMIT, kept=BILLS_KEPT,
     Newest first: by day, a sitting before the committees that met that day,
     and the committees by the hour each finished, the latest first.
     """
-    import build_pages as BP
+    import parts as PT
     today = str(today)[:10]
     bills = bills or {}
 
@@ -258,7 +258,7 @@ def latest(rows, histories, today, bills=None, limit=LIMIT, kept=BILLS_KEPT,
     meets = OrderedDict()
     crows = committee_rows(rows, histories, today)
     for r in crows:
-        meets.setdefault(("c", BP.meeting_key(r)), []).append(r)
+        meets.setdefault(("c", PT.meeting_key(r)), []).append(r)
     newest = sorted({t for t in (histories or {})}, reverse=True)[:2]
     for (body, date), bs in floor_days(histories, today, set(newest)).items():
         meets[("f", (body, date))] = sorted(bs)
@@ -307,7 +307,7 @@ def latest(rows, histories, today, bills=None, limit=LIMIT, kept=BILLS_KEPT,
 
     def cap(i):
         """How many bills the i-th meeting keeps (BILLS_KEPT)."""
-        return max(kept, BP.RECENT_BILLS) if i < BP.RECENT_SHOWN else kept
+        return max(kept, PT.RECENT_BILLS) if i < PT.RECENT_SHOWN else kept
 
     out = []
     for item in chosen:
@@ -351,10 +351,10 @@ def latest(rows, histories, today, bills=None, limit=LIMIT, kept=BILLS_KEPT,
 
 
 def key_of(m):
-    """The build_pages.meeting_key of a meeting `latest` wrote, or None for a
+    """The parts.meeting_key of a meeting `latest` wrote, or None for a
     sitting: for its name, and the link to its committee."""
     if m.get("floor"):
         return None
-    import build_pages as BP
-    return BP.meeting_key({"date": m.get("date"), "what": (m.get("kinds") or [""])[0],
+    import parts as PT
+    return PT.meeting_key({"date": m.get("date"), "what": (m.get("kinds") or [""])[0],
                            "committee": m.get("committee"), "body": m.get("body")})

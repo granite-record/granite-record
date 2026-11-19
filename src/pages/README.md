@@ -216,6 +216,10 @@ The words, kept as Python data:
 
 The helpers the builders share:
 
+- `parts`: what more than one builder draws with -- a day of the Calendar's
+  cards and what one meeting is (`cal_days`, `meeting_key`), Latest
+  activity's sizes, a party's word, a district's tag, a number, address or
+  link that works, the tab strip's script -- named where each was too;
 - `shell`: the page every record's own address is, `bills.html` with one
   record open;
 - `chrome`: the frame every page shares -- the head, the header, the

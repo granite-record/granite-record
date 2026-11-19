@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1033,8 +1033,6 @@ def _import_cycles(graph):
 # code, not by rewriting it (reports/refactor/stage0-code.md, section 9, step 3). These are
 # the cycles left; a change that ties a new one, or grows one of these, fails here.
 _IMPORT_CYCLES_KNOWN = {
-    ("build_calendar", "build_committees", "build_live", "build_pages", "build_session_pages",
-     "build_site_v2", "build_town_pages", "latest_activity", "live_hook", "officials_tabs"),
     ("cloud", "livestreams", "refusal", "state_sources"),
     ("past_roster", "past_sponsors", "text_sponsors"),
     ("api_db", "api_schema"),
@@ -1047,10 +1045,21 @@ _IMPORT_CYCLES_KNOWN = {
     ("parse_sos_primary_offices", "parse_sos_primary_results"),
     ("proceedings", "terms"),
 }
+# The imports those moves cut, (importer, what it imported): each piece lives now where the
+# comment says, and the importer takes it from there.
+_IMPORTS_CUT = {
+    ("i18n", "guides"), ("i18n", "build_civics"), ("i18n", "officials_tabs"),
+    ("i18n", "build_pages"), ("i18n", "legislative_year"),      # translation_audit.py
+    ("build_calendar", "build_pages"), ("build_live", "build_pages"),
+    ("latest_activity", "build_pages"), ("officials_tabs", "build_pages"),
+    ("officials_tabs", "build_site_v2"), ("officials_tabs", "build_town_pages"),
+    ("build_town_pages", "build_pages"), ("build_pages", "build_town_pages"),   # parts.py
+    ("live_hook", "build_live"),                                # live_hook.past_stems
+}
 
 
 @check("files", "the code's import cycles are the known ones and no more: i18n, which every "
-                "page imports, imports none of the builders")
+                "page imports, imports none of the builders, and no builder is in a cycle")
 def _import_cycles_cut():
     """A module that every builder imports and that imports a builder ties
     the whole folder into one cycle: i18n's translation audit did, until it
@@ -1067,6 +1076,19 @@ def _import_cycles_cut():
     cycles = set(_import_cycles(graph))
     tied = [c for c in cycles if "i18n" in c or "translation_audit" in c]
     assert not tied, f"i18n is in an import cycle again: {tied}"
+    # The builders that took a helper from another builder take it from parts.py
+    # (19 November 2026): none of the knot's builders is in a cycle again.
+    builders = {"build_pages", "build_calendar", "build_live", "build_town_pages", "build_site_v2",
+                "build_committees", "build_session_pages", "officials_tabs", "latest_activity",
+                "live_hook", "parts"}
+    tied = [c for c in cycles if builders & set(c)]
+    assert not tied, ("a builder is in an import cycle again; take what two builders share "
+                      f"from parts.py rather than from either: {tied}")
+    # And the imports that were cut stay cut, cycle or not: each was one module
+    # reaching into another for a piece that is now a module of its own.
+    back = sorted(f"{a} -> {b}" for a, b in _IMPORTS_CUT if b in graph.get(a, ()))
+    assert not back, ("an import cut on 19 November 2026 is back; take the piece from where "
+                      "it lives now (_IMPORTS_CUT says where): " + ", ".join(back))
     new = sorted(cycles - _IMPORT_CYCLES_KNOWN)
     gone = sorted(_IMPORT_CYCLES_KNOWN - cycles)
     assert not new, ("an import cycle that is not on _IMPORT_CYCLES_KNOWN, new or grown: "
@@ -1076,7 +1098,7 @@ def _import_cycles_cut():
                       "so they cannot come back unseen: "
                       + "; ".join(" <-> ".join(c) for c in gone))
     return "ok", (f"{len(graph)} modules, {len(cycles)} import cycles, all known (the largest "
-                  f"{max(map(len, cycles), default=0)} modules); i18n in none")
+                  f"{max(map(len, cycles), default=0)} modules); i18n and the page builders in none")
 
 
 def _readme_unlisted(folder, root=None):

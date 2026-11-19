@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -1606,7 +1606,7 @@ _PARTY_COPIES = (
     ("src/fetch/gc_web/fetch_rollcall_parties.py", "PARTY", "py", "spelling"),
     ("src/pages/build_site_v2.py", "MANUAL_PARTY", "py", "spelling"),
     ("src/parse/office_links.py", "PARTY_WORDS", "py", "spelling"),
-    ("src/pages/build_pages.py", "party_word", "say", "name, adjective, plural, none"),
+    ("src/pages/parts.py", "party_word", "say", "name, adjective, plural, none"),
     ("src/pages/build_elections.py", "chamber_block", "parts", "adjective"),
     ("src/pages/app.js", "PARTY_NAME", "js", "name"),
     ("src/pages/app.js", "PARTY_WORD", "js", "name"),

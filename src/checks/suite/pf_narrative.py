@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of a bill's history as the site tells it (narrative.py).
 
@@ -11832,9 +11832,10 @@ def _rooms_in_words(PA):
                         ('` &middot; ${esc(roomWords(rooms[0]))}`', "a committee's meeting")):
         if need not in app:
             bad.append(f"app.js draws {where} in the clerk's words")
-    pages = _source("src/pages/build_pages.py")
+    # The Calendar's cards are drawn by parts.cal_days (build_pages' until 19 November 2026).
+    pages = _source("src/pages/parts.py")
     if pages.count('<span class="calwhere">{esc(PA.place(') != 2:
-        bad.append("build_pages' Calendar draws a room in the clerk's words")
+        bad.append("parts.cal_days, the Calendar's cards, draws a room in the clerk's words")
     shared = _fixture_site_shared()[0]
     cal = shared / "site" / "calendar.html"
     if cal.exists():

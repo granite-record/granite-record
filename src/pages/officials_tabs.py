@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.24
+# GRANITE_VERSION: 2026-10-10.25
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -63,7 +63,7 @@ import build_date
 import i18n as I
 
 from components import date_words, pchip, until_attrs
-from build_town_pages import tel, maillink, weblink
+from parts import tel, maillink, weblink
 from build_members_elect import KEY_RE, STATUSES, elect_status, race_order, read_officials
 
 E = lambda s: _html.escape(str(s or ""), quote=True)  # noqa: E731
@@ -808,7 +808,7 @@ def elect_chip(e, key, lang="en"):
     where none was printed (as components.elect_race draws them), linked
     only where the file links them. No contact detail; the word for who
     they are is elect_word's, beside it."""
-    from build_site_v2 import district_tag
+    from parts import district_tag
     m = KEY_RE.match(key)
     p = str(e.get("p") or "")
     if m.group(3):
@@ -838,7 +838,7 @@ def elect_party(e):
 def elect_party_words(code, n, lang="en"):
     """A column's or a total's name: "Democrats", "Republican"; "More than
     one party" for the cross-nominated, "Party not on file" for none."""
-    from build_pages import party_word
+    from parts import party_word
     if code == "+":
         return I.say(lang, "elect.party_more", "More than one party")
     return party_word(PARTY_OF.get(code, code) if code else "Party not on file", lang,
