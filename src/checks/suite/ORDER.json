@@ -913,6 +913,8 @@
 "_mover_seat_on_old_day",
 "_bill_loop_names",
 "_story_people",
+"_movers_of_a_finished_term",
+"_story_people_of_a_finished_term",
 "_bill_text_opens_whole",
 "_docket_cancel_mark_kept",
 "_frame_written_once",
