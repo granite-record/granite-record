@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the laws pages.
 
@@ -1437,7 +1437,7 @@ def _filter_offers(B):
     assert got["offers"] == [["topic", "Housing", 2, ""], ["committee", "House Housing", 2, ""]], (
         f"'housing' offers {got['offers']}")
     assert "All bills with the topic <b>Housing</b>" in got["list"] and \
-        "All bills referred to the <b>House Housing</b> committee" in got["list"] and \
+        "All bills referred to the <b>House Housing Committee</b>" in got["list"] and \
         got["list"].count('role="option"') == 2 and got["shown"], f"the list drawn: {got['list'][:300]}"
     assert got["box"] == ["combobox", "list", "q-offers", "true"], f"the box's combobox attributes: {got['box']}"
     assert got["say"].startswith("2 filters match"), f"the status line says {got['say']!r}"
@@ -1469,6 +1469,185 @@ def _filter_offers(B):
     return "ok", ("'housing' offers the topic and the House Housing committee with their counts; the arrow, "
                   "Return and Escape as WAI-ARIA's combobox; the topic ticked and in the address, the word out "
                   "of the box; Return on words still searches them; the Laws page's filters through the same")
+
+
+_PERSON_OFFER_HARNESS = r"""
+require("./stub.js");
+const fs = require("fs");
+const D = JSON.parse(fs.readFileSync("./data.json", "utf8"));
+const q = document.querySelector("#q");
+q.id = "q"; q.attrs = {};
+q.setAttribute = (k, v) => { q.attrs[k] = String(v); };
+q.getAttribute = k => (k in q.attrs ? q.attrs[k] : null);
+q.removeAttribute = k => { delete q.attrs[k]; };
+const urls = [];
+history.replaceState = (s, t, u) => { urls.push(String(u)); };
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({billOffers, QOFFERS, sel, IDX, openGroups, render, setMeta:(m)=>{META=m;}, setTerm:(t)=>{term=t;},"
+  + " getQuery:()=>query})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+s.setMeta({terms: ["2025-2026"], committee_codes: {}, topics: ["Housing", "Elections", "Fish and Game"]});
+const row = (id, sponsor, label, title, topic, committee, more) => Object.assign({id, n: id, title, kind: "active",
+  status: "In committee", chip: "In committee", committees: [committee], committee, topic, sponsor,
+  sponsor_label: label, sponsor_slug: label && /\(/.test(label) && !/^Allen/.test(label) ? "x" : "",
+  term: "2025-2026", year: 2026, passage: "", votedays: [], nrc: 0, last_action: ""}, more || {});
+s.IDX.length = 0;
+s.IDX.push(
+  row("HB1", "Alice Wade", "Rep. Alice Wade (D - Hills 22)", "relative to housing", "Housing", "House Housing"),
+  row("HB2", "Alice Wade", "Rep. Alice Wade (D - Hills 22)", "relative to post offices", "Elections",
+      "House Election Law"),
+  row("HB3", "Lisa Post", "Rep. Lisa Post (R - Hills 1)", "relative to a grace period", "Elections",
+      "House Election Law"),
+  row("HB4", "Lisa Freeman", "Rep. Lisa Freeman (D - Hills 2)", "relative to ballots", "Elections",
+      "House Election Law"),
+  row("SB1", "Sharon Carson", "Sen. Sharon Carson (R - SD14)", "relative to courts", "Elections", "Senate Judiciary"),
+  row("HB5", "Hope Damon", "Rep. Hope Damon (D - Sull 8)", "relative to roads", "Elections", "House Transportation"),
+  row("HB6", "Grace Smith", "Rep. Grace Smith (R - Rock 3)", "relative to towns", "Elections", "House Transportation"),
+  row("HB7", "Mary Alice Jones", "Rep. Mary Alice Jones (D - Ches 4)", "relative to trees", "Elections",
+      "House Transportation"),
+  row("HB8", "Fish Taylor", "Rep. Fish Taylor (R - Graf 1)", "relative to boats", "Fish and Game",
+      "House Fish and Game and Marine Resources"),
+  row("HB9", "Lee C. Nyquist", "Rep. Lee C. Nyquist (D - Merr 12)", "relative to bridges", "Elections",
+      "House Transportation"),
+  row("HB10", "Allen", "Allen (Hills 44)", "relative to dams", "Elections", "House Transportation"),
+  row("HB11", "Allen", "Allen (Graf 2)", "relative to ponds", "Elections", "House Transportation"),
+  row("HB14", "Riley", "Riley (Hills 3)", "relative to lakes", "Elections", "House Transportation"),
+  row("HB13", "Jane Housing", "Rep. Jane Housing (D - Hills 9)", "relative to wells", "Elections",
+      "House Transportation"),
+  row("HB12", "Colin Mitchell", "Rep. “Elect” Colin Mitchell (R)", "relative to signs", "Elections",
+      "House Transportation"));
+s.setTerm("2025-2026");
+const out = {};
+const offers = v => s.billOffers(v).map(o => [o.key, o.v, o.n, o.html, o.rest]);
+const person = v => offers(v).filter(o => o[0] === "sponsor");
+const type = v => { q.value = v; q.fire("input"); };
+const key = k => q.fire("keydown", {key: k});
+try {
+  out.whole = offers("alice wade");
+  for (const v of ["Rep. Alice Wade", "Rep. Alice Wade (D - Hills 22)", "senator carson", "sen. sharon carson",
+                   "rep carson", "hope", "rep hope", "alice", "rep alice", "lisa", "post", "carson", "grace", "fish",
+                   "alice wad", "rep allen", "riley",
+                   "allen", "lee nyquist", "colin mitchell", "rep elect colin mitchell", "housing", "minimum wage",
+                   "wade"])
+    out[v] = person(v);
+  out.fishAll = offers("fish").map(o => o.slice(0, 2));
+  out.housingAll = offers("housing").map(o => o[3]);
+  out.janeHousing = offers("jane housing").map(o => o.slice(0, 2));
+  globalThis.GR_WORDS = D.es;
+  out.es = person("colin mitchell");
+  out.esTopic = offers("housing").map(o => o[3]);
+  delete globalThis.GR_WORDS;
+  s.sel.sponsor.add("Alice Wade");
+  out.chosen = person("alice wade");
+  s.sel.sponsor.clear();
+  // The keyboard, as the topic's offer is taken: the down arrow, then Return.
+  type("alice wade");
+  out.rows = s.QOFFERS.rows().map(o => [o.key, o.v]);
+  key("ArrowDown");
+  out.active = q.attrs["aria-activedescendant"];
+  key("Enter");
+  out.taken = {sponsor: [...s.sel.sponsor], query: s.getQuery(), box: q.value, open: s.openGroups.has("sponsor"),
+    url: urls.filter(u => u.includes("sponsor=")).pop() || "", shut: s.QOFFERS.list.hidden};
+  out.offered = document.querySelector("#facets").innerHTML;
+  // Ticked by hand: the same list, the same group.
+  s.sel.sponsor.clear(); s.openGroups.delete("sponsor"); s.render();
+  s.sel.sponsor.add("Alice Wade"); s.openGroups.add("sponsor"); s.render();
+  out.byHand = document.querySelector("#facets").innerHTML;
+} catch (e) { out.threw = e.constructor.name + ": " + e.message + " " + (e.stack || "").split("\n")[1]; }
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "a legislator's whole name in the bill search's box offers \"All bills filed by Rep. X\", "
+                   "taken as the topic's offer is; only on a solid match: no surname alone, no shared or "
+                   "ordinary word; and a committee is offered by its search name, \"the House Housing Committee\"")
+def _filter_offers_person():
+    """The owner, 18 November 2026: "typing in their topic, tag, legislator, or committee, will show a dropdown
+    that says 'All bills filed by Rep. Alice Wade' the same way it does for 'All bills with the topic Housing' and
+    it applies the filter for you when you click it ... It should only show with a solid match so that ordinary
+    searches don't accidentally have an unrelated dropdown pop-up."
+
+    app.js in node on fifteen bills (sponsorOffer, billOffers): the whole name, with or without a title, or the
+    chip's own words pasted in, offers the person first, by their chip's title and name and with their count;
+    a title and a surname or a first name ("senator carson", "rep hope") offers them, a title that is not theirs
+    ("rep carson") does not, nor a title and a word two of theirs share ("rep alice": Alice Wade, Mary Alice
+    Jones); one word with no title never does, a first name ("hope", "alice", "lisa", "grace", "fish") no more
+    than a surname ("carson", "post", "wade", and "riley", the whole name of a sponsor of 1989-1998),
+    since such words are ordinary searches as often as names; a
+    person's offer comes before the topic a word of their name is offered ("jane housing"); a word still being typed ("alice wad") does not; two sponsors of 1989-1998 named Allen are no one's;
+    an initial is no part of a name ("lee nyquist"); a member-elect is "Rep. “Elect”", in Spanish in the page's
+    words with lang/es.json's; a person already chosen is not offered; "housing" and "minimum wage" offer no
+    person. The down arrow and Return take it as they take the topic's: the person ticked, the Sponsor group
+    open, the address naming them, the box emptied -- and the filter list the same as ticking it by hand. A
+    committee's offer names it as the header's search does: "the House Housing Committee"."""
+    js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    cat = json.loads(_source("src/pages/lang/es.json"))["strings"]
+    es = {k: cat[k]["es"] for k in ("bills.offer_sponsor", "bills.offer_topic", "bills.offer_committee",
+                                    "elect.title_rep") if k in cat}
+    assert len(es) == 4, f"lang/es.json lacks the offers' words: has only {sorted(es)}"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source(stub), encoding="utf-8")
+        (root / "data.json").write_text(json.dumps({"es": es}), encoding="utf-8")
+        (root / "go.js").write_text(_PERSON_OFFER_HARNESS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8", timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert "threw" not in got, f"the offers threw {got['threw']}"
+    wade = ["sponsor", "Alice Wade", 2, "All bills filed by <b>Rep. Alice Wade</b>", ""]
+    assert got["whole"][:1] == [wade], f"'alice wade' offers {got['whole']}: Rep. Alice Wade first, with her 2 bills"
+    for v in ("Rep. Alice Wade", "Rep. Alice Wade (D - Hills 22)"):
+        assert got[v] == [wade], f"{v!r} offers {got[v]}"
+    carson = [["sponsor", "Sharon Carson", 1, "All bills filed by <b>Sen. Sharon Carson</b>", ""]]
+    assert got["senator carson"] == carson and got["sen. sharon carson"] == carson, (
+        f"a title and a surname, or the whole name: {got['senator carson']} / {got['sen. sharon carson']}")
+    assert got["rep hope"] == [["sponsor", "Hope Damon", 1, "All bills filed by <b>Rep. Hope Damon</b>", ""]], (
+        f"'rep hope', a title and a first name one person has, offers {got['rep hope']}")
+    for v in ("rep carson", "hope", "alice", "rep alice", "lisa", "post", "carson", "grace", "fish", "alice wad",
+              "rep allen", "allen", "riley", "housing", "minimum wage", "wade"):
+        assert got[v] == [], f"{v!r} is no solid match for a legislator, and offers {got[v]}"
+    assert ["committee", "House Fish and Game and Marine Resources"] in got["fishAll"], (
+        f"'fish' offers {got['fishAll']}: the committee named for it")
+    assert [o[:4] for o in got["lee nyquist"]] == [
+        ["sponsor", "Lee C. Nyquist", 1, "All bills filed by <b>Rep. Lee C. Nyquist</b>"]], (
+        f"'lee nyquist', the name without its initial, offers {got['lee nyquist']}")
+    elect = [["sponsor", "Colin Mitchell", 1, "All bills filed by <b>Rep. “Elect” Colin Mitchell</b>", ""]]
+    assert got["colin mitchell"] == elect and got["rep elect colin mitchell"] == elect, (
+        f"a member-elect: {got['colin mitchell']} / {got['rep elect colin mitchell']}")
+    say = es["bills.offer_sponsor"].replace("{name}", es["elect.title_rep"] + " Colin Mitchell")
+    assert [o[3] for o in got["es"]] == [say], f"in Spanish the member-elect's offer reads {got['es']}, not {say!r}"
+    assert got["housingAll"][:2] == ["All bills with the topic <b>Housing</b>",
+                                  "All bills referred to the <b>House Housing Committee</b>"], (
+        f"'housing' offers {got['housingAll']}: the committee as the header's search names it")
+    assert got["esTopic"][:2] == [es["bills.offer_topic"].replace("{name}", "Housing"),
+                                  es["bills.offer_committee"].replace("{name}", "House Housing Committee")], (
+        f"in Spanish 'housing' offers {got['esTopic']}")
+    assert got["janeHousing"][:1] == [["sponsor", "Jane Housing"]] and len(got["janeHousing"]) > 1, (
+        f"'jane housing' offers {got['janeHousing']}: the person first, before the topic her name has")
+    assert got["chosen"] == [], f"a person already chosen is offered again: {got['chosen']}"
+    assert got["rows"][:1] == [["sponsor", "Alice Wade"]], f"the box's list for 'alice wade': {got['rows']}"
+    assert got["active"] == "q-offers-0", f"the down arrow put aria-activedescendant on {got['active']!r}"
+    t = got["taken"]
+    assert t["sponsor"] == ["Alice Wade"] and t["query"] == "" and t["box"] == "" and t["open"] and t["shut"] \
+        and "sponsor=Alice+Wade" in t["url"], f"Return on the offer: {t}"
+    assert 'data-unpick="Alice Wade"' in got["offered"] and re.search(
+        r'data-g="sponsor"\s+aria-expanded="true"', got["offered"]), (
+        "the Sponsor group is not open with Rep. Alice Wade chosen after her offer was taken")
+    assert got["offered"] == got["byHand"], (
+        "the filter list after taking the offer is not the list after ticking the person by hand")
+    return "ok", ("the whole name, a title and a surname or first name, and a pasted chip offer them first by "
+                  "their chip's title, with their count; one word with no title, a first name or a surname, a "
+                  "shared word, two Allens and a word half typed offer no one; a member-elect in "
+                  "English and Spanish; the arrow and Return tick them as a hand would; the committee is \"the "
+                  "House Housing Committee\"")
 
 
 @check("build", "the Laws page has a Constitution tab: every article under its own anchor with a link to itself, "

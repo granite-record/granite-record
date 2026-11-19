@@ -236,6 +236,26 @@
    "es": "Su privacidad",
    "state": "draft"
   },
+  "bills.offer_committee": {
+   "en": "All bills referred to the <b>{name}</b>",
+   "es": "Todos los proyectos de ley remitidos al <b>{name}</b>",
+   "state": "draft"
+  },
+  "bills.offer_sponsor": {
+   "en": "All bills filed by <b>{name}</b>",
+   "es": "Todos los proyectos de ley presentados por <b>{name}</b>",
+   "state": "draft"
+  },
+  "bills.offer_tag": {
+   "en": "All bills tagged <b>{name}</b>",
+   "es": "Todos los proyectos de ley con la etiqueta <b>{name}</b>",
+   "state": "draft"
+  },
+  "bills.offer_topic": {
+   "en": "All bills with the topic <b>{name}</b>",
+   "es": "Todos los proyectos de ley con el tema <b>{name}</b>",
+   "state": "draft"
+  },
   "bills.requests_note": {
    "en": "<b>Requests, not bills yet.</b> Each one, called an LSR (Legislative Service Request), is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered {year} bill. Some are withdrawn first.",
    "es": "<b>Solicitudes, todavía no proyectos de ley.</b> Cada una, llamada LSR (Legislative Service Request, solicitud de servicio legislativo), es la solicitud de un miembro para que se redacte un proyecto de ley: un título y un patrocinador, nada más, hasta que se presenta como un proyecto de ley numerado de {year}. Algunas se retiran antes.",
