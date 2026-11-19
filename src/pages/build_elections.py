@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.10
+# GRANITE_VERSION: 2026-11-07.11
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -306,7 +306,7 @@ def bill_href(site, term, bill):
 
 # ------------------------------------------------------------------ drawing ---
 
-def candidate_rows(race, elected_names, held=frozenset(), mine=None):
+def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=False):
     """The race's rows, most votes first. `mine` is the candidate a member's
     Elections tab is about (same_name), whose row is marked er-me.
 
@@ -315,18 +315,23 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None):
     owner, 19 November 2026, "share of all votes"): of all the votes cast for
     the candidates listed, the scattered write-ins left out -- Strafford 21
     of 2026, Alice Wade's 8,807 of 29,275, 30.1%. None where a winner is held
-    back: the shares would say what the hidden row holds."""
+    back: the shares would say what the hidden row holds.
+
+    A PRIMARY (`primary`, a member's Elections tab): the reader's leaders,
+    "nominated": true, are marked Most votes -- never "nominated", which the
+    files do not say (the design's decision 4) -- and nothing is Elected."""
     shown = [c for c in race["candidates"] if same_name(c["name"]) not in held]
     cands = sorted(shown, key=lambda c: (-c["votes"], c["name"]))
     top = max((c["votes"] for c in cands), default=0) or 1
     counted = sum(c["votes"] for c in race["candidates"]) + (
-        int(race.get("scatter") or 0) if race["seats"] == 1 else 0)
+        int(race.get("scatter") or 0) + int(race.get("other_votes") or 0) if race["seats"] == 1 else 0)
     one = not held
     out = []
     for c in cands:
         p = letters(c["party"])
         won = elected_names.get(same_name(c["name"]))
-        tied = c.get("elected") is None
+        tied = c.get("elected") is None and not primary
+        most = primary and c.get("nominated") is True
         chipm = {"party_code": p if len(p) == 1 else "X",
                  "display_full": f'{c["name"]} ({p})' if p else c["name"],
                  "slug": chip_slug(won)}
@@ -337,6 +342,7 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None):
             + '"><span class="er-who">' + C.pchip(chipm)
             + (' <span class="er-wi">write-in</span>' if c.get("write_in") else "")
             + (" " + C.chip("Elected") if won else "")
+            + (" " + C.chip("Most votes") if most else "")
             + (" " + C.chip("Tied for the last seat") if tied and not won else "")
             + f'</span><span class="er-n">{c["votes"]:,}{share}</span>'
             + f'<span class="er-b" aria-hidden="true"><i class="er-{bar_cls}" '
@@ -362,12 +368,14 @@ def status_lines(me):
     return out
 
 
-def margin_of(key, race, election, hand=None):
+def margin_of(key, race, election, hand=None, primary=""):
     """The race's margin, election_margin's (the one rule), or None where a
-    winner of the race is held back: its label and its gap would say who won."""
+    winner of the race is held back: its label and its gap would say who won.
+    `primary` is a primary's party: its label then has no letter ("+42.2")."""
     if held_names(hand or {}, key):
         return None
-    return EM.margin(race, EM.results_contest(election, key))
+    stage = "primary" if primary else "general"
+    return EM.margin(race, EM.results_contest(election, key, stage, primary.lower()), primary=bool(primary))
 
 
 def margin_chip(m):
@@ -381,14 +389,20 @@ def margin_chip(m):
     return C.chip(EM.words(m), "er-mg" + (f" pt-{p}" if p in ("R", "D", "I") else ""))
 
 
-def margin_line(m, seats, final):
+def margin_line(m, seats, final, primary=False):
     """The figures beside the label (the owner's of 11 November 2026): the gap
     in votes and the points and, once the result is final, the votes that
-    would have changed it, floor(gap/2)+1 (election_margin.flip). Figures only."""
+    would have changed it, floor(gap/2)+1 (election_margin.flip). Figures only.
+    A primary's says the most votes by how many, and no more: what the files
+    count, never who was nominated."""
     if not m or m["status"] != "contested":
         return ""
     g = m["gap"]
     gap = f'<b>{g:,} vote{"s" if g != 1 else ""}</b>, {m["points"]:.1f} points'
+    if primary:
+        return ('<p class="er-out">' + ("Most votes" if seats == 1 else
+                                        f"The last of the {seats} places with the most votes")
+                + f" by {gap}.</p>")
     if not final:
         return (f'<p class="er-out">The gap {"between the first two" if seats == 1 else "at the last seat"} '
                 f"is {gap}.</p>")
@@ -410,7 +424,8 @@ def margin_data(m):
     return f' data-band="{EM.band(m)}" data-points="{pts}" data-gap="{gap}"'
 
 
-def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=None, anchor=True):
+def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=None, anchor=True,
+              primary=""):
     """One race as its card. The elections page draws every race so; a
     member's Elections tab draws each race the member is in by this same
     function (build_member_elections), with `mine` their candidate's name
@@ -418,12 +433,15 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
     link's target, and one race may be on the tab for two elections. Its
     margin's label is at the top right of either (margin_chip), and the gap
     under the rows (margin_line); the page's card also carries the margin for
-    its filter (margin_data)."""
+    its filter (margin_data). `primary` is a primary's party, for a member's
+    tab (build_member_elections.primary_rows): its leaders Most votes, its
+    label with no letter; the race's "other_votes", the votes for candidates
+    of another party the tab leaves off, are said in the note."""
     elected_names = {e["n"]: e for e in me.get("elected") or []}
     held = held_names(hand or {}, key)
     towns = race.get("towns") or []
     seats = race["seats"]
-    m = margin_of(key, race, election, hand)
+    m = margin_of(key, race, election, hand, primary)
     meta = [", ".join(towns), f'{seats} seat{"s" if seats != 1 else ""}']
     if len(race["candidates"]) <= seats and not (m and m["status"] == "unopposed"):
         # Said once: the chip says it wherever it is drawn.
@@ -452,13 +470,18 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
     if scatter:
         foot.append(f'{scatter:,} scattered write-in vote{"s" if scatter != 1 else ""} '
                     f'{"are" if scatter != 1 else "is"} not shown.')
+    other, n_other = race.get("other_votes"), race.get("other_rows") or 0
+    if n_other:
+        foot.append(f'{n_other:,} candidate{"s" if n_other != 1 else ""} of another party, with '
+                    f'{other:,} vote{"s" if other != 1 else ""}, {"are" if n_other != 1 else "is"} '
+                    "not shown.")
     at = (f' id="{race_id(key)}" data-towns="{E(" | ".join(towns).lower())}"' + margin_data(m)
           if anchor else "")
     return (f'<article class="er-race"{at}>'
             f'<div class="er-hd"><{h}>{E(race_name(key, race))}</{h}>{margin_chip(m)}</div>'
             f'<p class="er-meta">{" &middot; ".join(E(x) if not x.startswith("<b>") else x for x in meta)}</p>'
-            f'<ul class="er-rows">{candidate_rows(race, elected_names, held, mine)}</ul>'
-            + margin_line(m, seats, not me.get("not_final"))
+            f'<ul class="er-rows">{candidate_rows(race, elected_names, held, mine, bool(primary))}</ul>'
+            + margin_line(m, seats, not me.get("not_final"), bool(primary))
             + status_lines(me)
             + "".join(f'<p class="er-note">{n}</p>' for n in notes)
             + (f'<p class="er-foot">{" ".join(foot)}</p>' if foot else "")

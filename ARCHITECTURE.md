@@ -2461,6 +2461,14 @@ measure (`_margins_on_file`), the page and its script in node
 (`_elections_margins_page`) and a built site's pages against the data
 (`_elections_margins_built`).
 
+A member's Elections tab also lists their State Primary candidacies
+(`build_member_elections.primary_rows`, from `collected/primary_<year>.json`),
+on their own party's ballot only and by the same certain rule as a loss; the
+card is `race_card`'s with `primary=` the ballot's party: the leader Most votes,
+never nominated, the label with no letter, the votes the file lists for another
+party's candidates left off and said in the note. A year's primary is listed
+before its general (19 November 2026).
+
 The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
 gives `find.json` a row of the kind `elect` for each new member-elect with a
 provisional page and each former member elected again, named with the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.19
+# GRANITE_VERSION: 2026-11-16.20
 """
 preflight's checks of members-elect and election results.
 
@@ -2073,6 +2073,98 @@ def _member_elections_cards(BMEL, BME, BE):
     return "ok", (f"{sum(len(v) for v in got.values())} cards for {len(got)} members, each race_card's "
                   "own with the member's row alone marked; Ida Beck's two drawn newest first under "
                   "their days, the recount line kept, both notes kept, no table")
+
+
+@check("build", "a member's Elections tab shows their primaries on their own party's ballot by the general "
+       "cards' certain rule, the leader Most votes and never nominated, the label with no letter, another "
+       "party's candidates left off and said, each primary before its year's general",
+       needs=("build_member_elections", "build_elections"))
+def _member_elections_primaries(BMEL, BE):
+    """The owner, 19 November 2026, on the made-up court of _mel_world and a made-up State
+    Primary of 8 September 2026: Dee Moss (sitting, Rockingham 2) and Ed Ford (who held it in
+    2025-2026) each get the Republican primary's card, Moss marked Most votes, the label +14.3,
+    the Democrat written in on that ballot left off and said; Ann Hart (R), with 3 votes on the
+    Democratic ballot, gets nothing and nobody else's card names her; Fay Ives, printed with no
+    party on the Democratic ballot, is not hers (she is R) and goes to the owner's list. The rows
+    sort a year's primary before its general; app.js heads a primary with its ballot and day,
+    links it nowhere, and says where the primaries come from."""
+    sitting, former, _d, _r24, _r26 = _mel_world()
+    roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
+
+    def cand(name, party, votes, most):
+        return {"name": name, "party": party, "votes": votes, "write_in": False, "nominated": most}
+    doc = {"election": "2026-09-08", "general": "2026-11-03", "races": {
+        "R|H|Rockingham|2": {"party": "r", "seats": 1, "floterial": False, "towns": ["Beta"], "scatter": 2,
+                             "candidates": [cand("Dee Moss", "r", 400, True), cand("Ed Ford", "r", 300, False),
+                                            cand("Dan Dunn", "d", 5, False)]},
+        "D|H|Rockingham|1": {"party": "d", "seats": 1, "floterial": False, "towns": ["Alpha"], "scatter": 0,
+                             "candidates": [cand("Kim Dee", "d", 300, True), cand("Ann Hart", "r", 3, False)]},
+        "D|H|Rockingham|3": {"party": "d", "seats": 2, "floterial": False, "towns": ["Gamma"], "scatter": 0,
+                             "candidates": [cand("Lu Ray", "d", 500, True), cand("Fay Ives", "", 20, True)]}}}
+    rows, report = BMEL.primary_rows("2026-09-08", doc, roster)
+    assert sorted(rows) == ["1002", "2002"], f"the primary rows are for {sorted(rows)}, not Moss and Ford"
+    moss, ford = rows["1002"][0], rows["2002"][0]
+    assert (moss["st"], moss["pp"], moss["k"], moss["r"], moss["v"]) == ("primary", "R", "H|Rockingham|2",
+                                                                         "most", 400), f"Moss's row: {moss}"
+    assert (ford["r"], ford["v"]) == ("not", 300), f"Ford's row: {ford}"
+    card = moss["c"]
+    assert '<span class="chip er-mg">+14.3</span>' in card and 'Dee Moss <span class="mtag">(R)</span>' in card \
+        and card.count('<span class="chip">Most votes</span>') == 1 and "Elected" not in card, f"Moss's card: {card}"
+    assert "Dan Dunn" not in card and "1 candidate of another party, with 5 votes, is not shown." in card, (
+        f"the Democrat written in on the Republican ballot: {card[-300:]}")
+    assert "Most votes by <b>100 votes</b>, 14.3 points." in card and "would have changed" not in card, (
+        f"the figures of a primary: {card}")
+    low = re.sub(r"<[^>]+>", " ", " ".join(r["c"] for rs in rows.values() for r in rs)).lower()
+    assert "nominat" not in low and "won by" not in low, "a primary's card says nominated or won"
+    assert any(x[2] == "Fay Ives" and "not of it" in x[4] for x in report), f"Fay Ives is not listed: {report}"
+    order = BMEL.sort_rows([{"d": "2024-11-05", "k": "H|A|1"}, {"d": "2026-09-08", "k": "H|A|1", "st": "primary"},
+                            {"d": "2024-09-10", "k": "H|A|1", "st": "primary"}, {"d": "2026-11-03", "k": "S|5"}])
+    assert [r["d"] for r in order] == ["2026-09-08", "2026-11-03", "2024-09-10", "2024-11-05"], (
+        f"the order: {[r['d'] for r in order]}")
+    html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": [moss]}) + ")",
+                   names=("renderMemberElections",))
+    if html is None:
+        return "ok", "the rows and cards held in Python; node, app.js or the stub is not here for the tab"
+    assert '<p class="er-when">Republican primary, ' in html and "/elections/2026-09-08" not in html, (
+        f"the primary's head: {html[:600]}")
+    assert "its leader is marked Most votes" in html and "State Primary results files: 2026" in html \
+        and "shown on the elections pages" not in html, f"the tab's notes for a primary: {html[-700:]}"
+    return "ok", ("Moss and Ford on the Republican ballot, Moss Most votes at +14.3, the written-in Democrat "
+                  "left off and said, Hart on the other ballot and Ives with no party not shown, a "
+                  "year's primary before its general, the tab's head and notes")
+
+
+@check("data", "on today's roster and primary files, Alice Wade's 2024 Democratic primary in Strafford 15 is "
+       "on her tab, Most votes at +42.1 with Keith Mistretta's 0 left off, and her written-in votes on "
+       "2026's Republican ballot are not", needs=("build_member_elections", "build_members_elect"))
+def _member_primaries_on_file(BMEL, BME):
+    """The owner's own cases of 19 November 2026, on site/legislators.json and site/former.json (a
+    build's) and collected/primary_2024.json and primary_2026.json, matched without the bills'
+    seat history, which only the 2016-2022 surnames need."""
+    site = Path("site")
+    need = [site / "legislators.json", site / "former.json", site / "meta.json",
+            Path("collected/primary_2024.json"), Path("collected/primary_2026.json")]
+    if not all(p.is_file() for p in need):
+        return "skip", "not here: " + ", ".join(p.as_posix() for p in need if not p.is_file())
+    meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+    roster = BMEL.Roster(json.loads(need[0].read_text(encoding="utf-8")),
+                         json.loads(need[1].read_text(encoding="utf-8")), meta.get("terms") or [])
+    if "11286" not in roster.members:
+        return "skip", "Alice Wade (11286) is not on this roster"
+    got, n = [], 0
+    for day, doc in BMEL.primaries_on_file("collected"):
+        if day[:4] not in ("2024", "2026"):
+            continue
+        rows, _rep = BMEL.primary_rows(day, doc, roster)
+        n += sum(len(v) for v in rows.values())
+        got += rows.get("11286", [])
+    assert [(r["d"], r["pp"], r["k"], r["r"], r["v"]) for r in got] == [
+        ("2024-09-10", "D", "H|Strafford|15", "most", 405)], f"Wade's primaries: {[(r['d'], r['pp'], r['k']) for r in got]}"
+    card = got[0]["c"]
+    assert '<span class="chip er-mg">+42.1</span>' in card and "Lucas Veitch" in card and "Most votes" in card \
+        and "Keith Mistretta" not in card and "1 candidate of another party, with 0 votes, is not shown." in card, (
+            f"Wade's 2024 primary card: {card}")
+    return "ok", f"Wade's one primary of 2024 and 2026 as the owner described it; {n} primary rows in those two years"
 
 
 # THE ELECTIONS BEFORE 2024 (10 November 2026; branch dec/results-2016-2022). The
