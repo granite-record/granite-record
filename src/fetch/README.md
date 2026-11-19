@@ -5,8 +5,11 @@ Everything that asks another server, in one folder per whose server:
 one at a time), `gc_db/` (the General Court's SQL host: ask first),
 `youtube/` (a refusal stops the night's caption step; the evening job
 it once stopped was retired on 10 October 2026) and `other/`. A fetcher
-saves what it got; reading it is `parse/`'s job. `fetch_legislation --parse`
-and `fetch_committee_reports` still carry parsers that `parse/` imports.
+saves what it got; reading it is `parse/`'s job. The parsers that
+`fetch_legislation --parse` and `fetch_committee_reports` carried are
+`parse/legislation_text.py` and `parse/committee_report_text.py` since
+19 November 2026, named in the fetchers as before; `parse/rollcalls_from_db`
+still takes `VOTE_WORD` from `fetch_rollcalls_db`, where `live_gen` reads it.
 
 Which folder a fetcher goes in is decided by whose server it asks, not by its
 name or its subject: that is what decides what can go wrong. preflight holds

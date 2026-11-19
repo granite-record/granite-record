@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.6
+# GRANITE_VERSION: 2026-09-26.7
 """
 Who the General Court's own sponsor record says put their name to each bill.
 
@@ -594,8 +594,8 @@ def records(rows, db, people, term, pieces=None, pairs=None):
 
 def page_line(term, bid, bill):
     """The sponsor line of the bill's saved page, or None where there is no page."""
-    import fetch_legislation as FL
-    m = FL.PAD.match(bid)
+    import legislation_text as LT
+    m = LT.PAD.match(bid)
     if not m:
         return None
     year = str(bill.get("lsr_year") or "")[:4]
