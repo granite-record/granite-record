@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.18
+# GRANITE_VERSION: 2026-09-08.19
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
@@ -840,9 +840,20 @@ def docket_truth(path="Docket.txt"):
 
 
 def check(rows):
+    """The calendar's rows scored against the docket: always every figure
+    below, and a "note" where there is nothing to score them against.
+
+    EVERY FIGURE, EVEN WITH NOTHING TO SCORE (19 November 2026). With no
+    hearing in the docket this returned a note alone, which said Docket.txt
+    was not here, and preflight's reader of the figures raised a KeyError.
+    On the first nights of a term the docket is there and holds Organization
+    Day's resolutions and no hearing at all, as the rehearsal of the turn
+    found: so the figures are all given, each over a denominator of none,
+    and the note says which of the two it is."""
     truth = docket_truth()
-    if not truth:
-        return {"note": "Docket.txt is not here, so nothing can be scored"}
+    note = ("" if truth else
+            "Docket.txt is not here, so nothing can be scored" if not Path("Docket.txt").exists()
+            else "Docket.txt holds no hearing yet, so nothing can be scored")
     got = [r for r in rows if r["bill"]]
     known = [r for r in got if (r["bill"], r["date"]) in truth]
     # EACH FIGURE OVER ITS OWN DENOMINATOR. Time and room were first reported
@@ -881,7 +892,8 @@ def check(rows):
             "time agrees, where both state one": pct(time_ok, time_n),
             "room agrees, where both state one": pct(room_ok, room_n),
             "kind disagreements": kind_bad.most_common(6),
-            "room disagreements": room_bad}
+            "room disagreements": room_bad,
+            **({"note": note} if note else {})}
 
 
 # The families a kind belongs to. The Senate's docket says "hearing" where the

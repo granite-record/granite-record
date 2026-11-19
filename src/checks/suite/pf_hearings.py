@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of livestreams, markers, dockets and proceedings.
 
@@ -6758,10 +6758,17 @@ def _calendar_meetings():
         f"announced {late[0]['noticed']}")
 
     got = CM.check(rows)
+    # Docket.txt not here: nothing to score against. Here with no hearing in
+    # it -- a new term's first nights, Organization Day's resolutions alone
+    # (the rehearsal of the turn, 19 November 2026) -- the parse above is
+    # still held and the scoring waits.
+    if not Path("Docket.txt").exists():
+        return "skip", f"{len(hearings):,} public hearings parsed; {got.get('note')}"
     known = int(str(got["the docket also knows"]).replace(",", ""))
     if known < 500:
         return "ok", (f"{len(hearings):,} public hearings parsed; the docket "
-                      "holds too few of them to score against")
+                      "holds too few of them to score against"
+                      + (f" ({got['note']})" if got.get("note") else ""))
     kind = int(str(got["kind agrees"]).split(" of ")[0].replace(",", ""))
     room_s = str(got["room agrees, where both state one"])
     room = int(room_s.split(" of ")[0].replace(",", ""))
@@ -6776,6 +6783,49 @@ def _calendar_meetings():
     return "ok", (f"{len(hearings):,} public hearings out of the calendars, "
                   f"{kind:,} of {known:,} agreeing with the docket on kind, "
                   f"{room:,} of {room_n:,} on room")
+
+
+@check("calendar", "the calendar's score against the docket gives every figure, with no docket, with "
+       "a docket of no hearing, and with hearings to score", needs=("calendar_meetings",))
+def _calendar_score_shape(calendar_meetings):
+    """The rehearsal of the turn, 19 November 2026: on the first post-turn
+    nights the docket held the 2027 batch and no hearing, calendar_meetings.
+    check returned a note alone -- one saying Docket.txt was not here, which
+    it was -- and the check of the calendars above raised KeyError 'the
+    docket also knows'. On the real night of 2 December the docket holds
+    Organization Day's resolutions only. Held on three dockets in a scratch
+    folder: none, resolutions only, and one hearing the calendar calls
+    another kind of meeting, which must still score as a disagreement."""
+    CM = calendar_meetings
+    keys = {"rows", "with a bill", "the docket also knows", "kind agrees",
+            "time agrees, where both state one", "room agrees, where both state one",
+            "kind disagreements", "room disagreements"}
+    row = {"bill": "HB10", "date": "2027-01-14", "kind": "executive session",
+           "time": "10:00", "room": "LOB 206"}
+    here, root = os.getcwd(), tempfile.mkdtemp()
+    said = {}
+    try:
+        os.chdir(root)
+        for name, docket in (
+                ("no docket", None),
+                ("resolutions only", ["2027|0939|12/2/2026 12:59:53 PM|HR1|H|Introduced and "
+                                      "Adopted VV 12/02/2026  HJ 1|12/2/2026 12:59:56 PM"]),
+                ("one hearing", ["2027|7001|1/5/2027 9:00:00 AM|HB10|H|Public Hearing: "
+                                 "01/14/2027 10:00 am LOB 206|1/5/2027 9:00:00 AM"])):
+            if docket is not None:
+                Path("Docket.txt").write_text("\n".join(docket) + "\n", encoding="utf-8")
+            got = CM.check([dict(row)])
+            assert keys <= set(got), f"{name}: the score lacks {sorted(keys - set(got))}"
+            said[name] = (got["the docket also knows"], got["kind agrees"], got.get("note", ""))
+    finally:
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+    assert said["no docket"][0] == "0" and "is not here" in said["no docket"][2], said
+    assert said["resolutions only"][0] == "0" and "no hearing yet" in said["resolutions only"][2], said
+    assert said["one hearing"][:2] == ("1", "0 of 1 (0%)") and not said["one hearing"][2], (
+        f"a hearing the calendar calls an executive session did not score as a disagreement: {said}")
+    return "ok", ("every figure given with no docket, with resolutions only (\"no hearing yet\"), "
+                  "and a hearing of another kind scored 0 of 1")
 
 
 @check("data", "a proceeding is matched only to its own chamber's recording")
