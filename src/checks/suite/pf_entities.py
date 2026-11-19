@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -826,7 +826,9 @@ def _entities_step_in_the_plan(build_all):
     # PHASE B (the design's step 5, 18 November 2026): a reader moved onto the model's tenures
     # reads them through the shapes' module (entities.printed_tenures), from the file the model
     # is built from, since the step that writes data/entities/ runs after it; never the folder.
-    moved = SEAT_READERS
+    # And the margin (19 November 2026, src/pages/election_margin.py) takes a contest's and a
+    # candidacy's id from the shapes' module, so that its ids are the model's; never the folder.
+    moved = set(SEAT_READERS) | {"election_margin.py"}
     readers = []
     for f in _paths.code_files("*.py"):
         if f.name in allowed or "suite" in f.parent.name:
@@ -840,8 +842,8 @@ def _entities_step_in_the_plan(build_all):
     assert not readers, f"these read the model, which nothing reads yet: {readers}"
     return "ok", (f"step {i + 1} of {len(steps)}, after the district table, the site data, the members-elect, "
                   "the town pages, the district map and the bulk downloads; --out data/entities, optional; no "
-                  f"other step or code file reads it, and the {len(moved)} seat reader(s) moved onto its tenures "
-                  "read them through entities alone")
+                  f"other step or code file reads it, and the {len(SEAT_READERS)} seat reader(s) moved onto its "
+                  "tenures, and the margin's ids, read them through entities alone")
 
 
 def _first_offices_unlinked(BE, root):
