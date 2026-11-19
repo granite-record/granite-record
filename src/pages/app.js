@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.357
+// GRANITE_VERSION: 2026-09-07.358
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -4167,11 +4167,9 @@ function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
   // term's seven kinds and none of All Terms' after SCR, CACR among them,
   // with nothing to say the list went on.
   const whole=key==="status"||key==="type";
-  // The Sponsor group's list of a term's members has more room (app.css, .spbody).
-  const room=key==="sponsor"&&term!==ALL_TERMS?" spbody":"";
   return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="${key}"
     aria-expanded="${open}"><span>${label}</span>${chosen.size+(extraN||0)?`<span class="badge">${chosen.size+(extraN||0)}</span>`:""}
-    <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}${room}" ${open?"":"hidden"}>${inner}</div></div>`;
+    <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}" ${open?"":"hidden"}>${inner}</div></div>`;
 }
 
 // TAGS:BEGIN

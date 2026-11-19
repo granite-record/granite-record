@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.404 */
+/* GRANITE_VERSION: 2026-09-07.405 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2367,8 +2367,9 @@ box-shadow:0 var(--sp-3) 0 var(--paper)}
 /* THE SPONSOR GROUP'S MEMBERS (app.js spPicker): the House and the Senate
    each under its own head, which sticks under the box as its members scroll
    past, each member as their chip with their bills beside it. The group has
-   room for the list (.spbody), more than a long list's 340px. */
-.fbody.spbody{max-height:440px}
+   room for the list, more than a long list's 340px (60vh under 60em, in
+   the Filters button's block below). */
+.fhead[data-g="sponsor"] + .fbody{max-height:440px}
 .sphead{position:sticky;top:calc(32px + var(--sp-3));z-index:1;background:var(--paper);
 font:600 var(--t-sm)/1.35 var(--sans);color:var(--ink);margin-top:var(--sp-3);
 padding:var(--sp-3) 0 var(--sp-2);border-bottom:1px solid var(--rule)}
@@ -2380,7 +2381,6 @@ padding:var(--sp-3) 0 var(--sp-2);border-bottom:1px solid var(--rule)}
 .sprow .mchip{display:inline-block;margin:0;padding:var(--sp-1) var(--sp-3);font-size:var(--t-sm);
 line-height:1.35;max-width:100%;white-space:normal}
 .sprow .c{flex:0 0 auto}
-@media (max-width:59.9375em){.fbody.spbody{max-height:60vh}}
 .chosen{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-bottom:var(--sp-3)}
 .pill{font-size:var(--t-sm);background:var(--pine-soft);color:var(--pine);border-radius:var(--r-pill);padding:var(--sp-1) var(--sp-4)}
 .pill button{margin-left:var(--sp-2);color:var(--pine)}
@@ -3824,6 +3824,7 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
     margin:0 0 var(--sp-6);border-right:none;border-bottom:none;padding:0}
   .shell > main{order:3;min-width:0}
   .shell:not(.fopen) .facets{display:none}
+  .fhead[data-g="sponsor"] + .fbody{max-height:60vh}
 }
 /* On a tablet the open panel is two columns of groups (the drawing at 768),
    so Status and Bill Type, open, sit side by side above the fold. */
