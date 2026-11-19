@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.13
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -16208,6 +16208,124 @@ def _bug_hunt_already_serves_whole_site():
     assert not NI.serves_this_build("f0", "f1", sha, sha, "t1", "t1"), "changed data was 'already served'"
     assert not NI.serves_this_build("f1", "f1", "b" * 40, sha, "t1", "t1"), "changed code was 'already served'"
     return "ok", "the same pages are the same build; a changed calendar page publishes"
+
+
+@check("night", "the night reads its built site once for the census, the tree hash and the list of "
+       "every file, and each comes out byte for byte as three reads made it")
+def _night_one_site_read():
+    """ONE READ OF THE BUILT SITE (nightly.py, SiteWalk; the refactor's B10). Two copies of one
+    fixture site -- the bill index, legislators, bill data two levels down and at the top, bill
+    pages at every depth and an upper-case one, feeds, a folder named like a JSON file, hidden
+    files, an image with a NUL, the build's day in every form a page prints, and the files the
+    tree leaves out -- go through the night's sequence after the build: the census, the commit and
+    the tree into build.json, then the list of every file. One as it was, with three reads; one
+    with a SiteWalk. The census, the hash, build.json and the list are the same bytes; a file
+    written, rewritten at another size or removed after the walk is listed as it is, not as the
+    walk read it; and with the walk no file but build.json and the few JSON files the census reads
+    is opened more than once. Then main() and Night.judge are held to passing the walk."""
+    import inspect
+    import shell
+    from datetime import date
+    import nightly as NI
+    day, started = "2026-11-19", "2026-11-18"
+    days = {day, started}
+    d = date.fromisoformat(day)
+    short = shell.cite_day(d)
+    sha = "c" * 40
+    root = Path(tempfile.mkdtemp(prefix="gr-onewalk-"))
+
+    def fixture(s):
+        _bill_index_write(s, [{"term": "2025-2026", "id": f"HB{i}"} for i in range(1, 4)]
+                          + [{"term": "1989-1990", "id": "HB7"}])
+        (s / "legislators.json").write_text('[{"id": "1"}, {"id": "2"}]', encoding="utf-8")
+        (s / "home.json").write_text('{"generated": "%s"}' % day, encoding="utf-8")
+        for rel, body in (("bills/2025-2026/HB1.json", f'{{"built": "{day}"}}'),
+                          ("bills/2025-2026/HB2.JSON", "{}"), ("bills/top.json", "{}"),
+                          ("bills/.hidden/.h.json", "{}"), ("bills/2025-2026/x.json/in.json", "{}"),
+                          ("bill/2025-2026/hb1.html", f"Accessed {day}; {short}"),
+                          ("bill/hb2.HTML", f"Retrieved {shell.cite_day_full(short)}"),
+                          ("bill/.r.html", "r"), ("bill/2025-2026/deep/a/p.html", f"from {started}"),
+                          ("feed/all.xml", f"<lastBuildDate>{day}T03:17:00Z</lastBuildDate>"),
+                          ("feed/z.xml/in.xml", "x"), ("changes/current.json", f'"{day}"'),
+                          ("data/manifest.json", f'"{day}"'), ("calendar/documents.json", "[]"),
+                          ("calendar/2026-W47.html", "Hearing on 2026-11-24"),
+                          ("build.json", json.dumps({"finished": f"{day}T03:30:00"}))):
+            p = s / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(body, encoding="utf-8")
+        (s / "logo.png").write_bytes(b"\x89PNG\x00\x00" + day.encode() + b" fixed")
+        return s
+
+    # Every read through pathlib opens the file with Path.open (read_bytes and
+    # read_text among them), so its reads are counted there; a write is not.
+    reads = Counter()
+    real_open = Path.open
+
+    def op(self, mode="r", *a, **k):
+        if not any(c in mode for c in "wax+"):
+            reads[self.resolve()] += 1
+        return real_open(self, mode, *a, **k)
+
+    def night(s, walk_it, after=None):
+        walk = NI.SiteWalk(s, days) if walk_it else None
+        c = NI.census(s, walk)
+        assert NI.stamp_commit(s, sha)
+        t = NI.stamp_tree(s, days, walk)
+        if after:
+            after(s)
+        n = NI.site_manifest(s, root / f"{s.name}.sha256", walk)
+        return c, t, n, (root / f"{s.name}.sha256").read_bytes(), (s / "build.json").read_bytes()
+
+    try:
+        old = night(fixture(root / "a"), False)
+        fixture(root / "b")
+        Path.open = op
+        try:
+            new = night(root / "b", True)
+        finally:
+            Path.open = real_open
+        assert old[0] == new[0] and old[0]["bill_data"] == 5 and old[0]["bill_pages"] == 4 and \
+            old[0]["feeds"] == 3 and old[0]["bills"] == 4, ("the census differs", old[0], new[0])
+        assert old[1] and old[1:] == new[1:], ("the tree hash, the list or build.json differs",
+                                               old[1:3], new[1:3])
+        census_reads = {"meta.json", "legislators.json", "build.json"}
+        b = (root / "b").resolve()
+        inside = {p.relative_to(b).as_posix(): k for p, k in reads.items() if p.is_relative_to(b)}
+        again = sorted(r for r, k in inside.items()
+                       if k > 1 and r not in census_reads and not r.startswith("idx/"))
+        assert len(inside) >= len(new[3].splitlines()), (
+            "the walk's reads were not counted", len(inside), len(new[3].splitlines()))
+        assert not again, f"read more than once with the walk: {again}"
+        assert reads[(root / "b" / "bill" / "hb2.HTML").resolve()] == 1, reads
+
+        def change(s):
+            (s / "calendar" / "added.html").write_text("added after the walk", encoding="utf-8")
+            (s / "bill" / ".r.html").write_text("rewritten after the walk", encoding="utf-8")
+            (s / "feed" / "z.xml" / "in.xml").unlink()
+            # build.json at the size and time the walk saw, with other bytes:
+            # read again whatever its size and time say.
+            was, at = was_build[s.name]
+            (s / "build.json").write_bytes(was.replace(b"03:30", b"04:30"))
+            os.utime(s / "build.json", ns=(at, at))
+        was_build = {}
+        for name in ("c", "e"):
+            fixture(root / name)
+            was_build[name] = ((root / name / "build.json").read_bytes(),
+                               (root / name / "build.json").stat().st_mtime_ns)
+        assert night(root / "c", False, change)[2:] == night(root / "e", True, change)[2:], \
+            "a file written, rewritten or removed after the walk is listed as the walk read it"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    main_src, judge_src = inspect.getsource(NI.main), inspect.getsource(NI.Night.judge)
+    assert "SiteWalk(site, night.tree_days())" in main_src and "census(site, walk)" in main_src \
+        and "night.walk = walk" in main_src, "the night's census does not use the one walk"
+    assert 'stamp_tree(site, self.tree_days(), getattr(self, "walk", None))' in judge_src and \
+        judge_src.count('getattr(self, "walk", None)') == 2, \
+        "the tree hash or the list of every file does not use the night's walk"
+    return "ok", (f"census {old[0]['files']} files, tree {old[1]}, build.json and the list of "
+                  f"{old[2]} files the same bytes from one walk as from three reads; files "
+                  "changed after the walk listed as they are; nothing but build.json and the "
+                  "census's JSON read twice; main() and judge pass the walk")
 
 
 @check("build", "nightly.py: a step that outlives its timeout is killed and fails the night naming it; the lock is made exclusively")

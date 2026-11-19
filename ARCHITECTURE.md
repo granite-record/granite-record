@@ -138,7 +138,9 @@ and the night reads its result at the end, `nightly.py --checks-result`, and
 its verdict is clean only where it passed),
 `src/checks/check_site.py`, a census of the build against the last good
 build's counts (`archive/census.json`), and a ceiling of 95,000 files
-(`FILE_CEILING`) that nothing lifts. A build that passes goes to a preview
+(`FILE_CEILING`) that nothing lifts. The census, the tree hash and the list of
+every file with its sha256 are made from one walk of the built site, which
+reads each file once (`nightly.SiteWalk`, since 19 November 2026). A build that passes goes to a preview
 address and, when the night judged it fit for production, to the bucket as
 one archive for the second job; what the night changed goes back to the kit
 (`cloud.py kit-up`); and the night's verdict -- what it did,

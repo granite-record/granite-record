@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.103
+# GRANITE_VERSION: 2026-09-04.104
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1521,8 +1521,11 @@ def build_running():
         return False
 
 
-def census(site):
-    """The few numbers that say whether this is still the site, from what was built."""
+def census(site, walk=None):
+    """The few numbers that say whether this is still the site, from what was built.
+    With `walk`, a SiteWalk of `site`, the counts of files are taken from its
+    one walk rather than four more (ONE READ OF THE BUILT SITE): the same
+    numbers."""
     def count_json(name):
         try:
             return len(json.loads((site / name).read_text(encoding="utf-8")))
@@ -1537,6 +1540,14 @@ def census(site):
             return len(SR.bill_index(site) or [])
         except SR.Broken:
             return 0
+    if walk is not None:
+        return {"bills": count_bills(),
+                "legislators": count_json("legislators.json"),
+                "bill_data": walk.count("bills/*/*.json", "bills/*.json"),
+                "bill_pages": walk.count("bill/**/*.html"),
+                "feeds": walk.count("feed/**/*.xml"),
+                "files": len(walk.files),
+                "terms": term_counts(site)}
     return {"bills": count_bills(),
             "legislators": count_json("legislators.json"),
             "bill_data": (sum(1 for _ in (site / "bills").glob("*/*.json"))
@@ -2084,7 +2095,12 @@ def main():
             left = load_json(LEFT_OUT)
             if night and isinstance(left, dict) and left.get("rows"):
                 night.v["left_out"] = left
-            after = census(site)
+            # ONE READ OF THE BUILT SITE: the census, the tree hash and the list
+            # of every file are made from one walk of it (SiteWalk).
+            walk = SiteWalk(site, night.tree_days()) if night else None
+            if night:
+                night.walk = walk
+            after = census(site, walk)
             if before is None:
                 stop, blocked = [], []
                 lines = [f"  {'':<14}{'before':>10}{'after':>10}"]
@@ -5707,9 +5723,13 @@ def tree_day_forms(days):
     return sorted(forms, key=len, reverse=True)
 
 
-def tree_hash(site, days):
+def tree_hash(site, days, walk=None):
     """Sixteen hex of every file in `site`, by path and content with the build
-    day taken out of the text (TREE_KEY), or None where there is no file."""
+    day taken out of the text (TREE_KEY), or None where there is no file.
+    With `walk`, a SiteWalk of `site` made with the same days, from what it
+    read (ONE READ OF THE BUILT SITE): the same hash."""
+    if walk is not None and walk.forms == tree_day_forms(days):
+        return walk.tree()
     site = Path(site)
     forms = [f.encode("utf-8") for f in tree_day_forms(days)]
     h, n = hashlib.sha256(), 0
@@ -5728,14 +5748,90 @@ def tree_hash(site, days):
     return h.hexdigest()[:16] if n else None
 
 
-def stamp_tree(site, days):
+# ONE READ OF THE BUILT SITE (19 November 2026; the refactor's B10, its build
+# inventory's F8). After the build the night walked the whole site four times
+# to count it (census), read every file for the tree hash (stamp_tree), and
+# read every file again for the list of every file with its sha256
+# (site_manifest): 58,444 files, about 2 GB, twice over. SiteWalk walks it
+# once and reads each file once, keeping each file's sha256, size and time
+# and its digest for the tree, and the census, the tree hash and the list are
+# made from that. The same numbers, hash and list, byte for byte: the walk is
+# in the order each made its own, and the day comes out of the text as
+# tree_hash takes it out. The list is made last, after build.json has had the
+# commit and the tree written into it, so it looks again at every file's size
+# and time (a stat, not a read) and reads again build.json and anything
+# written, added or changed since the walk; a file gone since is not listed.
+class SiteWalk:
+    def __init__(self, site, days=()):
+        self.site = Path(site)
+        self.forms = tree_day_forms(days)
+        forms = [f.encode("utf-8") for f in self.forms]
+        # Every path under the site, files and folders, as the census's globs
+        # see them; and each file's (sha256 hex, size, mtime_ns, tree digest
+        # or None where the tree leaves it out), in the order rglob sorts.
+        self.rels, self.files = [], {}
+        for p in sorted(self.site.rglob("*")):
+            rel = p.relative_to(self.site)
+            self.rels.append(rel)
+            if not p.is_file():
+                continue
+            body = p.read_bytes()
+            st = p.stat()
+            raw = hashlib.sha256(body)
+            name = rel.as_posix()
+            tree = None
+            if not (name in TREE_LEFT_OUT or name.startswith(TREE_LEFT_OUT_UNDER)):
+                tree = raw.digest()
+                if b"\x00" not in body[:4096] and any(f in body for f in forms):
+                    for f in forms:
+                        body = body.replace(f, TREE_DAY)
+                    tree = hashlib.sha256(body).digest()
+            self.files[name] = (raw.hexdigest(), st.st_size, st.st_mtime_ns, tree)
+
+    def count(self, *patterns):
+        """How many paths, files or folders, match any of `patterns` (relative
+        to the site), as Path.glob and rglob match them on this machine."""
+        return sum(1 for r in self.rels if any(r.full_match(x) for x in patterns))
+
+    def tree(self):
+        """tree_hash's sixteen hex, from the walk; None where no file is in it."""
+        h, n = hashlib.sha256(), 0
+        for name, (_sha, _size, _mtime, tree) in self.files.items():
+            if tree is not None:
+                h.update(name.encode("utf-8") + b"\x00" + tree)
+                n += 1
+        return h.hexdigest()[:16] if n else None
+
+    def rows(self):
+        """site_manifest's rows, (path, sha256 hex, size), sorted: what the walk
+        read for every file whose size and time are as they were, read again
+        for build.json and for anything else written since."""
+        rows = []
+        for p in self.site.rglob("*"):
+            if p.is_file():
+                name = p.relative_to(self.site).as_posix()
+                st = p.stat()
+                kept = self.files.get(name)
+                if kept and name != BUILD_RECORD and kept[1:3] == (st.st_size, st.st_mtime_ns):
+                    rows.append((name, kept[0], st.st_size))
+                    continue
+                h = hashlib.sha256()
+                with p.open("rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                rows.append((name, h.hexdigest(), p.stat().st_size))
+        rows.sort()
+        return rows
+
+
+def stamp_tree(site, days, walk=None):
     """tree_hash into site/build.json beside the commit; the hash, or None
     where it could not be written (then production's copy names none and the
-    next night publishes over it)."""
+    next night publishes over it). With `walk`, from what it read."""
     p = Path(site) / BUILD_RECORD
     try:
         d = json.loads(p.read_text(encoding="utf-8"))
-        t = tree_hash(site, days)
+        t = tree_hash(site, days, walk)
     except (OSError, ValueError):
         return None
     if not isinstance(d, dict) or not t:
@@ -5756,19 +5852,23 @@ def serves_this_build(live, fp, live_commit, sha, live_tree, tree, tree_read=Tru
     return not (tree and tree_read and live_tree != tree)
 
 
-def site_manifest(site, out):
+def site_manifest(site, out, walk=None):
     """Every file in site/ with its sha256 and size, sorted: the file-for-file
     comparison CLOUD_MOVE.md asks of the first dry runs, and the record of what
-    a night built. The files it lists."""
-    rows = []
-    for p in site.rglob("*"):
-        if p.is_file():
-            h = hashlib.sha256()
-            with p.open("rb") as fh:
-                for chunk in iter(lambda: fh.read(1 << 20), b""):
-                    h.update(chunk)
-            rows.append((p.relative_to(site).as_posix(), h.hexdigest(), p.stat().st_size))
-    rows.sort()
+    a night built. The files it lists. With `walk`, a SiteWalk of `site`, from
+    what it read where a file is as it was (ONE READ OF THE BUILT SITE)."""
+    if walk is not None:
+        rows = walk.rows()
+    else:
+        rows = []
+        for p in site.rglob("*"):
+            if p.is_file():
+                h = hashlib.sha256()
+                with p.open("rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                rows.append((p.relative_to(site).as_posix(), h.hexdigest(), p.stat().st_size))
+        rows.sort()
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("".join(f"{d}  {s}  {r}\n" for r, d, s in rows), encoding="utf-8",
@@ -6956,6 +7056,11 @@ class Night:
             f"(run {rec.get('run_id') or '?'}), from {CENSUS}")
         return c, rec.get("fingerprint")
 
+    def tree_days(self):
+        """The days the build may print, which the tree hash takes out of the
+        text (TREE_KEY): the night's own, and the day it started."""
+        return {self.day, str(self.v.get("started", ""))[:10]}
+
     def judge(self, site, before, after, stop, changed, accepted=()):
         """After a build that passed check_site: can it go to production?
 
@@ -6980,7 +7085,7 @@ class Night:
         else:
             say(f"\n  {site.as_posix()}/{BUILD_RECORD} names no commit (no full commit id "
                 "tonight, or no build.json): a later night will not know this build's code")
-        v[TREE_KEY] = stamp_tree(site, {self.day, str(v.get("started", ""))[:10]})
+        v[TREE_KEY] = stamp_tree(site, self.tree_days(), getattr(self, "walk", None))
         blocking = []
         if before is None:
             v["gates"] = "no baseline"
@@ -7077,7 +7182,8 @@ class Night:
             # and the data API's hashes its change feed compared with.
             say("  " + keep_first_seen())
             say("  " + keep_api_hashes())
-        n = site_manifest(site, Path("logs") / f"site-{self.day}.sha256")
+        n = site_manifest(site, Path("logs") / f"site-{self.day}.sha256",
+                          getattr(self, "walk", None))
         say(f"  logs/site-{self.day}.sha256 lists all {n:,} files, with their sha256")
         # ... and the same, for the weekly's cold build to compare with (NIGHT_SITE):
         # a real night's, never a dry run's or a New term run's, whose kit is held.
