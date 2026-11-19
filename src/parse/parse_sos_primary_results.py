@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-18.4
+# GRANITE_VERSION: 2026-11-18.5
 """
 The Secretary of State's count of the State Primary's State Representative
 and State Senate races, 2016 to 2026, each party's primary its own contest,
 read into collected/primary_<year>.json beside the other offices' primaries,
 which parse_sos_primary_offices reads and this writes (the elections display's data: every
 official's whole election record, primaries included, the owner's word of
-19 November 2026). Nothing on the site reads these files yet.
+19 November 2026). The site reads them: src/pages/build_member_elections.py
+draws a member's primaries on their Elections tab from every
+collected/primary_*.json (primaries_on_file), with each race's margin from
+src/pages/election_margin.py.
 
     python3 src/parse/parse_sos_primary_results.py --year 2024     # write one year
     python3 src/parse/parse_sos_primary_results.py --all           # every year on disk

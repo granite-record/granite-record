@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.26
+# GRANITE_VERSION: 2026-11-16.27
 """
 preflight's checks of members-elect and election results.
 
@@ -4946,6 +4946,36 @@ def _primaries_read_by_nothing(P):
     assert not hits, "something reads the State Primary results: " + "; ".join(hits[:8])
     return "ok", (f"no code file but the readers names collected/primary_* or imports them "
                   f"({len(scripts)} scripts and every Python file read)")
+
+
+@check("files", "State Primary results: while a member's Elections tab reads collected/primary_*.json, "
+                "neither primary reader's docstring nor ARCHITECTURE.md says nothing on the site reads "
+                "them",
+       needs=("parse_sos_primary_results", "build_member_elections"))
+def _primary_readers_say_who_reads(P, BMEL):
+    """The wording went stale once (20 November 2026): both readers and
+    ARCHITECTURE.md said nothing on the site read the primary files a day
+    after build_member_elections began drawing them. Where that page step
+    globs them (PRIMARY_RE), the three must say it, not the opposite."""
+    import ast
+    assert BMEL.PRIMARY_RE == "primary_*.json", f"build_member_elections reads {BMEL.PRIMARY_RE!r}"
+    stale = re.compile(r"nothing on the\s+site\s+reads\s+(?:these files|them)\s+yet", re.I)
+    found = []
+    for f in (Path(P.__file__), _paths.ROOT / "src" / "parse" / "parse_sos_primary_offices.py"):
+        doc = ast.get_docstring(_parsed(f)) or ""
+        assert "build_member_elections" in doc, f"{f.name}'s docstring does not say what reads it"
+        if stale.search(doc):
+            found.append(f.name)
+    arch = _source(_paths.ROOT / "ARCHITECTURE.md")
+    at = arch.find("are read by `src/parse/parse_sos_primary_results.py`")
+    assert at >= 0, "ARCHITECTURE.md no longer describes the primary reader"
+    para = arch[at:arch.find("\n\n", at) if arch.find("\n\n", at) > 0 else None]
+    if stale.search(para):
+        found.append("ARCHITECTURE.md")
+    assert "build_member_elections" in para, "ARCHITECTURE.md's primary paragraph names no reader"
+    assert not found, f"says nothing on the site reads the primary files: {', '.join(found)}"
+    return "ok", ("both readers' docstrings and ARCHITECTURE.md name build_member_elections as what "
+                  "reads collected/primary_*.json, and none says nothing does")
 
 
 @check("build", "State Primary results: the other offices' reader reads each party's primary for "

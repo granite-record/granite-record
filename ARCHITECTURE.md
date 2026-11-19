@@ -2349,8 +2349,8 @@ cannot settle is refused alone and listed in `_refused`.
 The State Primary's State Representative and State Senate races, 2016 to
 2026, are read by `src/parse/parse_sos_primary_results.py` into
 `collected/primary_<year>.json`, each party's primary its own race (keys
-`D|H|Belknap|1`, `R|S|9`), and nothing on the site reads them yet
-(`_primaries_read_by_nothing`). The layout is the general's, read by the
+`D|H|Belknap|1`, `R|S|9`), which a member's Elections tab draws
+(`build_member_elections.primaries_on_file`, every `primary_*.json`). The layout is the general's, read by the
 House reader's own rules: `read_house`, `Block` and `district` take a
 primary's day as a date carrying the party (`Primary`), whose titles must
 name the primary and that party, and a primary's block reads an empty cell
