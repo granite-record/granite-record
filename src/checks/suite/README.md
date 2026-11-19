@@ -19,7 +19,7 @@ what is run, and holds every check; these are what it imports:
   its record and its slowest line; the map of what each check read and ran,
   which a run of every check of a kind writes to
   `logs/check-map-<kind>.json.gz` (`_MapRecorder`; `--no-map` leaves it
-  out); and the lists of the checks
+  out, and `src/checks/map_replay.py` reads it); and the lists of the checks
   the night runs after its build (`BUILT_CODE`, `NOT_ON_THE_NIGHT`,
   `RECORD_CHECKS`, `REMINDERS`).
 

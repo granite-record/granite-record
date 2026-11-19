@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -3364,6 +3364,82 @@ def _map_changes_no_answer():
             f"the map saw nothing of {name} while it ran")
     return "ok", (f"the probe and {', '.join(real)} answer the same with the map and without, "
                   "and the map saw each")
+
+
+@check("files", "the replay of past commits reads which definitions a change moved, and chooses by "
+                "the map's rule and by --changed's")
+def _map_replay_rules():
+    """src/checks/map_replay.py makes the table step 9 is to be decided on:
+    for each commit since a day, what the map's rule would have chosen beside
+    what --changed chooses. Held on known answers:
+
+      which definitions a change moved, read off a script's lines: a
+      function's body or its decorator moves the function, a method's its
+      class and name, a line of a class outside its methods the class's
+      body, a constant its name, an import the imports, and a comment
+      between definitions nothing; a script that will not parse, all of it;
+      on a planted suite and map of three checks: a change inside a
+      function chooses the check that ran it and not the one that ran
+      another function of the file, a comment chooses none, a constant every
+      check that ran any function of the file; a data file changed chooses
+      its reader, one added the check that listed its folder; a helper of
+      the suite moved, the check whose code reaches it; the runner moved,
+      every check; and check_select.choose takes the suite's definitions a
+      change moved by name (`moved`), as the replay hands them over.
+    """
+    import types
+    import check_select as CS
+    import map_replay as MR
+    text = ("import os\n\nK = 1\n\n\n@deco\ndef f():\n    return 1\n\n# a comment\n\n\n"
+            "class C:\n    X = 2\n\n    def m(self):\n        return 3\n")
+    u = MR.units(text)
+    want = {(8,): {("f", "def")}, (6,): {("f", "def")}, (10, 11): set(), (14,): {("C", "class")},
+            (17,): {("C.m", "method")}, (3,): {("K", "assign")}, (1,): {("<import>", "import")}}
+    for lines, names in want.items():
+        got = MR.moved_units(u, list(lines))
+        assert got == names, f"a change to line(s) {lines} of the sample moved {got}, not {names}"
+    assert MR.moved_units(None, [1]) == {("<module>", "other")}, (
+        "a change to a script that will not parse did not move the whole of it")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-replay-")).resolve()
+    try:
+        _plant(tmp, {"preflight.py": ("def _a():\n    return helper()\n\n\ndef _b():\n    return 2\n"
+                                      "\n\ndef _c():\n    return 3\n\n\ndef main():\n    return 0\n"),
+                     "src/checks/suite/pf_x.py": "def helper():\n    return 1\n"})
+        suite = [tmp / "preflight.py", tmp / "src" / "checks" / "suite" / "pf_x.py"]
+        row = {"needs": [], "seconds": 1, "kept": [], "reads": [], "imports": [], "lists": [],
+               "starts": [], "funcs": []}
+        m = {"format": 1, "files": [["src/lib/x.py", ""], ["src/pages/words/w.json", ""],
+                                    ["src/pages/words", "dir"]],
+             "funcs": ["src/lib/x.py:f", "src/checks/suite/pf_x.py:helper"],
+             "checks": [dict(row, fn="_a", funcs=[0, 1]), dict(row, fn="_b", reads=[1]),
+                        dict(row, fn="_c", lists=[2])]}
+        rules = MR.Rules(m, root=tmp, suite=suite)
+
+        def chose(path, moved, status="M"):
+            files = {path: {"status": status, "old": "", "new": "", "minus": [], "plus": []}}
+            return sorted(rules.names[i] for i in rules.by_map(files, {path: moved}))
+        cases = [("a function the check ran", "src/lib/x.py", {("f", "def")}, "M", ["_a"]),
+                 ("a function no check ran", "src/lib/x.py", {("g", "def")}, "M", []),
+                 ("a comment", "src/lib/x.py", set(), "M", []),
+                 ("a constant", "src/lib/x.py", {("K", "assign")}, "M", ["_a"]),
+                 ("a data file read", "src/pages/words/w.json", set(), "M", ["_b"]),
+                 ("a data file added", "src/pages/words/new.json", set(), "A", ["_c"]),
+                 ("a helper of the suite", "src/checks/suite/pf_x.py", {("helper", "def")}, "M", ["_a"]),
+                 ("the runner", "preflight.py", {("main", "def")}, "M", ["_a", "_b", "_c"])]
+        for what, path, moved, status, names in cases:
+            got = chose(path, moved, status)
+            assert got == names, f"the map's rule chose {got} for {what}, not {names}"
+        fake = [{"fn": types.SimpleNamespace(__name__=n), "needs": ()} for n in ("_a", "_b", "_c")]
+        by_name = CS.choose(fake, suite, changed=["src/checks/suite/pf_x.py"], lines={},
+                            moved={"helper"}, root=tmp)
+        none = CS.choose(fake, suite, changed=["src/checks/suite/pf_x.py"], lines={}, root=tmp)
+        assert sorted(fake[i]["fn"].__name__ for i in by_name["run"]) == ["_a"] and not none["run"], (
+            "check_select.choose did not take the suite's moved definitions by name: "
+            f"{sorted(by_name['run'])} with, {sorted(none['run'])} without")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(want)} kinds of line read as the definition they move; {len(cases)} changes "
+                  "chosen by the map's rule as they should be; check_select takes moved names")
 
 
 @check("files", "the state settings file loads with every key, and no second literal county list stands outside it")
