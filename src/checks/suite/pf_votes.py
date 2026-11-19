@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of roll calls and the votes pages.
 
@@ -962,6 +962,48 @@ def _ballot_row(fetch_rollcall_parties):
     # almost the whole chamber rather than only those present.
     assert got[2]["vote"] == "Excused", got[2]
     return "ok", "three ballots, header dropped, two members sharing a name"
+
+
+@check("rollcalls", "after the turn a ballot of a finished term names its member from the nearest frozen "
+       "roster at or after it, never the House Organization Day installed", needs=("build_data",))
+def _ballot_member_after_turn(build_data):
+    """The rehearsal of the turn, 19 November 2026: with the fake 2027 House
+    installed, Rep. Peter Bixby's 2024 ballots took the party that roster gave
+    him (R, not the D he voted under), so the Learn page's HB 1002 split
+    stopped agreeing with the ballots. Only a finished term's OWN frozen
+    roster was read for a ballot, and an older term's took the installed one.
+    build_data.ballot_member decides it now, and here on four members: B, of
+    D in 2023-2026 and R in the installed House; P, Independent on the
+    former list, absent from the 2025-2026 roster and sitting again as a D;
+    N, new in 2027; and the ballots of Organization Day 2024 (2025-2026's)
+    and 2026 (2027-2028's)."""
+    bm = build_data.ballot_member
+    legs = {"B": {"party_code": "R", "seat": "now"}, "P": {"party_code": "D", "seat": "now"},
+            "N": {"party_code": "R", "seat": "now"}}
+    froze = {"B": {"party_code": "D", "seat": "2025-2026"}}
+    rosters = [("2025-2026", froze)]
+    former = {"P": {"name": "P", "party": "I"}}
+    case = {
+        # (member, session year, day): what names the ballot
+        ("B", "2024", "3/7/2024 10:00:00 AM"): froze["B"],    # an older term: the nearest frozen roster
+        ("B", "2022", "1/5/2022 10:00:00 AM"): froze["B"],
+        ("B", "2026", "5/21/2026 10:00:00 AM"): froze["B"],    # the finished term's own roster
+        ("B", "2024", "12/4/2024 1:00:38 PM"): froze["B"],    # Organization Day 2024 is 2025-2026's
+        ("B", "2026", "12/2/2026 1:00:00 PM"): legs["B"],     # Organization Day 2026 is the new House's
+        ("B", "2027", "1/7/2027 10:15:33 AM"): legs["B"],
+        ("P", "2024", "3/7/2024 10:00:00 AM"): None,          # not in 2025-2026: the former list, as before
+        ("P", "2027", "1/7/2027 10:15:33 AM"): legs["P"],
+        ("N", "2027", "1/7/2027 10:15:33 AM"): legs["N"],
+        ("X", "2024", "3/7/2024 10:00:00 AM"): None,          # nobody sitting: the former list
+    }
+    bad = [f"{k}: {bm(k[0], k[1], k[2], legs, rosters, former)} where {v}"
+           for k, v in case.items() if bm(k[0], k[1], k[2], legs, rosters, former) is not v]
+    assert not bad, "a ballot named from the wrong roster: " + "; ".join(bad)
+    # Before any turn there is no frozen roster to read: the installed one names every ballot.
+    assert all(bm(k[0], k[1], k[2], legs, [], former) is legs.get(k[0])
+               for k in case), "with no frozen roster a ballot was not named from the installed one"
+    return "ok", (f"{len(case)} ballots of 2022-2027 each named from its own roster, the nearest "
+                  "frozen one after it, the former list, or the installed House for its own term")
 
 
 @check("build", "the live Worker reads a roll call's bill field as the record does: every field in "

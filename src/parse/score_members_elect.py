@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.2
+# GRANITE_VERSION: 2026-10-17.3
 """
 build_members_elect's matching rule, scored on an election already decided.
 
@@ -48,8 +48,9 @@ person can decide whether a rule should widen.
 
 WHAT IT READS, and asks nobody: collected/election_<year>.json,
 records/rollcalls/, site/legislators.json, site/former.json,
-site/districts.json, former_members.json and text_sponsors.json. It writes
-nothing.
+site/districts.json, former_members.json and text_sponsors.json -- and,
+after the turn, the frozen rosters under frozen/<term>/day/ (Record). It
+writes nothing.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -132,8 +133,26 @@ class Record:
         root = Path(root)
         load = lambda p: json.loads((root / p).read_text(encoding="utf-8"))  # noqa: E731
         self.rows = {str(r["id"]): r for r in load("site/former.json")}
+        self.gone = dict(self.rows)
         self.rows.update({str(r["id"]): r for r in load("site/legislators.json")})
         self.old = {str(k): v for k, v in load("former_members.json").items()}
+        # AFTER THE TURN, THE SEAT A TERM GAVE (19 November 2026). Once
+        # Organization Day's House is installed, site/legislators.json is
+        # 2027's, and a member who sat for Rockingham 13 in 2025-2026 and
+        # moves read the new seat for the old term: the rehearsal of the turn
+        # warned "no member of the next term in that seat has the surname"
+        # of the one it moved. The frozen rosters of the terms the installed
+        # one is not (freeze_term.own_roster_terms) are read as build_data
+        # reads them, and a term's seat comes from the nearest of them at or
+        # after it -- build_data.ballot_member's rule. Before the turn there
+        # is none, and nothing here moves.
+        self.frozen = []
+        import freeze_term
+        terms = freeze_term.own_roster_terms(root)
+        if terms:
+            import build_data as BD
+            self.nearest = BD.nearest_roster
+            self.frozen = BD.frozen_rosters(root, terms)
         self.text = defaultdict(set)
         for term, bills in load("text_sponsors.json").items():
             for recs in bills.values():
@@ -152,9 +171,24 @@ class Record:
         r = self.rows.get(mid) or self.old.get(mid) or {}
         return str(r.get("party") or "").strip()[:1].upper()
 
-    def recorded(self, mid, chamber):
-        """The seat the roster files keep for an id: its last."""
-        r = self.rows.get(mid) or self.old.get(mid) or {}
+    def held(self, mid, term=None):
+        """(the roster record that names an id for `term`, the frozen term it
+        came from or None). The roster files keep its last; after the turn,
+        the nearest frozen roster at or after `term`, and where that roster
+        lacks the id -- one who sat then, left and sits again -- the record of
+        those who left, as before the turn."""
+        near = self.nearest(term, self.frozen) if self.frozen and term else None
+        if near:
+            if mid in near[1]:
+                return near[1][mid], near[0]
+            r = self.gone.get(mid) or self.old.get(mid)
+            if r:
+                return r, None
+        return self.rows.get(mid) or self.old.get(mid) or {}, None
+
+    def recorded(self, mid, chamber, term=None):
+        """The seat the roster files keep for an id: its last (held)."""
+        r = self.held(mid, term)[0]
         dist = str(r.get("district") or "").strip()
         dist = str(int(dist)) if dist.isdigit() else ""
         return (chamber, BME.full_county(r.get("county")) if chamber == "H" else "", dist)
@@ -164,8 +198,9 @@ class Record:
         text = {s for s in self.text.get((term, mid), ()) if s[0] == chamber and s[2]}
         if len(text) == 1:
             return (*next(iter(text)), "the bills of the term")
-        how = "the roster, the record's last" if term == last_term else "a later seat"
-        return (*self.recorded(mid, chamber), how)
+        how = ("the term's frozen roster" if self.held(mid, term)[1] == term else
+               "the roster, the record's last" if term == last_term else "a later seat")
+        return (*self.recorded(mid, chamber, term), how)
 
 
 def key_of(chamber, county, district):

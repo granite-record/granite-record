@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-05.14
+# GRANITE_VERSION: 2026-10-05.15
 """
 The turn from one term to the next, rehearsed offline on a copy.
 
@@ -92,8 +92,11 @@ THE NIGHTS, IN ORDER (each says what it expects, and PASS or FAIL)
                2026 sponsors are filed under 2027-2028
 
 The fake roster seats a third of the House new, moves one continuing member to
-another district and changes another's party: their 2025-2026 sponsorships keep
-the seat and party they held then (build_site_v2's term roster).
+another district of their county (a newcomer's, who takes theirs) and changes
+another's party, in legislators.txt and Members.txt alike: their 2025-2026
+sponsorships, and every older ballot of theirs, keep
+the seat and party they held then (build_site_v2's term roster;
+build_data.ballot_member).
 
 WHAT IT PROVES, AND HOW (after NT and after A1, against the pre-turn build)
 
@@ -313,10 +316,10 @@ def fake_sponsors(lsr_rows, legislators):
 def new_roster(legislators, members):
     """A third of the House new on Organization Day, the same people in
     legislators.txt and Members.txt (R1 of the design); and of those who
-    stay, one in another district and one of another party, whose 2025-2026
-    records must keep the seat and party of the term (the review of 5
-    October 2026). (legislators, members, [(old id, new id)], {id: (field,
-    was, now)})."""
+    stay, one in another district of their county and one of another party,
+    whose 2025-2026 records must keep the seat and party of the term (the
+    review of 5 October 2026), in both files. (legislators, members, [(old
+    id, new id)], {id: (field, was, now)})."""
     leg = lines(legislators)
     mem = lines(members)
     head, mrows = mem[0], mem[1:]
@@ -324,7 +327,20 @@ def new_roster(legislators, members):
     house = [i for i, ln in enumerate(leg) if ln.split("|")[4:5] == ["H"]]
     pick = set(house[::3])
     stay = [i for i in house if i not in pick]
-    by_mail = {}
+    # THE MOVE IS INTO A SEAT THAT EXISTS (19 November 2026): the district of
+    # a newcomer of the same county, who takes the seat the mover left. It
+    # was the old district plus 40 -- Rockingham 13 to Rockingham 53, which
+    # no map and no district table holds -- and the first post-turn build
+    # held on it twice: the map counting 381 members against the
+    # Legislators tab's 382, and entities' tenure of 903 naming a district
+    # not in the model. The General Court's roster names only real seats,
+    # and a seat a member leaves is somebody's, so each district keeps its
+    # count.
+    fields = [ln.split("|") for ln in leg]
+    mover = stay[0] if stay else None
+    into = next((j for j in sorted(pick) if mover is not None
+                 and fields[j][6] == fields[mover][6] and fields[j][7] != fields[mover][7]), None)
+    by_mail, seat_by_mail, party_by_mail = {}, {}, {}
     for i, ln in enumerate(leg):
         f = ln.split("|")
         if i in pick:
@@ -335,18 +351,28 @@ def new_roster(legislators, members):
             f[14] = f"Test.Newmember{k}@gc.nh.gov"
             by_mail[old_mail] = (f[1], f[2], f[14])
             swapped.append((ln.split("|")[0], new))
-        elif stay and i == stay[0]:
-            moved[f[0]] = ("district", f[7], str(int(f[7] or 0) + 40))
+            if i == into:
+                f[7] = fields[mover][7]
+                seat_by_mail[old_mail] = f[7]
+        elif i == mover and into is not None:
+            moved[f[0]] = ("district", f[7], fields[into][7])
             f[7] = moved[f[0]][2]
+            seat_by_mail[f[14].strip().lower()] = f[7]
         elif len(stay) > 1 and i == stay[1]:
             moved[f[0]] = ("party", f[8], "D" if f[8].upper() == "R" else "R")
             f[8] = moved[f[0]][2]
+            party_by_mail[f[14].strip().lower()] = f[8]
         out.append("|".join(f))
     cols = {c.strip().lower(): j for j, c in enumerate(head.split("\t"))}
     mout = [head]
     for r in mrows:
         g = r.split("\t")
         key = g[cols["workemail"]].strip().lower() if cols.get("workemail", 99) < len(g) else ""
+        # Members.txt says what legislators.txt says of the seat and the party.
+        if key in seat_by_mail and cols.get("district", 99) < len(g):
+            g[cols["district"]] = seat_by_mail[key]
+        if key in party_by_mail and cols.get("party", 99) < len(g):
+            g[cols["party"]] = party_by_mail[key]
         if key in by_mail:
             last, first, mail = by_mail[key]
             g[cols["lastname"]], g[cols["firstname"]], g[cols["workemail"]] = last, first, mail

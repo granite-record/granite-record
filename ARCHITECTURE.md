@@ -1629,7 +1629,10 @@ database night's `roster_frozen`), and from then until the switch the term's
 members and sponsor files are the freeze's (`freeze_term.own_roster_terms`):
 `build_data` reads its sponsors from the frozen `LsrsOnly.txt` and
 `LsrSponsors.txt` and names them from the frozen roster, a continuing member's
-ballots keep the party and seat of that roster, `narrative.py` tells its
+ballots keep the party and seat of that roster -- and a ballot of any older
+term the party and seat of the nearest frozen roster after it, so the turn
+moves no finished term's ballots (`build_data.ballot_member`) --
+`narrative.py` tells its
 histories with it (`build_all.session_roster`), and `build_site_v2` labels the
 term's sponsors from it -- a member now in the Senate under a new id reads as
 the Representative they were -- for a finished term as for the session's.

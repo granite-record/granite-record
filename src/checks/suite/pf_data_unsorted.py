@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of data checks with no module under test, for a person to sort.
 
@@ -436,6 +436,31 @@ def _search_index_built():
                        "nothing for")
     assert not bad, "the search index: " + "; ".join(bad[:4])
     real = [t for t in empty if re.fullmatch(r"\d{4}-\d{4}", t)]
+    # A NEW TERM'S FIRST NIGHTS (the rehearsal of the turn, 19 November
+    # 2026). The term turns on the first night the files show it, perhaps
+    # with Organization Day's resolutions alone, and a New term run never
+    # asks the database, so no text of its bills is on disk yet: its index is
+    # empty because there is nothing to read, which is what the docstring
+    # always allowed ("unless the term has no text at all"). The newest term
+    # is let through only while bill_text.json and archive_text.json hold the
+    # text of none of its bills; with the text of any one of them there, an
+    # empty index is still the build not reading it. Every older term must
+    # have words, text or no text.
+    waiting = []
+    newest = max((t for t in terms if re.fullmatch(r"\d{4}-\d{4}", t)), default="")
+    if newest in real:
+        ids = {r.get("id") for r in json.loads((site / "idx" / f"{newest}.json")
+                                               .read_text(encoding="utf-8"))
+               if isinstance(r, dict)}
+        held = 0
+        for p in (Path("bill_text.json"), Path("archive_text.json")):
+            if p.is_file():
+                by_bill = json.loads(p.read_text(encoding="utf-8")).get(newest) or {}
+                held += sum(1 for b, rec in by_bill.items()
+                            if b in ids and isinstance(rec, dict) and rec.get("text"))
+        if not held:
+            waiting = [f"{newest} ({len(ids):,} bills, none with its text on disk yet)"]
+            real.remove(newest)
     assert not real, (
         f"the search index of {', '.join(real)} is empty: no bill text was "
         "read for it, and its bills are found by title and topic only. "
@@ -445,7 +470,9 @@ def _search_index_built():
         f"{SEARCH_INDEX_MOST_ALL:,}: /search fetches them all")
     return "ok", (f"{len(terms)} terms, {entries:,} entries, {total:,} bytes in "
                   f"all and none over {SEARCH_INDEX_MOST:,}"
-                  + (f"; no text for {', '.join(empty)}, as expected" if empty else ""))
+                  + (f"; no text for {', '.join(empty)}, as expected" if empty else "")
+                  + (f"; {waiting[0]}: found by title and topic until its text is read"
+                     if waiting else ""))
 
 
 @check("data", "every bill request's prime sponsor and co-sponsors read as one person's name each, not "
@@ -1389,15 +1416,46 @@ def _sponsors_by_term():
 
     # And the term the current session's files describe must actually have
     # them. 17% is what the bug looked like; a healthy run is above 90%.
+    #
+    # Counted over the bills those files name (LsrsOnly.txt, which names each
+    # LSR's bill), where it is here (the rehearsal of the turn, 19 November
+    # 2026). Not every measure has a sponsor: the 14 of 2025-2026 without
+    # one are all resolutions (HR 1-5, HR 48, SR 1-8), which no sponsor
+    # file names, and the term turns on the first night the files
+    # show it -- perhaps Organization Day's resolutions alone, so 0 of 10.
     newest = max(bills)
     have, total = len(sponsors.get(newest, {})), len(bills.get(newest, {}))
-    assert total and have > total * 0.75, (
-        f"{newest} has sponsors on {have:,} of {total:,} bills. Its own "
-        "sponsor files cover every bill, so this is sponsors filed under the "
-        "wrong term, not sponsors that are missing.")
+    lo = Path("LsrsOnly.txt")
+    named, how = None, ""
+    if lo.is_file():
+        from terms import term_of_year
+        named = set()
+        for ln in lo.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            f = ln.split("|")
+            if (len(f) > 5 and re.fullmatch(r"\d{4}", f[3].strip())
+                    and term_of_year(int(f[3])) == newest
+                    and f[5].strip() in bills.get(newest, {})):
+                named.add(f[5].strip())
+    if named:
+        got = len(named & set(sponsors.get(newest, {})))
+        assert got > len(named) * 0.75, (
+            f"{newest} has sponsors on {got:,} of the {len(named):,} bills its own sponsor "
+            "file (LsrsOnly.txt) names, so this is sponsors filed under the wrong term, not "
+            "sponsors that are missing.")
+        how = f"; {newest} on {got:,} of the {len(named):,} bills LsrsOnly.txt names"
+    elif not (named is not None and not have and total
+              and all(re.fullmatch(r"(HR|SR)\d+", b) for b in bills[newest])):
+        # (Organization Day's resolutions alone, which no sponsor file names,
+        # are the one term that may have none.)
+        assert total and have > total * 0.75, (
+            f"{newest} has sponsors on {have:,} of {total:,} bills. Its own "
+            "sponsor files cover every bill, so this is sponsors filed under the "
+            "wrong term, not sponsors that are missing.")
+    else:
+        how = f"; {newest} is {total:,} resolutions, which no sponsor file names"
     census = ", ".join(f"{t} {len(v):,}/{len(bills.get(t, {})):,}"
                        for t, v in sorted(sponsors.items()))
-    return "ok", f"sponsors by term: {census}"
+    return "ok", f"sponsors by term: {census}{how}"
 
 
 @check("data", "every sponsor LsrSponsors.txt gives the session's bills who sat in its term is "
