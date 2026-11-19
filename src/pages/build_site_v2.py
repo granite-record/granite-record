@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.284
+# GRANITE_VERSION: 2026-09-05.286
 """
 Generate the faceted site from real General Court data.
 
@@ -3151,12 +3151,16 @@ def term_seats(votes_by_member, printed=None, record=None, ballots=None):
 
 
 def write_floor_record(data_dir, votes_by_member, cards, moments=None, nobill=None,
-                       record=None):
+                       record=None, worked=None):
     """data/floor_record.json (FLOOR_RECORD, above). Returns its path.
     `record` is term_seats' printed record, read from text_sponsors.json when
-    not given."""
-    ballots = {}
-    seats = term_seats(votes_by_member, record=record, ballots=ballots)
+    not given. `worked` is (seats, ballots), term_seats' answer where main
+    has worked it out already, for the movers (term_voters)."""
+    if worked is None:
+        ballots = {}
+        seats = term_seats(votes_by_member, record=record, ballots=ballots)
+    else:
+        seats, ballots = worked
     presiding = defaultdict(list)
     for rows in votes_by_member.values():
         for v in rows:
@@ -8536,7 +8540,9 @@ def mover_member(mover, body, legs, pages=None):
     which), and `pages` {id: member}, where given, whose page each of them
     links to now: `legs` is then a term's own roster as it was frozen, which
     gives the seat held in that term, and the link goes to the person's own
-    page as it is now (own_slug), or nowhere where they have none."""
+    page as it is now (own_slug), or nowhere where they have none. A member
+    of term_voters' carries `held`, the seat of the term, which names them; a
+    voter with no seat of the term is not linked."""
     n = MOVER_SUFFIX.sub("", MOVER_HONORIFIC.sub("", (mover or "").strip())).strip().strip(".")
     ch = (body or "").strip().upper()[:1]
     if not n or not ch:
@@ -8560,24 +8566,57 @@ def mover_member(mover, body, legs, pages=None):
     lab = member_labels(m.get("name"), chamber=m.get("chamber"),
                         party=m.get("party_code") or m.get("party"), district=m.get("district"),
                         county=m.get("county"), county_abbr=m.get("county_abbr"))
+    label = lab.get("display_full") or m.get("label") or ""
+    # A TERM'S VOTER (term_voters) is named by the seat the term gives them,
+    # and by no other: one with no seat of the term stays words.
+    if "held" in m:
+        label = m["held"]
+        if not label:
+            return None
     if pages is not None:
         page = pages.get(str(m.get("id") or ""))
         slug = own_slug(page) if page else ""
-        return {"label": lab.get("display_full") or m.get("label") or "",
-                "slug": slug} if slug else None
-    return {"label": lab.get("display_full") or m.get("label") or "",
+        return {"label": label, "slug": slug} if slug else None
+    return {"label": label,
             "slug": m.get("slug") or member_slug(m, lab)}
 
 
-def mover_pool(term, current, legs, term_rosters, people):
+def term_voters(votes_by_member, seats):
+    """{term: {"<id>|<chamber>": member}}: THE MEMBERS OF EACH TERM'S CHAMBERS,
+    AS THEIR OWN BALLOTS OF THE TERM GIVE THEM -- everyone who voted in that
+    chamber that term, those who left mid-term and those who came in among
+    them -- each with `held`, the seat the term gives them (term_seats, the
+    seats a session day names them by), or "" where it gives none, or gives
+    the other chamber's. For mover_pool, in the terms no frozen roster
+    describes. The name and party are the term's last ballot's."""
+    out = defaultdict(dict)
+    for mid, rows in votes_by_member.items():
+        mid = str(mid)
+        for v in sorted(rows, key=service_order):
+            body = (v.get("body") or "").strip().upper()[:1]
+            if body not in ("H", "S") or "," not in str(v.get("name") or ""):
+                continue
+            t = P.vote_term(v["year"], v.get("date"))
+            held = (seats.get(t) or {}).get(mid) or ""
+            out[t][f"{mid}|{body}"] = {
+                "id": mid, "name": v["name"], "chamber": body,
+                "party_code": v.get("party") or "",
+                "held": held if held.startswith(("Sen. " if body == "S" else "Rep. ")) else ""}
+    return dict(out)
+
+
+def mover_pool(term, current, legs, term_rosters, people, voters=None):
     """(members, pages) a mover of `term` is looked for among, for
     mover_member: THE TERM'S OWN MEMBERS, WITH THE SEAT EACH HELD IN IT
     (labels-use-the-seat-held-at-the-time). A term whose own roster is frozen
     and is not the sitting one (`term_rosters`, freeze_term.own_roster_terms)
     takes that roster, linked to each person's page as it is now (`people`,
     build_bills' every member and former member); the current term, while its
-    roster is the sitting one, takes `legs`; any other term, nobody, and the
-    docket's words stand.
+    roster is the sitting one, takes `legs`; a term before it, its own voters
+    (`voters`, term_voters: the owner, 19 November 2026, "Yes, link them"),
+    each named by the seat of the term and linked to the page their ballots
+    are on (`people`); any other term -- 1989-1998, with no ballots -- nobody,
+    and the docket's words stand.
 
     The rehearsal of the turn (19 November 2026): matched against the sitting
     roster for the current term alone, 2025-2026 lost the link on 843 movers
@@ -8590,6 +8629,8 @@ def mover_pool(term, current, legs, term_rosters, people):
         return term_rosters[term], people
     if term == current:
         return legs, None
+    if term in (voters or {}):
+        return voters[term], people
     return None, None
 
 
@@ -11865,7 +11906,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 chapters=None, seats=None, session_over="", former=None,
                 links=None, hearing_reports=None, ballots=None, term_rosters=None,
                 rc_cards=None, moments=None, numbers=None, record_chambers=None,
-                id_parties=None, tagging=None):
+                id_parties=None, tagging=None, voters=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -11886,6 +11927,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
 
     `tagging` is site_tagging's answer: each tagged bill's row gains "tags"
     and its record "tags", and nothing changes where it is empty or None.
+
+    `voters` is term_voters': each term's members as their ballots give
+    them, with the seat of the term, among whom a roll call's mover of a term
+    before the current one is looked for (mover_pool). None links none.
 
     Returns (index, years, unnamed, sponsored) -- unnamed being the member
     ids the roll calls reference that the roster cannot name, and sponsored
@@ -12352,7 +12397,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         rc_out = bill_rollcalls(bid, term, rcs, narr,
                                 votes_by_bill, legs, unnamed, in_office)
         # Whom this term's movers are looked for among (mover_pool).
-        _mpool, _mpages = mover_pool(term, current, legs, term_rosters, _people)
+        _mpool, _mpages = mover_pool(term, current, legs, term_rosters, _people, voters)
         for r in rc_out:
             r.pop("_ord", None)
             # THE VOTE WORDS' KEY (the person, 8 October 2026; motions.py):
@@ -12530,7 +12575,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # The members the story names, for the page to link (story_people).
         # Among the term's own members with the seat each held then, as for a
         # roll call's mover (mover_pool): the sitting roster in the current
-        # term, a finished term's frozen roster after the turn.
+        # term, a finished term's frozen roster after the turn, and a term of
+        # 1999-2024 its own voters by the seat of the term.
         # _story_who, NOT _people: that is every member and former member,
         # which bill_sponsor_list and the hearing record read for the bills
         # after this one; taking the name made it a list there, and the dry run
@@ -13466,6 +13512,12 @@ def main():
     rc_cards = {}
     # And each floor station's moment, for the session day's cards.
     floor_moments = {}
+    # THE SEAT EACH MEMBER HELD IN EACH TERM (term_seats), worked out once, here,
+    # for the movers of the terms before the current one (term_voters) and the
+    # session days (write_floor_record), so both name a member by one seat.
+    floor_ballots = {}
+    floor_seats = term_seats(votes_by_member, ballots=floor_ballots)
+    voters = term_voters(votes_by_member, floor_seats)
     # -------------------------------------------------------------- index --
     index, years, unnamed, sponsored = build_bills(out, bills, narratives, rollcalls, reports,
                                sponsors, bill_texts, amend_texts, testimony,
@@ -13488,7 +13540,7 @@ def main():
                                ballots=load_ballots(BALLOTS, bills),
                                rc_cards=rc_cards, moments=floor_moments,
                                record_chambers=record_chambers, id_parties=id_parties,
-                               tagging=tagging)
+                               tagging=tagging, voters=voters)
     add_related(out, index)
     add_same_number(out, index, notes)
     # NO index.json (retired 5 October 2026). It was every row below in one
@@ -13566,7 +13618,8 @@ def main():
     # The cards of the roll calls on no bill first (nobill/<term>.json),
     # since the session days draw those from them too.
     nobill = write_nobill_cards(out, rollcalls, votes_by_bill, legs, unnamed)
-    write_floor_record(D, votes_by_member, rc_cards, floor_moments, nobill)
+    write_floor_record(D, votes_by_member, rc_cards, floor_moments, nobill,
+                       worked=(floor_seats, floor_ballots))
     # The members' Votes tabs' shared file, once build_bills has said where
     # each roll call's card is (write_rollcall_index).
     write_rollcall_index(out, rollcalls, rc_cards, nobill)

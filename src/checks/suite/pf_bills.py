@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.30
+# GRANITE_VERSION: 2026-11-16.32
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -7204,7 +7204,7 @@ def _movers_of_a_finished_term(B):
         and today["Rep. Nopage"], f"the current term's movers moved: {today}"
     assert not any(older.values()), f"a term with no frozen roster linked a mover: {older}"
     src = _source(_paths.locate("build_site_v2.py"))
-    assert "mover_pool(term, current, legs, term_rosters, _people)" in src and \
+    assert "mover_pool(term, current, legs, term_rosters, _people, voters)" in src and \
         'mover_member(r["mover"], r.get("body"), _mpool, pages=_mpages)' in src, (
             "build_bills no longer looks for a roll call's mover among the term's own members")
     return "ok", ("after the turn and between Organization Day and the switch, 2025-2026's movers "
@@ -7253,6 +7253,230 @@ def _story_people_of_a_finished_term(B):
         "build_bills no longer looks for the story's members among the term's own members")
     return "ok", ("after the turn a 2025-2026 story names Alexander by Hills 29, linked to his "
                   "page now, and Pat Gone, not the newcomer; the current term as before")
+
+
+@check("build", "a mover of 1999-2024 is linked among that term's own voters, by the seat the "
+                "term gives them", needs=("build_site_v2",))
+def _movers_of_older_terms(B):
+    """The owner, 19 November 2026: "Yes, link them". A roll call's mover in a
+    term before the current one, and with no frozen roster, is looked for
+    among the members whose own ballots of that term were cast in that
+    chamber (term_voters), named by the seat the term gives them (term_seats,
+    the seat a session day names them by) and linked to the page their
+    ballots are on (`people`). Here, in the shape of the real record: Robert
+    Letourneau, a Representative of Rock 77 in 2003-2004 under one number and
+    a Senator of SD19 in 2005-2006 under another, one page; Andy Sanborn,
+    SD7 and then SD9 across the 2012 redistricting; two Eatons voting in the
+    House of 2013-2014, so "Rep. Eaton" stays words
+    while "Rep. Richard Eaton" links; David Boutin, who moved to the Senate in
+    2010 and whom the term gives a House seat only, unlinked as a Senator; no
+    one in 1989-1990, which has no ballots; and the current term still the
+    sitting roster's, whatever its ballots say. And floor_record.json is the
+    same whether main works the seats out before the bills or it does."""
+    def ballot(mid, name, body, year, label):
+        return {"member_id": mid, "name": name, "body": body, "year": year,
+                "date": f"{year}-03-01", "party": "R", "label": label, "vote": "Yea",
+                "bill": "HB1", "vote_number": "1"}
+    votes = {
+        "376142": [ballot("376142", "Letourneau, Robert", "H", "2003",
+                          "Rep. Robert Letourneau (R - Rock 77)")],
+        "209060": [ballot("209060", "Letourneau, Robert", "S", "2005",
+                          "Sen. Robert Letourneau (R - SD19)")],
+        "39": [ballot("39", "Sanborn, Andy", "S", "2011", "Sen. Andy Sanborn (R - SD7)"),
+               ballot("39", "Sanborn, Andy", "S", "2013", "Sen. Andy Sanborn (R - SD9)")],
+        "101": [ballot("101", "Eaton, Daniel", "H", "2013", "Rep. Daniel Eaton (D - Ches 9)")],
+        "102": [ballot("102", "Eaton, Richard", "H", "2013", "Rep. Richard Eaton (D - Hills 38)")],
+        "37": [ballot("37", "Boutin, David", "H", "2009", "Rep. David Boutin (R - Merr 9)"),
+               ballot("37", "Boutin, David", "S", "2010", "Sen. David Boutin (R - SD16)")],
+        "201": [ballot("201", "Smith, Ann", "H", "2025", "Rep. Ann Smith (R - Rock 1)")],
+        "202": [ballot("202", "Smith, Jane", "H", "2025", "Rep. Jane Smith (R - Rock 13)")]}
+    seats = {"2003-2004": {"376142": "Rep. Robert Letourneau (R - Rock 77)"},
+             "2005-2006": {"209060": "Sen. Robert Letourneau (R - SD19)"},
+             "2011-2012": {"39": "Sen. Andy Sanborn (R - SD7)"},
+             "2013-2014": {"39": "Sen. Andy Sanborn (R - SD9)",
+                           "101": "Rep. Daniel Eaton (D - Ches 9)",
+                           "102": "Rep. Richard Eaton (D - Hills 38)"},
+             "2009-2010": {"37": "Rep. David Boutin (R - Merr 9)"}}
+    letourneau = {"id": "209060", "slug": "robert-letourneau-sd-19"}
+    people = {"376142": letourneau, "209060": letourneau,
+              "39": {"id": "39", "slug": "andy-sanborn-sd-9"},
+              "101": {"id": "101", "slug": "daniel-eaton-ches-9"},
+              "102": {"id": "102", "slug": "richard-eaton-hills-38"},
+              "37": {"id": "37", "slug": "david-boutin-sd-16"}}
+    legs = {"202": {"id": "202", "name": "Smith, Jane", "chamber": "H", "party_code": "R",
+                    "county": "Rockingham", "county_abbr": "Rock", "district": "13"}}
+    voters = B.term_voters(votes, seats)
+    asked = (("2003-2004", "H", "Rep Letourneau"), ("2005-2006", "S", "Sen. Letourneau"),
+             ("2003-2004", "S", "Sen. Letourneau"),
+             ("2011-2012", "S", "Sen. Sanborn"), ("2013-2014", "S", "Sen. Sanborn"),
+             ("2013-2014", "H", "Rep. Eaton"), ("2013-2014", "H", "Rep. Richard Eaton"),
+             ("2009-2010", "S", "Sen. Boutin"), ("2009-2010", "H", "Rep. Boutin"),
+             ("1989-1990", "H", "Rep. Letourneau"), ("2025-2026", "H", "Rep. Smith"))
+    keep_slugs, keep_spell = dict(B._OWN_SLUG), list(B._SPELLINGS)
+    got = {}
+    try:
+        B._SPELLINGS[:] = [{}]
+        for term, body, said in asked:
+            B._OWN_SLUG.clear()
+            pool, pages = B.mover_pool(term, "2025-2026", legs, {}, people, voters)
+            got[(term, said)] = (B.mover_member(said, body, pool, pages=pages)
+                                 if pool is not None else None)
+    finally:
+        B._OWN_SLUG.clear()
+        B._OWN_SLUG.update(keep_slugs)
+        B._SPELLINGS[:] = keep_spell
+    L = "robert-letourneau-sd-19"
+    want = {("2003-2004", "Rep Letourneau"): {"label": "Rep. Robert Letourneau (R - Rock 77)",
+                                              "slug": L},
+            ("2005-2006", "Sen. Letourneau"): {"label": "Sen. Robert Letourneau (R - SD19)",
+                                               "slug": L},
+            ("2003-2004", "Sen. Letourneau"): None,
+            ("2011-2012", "Sen. Sanborn"): {"label": "Sen. Andy Sanborn (R - SD7)",
+                                            "slug": "andy-sanborn-sd-9"},
+            ("2013-2014", "Sen. Sanborn"): {"label": "Sen. Andy Sanborn (R - SD9)",
+                                            "slug": "andy-sanborn-sd-9"},
+            ("2013-2014", "Rep. Eaton"): None,
+            ("2013-2014", "Rep. Richard Eaton"): {"label": "Rep. Richard Eaton (D - Hills 38)",
+                                                  "slug": "richard-eaton-hills-38"},
+            ("2009-2010", "Sen. Boutin"): None,
+            ("2009-2010", "Rep. Boutin"): {"label": "Rep. David Boutin (R - Merr 9)",
+                                           "slug": "david-boutin-sd-16"},
+            ("1989-1990", "Rep. Letourneau"): None,
+            ("2025-2026", "Rep. Smith"): {"label": "Rep. Jane Smith (R - Rock 13)",
+                                          "slug": "jane-smith-rock-13"}}
+    bad = [f"{t} {s!r} is {got.get((t, s))!r}, not {w!r}" for (t, s), w in want.items()
+           if got.get((t, s)) != w]
+    assert not bad, "a mover of an older term: " + "; ".join(bad)
+    # floor_record.json, the seats worked out by main beforehand or by itself
+    root = Path(tempfile.mkdtemp(prefix="gr-older-movers-"))
+    try:
+        (root / "a").mkdir()
+        (root / "b").mkdir()
+        import contextlib
+        import io
+        rec = ({}, set(), {})
+        balls = {}
+        worked = (B.term_seats(votes, record=rec, ballots=balls), balls)
+        with contextlib.redirect_stdout(io.StringIO()):
+            a = B.write_floor_record(root / "a", votes, {}, record=rec).read_bytes()
+            b = B.write_floor_record(root / "b", votes, {}, record=rec, worked=worked).read_bytes()
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert a == b, "floor_record.json differs when main works the seats out before the bills"
+    src = _source(_paths.locate("build_site_v2.py"))
+    assert "mover_pool(term, current, legs, term_rosters, _people, voters)" in src and \
+        "voters = term_voters(votes_by_member, floor_seats)" in src and \
+        "tagging=tagging, voters=voters)" in src and "worked=(floor_seats, floor_ballots))" in src, (
+            "build_bills is not handed each term's voters, or the session days another seat")
+    return "ok", ("Letourneau linked as Rep. of Rock 77 and Sen. of SD19 to his one page, Sanborn "
+                  "by SD7 and then SD9, Rep. Eaton (two that term) and Sen. Boutin (no Senate "
+                  "seat of the term) left as words, 1989-1990 none, the current term the "
+                  "sitting roster's; floor_record.json the same either way")
+
+
+# A SAMPLE OF THE OLDER TERMS' MOVERS AS THE BUILT RECORDS MUST CARRY THEM (19 November 2026),
+# each read beside the member's own ballots of that term and the seat floor_record gives them:
+# (term, bill, the docket's mover) -> (label, page), or None where the name must stay words.
+OLDER_MOVERS = {
+    ("1999-2000", "SB224", "Sen. Cohen"): ("Sen. Burton Cohen (D - SD24)", "burton-cohen-sd-24"),
+    ("1999-2000", "HB331", "Sen. Gordon"): ("Sen. Edward (Ned) Gordon (R - SD2)",
+                                            "edward-gordon-graf-9"),
+    ("2021-2022", "HB236", "Rep. Gordon"): ("Rep. Edward Gordon (R - Graf 9)", "edward-gordon-graf-9"),
+    ("2003-2004", "SB427", "Rep Letourneau"): ("Rep. Robert Letourneau (R - Rock 77)",
+                                               "robert-letourneau-sd-19"),
+    ("2005-2006", "HB84", "Sen. Letourneau"): ("Sen. Robert Letourneau (R - SD19)",
+                                               "robert-letourneau-sd-19"),
+    ("2011-2012", "HB187", "Sen. Sanborn"): ("Sen. Andy Sanborn (R - SD7)", "andy-sanborn-sd-9"),
+    ("2013-2014", "HB253", "Sen. Sanborn"): ("Sen. Andy Sanborn (R - SD9)", "andy-sanborn-sd-9"),
+    ("2017-2018", "HB84", "Sen. Giuda"): ("Sen. Bob Giuda (R - SD2)", "bob-giuda-sd-2"),
+    ("2023-2024", "HB221", "Sen. Howard Pearl"): ("Sen. Howard Pearl (R - SD17)",
+                                                  "howard-pearl-sd-17"),
+    ("2013-2014", "HB350", "Rep. Eaton"): None,
+    ("2009-2010", "HB1201", "Sen. Boutin"): None,
+}
+
+
+@check("data", "the built records link a sample of 1999-2024's movers by the seat of the term, "
+               "and none of 1989-1998's")
+def _older_movers_sample():
+    """The built records of the terms in OLDER_MOVERS (site/data/bills-<term>.jsonl.gz): each
+    roll call of the bill with that mover carries the label and the page the sample holds --
+    a member of both chambers (Gordon, Letourneau, Pearl) by the chamber and seat of the
+    term, a member across the 2012 redistricting (Sanborn) by each term's district -- or none,
+    where two voters of the term share the name (Eaton) or the term gives no seat in that
+    chamber (Boutin, 2010); and 1993-1994, with no ballots, links no mover at all."""
+    data = Path("site/data")
+    terms = sorted({t for t, _b, _m in OLDER_MOVERS} | {"1993-1994"})
+    missing = [t for t in terms if not (data / f"bills-{t}.jsonl.gz").is_file()]
+    if missing:
+        return "skip", f"site/data has no bills-{missing[0]}.jsonl.gz: the site is not built here"
+    import gzip
+    got, linked_93 = {}, 0
+    for t in terms:
+        with gzip.open(data / f"bills-{t}.jsonl.gz", "rt", encoding="utf-8") as f:
+            for line in f:
+                r = json.loads(line)
+                for rc in r.get("rollcalls") or []:
+                    k = (t, r.get("id"), rc.get("mover"))
+                    if t == "1993-1994":
+                        linked_93 += bool(rc.get("mover_m"))
+                    elif k in OLDER_MOVERS:
+                        m = rc.get("mover_m")
+                        got.setdefault(k, set()).add((m["label"], m["slug"]) if m else None)
+    bad = [f"{t} {b} {mv!r}: {sorted(got.get((t, b, mv), []), key=str) or 'no such roll call'}, "
+           f"not {w!r}" for (t, b, mv), w in OLDER_MOVERS.items() if got.get((t, b, mv)) != {w}]
+    assert not bad, "the built records' movers of older terms: " + "; ".join(bad)
+    assert not linked_93, f"{linked_93} mover(s) of 1993-1994 linked, a term with no ballots"
+    return "ok", (f"{sum(1 for w in OLDER_MOVERS.values() if w)} movers of 1999-2024 linked as the "
+                  f"sample holds, {sum(1 for w in OLDER_MOVERS.values() if not w)} left as words, "
+                  "none of 1993-1994")
+
+
+@check("build", "the members a 1999-2024 story names are linked among that term's own voters, "
+                "by the seat the term gives them", needs=("build_site_v2",))
+def _story_people_of_older_terms(B):
+    """The owner, 19 November 2026, "Yes, link them", of a bill's written history as well
+    as its roll calls: story_people looks the names up where the term's movers are looked
+    up (mover_pool), so a story of 2003-2004 names Rep. Robert Letourneau by Rock 77,
+    linked to his one page, though he sat in the Senate after; "Rep. Eaton", two voters
+    of 2013-2014, stays words, and "Rep. Richard Eaton" links; build_bills hands the
+    story the movers' pool (_story_people_of_a_finished_term holds the call)."""
+    def ballot(mid, name, body, year):
+        return {"member_id": mid, "name": name, "body": body, "year": year,
+                "date": f"{year}-03-01", "party": "R"}
+    votes = {"376142": [ballot("376142", "Letourneau, Robert", "H", "2003")],
+             "209060": [ballot("209060", "Letourneau, Robert", "S", "2005")],
+             "101": [ballot("101", "Eaton, Daniel", "H", "2013")],
+             "102": [ballot("102", "Eaton, Richard", "H", "2013")]}
+    seats = {"2003-2004": {"376142": "Rep. Robert Letourneau (R - Rock 77)"},
+             "2005-2006": {"209060": "Sen. Robert Letourneau (R - SD19)"},
+             "2013-2014": {"101": "Rep. Daniel Eaton (D - Ches 9)",
+                           "102": "Rep. Richard Eaton (D - Hills 38)"}}
+    page = {"id": "209060", "slug": "robert-letourneau-sd-19"}
+    people = {"376142": page, "209060": page, "101": {"id": "101", "slug": "daniel-eaton-ches-9"},
+              "102": {"id": "102", "slug": "richard-eaton-hills-38"}}
+    voters = B.term_voters(votes, seats)
+    keep_slugs, keep_spell = dict(B._OWN_SLUG), list(B._SPELLINGS)
+    got = {}
+    try:
+        B._SPELLINGS[:] = [{}]
+        for term, text in (("2003-2004", "Rep. Letourneau moved to table; Sen. Letourneau spoke."),
+                           ("2013-2014", "Rep. Eaton moved; Rep. Richard Eaton offered an amendment.")):
+            B._OWN_SLUG.clear()
+            pool, pages = B.mover_pool(term, "2025-2026", {}, {}, people, voters)
+            got[term] = {p["text"]: (p["label"], p["slug"])
+                         for p in B.story_people([text], pool, pages=pages)}
+    finally:
+        B._OWN_SLUG.clear()
+        B._OWN_SLUG.update(keep_slugs)
+        B._SPELLINGS[:] = keep_spell
+    want = {"2003-2004": {"Rep. Letourneau": ("Rep. Robert Letourneau (R - Rock 77)",
+                                              "robert-letourneau-sd-19")},
+            "2013-2014": {"Rep. Richard Eaton": ("Rep. Richard Eaton (D - Hills 38)",
+                                                 "richard-eaton-hills-38")}}
+    assert got == want, f"an older term's story names {got}, not {want}"
+    return "ok", ("a story of 2003-2004 names Rep. Letourneau by Rock 77 and no Senator of that "
+                  "term; of 2013-2014 Rep. Richard Eaton, and Rep. Eaton, two of them, as words")
 
 
 @check("build", "the bill-text fetch saves only the bill it asked for, and stops when told no",
