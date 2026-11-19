@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-18.1
+# GRANITE_VERSION: 2026-11-18.2
 """
 The Secretary of State's count of the State Primary's races for Governor,
 United States Senator, Representative in Congress, Executive Councilor and
 the county offices, 2016 to 2026, each party's primary its own race. Read by
 parse_sos_primary_results.read_year into the same collected/primary_<year>.json
 as the House and Senate races (that reader writes the file; this one only
-reads), so that one writer writes the year whole. Nothing on the site reads
-these files yet.
+reads), so that one writer writes the year whole. The site reads that file:
+src/pages/build_member_elections.py draws a member's primaries from it.
 
 WHAT IT READS, in records/sources/, saved by a person in a browser byte for
 byte under the names the Secretary of State gave them (nothing here asks the

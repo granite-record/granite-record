@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-18.3
+# GRANITE_VERSION: 2026-11-18.5
 """
 The Secretary of State's count of the State Primary's State Representative
 and State Senate races, 2016 to 2026, each party's primary its own contest,
 read into collected/primary_<year>.json beside the other offices' primaries,
 which parse_sos_primary_offices reads and this writes (the elections display's data: every
 official's whole election record, primaries included, the owner's word of
-19 November 2026). Nothing on the site reads these files yet.
+19 November 2026). The site reads them: src/pages/build_member_elections.py
+draws a member's primaries on their Elections tab from every
+collected/primary_*.json (primaries_on_file), with each race's margin from
+src/pages/election_margin.py.
 
     python3 src/parse/parse_sos_primary_results.py --year 2024     # write one year
     python3 src/parse/parse_sos_primary_results.py --all           # every year on disk
@@ -70,7 +73,9 @@ cannot read is listed in "_refused" with why, and its races are not written;
 a race it cannot settle is refused alone, and listed. A race whose column of
 places does not add up to the Totals the file prints for it is one of those
 (19 November 2026: one such race in the 2026 Strafford Democratic file had
-taken the county's other twenty with it): listed in "_refused" by race and
+taken the county's other twenty with it), and so is a candidate twice or a
+block whose towns are not the district's (20 November 2026: 2016 Rockingham
+D, 2022 Belknap, Cheshire and Merrimack D): listed in "_refused" by race and
 printed as a REFUSED line, which figure is right never guessed. The rest of
 the year is written. Files of the primary that are not these races (presidential
 primaries, ballots cast, names on the checklist, delegates to a party's
@@ -389,8 +394,8 @@ def read_senate(path, election, legacy, span, notes, alone=None):
     for n, d in found.items():
         try:
             out[n] = PSR.district(d["blocks"], 1, d["where"], nominate, "nominated")
-        except PSR.Disagrees as e:
-            if alone is None:
+        except PSR.Refused as e:
+            if alone is None or not PSR.race_alone(e):
                 raise
             alone.append({"district": n, "where": d["where"], "why": str(e)})
             continue

@@ -29,6 +29,7 @@
    "2026-sp-house-hillsborough-democratic.xlsx, sheet 'rhillrep', row 62: the header prints 'Tim Coffin', read as the candidate 'Tim Coffin', whose party the file leaves out",
    "2026-sp-house-hillsborough-democratic.xlsx, district 32: D|H|Hillsborough|32: Diane Kelley not settled by the count -- a tie for the last place, or the write-ins nobody named (29) could have taken it",
    "2026-sp-house-hillsborough-democratic.xlsx: 100 empty cell(s) under a candidate, read as none",
+   "2026-sp-house-hillsborough-republican.xlsx, sheet 'rhillrep', row 10: the Totals row sums scatter over the district's blocks of rows together (=SUM(L7,L9)), and is held to that, 25",
    "2026-sp-house-hillsborough-republican.xlsx, district 3: R|H|Hillsborough|3: Suzanne A. Beaulieu, Fred Davis not settled by the count -- a tie for the last place, or the write-ins nobody named (18) could have taken it",
    "2026-sp-house-hillsborough-republican.xlsx, district 4: R|H|Hillsborough|4: Renae Lias, Linda Vandecar Ryan not settled by the count -- a tie for the last place, or the write-ins nobody named (31) could have taken it",
    "2026-sp-house-hillsborough-republican.xlsx, district 5: R|H|Hillsborough|5: Heather Raymond, Dale Swanson not settled by the count -- a tie for the last place, or the write-ins nobody named (53) could have taken it",
@@ -37,6 +38,8 @@
    "2026-sp-house-hillsborough-republican.xlsx, district 9: R|H|Hillsborough|9: Rich Green, Santosh D. Salvi not settled by the count -- a tie for the last place, or the write-ins nobody named (41) could have taken it",
    "2026-sp-house-hillsborough-republican.xlsx, district 10: R|H|Hillsborough|10: Samantha O'Loughlin not settled by the count -- a tie for the last place, or the write-ins nobody named (2) could have taken it",
    "2026-sp-house-hillsborough-republican.xlsx, district 11: R|H|Hillsborough|11: Will Darby, Arya Shams not settled by the count -- a tie for the last place, or the write-ins nobody named (20) could have taken it",
+   "2026-sp-house-hillsborough-republican.xlsx, sheet 'rhillrep', row 33: the Totals row sums scatter over the district's blocks of rows together (=SUM(L30,L32)), and is held to that, 20",
+   "2026-sp-house-hillsborough-republican.xlsx, sheet 'rhillrep', row 38: the Totals row sums scatter over the district's blocks of rows together (=SUM(L35,L37)), and is held to that, 40",
    "2026-sp-house-hillsborough-republican.xlsx, district 17: R|H|Hillsborough|17: Sean Parr not settled by the count -- a tie for the last place, or the write-ins nobody named (16) could have taken it",
    "2026-sp-house-hillsborough-republican.xlsx, district 18: R|H|Hillsborough|18: James Normand not settled by the count -- a tie for the last place, or the write-ins nobody named (6) could have taken it",
    "2026-sp-house-hillsborough-republican.xlsx, district 21: R|H|Hillsborough|21: Jeff Goley not settled by the count -- a tie for the last place, or the write-ins nobody named (18) could have taken it",
@@ -174,21 +177,6 @@
    "2026-sp-county-offices-sullivan-republican.xlsx, sheet 'dsullivan gov', row 68: R|county-commissioner|Sullivan|3: No Election; no race is read"
  ],
  "_refused": [
-   {
-     "file": "2026-sp-house-hillsborough-republican.xlsx",
-     "race": "R|H|Hillsborough|2",
-     "why": "2026-sp-house-hillsborough-republican.xlsx, sheet 'rhillrep', row 10: scatter's column adds up to 0 and the file's Totals say 25"
-   },
-   {
-     "file": "2026-sp-house-hillsborough-republican.xlsx",
-     "race": "R|H|Hillsborough|12",
-     "why": "2026-sp-house-hillsborough-republican.xlsx, sheet 'rhillrep', row 33: scatter's column adds up to 0 and the file's Totals say 20"
-   },
-   {
-     "file": "2026-sp-house-hillsborough-republican.xlsx",
-     "race": "R|H|Hillsborough|13",
-     "why": "2026-sp-house-hillsborough-republican.xlsx, sheet 'rhillrep', row 38: scatter's column adds up to 0 and the file's Totals say 40"
-   },
    {
      "file": "2026-sp-house-strafford-democratic.xlsx",
      "race": "D|H|Strafford|3",
@@ -1133,6 +1121,21 @@
     {"name": "Pat MacMonagle", "party": "r", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Kristin Noble", "party": "r", "votes": 0, "write_in": false, "nominated": false},
     {"name": "John Schneller", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
+  "R|H|Hillsborough|2": {"party": "r", "seats": 7, "floterial": false, "towns": ["Bedford"], "scatter": 25, "printed_totals": 1, "candidates": [
+    {"name": "Matthew Castanien", "party": "r", "votes": 1445, "write_in": false, "nominated": true},
+    {"name": "Phil Greazzo", "party": "r", "votes": 1480, "write_in": false, "nominated": true},
+    {"name": "Peter M. Kujawski", "party": "r", "votes": 1569, "write_in": false, "nominated": true},
+    {"name": "Brian Labrie", "party": "r", "votes": 1570, "write_in": false, "nominated": true},
+    {"name": "Pat MacMonagle", "party": "r", "votes": 1419, "write_in": false, "nominated": true},
+    {"name": "Kristin Noble", "party": "r", "votes": 1574, "write_in": false, "nominated": true},
+    {"name": "John Schneller", "party": "r", "votes": 1550, "write_in": false, "nominated": true},
+    {"name": "Todd C. Fahey", "party": "d", "votes": 3, "write_in": false, "nominated": false},
+    {"name": "John K. Fitzgerald", "party": "d", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Jeff Kerr", "party": "d", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Ryan Nugent", "party": "d", "votes": 2, "write_in": false, "nominated": false},
+    {"name": "Sheila Quick", "party": "d", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Catherine A. Rombeau", "party": "d", "votes": 3, "write_in": false, "nominated": false},
+    {"name": "Geoffrey Wellington", "party": "d", "votes": 3, "write_in": false, "nominated": false}]},
   "D|H|Hillsborough|3": {"party": "d", "seats": 3, "floterial": false, "towns": ["Nashua Ward 4"], "scatter": 2, "printed_totals": 0, "candidates": [
     {"name": "Michael P. Aksten", "party": "d", "votes": 265, "write_in": false, "nominated": true},
     {"name": "Suzanne A. Beaulieu", "party": "d", "votes": 317, "write_in": false, "nominated": true},
@@ -1246,6 +1249,23 @@
     {"name": "Adam Presa", "party": "r", "votes": 2, "write_in": false, "nominated": false},
     {"name": "Kevin Southwick", "party": "r", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Wolfram von Schoen", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
+  "R|H|Hillsborough|12": {"party": "r", "seats": 8, "floterial": false, "towns": ["Merrimack"], "scatter": 20, "printed_totals": 1, "candidates": [
+    {"name": "Kevin Francis Ballantine", "party": "r", "votes": 1481, "write_in": false, "nominated": true},
+    {"name": "Bill Boyd", "party": "r", "votes": 1659, "write_in": false, "nominated": true},
+    {"name": "Julie Miles", "party": "r", "votes": 1527, "write_in": false, "nominated": true},
+    {"name": "Maureen Mooney", "party": "r", "votes": 1785, "write_in": false, "nominated": true},
+    {"name": "Jeanine Notter", "party": "r", "votes": 1781, "write_in": false, "nominated": true},
+    {"name": "Adam Presa", "party": "r", "votes": 1591, "write_in": false, "nominated": true},
+    {"name": "Kevin Southwick", "party": "r", "votes": 1550, "write_in": false, "nominated": true},
+    {"name": "Wolfram von Schoen", "party": "r", "votes": 1582, "write_in": false, "nominated": true},
+    {"name": "Rebecca Boutin", "party": "d", "votes": 2, "write_in": false, "nominated": false},
+    {"name": "Matthew Brown", "party": "d", "votes": 3, "write_in": false, "nominated": false},
+    {"name": "Nancy A. Murphy", "party": "d", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Marc Nozell", "party": "d", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Mary Beth Raven", "party": "d", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Heather Robitaille", "party": "d", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Rosemarie L. Rung", "party": "d", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Wendy E. N Thomas", "party": "d", "votes": 1, "write_in": false, "nominated": false}]},
   "D|H|Hillsborough|13": {"party": "d", "seats": 6, "floterial": false, "towns": ["Hudson"], "scatter": 135, "printed_totals": 0, "candidates": [
     {"name": "Luan Baci", "party": "d", "votes": 1240, "write_in": false, "nominated": true},
     {"name": "James Battis", "party": "d", "votes": 1252, "write_in": false, "nominated": true},
@@ -1260,6 +1280,18 @@
     {"name": "Tom Trost", "party": "r", "votes": 10, "write_in": false, "nominated": false},
     {"name": "Jordan Ulery", "party": "r", "votes": 14, "write_in": false, "nominated": false},
     {"name": "Bob Wherry", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
+  "R|H|Hillsborough|13": {"party": "r", "seats": 6, "floterial": false, "towns": ["Hudson"], "scatter": 40, "printed_totals": 1, "candidates": [
+    {"name": "Dillon Dumont", "party": "r", "votes": 1268, "write_in": false, "nominated": true},
+    {"name": "Cathy Kenny", "party": "r", "votes": 1204, "write_in": false, "nominated": true},
+    {"name": "Andrew Prout", "party": "r", "votes": 1309, "write_in": false, "nominated": true},
+    {"name": "Jeremy Slottje", "party": "r", "votes": 1010, "write_in": false, "nominated": false},
+    {"name": "Tom Trost", "party": "r", "votes": 1226, "write_in": false, "nominated": true},
+    {"name": "Jordan Ulery", "party": "r", "votes": 1272, "write_in": false, "nominated": true},
+    {"name": "Bob Wherry", "party": "r", "votes": 1149, "write_in": false, "nominated": true},
+    {"name": "Luan Baci", "party": "d", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "James Battis", "party": "d", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "James M. Caron", "party": "d", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Kate Messner", "party": "d", "votes": 1, "write_in": false, "nominated": false}]},
   "D|H|Hillsborough|14": {"party": "d", "seats": 2, "floterial": false, "towns": ["Litchfield"], "scatter": 3, "printed_totals": 0, "candidates": [
     {"name": "Ray Ealy", "party": "d", "votes": 463, "write_in": false, "nominated": true},
     {"name": "Paula Paciulan", "party": "d", "votes": 554, "write_in": false, "nominated": true},

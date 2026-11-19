@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.25
+# GRANITE_VERSION: 2026-11-16.28
 """
 preflight's checks of members-elect and election results.
 
@@ -4645,6 +4645,121 @@ def _results_refuse_one_race(P):
                   "in the summary, and still making the district over it a floterial")
 
 
+@check("build", "State Primary and general results: whatever settling one district refuses -- a "
+                "candidate twice, a block whose towns are not the district's -- refuses that race "
+                "alone, while what is the file's own (a district twice) still refuses the file",
+       needs=("parse_sos_primary_results",))
+def _results_refuse_race_faults(P):
+    """EVERY REFUSAL district() MAKES IS ITS RACE'S (20 November 2026):
+    "Hynes twice in one district" took 2016's Rockingham Democratic file
+    with it, and "Quevedo twice", "Burns twice" and a block short of
+    Gilford three 2022 Democratic files. Held on a made-up 2018 primary
+    House file: one district names a candidate twice, one has a second
+    block short of a town, one is sound; then the same file with a district
+    twice, which is the file's fault."""
+    try:
+        import openpyxl  # noqa: F401
+    except ImportError:
+        return "skip", "openpyxl is not installed"
+    PSR = P.PSR
+    root = Path(tempfile.mkdtemp(prefix="gr-sos-faults-"))
+    try:
+        d = root / PSR.SOURCES
+        d.mkdir(parents=True)
+        (root / "collected").mkdir()
+        (root / "collected" / "election_2018.json").write_text(json.dumps({"races": {
+            "H|Belknap|1": {"seats": 1, "floterial": False, "towns": ["Alpha"]},
+            "H|Belknap|2": {"seats": 1, "floterial": False, "towns": ["Beta", "Gamma"]},
+            "H|Belknap|3": {"seats": 1, "floterial": False, "towns": ["Delta"]}}}),
+            encoding="utf-8")
+        rows = [["State of New Hampshire - 2018 Primary Election"],
+                ["State Representatives - BELKNAP County - Democratic"], [],
+                ["District No. 1 (1)", "Ash, d", "Bly, d", "Ash, d", "Scatter"],
+                ["Alpha", 10, 8, None, 1],
+                ["District No. 2 (1)", "Cole, d", "Dunn, d", "Scatter"],
+                ["Beta", 20, 4, 0], ["Gamma", 30, 6, 0], ["Totals", 50, 10, 0],
+                [None, "Eve, r", "Fay, r"], ["Gamma", 1, 2],
+                ["District No. 3 (1)", "Gray, d", "Scatter"], ["Delta", 7, 0]]
+        house = d / "2018-sp-house-belknap-democratic.xlsx"
+        _legacy_book(house, rows)
+        doc = P.read_year(root, 2018)
+        assert sorted(doc["races"]) == ["D|H|Belknap|3"], (
+            f"the sound district was not read beside the two the reader cannot settle: "
+            f"{sorted(doc['races'])}; refused {doc.get('_refused')}")
+        why = {r.get("race"): r["why"] for r in doc.get("_refused") or [] if r["file"] == house.name}
+        assert sorted(why) == ["D|H|Belknap|1", "D|H|Belknap|2"] and \
+            "Ash twice in one district" in why["D|H|Belknap|1"] and \
+            "are not the district's" in why["D|H|Belknap|2"], f"each race refused alone, with why: {why}"
+        # A district twice is the file's own fault: the whole file is refused.
+        # (Its seats differ: the 2016-2022 layout reads the same header again,
+        # seats and all, as the district's next block.)
+        _legacy_book(house, rows + [["District No. 3 (2)", "Hale, d", "Scatter"], ["Delta", 1, 0]])
+        again = P.read_year(root, 2018)
+        assert not again["races"] and [(r["file"], r.get("race")) for r in again["_refused"]] == [
+            (house.name, None)] and "district 3 twice" in again["_refused"][0]["why"], (
+            f"a district twice was not the file's refusal: {again.get('_refused')}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert not PSR.race_alone(PSR.Unreadable("x")), "a file this machine cannot open read as a race's"
+    return "ok", ("a candidate twice and a block short of a town each refused alone, the sound district "
+                  "read; a district twice still refuses the file; a file this machine cannot open is "
+                  "never a race's")
+
+
+@check("build", "results readers: a Totals row under a district's later block is held to the whole "
+                "district only where its own formula sums that column's rows in every block, and its "
+                "figure is their sum -- a figure that merely matches, or any other formula, is refused",
+       needs=("parse_sos_results",))
+def _results_totals_across_blocks(PSR):
+    """Block.across (20 November 2026): the 2026 Hillsborough Republican
+    primary file's districts 2, 12 and 13 print a block of Republicans over
+    their one town, a block of Democrats written in over it again, and one
+    Totals row whose write-ins cell is =SUM(L7,L9). Held on made-up blocks,
+    as _elect_2026_layout holds short_sum: the district read with that
+    formula, and refused for each near miss."""
+    fake = Path(tempfile.gettempdir()) / "gr-sos-across-not-a-file.xlsx"
+    key = str(fake.resolve())
+    rep = [{"name": "Ann Ames", "party": "r", "write_in": False, "col": 1, "recount": None},
+           {"name": "Bo Bell", "party": "r", "write_in": False, "col": 2, "recount": None},
+           {"meta": "scatter", "col": 3, "recount": None}]
+    dem = [{"name": "Cy Cole", "party": "d", "write_in": False, "col": 1, "recount": None},
+           {"name": "Di Dunn", "party": "d", "write_in": False, "col": 2, "recount": None},
+           {"meta": "scatter", "col": 3, "recount": None}]
+
+    def district(formula, said=25):
+        PSR._FORMULAS[key] = {("s", 10, 3): formula} if formula else {}
+        a = PSR.Block([dict(e) for e in rep], "f, sheet 's', row 6", source=(fake, "s"))
+        a.rows = [("Bedford", ["Bedford", 100, 90, 25], "f, sheet 's', row 7")]
+        b = PSR.Block([dict(e) for e in dem], "f, sheet 's', row 8", source=(fake, "s"))
+        b.rows = [("Bedford", ["Bedford", 3, 1, None], "f, sheet 's', row 9")]
+        b.totals = (["Totals", 3, 1, said], "f, sheet 's', row 10")
+        return PSR.district([a, b], 2, "f, sheet 's', row 6")
+    try:
+        got = district("=SUM(D7,D9)")
+        assert got["scatter"] == 25 and any("=SUM(D7,D9)" in n for n in got["notes"]), (
+            f"the Totals summing both blocks: scatter {got['scatter']}, notes {got['notes']}")
+        assert [(c["name"], c["votes"], c["elected"]) for c in got["candidates"]] == [
+            ("Ann Ames", 100, True), ("Bo Bell", 90, True), ("Cy Cole", 3, False),
+            ("Di Dunn", 1, False)], f"the count: {got['candidates']}"
+        assert district("=SUM(D7:D7,D9:D9)")["scatter"] == 25, "the same rows as ranges"
+        for formula, said, why in (("=SUM(D9)", 25, "the block's own row alone"),
+                                   ("=SUM(D7,D8,D9)", 25, "a row that is no town's"),
+                                   ("=SUM(C7,C9)", 25, "another column"),
+                                   ("=SUM(D7,C9)", 25, "a cell of another column"),
+                                   (None, 25, "no formula: a figure that merely matches"),
+                                   ("=SUM(D7,D9)", 26, "a figure that is not the rows' sum")):
+            try:
+                district(formula, said)
+                raise AssertionError(f"Totals of {said} with {formula} ({why}) were read")
+            except PSR.Disagrees as e:
+                assert f"say {said}" in str(e), f"{why}: refused, but not for the sum: {e}"
+    finally:
+        PSR._FORMULAS.pop(key, None)
+    return "ok", ("a Totals row whose write-ins cell is =SUM(D7,D9), cells or ranges, held to both "
+                  "blocks; its own row alone, a row no town's, another column, no formula with a "
+                  "matching figure, and a figure not the rows' sum each refused")
+
+
 @check("data", "State Primary results: collected/primary_<year>.json is what the saved files say, "
                "each race's nominees no more than its seats and every unsettled one said",
        needs=("parse_sos_primary_results",))
@@ -4726,6 +4841,70 @@ def _primary_strafford_2026_d_races(P):
                   "Samuel Chouinard 799")
 
 
+@check("data", "State Primary results: the four files one district's fault once refused whole -- 2016 "
+               "Rockingham D, 2022 Belknap, Cheshire and Merrimack D -- yield their other races, "
+               "that district alone refused",
+       needs=("parse_sos_primary_results",))
+def _primary_race_faults_on_file(P):
+    """The committed documents (20 November 2026): each file is read, its one
+    race listed in _refused with the fault district() met, and its others
+    written. _primary_read_again holds the documents to the saved files."""
+    want = {2016: ("2016-sp-rockingham-house-democratic.xls", "D|H|Rockingham|", 37, 5,
+                   "Hynes twice in one district"),
+            2022: [("2022-sp-house-belknap-democratic.xls", "D|H|Belknap|", 8, 6,
+                    "are not the district's"),
+                   ("2022-sp-house-cheshire-democratic.xls", "D|H|Cheshire|", 18, 11,
+                    "Quevedo twice in one district"),
+                   ("2022-sp-house-merrimack-democratic_0.xls", "D|H|Merrimack|", 30, 3,
+                    "Burns twice in one district")]}
+    lines = []
+    for y, files in want.items():
+        path = P.out_path(y)
+        if not path.is_file():
+            return "skip", f"{path.as_posix()} is not here"
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        read = {Path(s["file"]).name for s in doc["_source"]}
+        for name, stem, last, bad, why in (files if isinstance(files, list) else [files]):
+            got = sorted(int(k[len(stem):]) for k in doc["races"] if k.startswith(stem))
+            assert got == [n for n in range(1, last + 1) if n != bad], (
+                f"{y} {stem}*: {got}, where 1 to {last} but {bad} belong")
+            listed = [r for r in doc.get("_refused") or [] if r["file"] == name]
+            assert [r.get("race") for r in listed] == [f"{stem}{bad}"] and why in listed[0]["why"] \
+                and name in read, f"{y} {name}: {listed}"
+            lines.append(f"{y} {stem}{bad} alone, {len(got)} read")
+    return "ok", "; ".join(lines)
+
+
+@check("data", "State Primary results: the 2026 Hillsborough Republican House file yields all 45 "
+               "races, districts 2, 12 and 13 held to the Totals row that sums their two blocks",
+       needs=("parse_sos_primary_results",))
+def _primary_hillsborough_2026_r_races(P):
+    """The committed 2026 document (20 November 2026): districts 2, 12 and 13
+    of 2026-sp-house-hillsborough-republican.xlsx, whose write-ins Totals
+    are =SUM(L7,L9), =SUM(L30,L32) and =SUM(L35,L37) (Block.across), are
+    read, with the write-ins those cells print and a note of each; nothing
+    of the file is refused. _primary_read_again holds the document to the
+    saved file."""
+    path = P.out_path(2026)
+    if not path.is_file():
+        return "skip", f"{path.as_posix()} is not here"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    name = "2026-sp-house-hillsborough-republican.xlsx"
+    got = sorted(int(k.rsplit("|", 1)[1]) for k in doc["races"]
+                 if k.startswith("R|H|Hillsborough|"))
+    assert got == list(range(1, 46)), f"R|H|Hillsborough: {got}"
+    listed = [r for r in doc.get("_refused") or [] if r["file"] == name]
+    assert not listed, f"refused from {name}: {listed}"
+    for n, cells, said in ((2, "=SUM(L7,L9)", 25), (12, "=SUM(L30,L32)", 20),
+                           (13, "=SUM(L35,L37)", 40)):
+        race = doc["races"][f"R|H|Hillsborough|{n}"]
+        assert race["scatter"] == said, f"R|H|Hillsborough|{n}'s write-ins: {race['scatter']}"
+        assert any(name in t and f"({cells})" in t for t in doc.get("_notes") or []), (
+            f"R|H|Hillsborough|{n}: the Totals summing its blocks is not said")
+    return "ok", ("R|H|Hillsborough 1 to 45 read, none refused; 2, 12 and 13 held to =SUM(L7,L9), "
+                  "=SUM(L30,L32) and =SUM(L35,L37): write-ins 25, 20 and 40, each said")
+
+
 @check("files", "State Primary results: nothing on the site reads collected/primary_*.json or the "
                 "readers that write them yet -- readers only, until the elections display is decided",
        needs=("parse_sos_primary_results",))
@@ -4767,6 +4946,36 @@ def _primaries_read_by_nothing(P):
     assert not hits, "something reads the State Primary results: " + "; ".join(hits[:8])
     return "ok", (f"no code file but the readers names collected/primary_* or imports them "
                   f"({len(scripts)} scripts and every Python file read)")
+
+
+@check("files", "State Primary results: while a member's Elections tab reads collected/primary_*.json, "
+                "neither primary reader's docstring nor ARCHITECTURE.md says nothing on the site reads "
+                "them",
+       needs=("parse_sos_primary_results", "build_member_elections"))
+def _primary_readers_say_who_reads(P, BMEL):
+    """The wording went stale once (20 November 2026): both readers and
+    ARCHITECTURE.md said nothing on the site read the primary files a day
+    after build_member_elections began drawing them. Where that page step
+    globs them (PRIMARY_RE), the three must say it, not the opposite."""
+    import ast
+    assert BMEL.PRIMARY_RE == "primary_*.json", f"build_member_elections reads {BMEL.PRIMARY_RE!r}"
+    stale = re.compile(r"nothing on the\s+site\s+reads\s+(?:these files|them)\s+yet", re.I)
+    found = []
+    for f in (Path(P.__file__), _paths.ROOT / "src" / "parse" / "parse_sos_primary_offices.py"):
+        doc = ast.get_docstring(_parsed(f)) or ""
+        assert "build_member_elections" in doc, f"{f.name}'s docstring does not say what reads it"
+        if stale.search(doc):
+            found.append(f.name)
+    arch = _source(_paths.ROOT / "ARCHITECTURE.md")
+    at = arch.find("are read by `src/parse/parse_sos_primary_results.py`")
+    assert at >= 0, "ARCHITECTURE.md no longer describes the primary reader"
+    para = arch[at:arch.find("\n\n", at) if arch.find("\n\n", at) > 0 else None]
+    if stale.search(para):
+        found.append("ARCHITECTURE.md")
+    assert "build_member_elections" in para, "ARCHITECTURE.md's primary paragraph names no reader"
+    assert not found, f"says nothing on the site reads the primary files: {', '.join(found)}"
+    return "ok", ("both readers' docstrings and ARCHITECTURE.md name build_member_elections as what "
+                  "reads collected/primary_*.json, and none says nothing does")
 
 
 @check("build", "State Primary results: the other offices' reader reads each party's primary for "

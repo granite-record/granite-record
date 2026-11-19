@@ -2312,10 +2312,17 @@ under it (`recount_under_town`), accepted only where each cell names the
 candidate above it in that column.
 A House race whose column does not add up to the file's Totals is refused
 alone (`Disagrees`, the owner's rule that a slip in the record never takes
-the rest down): `read_house` leaves it out where its caller passes a list
+the rest down), as is whatever else settling the one district refuses -- a
+candidate twice, a block whose towns are not the district's (`race_alone`);
+what is the file's own, its title, county, day or a district twice, still
+refuses the file. `read_house` leaves the race out where its caller passes a list
 for it, the race goes to `_refused` and a REFUSED line, and the file's other
 races are read, a refused base district's towns still telling the floterial
-over it. Which figure is right is never guessed.
+over it. Which figure is right is never guessed. A Totals row under a
+district's later block may sum the column over all its blocks (2026
+Hillsborough R: `=SUM(L7,L9)`); `Block.across` holds it to the whole
+district only where the cell's own formula names exactly those rows and the
+figure is their sum.
 The other offices' results are read by `src/parse/parse_sos_offices.py`
 into `collected/election_offices_<year>.json`, one file a year beside the
 House reader's, and nothing on the site reads them yet (preflight's
@@ -2345,8 +2352,8 @@ cannot settle is refused alone and listed in `_refused`.
 The State Primary's State Representative and State Senate races, 2016 to
 2026, are read by `src/parse/parse_sos_primary_results.py` into
 `collected/primary_<year>.json`, each party's primary its own race (keys
-`D|H|Belknap|1`, `R|S|9`), and nothing on the site reads them yet
-(`_primaries_read_by_nothing`). The layout is the general's, read by the
+`D|H|Belknap|1`, `R|S|9`), which a member's Elections tab draws
+(`build_member_elections.primaries_on_file`, every `primary_*.json`). The layout is the general's, read by the
 House reader's own rules: `read_house`, `Block` and `district` take a
 primary's day as a date carrying the party (`Primary`), whose titles must
 name the primary and that party, and a primary's block reads an empty cell
@@ -2358,8 +2365,9 @@ have taken, is null and said; places no named candidate won are `"open"`.
 Each race is held to the same year's general election, its seats and towns
 (`collected/election_<year>.json`), and a file or race it cannot read is
 listed in `_refused` with where, the rest of the year written; a district
-whose column does not add up to its Totals is refused alone, as the
-general's is, its file's other races read.
+the reader cannot settle -- a column that does not add up to its Totals, a
+candidate twice -- is refused alone, as the general's is, its file's other
+races read.
 The primaries for Governor, United States Senator, Congress, the Council and
 the county offices are read by `src/parse/parse_sos_primary_offices.py` into
 the same file (keys `R|governor`, `D|us-house|1`, `R|sheriff|Belknap`), which

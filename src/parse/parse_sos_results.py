@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.12
+# GRANITE_VERSION: 2026-10-17.14
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -72,13 +72,17 @@ have won -- fewer named candidates than seats, or scattered write-ins as many
 as the last seat's votes; and a file of another election, or a county's file
 twice under one number.
 
-One refusal is a race's alone (19 November 2026; the owner's rule that a slip
-in the official record never takes the rest down, and is flagged): a House
-race whose column does not add up to the Totals the file prints beside it,
-which are the Secretary of State's own sums (Disagrees). That race is not
-written and is listed in "_refused" with its file and why, printed as a
-REFUSED line, which election week reads; which figure is right is never
-guessed. The file's other races, and the year, are written.
+A House race's own refusals are its alone (19 and 20 November 2026; the
+owner's rule that a slip in the official record never takes the rest down,
+and is flagged): a column that does not add up to the Totals the file prints
+beside it, which are the Secretary of State's own sums (Disagrees), and
+whatever else settling the one district refuses -- a candidate twice, a
+block whose towns are not the district's, a write-in who may have won
+(race_alone). That race is not written and is listed in "_refused" with its
+file and why, printed as a REFUSED line, which election week reads; which
+figure is right is never guessed. The file's other races, and the year, are
+written. What is the file's own -- its title, county, day, a district twice
+-- still refuses the file.
 
 THE PERSON'S DECISIONS OF 17 OCTOBER 2026 about the reader, each as
 recommended after the 2024 files were read: a printed floterial mark the
@@ -229,6 +233,18 @@ class Disagrees(Refused):
     race took the county's other twenty with it. read_house refuses the race
     and reads the rest of the file, where its caller asks it to (`alone`);
     which figure is right is never guessed."""
+
+
+def race_alone(e):
+    """Whether refusal `e`, met while one district is settled (district()),
+    is that race's alone. EVERY REFUSAL district() MAKES IS ITS RACE'S (20
+    November 2026): it sees only the district's own blocks, which the file
+    was already split into, so a candidate twice (2016 Rockingham D's
+    Hynes), a block whose towns are not the district's (2022 Belknap D) or
+    a winner the count cannot settle is the race's, and refuses it alone,
+    as a column that does not add up does (Disagrees). A file this machine
+    cannot open (Unreadable) is never a race's."""
+    return isinstance(e, Refused) and not isinstance(e, Unreadable)
 
 
 # ---- cells -------------------------------------------------------------------
@@ -526,6 +542,9 @@ def formulas(path):
 _FORMULAS = {}
 ROW_OF = re.compile(r"row (\d+)$")
 SUM_RANGE = re.compile(r"^=SUM\(([A-Z]{1,3})(\d+):([A-Z]{1,3})(\d+)\)$")
+# A SUM of cells and ranges, "=SUM(L7,L9)" (Block.across), and one of its arguments.
+SUM_ARGS = re.compile(r"^=SUM\(([^()]*)\)$")
+SUM_ARG = re.compile(r"^([A-Z]{1,3})(\d+)(?::([A-Z]{1,3})(\d+))?$")
 
 
 def column_letter(col):
@@ -564,6 +583,9 @@ class Block:
         # (path, sheet name) of the file the block is read from, for its
         # formulas (short_sum); and what reading it flagged, for _notes.
         self.source = source
+        # The district's blocks read before this one, and what reading this
+        # one gave (read): for a Totals row that sums them all (across).
+        self.earlier, self.got = [], None
         self.notes = [f"{where}: the header prints {e['typo'][0]!r}, read as {e['typo'][1]}"
                       for e in ents if e.get("typo")]
         if any(e.get("blc") is not None for e in ents):
@@ -606,6 +628,53 @@ class Block:
             return None
         return (f"{where}: the file's Totals cell is {f}, which leaves out "
                 f"{', '.join(str(t) for t in left)}; read as the towns add up")
+
+    def across(self, where, col, said, e):
+        """A note, or None. A TOTALS ROW MAY SUM THE DISTRICT'S BLOCKS
+        TOGETHER (20 November 2026): the 2026 State Primary's Hillsborough
+        Republican file prints district 2's Republicans and their write-ins
+        over Bedford, then the Democrats written in over Bedford again, then
+        one Totals row, whose write-ins cell is =SUM(L7,L9): both blocks'
+        rows. Held to the whole district only where the cell's own formula
+        is a SUM of exactly that column's town rows in every block of the
+        district that carries it, the earlier blocks' included, and the
+        printed figure is their sum; a figure alone that happens to match
+        is not taken. `e` is the column's entity, a count that is not a
+        candidate's (the write-ins), which a later block carries in the
+        first's column."""
+        if self.source is None or "meta" not in e or not self.earlier:
+            return None
+        path, sheet = self.source
+        line = ROW_OF.search(where)
+        f = formulas(path).get((sheet, int(line.group(1)), col)) if line else None
+        m = SUM_ARGS.match(f or "")
+        if not m:
+            return None
+        letter, cited = column_letter(col), set()
+        for arg in m.group(1).split(","):
+            a = SUM_ARG.match(arg.strip())
+            if not a or a.group(1) != letter or (a.group(3) or letter) != letter:
+                return None
+            lo, hi = int(a.group(2)), int(a.group(4) or a.group(2))
+            if lo > hi:
+                return None
+            cited.update(range(lo, hi + 1))
+        rows, total = set(), 0
+        for b in [*self.earlier, self]:
+            j = next((j for j, x in enumerate(b.ents)
+                      if x.get("meta") == e["meta"] and x["col"] == col), None)
+            if j is None:
+                continue
+            for _town, _row, w in b.rows:
+                n = ROW_OF.search(w)
+                if not n:
+                    return None
+                rows.add(int(n.group(1)))
+            total += sum(v[j][0] or 0 for v in (b.got if b is not self else self.got).values())
+        if rows != cited or total != said:
+            return None
+        return (f"{where}: the Totals row sums {e['meta']} over the district's blocks of rows "
+                f"together ({f}), and is held to that, {said:,}")
 
     def count(self, row, col, meta, where, ent=None):
         v = row[col] if col < len(row) else None
@@ -671,6 +740,7 @@ class Block:
                          for i, e in enumerate(self.ents)}
         if not out:
             raise Refused(f"{self.where}: a header with no rows of counts under it")
+        self.got = out
         if self.totals is None:
             if len(out) > 1:
                 raise Refused(f"{self.where}: {len(out)} towns and no Totals row to hold them to")
@@ -706,6 +776,11 @@ class Block:
                     who = f"{e.get('name') or e['meta']}'s {'recount ' if k else ''}column"
                     note = self.short_sum(where, col, said,
                                           lambda t, i=i, k=k: out[t][i][k] if t in out else None)
+                    if note is None and k == 0:
+                        note = self.across(where, col, said, e)
+                        if note is not None:
+                            self.notes.append(note)
+                            continue
                     if note is None and self.legacy and e.get("meta") == "scatter":
                         # The write-ins nobody named are never drawn and only
                         # bound the unnamed-write-in check; a total that is
@@ -839,7 +914,8 @@ def district(blocks, seats, where, choose=None, mark="elected"):
         cands, meta, towns, nought = {}, {}, None, {}
         recounted = False
         single = None
-        for b in group:
+        for at, b in enumerate(group):
+            b.earlier = group[:at]
             got = b.read(single)
             # THE TOWN ROWS ARE KEPT (12 November 2026): every town's and
             # ward's count of every column, with the row it was read from.
@@ -1135,11 +1211,15 @@ def read_house(path, county, election, legacy=False, alone=None):
     carries the party it is read for as `.party` and its winners rule as
     `.choose`, and its titles say the primary and that party.
 
-    `alone`, a list, takes a district whose column does not add up to its
-    Totals (Disagrees): it is left out of the answer and appended as
+    `alone`, a list, takes a district that district() refuses -- a column
+    that does not add up to its Totals (Disagrees), a candidate twice, a
+    block whose towns are not the district's, a winner the count cannot
+    settle: it is left out of the answer and appended as
     {"district", "seats", "floterial", "towns", "where", "why"}, and the
     file's other districts are read. Without it the whole
-    file is refused, as it always was."""
+    file is refused, as it always was. What is the file's -- its title,
+    county, day, party, a row before any district, a district twice -- is
+    found before any district is settled, and still refuses the file."""
     primary = getattr(election, "party", None)
     got = sheets(path)
     if legacy and path.suffix.lower() == ".html":
@@ -1354,8 +1434,8 @@ def read_house(path, county, election, legacy=False, alone=None):
         try:
             out[n] = (seats, flo, district(blocks, seats, where, getattr(election, "choose", None),
                                            getattr(election, "mark", "elected")))
-        except Disagrees as e:
-            if alone is None:
+        except Refused as e:
+            if alone is None or not race_alone(e):
                 raise
             # The race's places as the file names them, for a caller that
             # tells a floterial from the towns of the districts under it.
@@ -1733,8 +1813,8 @@ def read_all(root, year, districts, saved=None, url=None, partial=False, registr
 
     refused = []
     for county, path in files["house"].items():
-        # A race whose column does not add up to its Totals is refused alone,
-        # and listed in _refused; the file's other races are read (Disagrees).
+        # A race that cannot be settled is refused alone, and listed in
+        # _refused; the file's other races are read (race_alone).
         alone = []
         got = read_house(path, county, election, legacy, alone)
         for n, (seats, flo, rec) in got.items():
@@ -1905,7 +1985,7 @@ def summary(doc):
                f". Every column agrees with the file's Totals but {short} whose Totals formula "
                "leaves out a town (flagged)")
             + " and every race elects its seats."
-            + (f" Refused and not written, a column not adding up to the file's Totals: "
+            + (f" Refused and not written (see _refused for why): "
                + ", ".join(r["race"] for r in doc["_refused"]) + "."
                if doc.get("_refused") else ""))
 
