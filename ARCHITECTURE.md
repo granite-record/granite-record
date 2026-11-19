@@ -2333,6 +2333,23 @@ Strafford's at-large commissioners of 2016-2022 keep their count with no
 winner marked (the files print no number of seats), and a race the reader
 cannot settle is refused alone and listed in `_refused`.
 `_offices_read_again` holds the committed files to the saved ones.
+The State Primary's State Representative and State Senate races, 2016 to
+2026, are read by `src/parse/parse_sos_primary_results.py` into
+`collected/primary_<year>.json`, each party's primary its own race (keys
+`D|H|Belknap|1`, `R|S|9`), and nothing on the site reads them yet
+(`_primaries_read_by_nothing`). The layout is the general's, read by the
+House reader's own rules: `read_house`, `Block` and `district` take a
+primary's day as a date carrying the party (`Primary`), whose titles must
+name the primary and that party, and a primary's block reads an empty cell
+under a candidate as none, because the files name every candidate any place
+wrote in, of every party, and print a count only where a vote came. The
+files mark no nominee: the most votes, as many as the seats and none with
+none, are `"nominated": true`; a tie, or a place the unnamed write-ins could
+have taken, is null and said; places no named candidate won are `"open"`.
+Each race is held to the same year's general election, its seats and towns
+(`collected/election_<year>.json`), and a file or race it cannot read is
+listed in `_refused` with where, the rest of the year written.
+`_primary_read_again` holds the committed files to the saved ones.
 `src/parse/score_members_elect.py` replays the rule on 2024 as of Election
 Day -- sitting and former members from the roll calls before it, each at the
 seat its term's bills printed -- and holds every link to the 2025-2026 roll
