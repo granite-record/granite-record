@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.289
+# GRANITE_VERSION: 2026-09-05.290
 """
 Generate the faceted site from real General Court data.
 
@@ -4073,8 +4073,7 @@ def build_composition(a, legs):
                 seats_by[("H", h["county"], h["district"])] = h.get("seats") or 1
     house_seats = sum(seats_by.values()) or 400
 
-    PARTY_FULL = {"R": "Republican", "D": "Democrat", "I": "Independent",
-                  "L": "Libertarian"}
+    PARTY_FULL = ST.party_words("name")      # the state's one table of parties
     comp = {}
     for ch, label, total in (("H", "House", house_seats), ("S", "Senate", 24)):
         members = [m for m in legs.values() if m["chamber"] == ch]

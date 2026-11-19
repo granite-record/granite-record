@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -1583,9 +1583,9 @@ def _party_table(BE, EN, PE, ST):
 
 
 # EVERY COPY OF THE PARTY TABLE IN THE CODE, 16 November 2026 (stage0-code.md counted six in
-# Python and three in JavaScript; these are every one a search of the code found). Each moves
-# onto the table later, a reader at a time; until then each says what the table says, or is in
-# _PARTY_DIFFERS below. (file, the name it is bound to there, how it is written, what it holds):
+# Python and three in JavaScript; these are every one a search of the code found, 26 then).
+# Each moves onto the table a reader at a time, and off this list onto _PARTY_READERS below;
+# until then each says what the table says, or is in _PARTY_DIFFERS below. (file, the name it is bound to there, how it is written, what it holds):
 #   py     a dict literal bound to the name anywhere in the file: {letter: word} or {form: letter}
 #   say    the dicts of say() calls in the function of that name: {word: say(lang, key, English)}
 #   parts  the function's rows of (count, "er-<letter>", word)
@@ -1596,12 +1596,8 @@ def _party_table(BE, EN, PE, ST):
 #   css    the stylesheet's party inks and tints in each theme, and every class that draws one
 _PARTY_COPIES = (
     ("src/parse/build_data.py", "PARTY", "py", "name"),
-    ("src/pages/build_session_pages.py", "PARTY_WORD", "py", "name"),
-    ("src/pages/build_site_v2.py", "PARTY_FULL", "py", "name"),
-    ("src/pages/officials_tabs.py", "PARTY_OF", "py", "name"),
     ("src/fetch/gc_db/fetch_members_db.py", "PARTY", "py", "name"),
     ("src/fetch/gc_db/fetch_committee_members_db.py", "PARTY", "py", "name"),
-    ("src/pages/structured.py", "PARTY_NAME", "py", "party_name"),
     ("src/pages/build_session_pages.py", "PARTY_LETTER", "py", "spelling"),
     ("src/fetch/gc_web/fetch_rollcall_parties.py", "PARTY", "py", "spelling"),
     ("src/pages/build_site_v2.py", "MANUAL_PARTY", "py", "spelling"),
@@ -1768,9 +1764,10 @@ def _party_table_says(ST, x, form):
 def _party_copies_agree(ST):
     """THE PARTY MAP IS WRITTEN MANY TIMES (stage0-code.md: six times in Python and three in
     JavaScript, with no check holding them together); src/lib/state_settings.json's "parties" is
-    now the one table, and the copies move onto it later. Until each does, every copy
-    _PARTY_COPIES lists -- 26 of them, the letter-to-word maps of the pages, the downloads and the
-    fetchers, the word-to-letter maps, party_word and the elections' bar, the scripts' maps of
+    now the one table, and the copies move onto it a reader at a time (_PARTY_READERS lists those
+    that have, and _party_readers_read_the_table holds them). Until each does, every copy
+    _PARTY_COPIES lists -- 26 of them on 16 November, the letter-to-word maps of the pages, the
+    downloads and the fetchers, the word-to-letter maps, party_word and the elections' bar, the scripts' maps of
     words, inks and counts, the follow emails', the first-letter rules, the translations' English,
     and the stylesheets' inks and tints -- is read where it is, and each thing it says of a party is
     held to the table: the word, plural, adjective and party's own name, a spelling and the letter
@@ -1859,6 +1856,80 @@ def _party_copies_agree(ST):
                   f"the {len(_PARTY_DIFFERS)} listed: the elections' bar and the emails' X, its ink, and the "
                   "first-letter rules' U; app.css's inks and tints are the table's in both themes; no copy "
                   "written anywhere the list does not know")
+
+
+# THE READERS THAT MOVED ONTO THE TABLE (the design's step 3, 19 November 2026). Each kept its own
+# copy of the party table until then and is off _PARTY_COPIES now: (file, the name, the table's
+# view it is bound to, that view's arguments). Each name is bound once, to that call of
+# state_settings, and never written to after, so the table is the one source of what it says.
+_PARTY_READERS = (
+    ("src/pages/build_session_pages.py", "PARTY_WORD", "party_words", ("name",)),
+    ("src/pages/build_site_v2.py", "PARTY_FULL", "party_words", ("name",)),
+    ("src/pages/officials_tabs.py", "PARTY_OF", "party_words", ("name",)),
+    ("src/pages/structured.py", "PARTY_NAME", "party_words", ("party_name",)),
+)
+
+
+def _party_reader_faults(tree, name, fn, args):
+    """What is wrong with `name`'s reading of the table in a parsed file: [] where the name is
+    bound once, to ST.<fn>(*args), and never written to after (an item set, an update, a
+    setdefault, a pop, a del); else the faults, in words."""
+    faults, binds = [], []
+    for n in ast.walk(tree):
+        targets = (n.targets if isinstance(n, ast.Assign) else [n.target] if isinstance(n, (ast.AnnAssign, ast.AugAssign))
+                   else n.targets if isinstance(n, ast.Delete) else [])
+        for t in targets:
+            if isinstance(t, ast.Name) and t.id == name:
+                binds.append(n)
+            elif isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id == name:
+                faults.append(f"line {n.lineno} writes into {name}")
+        if (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name)
+                and n.func.value.id == name and n.func.attr in ("update", "setdefault", "pop", "popitem", "clear")):
+            faults.append(f"line {n.lineno} changes {name} ({n.func.attr})")
+    if len(binds) != 1:
+        faults.append(f"{name} is bound {len(binds)} times, not once")
+    for b in binds:
+        v = getattr(b, "value", None)
+        ok = (isinstance(v, ast.Call) and isinstance(v.func, ast.Attribute) and isinstance(v.func.value, ast.Name)
+              and v.func.value.id == "ST" and v.func.attr == fn and not v.keywords
+              and [a.value if isinstance(a, ast.Constant) else a for a in v.args] == list(args))
+        if not ok:
+            said = ast.unparse(v) if v is not None else type(b).__name__
+            faults.append(f"line {b.lineno} binds {name} to {said[:60]}, not ST.{fn}({', '.join(map(repr, args))})")
+    return faults
+
+
+@check("files", "the readers that kept their own copy of the party table read the state's one table instead, and nothing else",
+       needs=("state_settings",))
+def _party_readers_read_the_table(ST):
+    """THE PARTY TABLE IS READ, NOT COPIED (the design's step 3). The copies _PARTY_READERS names
+    were dicts of their own until 19 November 2026; each is now bound to the table's view of it
+    (state_settings.party_words, party_lookup), which gave the very dict the copy held, so the site
+    did not change by a byte. Held: each name in its file is bound once, to that call, and never
+    written into after; and the views read the table they are given, so a reader follows the
+    table and nothing else. Planted, each must be refused: the dict written back in place of the
+    call, a second view, an item set into it, a view of another form; and a table whose
+    Republican is planted under another word is read under that word."""
+    for path, name, fn, args in _PARTY_READERS:
+        faults = _party_reader_faults(_parsed(_paths.ROOT / path), name, fn, args)
+        assert not faults, f"{path}: " + "; ".join(faults)
+    good = 'import state_settings as ST\nPARTY = ST.party_words("name")\nx = PARTY.get("R")\n'
+    assert _party_reader_faults(ast.parse(good), "PARTY", "party_words", ("name",)) == []
+    for planted in ('PARTY = {"R": "Republican", "D": "Democrat"}\n',
+                    'PARTY = ST.party_words("name")\nPARTY = ST.party_words("name")\n',
+                    'PARTY = ST.party_words("name")\nPARTY["R"] = "Grand Old Party"\n',
+                    'PARTY = ST.party_words("name")\nPARTY.update(R="Grand Old Party")\n',
+                    'PARTY = ST.party_words("plural")\n'):
+        assert _party_reader_faults(ast.parse(planted), "PARTY", "party_words", ("name",)), (
+            f"a planted copy was taken for a reader of the table: {planted!r}")
+    table = copy.deepcopy(ST.PARTIES)
+    table["letters"]["R"]["name"] = "Planted"
+    table["letters"]["R"]["spellings"].append("planted")
+    assert ST.party_words("name", table)["R"] == "Planted" and ST.party_lookup(table)["planted"] == "R", (
+        "the table's views did not read the table they were given")
+    assert ST.party_words("name") == {x: row["name"] for x, row in ST.PARTY.items() if row.get("name")}
+    return "ok", (f"{len(_PARTY_READERS)} readers bound once each to the table's view and never written into; "
+                  "five planted copies refused, and a planted table read as planted")
 
 
 # ---- the one district table, with its eras and every spelling (the design's step 4) --------------

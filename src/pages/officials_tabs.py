@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.23
+# GRANITE_VERSION: 2026-10-10.24
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -58,6 +58,7 @@ import datetime
 import json
 import html as _html
 import re
+import state_settings as ST
 
 import build_date
 import i18n as I
@@ -772,8 +773,8 @@ def kind_words(kind, lang="en"):
 # A name's last word is its surname but for these, which follow one.
 NAME_SUFFIX = re.compile(r",?\s+(?:Jr|Sr|II|III|IV)\.?$", re.I)
 # The party a member-elect's letter stands for, in the roster's words, which
-# build_pages.party_word says in the page's language.
-PARTY_OF = {"R": "Republican", "D": "Democrat", "I": "Independent", "L": "Libertarian"}
+# build_pages.party_word says in the page's language: the state's one table of parties.
+PARTY_OF = ST.party_words("name")
 
 
 def elect_kind(e, key, by_id=None):
