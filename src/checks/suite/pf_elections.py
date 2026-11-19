@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.32
+# GRANITE_VERSION: 2026-11-16.33
 """
 preflight's checks of members-elect and election results.
 
@@ -2229,7 +2229,8 @@ def _member_elections_specials(BMEL):
     """The owner, 19 November 2026 ("Yes to all 9" of reports/money-specials-design/
     specials-and-upcoming.md, A2, A5.4 and A5.5), on a made-up court and a made-up
     collected/specials.json in the reader's shapes: Bea Zane (sitting, Carroll 7) won the special
-    of 10 March 2026 (2,207 to 2,042) after the Democratic special primary of 20 January; Max
+    of 10 March 2026 (2,207 to 2,042; Ned Old, who held the seat in 2015-2016 only, 30, is
+    nobody's: too far from the term) after the Democratic special primary of 20 January; Max
     Teller (a former member, Coos 5) is printed "Max D. Teller" on the Coos 5 special, which is
     not his name letter for letter, so it is on nobody's tab and goes to the owner's list; a
     candidate printed as the roster's Bea Zane in another district gets nothing.
@@ -2242,7 +2243,8 @@ def _member_elections_specials(BMEL):
     elections page, says a tie's re-run, and names the Secretary of State's page in its sources.
     Nothing on a card says whom the winner replaced."""
     sitting = [_mel_member("5001", "Zane", "Bea", "H", "Carroll", "7")]
-    former = [_mel_member("5002", "Teller", "Max", "H", "Coos", "5", "former", ["2025-2026"])]
+    former = [_mel_member("5002", "Teller", "Max", "H", "Coos", "5", "former", ["2025-2026"]),
+              _mel_member("5003", "Old", "Ned", "H", "Carroll", "7", "former", ["2015-2016"])]
     roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
     sp = "2026-03-10.special.house.carroll-7"
     pr = "2026-01-20.primary-d.house.carroll-7"
@@ -2267,6 +2269,7 @@ def _member_elections_specials(BMEL):
            "candidacy": [x(c5, "Max D. Teller", "r", 878, elected=True, first_count=878),
                          x(c5, "Bea Zane", "d", 873, elected=False, first_count=864),
                          x(sp, "Bea Zane", "d", 2207, elected=True), x(sp, "Dee Bloom", "r", 2042, elected=False),
+                         x(sp, "Ned Old", "r", 30, elected=False),
                          x(pr, "Bea Zane", "d", 615)]}
     generals = {"2025-2026": {"races": {
         "H|Carroll|7": {"seats": 1, "floterial": True, "towns": ["Lambda", "Mu"], "candidates": []},
@@ -2285,6 +2288,8 @@ def _member_elections_specials(BMEL):
         and "Lambda, Mu" in s["c"] and 'class="er-row er-me"' in s["c"], f"the special's card: {s['c']}"
     assert (p["cy"], p["pp"], p["r"], p["v"]) == ("2024", "D", "most", 615) and "Unopposed" in p["c"] \
         and "Most votes" in p["c"] and "Elected" not in p["c"], f"the special primary's row: {p}"
+    assert "5003" not in rows and any(r[2] == "Ned Old" and "2015-2016" in r[4] for r in report), (
+        f"Ned Old, who held Carroll 7 in 2015-2016 only, is linked or not listed: {report}")
     assert "5002" not in rows and any(r[2] == "Max D. Teller" for r in report), (
         f"Max D. Teller, not his name letter for letter, is not listed for the owner: {report}")
     assert any(r[2] == "Bea Zane" and "not Coos 5" in r[4] for r in report), (
@@ -2302,6 +2307,9 @@ def _member_elections_specials(BMEL):
         return "ok", "the rows, cards and order held in Python; node, app.js or the stub is not here for the tab"
     heads = re.findall(r'<h3 class="er-cycle">([^<]+)</h3>', html)
     assert heads == ["2026", "2024"], f"the tab's headings: {heads}"
+    under = html.split('<h3 class="er-cycle">2024</h3>', 1)
+    assert "Special election, " in under[1] and "Special election, " not in under[0], (
+        "the March 2026 special is not under the 2024 heading")
     when = re.findall(r'<p class="er-when">(.*?)</p>', html)
     assert when[1].startswith("Special election, ") and "held after the 2024 tie (House Resolution 6)" in when[1] \
         and when[2].startswith("Special primary (Democratic), ") and "<a " not in when[1] + when[2], (
@@ -4790,18 +4798,23 @@ def _primary_day_by_law(P):
                 if where == here and not (Path(here) / "db" / "NH_RSA.psv").is_file():
                     continue
                 os.chdir(where)
-                got = {y: datetime.date(*P.Primary(y, "democratic").timetuple()[:3]) for y in want}
+                try:
+                    got = {y: datetime.date(*P.Primary(y, "democratic").timetuple()[:3]) for y in want}
+                    p = P.Primary(2028, "republican")
+                    try:
+                        P.Primary(2027, "democratic")
+                        odd = None
+                    except P.Refused as e:
+                        odd = str(e)
+                finally:
+                    # Out of the folder before it goes: Windows keeps a folder that is in use.
+                    os.chdir(here)
                 assert got == want, f"the primaries' days ({'no table' if where == bare else 'db/NH_RSA.psv'}): {got}"
-                p = P.Primary(2028, "republican")
                 assert (p.party, p.contest, p.isoformat()) == ("republican", "primary-r", "2028-06-13"), (
                     f"the 2028 Republican primary: {(p.party, p.contest, p.isoformat())}")
-                try:
-                    P.Primary(2027, "democratic")
-                    raise AssertionError("an odd year was given a state primary")
-                except P.Refused as e:
-                    assert "653:8" in str(e), f"refused, but not for the law: {e}"
+                assert odd is not None, "an odd year was given a state primary"
+                assert "653:8" in odd, f"refused, but not for the law: {odd}"
                 said.append("no table" if where == bare else "db/NH_RSA.psv")
-                os.chdir(here)
     finally:
         os.chdir(here)
     for f in (Path(P.__file__), Path(P.EL.__file__)):
