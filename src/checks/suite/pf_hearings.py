@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of livestreams, markers, dockets and proceedings.
 
@@ -3214,6 +3214,113 @@ def _ls_no_ytdlp(livestreams):
         livestreams.ask_track = real_ask
         os.environ.update(saved)
         os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("livestreams", "a refused YouTube key warns and the night goes out, with the recordings "
+                      "it had kept", needs=("livestreams", "nightly"))
+def _ls_refused_key_warns(livestreams, NI):
+    """A REFUSED YOUTUBE KEY WARNS, AND THE NIGHT GOES OUT (nightly.py; the
+    owner's decision 4, 19 November 2026). One good night on replayed answers,
+    then a night on which every Data API answer is Google's 403 keyInvalid:
+    the step exits 3, says why in its state (last_run "not_set_up"), and
+    leaves every recording it knew and its rows byte for byte. The night's
+    captions record carries the why; youtube_warned says it in one line of
+    what is wrong and what to do, of a kind the gate never holds a night for,
+    in the night's warnings and the standing ones; and --close, told the
+    livestream step failed, closes the night clean, exit 0, so the publish
+    job follows. The same failure with no such record -- the step broken,
+    or killed at its limit -- still fails the night."""
+    import contextlib
+    import io
+    import types
+    if not _paths.locate("livestreams.py").exists():
+        return "skip", "livestreams.py not here"
+    root = Path(tempfile.mkdtemp())
+    here = os.getcwd()
+    saved = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", "GITHUB_STEP_SUMMARY",
+                                            "GITHUB_OUTPUT", "GITHUB_RUN_ID", "GITHUB_SHA")}
+    try:
+        _ls_fixture(root, livestreams)
+        r = _ls_run(root, "--now", "2026-09-25T06:30:00Z")
+        assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
+        rows = {p.name: p.read_bytes() for p in sorted(root.glob("videos_*_livestreams.csv"))}
+        assert len(rows) == 2, sorted(rows)
+        before = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
+        # Google's answer to a key it refuses, for every call the step makes.
+        refused = {"_status": 403, "error": {"code": 403, "message": "API key not valid. "
+                                             "Please pass a valid API key.",
+                                             "errors": [{"reason": "keyInvalid"}]}}
+        idx = json.loads((root / "api" / "index.json").read_text(encoding="utf-8"))
+        for name in set(idx.values()):
+            (root / "api" / name).write_text(json.dumps(refused), encoding="utf-8")
+        r = _ls_run(root, "--now", "2026-09-26T06:30:00Z")
+        assert r.returncode == 3, (r.returncode, (r.stdout + r.stderr)[-400:])
+        after = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
+        unset = after["last_run"].get("not_set_up")
+        assert unset and len(unset) == 1 and unset[0].startswith("HTTP 403: keyInvalid") and \
+            "key itself was refused" in unset[0], ("the state does not say why", after["last_run"])
+        kept = {p.name: p.read_bytes() for p in sorted(root.glob("videos_*_livestreams.csv"))}
+        assert kept == rows, "a refused key changed or emptied the recordings' rows"
+        assert {k: v.get("status") for k, v in after["videos"].items()} == \
+            {k: v.get("status") for k, v in before["videos"].items()}, \
+            "a refused key dropped or changed a recording the state knew"
+
+        # The night that follows the step, and its last word.
+        os.chdir(root)
+        for k in saved:
+            os.environ.pop(k, None)
+        os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_SHA"] = "9301", "0" * 40
+        started = "2026-09-26T06:45:00+00:00"
+        caps = NI.captions_record(started, after)
+        assert caps["step"] == "tonight" and caps.get("not_set_up") == unset, caps
+        warned = NI.youtube_warned(caps)
+        assert [k for k, _s in warned] == [NI.KIND_YOUTUBE] and \
+            NI.KIND_YOUTUBE.startswith(NI.KIND_HEALTH) and \
+            NI.warning_reasons(warned, [], ()) == [], ("not one warning that never holds", warned)
+        said = warned[0][1]
+        assert said.startswith("YouTube refused the night's key (HTTP 403: keyInvalid)") and \
+            "the site keeps the ones it had" in said and NI.YOUTUBE_SECRET in said and \
+            len(said) <= 300 and "\n" not in said, said
+        assert NI.youtube_warned(NI.captions_record("2026-09-27T09:00:00+00:00", after)) == [], \
+            "a night the step did not run warns of last night's key"
+        missing = NI.youtube_warned({"not_set_up": ["YOUTUBE_API_KEY is not set, so nothing "
+                                                    "new was listed"]})
+        assert missing and "secret is empty" in missing[0][1], missing
+        v = {"kind": "nightly", "run_id": "9301", "day": "2026-09-26", "started": started,
+             "built": True, "publishable": True, "clean": True, "not_clean": [], "captions": caps}
+        assert said in [s for _k, s in NI.health_warned(v)] and said in NI.warns_of(v), \
+            "the key's warning is not among the night's own health warnings and standing ones"
+        v["warnings"] = [s for _k, s in NI.health_warned(v)]
+
+        def close(verdict, outcomes):
+            NI.write_json(NI.VERDICT, verdict)
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = NI.close_verdict(types.SimpleNamespace(
+                    weekly=False, dry_run=False, outcome=outcomes))
+            return code, json.loads(Path(NI.VERDICT).read_text(encoding="utf-8"))
+
+        code, out = close(dict(v), ["night=success", "livestreams=failure"])
+        assert code == 0 and out["clean"] and said in out.get("warnings", []) and \
+            said in out.get("standing_warnings", []) and out.get("livestreams_not_set_up"), (
+                "a refused key failed the night, or its warning went missing", code, out)
+        code, out = close({**v, "captions": {**caps, "not_set_up": []}},
+                          ["night=success", "livestreams=failure"])
+        assert code == 1 and not out["clean"], \
+            "a livestream step that failed for another reason left the night clean"
+        code, out = close({**v, "run_id": "9300"}, ["night=success", "livestreams=failure"])
+        assert code == 1 and not out["clean"], \
+            "an older night's record of a refused key excused tonight's failed step"
+        code, out = close(dict(v), ["night=failure", "livestreams=failure"])
+        assert code == 1, "a refused key excused another step's failure"
+        return "ok", ("a 403 keyInvalid: exit 3, the why in the state, both row files byte for "
+                      f"byte and all {len(after['videos'])} recordings kept; one line, never "
+                      "holding, in the warnings and standing ones; --close exit 0 and clean; "
+                      "exit 1 for no record, another night's record, or another failed step")
+    finally:
+        os.chdir(here)
+        for k, val in saved.items():
+            os.environ.pop(k, None) if val is None else os.environ.__setitem__(k, val)
         shutil.rmtree(root, ignore_errors=True)
 
 

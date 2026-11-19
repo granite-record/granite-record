@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.101
+# GRANITE_VERSION: 2026-09-04.102
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -134,8 +134,11 @@ night itself does is here, and what differs on that machine is behind --runner:
                       YouTube refusing GitHub's machine is not a failure: the
                       night publishes. The laptop's evening run, which fills
                       the captions inbox, reports each run to the bucket, and
-                      its refusal and hold are said beside GitHub's
-  the record moving   whether it has stopped under a night that publishes:
+                      its refusal and hold are said beside GitHub's. Nor is
+                      a missing or refused YouTube key since 19 November
+                      2026: a warning, and the site keeps the recordings it
+                      had (youtube_warned)
+  the record moving  whether it has stopped under a night that publishes:
                       the docket standing still longer than its season ever
                       has, a database piece not taken, the laptop's share or
                       its caption runs behind, the inbox silent -- a warning
@@ -3661,6 +3664,9 @@ def captions_record(started, st=None, now=None, laptop=None):
            "why": captions_why(st, now, laptop)}
     if tonight and lr.get("setup"):
         rec["setup"] = lr["setup"]
+    # What the step said is not set up tonight, its exit 3 (youtube_warned).
+    if tonight and isinstance(lr.get("not_set_up"), list) and lr["not_set_up"]:
+        rec["not_set_up"] = [str(x) for x in lr["not_set_up"]]
     if read_tonight and mk.get("probe"):
         rec["probe"] = mk["probe"]
     if laptop_said(laptop, now):
@@ -6694,6 +6700,51 @@ def backup_warned(path=None):
                           f"more than {BACKUP_DAYS}: {run}.")]
 
 
+# A REFUSED YOUTUBE KEY WARNS, AND THE NIGHT GOES OUT (19 November 2026; the
+# owner's decision 4 of the refactor's stage 0, reversing the deliberate
+# failure of 10 October). The livestream step exits 3 when it is not set up --
+# no YOUTUBE_API_KEY, a key the API refuses, or no yt-dlp -- and records why
+# in its state's last_run ("not_set_up"), which captions_record carries for
+# tonight's run. That was a failed night, so a revoked key stopped the bills
+# publishing. Now it is a warning of the night's own health, which never
+# holds a night, and --close does not count that step's failure when tonight's
+# record says this was why (close_verdict). Nothing new is listed or asked
+# for, and the recordings, their rows and the start times already read stay
+# as they were: the site keeps the livestream data it had.
+KIND_YOUTUBE = KIND_HEALTH + "the livestream step not set up"
+YOUTUBE_SECRET = "YOUTUBE_API_KEY"
+
+
+def youtube_warned(caps):
+    """[(kind, sentence)] for tonight's livestream step that was not set up
+    (A REFUSED YOUTUBE KEY WARNS), one per reason it gave, in the words a
+    person reads over breakfast: what is wrong, then what to do. [] for a
+    step that was set up, did not run tonight, or no record."""
+    if not isinstance(caps, dict) or not isinstance(caps.get("not_set_up"), list):
+        return []
+    kept = "so no new recordings were listed tonight, and the site keeps the ones it had"
+    out = []
+    for why in caps["not_set_up"]:
+        why = str(why)
+        short = why.split(" -- ")[0].strip()
+        if YOUTUBE_SECRET in why and "not set" in why:
+            said = (f"The night has no YouTube key (GitHub's {YOUTUBE_SECRET} secret is empty), "
+                    f"{kept}: put the night's key back in that secret.")
+        elif "key itself was refused" in why:
+            said = (f"YouTube refused the night's key ({short}), {kept}: make a new YouTube Data "
+                    f"API v3 key in the Google Cloud project and put it in GitHub's "
+                    f"{YOUTUBE_SECRET} secret.")
+        elif "yt-dlp" in why:
+            said = (f"The night's machine has no yt-dlp ({short}), so no captions were asked for "
+                    "tonight and the recordings wait as they were: the livestream step's log "
+                    "says why its install did not take.")
+        else:
+            said = (f"YouTube answered the livestream step with {short}, {kept}: the livestream "
+                    "step's log says which channel or playlist.")
+        out.append((KIND_YOUTUBE, said))
+    return out
+
+
 def health_warned(v, private=False):
     """[(kind, sentence)] of THE NIGHT'S OWN HEALTH that a verdict carries:
     each a kind the gate never holds a night for. Read by Night.warned() for
@@ -6704,7 +6755,8 @@ def health_warned(v, private=False):
             + sources_warned(v.get("sources"))
             + backup_warned()
             + functions_warned((v.get("preview") if isinstance(v.get("preview"), dict) else {})
-                               .get("functions")))
+                               .get("functions"))
+            + youtube_warned(v.get("captions")))
 
 
 class Night:
@@ -7772,7 +7824,9 @@ def close_verdict(a):
     with one that says so, rather than letting last night's CLEAN stand.
 
     Exit 1 when any step it is told of failed, so a step allowed to carry on
-    past its own failure -- the livestreams -- still fails the night at the end.
+    past its own failure -- the livestreams -- still fails the night at the end,
+    unless tonight's record says only that it was not set up, a missing or
+    refused YouTube key among them, which is a warning (youtube_warned).
     A night that was not clean puts plain_why()'s sentence at the top of the
     run's page on GitHub: an error when the job fails, a warning otherwise.
     A dry run's is its own verdict, kept apart (DRY_VERDICT): one that never
@@ -7833,6 +7887,15 @@ def close_verdict(a):
                        + ([f"- {off_main_line(v['off_main'])}"] if v.get("off_main") else []))
     v["steps"] = steps
     failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
+    # A REFUSED YOUTUBE KEY WARNS, AND THE NIGHT GOES OUT: the livestream
+    # step's failure is not counted where tonight's own record says it was not
+    # set up (youtube_warned), which the night's warnings already carry. Any
+    # other failure of it -- a state it could not read, a step killed at its
+    # limit, or a verdict that is not tonight's -- still fails the night.
+    if steps.get("livestreams") == "failure" and youtube_warned(v.get("captions")):
+        failed = [f for f in failed if not f.startswith("livestreams (")]
+        v["livestreams_not_set_up"] = "warned, not failed: " + "; ".join(
+            str(x) for x in v["captions"]["not_set_up"])
     # THE CODE CHECKS, FROM THEIR OWN JOB (CHECKS_JOB): what --checks-result
     # read, folded in as a step of the night's job is. Only "success" passes:
     # an empty result, one that was skipped or cancelled, or a step that could

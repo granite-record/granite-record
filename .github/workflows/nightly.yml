@@ -467,10 +467,14 @@ jobs:
       # new" and "captions deferred": YouTube refusing this machine is
       # recorded and held (livestreams.py, A REFUSAL), never asked again in
       # the same run, and the recordings keep the schedule's approximate
-      # start; the verdict says how many wait and why. Any other exit -- 3 is
-      # "not set up": no key, a refused key, or no yt-dlp -- fails the night,
-      # loudly, at --close, without stopping the day's General Court files
-      # from being taken and built: those cannot be taken later. Its own time
+      # start; the verdict says how many wait and why. Exit 3 is "not set
+      # up": no key, a refused key, or no yt-dlp. Since 19 November 2026 (the
+      # owner's decision 4) that is a warning, never a failed night: the state
+      # says why, the night's verdict warns of it, --close does not count it,
+      # and the site keeps the recordings it had (nightly.youtube_warned). Any
+      # other exit fails the night, loudly, at --close, without stopping the
+      # day's General Court files from being taken and built: those cannot be
+      # taken later. Its own time
       # limit, so a hang inside one yt-dlp call can never eat the night: the
       # step's sixty minutes of asking (livestreams.BUDGET), the last ask's
       # fourteen past it (LAST_ASK_MINUTES), and the listing; preflight holds
@@ -493,7 +497,7 @@ jobs:
           python src/ops/livestreams.py --since-state --inbox archive/captions-inbox
           $rc = $LASTEXITCODE
           if ($rc -eq 3) {
-            Write-Output "livestreams.py exit 3: not set up. The night goes on, and fails at its end."
+            Write-Output "livestreams.py exit 3: not set up. The night goes on, and its verdict warns of it."
           }
           exit $rc
 

@@ -491,7 +491,11 @@ to twenty recordings, one at a time and a minute or two apart, within a time
 limit of its own. A refusal stops the asking for that run and holds the
 night's machine for twelve hours, doubling with each refusal in a row to a
 week; it is recorded in the livestream state, never asked again in the same
-run, and is not a failure -- the night publishes. Inside the build,
+run, and is not a failure -- the night publishes. Nor, since 19 November
+2026, is a missing or refused YouTube key (or no yt-dlp): the step exits 3
+and records why, nothing new is listed, the recordings and their rows stay as
+they were, and the night publishes with a warning of what to fix
+(`nightly.youtube_warned`). Inside the build,
 `src/ops/livestreams.py --markers` reads the captioned recordings into
 `candidate_segments.json` and `caption_spans.json`, which have been the
 night's files in the kit since 10 October 2026, and keeps nothing unless the
