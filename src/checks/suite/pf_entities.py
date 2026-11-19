@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.15
+# GRANITE_VERSION: 2026-11-16.16
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -876,7 +876,9 @@ def _entities_step_in_the_plan(build_all):
     # is built from, since the step that writes data/entities/ runs after it; never the folder.
     # And the margin (19 November 2026, src/pages/election_margin.py) takes a contest's and a
     # candidacy's id from the shapes' module, so that its ids are the model's; never the folder.
-    moved = set(SEAT_READERS) | {"election_margin.py"}
+    # The specials reader (19 November 2026, src/parse/parse_sos_specials.py) writes its records in
+    # the shapes' module's shapes and ids and holds each to its shape; never the folder.
+    moved = set(SEAT_READERS) | {"election_margin.py", "parse_sos_specials.py"}
     readers = []
     for f in _paths.code_files("*.py"):
         if f.name in allowed or "suite" in f.parent.name:
