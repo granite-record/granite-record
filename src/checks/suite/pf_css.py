@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of the stylesheet (app.css).
 
@@ -2375,9 +2375,9 @@ def _summary_votes_linked():
     return "ok", "tallies link to their cards by date, chamber and counts, none where no single card fits"
 
 
-@check("frontend", "a bill's Hearings tab is a committee's Videos tab for one bill: one player, a playlist of "
-                   "its recordings, the chosen sitting's counts, vote and moments under it, and a plain entry "
-                   "for a sitting with none")
+@check("frontend", "a bill's Videos tab is a committee's Videos tab for one bill: one player, a playlist of "
+                   "its recordings, the chosen sitting's moments, vote and sign-ins under it, each fact once, "
+                   "and a plain entry for a sitting with none")
 def _hearings_one_player():
     """The owner, 10 November 2026: "changing the ways bills are formatted to
     be more similar to how the committee videos tab is formatted ... we'd only
@@ -2389,7 +2389,15 @@ def _hearings_one_player():
     sign-in counts and the committee's outcome as chips, the floor's roll call
     with its count, the bill's moments with "approximate" where inferred. A
     sitting with no recording to play keeps a card of its own. The committee's
-    own list puts a bill's moments and its outcome chip on one line."""
+    own list puts a bill's moments and its outcome chip on one line.
+
+    CALMER, AND VIDEOS AGAIN (the owner, 19 November 2026): each fact once --
+    the day, the kind, the committee and the length are the chosen row's, so
+    the player has no caption and the detail under it repeats none of them;
+    the bill's moments are the first line under the player, labelled, as play
+    buttons; the sign-ins are plain figures under "Public sign-ins", not the
+    chips that read as more buttons; "approximate" where a moment is
+    inferred."""
     st = [
         {"when": "2025-03-12", "time": "10:00", "what": "public hearing", "committee": "Judiciary", "body": "H",
          "venue": "LOB 206", "video_id": "VIDA", "state": "located", "start": 600.0, "end": 1500.0,
@@ -2437,23 +2445,35 @@ def _hearings_one_player():
         "the playlist is not in the order of the bill's story, each with its kind's chip")
     assert "2 h 3 min" in first and "House Judiciary" in first, "a row lacks its length or its committee"
     head = first[first.index('class="vwdetin"'):first.index('class="vwside"')]
-    for want in ("58 support", "2 oppose", "60 signed in", "Mar 12, 2025 at 10:00 AM", "Legislative Office Building 206",
-                 'data-seek="h0_VIDA|600"', 'data-seek="h0_VIDA|1500"', "00:10:00 starts", "00:25:00 ends",
-                 "approximate"):
+    for want in ("<b>58</b> support", "<b>2</b> oppose", "<b>60</b> signed in", '<h4 class="vwsh">Public sign-ins</h4>',
+                 "Legislative Office Building 206", 'data-seek="h0_VIDA|600"', 'data-seek="h0_VIDA|1500"',
+                 '<span class="vwml">Where this bill is in the recording</span>',
+                 'aria-label="Play from 00:10:00, where it starts"', 'aria-label="Play from 00:25:00, where it ends"',
+                 "10:00</button>", "25:00</button>", '<span class="vwto">to</span>', "approximate"):
         assert want in head, f"the first sitting's detail lacks {want!r}: {head[:300]}"
+    assert re.search(r"10:00\sAM", head), f"the first sitting's detail lacks its time: {head[:300]}"
+    # EACH FACT ONCE: the row says the day, the kind and the committee, and
+    # nothing under the player says them again; no caption under the player;
+    # the counts are no chips; the moments come before the counts.
+    for gone in ("Mar 12, 2025", "Public Hearing", "House Judiciary", 'class="chip sgn', "vwcap"):
+        assert gone not in head and (gone != "vwcap" or gone not in first), (
+            f"the first sitting's detail says {gone!r} again: {head[:300]}")
+    assert head.index('class="vwmoms"') < head.index('class="vwsg"'), "the sign-ins come before the moments"
     assert 'data-embed="VIDA|598|h0_VIDA"' in first and "watch?v=VIDA&t=598s" in first, (
         "the player and its YouTube link do not open at the bill's moment")
     # What was voted: the committee's report of the day, then the floor's roll call, chip and count.
     xd = ex[ex.index('class="vwdetin"'):ex.index('class="vwside"')]
-    assert "Executive Session" in xd and "Ought to Pass (12–2)" in re.sub(r"<[^>]+>", "", xd) and 'data-embed="VIDA|118|h1_VIDA"' in ex and \
-        "approximate" not in xd, f"the executive session's detail is not its report chip with its count: {xd[:400]}"
+    assert "Executive Session" not in xd and "Ought to Pass (12–2)" in re.sub(r"<[^>]+>", "", xd) and \
+        'data-embed="VIDA|118|h1_VIDA"' in ex and "approximate" not in xd, (
+            f"the executive session's detail is not its report chip with its count: {xd[:400]}")
     fl = floor[floor.index('class="vwdetin"'):floor.index('class="vwside"')]
-    assert "Session Day" in fl and "190–149" in fl and "rcres pass" in fl and \
-        'data-embed="VIDB|3000|h2_VIDB"' in floor and "00:50:00 starts" in fl and "01:00:00 vote at" in fl, (
+    assert "Session Day" not in fl and "190–149" in fl and "rcres pass" in fl and \
+        'data-embed="VIDB|3000|h2_VIDB"' in floor and "50:00</button>" in fl and "1:00:00 vote</button>" in fl \
+        and 'aria-label="Play from 01:00:00, the vote"' in fl, (
             f"the floor sitting's detail is not its vote, count and moments: {fl[:400]}")
     # The plain entry: the sitting before the channels, with its sign-ins.
     assert 'class="hplain"' in first and 'class="stn pend"' in first and "Jan 8, 2019" in first and \
-        "5 signed in" in first and "No recording to play" in first, "a sitting with no recording lost its entry"
+        "<b>5</b> signed in" in first and "No recording to play" in first, "a sitting with no recording lost its entry"
     # The committee's list: the number, its moments and its chip on one line, the title under them.
     assert re.search(r'<a class="vwbn"[^>]*>HB 1</a><span class="vwmom"><span class="mjumps">.*?</span>'
                      r'<span class="vwout">.*?cstat.*?</span></span><span class="vwbt">a title</span>', line), (
@@ -2462,8 +2482,56 @@ def _hearings_one_player():
     css = _source("src/pages/app.css")
     assert ".vwbills .vwmom .chip,.vwres .chip{margin-left:0}" in css, (
         "app.css lets the outcome chip go to the right edge, away from the moments")
-    return "ok", ("one player and a playlist of the bill's recordings; the sittings' counts, votes and moments "
-                  "under it; a sitting with no recording its own entry; the committee's moments and chip on one line")
+    return "ok", ("one player and a playlist of the bill's recordings, no caption; under it the moments as "
+                  "labelled play buttons, then the time, room, vote and sign-ins as figures, nothing the row "
+                  "says said again; a sitting with no recording its own entry; the committee's moments and "
+                  "chip on one line")
+
+
+@check("frontend", "a bill's Videos tab says Videos wherever a reader meets it, and keeps \"approximate\" "
+                   "and the source line", needs=("civics",))
+def _videos_tab_words(civics):
+    """The owner, 19 November 2026: the Hearings tab is Videos, every
+    user-visible "Hearings" for it renamed, the Spanish as a draft, with
+    nothing it must say lost: an inferred moment says "approximate", a stated
+    one does not (CLAUDE.md, Timestamps), and the source line names the
+    General Court's channels, shorter. The strip draws "Videos", the Using
+    This Site guide and the two pages that send a reader to the tab name it,
+    lang/es.json carries their drafts, and no Senate hearing report is left
+    under the player."""
+    body = civics.BODY_SITE
+    assert "<b>Videos</b> &mdash;" in body and "<b>Hearings</b>" not in body and "<b>Sponsors</b>" not in body \
+        and ">Videos</span>" in civics.BILL_TABS_PICTURE and "Hearings" not in civics.BILL_TABS_PICTURE \
+        and "Sponsors" not in civics.BILL_TABS_PICTURE, "Using This Site still names a Hearings or a Sponsors tab"
+    src = _source(_paths.locate("civics.py"))
+    assert "Hearings tab" not in src and src.count("Videos tab plays") == 2, (
+        "a Learn page still sends a reader to the Hearings tab")
+    es = json.loads(_source("src/pages/lang/es.json"))["strings"]
+    vids = ("guide.testifying.this-site-holds-public-hearings-each", "learn.state-agencies.where-a-hearing-was-recorded-bills",
+            "guide.using-this-site.videos-the-recording-of-each-meeting", "guide.using-this-site.videos")
+    assert all("Videos" in (es.get(k) or {}).get("en", "") and "Videos" in (es.get(k) or {}).get("es", "")
+               for k in vids) and not any("pestaña Hearings" in v.get("es", "") for v in es.values()), (
+        "lang/es.json still names the Hearings tab, or lacks the Videos tab's drafts")
+    st = [{"when": "2025-03-12", "what": "public hearing", "committee": "Judiciary", "body": "H",
+           "video_id": "VIDA", "state": "located", "start": 600.0, "end": 900.0, "start_stated": False},
+          {"when": "2025-03-19", "what": "public hearing", "committee": "Judiciary", "body": "H",
+           "video_id": "VIDB", "state": "stated", "start": 60.0, "end": 900.0, "start_stated": True}]
+    js = ("(() => { const b = {id: 'HB1', n: 'HB 1', term: '2025-2026', year: 2025}, d = {stations: "
+          + json.dumps(st) + "}; const out = {tab: scope.renderHearings(b, d)};"
+          " scope.HEAR_CHOSEN['bill|' + scope.dkey('HB1')] = 'h1'; out.stated = scope.renderHearings(b, d);"
+          " out.strip = scope.renderDetail(b, d); return out; })()")
+    got = _app_js(js, names=("renderHearings", "renderDetail", "HEAR_CHOSEN", "dkey"))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    det = lambda h: h[h.index('class="vwdetin"'):h.index('class="vwside"')]
+    assert "approximate" in det(got["tab"]) and "approximate" not in det(got["stated"]), (
+        "an inferred moment lost \"approximate\", or a stated one carries it")
+    assert "Recordings from the General Court&rsquo;s House and Senate YouTube channels." in got["tab"], (
+        "the source line is gone")
+    assert re.search(r'data-t="2">Videos<', got["strip"]) and "Hearings" not in got["strip"].split("</div>")[0], (
+        "the strip does not call the tab Videos")
+    return "ok", ("the strip, Using This Site, the two Learn pages and their Spanish drafts say Videos; "
+                  "an inferred moment says approximate and a stated one not; the source line kept")
 
 
 @check("frontend", "Cite this page and Report a problem sit level in a page's row of actions: the report box "

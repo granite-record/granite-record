@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.356
+// GRANITE_VERSION: 2026-09-07.357
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3353,12 +3353,17 @@ const jOpen=new Set();
    site/_redirects (build_pages.py, the same slugs) serves the record's page
    at a tab's address. The first tab of each has no slug: its address is the
    record's. */
-// "hearings" comes BEFORE "videos" and both map to 2. slugOf takes the first
-// key with a matching value, so a tab switched today writes /hearings, while a
-// link somebody already saved or a search engine already indexed still opens
-// on /videos. An address that has been published is a promise; renaming the
-// label is not a reason to break it.
-const BILL_TABS={text:"6",votes:"1",hearings:"2",videos:"2",
+// "videos" comes BEFORE "hearings" and both map to 2. slugOf takes the first
+// key with a matching value, so a tab switched today writes /videos -- the
+// tab is Videos again (the owner, 19 November 2026) -- while a link somebody
+// already saved or a search engine already indexed still opens on /hearings.
+// An address that has been published is a promise; renaming the label is not
+// a reason to break it.
+// AND /sponsors (the same day): the Sponsors tab became the top of the
+// Summary, and its address is kept for the links already made. It names tab
+// 4, which a bill no longer draws, so the bill opens on its Summary, where the
+// sponsors are (syncCards); a request's card keeps its own Sponsors tab.
+const BILL_TABS={text:"6",votes:"1",videos:"2",hearings:"2",
                  reports:"3",sponsors:"4",documents:"5",related:"7"};
 const MEMBER_TABS={cosponsored:1,votes:2,elections:3};
 // A committee's Videos tab (the owner, 26 October 2026) is "videos", a slug
@@ -4962,6 +4967,18 @@ const recChip=(rec,vote)=>tallyWhole(chip(titleWords(rec)+(vote?` (${vote})`:"")
 // "dated" is the difference between a fact and a number that looks like one:
 // with it the count is this hearing's, without it the database had the bill
 // but not this date and the figure covers every hearing the bill had.
+// ON THE VIDEOS TAB THE COUNTS ARE FIGURES UNDER THEIR OWN HEADING (the owner,
+// 19 November 2026): as chips beside the moments' buttons they read as more
+// buttons, and a reader could not tell the time from the testimony at a
+// glance. The docket's lines keep the chips (signins).
+const signinsPlain=t=>{
+  if(!t||!t.total)return "";
+  const n=x=>Number(x||0).toLocaleString();
+  const parts=[[t.support,"support"],[t.oppose,"oppose"],[t.neutral,"neutral"]].filter(x=>x[0])
+    .map(([v,w])=>`<b>${n(v)}</b> ${w}`)
+    .concat(`<b>${n(t.total)}</b> signed in${t.dated?"":" across this bill’s hearings"}`);
+  return `<div class="vwsg"><h4 class="vwsh">Public sign-ins</h4><p class="vwsign">${vwJoin(parts)}</p></div>`;
+};
 const signins=t=>{
   if(!t||!t.total)return "";
   const n=x=>Number(x||0).toLocaleString();
@@ -5931,6 +5948,11 @@ function mountTestify(b,d){
 }
 function renderSummary(b,d,rsa){
   const S=[];
+  // THE SPONSORS FIRST (the owner, 19 November 2026): what was the Sponsors
+  // tab, its chips as they were, above the analysis. A bill with none says so
+  // here, unless it is of an earlier term, whose About This Record says it.
+  const spn=(d&&d.sponsors||[]).length;
+  if(spn||!(d&&d.archived))S.push(section("Sponsors",renderSponsors(b,d||{}),"sponsors"));
   const note=d&&d.bill_note;
   if(note&&note.note)S.push(section(titleWords(note.label||"About this bill"),
     `<div class="anbox billnote"><div class="antext">${esc(note.note)}</div></div>
@@ -6265,7 +6287,8 @@ function stationTitle(b,s){
     .filter(Boolean).join(" - ");
 }
 
-// THE SENATE COMMITTEE'S OWN REPORT OF THE HEARING, under the hearing's video.
+// THE SENATE COMMITTEE'S OWN REPORT OF THE HEARING, on the Reports tab under
+// Public Hearing Reports (19 November 2026; it was under the hearing's video).
 //
 // A Senate committee's aide writes up every public hearing: who came, which
 // side each took, and what each said. The person decided on 24 September that
@@ -6299,7 +6322,11 @@ function hrSpeaker(sp){
   }
   const also=(sp.also||[]).map(a=>`<span class="hrrole">${esc(a)}</span>`).join("");
   const pts=sp.points||[];
-  return `<section class="hrsp"><h3>${name}${also}</h3>${pts.length
+  // h4 UNDER THE SECTION'S h3 (19 November 2026): the report is on the
+  // Reports tab, under its group's h2; its committee is named beside it in
+  // words, not a heading, so the outline keeps to four levels (no h5 on the
+  // site).
+  return `<section class="hrsp"><h4>${name}${also}</h4>${pts.length
     ?`<ul class="hrpts">${pts.map(hrPoint).join("")}</ul>`
     :`<p class="hrnone">The report lists no points under this name.</p>`}</section>`;
 }
@@ -6344,16 +6371,16 @@ function hearingReport(r,video){
     <p class="hrsrc">What each person said, as summarized in the ${esc(cmte)}’s
       hearing report${when?` of ${dateWords(when)}`:""}. The report is the committee
       staff’s summary of the hearing, not a transcript${video
-        ?"; the recording above is the hearing itself":""}.</p>
+        ?"; the recording of the hearing is on the Videos tab":""}.</p>
     <dl class="hrfacts">${fact("Hearing",times?`${dateWords(r.heard)}, ${times}`:dateWords(r.heard))}${
       fact("Members present",r.present)}${fact("Members absent",r.absent)}</dl>
-    ${pos.length?`<h2>Who took a position</h2><dl class="hrfacts">${
+    ${pos.length?`<h3>Who took a position</h3><dl class="hrfacts">${
       pos.map(p=>fact(p[0],p[1])).join("")}</dl>`:""}
     ${secs.map(s=>{
       const body=s.text?hrPlain(s.text)
         :(s.speakers||[]).map(hrSpeaker).join("");
       const empty=!(s.text||[]).length&&!(s.speakers||[]).length;
-      return `<h2>${esc(s.label)}</h2>${s.text&&s.text.length
+      return `<h3>${esc(s.label)}</h3>${s.text&&s.text.length
         ?`<p class="hrnote">This section is shown as the report sets it out,
           because the report does not make clear who said which part.</p>`:""}${
         empty?`<p class="hrnone">${esc(s.note||"None.")}</p>`:body}`;}).join("")}
@@ -6471,16 +6498,16 @@ function hearingCard(b,s){
     committee&rsquo;s own report.</b> The docket records no Senate hearing of
     this bill on this day${(s.docket_heard||[]).length?`; it records one on
     ${s.docket_heard.map(x=>esc(dateWords(x,"full"))).join(" and ")}`:""}. This is the date the Senate
-    committee&rsquo;s hearing report gives, and the report is below as the
-    Senate filed it. No recording is linked to it.</p></div>`;
+    committee&rsquo;s hearing report gives, and the report is on the Reports
+    tab as the Senate filed it. No recording is linked to it.</p></div>`;
   // Before the channels the tab's own note says so once (renderHearings).
   else if(s.state==="prestream")inner="";
   else inner=`<div class="vbox"><p>No recording matched to this proceeding.</p></div>`;
   return `<div class="stn pend">
     <div class="w">${esc(dateWords(s.when))}${s.time?" at "+esc(clock(s.time)):""}${s.venue?" · "+esc(roomWords(s.venue)):""}</div>
-    <div class="t">${esc(stationTitle(b,s))}</div>${
-      signins(s.testimony)}${inner}${(s.reports||[]).map(r=>
-        hearingReport(r,false)).join("")}</div>`;
+    <div class="t">${esc(stationTitle(b,s))}</div>${inner}${
+      /* The Senate's hearing report is the Reports tab's (19 November 2026). */
+      signinsPlain(s.testimony)}</div>`;
 }
 
 // WHERE THE VIEW OPENS A SITTING'S RECORDING, and what to say of the moment
@@ -6550,28 +6577,50 @@ function hearingOutcome(b,d,s){
   }
   return out.join(" ");
 }
-// One moment as the button that moves the player there (the Meetings tab's
-// .mjump, jumpButtons' markup), with "approximate" where it is inferred.
-const hearingMoment=(pid,t,word,approx)=>`<span class="mjump"><button type="button" class="jump" data-seek="${
-  esc(pid)}|${Math.max(0,Math.floor(t))}" aria-label="Play from ${hms(t)}, where it ${esc(word)}">${icon("play")}${
-  hms(t)} ${esc(word)}</button>${approx?`<i class="approx">approximate</i>`:""}</span>`;
-// What is under the player for the sitting chosen: when and where, who signed
-// in, what was voted, the bill's moments, and the committee's hearing report.
+// A time in the recording as YouTube writes one: 5:43:23, 43:23.
+const hmsShort=x=>{const t=Math.max(0,Math.floor(x)),h=Math.floor(t/3600),m=Math.floor(t/60)%60,
+  ss=String(t%60).padStart(2,"0");return h?`${h}:${String(m).padStart(2,"0")}:${ss}`:`${m}:${ss}`;};
+// One moment as the button that moves the player there. A ROUND PLAY BUTTON,
+// NOT A CHIP'S SHAPE (the owner, 19 November 2026): beside the sign-in counts,
+// drawn as chips, two bordered boxes with a time in them read as two more
+// counts. `word` is what the moment is, for a screen reader ("starts",
+// "ends", "vote at"); `shown` a word beside the time, where the time alone
+// would not say it (the floor's vote).
+const hearingMoment=(pid,t,word,shown)=>`<button type="button" class="jump vwjump" data-seek="${
+  esc(pid)}|${Math.max(0,Math.floor(t))}" aria-label="Play from ${hms(t)}, ${word==="vote at"?"the vote"
+  :`where it ${esc(word)}`}">${icon("play")}${hmsShort(t)}${shown?` ${esc(shown)}`:""}</button>`;
+// The bill's moments in the recording, as one line by the player: "Where this
+// bill is in the recording: [5:43:23] to [5:46:00]", and "approximate" once
+// where the moment is inferred (CLAUDE.md, Timestamps).
+function hearingMoments(h,pid){
+  const end=h.end!=null?hearingMoment(pid,h.end,h.endWord,h.endWord==="vote at"?"vote":""):"";
+  const start=h.start!=null?hearingMoment(pid,h.start,"starts",""):"";
+  if(!start&&!end)return "";
+  // One word for the pair: the start's where there is one, else the end's.
+  const approx=!!h.approx;
+  return `<p class="vwmoms"><span class="vwml">Where this bill is in the recording</span>${
+    start}${start&&end?`<span class="vwto">to</span>`:""}${end}${approx?`<i class="approx">approximate</i>`:""}</p>`;
+}
+// What is under the player for the sitting chosen. EACH FACT ONCE (the owner,
+// 19 November 2026): the row chosen in the list already says the day, the
+// kind, the committee and the length, so under the player are only what it
+// does not -- the bill's moments, first, by the player they move; then the
+// time and the room, with the recording on YouTube; what was voted; and who
+// signed in, as figures under their own heading. The Senate's hearing report
+// is the Reports tab's.
 function hearingDetail(b,d,s,h,pid){
-  const when=[dateWords(s.when)+(s.time?" at "+clock(s.time):""),s.venue?roomWords(s.venue):""].filter(Boolean);
-  const out=[`<p class="vwkinds"><span class="vwchips">${kindChips([s.what])}</span> ${esc(when.join(" · "))}</p>`];
-  const sg=signins(s.testimony);
-  if(sg)out.push(`<p class="vwsign">${sg}</p>`);
-  const oc=hearingOutcome(b,d,s);
-  if(oc)out.push(`<p class="vwres">${oc}</p>`);
-  const moments=(h.start!=null?hearingMoment(pid,h.start,"starts",h.approx):"")
-    +(h.end!=null?hearingMoment(pid,h.end,h.endWord,h.start==null&&h.approx):"");
-  if(moments)out.push(`<p class="vwmoms">${moments}</p>`);
+  const out=[hearingMoments(h,pid)];
   if(h.note)out.push(`<p class="vwnone">${esc(h.note[0].toUpperCase()+h.note.slice(1))}${/\.$/.test(h.note)?"":"."}</p>`);
   if(h.said)out.push(`<p class="vwnone">${h.said}</p>`);
   if(s.state==="whole_video"&&s.title)out.push(`<p class="vwnone">${esc(s.title)}</p>`);
+  const vid=String(s.video_id||""), at=Math.max(0,Math.floor(h.from||0));
+  const where=[s.time?esc(clock(s.time)):"",s.venue?esc(roomWords(s.venue)):"",
+    vid?`<a href="https://www.youtube.com/watch?v=${esc(vid)}${at?`&t=${at}s`:""}" target="_blank" rel="noopener">On YouTube</a>`:""];
+  out.push(`<p class="vwkinds">${vwJoin(where)}</p>`);
+  const oc=hearingOutcome(b,d,s);
+  if(oc)out.push(`<p class="vwres">${oc}</p>`);
   out.push(motionsLine(s));
-  out.push((s.reports||[]).map(r=>hearingReport(r,true)).join(""));
+  out.push(signinsPlain(s.testimony));
   return out.join("");
 }
 // THE TAB IS A COMMITTEE'S VIDEOS TAB, FOR ONE BILL (the owner, 10 November
@@ -6591,17 +6640,20 @@ function hearingView(b,d,rec){
     return {id:`h${si}`,video:s.video_id,pid,date:s.when,seconds:s.seconds,from:h.from,
       who:hearingWhere(s)||b.n||b.id,what:stationTitle(b,s),
       kinds:kindChips([s.what]),line:[hearingWhere(s)],
-      playText:h.from>0?`Play from ${hms(h.from)}`:"Play the recording",
+      playText:h.from>0?`Play from ${hmsShort(h.from)}`:"Play the recording",
       detail:()=>hearingDetail(b,d,s,h,pid)};});
-  // A row's address is the bill's Hearings tab where the page is a bill's;
+  // A row's address is the bill's Videos tab where the page is a bill's;
   // anywhere else (the search list, with the bill open) it is where the reader is.
   const here=location.pathname.replace(/\/+$/,"");
   const path=/^\/bill\/\d{4}\/[a-z0-9]+(?:\/[a-z]+)?$/i.test(here)
-    ?`${here.replace(/\/(?:hearings|videos)$/,"")}/hearings`:here;
-  return videoView({who:b.n||b.id,key,rows,chosen:HEAR_CHOSEN[key]||rows[0].id,
+    ?`${here.replace(/\/(?:hearings|videos)$/,"")}/videos`:here;
+  // NO CAPTION UNDER THE PLAYER (`bare`, the owner, 19 November 2026): it
+  // said the committee, the day and the length the chosen row says, and its
+  // "On YouTube" is in the line under the player (hearingDetail).
+  return videoView({who:b.n||b.id,key,rows,chosen:HEAR_CHOSEN[key]||rows[0].id,bare:true,
     heading:`${rows.length.toLocaleString()} recording${rows.length===1?"":"s"}, in the order of the bill’s story`,
     href:()=>path,pid:r=>r.pid,onChoose:id=>{HEAR_CHOSEN[key]=id;},
-    source:"The recordings are the General Court&rsquo;s own, from its House and Senate YouTube channels."});
+    source:"Recordings from the General Court&rsquo;s House and Senate YouTube channels."});
 }
 function renderHearings(b,d){
   // WHERE THIS SITE'S RECORDINGS BEGIN, ONCE (the audit of 25 October 2026,
@@ -6654,8 +6706,14 @@ function renderHearings(b,d){
 // reading one fewer than the tab lists.
 const videoCount=d=>(d.stations||[])
   .filter(s=>s.video_id||s.state==="candidates").length;
+// AND THE SENATE'S HEARING REPORTS (19 November 2026), which the tab draws
+// as its public hearing reports.
 const reportCount=d=>(d.reports||[]).reduce((n,r)=>n+((r.reports||[]).length),0)
-                     +(d.docket_reports||[]).length;
+                     +(d.docket_reports||[]).length+heardReports(d).length;
+// THE SENATE COMMITTEES' REPORTS OF THEIR PUBLIC HEARINGS, in the order of the
+// bill's sittings: each on the station of the hearing it reports
+// (build_site_v2.attach_hearing_reports), with that station.
+const heardReports=d=>(d.stations||[]).flatMap(s=>(s.reports||[]).map(r=>({r,s})));
 
 // The first year of a bill's term, or 0 (17 October 2026: a 1995 report
 // was told its calendar "has not been read into the site yet", and no
@@ -6714,9 +6772,12 @@ function renderReports(b,d,rsa){
   const repName=(cmte,body)=>{
     const n=[body,cmte].filter(Boolean).map(titleWords).join(" ");
     return /\bcommittee\b/i.test(n)?n:n+" Committee";};
+  // AN h3 UNDER ITS GROUP'S h2 (19 November 2026): the reports stand in two
+  // groups, each headed, and the committee's name is set smaller than the
+  // group's, as a heading under a heading.
   const head=(r,cmte,body)=>`<div class="rephead">
       ${[body,cmte].filter(Boolean).length
-        ? `<h2 class="sech">${esc(repName(cmte,body))}</h2>`:""}
+        ? `<h3 class="reph">${esc(repName(cmte,body))}</h3>`:""}
       <div class="repmeta">${when(r)}${cited(r)}</div></div>`;
 
   // ONE REPORT IS ONE ELEMENT, so that it can be laid out as one. The head
@@ -6765,7 +6826,10 @@ function renderReports(b,d,rsa){
           <span class="secsub">${esc(e.side)}</span>
           ${rec?"":committeeTally(e)}
           ${rec?recChip(rec,voteOf(e)):""}</div>
-        <p class="repby">${esc(e.author)}</p>
+        <p class="repby">${/* THE WRITER AS THE PERSON'S CHIP where the build
+             named one member for certain (build_site_v2.report_author); the
+             report's own words where it did not. */
+             e.author_m&&e.author_m.slug?pchip(e.author_m):esc(e.author)}</p>
         ${e.amendment?`<p class="note" style="margin:0 0 7px">Amendment ${
           esc(e.amendment)}.</p>`:""}
         ${/* Where the House Calendar printed another bill's report under
@@ -6810,10 +6874,37 @@ function renderReports(b,d,rsa){
         ? "The written report for this one is not on the site: the General Court’s online calendars, which print the reports, begin in 1997. This is what the docket records of it."
         : "The written report for this one is not on the site; this is what the docket records of it."}</p>`);}).join("");
 
-  return veto(d)+((written||docket)?written+docket
-    :`<p class="note">No committee report on file. A report is recorded in the docket
+  // TWO GROUPS, EACH HEADED (the owner, 19 November 2026): what the
+  // committees wrote of their public hearings, then what they reported out of
+  // executive session -- the recommendation, the vote and the reasoning. Each
+  // in the bill's order. Only the Senate's hearing reports are on the site,
+  // so a group with nothing in it is not drawn; and a bill with no report of
+  // either kind says what it said before.
+  // A hearing report's committee is named in words, not an h3: its own
+  // sections are the h3s under the group (hearingReport).
+  const heard=heardReports(d).map(({r,s})=>rep(`<div class="rephead">
+      <p class="reph">${esc(r.committee||"Senate Committee")}</p>
+      <div class="repmeta"><span class="secsub">${esc(dateWords(r.heard||s.when))}</span></div></div>`,
+    hearingReport(r,!!s.video_id))).join("");
+  const none=`<p class="note">No committee report on file. A report is recorded in the docket
       when a committee reports the bill out, and the reasoning behind it is printed
-      in the House Calendar or filed with the Senate; neither has happened here yet.</p>`);
+      in the House Calendar or filed with the Senate; neither has happened here yet.</p>`;
+  const group=(h,body)=>`<section class="repgrp"><h2 class="sech">${h}</h2>${body}</section>`;
+  return veto(d)+(heard?group("Public Hearing Reports",heard):"")
+    +((written||docket)?group("Executive Session Reports",written+docket)
+      :heard?group("Executive Session Reports",none):none)
+    +sosArchive(d);
+}
+// THE COMMITTEES' OWN FILES (the owner, 19 November 2026: "Link now, trimmed
+// PDFs later"): the Secretary of State's archive page listing the bill's
+// House and Senate committee files, scanned, where build_site_v2 gives one
+// (sos_archives.address says when). Once a bill, under the reports, and not
+// counted among them. Nothing of it is fetched; the link leaves the site and
+// says so, as every such link does.
+function sosArchive(d){
+  const u=d&&d.sos_archives;
+  return u?`<p class="src repsos">The committee files on this bill, scanned, are at the
+    <a href="${esc(u)}" target="_blank" rel="noopener">Secretary of State&rsquo;s archive</a>.</p>`:"";
 }
 
 // WHY the governor vetoed it, which the docket does not record. Read into the
@@ -6855,10 +6946,14 @@ function renderSponsors(b,d){
   // A sponsor's name links to that member's own page. It was the one place a
   // person was named on this site and could not be followed.
   const pill=pchip;
-  const spBlock=ch=>{const l=spAll.filter(s=>chOf(s)===ch);return l.length
-    ?`<h2 class="sech spgrp">${CHNAME[ch]} <span class="sechn">${l.length}</span></h2>
-      <div class="chosen">${l.map(pill).join(" ")}</div>`:"";};
   const spRest=spAll.filter(s=>!["H","S"].includes(chOf(s)));
+  // A SECTION OF THE SUMMARY (19 November 2026), so each chamber's names are
+  // an h3 under its "Sponsors", and only where the names are of more than
+  // one chamber: a House bill's lone "Representatives" said nothing.
+  const split=["H","S"].filter(ch=>spAll.some(s=>chOf(s)===ch)).length+(spRest.length?1:0)>1;
+  const spBlock=ch=>{const l=spAll.filter(s=>chOf(s)===ch);return l.length
+    ?`${split?`<h3 class="spch">${CHNAME[ch]} <span class="sechn">${l.length}</span></h3>`:""}
+      <div class="chosen">${l.map(pill).join(" ")}</div>`:"";};
   // A count per party, and nothing said about it. Sorted by party code, so the
   // order is fixed rather than a ranking by size.
   const pc={};
@@ -6870,7 +6965,7 @@ function renderSponsors(b,d){
     <p class="spcount">${spAll.length} Sponsor${spAll.length===1?"":"s"}${
       spParty?` \u00b7 ${spParty}`:""}</p>
     ${spBlock(origin)}${spBlock(origin==="S"?"H":"S")}
-    ${spRest.length?`<h2 class="sech spgrp">Chamber Not on File <span class="sechn">${spRest.length}</span></h2>
+    ${spRest.length?`${split?`<h3 class="spch">Chamber Not on File <span class="sechn">${spRest.length}</span></h3>`:""}
       <div class="chosen">${spRest.map(pill).join(" ")}</div>`:""}`:"";
   // WHERE THE NAMES WERE READ. Before 2023 the only list on this site is the
   // sponsor line printed on the bill's own text (text_sponsors.py): the first
@@ -7676,18 +7771,17 @@ function renderDetail(b,d){
     // sections beneath. And the voters' vote on an amendment they were
     // sent, once cast.
     ["1","Votes",votesDrawn(d)],
-    // HEARINGS, NOT VIDEOS. The tab lists a bill's sittings -- the date, the
-    // time and the room -- and a recording where one exists. Recordings
-    // begin on 14 May 2020, so for fifteen of the nineteen terms the tab was
-    // headed "Videos" and every entry under it read "No recording exists".
-    // The sittings are the content and the video is the bonus, so the label
-    // now says what is always there rather than what usually is not. The
-    // count stays the count of recordings, which is why it is absent on the
-    // terms that have none. data-t stays "2": renumbering would repoint
-    // every saved link.
-    ["2","Hearings",videoCount(d)],
+    // VIDEOS (the owner, 19 November 2026). It was Hearings from 8 October,
+    // when it listed every sitting as a card; since 10 November it is a
+    // committee's Videos tab for one bill, a player and its recordings, and
+    // the Senate's hearing reports it carried are the Reports tab's. A sitting
+    // with no recording still has its entry under the player. The count is
+    // the count of recordings, absent on the terms that have none. data-t
+    // stays "2": renumbering would repoint every saved link.
+    ["2","Videos",videoCount(d)],
     ["3","Reports",reportCount(d)],
-    ["4","Sponsors",(d.sponsors||[]).length],
+    // NO SPONSORS TAB (the owner, 19 November 2026): the sponsors are the top
+    // of the Summary, and the strip fits one line at a desktop's width.
     ["5","Documents",(d.documents||[]).length],
     ["7","History",rel.length]]),"0")+`
     <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d,rsa)}</div>
@@ -7698,9 +7792,6 @@ function renderDetail(b,d){
     <div class="pane" role="tabpanel" id="pane_${b.id}_1" aria-labelledby="tab_${b.id}_1" tabindex="0" data-t="1" hidden>${paneNote("votes")}${renderVotes(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_2" aria-labelledby="tab_${b.id}_2" tabindex="0" data-t="2" hidden>${paneNote("hearings")}${renderHearings(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_3" aria-labelledby="tab_${b.id}_3" tabindex="0" data-t="3" hidden>${paneNote("reports")}${renderReports(b,d,rsa)}</div>
-
-
-    <div class="pane" role="tabpanel" id="pane_${b.id}_4" aria-labelledby="tab_${b.id}_4" tabindex="0" data-t="4" hidden>${renderSponsors(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_5" aria-labelledby="tab_${b.id}_5"
       tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${relPane}${btsec}`;
 }
@@ -9163,8 +9254,13 @@ function clampAnalysis(){
 
 function syncCards(ids){
   ids.forEach(id=>{
-    const c=document.querySelector(`.card[data-id="${id}"]`),t=openTab[id]||"0";
+    const c=document.querySelector(`.card[data-id="${id}"]`);
+    let t=openTab[id]||"0";
     if(!c||!detail[dkey(id)])return;
+    // A TAB THE BILL DOES NOT DRAW OPENS ITS SUMMARY: a saved /sponsors (the
+    // Sponsors tab is the Summary's top since 19 November 2026), or /text on
+    // a bill with no text, left every pane hidden under the strip.
+    if(!c.querySelector(`.pane[data-t="${t}"]`)){t="0";openTab[id]="0";}
     c.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x.dataset.t===t));
     c.querySelectorAll(".pane").forEach(p=>p.hidden=p.dataset.t!==t);
   });
@@ -10648,7 +10744,8 @@ function vwPlayer(o,r){
   return `<div class="player vwplay" data-player="${esc(pid)}"><button type="button" class="pstub"`
     +` data-title="${esc(recTitle(what,r.date))}" aria-label="${esc(`Play the recording of ${what}, ${day}`)}"`
     +` data-embed="${esc(vid)}|${from}|${esc(pid)}"><span>${icon("play")}</span><span>${esc(r.playText||"Play the recording")}</span></button>`
-    +`<div class="pbar vwcap"><p>${cap}</p></div></div>`;
+    // A bill's view (o.bare) draws no caption: its row says it (hearingView).
+    +(o.bare?"":`<div class="pbar vwcap"><p>${cap}</p></div>`)+`</div>`;
 }
 const vwDetail=r=>typeof r.detail==="function"?r.detail():String(r.detail||"");
 // A row's second line is text, or its parts, which take the middle dot.

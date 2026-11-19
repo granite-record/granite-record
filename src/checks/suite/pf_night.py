@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.10
+# GRANITE_VERSION: 2026-11-16.11
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -4570,6 +4570,13 @@ def _report_agree(CR):
     # "Related" is kept in the box's list for a page loaded before the
     # rename, which sends it; the Function stores it as "History".
     old_names = {"Related"}
+    # A BILL'S VIDEOS TAB AND NO SPONSORS TAB (the owner, 19 November 2026):
+    # "Hearings" and "Sponsors" stay in the box's list and the Function's for
+    # a page loaded before, which sends them, and no page draws them now. The
+    # Function stores a bill's "Videos" as "Hearings" (RENAMED_TABS), its name
+    # from 8 October to 19 November, so a report from the tab reads under one
+    # name either way.
+    undrawn = {"Hearings", "Sponsors"}
     assert fn_tabs == set(CR.TABS) == (box_tabs - old_names) | {""}, (sorted(fn_tabs), sorted(CR.TABS), sorted(box_tabs))
     rendered = set(re.findall(r'\["(Prime sponsored|Co-sponsored|Votes|Bills|Sessions|Meetings|Videos)"',
                               app))
@@ -4595,15 +4602,16 @@ def _report_agree(CR):
     # The bill's strip and a request's are components.recordTabs's (16
     # November 2026), named in the calls' ["key","Word",count].
     rendered |= set(re.findall(r'\["\d+","([A-Z][A-Za-z ]*)",', app))
-    assert "Hearings" in rendered, "the bill's Hearings tab is no longer found among the tabs drawn"
+    assert "Videos" in rendered and "Hearings" not in rendered, (
+        "the bill's Videos tab is not found among the tabs drawn, or Hearings is drawn again")
     assert rendered <= box_tabs, f"a tab the pages render is missing from the report list: {sorted(rendered - box_tabs)}"
     # AND NOTHING THE PAGES NO LONGER DRAW (the merge of dev into the polish,
     # 8 October 2026). A committee's Sessions tab became Meetings (D19) and the
     # three lists kept "Sessions" beside it, so a report from a page loaded
     # before the rename was stored, and compiled, under a tab no page has. A
     # tab's old name belongs in RENAMED_TABS, which stores it as the new one.
-    assert box_tabs - old_names <= rendered, (f"the report list names a tab no page draws: "
-                                  f"{sorted(box_tabs - old_names - rendered)}; a renamed tab's old name "
+    assert box_tabs - old_names - undrawn <= rendered, (f"the report list names a tab no page draws: "
+                                  f"{sorted(box_tabs - old_names - undrawn - rendered)}; a renamed tab's old name "
                                   "goes in report.js RENAMED_TABS")
     # A TAB'S OLD NAME (report.js RENAMED_TABS): a page loaded before a rename
     # still sends it, and a report stored under it stays readable, under the

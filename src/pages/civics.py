@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.78
+# GRANITE_VERSION: 2026-09-08.79
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -805,7 +805,7 @@ BILL_TABS_PICTURE = (
     '<div class="l-mock" aria-hidden="true"><p class="l-lbl">A bill&rsquo;s tabs</p>'
     '<div class="l-mocktabs">'
     + "".join(('<span class="is-on">' if k == 0 else "<span>") + t + "</span>" for k, t in enumerate(
-        ("Summary", "Bill Text", "Votes", "Hearings", "Reports", "Sponsors", "Documents")))
+        ("Summary", "Bill Text", "Votes", "Videos", "Reports", "Documents", "History")))
     + "</div></div>")
 
 
@@ -1914,7 +1914,7 @@ a bill a state agency requested names that agency (House Rule 37).</p>
 </div>
 """ + SHOWS.format("""
 <p>Where a hearing was recorded &mdash; [[hearing_video_bills]]
-bills[[hearing_video_since]] &mdash; the bill's Hearings tab links the
+bills[[hearing_video_since]] &mdash; the bill's Videos tab plays the
 recording, opened where the bill was taken up when that moment has been
 found. <a href="committees.html">Committee pages</a> list
 every day a committee met and what it heard.</p>""")
@@ -2993,7 +2993,7 @@ catch.</p>
 <p>This site holds <b>[[hearings]] public hearings</b>, each with the committee
 and the day. Every bill's page shows its own hearings. Where a hearing was
 recorded &mdash; [[hearing_video_bills]] bills[[hearing_video_since]]
-&mdash; the bill's Hearings tab links it, opened where the bill
+&mdash; the bill's Videos tab plays it, opened where the bill
 was taken up when that moment has been found.
 <a href="committees.html">A committee's page</a> lists every day it met and
 what it heard.</p>
@@ -3159,22 +3159,21 @@ sponsor</abbr>, status, bill type and floor vote day. <a href="officials.html">E
 <h2>What a Bill's Page Holds</h2>
 """ + BILL_TABS_PICTURE + """
 <ul>
-<li><b>Summary</b> &mdash; the General Court's own analysis, the current
-status, and a narrative of what has happened, in order, with each action
-linked to the journal or calendar that recorded it.</li>
+<li><b>Summary</b> &mdash; the member who filed the bill and those who signed
+on to it, the General Court's own analysis, the current status, and a
+narrative of what has happened, in order, with each action linked to the
+journal or calendar that recorded it.</li>
 <li><b>Bill Text</b> &mdash; the text and its amendments, where more than one
 was published.</li>
 <li><b>Votes</b> &mdash; every roll call this record holds, by member, from
 [[rollcall_first_year]] on, and each voice or division vote on the bill, a
 division with its count.</li>
-<li><b>Hearings</b> &mdash; each meeting that took the bill up, with its day,
-time and room, and the recording where there is one, opened at the moment
-the bill was taken up.</li>
+<li><b>Videos</b> &mdash; the recording of each meeting that took the bill
+up, opened at the moment the bill was taken up, with its time and room; a
+meeting with no recording is listed with its day.</li>
 <li><b>Reports</b> &mdash; what the committee recommended and why, in the
-committee's own words, and the Governor's message where a bill was
-vetoed.</li>
-<li><b>Sponsors</b> &mdash; the member who filed the bill and those who signed
-on to it.</li>
+committee's own words, a Senate committee's report of its public hearing,
+and the Governor's message where a bill was vetoed.</li>
 <li><b>Documents</b> &mdash; the official pages this all comes from.</li>
 <li><b>History</b>, where there is any &mdash; bills and amendments that share
 most of its language: the same text filed in another year, or carried into

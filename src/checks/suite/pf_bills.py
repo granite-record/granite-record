@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.32
+# GRANITE_VERSION: 2026-11-16.33
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1798,7 +1798,9 @@ def _one_record_tab_strip():
                              "setMeta: x => (META = x)"))
     if got is None:
         return "skip", "node, app.js or the stub is not here"
-    rest = [["2", "Hearings", 0], ["3", "Reports", 0], ["4", "Sponsors", 0], ["5", "Documents", 0],
+    # Videos, and no Sponsors tab (the owner, 19 November 2026): the
+    # sponsors are the Summary's top (_bill_tabs_one_line).
+    rest = [["2", "Videos", 0], ["3", "Reports", 0], ["5", "Documents", 0],
             ["7", "History", 0]]
     want = {"bill": C.record_tabs("HB1", [["0", "Summary", 0], ["1", "Votes", 1]] + rest, "0"),
             "texted": C.record_tabs("HB1", [["0", "Summary", 0], ["6", "Bill Text", 0], ["1", "Votes", 0]]
@@ -1811,6 +1813,73 @@ def _one_record_tab_strip():
         "a bill's tabs no longer open its detail")
     return "ok", ("a bill's page and card (with and without a text) and a request's open card draw "
                   "components.record_tabs' strip, byte for byte, and app.js writes none of its own")
+
+
+@check("frontend", "a bill's strip is Summary, Bill Text, Votes, Videos, Reports, Documents and History: "
+                   "its sponsors open the Summary, prime first, as the Sponsors tab drew them, and "
+                   "/sponsors and /hearings still open the bill")
+def _bill_tabs_one_line():
+    """The owner, 19 November 2026, on 2025's HB 57: the strip -- Summary,
+    Bill Text, Votes, Hearings, Reports, Sponsors, Documents, History --
+    wrapped History onto a second line. The Sponsors tab is gone and its
+    chips are the Summary's first section, the prime sponsor first, then the
+    co-sponsors, each chamber's names under an h3 where they are of both;
+    the Hearings tab is Videos. Measured on the built pages with this branch's
+    app.js: the strip took 795 to 804px at 1280 and takes 664 (its labels'
+    widths, not this check's). A bill with no sponsors says so, unless it is of
+    an earlier term, whose About This Record says it. An address made before
+    -- /sponsors, /hearings -- still opens the bill: /hearings the Videos tab,
+    /sponsors the Summary (syncCards opens the Summary for a tab the bill
+    does not draw), and a tab chosen now writes /videos."""
+    sp = [{"name": "Ann Lee", "chamber": "S", "party": "D", "display_full": "Sen. Ann Lee (D - SD1)",
+           "slug": "ann-lee-sd-1", "prime": True, "sequence": 0},
+          {"name": "Bob Roe", "chamber": "H", "party": "R", "display_full": "Rep. Bob Roe (R - Hills 2)",
+           "slug": "bob-roe-hills-2", "sequence": 1},
+          {"name": "Cy Doe", "chamber": "S", "party": "R", "display_full": "Sen. Cy Doe (R - SD3)",
+           "slug": "cy-doe-sd-3", "sequence": 2}]
+    row = {"id": "SB5", "n": "SB 5", "term": "2025-2026", "year": 2025}
+    js = ("(() => { const b = " + json.dumps(row) + ";"
+          " return {detail: scope.renderDetail(b, " + json.dumps({"sponsors": sp, "nver": 2,
+                                                                   "billtext": {"body": "AN ACT"}}) + "),"
+          " lone: scope.renderSummary(b, " + json.dumps({"sponsors": sp[:1]}) + "),"
+          " none: scope.renderSummary(b, {}),"
+          " old: scope.renderSummary(b, {archived: {docket: true}}),"
+          " slugs: [scope.slugOf(scope.BILL_TABS, '2'), scope.BILL_TABS.sponsors,"
+          " scope.BILL_TABS.hearings, scope.BILL_TABS.videos]}; })()")
+    got = _app_js(js, names=("renderDetail", "renderSummary", "slugOf", "BILL_TABS"))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    det = got["detail"]
+    strip = det[:det.index("</div>")]
+    tabs = re.findall(r'data-t="(\d)">([A-Z][A-Za-z ]*)', strip)
+    assert tabs == [("0", "Summary"), ("6", "Bill Text"), ("1", "Votes"), ("2", "Videos"), ("3", "Reports"),
+                    ("5", "Documents"), ("7", "History")], f"the bill's strip is {tabs}"
+    assert 'data-t="4"' not in det and "Hearings" not in det, "a Sponsors pane or a Hearings word is still drawn"
+    summ = det[det.index('id="pane_SB5_0"'):det.index('id="pane_SB5_6"')]
+    first = re.search(r'<section class="w4"( id="[^"]*")?><h2 class="w4h">([^<]*)</h2>', summ)
+    assert first and first.groups() == (' id="sponsors"', "Sponsors"), (
+        f"the Summary does not open with its Sponsors: {first.groups() if first else summ[:200]}")
+    sec = summ[:summ.index("</section>")]
+    chips = re.findall(r'class="mchip p-(\w)" translate="no"><a href="legislator/([^"]+)"', sec)
+    assert chips == [("D", "ann-lee-sd-1"), ("R", "cy-doe-sd-3"), ("R", "bob-roe-hills-2")], (
+        f"the Summary's sponsors are not the prime, then the co-sponsors, the prime's chamber first: {chips}")
+    assert '<i translate="yes">Prime</i>' in sec.split("cy-doe-sd-3")[0] and \
+        re.findall(r'<h3 class="spch">(\w+)', sec) == ["Senators", "Representatives"], (
+            "the prime is not labelled, or the chambers are not split under h3s")
+    lone, none, old = got["lone"], got["none"], got["old"]
+    assert 'id="sponsors"' in lone and "spch" not in lone and "ann-lee-sd-1" in lone, (
+        "one chamber's sponsors are headed by their chamber, or missing")
+    assert 'id="sponsors"' in none and "No sponsors on file." in none and 'id="sponsors"' not in old, (
+        "a bill with no sponsors does not say so, or an earlier term's says it twice")
+    assert got["slugs"] == ["videos", "4", "2", "2"], f"the tab addresses are {got['slugs']}"
+    app = _source("src/pages/app.js")
+    sync = re.search(r"\nfunction syncCards\(.*?\n\}\n", app, re.S)
+    assert sync and re.search(r'if\(!c\.querySelector\(`\.pane\[data-t="\$\{t\}"\]`\)\)\{t="0";openTab\[id\]="0";\}',
+                              sync.group(0)), "a tab the bill does not draw (/sponsors) no longer opens its Summary"
+    return "ok", ("seven tabs, Videos and no Sponsors; the Summary opens with the sponsors' chips, the "
+                  "prime labelled and first, Senators then Representatives under h3s, one chamber's "
+                  "unheaded, none said, an earlier term's left to About This Record; /videos written, "
+                  "/hearings and /sponsors kept")
 
 
 @check("build", "a request's page has a bill page's Summary tab, drawn by the record's strip, its Summary "
@@ -3023,7 +3092,11 @@ def _conference_folded(build_site_v2):
             "HB 485's page still says no recording matched its conference of 16 June 2025")
         # The room as the Documents tab names it (the person, approved 17
         # October 2026).
-        assert "Jun 16, 2025 at 9:30 AM · Legislative Office Building 206-208" in html_, (
+        # Each fact once (the owner, 19 November 2026): the day in the
+        # recording's row, the time and the room under the player.
+        flat = re.sub(r"<[^>]+>", "", html_)
+        assert "Jun 16, 2025" in flat and re.search(
+            r"9:30\sAM, &middot;&nbsp;Legislative Office Building 206-208", flat), (
             "HB 485's conference is not headed with the time and room its notice gives")
     return "ok", ("HB 485's conference of 16 June 2025 is one station, 09:30 in LOB 206-208, "
                   "playing its recording; HB 1709's is one per recording and SB 108's one; "
@@ -3191,8 +3264,10 @@ def _station_not_named(build_site_v2, segment_markers):
         # Since 10 November 2026 (the owner) the Hearings tab is a committee's
         # Videos tab for one bill: one player, the sitting's day and time in
         # the line under it, and the note once, under the player.
+        # Each fact once (the owner, 19 November 2026): the day in the
+        # recording's row, the time under the player, a time as YouTube's.
         for want in ('<p class="vwnone">Bill not named in the captions.</p>',
-                     "Play from 00:05:00", "Feb 3, 2026 at 10:00", 'data-embed="VIDX|300|'):
+                     "Play from 5:00", "Feb 3, 2026", "10:00", 'data-embed="VIDX|300|'):
             assert want in named, f"the not-named sitting does not say {want!r}"
         for k, h in (("the not-named sitting", named),
                      ("a not-named sitting of a state app.js does not know", fallback)):
@@ -3210,7 +3285,7 @@ def _station_not_named(build_site_v2, segment_markers):
         assert "Exact moment not found." in other and "not named" not in other, (
             "a sitting whose bill is named lost the words for an opening not found")
     return "ok", ("marked only where its recording never names it and no start is drawn; one "
-                  "player, \"Play from 00:05:00\", over \"Bill not named in the captions.\", said once")
+                  "player, \"Play from 5:00\", over \"Bill not named in the captions.\", said once")
 
 
 @check("frontend", "a bill's recording cards say each thing once: two recordings in one line, "
@@ -3307,8 +3382,10 @@ def _recording_cards_once(build_site_v2):
     # The clock's no-break space is a space here (\s above). One player, the
     # sitting's day and time in the line under it, and the unfound moment said
     # once (the Hearings tab as a committee's Videos tab, 10 November 2026).
-    need("start", "Play the recording", "Mar 12, 2025 at 10:00 AM", "Exact moment not found.")
-    need("later", "Play from 00:16:28", "Mar 12, 2025 at 9:35 AM", "Exact moment not found.")
+    # Each fact once (the owner, 19 November 2026): the day in the row, the
+    # time under the player; a time in the recording as YouTube writes one.
+    need("start", "Play the recording", "Mar 12, 2025", "10:00 AM", "Exact moment not found.")
+    need("later", "Play from 16:28", "Mar 12, 2025", "9:35 AM", "Exact moment not found.")
     for k in ("start", "later", "day"):
         never(k, "not identified", "Not yet matched", "automatic pass")
         if 'class="tolnote"' in page[k] or 'class="note"' in page[k]:
@@ -3316,14 +3393,14 @@ def _recording_cards_once(build_site_v2):
     if 'data-embed="73sLapY1jRw|0|' not in page["start"] or \
             'data-embed="FL8-GWBu5wk|988|' not in page["later"]:
         bad.append("an unfound moment's Play no longer opens where it did")
-    need("vote", "Play from 05:13:45", "05:23:18 vote at", "On YouTube",
+    need("vote", "Play from 5:13:45", "Where this bill is in the recording 5:13:45 to 5:23:18 vote", "On YouTube",
          "Motion: Ought to Pass with Amendment (OTPA, Pass the bill with changes)")
     never("vote", "window opens", "timed to the second", "Motions: OTPA", "approximate",
           "where the clerk takes it up")
     if 'data-embed="itJRViVSJqk|18825|' not in page["vote"]:
         bad.append("the floor card's Play no longer opens at the clerk's opening")
-    need("weak", "Play from 05:13:45", "05:23:18 vote at", "approximate")
-    need("chair", "Play from 00:24:37", "00:30:57 ends at",
+    need("weak", "Play from 5:13:45", "5:13:45 to 5:23:18 vote approximate")
+    need("chair", "Play from 24:37", "24:37 to 30:57",
          "Motion: Ought to Pass with Amendment (OTPA, Pass the bill with changes) 2026-1396s")
     never("chair", "no roll call on this one", "approximate")
     need("day", "Play the recording", "Exact moment not found.")
@@ -3410,8 +3487,8 @@ def _invented_end_withheld(build_site_v2):
     return "ok", "a last mention within 30 s of the opening gives no end, committee or floor"
 
 
-@check("frontend", "a Senate hearing report draws closed under its hearing, "
-       "speakers under their names", needs=("build_site_v2", "senate_hearing_reports"))
+@check("frontend", "a Senate hearing report draws closed on the Reports tab, under Public Hearing "
+       "Reports, speakers under their names", needs=("build_site_v2", "senate_hearing_reports"))
 def _hearing_report_drawn(build_site_v2, senate_hearing_reports):
     """app.js in node, on two real reports as the build hands them over.
 
@@ -3421,6 +3498,12 @@ def _hearing_report_drawn(build_site_v2, senate_hearing_reports):
     report names them; each section heading and each speaker is a heading
     over their own points; and a report that could not be split is drawn as
     the text it is, with no name put over anything.
+
+    ON THE REPORTS TAB SINCE 19 NOVEMBER 2026 (the owner): under Public
+    Hearing Reports, counted in the tab's count, and no longer on the Videos
+    tab, which says where it went where the report dates a sitting itself.
+    Its sections are h3s and its speakers h4s under the group's h2, its
+    committee named in words beside it.
     """
     ext, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     if not (ext.exists() and stub.exists()):
@@ -3449,7 +3532,7 @@ require("./stub.js");
 const fs = require("fs");
 const src = fs.readFileSync("./page.js", "utf8");
 let scope;
-try { scope = (0, eval)(src + "; ({hearingReport, renderHearings});"); }
+try { scope = (0, eval)(src + "; ({hearingReport, renderHearings, renderReports, reportCount});"); }
 catch (e) { console.log("LOAD " + e.message); process.exit(1); }
 const [a, b] = JSON.parse(fs.readFileSync("./reps.json", "utf8"));
 const st = {when:"2025-01-14", time:"09:30", what:"hearing", body:"S",
@@ -3469,7 +3552,10 @@ try {
          novid: scope.renderHearings({id:"SB11", n:"SB 11"},
                                      {stations:[bare]}),
          dated: scope.renderHearings({id:"SB11", n:"SB 11"},
-                                     {stations:[dated]})};
+                                     {stations:[dated]}),
+         rep: scope.renderReports({id:"SB11", n:"SB 11"}, {stations:[st]}, x => x),
+         repbare: scope.renderReports({id:"SB11", n:"SB 11"}, {stations:[bare]}, x => x),
+         count: scope.reportCount({stations:[st, dated]})};
 } catch (e) { console.log("RENDER " + e.message); process.exit(1); }
 fs.writeFileSync("./out.json", JSON.stringify(out));
 """, encoding="utf-8")
@@ -3489,45 +3575,242 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
     assert ("Senate Election Law and Municipal Affairs Committee’s hearing "
             "report of") in re.sub(r"\s+", " ", one), (
         "the attribution to the committee's report is missing")
-    assert re.search(r'<h3><span class="mchip p-R" translate="no"><a href="legislator/[^"]+">'
+    assert re.search(r'<h4><span class="mchip p-R" translate="no"><a href="legislator/[^"]+">'
                      r'Senator Gannon</a></span><span class="hrrole">Prime '
                      r'Sponsor</span>', one), (
         "Senator Gannon is not drawn with the member chip, in the report's "
         "own words")
-    assert "<h3>Liz Tentarelli, League of Women Voters N.H.</h3>" in one, (
+    assert "<h4>Liz Tentarelli, League of Women Voters N.H.</h4>" in one, (
         "a member of the public is not named as the report names her")
-    # h2 then h3: a pane's own headings are h2 (a roll call's question, a
-    # sponsor group), so the report's sections sit at that level and its
-    # speakers one below, and the outline never skips a level.
-    assert one.count("<h2>") >= 3 and one.count("<h3>") == 4 and \
-        "<h4>" not in one, (
-        f"{one.count('<h2>')} section headings and {one.count('<h3>')} "
+    # h3 then h4: on the Reports tab the report is under its group's h2, so
+    # its sections are h3s and its speakers h4s, and the outline never skips
+    # a level.
+    assert one.count("<h3>") >= 3 and one.count("<h4>") == 4 and \
+        not re.search(r"<h[25][ >]", one), (
+        f"{one.count('<h3>')} section headings and {one.count('<h4>')} "
         "speaker headings, not 3+ and 4")
-    assert "<h3>" not in prose and 'class="hrpara"' in prose and \
+    assert "<h4>" not in prose and 'class="hrpara"' in prose and \
         "does not make clear who said which part" in prose, (
         "a report kept as text was drawn as speakers, or without saying why")
-    assert tab.index('class="player vwplay"') < tab.index('class="hrep"'), (
-        "the report is not under the hearing's recording")
-    # "The recording above is the hearing itself" is true only where there
-    # is one; fifteen reported hearings have none.
+    # THE REPORTS TAB'S, NOT THE VIDEOS TAB'S: the player alone on Videos,
+    # the report under Public Hearing Reports, and counted there.
+    rep, repbare = re.sub(r"\s+", " ", out["rep"]), re.sub(r"\s+", " ", out["repbare"])
+    assert 'class="player vwplay"' in tab and 'class="hrep"' not in tab, (
+        "the Videos tab still draws the hearing report")
+    assert re.search(r'<section class="repgrp"><h2 class="sech">Public Hearing Reports</h2>.*'
+                     r'<p class="reph">Senate Election Law and Municipal Affairs Committee</p>.*'
+                     r'class="hrep"', rep), "the report is not under Public Hearing Reports on the Reports tab"
+    assert out["count"] == 2, f"the Reports tab counts {out['count']} hearing reports, not 2"
+    # "The recording ... is on the Videos tab" is true only where there is
+    # one; fifteen reported hearings have none.
     novid = out["novid"]
-    assert "the recording above" in re.sub(r"\s+", " ", tab), (
-        "the report under a recording no longer points at it")
-    assert "No recording matched" in novid and 'class="hrep"' in novid and \
-        "recording above" not in re.sub(r"\s+", " ", novid), (
-        "a report with no recording above it says there is one")
+    assert "the recording of the hearing is on the Videos tab" in rep, (
+        "the report of a recorded hearing no longer says where the recording is")
+    assert "No recording matched" in novid and 'class="hrep"' not in novid and \
+        'class="hrep"' in repbare and "Videos tab" not in repbare, (
+        "a report with no recording says there is one, or stayed on the Videos tab")
     # A report under its own date says the date is the report's, gives the
     # docket's, and does not call itself a recording that failed to match.
     dated = re.sub(r"\s+", " ", out["dated"])
     assert "Dated by the committee’s own report" in dated.replace("&rsquo;", "’") \
-        and "records one on January 14, 2025" in dated and 'class="hrep"' in dated \
-        and "No recording matched" not in dated, (
+        and "records one on January 14, 2025" in dated and 'class="hrep"' not in dated \
+        and "on the Reports tab" in dated and "No recording matched" not in dated, (
         "a report under its own date does not say where the date came from: "
         + dated[:300])
     return "ok", ("closed, sized, attributed; a member in the chip, the "
-                  "public as named; prose kept as prose; under the video, "
-                  "and says so only where there is one; a report the docket "
-                  "has no hearing for under its own date, saying so")
+                  "public as named; prose kept as prose; on the Reports tab under "
+                  "Public Hearing Reports and counted, pointing at the recording only "
+                  "where there is one; a report the docket has no hearing for under "
+                  "its own date on the Videos tab, saying where the report is")
+
+
+_SOS_URL = ("https://gc.nh.gov/bill_status/legacy/bs2016/sos_archives.aspx?lsr=21&sy=2025"
+            "&sortoption=billnumber&txtsessionyear=2025&txtbillnumber=hb57")
+
+
+@check("frontend", "a bill's Reports tab holds Public Hearing Reports, then Executive Session Reports, "
+                   "each in the bill's order and all counted, a writer a chip only where the build named "
+                   "one, and the committee files linked once under them; a tab with no report still links "
+                   "them, counting none")
+def _report_groups():
+    """The owner, 19 November 2026: the Reports tab in two groups, headed
+    "Public hearing reports" and "Executive session reports", each in the
+    bill's order. The committees' reports -- the recommendation, the vote,
+    the reporting member, the reasoning -- are executive session reports; the
+    Senate's hearing reports, which the Videos tab drew under the player, are
+    public hearing reports. The tab counts both. The House's public hearing
+    report is a later source, so a group with nothing in it is not drawn. The
+    reporting member is a chip where build_site_v2.report_author named one
+    for certain (author_m), else the report's words. And once a bill, under
+    the groups, the Secretary of State's archive of the committee files
+    (sos_archives), marked as leaving the site; with no report at all the tab
+    still has it, and its count is none."""
+    hr = {"committee": "Senate Judiciary Committee", "heard": "2025-05-15",
+          "sections": [{"label": "Testimony", "text": ["Said."]}]}
+    d = {"stations": [
+            {"when": "2025-01-22", "what": "public hearing", "body": "H", "video_id": "V0",
+             "state": "stated", "start": 5, "start_stated": True},
+            {"when": "2025-05-15", "what": "hearing", "body": "S", "video_id": "V1", "state": "located",
+             "start": 5, "reports": [hr]},
+            {"when": "2025-05-20", "what": "hearing", "body": "S", "video_id": "", "state": "novideo",
+             "reports": [dict(hr, heard="2025-05-20", subject="AMENDMENT #2025-2183s")]}],
+         "reports": [
+            {"date": "2025-01-29", "dated": "signed", "majority_recommendation": "OUGHT TO PASS",
+             "cite": "HC 11", "source": "House Calendar 11, 2025",
+             "reports": [{"side": "Committee", "author": "Rep. David Meuse", "vote_yeas": 16, "vote_nays": 0,
+                          "committee": "Criminal Justice and Public Safety", "text": "Reasons.",
+                          "author_m": {"label": "Rep. David Meuse (D - Rock 37)", "slug": "david-meuse-rock-37",
+                                       "party_code": "D"}}]},
+            {"date": "2025-05-22", "dated": "signed", "body": "S", "cite": "SC 22A",
+             "majority_recommendation": "OUGHT TO PASS WITH AMENDMENT",
+             "reports": [{"side": "Committee", "author": "Senator Smith", "committee": "Judiciary",
+                          "vote_yeas": 3, "vote_nays": 2, "text": ""}]}],
+         "sos_archives": _SOS_URL}
+    b = {"id": "HB57", "n": "HB 57", "term": "2025-2026", "year": 2025}
+    js = ("(() => { const b = " + json.dumps(b) + ", d = " + json.dumps(d) + ", u = " + json.dumps(_SOS_URL) + ";"
+          " return {full: scope.renderReports(b, d, x => x), count: scope.reportCount(d),"
+          " bare: scope.renderReports(b, {sos_archives: u}, x => x), bareCount: scope.reportCount({sos_archives: u}),"
+          " nolink: scope.renderReports(b, {reports: d.reports}, x => x),"
+          " strip: scope.renderDetail(b, {sos_archives: u})}; })()")
+    got = _app_js(js, names=("renderReports", "reportCount", "renderDetail"))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    full = re.sub(r"\s+", " ", got["full"])
+    order = ["Public Hearing Reports", "May 15, 2025", "May 20, 2025", "Executive Session Reports",
+             "Jan 29, 2025", "May 22, 2025", "Secretary of State&rsquo;s archive"]
+    at = [full.find(w) for w in order]
+    assert -1 not in at and at == sorted(at), f"the tab's order is not the groups' and the bill's: {dict(zip(order, at))}"
+    assert re.findall(r'<h2 class="sech">([^<]+)</h2>', full) == ["Public Hearing Reports", "Executive Session Reports"] \
+        and full.count('<h3 class="reph">') == 2 and full.count('<p class="reph">') == 2, (
+            "the groups or their reports are not headed h2, then h3 or the hearing's committee in words")
+    assert got["count"] == 4, f"the tab counts {got['count']}, not the 2 written and 2 hearing reports"
+    links = re.findall(r'<a href="([^"]+)" target="_blank" rel="noopener">Secretary of State&rsquo;s archive</a>', full)
+    assert links == [_SOS_URL.replace("&", "&amp;")] and full.count("sos_archives.aspx") == 1, (
+        f"the committee files are not linked once, as a link that leaves the site: {links}")
+    assert re.search(r'<p class="repby">[^<]*<span class="mchip p-D" translate="no"><a href="legislator/'
+                     r'david-meuse-rock-37">Rep\. David Meuse <span class="mtag">\(D - Rock 37\)</span></a></span>', full) \
+        and re.search(r'<p class="repby">\s*Senator Smith</p>', full), (
+            "a named writer is not a chip, or an unnamed one is not the report's words")
+    bare = re.sub(r"\s+", " ", got["bare"])
+    assert "No committee report on file." in bare and _SOS_URL.replace("&", "&amp;") in bare and "<h2" not in bare \
+        and got["bareCount"] == 0, "a bill with no report lost its link, or counts it as a report"
+    assert "Secretary of State" not in got["nolink"], "a bill with no archive address links one"
+    assert re.search(r'data-t="3">Reports</button>', got["strip"]), "the Reports tab of a bill with only the link is counted, or gone"
+    return "ok", ("Public Hearing Reports then Executive Session Reports, each in date order, h2 over h3, "
+                  "4 counted; the named writer a chip and the unnamed one words; the archive linked once "
+                  "under them, and alone, uncounted, on a bill with no report")
+
+
+@check("build", "a committee report's writer is a member's chip only where one member of the report's "
+                "chamber can be meant, with the seat held then; otherwise the report's words",
+       needs=("build_site_v2",))
+def _report_author_chip(B):
+    """The owner, 19 November 2026: "Rep. David Meuse" and "Senator Daryl
+    Abbas", the reporting members, were plain text; they are chips "on a
+    certain match only. A wrong chip is a factual error; a missing chip is
+    not." build_site_v2.report_author takes the movers' rule (mover_member)
+    among the same members (mover_pool): the report's chamber's own title, one
+    member of that chamber the name can mean, the seat of the term. A shared
+    surname, a name of the other chamber, a name without its title and a
+    member with no page stay the report's words. After the turn a finished
+    term's writer keeps the seat of that term and links to the page as it is
+    now."""
+    def mem(i, last, first, ch, county, abbr, dist, party):
+        return {"id": i, "name": f"{last}, {first}", "chamber": ch, "county": county,
+                "county_abbr": abbr, "district": dist, "party_code": party}
+    legs = {m["id"]: m for m in (
+        mem("1", "Meuse", "David", "H", "Rockingham", "Rock", "37", "D"),
+        mem("2", "Abbas", "Daryl", "S", "", "", "22", "R"),
+        mem("3", "Lee", "Ann", "H", "Hillsborough", "Hills", "1", "D"),
+        mem("4", "Lee", "Bo", "H", "Hillsborough", "Hills", "2", "R"))}
+    now = {"1": dict(legs["1"], district="40")}
+    keep_slugs, keep_spell = dict(B._OWN_SLUG), list(B._SPELLINGS)
+    try:
+        B._SPELLINGS[:] = [{}]
+        B._OWN_SLUG.clear()
+        said = {a: B.report_author(a, ch, legs) for a, ch in (
+            ("Rep. David Meuse", "H"), ("Senator Daryl Abbas", "S"), ("Rep. Lee", "H"),
+            ("Rep. Ann Lee", "H"), ("Senator Meuse", "S"), ("David Meuse", "H"), ("Rep. Nobody", "H"))}
+        B._OWN_SLUG.clear()
+        later = B.report_author("Rep. David Meuse", "H", legs, pages=now)
+        gone = B.report_author("Senator Daryl Abbas", "S", legs, pages=now)
+        written = [{"body": "S", "reports": [{"author": "Senator Daryl Abbas"}]},
+                   {"reports": [{"author": "Rep. David Meuse"}, {"author": "Rep. Lee"}]}]
+        B._OWN_SLUG.clear()
+        B.report_authors(written, legs)
+    finally:
+        B._OWN_SLUG.clear()
+        B._OWN_SLUG.update(keep_slugs)
+        B._SPELLINGS[:] = keep_spell
+    want = {"Rep. David Meuse": {"label": "Rep. David Meuse (D - Rock 37)", "slug": "david-meuse-rock-37",
+                                 "party_code": "D"},
+            "Senator Daryl Abbas": {"label": "Sen. Daryl Abbas (R - SD22)", "slug": "daryl-abbas-sd-22",
+                                    "party_code": "R"},
+            "Rep. Lee": None, "Rep. Ann Lee": {"label": "Rep. Ann Lee (D - Hills 1)", "slug": "ann-lee-hills-1",
+                                               "party_code": "D"},
+            "Senator Meuse": None, "David Meuse": None, "Rep. Nobody": None}
+    bad = [f"{a!r} is {said[a]!r}, not {w!r}" for a, w in want.items() if said[a] != w]
+    assert not bad, "; ".join(bad)
+    assert later == {"label": "Rep. David Meuse (D - Rock 37)", "slug": "david-meuse-rock-40",
+                     "party_code": "D"} and gone is None, (
+        f"after the turn the writer is {later} and one with no page {gone}")
+    sides = [e.get("author_m", {}).get("slug") for r in written for e in r["reports"]]
+    assert sides == ["daryl-abbas-sd-22", "david-meuse-rock-37", None], f"report_authors named {sides}"
+    src = _source(_paths.locate("build_site_v2.py"))
+    assert "report_authors(rep_written, _mpool, _mpages)" in src, (
+        "build_bills no longer names a report's writer among the term's own members")
+    return "ok", ("Meuse and Abbas named with the seat of the term, Ann Lee by her full name; a shared "
+                  "surname, the other chamber's title, no title and nobody stay words; after the turn "
+                  "the seat of the term and the page as it is now, none where there is no page")
+
+
+@check("build", "the committee files' address is the one the General Court's own page printed, built "
+                "only for a year that has ended and no saved page reads, and never fetched")
+def _sos_archives_link():
+    """The owner, 19 November 2026 ("Link now, trimmed PDFs later"): a bill's
+    Reports tab links the Secretary of State's archive page listing its
+    committee files. sos_archives.address keeps the manager's rule: a year
+    whose saved pages were read after it ended (2016 to 2025 in
+    collected/sos_archives.json) gives the address its page printed, or none;
+    a later year, once it has ended, the address built by the same scheme
+    from the bill's LSR; before then, and before 2016, none. Every address
+    in the file is the scheme with the bill's own LSR, year and number, and
+    nothing here or in the build asks for one (the parser and build_site_v2
+    only write the string)."""
+    import sos_archives as SA
+    data = {"read": {"2016": "2026-09-11", "2025": "2026-09-03"},
+            "links": {"2016": {"SB237": "1002"}, "2025": {"HB57": "21"}}}
+    base = "https://gc.nh.gov/bill_status/legacy/bs2016/sos_archives.aspx?"
+    cases = {(2016, "SB237", "1002", "2026-11-19"): "lsr=1002&sy=2016&sortoption=billnumber&txtsessionyear=2016&txtbillnumber=sb237",
+             (2016, "SB238", "1022", "2026-11-19"): "",
+             (2025, "HB57", "0021", "2026-11-19"): "lsr=21&sy=2025&sortoption=billnumber&txtsessionyear=2025&txtbillnumber=hb57",
+             (2025, "HB58", "0022", "2026-11-19"): "",
+             (2026, "HB1", "2026-0001", "2026-12-31"): "",
+             (2026, "HB1", "2026-0001", "2027-01-01"): "lsr=1&sy=2026&sortoption=billnumber&txtsessionyear=2026&txtbillnumber=hb1",
+             (2015, "HB1", "0001", "2026-11-19"): "", (2026, "HB1", "", "2027-01-01"): ""}
+    bad = [f"{k} gives {SA.address(data, *k)!r}" for k, w in cases.items()
+           if SA.address(data, *k) != (base + w if w else "")]
+    assert not bad, "; ".join(bad)
+    filed = SA.load()
+    if not filed:
+        return "skip", "collected/sos_archives.json is not here"
+    links = filed.get("links") or {}
+    per = {y: len(v) for y, v in sorted(links.items())}
+    assert set(filed.get("read") or {}) >= {str(y) for y in range(2016, 2026)} and per.get("2016", 0) > 900 \
+        and all(re.fullmatch(r"[A-Z]+\d+", b) and re.fullmatch(r"\d+", l) for v in links.values() for b, l in v.items()), (
+            f"collected/sos_archives.json is not the saved pages' links of 2016 to 2025: {per}")
+    src = _source(_paths.locate("build_site_v2.py"))
+    assert re.search(r'"sos_archives": _sos\} if \(_sos := \(""\s+if b\.get\("journal"\) else SA\.address\(\s*'
+                     r'sos_files, b\.get\("lsr_year"\), bid, b\.get\("lsr_num"\), sos_day\)\)\)', src), (
+        "build_bills no longer gives a bill's record the archive's address by sos_archives.address")
+    pages = Path("docket_pages")
+    if pages.is_dir():
+        r = _run([sys.executable, str(_paths.locate("sos_archives.py")), "--check"], capture_output=True,
+                 text=True, timeout=300)
+        assert r.returncode == 0, "collected/sos_archives.json no longer agrees with the saved pages: " + r.stdout[-300:]
+    return "ok", ("the rule's eight cases; " + ", ".join(f"{y} {n:,}" for y, n in per.items())
+                  + " bills linked" + ("; the file agrees with the saved pages" if pages.is_dir()
+                                       else "; no saved pages here to read it again from"))
 
 
 def _journey_bills(B):

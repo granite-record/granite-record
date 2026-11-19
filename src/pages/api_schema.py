@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.10
+# GRANITE_VERSION: 2026-10-30.11
 """
 What every file of the data API holds, field by field: /data/schema.json.
 
@@ -165,7 +165,7 @@ BILL_FIELDS = {
     "sponsors": ("array", "Who put their name to it, prime first: member_id, name, party, chamber, prime, and display labels.", S),
     "events": ("array", "The docket, line by line: date, text, plain (the line in plain words), cite and cite_url (the journal or calendar it is printed in), and on a public hearing testimony, the sign-in counts.", S),
     "rollcalls": ("array", "Each floor vote on it: date, body, question, yeas, nays, passed, threshold, and tally, the votes by party.", S),
-    "reports": ("array", "Committee reports with their reasoning: House calendar reports, Senate committee reports and interim study statements (interim true), each with its sides (majority, minority) and their text, author and vote.", S),
+    "reports": ("array", "Committee reports with their reasoning: House calendar reports, Senate committee reports and interim study statements (interim true), each with its sides (majority, minority) and their text, author and vote, and author_m, the member the author is, where one member of the chamber can be meant.", S),
     "docket_reports": ("array", "Reports the docket records that no printed report carries: committee, side, recommendation, vote, amendment.", S),
     "report_actions": ("array", "What the chamber did between one report and the next.", S),
     "study_report": ("object", "The docket's line on an interim study: recommended or not, and the vote.", S),
@@ -179,6 +179,7 @@ BILL_FIELDS = {
     "documents": ("array", "Links to the General Court's own documents for the bill.", S),
     "text_url": ("string", "The General Court's page for the bill's text.", S),
     "docket_url": ("string", "The General Court's docket page for the bill.", S),
+    "sos_archives": ("string", "The Secretary of State's archive page listing the bill's House and Senate committee files, scanned, where the General Court's own pages link one or its year has ended since; never fetched.", B),
     "lsr": ("string", "Its legislative service request number.", S),
     "subject": ("string", "The subject the General Court files it under.", S),
     "subject_source": ("string", "Where subject came from.", S),

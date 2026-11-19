@@ -71,10 +71,7 @@
     "Hard of Hearing",
     "vision, hearing"
    ],
-   "basis": "The catalog",
-   "except": {
-    "guide.using-this-site.hearings": "Names the bill page's Hearings tab, which is in English until the bill page is translated."
-   }
+   "basis": "The catalog"
   },
   {
    "en": [
