@@ -2357,7 +2357,8 @@ The State Primary's State Representative and State Senate races, 2016 to
 `D|H|Belknap|1`, `R|S|9`), which a member's Elections tab draws
 (`build_member_elections.primaries_on_file`, every `primary_*.json`). The layout is the general's, read by the
 House reader's own rules: `read_house`, `Block` and `district` take a
-primary's day as a date carrying the party (`Primary`), whose titles must
+primary's day as a date carrying the party (`Primary`, the day RSA 653:8 in
+force on it gives, by `src/lib/election_law.py`), whose titles must
 name the primary and that party, and a primary's block reads an empty cell
 under a candidate as none, because the files name every candidate any place
 wrote in, of every party, and print a count only where a vote came. The
@@ -2507,7 +2508,8 @@ One line under the cards says what the mark is.
 
 Above the newest cycle the tab shows the seat's upcoming elections (19 November
 2026): the next state general election's filing period, primary and general,
-each a day `key_dates.in_force` works out from the words of the RSA text in force
+each a day `key_dates.in_force` (`src/lib/election_law.py`'s, which the
+primary reader dates a primary by too) works out from the words of the RSA text in force
 on it (RSA 655:14 and 653:8 as 2026, 44 amends them from 1 January 2028; RSA
 653:7) and cited to its section and act (`build_member_elections.upcoming`, the
 member file's `up`). The seat is the one the member holds in the term those

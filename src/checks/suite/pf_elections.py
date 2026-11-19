@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.29
+# GRANITE_VERSION: 2026-11-16.30
 """
 preflight's checks of members-elect and election results.
 
@@ -4664,6 +4664,56 @@ def _primary_reader_reads(P):
                   "unnamed write-ins could take; the general's towns, seats and floterial; a later "
                   "upload, a refused file listed, a race refused alone; a 2018 Senate sheet's note of "
                   "places and its mistyped title")
+
+
+@check("build", "State Primary results: a primary's day is the one RSA 653:8 in force on it gives -- the "
+                "second Tuesday of September for 2016-2026, 13 June 2028 by 2026, 44:1 -- from "
+                "src/lib/election_law.py, which the reader imports with no page module, and an odd "
+                "year is refused",
+       needs=("parse_sos_primary_results",))
+def _primary_day_by_law(P):
+    """Found on 19 November 2026: Primary hard-coded the second Tuesday of September, which
+    would have dated a 2028 primary file (June, by RSA 653:8 as 2026, 44:1 amends it from 1
+    January 2028) three months late. It takes the day from election_law.state_primary, the
+    rule key_dates and a member's upcoming elections take. Held in a folder with no statute
+    table (the law's own copy) and, where db/NH_RSA.psv is on this disk, in this one: every
+    year 2016-2026 its file holds is the day it always was, 2028 is 13 June, 2027 is
+    refused; and neither the reader nor election_law imports key_dates or i18n (src/parse/
+    importing a page module)."""
+    import ast
+    import datetime
+    want = {2016: datetime.date(2016, 9, 13), 2018: datetime.date(2018, 9, 11),
+            2020: datetime.date(2020, 9, 8), 2022: datetime.date(2022, 9, 13),
+            2024: datetime.date(2024, 9, 10), 2026: datetime.date(2026, 9, 8),
+            2028: datetime.date(2028, 6, 13)}
+    here, said = os.getcwd(), []
+    try:
+        with tempfile.TemporaryDirectory() as bare:
+            for where in (bare, here):
+                if where == here and not (Path(here) / "db" / "NH_RSA.psv").is_file():
+                    continue
+                os.chdir(where)
+                got = {y: datetime.date(*P.Primary(y, "democratic").timetuple()[:3]) for y in want}
+                assert got == want, f"the primaries' days ({'no table' if where == bare else 'db/NH_RSA.psv'}): {got}"
+                p = P.Primary(2028, "republican")
+                assert (p.party, p.contest, p.isoformat()) == ("republican", "primary-r", "2028-06-13"), (
+                    f"the 2028 Republican primary: {(p.party, p.contest, p.isoformat())}")
+                try:
+                    P.Primary(2027, "democratic")
+                    raise AssertionError("an odd year was given a state primary")
+                except P.Refused as e:
+                    assert "653:8" in str(e), f"refused, but not for the law: {e}"
+                said.append("no table" if where == bare else "db/NH_RSA.psv")
+                os.chdir(here)
+    finally:
+        os.chdir(here)
+    for f in (Path(P.__file__), Path(P.EL.__file__)):
+        mods = {a.name for n in ast.walk(_parsed(f)) if isinstance(n, ast.Import) for a in n.names} | {
+            n.module for n in ast.walk(_parsed(f)) if isinstance(n, ast.ImportFrom)}
+        assert not mods & {"key_dates", "i18n"}, f"{f.name} imports a page module: {sorted(mods & {'key_dates', 'i18n'})}"
+    return "ok", ("2016-2026 each its second Tuesday of September and 2028 on 13 June, 2027 refused, by "
+                  + " and by ".join(said) + "; the reader takes the rule from src/lib/election_law.py, "
+                  "importing no page module")
 
 
 @check("build", "State Primary and general results: a race whose column does not add up to the "
