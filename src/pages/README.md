@@ -123,6 +123,147 @@ record), and it refuses a change to `bills.html`, which every page is built
 from. A builder that starts making something of one of those three files is
 taught to `front_end.py` and named in preflight's `FAST_PATH_READERS`.
 
+## Every file here, by kind
+
+One line each (the refactor's stage 1, 19 November 2026; each file's own
+docstring or head comment says the rest). A `build_*` file is a step
+`build_all.py` runs by name unless its line says otherwise; the rest are
+imported. The folder is flat, so the groups are only here.
+
+The record and its own pages:
+
+- `build_site_v2`: the record builder -- each bill's payload and the bill
+  index, and the legislators', towns' and committees' files the pages after
+  it read (there was never a v1 here);
+- `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,
+  and their sitemap;
+- `build_legislator_pages`: an address for every sitting legislator;
+- `build_committees`: a page for every committee;
+- `build_study_committees`: a page for every active statutory and study
+  committee, from the database copy in `db/`;
+- `build_town_pages`: a page per town and ward, everyone who represents it;
+- `build_lsrs`: next session's bill requests, as a term the bill search can
+  open;
+- `build_request_pages`: a page for each of those bill requests;
+- `build_elect_pages`: a provisional page for each member-elect;
+- `build_elections`: each general election's official results, a page each,
+  under Officials;
+- `build_member_elections`: the Elections tab of each member's own file.
+
+The hubs and the sections:
+
+- `build_pages`: the home page, Officials, the town lookup, how it works and
+  about; it copies the browser's files into `site/`, holds the fast path's
+  function, and is a library some builders import;
+- `officials_tabs`: the Officials page's tabs that are not the legislators',
+  which `build_pages` draws;
+- `build_calendar`: the General Court's week, a page a week;
+- `build_session_pages`: a page for every day the House or the Senate sat;
+- `build_full_sessions`: the House and the Senate as committees of the
+  whole, `/session/house` and `/session/senate`;
+- `build_nobill_votes`: a page a term of the votes not on a bill;
+- `build_votes`: every roll call since 1999, a file a term, for the votes
+  search;
+- `build_votes_page`: `/votes`, the page that search is drawn on;
+- `build_rsa`: the statutes, `/laws` and a page a chapter;
+- `build_civics`: the Learn hub and its pages, and the How-To guides;
+- `build_district_map`: the district map's data, with `map.js` and
+  `map.css` copied beside it;
+- `build_addr_index`: the address box's street suggestions, `site/addr/`;
+- `build_indexes`: the whole record as plain lists a crawler can follow;
+- `build_search_index`: what each bill is about, in its own words, for the
+  search (`site/sidx/`).
+
+The downloads, the feeds and the data API:
+
+- `build_exports`: the CSV downloads and `data.html`, and the data API
+  through the four `api_*` modules;
+- `api_db`: the API's SQLite database of every table;
+- `api_records`: the API's records, a file each, under `/api/`;
+- `api_schema`: `/data/schema.json`, what every API file holds;
+- `api_page`: `/api`, the API's documentation page;
+- `build_feeds`: the RSS feeds;
+- `follow_changes`: the nightly changes files the email sender reads, and
+  the first-seen ledger (`build_feeds` calls it).
+
+The live layer, and the Workers' generated files:
+
+- `build_live`: Live Now, `/live`, and its schedule;
+- `build_live_session`: the session days' side of the live layer;
+- `live_hook`: the live-stream slot at the top of a committee's page;
+- `live_gen`: writes `workers/live/live.gen.js` from where each value is
+  kept (run by a person; `--check` says whether it is current), and holds
+  the Worker's rules `build_live` and `build_live_session` import;
+- `follow_site`: writes `workers/follow/site.gen.js`, the site's colours
+  and words for the email sender (run by a person; `--check` likewise).
+
+The words, kept as Python data:
+
+- `guides`: the How-To guides, their sources and what each was checked
+  against;
+- `civics`: the Learn pages' order, names and prose;
+- `learn_numbers`: the Learn page of the record in numbers;
+- `legislative_year`: the legislature's year as a timeline, a Learn page;
+- `key_dates`: elections, town meeting day and the legislature's deadlines,
+  each with its source;
+- `about_figures`: the figures `about.html` states, counted.
+
+The helpers the builders share:
+
+- `shell`: the page every record's own address is, `bills.html` with one
+  record open;
+- `chrome`: the frame every page shares -- the head, the header, the
+  footer and the closing scripts;
+- `components`: what the builders draw a person, a committee, a chip, a
+  date and a time with (the twin of `components.js`), and `WORDBOOK`;
+- `i18n`: the site in Spanish, and how a translation stays current;
+- `strip_js`: the browser's scripts as published, without their comments;
+- `structured`: what a search engine is told a page is about (schema.org);
+- `bill_order`: the order bill numbers are listed in;
+- `ballot_source`: whose count a ballot result is, in words;
+- `member_figures`: the figures a member's page heads a term with;
+- `motions`: which motion a vote was on (the twin of `motions.js`);
+- `committee_acts`: what a committee did to each bill at each meeting;
+- `session_days`: a sitting day of either chamber, assembled from what is
+  already parsed;
+- `vote_passage`: the Journal's words for a vote on no bill;
+- `latest_activity`: what the home page's Latest Activity holds;
+- `calendar_documents`: the calendar and journal PDFs the Calendar's picker
+  lists;
+- `queue_links`: those PDFs' addresses, found in the drain's queue;
+- `rsa_links`: where a statute citation links;
+- `constitution_tab`: the Constitution as a tab of the Laws page;
+- `constitution_history`: an article's History and citations fold there;
+- `seating`: the House floor's seats, as a diagram.
+
+Run by a person, not by a step:
+
+- `front_end`: the fast path, `build_all.py --front-end`;
+- `build_brand`: the drawn logo and icon into `assets/`, once.
+
+The browser's files, copied into `site/` (scripts without their comments):
+
+- `bills.html`: the template every record page is built from;
+- `app.js`: the bill search and every record page's script;
+- `app.css`: the one stylesheet;
+- `components.js`: the browser's components, loaded first on every page;
+- `find.js`: Find anything, from the header;
+- `print.js` and `print.css`: a bill's print sheet;
+- `map.js` and `map.css`: the district map;
+- `live.js` and `live.css`: Live Now;
+- `motions.js`: which motion a vote was on, for the live session page.
+
+The data beside the code:
+
+- `words/`: the words the pages say, one JSON file to a kind --
+  `chips.json`, `meeting_kinds.json`, `votes.json`, `glossary.json`,
+  `closing.json` (a session day's closing line), `study_report.json` (an
+  interim study committee's report) and `follow_beta.json` (the email
+  following's beta note);
+- `lang/es.json`: the Spanish catalog;
+- `lang/terms.es.json`: one Spanish word for each English term, which
+  preflight holds the catalog to.
+
 Asks nobody. Does not belong here: deciding a fact (`parse/`). This folder is
 the code; `site/` at the root is what it writes. (Not `src/site/`: the
 `site/` line of `.gitignore` would hide a folder of that name at any depth.)
