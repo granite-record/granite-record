@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.351
+// GRANITE_VERSION: 2026-09-07.352
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2472,7 +2472,8 @@ function sponsorHintLine(list){
    searches don't accidentally have an unrelated dropdown pop-up"): a word
    begun counts for it only where it begins one word of all the term's
    names, so "trans" offers no committee and no tag by name (filterOffers'
-   `only`).
+   `only`); and on the bill search no filter is offered that would list no
+   bill (billOffers).
 
    WHAT CHOOSING ONE DOES. What ticking it in the list does -- the list
    narrows, its group opens with the tick in it, the address names it -- and
@@ -2612,7 +2613,8 @@ function filterCombo(inp,o){
 // THE BILL SEARCH'S OFFERS: a Topic, a Committee or a Tag of the bills in
 // the term, by name, and a Sponsor by theirs where it is certain
 // (sponsorOffer); each with the count it would list -- the filters already
-// chosen kept, this one added, and the words it does not stand for searched.
+// chosen kept, this one added, and the words it does not stand for searched;
+// one that would list none is not offered.
 // IN THE TERM AN OFFER LANDS IN (the review of 26 October 2026). With a bill
 // open on /bills and the picker turned, the list's term waits for the bill to
 // be closed (heldTerm), and taking an offer closes it (takeOffer, unfocus):
@@ -2655,7 +2657,9 @@ function billOffers(q){
       try{o.n=IDX.filter(b=>matches(b)).length;}
       finally{sel[o.key].delete(o.v);query=was;}
     }
-    return offers;
+    // An offer that would list no bill is not made: "campaign finance" is
+    // no offer of the Finance committees, whose bills never say "campaign".
+    return offers.filter(o=>o.n>0);
   }finally{term=own;}
 }
 // AN OFFER'S WORDS, in the page's language (lang/<code>.json's bills.offer_*):

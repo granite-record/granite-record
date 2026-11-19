@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of the laws pages.
 
@@ -1344,9 +1344,12 @@ const row = (id, topic, committees) => ({id, n: id, title: "relative to " + topi
   status: "In committee", chip: "In committee", committees, committee: committees[0] || "", topic, sponsor: "",
   term: "2025-2026", year: 2026, passage: "", votedays: [], nrc: 0, last_action: ""});
 s.IDX.length = 0;
-s.IDX.push(row("HB1", "Housing", ["House Housing"]), row("HB2", "Housing", ["House Judiciary"]),
+s.IDX.push(Object.assign(row("HB1", "Housing", ["House Housing"]), {title: "relative to affordable housing"}),
+           row("HB2", "Housing", ["House Judiciary"]),
            row("HB3", "Education - General", ["House Housing"]), row("HB4", "Education - General", ["Senate Education"]),
            row("HB5", "Elections", ["House No Committee Assignment"]));
+// The titles searched as app.js's loader makes them searchable (ensureTerm).
+s.IDX.forEach(b => { b.hayT = (b.id + " " + b.title).toLowerCase(); });
 s.setTerm("2025-2026");
 const out = {};
 const type = v => { q.value = v; q.fire("input"); };
@@ -1513,10 +1516,12 @@ s.IDX.push(
   row("HB10", "Allen", "Allen (Hills 44)", "relative to dams", "Elections", "House Transportation"),
   row("HB11", "Allen", "Allen (Graf 2)", "relative to ponds", "Elections", "House Transportation"),
   row("HB14", "Riley", "Riley (Hills 3)", "relative to lakes", "Elections", "House Transportation"),
-  row("HB13", "Jane Housing", "Rep. Jane Housing (D - Hills 9)", "relative to wells", "Elections",
+  row("HB13", "Jane Housing", "Rep. Jane Housing (D - Hills 9)", "relative to the Jane Lake wells", "Housing",
       "House Transportation"),
   row("HB12", "Colin Mitchell", "Rep. “Elect” Colin Mitchell (R)", "relative to signs", "Elections",
       "House Transportation"));
+// The titles searched as app.js's loader makes them searchable (ensureTerm).
+s.IDX.forEach(b => { b.hayT = (b.id + " " + b.title).toLowerCase(); });
 s.setTerm("2025-2026");
 const out = {};
 const offers = v => s.billOffers(v).map(o => [o.key, o.v, o.n, o.html, o.rest]);
@@ -1686,19 +1691,21 @@ process.stdout.write("\n@@" + JSON.stringify(out));
 
 
 @check("frontend", "the bill search offers a committee or a tag only on a solid match, never for a word half typed "
-                   "that begins several names' words (\"trans\")")
+                   "that begins several names' words (\"trans\"), and offers nothing that would list no bill "
+                   "(\"campaign finance\" is no offer of Senate Finance)")
 def _filter_offers_solid():
     """The owner, 18 November 2026: offers appear "only with a solid match so that ordinary searches don't
     accidentally have an unrelated dropdown pop-up". "trans" offered eight filters, among them Government
-    transparency and Real estate transfer tax.
+    transparency and Real estate transfer tax; "campaign finance" offered the Finance committees at 0.
 
     app.js in node on five bills with tags (billOffers, filterOffers' `only`, foVocab): "trans", which begins
     Transit, Transparency and Transportation, offers no committee and no tag by name -- the topic Transportation
     and Highways as ever, and LGBTQ+, which the whole word leads to; "transpo" offers the House Transportation
     committee and "transparency" and "transit" their tags, whole or alone; "envir" offers the committee and the
     tag, Environment and Environmental being one word made longer; "elect" (Election, Electric) offers neither
-    committee nor tag, "electi" the committee. The owner's "hou" (24 October)
-    is _filter_offers' case, held there."""
+    committee nor tag, "electi" the committee; "campaign finance" offers the tag and not Senate Finance, which
+    would list none, while "finance" offers it; and no offer counts 0. The owner's "hou" (24 October) is
+    _filter_offers' case, held there."""
     js, stub = Path("src/pages/app.js"), Path("tests/dom_stub.js")
     node = shutil.which("node") or shutil.which("node.exe")
     if not (js.exists() and stub.exists() and node):
@@ -1729,9 +1736,15 @@ def _filter_offers_solid():
     assert not [o for o in kv("elect") if o[0] in ("committee", "tag")], (
         f"'elect', which begins Election and Electric, offers {got['elect']}")
     assert ["committee", "House Election Law"] in kv("electi"), f"'electi' offers {got['electi']}"
+    assert ["tag", "campaign-finance"] in kv("campaign finance") and \
+        ["committee", "Senate Finance"] not in kv("campaign finance"), (
+        f"'campaign finance' offers {got['campaign finance']}: Senate Finance would list no bill")
+    assert ["committee", "Senate Finance", 1] in got["finance"], f"'finance' offers {got['finance']}"
+    zero = {q: [o for o in v if not o[2]] for q, v in got.items() if any(not o[2] for o in v)}
+    assert not zero, f"offers that would list no bill: {zero}"
     return "ok", ("'trans' offers no committee or tag by name, only the topic and the tag its whole word leads to; "
                   "'transpo', 'transparency', 'transit' and 'envir' offer theirs; 'elect' none, 'electi' the "
-                  "committee")
+                  "committee; 'campaign finance' the tag and not Senate Finance at 0; no offer counts 0")
 
 
 @check("build", "the Laws page has a Constitution tab: every article under its own anchor with a link to itself, "
