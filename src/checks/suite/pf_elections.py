@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.34
+# GRANITE_VERSION: 2026-11-16.35
 """
 preflight's checks of members-elect and election results.
 
@@ -2488,14 +2488,17 @@ def _member_elections_order_on_file(BMEL, BME):
     wade = [(r["d"], r.get("st") or "general", r["k"]) for r in by_member.get("11286") or []]
     assert wade == [("2026-11-03", "general", "H|Strafford|21"), ("2024-11-05", "general", "H|Strafford|15"),
                     ("2024-09-10", "primary", "H|Strafford|15")], f"Wade's tab: {wade}"
+    # By kind, whatever kinds the tab draws: general and primary, and since the
+    # specials (19 November 2026) "special" and "special-primary" too.
     un = {"general": 0, "primary": 0}
     for rows in by_member.values():
         for r in rows:
             if '<span class="chip er-mg">Unopposed</span>' in r.get("c", ""):
-                un[r.get("st") or "general"] += 1
+                k = r.get("st") or "general"
+                un[k] = un.get(k, 0) + 1
     rows = sum(len(v) for v in by_member.values())
     return "ok", (f"Wade's three cards in the owner's order; {rows} cards for {len(by_member)} members, of them "
-                  f"Unopposed: {un['general']} general, {un['primary']} primary")
+                  "Unopposed: " + ", ".join(f"{n} {k}" for k, n in un.items()))
 
 
 @check("data", "on today's roster and primary files, Alice Wade's 2024 Democratic primary in Strafford 15 is "
