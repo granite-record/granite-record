@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.9
+# GRANITE_VERSION: 2026-11-07.10
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -308,12 +308,20 @@ def bill_href(site, term, bill):
 
 def candidate_rows(race, elected_names, held=frozenset(), mine=None):
     """The race's rows, most votes first. `mine` is the candidate a member's
-    Elections tab is about (same_name), whose row is marked er-me."""
+    Elections tab is about (same_name), whose row is marked er-me.
+
+    A SHARE ON EVERY ROW. One seat: of every vote cast in the race, the
+    scattered write-ins included, as it always was. More than one seat (the
+    owner, 19 November 2026, "share of all votes"): of all the votes cast for
+    the candidates listed, the scattered write-ins left out -- Strafford 21
+    of 2026, Alice Wade's 8,807 of 29,275, 30.1%. None where a winner is held
+    back: the shares would say what the hidden row holds."""
     shown = [c for c in race["candidates"] if same_name(c["name"]) not in held]
     cands = sorted(shown, key=lambda c: (-c["votes"], c["name"]))
     top = max((c["votes"] for c in cands), default=0) or 1
-    counted = sum(c["votes"] for c in race["candidates"]) + int(race.get("scatter") or 0)
-    one = race["seats"] == 1 and not held
+    counted = sum(c["votes"] for c in race["candidates"]) + (
+        int(race.get("scatter") or 0) if race["seats"] == 1 else 0)
+    one = not held
     out = []
     for c in cands:
         p = letters(c["party"])
@@ -437,8 +445,8 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
     scatter = int(race.get("scatter") or 0)
     foot = []
     if seats > 1:
-        foot.append(f"Each voter could choose up to {seats}, so no share of the vote is given; "
-                    "each bar is scaled to the most votes in the race.")
+        foot.append(f"Each voter could choose up to {seats}, so a share is of all the votes cast for "
+                    "the candidates listed; each bar is scaled to the most votes in the race.")
     if held:
         foot.append("A winner of this race is not shown here yet.")
     if scatter:

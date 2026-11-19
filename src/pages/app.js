@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.352
+// GRANITE_VERSION: 2026-09-07.353
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10174,7 +10174,7 @@ function renderMemberElections(m){
     tr("race.year","{year} general election",{year:d.slice(0,4)}))}</a>`).join(", ");
   // A row with no card (a file written before the cards) keeps the table.
   const cards=rows.filter(r=>r.c), plain=rows.filter(r=>!r.c);
-  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. A share is of every vote cast in the race, write-ins included; a race for more than one seat gives none, because a voter could choose several.")}</p>
+  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}</p>
     ${cards.length?`<div class="er-cards">${cards.map(electionCard).join("")}</div>`:""}${plain.length?`
     <table class="votes vfull"><thead><tr><th>${esc(tr("race.col_election","Election"))}</th>
       <th>${esc(tr("race.col_race","Race"))}</th><th>${esc(tr("race.col_result","Result"))}</th>

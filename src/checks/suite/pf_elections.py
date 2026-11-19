@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.18
+# GRANITE_VERSION: 2026-11-16.19
 """
 preflight's checks of members-elect and election results.
 
@@ -1819,6 +1819,58 @@ def _elections_margins_built(BE, EM, BME):
     return "ok", (f"{len(pages)} pages ({', '.join(said)}), every card and button the data's; the House "
                   "and Senate buttons together: " + ", ".join(
                       f"{w} {total.get(x, 0):,}" for x, w in [("", "Any")] + list(EM.BANDS)))
+
+
+def _row_shares(card):
+    """{name: share} of a race card's rows, the share as printed ("" for none)."""
+    out = {}
+    for row in re.findall(r'<li class="er-row[^"]*">(.*?)</li>', card, re.S):
+        name = re.search(r'class="mchip[^"]*"[^>]*>(?:<a[^>]*>)?([^<]+?)\s*<span class="mtag">', row).group(1)
+        sh = re.search(r'<span class="er-n">[\d,]+ <span>&middot; ([\d.]+)%</span>', row)
+        out[name] = sh.group(1) if sh else ""
+    return out
+
+
+@check("build", "a race card gives every candidate a share: of every vote cast in a race for one seat, as "
+       "before, and of all the votes cast for the candidates listed in a race for more, its note saying so",
+       needs=("build_elections",))
+def _election_shares(BE):
+    """The owner, 19 November 2026 ("share of all votes"), on the cards the elections pages and a
+    member's Elections tab both draw (race_card). Strafford 21 of 2026, three seats, 41 scattered:
+    Alice Wade's 8,807 of the listed 29,275 is 30.1% (of 29,316 with the scattered it would be 30.0%),
+    Joseph D. Morganella's 3,852 is 13.2%, and the note says the shares are of the votes cast for the
+    candidates listed; Strafford 15 of 2024, one seat, 2 scattered, keeps the share of every vote:
+    2,047 of 2,918, 70.2%, and Keith Mistretta's 869 29.8%; a race of two seats with a winner held
+    back gives no share at all; the tab's intro says the same in both languages."""
+    def race(seats, scatter, *cands):
+        return {"seats": seats, "scatter": scatter, "towns": ["Dover Ward 1"], "candidates": [
+            {"name": n, "party": p, "votes": v, "write_in": False, "elected": e} for n, p, v, e in cands]}
+    s21 = race(3, 41, ("Seth Miller", "d", 8468, True), ("Geoff Smith", "d", 8148, True),
+               ("Alice Wade", "d", 8807, True), ("Joseph D. Morganella", "r", 3852, False))
+    card = BE.race_card("H|Strafford|21", s21, {"seats": 3, "elected": [], "not_final": 0}, {}, {}, "2026-11-03")
+    assert _row_shares(card) == {"Alice Wade": "30.1", "Seth Miller": "28.9", "Geoff Smith": "27.8",
+                                 "Joseph D. Morganella": "13.2"}, f"Strafford 21's shares: {_row_shares(card)}"
+    assert ("Each voter could choose up to 3, so a share is of all the votes cast for the candidates listed"
+            in card and "no share" not in card), f"Strafford 21's note: {card[-400:]}"
+    s15 = race(1, 2, ("Alice Wade", "d", 2047, True), ("Keith Mistretta", "r", 869, False))
+    card = BE.race_card("H|Strafford|15", s15, {"seats": 1, "elected": [], "not_final": 0}, {}, {}, "2024-11-05")
+    assert _row_shares(card) == {"Alice Wade": "70.2", "Keith Mistretta": "29.8"} and \
+        "could choose" not in card, f"Strafford 15's shares: {_row_shares(card)}"
+    big = BE.race_card("S|9", race(1, 100, ("Ann", "r", 500, True), ("Bo", "d", 400, False)),
+                       {"seats": 1, "elected": [], "not_final": 0}, {}, {}, "2026-11-03")
+    assert _row_shares(big) == {"Ann": "50.0", "Bo": "40.0"}, (
+        f"one seat, 100 scattered: the share is not of every vote cast: {_row_shares(big)}")
+    held =BE.race_card("H|Strafford|21", s21, {"seats": 3, "elected": [], "not_final": 0}, {}, {}, "2026-11-03",
+                        {"held": {"H|Strafford|21": {"Geoff Smith": "x"}}})
+    assert set(_row_shares(held).values()) == {""}, f"a held winner's race gives shares: {_row_shares(held)}"
+    js = _source(Path("src/pages/app.js"))
+    es = json.loads(_source(Path("src/pages/lang/es.json")))
+    intro = es["strings"]["race.intro"] if "strings" in es else es["race.intro"]
+    assert "of all the votes cast for the candidates listed" in intro["en"] and intro["en"] in js \
+        and "gives none" not in js and "candidatos de la lista" in intro["es"], (
+            "the tab's intro does not say what a share in a race of several seats is of")
+    return "ok", ("Strafford 21's 30.1% of the votes for the candidates listed, Strafford 15's 70.2% of "
+                  "every vote, no share beside a held winner, the note and the intro in both languages")
 
 
 # A MEMBER'S ELECTIONS TAB (the owner's design of 10 November 2026; src/pages/

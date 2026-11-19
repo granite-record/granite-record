@@ -25714,8 +25714,8 @@
    "state": "draft"
   },
   "race.intro": {
-   "en": "The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. A share is of every vote cast in the race, write-ins included; a race for more than one seat gives none, because a voter could choose several.",
-   "es": "Las elecciones generales registradas en las que figura este miembro, de la más reciente a la más antigua, según el recuento de la Secretaría de Estado. El porcentaje es sobre todos los votos emitidos en la contienda, incluidos los de candidatos escritos a mano; una contienda por más de un escaño no da porcentaje, porque cada votante podía elegir varios.",
+   "en": "The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.",
+   "es": "Las elecciones generales registradas en las que figura este miembro, de la más reciente a la más antigua, según el recuento de la Secretaría de Estado. En una contienda por un escaño, el porcentaje es sobre todos los votos emitidos, incluidos los de candidatos escritos a mano; en una por más de uno, en la que cada votante podía elegir varios, es sobre todos los votos emitidos por los candidatos de la lista.",
    "state": "draft"
   },
   "race.lost": {
