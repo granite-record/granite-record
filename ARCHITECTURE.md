@@ -2931,7 +2931,7 @@ as today's of that number. The table has two eras (the settings'
 `district_eras`): today's, from `records/districts/*.txt`, filling the terms
 from 2023-2024; and the 2012 lines, filling 2013-2014 to 2021-2022, of which no
 table is on file, so its House and Senate districts are as the 2016, 2018 and
-2020 results lay them out (`build_entities.results_lists`; they agree in all
+2020 results lay them out (`parse_districts.results_lists`; they agree in all
 three years, and the era is left out, and said, where one does not), a place
 those files print otherwise read under the lists' name (the era's `printed`).
 `_district_era_2012` holds the era to the three files race by race. A former

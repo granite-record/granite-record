@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.21
+# GRANITE_VERSION: 2026-11-16.22
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -2174,7 +2174,7 @@ def _district_era_2012(BE, EN, ST, PSR, P):
     the 2012 lines is on file, so the results of the generals held on them stand for it). The
     settings' district_eras hold "2012" (the terms 2013-2014 to 2021-2022) beside "2022", and the
     table builds its House and Senate districts from collected/election_2016.json,
-    election_2018.json and election_2020.json (build_entities.results_lists). Held on those
+    election_2018.json and election_2020.json (parse_districts.results_lists). Held on those
     tracked files: era_of gives each term its era; the era has 204 House districts of 400 seats
     and 24 Senate districts, and no Council or Congress; every race of each file resolves, by its
     results key, to one district of 2012 whose seats, floterial mark and towns are the race's (a
