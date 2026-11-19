@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.8
+# GRANITE_VERSION: 2026-11-10.9
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -82,7 +82,11 @@ by the same certain rule as a loss above, never by the hand file (its matches
 are the general's), and never on another party's ballot: the votes a file
 lists for another party's candidates are left off the card and said in its
 note. The leader is "Most votes", never nominated; the label has no letter.
-Within a year the primary is listed before the general.
+A race with no more candidates than seats is a card too, labelled Unopposed.
+
+THE ORDER (the owner, 19 November 2026): strictly newest first, under a
+heading for each election cycle (app.js), a cycle's general and then its
+primary; one column of cards.
 
 Nothing here asks the network.
 """
@@ -462,11 +466,18 @@ def near_members(name, key, people):
     return ", ".join(sorted(set(found)))
 
 
+def cycle_of(row):
+    """The election cycle a row is drawn under on the tab (app.js groups by it):
+    a general's or a primary's own year. A special election, when one is read,
+    is to carry the cycle of the term whose seat it fills, and so sits among
+    that cycle's rows by its day."""
+    return row.get("cy") or row["d"][:4]
+
+
 def sort_rows(rows):
-    """Newest year first; within a year the primary before the general (the
-    owner, 19 November 2026); within one election, the Senate before the House."""
-    return sorted(rows, key=lambda r: (r["d"][:4], r.get("st") == "primary", r["d"],
-                                       r["k"].startswith("S|")), reverse=True)
+    """Strictly newest first (the owner, 19 November 2026): a cycle's general,
+    then its primary under it; within one election, the Senate before the House."""
+    return sorted(rows, key=lambda r: (cycle_of(r), r["d"], r["k"].startswith("S|")), reverse=True)
 
 
 def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT):

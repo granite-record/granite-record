@@ -25729,8 +25729,8 @@
    "state": "draft"
   },
   "race.intro_primary": {
-   "en": "A primary is shown on the member&rsquo;s own party&rsquo;s ballot, listed before that year&rsquo;s general election; its leader is marked Most votes.",
-   "es": "Una primaria se muestra en la papeleta del propio partido del miembro, antes de las elecciones generales de ese año; quien encabeza se marca con Más votos.",
+   "en": "A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; its leader is marked Most votes.",
+   "es": "Una primaria se muestra en la papeleta del propio partido del miembro, debajo de las elecciones generales de ese año; quien encabeza se marca con Más votos.",
    "state": "draft"
   },
   "race.lost": {

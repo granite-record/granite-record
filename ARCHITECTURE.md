@@ -2466,8 +2466,11 @@ A member's Elections tab also lists their State Primary candidacies
 on their own party's ballot only and by the same certain rule as a loss; the
 card is `race_card`'s with `primary=` the ballot's party: the leader Most votes,
 never nominated, the label with no letter, the votes the file lists for another
-party's candidates left off and said in the note. A year's primary is listed
-before its general (19 November 2026).
+party's candidates left off and said in the note. The tab is one column of
+cards under a heading for each election cycle, strictly newest first: a cycle's
+general, then its primary under it (`sort_rows`, `cycle_of`; a special, when one
+is read, is to carry its cycle in `cy`). An uncontested race is a card too,
+labelled Unopposed (19 November 2026).
 
 Every race card, on the elections pages and the tab, marks * a candidate who held
 a seat in the race's chamber on election day (`build_member_elections.incumbents`):

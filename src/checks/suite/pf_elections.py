@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.21
+# GRANITE_VERSION: 2026-11-16.22
 """
 preflight's checks of members-elect and election results.
 
@@ -2068,7 +2068,7 @@ def _member_elections_cards(BMEL, BME, BE):
     heads = re.findall(r'<article class="er-race"><p class="er-when"><a href="([^"]+)">', html)
     assert heads == ["/elections/2026-11-03-general#r-s-5",
                      "/elections/2024-11-05-general#r-h-rockingham-3"], f"the cards' heads: {heads}"
-    assert '<div class="er-cards">' in html and "<table" not in html and len(re.findall(r"\ber-me(?![\w-])", html)) == 2 \
+    assert '<div class="er-cards er-stack">' in html and "<table" not in html and len(re.findall(r"\ber-me(?![\w-])", html)) == 2 \
         and "a recount was requested" in html, (f"the tab is not the two cards, each with its row marked: cards={'<div class=\"er-cards\">' in html} table={'<table' in html} marks={len(re.findall(r'er-me(?![\w-])', html))} recount={'a recount was requested' in html}")
     for want in ("The general elections on file in which this member is recorded",
                  "appears only where the name and the district match", "Secretary of State"):
@@ -2089,7 +2089,7 @@ def _member_elections_primaries(BMEL, BE):
     the Democrat written in on that ballot left off and said; Ann Hart (R), with 3 votes on the
     Democratic ballot, gets nothing and nobody else's card names her; Fay Ives, printed with no
     party on the Democratic ballot, is not hers (she is R) and goes to the owner's list. The rows
-    sort a year's primary before its general; app.js heads a primary with its ballot and day,
+    sort newest first, a year's general and then its primary; app.js heads a primary with its ballot and day,
     links it nowhere, and says where the primaries come from."""
     sitting, former, _d, _r24, _r26 = _mel_world()
     roster = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
@@ -2122,7 +2122,7 @@ def _member_elections_primaries(BMEL, BE):
     assert any(x[2] == "Fay Ives" and "not of it" in x[4] for x in report), f"Fay Ives is not listed: {report}"
     order = BMEL.sort_rows([{"d": "2024-11-05", "k": "H|A|1"}, {"d": "2026-09-08", "k": "H|A|1", "st": "primary"},
                             {"d": "2024-09-10", "k": "H|A|1", "st": "primary"}, {"d": "2026-11-03", "k": "S|5"}])
-    assert [r["d"] for r in order] == ["2026-09-08", "2026-11-03", "2024-09-10", "2024-11-05"], (
+    assert [r["d"] for r in order] == ["2026-11-03", "2026-09-08", "2024-11-05", "2024-09-10"], (
         f"the order: {[r['d'] for r in order]}")
     html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": [moss]}) + ")",
                    names=("renderMemberElections",))
@@ -2134,7 +2134,75 @@ def _member_elections_primaries(BMEL, BE):
         and "shown on the elections pages" not in html, f"the tab's notes for a primary: {html[-700:]}"
     return "ok", ("Moss and Ford on the Republican ballot, Moss Most votes at +14.3, the written-in Democrat "
                   "left off and said, Hart on the other ballot and Ives with no party not shown, a "
-                  "year's primary before its general, the tab's head and notes")
+                  "year's general and then its primary, the tab's head and notes")
+
+
+@check("build", "a member's Elections tab is one column of race cards under a heading for each election "
+       "cycle, strictly newest first: a cycle's general, then its primary",
+       needs=("build_member_elections",))
+def _member_elections_cycles(BMEL):
+    """The owner, 19 November 2026 (twice: the order was corrected the same day). Three rows given
+    in a muddle -- 2024's primary, 2026's general, 2024's general -- are sorted by sort_rows and
+    drawn by app.js: a heading "2026" over one stacked list holding 2026's general, a heading
+    "2024" over one holding 2024's general and then its primary; and app.css draws a stacked list
+    in one column at every width (.er-cards.er-stack, which no later rule or media query
+    undoes)."""
+    def row(d, k, st=None):
+        r = {"d": d, "k": k, "a": "r-" + d, "r": "won", "v": 1, "s": 1,
+             "c": f'<article class="er-race"><div class="er-hd"><h3>{d}</h3></div></article>'}
+        if st:
+            r.update(st=st, pp="D")
+        return r
+    rows = BMEL.sort_rows([row("2024-09-10", "H|Strafford|15", "primary"), row("2026-11-03", "H|Strafford|21"),
+                           row("2024-11-05", "H|Strafford|15")])
+    assert [r["d"] for r in rows] == ["2026-11-03", "2024-11-05", "2024-09-10"], f"the order: {[r['d'] for r in rows]}"
+    html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": rows}) + ")",
+                   names=("renderMemberElections",))
+    css = _source(Path("src/pages/app.css"))
+    rules = re.findall(r"([^{}]*\.er-stack[^{}]*)\{([^}]*)\}", css)
+    assert rules and all("grid-template-columns:minmax(0,1fr)" in body.replace(" ", "") for _s, body in rules
+                         if "grid-template-columns" in body) and any(
+        "grid-template-columns" in b for _s, b in rules), f"app.css's stacked list: {rules}"
+    for m in re.finditer(r"@media[^{]*\{", css):
+        depth, i = 1, m.end()
+        while depth and i < len(css):
+            depth += {"{": 1, "}": -1}.get(css[i], 0)
+            i += 1
+        assert ".er-stack" not in css[m.end():i], f"a media query changes the stacked list: {m.group(0)}"
+    if html is None:
+        return "ok", "the order and the one column held; node, app.js or the stub is not here for the tab"
+    got = re.findall(r'<h3 class="er-cycle">(\d{4})</h3><div class="er-cards er-stack">(.*?)</div>(?=<h3|<p|\s)', html, re.S)
+    assert [(y, re.findall(r"<h3>([\d-]+)</h3>", body)) for y, body in got] == [
+        ("2026", ["2026-11-03"]), ("2024", ["2024-11-05", "2024-09-10"])], f"the cycles: {got}"
+    assert html.count('class="er-cards"') == 0 and html.count("er-stack") == 2, "a list of cards is not stacked"
+    return "ok", "2026's general under 2026; 2024's general, then its primary, under 2024; one column at every width"
+
+
+@check("data", "on today's roster and results, Alice Wade's tab reads 2026's general, 2024's general, 2024's "
+       "primary, and every uncontested race a member ran in is a card, counted by kind",
+       needs=("build_member_elections", "build_members_elect"))
+def _member_elections_order_on_file(BMEL, BME):
+    """The owner's own case of 19 November 2026, on a built site's roster (site/legislators.json,
+    former.json, districts.json, meta.json) and collected/: build_member_elections.build's rows for
+    Wade (11286) in that order, and the cards labelled Unopposed (no more candidates than seats)
+    counted for the generals and the primaries."""
+    site = Path("site")
+    need = [site / n for n in ("legislators.json", "former.json", "districts.json", "meta.json")]
+    if not all(p.is_file() for p in need):
+        return "skip", "not here: " + ", ".join(p.as_posix() for p in need if not p.is_file())
+    import build_date
+    by_member, _report, _e = BMEL.build(site, "collected", BME.HAND_DEFAULT, build_date.today().isoformat())
+    wade = [(r["d"], r.get("st") or "general", r["k"]) for r in by_member.get("11286") or []]
+    assert wade == [("2026-11-03", "general", "H|Strafford|21"), ("2024-11-05", "general", "H|Strafford|15"),
+                    ("2024-09-10", "primary", "H|Strafford|15")], f"Wade's tab: {wade}"
+    un = {"general": 0, "primary": 0}
+    for rows in by_member.values():
+        for r in rows:
+            if '<span class="chip er-mg">Unopposed</span>' in r.get("c", ""):
+                un[r.get("st") or "general"] += 1
+    rows = sum(len(v) for v in by_member.values())
+    return "ok", (f"Wade's three cards in the owner's order; {rows} cards for {len(by_member)} members, of them "
+                  f"Unopposed: {un['general']} general, {un['primary']} primary")
 
 
 @check("data", "on today's roster and primary files, Alice Wade's 2024 Democratic primary in Strafford 15 is "
