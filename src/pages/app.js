@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.348
+// GRANITE_VERSION: 2026-09-07.349
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2591,7 +2591,8 @@ function filterCombo(inp,o){
     enter(){if(rows.length&&act>=0){choose(act);return true;}shut();return false;}};
 }
 // THE BILL SEARCH'S OFFERS: a Topic, a Committee or a Tag of the bills in
-// the term, by name; each with the count it would list -- the filters already
+// the term, by name, and a Sponsor by theirs where it is certain
+// (sponsorOffer); each with the count it would list -- the filters already
 // chosen kept, this one added, and the words it does not stand for searched.
 // IN THE TERM AN OFFER LANDS IN (the review of 26 October 2026). With a bill
 // open on /bills and the picker turned, the list's term waits for the bill to
@@ -2620,6 +2621,8 @@ function billOffers(q){
     // TAGS:BEGIN
     tagOffers(q,offers,vals);
     // TAGS:END
+    const who=sponsorOffer(q,inYear,vals,offers);
+    if(who){offers.unshift(who);offers.splice(FO_MOST);}
     for(const o of offers){
       const was=query;
       query=o.rest;sel[o.key].add(o.v);
@@ -2633,10 +2636,104 @@ function billOffers(q){
 // a topic by its name; a committee by the name the header's search gives it
 // (find.js, findName), its chamber first and "Committee" after it where the
 // name does not already say it -- "House Housing Committee", "House Special
-// Committee on Housing".
+// Committee on Housing"; a person by the title and name their chip carries.
 const offerTopic=v=>tr("bills.offer_topic","All bills with the topic <b>{name}</b>",{name:esc(v)});
 const offerCommittee=v=>tr("bills.offer_committee","All bills referred to the <b>{name}</b>",
   {name:esc(/\bcommittee\b/i.test(v)?v:`${v} Committee`)});
+/* A LEGISLATOR OFFERED BY NAME (the owner, 18 November 2026: "typing in
+   their topic, tag, legislator, or committee, will show a dropdown that says
+   'All bills filed by Rep. Alice Wade' the same way it does for 'All bills
+   with the topic Housing' and it applies the filter for you when you click
+   it ... It should only show with a solid match so that ordinary searches
+   don't accidentally have an unrelated dropdown pop-up"). The Sponsor filter
+   for one person of the term, offered first, in the words their chip
+   carries: the row's sponsor_label without the seat and party ("Rep. Alice
+   Wade", "Sen. Sharon Carson"), a member-elect's "Rep. “Elect”" in the
+   page's language as a card says it (CARD_ELECT_TITLE), and a sponsor of
+   1989-1998 with no member page by the name and seat the filter tells them
+   apart by (spKey). Taken as any offer is (takeOffer): the person ticked,
+   the box emptied.
+   ONLY A SOLID MATCH. What was typed, read as a name is (hintWords), a
+   title before it set aside ("rep", "senator", and "elect"), must be
+     - the whole of one of the person's names, an initial being no part of
+       it ("lee nyquist" is Lee C. Nyquist), or its first two whole words
+       or more ("mary jane" of Mary Jane Smith);
+     - or, after a title, whole words that begin or end it: "rep packard",
+       "senator carson";
+   and no other sponsor of the term whose title agrees may have every word
+   typed as a whole word of a name of theirs -- find.js's rule for a person
+   by their whole name (findClear, 3). ONE WORD WITH NO TITLE is a name only
+   where it is the first name of that one person, a word of no other
+   sponsor's name, a word of no bill's title in the term, no word the search
+   passes over (STOPSET), and offers no topic, committee or tag (`others`):
+   "alice" is Rep. Alice Wade's where she is the only Alice. A surname alone
+   is never offered ("moore", "white", "lynch" are words as often as names),
+   nor a name shared by several. A word still being typed is not yet a whole
+   word: "alice wad" offers nothing. null where nothing fits. `rows` the
+   term's bills, `vals` billOffers' reading of a filter's values in it: only
+   a person the Sponsor filter lists there is offered. */
+const FO_NAME_SKIP=new Set(["elect"]);
+// The words of the term's titles, as a single word is checked against them
+// (sponsorOffer), worked out once for each term's list as it stands.
+const FO_TITLES={key:"",words:null};
+function foTitleWords(rows){
+  const key=[term,rows.length,IDX.length].join("\u0001");
+  if(FO_TITLES.key!==key){
+    const w=new Set();
+    for(const b of rows)for(const x of foWords(b.title))w.add(stem(x));
+    Object.assign(FO_TITLES,{key,words:w});
+  }
+  return FO_TITLES.words;
+}
+function sponsorOffer(q,rows,vals,others){
+  // A chip's own words pasted in, "Rep. Alice Wade (D - Hills 22)", are the name.
+  const raw=String(q||"").replace(/\s*\([^()]*\)\s*$/,"");
+  if(raw.trim().length<FO_MIN)return null;
+  const typed=hintWords(raw);
+  let title="",lead=0;
+  while(lead<typed.length&&(HINT_TITLE[typed[lead]]||FO_NAME_SKIP.has(typed[lead]))){
+    title=HINT_TITLE[typed[lead]]||title;lead++;}
+  const t=typed.slice(lead);
+  if(!t.length)return null;
+  const lone=t.length===1&&!title;
+  if(lone&&((others&&others.length)||t[0].length<FO_MIN||STOPSET.has(t[0])
+     ||foTitleWords(rows).has(stem(t[0]))))return null;
+  const can=new Set(vals("sponsor").map(x=>x[0]));
+  if(!can.size)return null;
+  const who=new Map();
+  for(const b of rows){
+    if(!b.sponsor)continue;
+    const k=spKey(b);
+    if(!can.has(k))continue;
+    let p=who.get(k);
+    if(!p)who.set(k,p={k,names:[],label:"",term:""});
+    for(const n of sponsorNames(b))if(!p.names.includes(n))p.names.push(n);
+    // On All Terms, the newest term's label (sponsorShow).
+    if(b.sponsor_label&&(!p.label||String(b.term||"")>p.term)){
+      p.term=String(b.term||"");
+      p.label=String(b.sponsor_label).replace(/\s*\(.*$/,"")+(k!==b.sponsor?` (${k.slice(b.sponsor.length+2,-1)})`:"");
+    }
+  }
+  // A co-sponsor, listed where "Include co-sponsored bills" is ticked, by name alone.
+  for(const k of can)if(!who.has(k))who.set(k,{k,names:[k],label:"",term:""});
+  const same=(a,b)=>a.length===b.length&&a.every((w,i)=>w===b[i]);
+  const starts=(n,w)=>w.length<=n.length&&w.every((x,i)=>x===n[i]);
+  const ends=(n,w)=>w.length<=n.length&&w.every((x,i)=>x===n[n.length-w.length+i]);
+  const fits=p=>p.names.some(name=>{
+    const n=hintWords(name),bare=n.filter(w=>w.length>1);
+    return [n,bare].some(v=>v.length&&(lone?v.length>1&&starts(v,t)
+      :same(t,v)||(t.length>1&&starts(v,t))||(title&&(starts(v,t)||ends(v,t)))));
+  });
+  const has=p=>p.names.some(name=>{const n=hintWords(name);return t.every(w=>n.includes(w));});
+  const agree=[...who.values()].filter(p=>titleAgrees(title,p.label));
+  const found=agree.filter(fits);
+  if(found.length!==1||agree.some(p=>p!==found[0]&&has(p)))return null;
+  const p=found[0];
+  const shown=(p.label||p.k).replace(CARD_ELECT_TITLE,(m,h)=>h==="Sen"
+    ?tr("elect.title_sen","Sen. “Elect”"):tr("elect.title_rep","Rep. “Elect”"));
+  return {key:"sponsor",v:p.k,name:shown,n:0,how:0,rest:"",
+    html:tr("bills.offer_sponsor","All bills filed by <b>{name}</b>",{name:esc(shown)})};
+}
 // TAGS:BEGIN
 /* THE TAGS' OFFERS (design 6.1): "All bills tagged Attorney General" for a
    tag whose name the words typed begin, as a topic or a committee is

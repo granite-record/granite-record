@@ -241,6 +241,11 @@
    "es": "Todos los proyectos de ley remitidos al <b>{name}</b>",
    "state": "draft"
   },
+  "bills.offer_sponsor": {
+   "en": "All bills filed by <b>{name}</b>",
+   "es": "Todos los proyectos de ley presentados por <b>{name}</b>",
+   "state": "draft"
+  },
   "bills.offer_tag": {
    "en": "All bills tagged <b>{name}</b>",
    "es": "Todos los proyectos de ley con la etiqueta <b>{name}</b>",
