@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -974,12 +974,19 @@ def _readme_unlisted(folder, root=None):
             if p.stem != "__init__" and f"`{p.stem}`" not in text and f"`{p.name}`" not in text]
 
 
-@check("files", "src/lib/README.md and src/ops/README.md name every module in their folder")
+@check("files", "the READMEs of src/lib, src/ops, src/pages, src/parse and src/hearings name "
+                 "every module in their folder, and src/pages's every browser file")
 def _shared_folder_readmes_list_every_module():
     """The audit of 14 November 2026 found src/lib/README.md leaving out
     people, spellings and state_settings, and src/ops/README.md leaving out
     person_numbers, record_moves and five more: a folder README that lists
-    some of its modules reads as the whole list."""
+    some of its modules reads as the whole list.
+
+    The refactor's stage 1 (19 November 2026) gave src/pages, src/parse and
+    src/hearings the same: src/pages/README.md named 20 of its 72 code files,
+    src/parse's 63 of 76 and src/hearings's 9 of 13. src/pages's browser
+    files (.js, .css, .html) are held too, since the folder is flat and its
+    README is the only map of it."""
     tmp = Path(tempfile.mkdtemp(prefix="gr-readme-"))
     try:
         _plant(tmp, {"src/lib/README.md": "`a` and `b.py`", "src/lib/a.py": "", "src/lib/b.py": "",
@@ -987,10 +994,15 @@ def _shared_folder_readmes_list_every_module():
         assert _readme_unlisted("src/lib", tmp) == ["c"], _readme_unlisted("src/lib", tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    said = {f: _readme_unlisted(f) for f in ("src/lib", "src/ops")}
+    folders = ("src/lib", "src/ops", "src/pages", "src/parse", "src/hearings")
+    said = {f: _readme_unlisted(f) for f in folders}
+    pages = _source("src/pages/README.md")
+    said["src/pages"] += [p.name for p in sorted((_paths.ROOT / "src/pages").glob("*"))
+                          if p.suffix in (".js", ".css", ".html") and f"`{p.name}`" not in pages]
     assert not any(said.values()), "a folder's README leaves out modules: " + "; ".join(
         f"{f}: {', '.join(m)}" for f, m in said.items() if m)
-    return "ok", "src/lib and src/ops: every module named in its README"
+    return "ok", (f"{', '.join(folders)}: every module named in its README, and every browser "
+                  "file of src/pages")
 
 
 def _project_modules(root=None):
