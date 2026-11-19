@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the laws pages.
 
@@ -1512,6 +1512,7 @@ s.IDX.push(
       "House Transportation"),
   row("HB10", "Allen", "Allen (Hills 44)", "relative to dams", "Elections", "House Transportation"),
   row("HB11", "Allen", "Allen (Graf 2)", "relative to ponds", "Elections", "House Transportation"),
+  row("HB14", "Riley", "Riley (Hills 3)", "relative to lakes", "Elections", "House Transportation"),
   row("HB13", "Jane Housing", "Rep. Jane Housing (D - Hills 9)", "relative to wells", "Elections",
       "House Transportation"),
   row("HB12", "Colin Mitchell", "Rep. “Elect” Colin Mitchell (R)", "relative to signs", "Elections",
@@ -1525,7 +1526,8 @@ const key = k => q.fire("keydown", {key: k});
 try {
   out.whole = offers("alice wade");
   for (const v of ["Rep. Alice Wade", "Rep. Alice Wade (D - Hills 22)", "senator carson", "sen. sharon carson",
-                   "rep carson", "hope", "alice", "lisa", "post", "carson", "grace", "fish", "alice wad", "rep allen",
+                   "rep carson", "hope", "rep hope", "alice", "rep alice", "lisa", "post", "carson", "grace", "fish",
+                   "alice wad", "rep allen", "riley",
                    "allen", "lee nyquist", "colin mitchell", "rep elect colin mitchell", "housing", "minimum wage",
                    "wade"])
     out[v] = person(v);
@@ -1566,14 +1568,14 @@ def _filter_offers_person():
     it applies the filter for you when you click it ... It should only show with a solid match so that ordinary
     searches don't accidentally have an unrelated dropdown pop-up."
 
-    app.js in node on fourteen bills (sponsorOffer, billOffers): the whole name, with or without a title, or the
+    app.js in node on fifteen bills (sponsorOffer, billOffers): the whole name, with or without a title, or the
     chip's own words pasted in, offers the person first, by their chip's title and name and with their count;
-    a title and a surname ("senator carson") offers them, a title that is not theirs ("rep carson") does not; a
-    first name alone offers them only where it is theirs alone and no word of a title in the term ("hope" does;
-    "alice", a word of Mary Alice Jones's name, "lisa", two people's, and "grace", a word of a title, do not), and
-    never where a topic, committee or tag is offered for it ("fish"); a person's offer comes before the topic a word
-    of their name is offered ("jane housing"); a surname alone ("carson", "post", "wade")
-    never; a word still being typed ("alice wad") does not; two sponsors of 1989-1998 named Allen are no one's;
+    a title and a surname or a first name ("senator carson", "rep hope") offers them, a title that is not theirs
+    ("rep carson") does not, nor a title and a word two of theirs share ("rep alice": Alice Wade, Mary Alice
+    Jones); one word with no title never does, a first name ("hope", "alice", "lisa", "grace", "fish") no more
+    than a surname ("carson", "post", "wade", and "riley", the whole name of a sponsor of 1989-1998),
+    since such words are ordinary searches as often as names; a
+    person's offer comes before the topic a word of their name is offered ("jane housing"); a word still being typed ("alice wad") does not; two sponsors of 1989-1998 named Allen are no one's;
     an initial is no part of a name ("lee nyquist"); a member-elect is "Rep. “Elect”", in Spanish in the page's
     words with lang/es.json's; a person already chosen is not offered; "housing" and "minimum wage" offer no
     person. The down arrow and Return take it as they take the topic's: the person ticked, the Sponsor group
@@ -1607,10 +1609,10 @@ def _filter_offers_person():
     carson = [["sponsor", "Sharon Carson", 1, "All bills filed by <b>Sen. Sharon Carson</b>", ""]]
     assert got["senator carson"] == carson and got["sen. sharon carson"] == carson, (
         f"a title and a surname, or the whole name: {got['senator carson']} / {got['sen. sharon carson']}")
-    assert got["hope"] == [["sponsor", "Hope Damon", 1, "All bills filed by <b>Rep. Hope Damon</b>", ""]], (
-        f"'hope', a first name one person has and no title says, offers {got['hope']}")
-    for v in ("rep carson", "alice", "lisa", "post", "carson", "grace", "fish", "alice wad", "rep allen", "allen",
-              "housing", "minimum wage", "wade"):
+    assert got["rep hope"] == [["sponsor", "Hope Damon", 1, "All bills filed by <b>Rep. Hope Damon</b>", ""]], (
+        f"'rep hope', a title and a first name one person has, offers {got['rep hope']}")
+    for v in ("rep carson", "hope", "alice", "rep alice", "lisa", "post", "carson", "grace", "fish", "alice wad",
+              "rep allen", "allen", "riley", "housing", "minimum wage", "wade"):
         assert got[v] == [], f"{v!r} is no solid match for a legislator, and offers {got[v]}"
     assert ["committee", "House Fish and Game and Marine Resources"] in got["fishAll"], (
         f"'fish' offers {got['fishAll']}: the committee named for it")
@@ -1641,9 +1643,9 @@ def _filter_offers_person():
         "the Sponsor group is not open with Rep. Alice Wade chosen after her offer was taken")
     assert got["offered"] == got["byHand"], (
         "the filter list after taking the offer is not the list after ticking the person by hand")
-    return "ok", ("the whole name, a title and a surname, a pasted chip and a first name one person has offer them "
-                  "first by their chip's title, with their count; a surname alone, a shared or title word, a word "
-                  "a filter is offered for, two Allens and a word half typed offer no one; a member-elect in "
+    return "ok", ("the whole name, a title and a surname or first name, and a pasted chip offer them first by "
+                  "their chip's title, with their count; one word with no title, a first name or a surname, a "
+                  "shared word, two Allens and a word half typed offer no one; a member-elect in "
                   "English and Spanish; the arrow and Return tick them as a hand would; the committee is \"the "
                   "House Housing Committee\"")
 

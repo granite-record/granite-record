@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.349
+// GRANITE_VERSION: 2026-09-07.350
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2621,7 +2621,7 @@ function billOffers(q){
     // TAGS:BEGIN
     tagOffers(q,offers,vals);
     // TAGS:END
-    const who=sponsorOffer(q,inYear,vals,offers);
+    const who=sponsorOffer(q,inYear,vals);
     if(who){offers.unshift(who);offers.splice(FO_MOST);}
     for(const o of offers){
       const was=query;
@@ -2662,30 +2662,17 @@ const offerCommittee=v=>tr("bills.offer_committee","All bills referred to the <b
        "senator carson";
    and no other sponsor of the term whose title agrees may have every word
    typed as a whole word of a name of theirs -- find.js's rule for a person
-   by their whole name (findClear, 3). ONE WORD WITH NO TITLE is a name only
-   where it is the first name of that one person, a word of no other
-   sponsor's name, a word of no bill's title in the term, no word the search
-   passes over (STOPSET), and offers no topic, committee or tag (`others`):
-   "alice" is Rep. Alice Wade's where she is the only Alice. A surname alone
-   is never offered ("moore", "white", "lynch" are words as often as names),
-   nor a name shared by several. A word still being typed is not yet a whole
-   word: "alice wad" offers nothing. null where nothing fits. `rows` the
-   term's bills, `vals` billOffers' reading of a filter's values in it: only
-   a person the Sponsor filter lists there is offered. */
+   by their whole name (findClear, 3). ONE WORD WITH NO TITLE IS NEVER A
+   NAME, a first name no more than a surname: "skip", "jack", "rich",
+   "carol", "jordan", "moore" and "white" are ordinary searches as often as
+   they are names, so "alice" alone offers nothing and "alice wade" offers
+   Rep. Alice Wade. Nor is a name shared by several. A word still being
+   typed is not yet a whole word: "alice wad" offers nothing. null where
+   nothing fits. `rows` the term's bills, `vals` billOffers' reading of a
+   filter's values in it: only a person the Sponsor filter lists there is
+   offered. */
 const FO_NAME_SKIP=new Set(["elect"]);
-// The words of the term's titles, as a single word is checked against them
-// (sponsorOffer), worked out once for each term's list as it stands.
-const FO_TITLES={key:"",words:null};
-function foTitleWords(rows){
-  const key=[term,rows.length,IDX.length].join("\u0001");
-  if(FO_TITLES.key!==key){
-    const w=new Set();
-    for(const b of rows)for(const x of foWords(b.title))w.add(stem(x));
-    Object.assign(FO_TITLES,{key,words:w});
-  }
-  return FO_TITLES.words;
-}
-function sponsorOffer(q,rows,vals,others){
+function sponsorOffer(q,rows,vals){
   // A chip's own words pasted in, "Rep. Alice Wade (D - Hills 22)", are the name.
   const raw=String(q||"").replace(/\s*\([^()]*\)\s*$/,"");
   if(raw.trim().length<FO_MIN)return null;
@@ -2694,10 +2681,7 @@ function sponsorOffer(q,rows,vals,others){
   while(lead<typed.length&&(HINT_TITLE[typed[lead]]||FO_NAME_SKIP.has(typed[lead]))){
     title=HINT_TITLE[typed[lead]]||title;lead++;}
   const t=typed.slice(lead);
-  if(!t.length)return null;
-  const lone=t.length===1&&!title;
-  if(lone&&((others&&others.length)||t[0].length<FO_MIN||STOPSET.has(t[0])
-     ||foTitleWords(rows).has(stem(t[0]))))return null;
+  if(!t.length||(t.length<2&&!title))return null;
   const can=new Set(vals("sponsor").map(x=>x[0]));
   if(!can.size)return null;
   const who=new Map();
@@ -2721,8 +2705,8 @@ function sponsorOffer(q,rows,vals,others){
   const ends=(n,w)=>w.length<=n.length&&w.every((x,i)=>x===n[n.length-w.length+i]);
   const fits=p=>p.names.some(name=>{
     const n=hintWords(name),bare=n.filter(w=>w.length>1);
-    return [n,bare].some(v=>v.length&&(lone?v.length>1&&starts(v,t)
-      :same(t,v)||(t.length>1&&starts(v,t))||(title&&(starts(v,t)||ends(v,t)))));
+    return [n,bare].some(v=>v.length&&(same(t,v)||(t.length>1&&starts(v,t))
+      ||(title&&(starts(v,t)||ends(v,t)))));
   });
   const has=p=>p.names.some(name=>{const n=hintWords(name);return t.every(w=>n.includes(w));});
   const agree=[...who.values()].filter(p=>titleAgrees(title,p.label));
