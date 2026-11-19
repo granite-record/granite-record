@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.24
+# GRANITE_VERSION: 2026-11-16.25
 """
 preflight's checks of members-elect and election results.
 
@@ -4645,6 +4645,67 @@ def _results_refuse_one_race(P):
                   "in the summary, and still making the district over it a floterial")
 
 
+@check("build", "State Primary and general results: whatever settling one district refuses -- a "
+                "candidate twice, a block whose towns are not the district's -- refuses that race "
+                "alone, while what is the file's own (a district twice) still refuses the file",
+       needs=("parse_sos_primary_results",))
+def _results_refuse_race_faults(P):
+    """EVERY REFUSAL district() MAKES IS ITS RACE'S (20 November 2026):
+    "Hynes twice in one district" took 2016's Rockingham Democratic file
+    with it, and "Quevedo twice", "Burns twice" and a block short of
+    Gilford three 2022 Democratic files. Held on a made-up 2018 primary
+    House file: one district names a candidate twice, one has a second
+    block short of a town, one is sound; then the same file with a district
+    twice, which is the file's fault."""
+    try:
+        import openpyxl  # noqa: F401
+    except ImportError:
+        return "skip", "openpyxl is not installed"
+    PSR = P.PSR
+    root = Path(tempfile.mkdtemp(prefix="gr-sos-faults-"))
+    try:
+        d = root / PSR.SOURCES
+        d.mkdir(parents=True)
+        (root / "collected").mkdir()
+        (root / "collected" / "election_2018.json").write_text(json.dumps({"races": {
+            "H|Belknap|1": {"seats": 1, "floterial": False, "towns": ["Alpha"]},
+            "H|Belknap|2": {"seats": 1, "floterial": False, "towns": ["Beta", "Gamma"]},
+            "H|Belknap|3": {"seats": 1, "floterial": False, "towns": ["Delta"]}}}),
+            encoding="utf-8")
+        rows = [["State of New Hampshire - 2018 Primary Election"],
+                ["State Representatives - BELKNAP County - Democratic"], [],
+                ["District No. 1 (1)", "Ash, d", "Bly, d", "Ash, d", "Scatter"],
+                ["Alpha", 10, 8, None, 1],
+                ["District No. 2 (1)", "Cole, d", "Dunn, d", "Scatter"],
+                ["Beta", 20, 4, 0], ["Gamma", 30, 6, 0], ["Totals", 50, 10, 0],
+                [None, "Eve, r", "Fay, r"], ["Gamma", 1, 2],
+                ["District No. 3 (1)", "Gray, d", "Scatter"], ["Delta", 7, 0]]
+        house = d / "2018-sp-house-belknap-democratic.xlsx"
+        _legacy_book(house, rows)
+        doc = P.read_year(root, 2018)
+        assert sorted(doc["races"]) == ["D|H|Belknap|3"], (
+            f"the sound district was not read beside the two the reader cannot settle: "
+            f"{sorted(doc['races'])}; refused {doc.get('_refused')}")
+        why = {r.get("race"): r["why"] for r in doc.get("_refused") or [] if r["file"] == house.name}
+        assert sorted(why) == ["D|H|Belknap|1", "D|H|Belknap|2"] and \
+            "Ash twice in one district" in why["D|H|Belknap|1"] and \
+            "are not the district's" in why["D|H|Belknap|2"], f"each race refused alone, with why: {why}"
+        # A district twice is the file's own fault: the whole file is refused.
+        # (Its seats differ: the 2016-2022 layout reads the same header again,
+        # seats and all, as the district's next block.)
+        _legacy_book(house, rows + [["District No. 3 (2)", "Hale, d", "Scatter"], ["Delta", 1, 0]])
+        again = P.read_year(root, 2018)
+        assert not again["races"] and [(r["file"], r.get("race")) for r in again["_refused"]] == [
+            (house.name, None)] and "district 3 twice" in again["_refused"][0]["why"], (
+            f"a district twice was not the file's refusal: {again.get('_refused')}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert not PSR.race_alone(PSR.Unreadable("x")), "a file this machine cannot open read as a race's"
+    return "ok", ("a candidate twice and a block short of a town each refused alone, the sound district "
+                  "read; a district twice still refuses the file; a file this machine cannot open is "
+                  "never a race's")
+
+
 @check("data", "State Primary results: collected/primary_<year>.json is what the saved files say, "
                "each race's nominees no more than its seats and every unsettled one said",
        needs=("parse_sos_primary_results",))
@@ -4724,6 +4785,40 @@ def _primary_strafford_2026_d_races(P):
     return "ok", (f"{len(mine)} races committed and read again from {name}, district 3 alone refused "
                   "(its Totals say 666 where its towns give Linda R. Adamo 363); Strafford 15 "
                   "Samuel Chouinard 799")
+
+
+@check("data", "State Primary results: the four files one district's fault once refused whole -- 2016 "
+               "Rockingham D, 2022 Belknap, Cheshire and Merrimack D -- yield their other races, "
+               "that district alone refused",
+       needs=("parse_sos_primary_results",))
+def _primary_race_faults_on_file(P):
+    """The committed documents (20 November 2026): each file is read, its one
+    race listed in _refused with the fault district() met, and its others
+    written. _primary_read_again holds the documents to the saved files."""
+    want = {2016: ("2016-sp-rockingham-house-democratic.xls", "D|H|Rockingham|", 37, 5,
+                   "Hynes twice in one district"),
+            2022: [("2022-sp-house-belknap-democratic.xls", "D|H|Belknap|", 8, 6,
+                    "are not the district's"),
+                   ("2022-sp-house-cheshire-democratic.xls", "D|H|Cheshire|", 18, 11,
+                    "Quevedo twice in one district"),
+                   ("2022-sp-house-merrimack-democratic_0.xls", "D|H|Merrimack|", 30, 3,
+                    "Burns twice in one district")]}
+    lines = []
+    for y, files in want.items():
+        path = P.out_path(y)
+        if not path.is_file():
+            return "skip", f"{path.as_posix()} is not here"
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        read = {Path(s["file"]).name for s in doc["_source"]}
+        for name, stem, last, bad, why in (files if isinstance(files, list) else [files]):
+            got = sorted(int(k[len(stem):]) for k in doc["races"] if k.startswith(stem))
+            assert got == [n for n in range(1, last + 1) if n != bad], (
+                f"{y} {stem}*: {got}, where 1 to {last} but {bad} belong")
+            listed = [r for r in doc.get("_refused") or [] if r["file"] == name]
+            assert [r.get("race") for r in listed] == [f"{stem}{bad}"] and why in listed[0]["why"] \
+                and name in read, f"{y} {name}: {listed}"
+            lines.append(f"{y} {stem}{bad} alone, {len(got)} read")
+    return "ok", "; ".join(lines)
 
 
 @check("files", "State Primary results: nothing on the site reads collected/primary_*.json or the "

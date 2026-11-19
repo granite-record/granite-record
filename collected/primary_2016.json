@@ -51,6 +51,13 @@
    "2016-sp-merrimack-house-democratic.xls, sheet 'rmerrimackrep', row 16: the header prints 'Distict No. 3 (2)', read as 'District No. 3 (2)': the first word is one letter off District",
    "2016-sp-merrimack-house-democratic.xls, sheet 'rmerrimackrep', row 99: the header prints 'Winterton', read as the candidate 'Winterton', whose party the file leaves out",
    "2016-sp-merrimack-house-democratic.xls: 52 empty cell(s) under a candidate, read as none",
+   "2016-sp-rockingham-house-democratic.xls, district 3: D|H|Rockingham|3: Matthews not settled by the count -- a tie for the last place, or the write-ins nobody named (12) could have taken it",
+   "2016-sp-rockingham-house-democratic.xls, district 4: D|H|Rockingham|4: True not settled by the count -- a tie for the last place, or the write-ins nobody named (13) could have taken it",
+   "2016-sp-rockingham-house-democratic.xls, district 7: D|H|Rockingham|7: Griffin, McMahon not settled by the count -- a tie for the last place, or the write-ins nobody named (10) could have taken it",
+   "2016-sp-rockingham-house-democratic.xls, district 8: D|H|Rockingham|8: Manning not settled by the count -- a tie for the last place, or the write-ins nobody named (19) could have taken it",
+   "2016-sp-rockingham-house-democratic.xls, district 14: D|H|Rockingham|14: Major not settled by the count -- a tie for the last place, or the write-ins nobody named (40) could have taken it",
+   "2016-sp-rockingham-house-democratic.xls, district 20: D|H|Rockingham|20: Eaton III, Janvrin, Khan not settled by the count -- a tie for the last place, or the write-ins nobody named (11) could have taken it",
+   "2016-sp-rockingham-house-democratic.xls: 120 empty cell(s) under a candidate, read as none",
    "2016-sp-rockingham-house-republican.xls, sheet 'rrockrep', row 4: the header prints 'McCaffrey', read as the candidate 'McCaffrey', whose party the file leaves out",
    "2016-sp-rockingham-house-republican.xls, sheet 'rrockrep', row 105: the header prints 'Thornhill', read as the candidate 'Thornhill', whose party the file leaves out",
    "2016-sp-rockingham-house-republican.xls, sheet 'rrockrep', row 105: the header prints 'Adams', read as the candidate 'Adams', whose party the file leaves out",
@@ -235,6 +242,7 @@
    },
    {
      "file": "2016-sp-rockingham-house-democratic.xls",
+     "race": "D|H|Rockingham|5",
      "why": "2016-sp-rockingham-house-democratic.xls, sheet 'rrockrep', row 34: Hynes twice in one district"
    },
    {
@@ -300,6 +308,7 @@
   {"file": "records/sources/2016-sp-hillsborough-house-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "4afa9dfd08232a26777865e7f4ac7f00ec38ef83a464ed8bcae6b70622535436"},
   {"file": "records/sources/2016-sp-hillsborough-house-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "68628e5238dae3e5c0eff0215e89b60f46d755bae5673369ed740f5ed9c3d535"},
   {"file": "records/sources/2016-sp-merrimack-house-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "ffe694ee3961b8208b6a2d50863ec4b9cd6ed18e33d0ccef77c6aeb08d8fbc06"},
+  {"file": "records/sources/2016-sp-rockingham-house-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "fceb4ecf4de8a89b18987834ddf425e99d4d2f96f4821cba9c221f9bbde18aa5"},
   {"file": "records/sources/2016-sp-rockingham-house-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "10fd64c0a581fe5a02e66d81b0a42b3c7979f81db2ef7bc3941b55a8f6ba5bef"},
   {"file": "records/sources/2016-sp-strafford-house-democratic.xls", "url": null, "saved": "2026-11-11", "sha256": "018cbdc890470603e726e4e6aba6fed3d224c94f29223e60f36896807b62b9f5"},
   {"file": "records/sources/2016-sp-straffprd-house-republican.xls", "url": null, "saved": "2026-11-11", "sha256": "55a8720ea606ff7e4653414e7e65392fc6166c922f7d69ac66dea7824a9c953c"},
@@ -1534,10 +1543,21 @@
   "D|H|Merrimack|29": {"party": "d", "seats": 1, "floterial": true, "towns": ["Allenstown", "Epsom", "Pittsfield"], "scatter": 3, "printed_totals": 1, "surnames": true, "candidates": [
     {"name": "Coolidge", "party": "d", "votes": 449, "write_in": false, "nominated": true},
     {"name": "McGuire", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|1": {"party": "d", "seats": 1, "floterial": false, "towns": ["Northwood"], "scatter": 2, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Smith", "party": "d", "votes": 211, "write_in": false, "nominated": true},
+    {"name": "Stone", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|1": {"party": "r", "seats": 1, "floterial": false, "towns": ["Northwood"], "scatter": 1, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Stone", "party": "r", "votes": 252, "write_in": false, "nominated": true},
     {"name": "Smith", "party": "d", "votes": 1, "write_in": false, "nominated": false},
     {"name": "McCaffrey", "party": "", "votes": 139, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|2": {"party": "d", "seats": 3, "floterial": false, "towns": ["Candia", "Deerfield", "Nottingham"], "scatter": 2, "printed_totals": 3, "surnames": true, "candidates": [
+    {"name": "Golomb", "party": "d", "votes": 436, "write_in": false, "nominated": true},
+    {"name": "Roundy", "party": "d", "votes": 418, "write_in": false, "nominated": true},
+    {"name": "St. Martin", "party": "d", "votes": 500, "write_in": false, "nominated": true},
+    {"name": "DePhillips", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Nasser", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Spillane", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Verville", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|2": {"party": "r", "seats": 3, "floterial": false, "towns": ["Candia", "Deerfield", "Nottingham"], "scatter": 10, "printed_totals": 5, "surnames": true, "candidates": [
     {"name": "DePhillips", "party": "r", "votes": 462, "write_in": false, "nominated": false},
     {"name": "Nasser", "party": "r", "votes": 553, "write_in": false, "nominated": true},
@@ -1546,6 +1566,13 @@
     {"name": "Golomb", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Roundy", "party": "d", "votes": 2, "write_in": false, "nominated": false},
     {"name": "St. Martin", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|3": {"party": "d", "seats": 3, "floterial": false, "towns": ["Raymond"], "scatter": 12, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Ouellett", "party": "d", "votes": 205, "write_in": false, "nominated": true},
+    {"name": "Rousseau", "party": "d", "votes": 193, "write_in": false, "nominated": true},
+    {"name": "Costable Jr", "party": "r", "votes": 3, "write_in": false, "nominated": false},
+    {"name": "Hoelzel", "party": "r", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Matthews", "party": "r", "votes": 8, "write_in": false, "nominated": null},
+    {"name": "Pawlik", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|3": {"party": "r", "seats": 3, "floterial": false, "towns": ["Raymond"], "scatter": 7, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Costable Jr", "party": "r", "votes": 498, "write_in": false, "nominated": true},
     {"name": "Hoelzel", "party": "r", "votes": 494, "write_in": false, "nominated": true},
@@ -1553,6 +1580,18 @@
     {"name": "Pawlik", "party": "r", "votes": 275, "write_in": false, "nominated": false},
     {"name": "Ouellett", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Rousseau", "party": "d", "votes": 3, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|4": {"party": "d", "seats": 5, "floterial": false, "towns": ["Auburn", "Chester", "Sandown"], "scatter": 13, "printed_totals": 4, "surnames": true, "candidates": [
+    {"name": "D'Angelo", "party": "d", "votes": 470, "write_in": false, "nominated": true},
+    {"name": "Lister", "party": "d", "votes": 486, "write_in": false, "nominated": true},
+    {"name": "Wood", "party": "d", "votes": 492, "write_in": false, "nominated": true},
+    {"name": "Devine", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Edwards", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Hagan", "party": "r", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Osborne", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Polewarczyk", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "True", "party": "r", "votes": 2, "write_in": false, "nominated": null},
+    {"name": "Tully", "party": "r", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Depalma", "party": "", "votes": 66, "write_in": true, "nominated": true}]},
   "R|H|Rockingham|4": {"party": "r", "seats": 5, "floterial": false, "towns": ["Auburn", "Chester", "Sandown"], "scatter": 13, "printed_totals": 10, "surnames": true, "candidates": [
     {"name": "Devine", "party": "r", "votes": 618, "write_in": false, "nominated": false},
     {"name": "Edwards", "party": "r", "votes": 1005, "write_in": false, "nominated": true},
@@ -1581,6 +1620,30 @@
     {"name": "Skudlarek, R.", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Vermillion", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Warner", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|6": {"party": "d", "seats": 10, "floterial": false, "towns": ["Derry"], "scatter": null, "printed_totals": 0, "open": 5, "surnames": true, "candidates": [
+    {"name": "Cooper", "party": "d", "votes": 682, "write_in": false, "nominated": true},
+    {"name": "Cuenca", "party": "d", "votes": 764, "write_in": false, "nominated": true},
+    {"name": "Eisner", "party": "d", "votes": 833, "write_in": false, "nominated": true},
+    {"name": "Jones", "party": "d", "votes": 722, "write_in": false, "nominated": true},
+    {"name": "Till", "party": "d", "votes": 839, "write_in": false, "nominated": true},
+    {"name": "Love", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Milz", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "O'Connor", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Pearson", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Potucek", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Prudhomme-Obrien", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Sapareto", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Tripp", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Cardon", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Chirichiello", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "DiChiaro Jr", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Dowling", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Fesh", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Flattes", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Hampton", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Katsakiores", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Webb", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Willis", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|6": {"party": "r", "seats": 10, "floterial": false, "towns": ["Derry"], "scatter": null, "printed_totals": 0, "recounted": true, "surnames": true, "candidates": [
     {"name": "Cardon", "party": "r", "votes": 639, "write_in": false, "nominated": false},
     {"name": "Chirichiello", "party": "r", "votes": 1206, "write_in": false, "nominated": true},
@@ -1605,6 +1668,13 @@
     {"name": "Eisner", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Jones", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Till", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|7": {"party": "d", "seats": 4, "floterial": false, "towns": ["Windham"], "scatter": 10, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Azibert", "party": "d", "votes": 289, "write_in": false, "nominated": true},
+    {"name": "Rosa", "party": "d", "votes": 316, "write_in": false, "nominated": true},
+    {"name": "Bates", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Griffin", "party": "r", "votes": 1, "write_in": false, "nominated": null},
+    {"name": "Kolodziej", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "McMahon", "party": "r", "votes": 1, "write_in": false, "nominated": null}]},
   "R|H|Rockingham|7": {"party": "r", "seats": 4, "floterial": false, "towns": ["Windham"], "scatter": 14, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Bates", "party": "r", "votes": 733, "write_in": false, "nominated": true},
     {"name": "Griffin", "party": "r", "votes": 831, "write_in": false, "nominated": true},
@@ -1612,6 +1682,30 @@
     {"name": "McMahon", "party": "r", "votes": 731, "write_in": false, "nominated": true},
     {"name": "Azibert", "party": "d", "votes": 1, "write_in": false, "nominated": false},
     {"name": "Rosa", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|8": {"party": "d", "seats": 9, "floterial": false, "towns": ["Salem"], "scatter": 19, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Abercrombie", "party": "d", "votes": 598, "write_in": false, "nominated": true},
+    {"name": "Billingham", "party": "d", "votes": 648, "write_in": false, "nominated": true},
+    {"name": "Carpenito", "party": "d", "votes": 677, "write_in": false, "nominated": true},
+    {"name": "Iannalfo", "party": "d", "votes": 625, "write_in": false, "nominated": true},
+    {"name": "Lewis", "party": "d", "votes": 614, "write_in": false, "nominated": true},
+    {"name": "Wright", "party": "d", "votes": 658, "write_in": false, "nominated": true},
+    {"name": "Brestin", "party": "", "votes": 33, "write_in": true, "nominated": true},
+    {"name": "Stewart", "party": "", "votes": 33, "write_in": true, "nominated": true},
+    {"name": "Azarian", "party": "r", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Barnes III", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Belanger", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Bick", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Bruce", "party": "r", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Doucette", "party": "r", "votes": 2, "write_in": false, "nominated": false},
+    {"name": "Elliott", "party": "r", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Gay", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Janigian", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Kassas", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Manning", "party": "r", "votes": 3, "write_in": false, "nominated": null},
+    {"name": "McCarthy", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "McDougall", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Spalding", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Sytek", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|8": {"party": "r", "seats": 9, "floterial": false, "towns": ["Salem"], "scatter": 7, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Azarian", "party": "r", "votes": 1004, "write_in": false, "nominated": true},
     {"name": "Barnes III", "party": "r", "votes": 913, "write_in": false, "nominated": true},
@@ -1634,6 +1728,13 @@
     {"name": "Iannalfo", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Lewis", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Wright", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|9": {"party": "d", "seats": 2, "floterial": false, "towns": ["Epping"], "scatter": null, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Portalla", "party": "d", "votes": 235, "write_in": false, "nominated": true},
+    {"name": "Tillman", "party": "d", "votes": 172, "write_in": false, "nominated": true},
+    {"name": "Webb", "party": "d", "votes": 51, "write_in": false, "nominated": false},
+    {"name": "Harris", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Morrison", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Vose", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|9": {"party": "r", "seats": 2, "floterial": false, "towns": ["Epping"], "scatter": null, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Harris", "party": "r", "votes": 270, "write_in": false, "nominated": false},
     {"name": "Morrison", "party": "r", "votes": 293, "write_in": false, "nominated": true},
@@ -1641,15 +1742,34 @@
     {"name": "Portalla", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Tillman", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Webb", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|10": {"party": "d", "seats": 1, "floterial": false, "towns": ["Fremont"], "scatter": 1, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Augevich", "party": "d", "votes": 150, "write_in": false, "nominated": true},
+    {"name": "Itse", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|10": {"party": "r", "seats": 1, "floterial": false, "towns": ["Fremont"], "scatter": 5, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Itse", "party": "r", "votes": 384, "write_in": false, "nominated": true},
     {"name": "Augevich", "party": "d", "votes": 5, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|11": {"party": "d", "seats": 1, "floterial": false, "towns": ["Brentwood"], "scatter": null, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Wilson", "party": "d", "votes": 213, "write_in": false, "nominated": true},
+    {"name": "Cook", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|11": {"party": "r", "seats": 1, "floterial": false, "towns": ["Brentwood"], "scatter": 4, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Cook", "party": "r", "votes": 396, "write_in": false, "nominated": true},
     {"name": "Wilson", "party": "d", "votes": 12, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|12": {"party": "d", "seats": 1, "floterial": false, "towns": ["Danville"], "scatter": 1, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Guilmette", "party": "d", "votes": 132, "write_in": false, "nominated": true},
+    {"name": "Woitkun", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|12": {"party": "r", "seats": 1, "floterial": false, "towns": ["Danville"], "scatter": 3, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Woitkun", "party": "r", "votes": 381, "write_in": false, "nominated": true},
     {"name": "Guilmette", "party": "d", "votes": 4, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|13": {"party": "d", "seats": 4, "floterial": false, "towns": ["Hampstead", "Kingston"], "scatter": 3, "printed_totals": 5, "surnames": true, "candidates": [
+    {"name": "Baitz", "party": "d", "votes": 217, "write_in": false, "nominated": true},
+    {"name": "Croteau", "party": "d", "votes": 487, "write_in": false, "nominated": true},
+    {"name": "Davis", "party": "d", "votes": 242, "write_in": false, "nominated": true},
+    {"name": "Fronterotta", "party": "d", "votes": 284, "write_in": false, "nominated": true},
+    {"name": "Shalett", "party": "d", "votes": 205, "write_in": false, "nominated": false},
+    {"name": "Green", "party": "r", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Guthrie", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Welch", "party": "r", "votes": 4, "write_in": false, "nominated": false},
+    {"name": "Weyler", "party": "r", "votes": 6, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|13": {"party": "r", "seats": 4, "floterial": false, "towns": ["Hampstead", "Kingston"], "scatter": 10, "printed_totals": 6, "surnames": true, "candidates": [
     {"name": "Green", "party": "r", "votes": 797, "write_in": false, "nominated": true},
     {"name": "Guthrie", "party": "r", "votes": 938, "write_in": false, "nominated": true},
@@ -1660,6 +1780,16 @@
     {"name": "Davis", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Fronterotta", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Shalett", "party": "d", "votes": 1, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|14": {"party": "d", "seats": 4, "floterial": false, "towns": ["Atkinson", "Plaistow"], "scatter": 40, "printed_totals": 10, "surnames": true, "candidates": [
+    {"name": "Cacciotti", "party": "d", "votes": 295, "write_in": false, "nominated": true},
+    {"name": "Galloway", "party": "d", "votes": 471, "write_in": false, "nominated": true},
+    {"name": "Hamblen", "party": "d", "votes": 299, "write_in": false, "nominated": true},
+    {"name": "Bergeron", "party": "r", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "DeSimone", "party": "r", "votes": 15, "write_in": false, "nominated": false},
+    {"name": "Friel", "party": "r", "votes": 9, "write_in": false, "nominated": false},
+    {"name": "Kiszka", "party": "r", "votes": 5, "write_in": false, "nominated": false},
+    {"name": "Major", "party": "r", "votes": 19, "write_in": false, "nominated": null},
+    {"name": "Torosian", "party": "r", "votes": 12, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|14": {"party": "r", "seats": 4, "floterial": false, "towns": ["Atkinson", "Plaistow"], "scatter": 5, "printed_totals": 8, "surnames": true, "candidates": [
     {"name": "Bergeron", "party": "r", "votes": 453, "write_in": false, "nominated": false},
     {"name": "DeSimone", "party": "r", "votes": 772, "write_in": false, "nominated": true},
@@ -1670,13 +1800,25 @@
     {"name": "Cacciotti", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Galloway", "party": "d", "votes": 5, "write_in": false, "nominated": false},
     {"name": "Hamblen", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|15": {"party": "d", "seats": 1, "floterial": false, "towns": ["Newton"], "scatter": null, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Michaels", "party": "d", "votes": 121, "write_in": false, "nominated": true},
+    {"name": "Allen", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Melvin Sr", "party": "r", "votes": 5, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|15": {"party": "r", "seats": 1, "floterial": false, "towns": ["Newton"], "scatter": null, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Allen", "party": "r", "votes": 202, "write_in": false, "nominated": true},
     {"name": "Melvin Sr", "party": "r", "votes": 157, "write_in": false, "nominated": false},
     {"name": "Michaels", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|16": {"party": "d", "seats": 1, "floterial": false, "towns": ["East Kingston", "Kensington", "South Hampton"], "scatter": 1, "printed_totals": 1, "surnames": true, "candidates": [
+    {"name": "Carpenter", "party": "d", "votes": 280, "write_in": false, "nominated": true},
+    {"name": "Nigrello", "party": "r", "votes": 2, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|16": {"party": "r", "seats": 1, "floterial": false, "towns": ["East Kingston", "Kensington", "South Hampton"], "scatter": 2, "printed_totals": 3, "surnames": true, "candidates": [
     {"name": "Nigrello", "party": "r", "votes": 471, "write_in": false, "nominated": true},
     {"name": "Carpenter", "party": "d", "votes": 3, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|17": {"party": "d", "seats": 3, "floterial": false, "towns": ["Newfields", "Newmarket"], "scatter": 6, "printed_totals": 4, "surnames": true, "candidates": [
+    {"name": "Cahill", "party": "d", "votes": 577, "write_in": false, "nominated": true},
+    {"name": "DiLorenzo", "party": "d", "votes": 534, "write_in": false, "nominated": true},
+    {"name": "Read", "party": "d", "votes": 525, "write_in": false, "nominated": true},
+    {"name": "Davenport", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|17": {"party": "r", "seats": 3, "floterial": false, "towns": ["Newfields", "Newmarket"], "scatter": 7, "printed_totals": 4, "surnames": true, "candidates": [
     {"name": "Davenport", "party": "r", "votes": 614, "write_in": false, "nominated": true},
     {"name": "Cahill", "party": "d", "votes": 0, "write_in": false, "nominated": false},
@@ -1684,6 +1826,13 @@
     {"name": "Read", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Thornhill", "party": "", "votes": 19, "write_in": false, "nominated": true},
     {"name": "Adams", "party": "", "votes": 18, "write_in": false, "nominated": true}]},
+  "D|H|Rockingham|18": {"party": "d", "seats": 4, "floterial": false, "towns": ["Exeter"], "scatter": 6, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Berrien", "party": "d", "votes": 924, "write_in": false, "nominated": true},
+    {"name": "Farnham", "party": "d", "votes": 896, "write_in": false, "nominated": true},
+    {"name": "Frances", "party": "d", "votes": 880, "write_in": false, "nominated": true},
+    {"name": "Gilman", "party": "d", "votes": 930, "write_in": false, "nominated": true},
+    {"name": "DeMartino", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Goeman", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|18": {"party": "r", "seats": 4, "floterial": false, "towns": ["Exeter"], "scatter": 16, "printed_totals": 0, "open": 1, "surnames": true, "candidates": [
     {"name": "DeMartino", "party": "r", "votes": 604, "write_in": false, "nominated": true},
     {"name": "Goeman", "party": "r", "votes": 608, "write_in": false, "nominated": true},
@@ -1692,17 +1841,37 @@
     {"name": "Frances", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Gilman", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Nicholson", "party": "", "votes": 20, "write_in": false, "nominated": true}]},
+  "D|H|Rockingham|19": {"party": "d", "seats": 2, "floterial": false, "towns": ["Stratham"], "scatter": 4, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Altschiller", "party": "d", "votes": 375, "write_in": false, "nominated": true},
+    {"name": "Lamm", "party": "d", "votes": 261, "write_in": false, "nominated": true},
+    {"name": "Abrami", "party": "r", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Ward", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|19": {"party": "r", "seats": 2, "floterial": false, "towns": ["Stratham"], "scatter": 1, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Abrami", "party": "r", "votes": 689, "write_in": false, "nominated": true},
     {"name": "Ward", "party": "r", "votes": 401, "write_in": false, "nominated": true},
     {"name": "Altschiller", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Lamm", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|20": {"party": "d", "seats": 3, "floterial": false, "towns": ["Hampton Falls", "Seabrook"], "scatter": 11, "printed_totals": 1, "surnames": true, "candidates": [
+    {"name": "Preston", "party": "d", "votes": 282, "write_in": false, "nominated": true},
+    {"name": "Chase", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Eaton III", "party": "r", "votes": 1, "write_in": false, "nominated": null},
+    {"name": "Janvrin", "party": "r", "votes": 1, "write_in": false, "nominated": null},
+    {"name": "Khan", "party": "r", "votes": 2, "write_in": false, "nominated": null}]},
   "R|H|Rockingham|20": {"party": "r", "seats": 3, "floterial": false, "towns": ["Hampton Falls", "Seabrook"], "scatter": 1, "printed_totals": 5, "surnames": true, "candidates": [
     {"name": "Chase", "party": "r", "votes": 445, "write_in": false, "nominated": true},
     {"name": "Eaton III", "party": "r", "votes": 284, "write_in": false, "nominated": false},
     {"name": "Janvrin", "party": "r", "votes": 423, "write_in": false, "nominated": true},
     {"name": "Khan", "party": "r", "votes": 440, "write_in": false, "nominated": true},
     {"name": "Preston", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|21": {"party": "d", "seats": 4, "floterial": false, "towns": ["Hampton"], "scatter": 13, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Bunce", "party": "d", "votes": 542, "write_in": false, "nominated": true},
+    {"name": "Cushing", "party": "d", "votes": 661, "write_in": false, "nominated": true},
+    {"name": "Desrosiers", "party": "d", "votes": 602, "write_in": false, "nominated": true},
+    {"name": "Edgar", "party": "d", "votes": 635, "write_in": false, "nominated": true},
+    {"name": "Bean", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Emerick", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Hurst", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Sheffert", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|21": {"party": "r", "seats": 4, "floterial": false, "towns": ["Hampton"], "scatter": 16, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Bean", "party": "r", "votes": 806, "write_in": false, "nominated": true},
     {"name": "Emerick", "party": "r", "votes": 715, "write_in": false, "nominated": true},
@@ -1712,51 +1881,100 @@
     {"name": "Cushing", "party": "d", "votes": 1, "write_in": false, "nominated": false},
     {"name": "Desrosiers", "party": "d", "votes": 0, "write_in": false, "nominated": false},
     {"name": "Edgar", "party": "d", "votes": 2, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|22": {"party": "d", "seats": 1, "floterial": false, "towns": ["North Hampton"], "scatter": 2, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Day", "party": "d", "votes": 232, "write_in": false, "nominated": true},
+    {"name": "Marsh", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|22": {"party": "r", "seats": 1, "floterial": false, "towns": ["North Hampton"], "scatter": 2, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Marsh", "party": "r", "votes": 455, "write_in": false, "nominated": true},
     {"name": "Day", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|23": {"party": "d", "seats": 1, "floterial": false, "towns": ["Greenland", "Newington"], "scatter": null, "printed_totals": 1, "surnames": true, "candidates": [
+    {"name": "Malloy", "party": "d", "votes": 309, "write_in": false, "nominated": true},
+    {"name": "Page", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|23": {"party": "r", "seats": 1, "floterial": false, "towns": ["Greenland", "Newington"], "scatter": 4, "printed_totals": 3, "surnames": true, "candidates": [
     {"name": "Page", "party": "r", "votes": 426, "write_in": false, "nominated": true},
     {"name": "Malloy", "party": "d", "votes": 1, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|24": {"party": "d", "seats": 2, "floterial": false, "towns": ["New Castle", "Rye"], "scatter": 4, "printed_totals": 2, "surnames": true, "candidates": [
+    {"name": "Messner", "party": "d", "votes": 490, "write_in": false, "nominated": true},
+    {"name": "Murray", "party": "d", "votes": 524, "write_in": false, "nominated": true},
+    {"name": "Erlebacher", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Stevens", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|24": {"party": "r", "seats": 2, "floterial": false, "towns": ["New Castle", "Rye"], "scatter": 3, "printed_totals": 4, "surnames": true, "candidates": [
     {"name": "Erlebacher", "party": "r", "votes": 568, "write_in": false, "nominated": true},
     {"name": "Stevens", "party": "r", "votes": 639, "write_in": false, "nominated": true},
     {"name": "Messner", "party": "d", "votes": 2, "write_in": false, "nominated": false},
     {"name": "Murray", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|25": {"party": "d", "seats": 1, "floterial": false, "towns": ["Portsmouth Ward 1"], "scatter": 2, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Pantelakos", "party": "d", "votes": 360, "write_in": false, "nominated": true}]},
   "R|H|Rockingham|25": {"party": "r", "seats": 1, "floterial": false, "towns": ["Portsmouth Ward 1"], "scatter": 18, "printed_totals": 0, "surnames": true, "candidates": [
     {"name": "Pantelakos", "party": "d", "votes": 2, "write_in": false, "nominated": null}]},
+  "D|H|Rockingham|26": {"party": "d", "seats": 1, "floterial": false, "towns": ["Portsmouth Ward 2"], "scatter": null, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "McBeath", "party": "d", "votes": 495, "write_in": false, "nominated": true}]},
   "R|H|Rockingham|26": {"party": "r", "seats": 1, "floterial": false, "towns": ["Portsmouth Ward 2"], "scatter": 12, "printed_totals": 0, "open": 1, "surnames": true, "candidates": [
     {"name": "McBeath", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|27": {"party": "d", "seats": 1, "floterial": false, "towns": ["Portsmouth Ward 3"], "scatter": 2, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Somssich", "party": "d", "votes": 279, "write_in": false, "nominated": true}]},
   "R|H|Rockingham|27": {"party": "r", "seats": 1, "floterial": false, "towns": ["Portsmouth Ward 3"], "scatter": 13, "printed_totals": 0, "open": 1, "surnames": true, "candidates": [
     {"name": "Somssich", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|28": {"party": "d", "seats": 1, "floterial": false, "towns": ["Portsmouth Ward 4"], "scatter": null, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Ward", "party": "d", "votes": 281, "write_in": false, "nominated": true}]},
   "R|H|Rockingham|28": {"party": "r", "seats": 1, "floterial": false, "towns": ["Portsmouth Ward 4"], "scatter": 15, "printed_totals": 0, "open": 1, "surnames": true, "candidates": [
     {"name": "Ward", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|29": {"party": "d", "seats": 1, "floterial": false, "towns": ["Portsmouth Ward 5"], "scatter": null, "printed_totals": 0, "surnames": true, "candidates": [
+    {"name": "Gordon", "party": "d", "votes": 472, "write_in": false, "nominated": true}]},
   "R|H|Rockingham|29": {"party": "r", "seats": 1, "floterial": false, "towns": ["Portsmouth Ward 5"], "scatter": 18, "printed_totals": 0, "open": 1, "surnames": true, "candidates": [
     {"name": "Gordon", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|30": {"party": "d", "seats": 1, "floterial": true, "towns": ["Portsmouth Ward 1", "Portsmouth Ward 2", "Portsmouth Ward 4", "Portsmouth Ward 5"], "scatter": 1, "printed_totals": 1, "surnames": true, "candidates": [
+    {"name": "Cali-Pitts", "party": "d", "votes": 1608, "write_in": false, "nominated": true},
+    {"name": "Vyvyan", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|30": {"party": "r", "seats": 1, "floterial": true, "towns": ["Portsmouth Ward 1", "Portsmouth Ward 2", "Portsmouth Ward 4", "Portsmouth Ward 5"], "scatter": 3, "printed_totals": 3, "surnames": true, "candidates": [
     {"name": "Vyvyan", "party": "r", "votes": 549, "write_in": false, "nominated": true},
     {"name": "Cali-Pitts", "party": "d", "votes": 2, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|31": {"party": "d", "seats": 1, "floterial": true, "towns": ["Greenland", "Newington", "North Hampton", "Portsmouth Ward 3"], "scatter": 2, "printed_totals": 1, "surnames": true, "candidates": [
+    {"name": "Le", "party": "d", "votes": 814, "write_in": false, "nominated": true},
+    {"name": "Robertson", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|31": {"party": "r", "seats": 1, "floterial": true, "towns": ["Greenland", "Newington", "North Hampton", "Portsmouth Ward 3"], "scatter": 4, "printed_totals": 2, "surnames": true, "candidates": [
     {"name": "Robertson", "party": "r", "votes": 968, "write_in": false, "nominated": true},
     {"name": "Le", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|32": {"party": "d", "seats": 1, "floterial": true, "towns": ["Candia", "Deerfield", "Northwood", "Nottingham"], "scatter": 1, "printed_totals": 1, "surnames": true, "candidates": [
+    {"name": "Rafter", "party": "d", "votes": 763, "write_in": false, "nominated": true},
+    {"name": "Cady", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Dean-Bailey", "party": "r", "votes": 0, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|32": {"party": "r", "seats": 1, "floterial": true, "towns": ["Candia", "Deerfield", "Northwood", "Nottingham"], "scatter": 11, "printed_totals": 3, "surnames": true, "candidates": [
     {"name": "Cady", "party": "r", "votes": 514, "write_in": false, "nominated": false},
     {"name": "Dean-Bailey", "party": "r", "votes": 1424, "write_in": false, "nominated": true},
     {"name": "Rafter", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|33": {"party": "d", "seats": 1, "floterial": true, "towns": ["Brentwood", "Danville", "Fremont"], "scatter": 1, "printed_totals": 2, "surnames": true, "candidates": [
+    {"name": "Manos", "party": "d", "votes": 136, "write_in": false, "nominated": false},
+    {"name": "McConnell", "party": "d", "votes": 377, "write_in": false, "nominated": true},
+    {"name": "Kohlhofer", "party": "r", "votes": 0, "write_in": false, "nominated": false},
+    {"name": "Wallace", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|33": {"party": "r", "seats": 1, "floterial": true, "towns": ["Brentwood", "Danville", "Fremont"], "scatter": 5, "printed_totals": 4, "surnames": true, "candidates": [
     {"name": "Kohlhofer", "party": "r", "votes": 326, "write_in": false, "nominated": false},
     {"name": "Wallace", "party": "r", "votes": 855, "write_in": false, "nominated": true},
     {"name": "Manos", "party": "d", "votes": 2, "write_in": false, "nominated": false},
     {"name": "McConnell", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|34": {"party": "d", "seats": 1, "floterial": true, "towns": ["Atkinson", "Hampstead", "Kingston", "Plaistow"], "scatter": 28, "printed_totals": 2, "surnames": true, "candidates": [
+    {"name": "Pearson", "party": "r", "votes": 6, "write_in": false, "nominated": false},
+    {"name": "Cheney", "party": "", "votes": 43, "write_in": true, "nominated": true}]},
   "R|H|Rockingham|34": {"party": "r", "seats": 1, "floterial": true, "towns": ["Atkinson", "Hampstead", "Kingston", "Plaistow"], "scatter": 9, "printed_totals": 2, "surnames": true, "candidates": [
     {"name": "Pearson", "party": "r", "votes": 2286, "write_in": false, "nominated": true}]},
+  "D|H|Rockingham|35": {"party": "d", "seats": 1, "floterial": true, "towns": ["East Kingston", "Kensington", "Newton", "South Hampton"], "scatter": 2, "printed_totals": 1, "surnames": true, "candidates": [
+    {"name": "Hall", "party": "d", "votes": 395, "write_in": false, "nominated": true},
+    {"name": "Andersen", "party": "r", "votes": 1, "write_in": false, "nominated": false},
+    {"name": "Gordon", "party": "r", "votes": 1, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|35": {"party": "r", "seats": 1, "floterial": true, "towns": ["East Kingston", "Kensington", "Newton", "South Hampton"], "scatter": 1, "printed_totals": 4, "surnames": true, "candidates": [
     {"name": "Andersen", "party": "r", "votes": 303, "write_in": false, "nominated": false},
     {"name": "Gordon", "party": "r", "votes": 502, "write_in": false, "nominated": true},
     {"name": "Hall", "party": "d", "votes": 3, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|36": {"party": "d", "seats": 1, "floterial": true, "towns": ["Exeter", "Newfields", "Newmarket", "Stratham"], "scatter": 7, "printed_totals": 2, "surnames": true, "candidates": [
+    {"name": "Lovejoy", "party": "d", "votes": 2137, "write_in": false, "nominated": true},
+    {"name": "Poutre", "party": "r", "votes": 4, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|36": {"party": "r", "seats": 1, "floterial": true, "towns": ["Exeter", "Newfields", "Newmarket", "Stratham"], "scatter": 8, "printed_totals": 3, "surnames": true, "candidates": [
     {"name": "Poutre", "party": "r", "votes": 1874, "write_in": false, "nominated": true},
     {"name": "Lovejoy", "party": "d", "votes": 1, "write_in": false, "nominated": false}]},
+  "D|H|Rockingham|37": {"party": "d", "seats": 1, "floterial": true, "towns": ["Hampton", "Hampton Falls", "Seabrook"], "scatter": 3, "printed_totals": 1, "surnames": true, "candidates": [
+    {"name": "Andrews-Ahearn", "party": "d", "votes": 995, "write_in": false, "nominated": true},
+    {"name": "Tilton", "party": "r", "votes": 4, "write_in": false, "nominated": false}]},
   "R|H|Rockingham|37": {"party": "r", "seats": 1, "floterial": true, "towns": ["Hampton", "Hampton Falls", "Seabrook"], "scatter": 5, "printed_totals": 2, "surnames": true, "candidates": [
     {"name": "Tilton", "party": "r", "votes": 1684, "write_in": false, "nominated": true},
     {"name": "Andrews-Ahearn", "party": "d", "votes": 0, "write_in": false, "nominated": false}]},

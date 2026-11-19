@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.12
+# GRANITE_VERSION: 2026-10-17.13
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -72,13 +72,17 @@ have won -- fewer named candidates than seats, or scattered write-ins as many
 as the last seat's votes; and a file of another election, or a county's file
 twice under one number.
 
-One refusal is a race's alone (19 November 2026; the owner's rule that a slip
-in the official record never takes the rest down, and is flagged): a House
-race whose column does not add up to the Totals the file prints beside it,
-which are the Secretary of State's own sums (Disagrees). That race is not
-written and is listed in "_refused" with its file and why, printed as a
-REFUSED line, which election week reads; which figure is right is never
-guessed. The file's other races, and the year, are written.
+A House race's own refusals are its alone (19 and 20 November 2026; the
+owner's rule that a slip in the official record never takes the rest down,
+and is flagged): a column that does not add up to the Totals the file prints
+beside it, which are the Secretary of State's own sums (Disagrees), and
+whatever else settling the one district refuses -- a candidate twice, a
+block whose towns are not the district's, a write-in who may have won
+(race_alone). That race is not written and is listed in "_refused" with its
+file and why, printed as a REFUSED line, which election week reads; which
+figure is right is never guessed. The file's other races, and the year, are
+written. What is the file's own -- its title, county, day, a district twice
+-- still refuses the file.
 
 THE PERSON'S DECISIONS OF 17 OCTOBER 2026 about the reader, each as
 recommended after the 2024 files were read: a printed floterial mark the
@@ -229,6 +233,18 @@ class Disagrees(Refused):
     race took the county's other twenty with it. read_house refuses the race
     and reads the rest of the file, where its caller asks it to (`alone`);
     which figure is right is never guessed."""
+
+
+def race_alone(e):
+    """Whether refusal `e`, met while one district is settled (district()),
+    is that race's alone. EVERY REFUSAL district() MAKES IS ITS RACE'S (20
+    November 2026): it sees only the district's own blocks, which the file
+    was already split into, so a candidate twice (2016 Rockingham D's
+    Hynes), a block whose towns are not the district's (2022 Belknap D) or
+    a winner the count cannot settle is the race's, and refuses it alone,
+    as a column that does not add up does (Disagrees). A file this machine
+    cannot open (Unreadable) is never a race's."""
+    return isinstance(e, Refused) and not isinstance(e, Unreadable)
 
 
 # ---- cells -------------------------------------------------------------------
@@ -1135,11 +1151,15 @@ def read_house(path, county, election, legacy=False, alone=None):
     carries the party it is read for as `.party` and its winners rule as
     `.choose`, and its titles say the primary and that party.
 
-    `alone`, a list, takes a district whose column does not add up to its
-    Totals (Disagrees): it is left out of the answer and appended as
+    `alone`, a list, takes a district that district() refuses -- a column
+    that does not add up to its Totals (Disagrees), a candidate twice, a
+    block whose towns are not the district's, a winner the count cannot
+    settle: it is left out of the answer and appended as
     {"district", "seats", "floterial", "towns", "where", "why"}, and the
     file's other districts are read. Without it the whole
-    file is refused, as it always was."""
+    file is refused, as it always was. What is the file's -- its title,
+    county, day, party, a row before any district, a district twice -- is
+    found before any district is settled, and still refuses the file."""
     primary = getattr(election, "party", None)
     got = sheets(path)
     if legacy and path.suffix.lower() == ".html":
@@ -1354,8 +1374,8 @@ def read_house(path, county, election, legacy=False, alone=None):
         try:
             out[n] = (seats, flo, district(blocks, seats, where, getattr(election, "choose", None),
                                            getattr(election, "mark", "elected")))
-        except Disagrees as e:
-            if alone is None:
+        except Refused as e:
+            if alone is None or not race_alone(e):
                 raise
             # The race's places as the file names them, for a caller that
             # tells a floterial from the towns of the districts under it.
@@ -1733,8 +1753,8 @@ def read_all(root, year, districts, saved=None, url=None, partial=False, registr
 
     refused = []
     for county, path in files["house"].items():
-        # A race whose column does not add up to its Totals is refused alone,
-        # and listed in _refused; the file's other races are read (Disagrees).
+        # A race that cannot be settled is refused alone, and listed in
+        # _refused; the file's other races are read (race_alone).
         alone = []
         got = read_house(path, county, election, legacy, alone)
         for n, (seats, flo, rec) in got.items():
@@ -1905,7 +1925,7 @@ def summary(doc):
                f". Every column agrees with the file's Totals but {short} whose Totals formula "
                "leaves out a town (flagged)")
             + " and every race elects its seats."
-            + (f" Refused and not written, a column not adding up to the file's Totals: "
+            + (f" Refused and not written (see _refused for why): "
                + ", ".join(r["race"] for r in doc["_refused"]) + "."
                if doc.get("_refused") else ""))
 
