@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.290
+# GRANITE_VERSION: 2026-09-04.291
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -5540,6 +5540,7 @@ def main():
             encoding="utf-8")
     i18n.report()
     KD.unnamed()
+    KD.unread()
 
     # learn.html belongs to build_civics.py now: it is the way into eleven
     # topic pages rather than one page of its own, and two builders writing
