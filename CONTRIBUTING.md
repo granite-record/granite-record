@@ -515,14 +515,19 @@ place: `src/pages/chrome.py`. Both kinds of page ask it -- record pages
 through the `<!-- CHROME:... -->` slots in `bills.html`, the five pages
 `build_pages.py` writes through the same four calls -- so an edit reaches
 every page at the next full build (`--front-end` refuses it, since every page
-is rewritten). A new section of the site is a row of `chrome.NAV_TABS`.
+is rewritten). A new section of the site is a row of `chrome.NAV_TABS`. Its
+scripts -- the theme control, the language check before the first paint,
+the footer's date -- are `src/pages/inline/chrome.*.js`.
 Preflight fails if any page writes the frame by hand.
 
 **Add a kind of page.**
 1. A builder in `src/pages/`, with a name no other file has, that makes each
    page with `shell.page(shell.template(), path=..., title=...,
    description=..., base=...)`, so it gets the frame, the stylesheet, the
-   citation and the share card.
+   citation and the share card. A script of its own goes in
+   `src/pages/inline/<builder>.js`, which the builder writes into its page
+   with `inline_js.script("<builder>")`, not in a Python string; it carries
+   no stamp, since the page would carry the line.
 2. Its addresses go in the sitemap through `shell.sitemap_merge(site, base,
    urls, owns="/your-folder")`, so an address it stops writing is dropped.
 3. A `Step` in `build_all.plan()` after the steps it reads (the build step

@@ -270,6 +270,21 @@ The browser's files, copied into `site/` (scripts without their comments):
 - `live.js` and `live.css`: Live Now;
 - `motions.js`: which motion a vote was on, for the live session page.
 
+A builder's own scripts, written into its pages (20 November 2026):
+
+- `inline/`: what was a JavaScript string in a builder -- a filter, a tab
+  strip, `chrome`'s theme and language scripts -- a `.js` file each, named
+  for the builder: `<builder>.js`, or `<builder>.<what>.js` where it has
+  more than one. The builder has it through `inline_js.script(name)`, which
+  fills each hole written `__NAME__` and refuses one left empty, and writes
+  it into its page exactly as the string held it, comments and all: so a
+  file carries no version stamp, and no comment the page should not carry.
+  Nothing copies these into `site/`, and no bare name finds one. Each is
+  read by its own builder alone (preflight's `_inline_scripts_read_once`);
+  `src/checks/inline/` holds the bench's page script and `drawn_pages`'
+  driver the same way. `build_pages`, `build_calendar` and `build_rsa`
+  still hold theirs in strings.
+
 The data beside the code:
 
 - `words/`: the words the pages say, one JSON file to a kind --
