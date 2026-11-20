@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.320
+# GRANITE_VERSION: 2026-09-05.321
 """
 Generate the faceted site from real General Court data.
 
@@ -960,6 +960,136 @@ from related import (RELATED_GROUPS, RELATED_MAX, add_related, add_same_number, 
                      check_notes, related_entries, same_number_rows, site_tagging)
 
 
+def stated_status_pages():
+    """bill_status.json, the General Court's status pages, {term: {bill: record}}
+    (or one term's, not keyed), or {} where it is not here; and the line the
+    build says of how many bills it covers. A step of build_bills, lifted out of it as it stood (20 November 2026)."""
+    status_pages = load("bill_status.json", {})
+    if status_pages:
+        n = (sum(len(v) for v in status_pages.values())
+             if P.term_keyed(status_pages) else len(status_pages))
+        terms = (", ".join(sorted(status_pages)) if P.term_keyed(status_pages)
+                 else "one term, not keyed")
+        print(f"stated status available for {n:,} bills ({terms})")
+    return status_pages
+
+
+def sponsor_people(legs, former, links, numbers):
+    """Everyone a bill's sponsor lookup can name, {id: member}: the sitting members
+    (`legs`) and the former ones, then under the numbers a sitting member voted
+    under in the other chamber (`links`, member_links') and the employee numbers
+    of the register (`numbers`), each only where the person is one the site has
+    a page for. The comments below say why each. A step of build_bills, lifted out of it as it stood (20 November 2026)."""
+    # For the sponsor lookup only. Built once rather than per bill: 33,683
+    # bills against one dict merge.
+    #
+    # AND THE NUMBERS A SITTING MEMBER VOTED UNDER IN THE OTHER CHAMBER.
+    # member_links joins those to the member for their VOTES, and their page
+    # carries both chambers; the sponsor lookup never learned about them, so a
+    # bill filed under the earlier number found nobody. It mostly did not show,
+    # because the fallback that matches on a name caught them anyway -- and it
+    # caught them only where the bill's text spells the member the way today's
+    # roster does. Sen. Pat Long's House record is filed under "Patrick", which
+    # is how 100 of his own sponsorships rendered as plain text while every
+    # other chamber-changer's linked.
+    #
+    # Keyed on the earlier number and pointing at the sitting member, so the
+    # join is the one member_links already made rather than a second guess at
+    # it. The label is untouched: a 2009 bill still reads "Rep. Patrick Long
+    # (D - Hills 10)", the seat he held when he filed it.
+    _people = {**legs, **(former or {})}
+    for _sit, _earlier in (links or {}).items():
+        for _old in _earlier:
+            _people.setdefault(str(_old), legs.get(_sit) or (former or {}).get(_sit) or {})
+    # AN EMPLOYEE NUMBER IS ITS PERSON (9 November 2026). The bill status page
+    # names a sponsor by the employee number of the seat they then held, and a
+    # member who has since moved chamber holds another: Sen. David Rochefort's
+    # 2025 House bills, filed as Rep. for Grafton 1, name 409162, which the
+    # register (generated/person_numbers.json) gives to the person member_links
+    # already joins to the senator. `numbers` is that register, {employee
+    # number: person}; a number is taken only where its person is one the site
+    # has a page for, and never over an id the site already answers.
+    for _n, _p in (numbers or {}).items():
+        if _people.get(_p):
+            _people.setdefault(_n, _people[_p])
+    return _people
+
+
+def members_who_left(term_rosters, former):
+    """The former members by name, for a term whose own roster is frozen and for the
+    term still sitting (bill_sponsor_list says why): (by sort name, by name key),
+    each a list of every member of that name in order, or None where there is no
+    frozen roster and no former member; and `term_rosters`, {} where None was
+    given. A step of build_bills, lifted out of it as it stood (20 November 2026)."""
+    # And, for a term whose own roster is frozen and not the sitting one
+    # (main says which), the members who left by name: bill_sponsor_list
+    # says why. Every one of a name, in order, since only the one who sat
+    # that term is taken.
+    _left = None
+    term_rosters = term_rosters or {}
+    # ... AND THE TERM STILL SITTING (Alice, 9 November 2026): a member who
+    # resigned mid-term holds no seat in the roster either, and the bill
+    # status page names them by an employee number the roster no longer
+    # answers. Rep. Glenn Cordelli's HB 137 read "Carr 07", unlinked, while
+    # his HB 121 (a database row) linked to his page. The same name rule
+    # holds: only someone who sat in that chamber that term is taken.
+    if term_rosters or former:
+        _left = (defaultdict(list), defaultdict(list))
+        for _m in (former or {}).values():
+            _left[0][sort_name(_m.get("name") or "")].append(_m)
+            _k = name_key(_m.get("name") or "")
+            if _k:
+                _left[1][_k].append(_m)
+    return _left, term_rosters
+
+
+def hearing_speakers(legs, former, term_rosters):
+    """The members a Senate hearing report's speakers are resolved among
+    (speaker_index): every sitting and former member, and for each term whose
+    own roster is frozen, that roster and the members who left before it was.
+    A step of build_bills, lifted out of it as it stood (20 November 2026)."""
+    # The Senate's hearing reports: who testified, resolved to members where
+    # a line names one. Counted as they are attached, so the build says how
+    # many found their hearing and names the ones that did not.
+    _hr_idx = speaker_index([*legs.values(), *(former or {}).values()])
+    # ... and for a term whose own roster is frozen and is not the sitting
+    # one, that roster and the members who left before it was frozen: a
+    # speaker is resolved among the people who sat that term, with the party
+    # they sat with, and linked to their page as it is now -- or not linked,
+    # where they have none (the rehearsal of the review, 5 October 2026).
+    _hr_term = {_t: speaker_index([*_r.values(),
+                                   *(f for _mid, f in (former or {}).items() if _mid not in _r)])
+                for _t, _r in term_rosters.items()}
+    return _hr_idx, _hr_term
+
+
+def early_parties(id_parties, bills, current, sponsors, _people, leg_by_sort, leg_by_name, seats,
+                  _left, term_rosters, record_chambers):
+    """The parties a 1989-1998 sponsor placed on a page takes (party_record), drawn
+    from the labels of their bills of 1999 on exactly as build_bills' loop will
+    draw them, or None where no `id_parties` is given. A step of build_bills, lifted out of it as it stood (20 November 2026)."""
+    # THE PARTY A 1989-1998 SPONSOR PLACED ON A PAGE TAKES (early_party, the owner's
+    # decisions of 15 November 2026) is the page's only where every record of the person gives
+    # that one party, else the bill's term's Manual's, and the labels of their bills of
+    # 1999-2026 are among those records. This loop reaches 1989 first, so those labels are drawn
+    # here beforehand, exactly as the loop will draw them, and nothing else of the lists is
+    # kept. With no `id_parties` none is given.
+    _parties = None
+    if id_parties is not None:
+        _labelled = {}
+        for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
+            year = int(b.get("lsr_year") or 0)
+            term = P.term_of(str(year)) if year else ""
+            if term[:4] >= "1999":
+                bill_sponsor_list(bid, b, year, term, current, sponsors, _people, leg_by_sort,
+                                  leg_by_name, defaultdict(list), seats,
+                                  left=_left if (term in term_rosters or term == current) else None,
+                                  term_roster=term_rosters.get(term),
+                                  record_chambers=record_chambers, labelled=_labelled)
+        _parties = party_record(_people, _labelled, id_parties)
+    return _parties
+
+
 def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over):
     """What build_bills says, after its loop, of the statuses it gave: how many the
     status page stated and how many of a closed term were marked finished, the
@@ -1140,77 +1270,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # the Secretary of State's archive page, by the rule sos_archives.address
     # keeps, read from collected/sos_archives.json. Never fetched.
     sos_files, sos_day = SA.load(), build_date.today().isoformat()
-    status_pages = load("bill_status.json", {})
-    if status_pages:
-        n = (sum(len(v) for v in status_pages.values())
-             if P.term_keyed(status_pages) else len(status_pages))
-        terms = (", ".join(sorted(status_pages)) if P.term_keyed(status_pages)
-                 else "one term, not keyed")
-        print(f"stated status available for {n:,} bills ({terms})")
+    status_pages = stated_status_pages()
     n_stated = 0
-    # For the sponsor lookup only. Built once rather than per bill: 33,683
-    # bills against one dict merge.
-    #
-    # AND THE NUMBERS A SITTING MEMBER VOTED UNDER IN THE OTHER CHAMBER.
-    # member_links joins those to the member for their VOTES, and their page
-    # carries both chambers; the sponsor lookup never learned about them, so a
-    # bill filed under the earlier number found nobody. It mostly did not show,
-    # because the fallback that matches on a name caught them anyway -- and it
-    # caught them only where the bill's text spells the member the way today's
-    # roster does. Sen. Pat Long's House record is filed under "Patrick", which
-    # is how 100 of his own sponsorships rendered as plain text while every
-    # other chamber-changer's linked.
-    #
-    # Keyed on the earlier number and pointing at the sitting member, so the
-    # join is the one member_links already made rather than a second guess at
-    # it. The label is untouched: a 2009 bill still reads "Rep. Patrick Long
-    # (D - Hills 10)", the seat he held when he filed it.
-    _people = {**legs, **(former or {})}
-    for _sit, _earlier in (links or {}).items():
-        for _old in _earlier:
-            _people.setdefault(str(_old), legs.get(_sit) or (former or {}).get(_sit) or {})
-    # AN EMPLOYEE NUMBER IS ITS PERSON (9 November 2026). The bill status page
-    # names a sponsor by the employee number of the seat they then held, and a
-    # member who has since moved chamber holds another: Sen. David Rochefort's
-    # 2025 House bills, filed as Rep. for Grafton 1, name 409162, which the
-    # register (generated/person_numbers.json) gives to the person member_links
-    # already joins to the senator. `numbers` is that register, {employee
-    # number: person}; a number is taken only where its person is one the site
-    # has a page for, and never over an id the site already answers.
-    for _n, _p in (numbers or {}).items():
-        if _people.get(_p):
-            _people.setdefault(_n, _people[_p])
-    # And, for a term whose own roster is frozen and not the sitting one
-    # (main says which), the members who left by name: bill_sponsor_list
-    # says why. Every one of a name, in order, since only the one who sat
-    # that term is taken.
-    _left = None
-    term_rosters = term_rosters or {}
-    # ... AND THE TERM STILL SITTING (Alice, 9 November 2026): a member who
-    # resigned mid-term holds no seat in the roster either, and the bill
-    # status page names them by an employee number the roster no longer
-    # answers. Rep. Glenn Cordelli's HB 137 read "Carr 07", unlinked, while
-    # his HB 121 (a database row) linked to his page. The same name rule
-    # holds: only someone who sat in that chamber that term is taken.
-    if term_rosters or former:
-        _left = (defaultdict(list), defaultdict(list))
-        for _m in (former or {}).values():
-            _left[0][sort_name(_m.get("name") or "")].append(_m)
-            _k = name_key(_m.get("name") or "")
-            if _k:
-                _left[1][_k].append(_m)
-    # The Senate's hearing reports: who testified, resolved to members where
-    # a line names one. Counted as they are attached, so the build says how
-    # many found their hearing and names the ones that did not.
-    _hr_idx = speaker_index([*legs.values(), *(former or {}).values()])
-    # ... and for a term whose own roster is frozen and is not the sitting
-    # one, that roster and the members who left before it was frozen: a
-    # speaker is resolved among the people who sat that term, with the party
-    # they sat with, and linked to their page as it is now -- or not linked,
-    # where they have none (the rehearsal of the review, 5 October 2026).
-    _hr_term = {_t: speaker_index([*_r.values(),
-                                   *(f for _mid, f in (former or {}).items() if _mid not in _r)])
-                for _t, _r in term_rosters.items()}
+    _people = sponsor_people(legs, former, links, numbers)
+    _left, term_rosters = members_who_left(term_rosters, former)
+    _hr_idx, _hr_term = hearing_speakers(legs, former, term_rosters)
     _hr_name = SHR.name_part
     hr_tally = Counter()
     hr_unmatched = []
@@ -1278,25 +1342,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # How many members were in office on each day a chamber took a roll call,
     # which is what three fifths is of on a division (bill_rollcalls).
     in_office = RO.members_in_office(rollcalls)
-    # THE PARTY A 1989-1998 SPONSOR PLACED ON A PAGE TAKES (early_party, the owner's
-    # decisions of 15 November 2026) is the page's only where every record of the person gives
-    # that one party, else the bill's term's Manual's, and the labels of their bills of
-    # 1999-2026 are among those records. This loop reaches 1989 first, so those labels are drawn
-    # here beforehand, exactly as the loop will draw them, and nothing else of the lists is
-    # kept. With no `id_parties` none is given.
-    _parties = None
-    if id_parties is not None:
-        _labelled = {}
-        for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
-            year = int(b.get("lsr_year") or 0)
-            term = P.term_of(str(year)) if year else ""
-            if term[:4] >= "1999":
-                bill_sponsor_list(bid, b, year, term, current, sponsors, _people, leg_by_sort,
-                                  leg_by_name, defaultdict(list), seats,
-                                  left=_left if (term in term_rosters or term == current) else None,
-                                  term_roster=term_rosters.get(term),
-                                  record_chambers=record_chambers, labelled=_labelled)
-        _parties = party_record(_people, _labelled, id_parties)
+    _parties = early_parties(id_parties, bills, current, sponsors, _people, leg_by_sort,
+                             leg_by_name, seats, _left, term_rosters, record_chambers)
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
