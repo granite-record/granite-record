@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.4
+# GRANITE_VERSION: 2026-09-09.5
 """
 One way to write a name, so the same committee reads the same in every term.
 
@@ -35,6 +35,8 @@ sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py
 import _paths  # noqa: E402,F401
 
 import re
+
+import state_settings as ST
 
 # Words that stay lower case inside a name, but never at the start of one.
 SMALL = {"and", "of", "on", "the", "for", "to", "in", "at", "a", "an", "or",
@@ -89,6 +91,9 @@ def committee(s):
 # The chamber's word for one of its own. The roster carries "Senator" and
 # "Representative" in full; these are what fits on a chip.
 TITLE = {"H": "Rep.", "S": "Sen."}
+# The party letters a label keeps: the parties the state's one table has a word for (R, D, I
+# and L), as build_site_v2.member_labels keeps them.
+PARTY_INITIALS = ST.party_initials()
 
 
 def legislator(rec):
@@ -130,7 +135,7 @@ def legislator(rec):
     ch = (rec.get("chamber") or "").strip().upper()[:1]
     plain = f"{TITLE.get(ch, '')} {who}".strip()
     pc = (rec.get("party_code") or rec.get("party") or "").strip()[:1].upper()
-    party = pc if pc in "RDILU" else ""
+    party = pc if pc in PARTY_INITIALS else ""
     d = str(rec.get("district") or "").strip()
     if not d:
         tag = ""

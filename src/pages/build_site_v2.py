@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.294
+# GRANITE_VERSION: 2026-09-05.296
 """
 Generate the faceted site from real General Court data.
 
@@ -1181,16 +1181,19 @@ from parts import COUNTY_ABBR, COUNTY_OF, district_tag
 HONORIFIC = {"H": "Rep.", "S": "Sen."}
 
 _TITLE_RE = re.compile(r"^(?:rep|sen|representative|senator)\.?\s+", re.I)
+# The party letters a name's tail and a label keep: the parties the state's one table has a
+# word for (R, D, I and L; state_settings.party_initials).
+PARTY_INITIALS = ST.party_initials()
 # Case-insensitive: the bill status page writes the letter in lower case,
 # so "Howard Pearl (r)" kept its tail, sorted as "(r), howard pearl" and
 # matched nobody on the roster. 112 sponsor rows, all his.
-_PARTY_TAIL_RE = re.compile(r"\s*\([RDILU](?:\s*[-\u2013][^)]*)?\)\s*$", re.I)
+_PARTY_TAIL_RE = re.compile(r"\s*\([" + re.escape(PARTY_INITIALS) + r"](?:\s*[-\u2013][^)]*)?\)\s*$", re.I)
 # build_data.py's "label" field is a composite -- "Nelson, Jodi(R) Rock. 13" --
 # with the party letter in the MIDDLE and the seat after it. Nothing here is
 # fed that field any more, but a formatter that mangles its input silently is
 # worse than one that guards against it: this cuts at the party marker
 # wherever it appears. No real name contains "(R)".
-_COMPOSITE_RE = re.compile(r"\s*\([RDILU]\)\s.*$")
+_COMPOSITE_RE = re.compile(r"\s*\([" + re.escape(PARTY_INITIALS) + r"]\)\s.*$")
 # A generational suffix, as the rosters write one.
 _SUFFIX_RE = re.compile(r"(?:Jr|Sr)\.?|II|III|IV|V", re.I)
 _PLACEHOLDER_RE = re.compile(r"^(?:Member\s*#|\(unknown)", re.I)
@@ -1294,7 +1297,7 @@ def member_labels(name, chamber=None, party=None, district=None, county=None,
     hon = HONORIFIC.get((chamber or "").strip().upper()[:1], "")
     plain = f"{hon} {who}".strip()
     pc = (party or "").strip()[:1].upper()
-    p = pc if pc in "RDILU" else ""
+    p = pc if pc in PARTY_INITIALS else ""
     short = f"{plain} ({p})" if p else plain
     tag = district_tag((chamber or "").strip().upper()[:1], district, county,
                        county_abbr)
@@ -3049,7 +3052,29 @@ def printed_seats(path="text_sponsors.json"):
     return printed_record(path)[0]
 
 
-def term_seats(votes_by_member, printed=None, record=None, ballots=None):
+# The seat a label names: "Rep. Jane Doe (R - Hills 48)" -> "Hills 48", "(D - SD12)" -> "SD12".
+_LABEL_SEAT = re.compile(r"\([A-Z] - (?P<seat>[^()]+)\)\s*$")
+
+
+def seat_of_the_lines(term, label, index, held):
+    """Whether the seat `label` names is a district of the lines `term` sat on (the district
+    table's era of the term, entities.era_of): True where it is, and where those lines are not
+    on file -- a term before 2013, or a kind the era's table lacks -- since then there is
+    nothing to hold it to; False where the lines are on file and hold no such district (Hills 48
+    in 2015-2016, on the 2012 lines, which number Hillsborough's districts to 45). `index` is
+    entities.district_index of the table's districts, `held` its {(kind, era)}."""
+    m = _LABEL_SEAT.search(label or "")
+    if not m:
+        return True
+    seat = m.group("seat").strip()
+    kind, era = ("senate" if re.fullmatch(r"SD\s*\d+", seat) else "house"), EN.era_of(term)
+    if era is None or (kind, era) not in held:
+        return True
+    return bool(EN.resolve_district(index, kind, seat, era))
+
+
+def term_seats(votes_by_member, printed=None, record=None, ballots=None, lines=None,
+               refused=None):
     """{term: {member id: label}}: the seat each member held in each term --
     the label a session day of the term names them by (labels-use-the-seat-
     held-at-the-time; the person, 16 September 2026).
@@ -3078,10 +3103,28 @@ def term_seats(votes_by_member, printed=None, record=None, ballots=None):
         November: no source, no seat).
     Only a label with a seat, and only one per member and term: ballots of a
     term that name two seats name neither. `record` is printed_record's
-    (one, two, named); `printed` alone stands for `one` with nothing doubted."""
+    (one, two, named); `printed` alone stands for `one` with nothing doubted.
+
+    AND ONLY A SEAT OF THE LINES THE TERM SAT ON (20 November 2026). Carlos E.
+    Gonzalez's 2015-2016 days named him "Hills 48": his last term, whose bills
+    print no seat for him, so the seat his ballots give -- the record's one
+    seat for him, the person's correction, whose evidence is the 2001-2002
+    journals. 2015-2016 sat on the 2012 lines, which number Hillsborough's
+    districts to 45. So a seat from either source is named only where it is a
+    district of the term's lines (seat_of_the_lines, by the district table,
+    `lines`: parse_districts.table's (districts, places), read from the
+    folder the build runs in where not given); else the name alone. Before
+    2013 no table of the lines is on file, and a seat is named as before.
+    Each seat refused is added to `refused`, where one is given, as (term,
+    member id, label)."""
     if record is None:
         record = printed_record() if printed is None else (printed, set(), {})
     printed, two, named = record
+    if lines is None:
+        import parse_districts as PDIST
+        lines = PDIST.table(".", ST.SETTINGS)
+    index = EN.district_index({"district": lines[0]})
+    held = {(d["kind"], d.get("era")) for d in lines[0]}
     seen, cache = defaultdict(lambda: defaultdict(set)), {}
     body, who, last = {}, {}, {}
     for mid, rows in votes_by_member.items():
@@ -3104,7 +3147,10 @@ def term_seats(votes_by_member, printed=None, record=None, ballots=None):
             lab = member_labels(v.get("name"), chamber=ch, party=v.get("party"),
                                 district=dist, county=county)["display_full"]
             if " - " in lab:
-                out[t][mid] = lab
+                if seat_of_the_lines(t, lab, index, held):
+                    out[t][mid] = lab
+                elif refused is not None:
+                    refused.append((t, mid, lab))
                 continue
         ls = seen.get(t, {}).get(mid) or set()
         if t != last[mid] or len(ls) != 1 or (t, mid) in two:
@@ -3114,6 +3160,10 @@ def term_seats(votes_by_member, printed=None, record=None, ballots=None):
         if said and lab not in {member_labels(v.get("name"), chamber=body[(t, mid)],
                                               party=v.get("party"), district=d,
                                               county=c)["display_full"] for c, d in said}:
+            continue
+        if not seat_of_the_lines(t, lab, index, held):
+            if refused is not None:
+                refused.append((t, mid, lab))
             continue
         out[t][mid] = lab
     if ballots is not None:
@@ -8946,9 +8996,9 @@ MANUAL_PARTY = ST.party_lookup()
 
 def party_letter(party):
     """The letter a chip and a label draw for `party` -- "R" for "R", "r" or "Republican" -- as
-    member_labels draws it: the first letter, where it is one of RDILU; else ""."""
+    member_labels draws it: the first letter, where it is one of PARTY_INITIALS; else ""."""
     pc = (party or "").strip()[:1].upper()
-    return pc if pc in "RDILU" else ""
+    return pc if pc in PARTY_INITIALS else ""
 
 
 # What the records give as a person's party, for early_party -- party_ids keys it by the ids
@@ -13486,8 +13536,9 @@ def main():
               f"after this build, and commit the file. First: {', '.join(_unrecorded[:4])}")
     # THE LABEL NAMES THE LAST TERM'S SEAT, OR NONE (last_term_labels); the page stays put.
     import parse_districts as PDIST
+    district_lines = PDIST.table(".", ST.SETTINGS)
     former, relabelled = last_term_labels(former, votes_by_member, printed_record(),
-                                          PDIST.table(".", ST.SETTINGS))
+                                          district_lines)
     if relabelled:
         print(f"{len(relabelled)} former member(s) labelled with their last term's seat, or none where "
               "it is not known; no page moves: "
@@ -13554,8 +13605,14 @@ def main():
     # THE SEAT EACH MEMBER HELD IN EACH TERM (term_seats), worked out once, here,
     # for the movers of the terms before the current one (term_voters) and the
     # session days (write_floor_record), so both name a member by one seat.
-    floor_ballots = {}
-    floor_seats = term_seats(votes_by_member, ballots=floor_ballots)
+    # Only a seat of the lines the term sat on (term_seats, seat_of_the_lines).
+    floor_ballots, seats_refused = {}, []
+    floor_seats = term_seats(votes_by_member, ballots=floor_ballots, lines=district_lines,
+                             refused=seats_refused)
+    if seats_refused:
+        print(f"{len(seats_refused)} term seat(s) named by no district of the lines their term sat on, "
+              "so the member is named without a seat on that term's days: "
+              + ", ".join(f"{lab} in {t}" for t, _m, lab in seats_refused[:8]))
     voters = term_voters(votes_by_member, floor_seats)
     # -------------------------------------------------------------- index --
     # Who each term's bills name, for the Sponsor filter (sponsor_roster).

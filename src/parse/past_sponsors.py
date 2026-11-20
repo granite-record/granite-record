@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-26.7
+# GRANITE_VERSION: 2026-09-26.8
 """
 Who the General Court's own sponsor record says put their name to each bill.
 
@@ -108,7 +108,11 @@ from collections import Counter, defaultdict
 import member_links as ML
 import names
 import past_members
+import state_settings as ST
 import text_sponsors as TS
+
+# The party letters a ballot is counted under: the parties the state's one table has a word for.
+PARTY_INITIALS = ST.party_initials()
 
 PAST = Path("db/past")
 LEGISLATORS = Path("db/Legislators.psv")
@@ -284,7 +288,7 @@ class People:
                 self.bodies[(vid, TS.term_of(y))][v["body"]] += 1
             # build_data writes X where it knows no party; that is not one.
             p = (v.get("party") or "").strip()[:1].upper()
-            if p and p in "RDILU":
+            if p and p in PARTY_INITIALS:
                 self.parties[(vid, TS.term_of(y))][p] += 1
         self.roster = {str(m.get("id")): m for m in (roster or ())}
         self.known = set(self.vote) | set(self.roster)
