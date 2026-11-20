@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-20.1
+# GRANITE_VERSION: 2026-11-20.2
 """
 What the two chambers did with each other's version of a bill, read from its
 docket: a concurrence refused or agreed, a committee of conference asked for,
@@ -17,7 +17,9 @@ all, because the journey reads conference_failure and is a module of its own
 too (journey.py), and a module split out of build_site_v2 may not import it
 back (_import_cycles_cut). build_site_v2 imports every name here back under
 its own, so build_site_v2.conference_failure and the rest answer as they did,
-and its status, its disposition and its journey read them as before.
+and its status, its disposition and its journey read them as before. The
+last piece, conference_not_taken_up, came the same day from build_site_v2's
+measures that died with their term, because the status reads it too.
 """
 
 import re
@@ -358,3 +360,20 @@ def between_chambers(narr, status):
             and concurrence_outcome(evs) == ("non", False)):
         return "active", "One chamber did not concur"
     return None
+
+
+# A CHAMBER THAT WOULD NOT TAKE THE CONFERENCE'S REPORT UP. From build_site_v2's
+# section on the measures that died with their term (ended_with_the_term), whose
+# comment says what it is one of the tests of; the status's closing paragraph
+# (closing_stage) reads it too.
+CONF_NOT_TAKEN_UP = re.compile(
+    r"\bsusp\w*\.?\s+rules?\s+for\s+(?:the\s+)?conf\w*\.?\s*comm\w*\.?\s*rep\w*\s*,\s*"
+    r"(?:failed|fails|ML\b|MF\b)", re.I)
+
+
+def conference_not_taken_up(evs):
+    """The docket row that says a chamber would not take the conference's
+    report up -- a report after the deadline, or a failed vote to suspend the
+    rules for it -- or None."""
+    return next((e for e in evs if CONF_LATE_RE.search(e.get("raw") or "")
+                 or CONF_NOT_TAKEN_UP.search(e.get("raw") or "")), None)

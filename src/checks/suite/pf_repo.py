@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.15
+# GRANITE_VERSION: 2026-11-16.16
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1113,13 +1113,14 @@ def _import_cycles_cut():
 _SPLIT_FROM_SITE = {
     "parts": ("BILL_OF_INTENT", "SINGLE_CHAMBER", "NO_GOVERNOR", "bill_prefix", "CHIP_WORDS",
               "BECAME_LAW", "DIED", "INTERIM_STUDY", "TABLED", "VETOED", "WITHDRAWN", "SIGNED_RE",
-              "REFERENDUM", "docket_line"),
+              "REFERENDUM", "docket_line", "TABLE_DEATH"),
     "conferences": ("CONF_REPORT", "CONF_FAILED", "NEW_CONF", "NEXT_MOTION", "CONF_REJECTED",
                     "CONF_UNABLE", "CONF_UNABLE_RE", "CHAMBERS_APART", "ENDED_AS",
                     "CONF_UNSIGNED_RE", "CONF_LATE_RE", "FAILURE_RANK", "_failure_how",
                     "conference_failure", "conferees_disagreed", "_conference_vote",
                     "conference_outcome", "concurrence_outcome", "BEFORE_CONFERENCE",
-                    "BEFORE_CONCURRENCE", "BEFORE_UNABLE", "CONFERENCE_ROW", "between_chambers"),
+                    "BEFORE_CONCURRENCE", "BEFORE_UNABLE", "CONFERENCE_ROW", "between_chambers",
+                    "CONF_NOT_TAKEN_UP", "conference_not_taken_up"),
     "journey": tuple(("J_ACTS J_AMENDED J_AMEND_ADOPTED J_AMEND_LIST J_AMEND_SUBJ "
                       "J_BARE_REFERRAL J_CHAPTERED J_CHAPTER_THEN_DAY J_CLAUSE_DAY "
                       "J_CONF J_DAY J_DIVIDED_OUT J_DONE_VERB J_EFF_ANY J_EFF_MORE "
@@ -1185,9 +1186,9 @@ def _split_out(site, mod, names):
        needs=("build_site_v2", "parts"))
 def _site_shares_from_parts(B, PARTS):
     """What a bill of each kind has to clear, bill_prefix, the chip's six words, SIGNED_RE,
-    REFERENDUM and docket_line moved from build_site_v2 to parts.py on 20 November 2026 (the
-    refactor's finding 4), as they stood, so that a module split out of build_site_v2 can read
-    them without importing it back (_import_cycles_cut). Undone, half done, or copied back
+    REFERENDUM, docket_line and TABLE_DEATH moved from build_site_v2 to parts.py on 20
+    November 2026 (the refactor's finding 4), as they stood, so that a module split out of
+    build_site_v2 can read them without importing it back (_import_cycles_cut). Undone, half done, or copied back
     into build_site_v2 beside parts' own, this says which name."""
     names = _SPLIT_FROM_SITE["parts"]
     bad = _split_out(B, PARTS, names)
@@ -1203,9 +1204,9 @@ def _site_conferences_moved(B, CF):
     """build_site_v2's section on what the two chambers did with each other's version --
     concurrences, committees of conference, conferees who could not agree -- moved to
     conferences.py on 20 November 2026 (the refactor's finding 4), as it stood, because the
-    journey reads conference_failure and is a module of its own. Every name the section
-    defined is held to be conferences.py's, defined nowhere in build_site_v2.py, and
-    build_site_v2.<name> the same object."""
+    journey reads conference_failure and is a module of its own; and conference_not_taken_up,
+    which the status reads, after it. Every name of them is held to be conferences.py's,
+    defined nowhere in build_site_v2.py, and build_site_v2.<name> the same object."""
     names = _SPLIT_FROM_SITE["conferences"]
     bad = _split_out(B, CF, names)
     assert not bad, "; ".join(bad)

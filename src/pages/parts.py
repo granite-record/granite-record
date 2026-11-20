@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.2
+# GRANITE_VERSION: 2026-11-19.3
 """
 What the page builders share: the pieces more than one builder draws a page
 with, kept here rather than inside one builder that the others import.
@@ -33,8 +33,8 @@ module split out of it may not import it back. What those modules read of
 build_site_v2 and is no one subsystem's came here the same way: what a bill of
 each kind has to clear (SINGLE_CHAMBER, NO_GOVERNOR, BILL_OF_INTENT),
 bill_prefix, the chip's six words, the docket's signature (SIGNED_RE), a
-CACR's referendum (REFERENDUM) and docket_line; build_site_v2 imports each
-back under its name.
+CACR's referendum (REFERENDUM), docket_line and the Senate's Rule 3-23 deaths
+(TABLE_DEATH); build_site_v2 imports each back under its name.
 
 Each part keeps the comments that say why it is as it is; the section a part
 came from is named above it.
@@ -849,6 +849,20 @@ def docket_line(e):
     whole line where the event is one question of a line told question by
     question and is the one that carries it ("line"), else its own `raw`."""
     return e.get("line") or e.get("raw") or ""
+
+
+# ---- from build_site_v2: a Senate Rule 3-23 death in the docket ----------------------------
+
+# THE 2020 SENATE LEFT 427 BILLS ON THE TABLE, and its Rule 3-23 killed them at
+# adjournment: every one's last docket line is "Inexpedient to Legislate,
+# Senate Rule 3-23, Adjournment 09/16/2020", while its status field still said
+# LAID ON TABLE. The site already called this ending "Died on the table" on 211
+# bills whose last line is the same, 164 of them in other terms (2015-2016 to
+# 2023-2024) and 47 in 2019-2020 itself.
+#
+# THE 2025 ROW HAS NO "ADJOURNMENT": "Inexpedient to Legislate, Senate Rule
+# 3-23, 10/31/2025". The rule is named, and that is what the row is.
+TABLE_DEATH = re.compile(r"inexpedient to legislate,\s*senate\s+rule\s+3-23\b", re.I)
 
 
 # ---- from build_town_pages: a number that dials, an address that mails ---------------------

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.299
+# GRANITE_VERSION: 2026-09-05.300
 """
 Generate the faceted site from real General Court data.
 
@@ -7113,16 +7113,9 @@ def cacr_to_the_voters(narr, term, current, text="", today=None, ballot=None):
             else f"Passed both chambers, goes to the voters in {when}")
 
 
-# THE 2020 SENATE LEFT 427 BILLS ON THE TABLE, and its Rule 3-23 killed them at
-# adjournment: every one's last docket line is "Inexpedient to Legislate,
-# Senate Rule 3-23, Adjournment 09/16/2020", while its status field still said
-# LAID ON TABLE. The site already called this ending "Died on the table" on 211
-# bills whose last line is the same, 164 of them in other terms (2015-2016 to
-# 2023-2024) and 47 in 2019-2020 itself.
-#
-# THE 2025 ROW HAS NO "ADJOURNMENT": "Inexpedient to Legislate, Senate Rule
-# 3-23, 10/31/2025". The rule is named, and that is what the row is.
-TABLE_DEATH = re.compile(r"inexpedient to legislate,\s*senate\s+rule\s+3-23\b", re.I)
+# THE 2020 SENATE'S DEATHS BY ITS RULE 3-23 (TABLE_DEATH) are parts.py's, for the
+# reason the others are: the status reads them too.
+from parts import TABLE_DEATH  # noqa: E402,F401
 # AND THE HOUSE'S OWN CLOSING ROW. The House laid 26 measures of 2015 on the
 # table and entered "Died on the Table" on each on 18 November 2015; its field
 # for them was never advanced from LAID ON TABLE, a field outranks what
@@ -7394,18 +7387,13 @@ UNFINISHED = {"In committee", "In progress", "Committee report filed", "Retained
 NO_DISPOSITION = {"MISCELLANEOUS", "RECOMMIT"}
 CONSIDERATION_REFUSED = re.compile(
     r"^\s*shall\s+(?:the\s+)?(?:house|senate)\s+(?:now\s+)?consider\b", re.I)
-CONF_NOT_TAKEN_UP = re.compile(
-    r"\bsusp\w*\.?\s+rules?\s+for\s+(?:the\s+)?conf\w*\.?\s*comm\w*\.?\s*rep\w*\s*,\s*"
-    r"(?:failed|fails|ML\b|MF\b)", re.I)
 ENDED_WITH_TERM = "the term's end"
 
 
-def conference_not_taken_up(evs):
-    """The docket row that says a chamber would not take the conference's
-    report up -- a report after the deadline, or a failed vote to suspend the
-    rules for it -- or None."""
-    return next((e for e in evs if CONF_LATE_RE.search(e.get("raw") or "")
-                 or CONF_NOT_TAKEN_UP.search(e.get("raw") or "")), None)
+# Whether a chamber would not take a conference's report up
+# (conference_not_taken_up, and CONF_NOT_TAKEN_UP, one of the tests above) is
+# conferences.py's: the status reads it too.
+from conferences import CONF_NOT_TAKEN_UP, conference_not_taken_up  # noqa: E402,F401
 
 
 def ended_with_the_term(status, st, narr, bid, term):
