@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.45
+# GRANITE_VERSION: 2026-09-04.46
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -710,7 +710,7 @@ def write_elect_pages(site, out, t, base, written_slugs, pages_of_towns, today):
                                    f"for {elect_district(p)} on {S.date_words(doc['election'], 'full')}."),
                       globals={"GR_STATIC": True}, noscript="", cite=False,
                       skip_label="Skip to this member-elect", nav_current="officials.html",
-                      sr_title="")
+                      nav_item="members-elect", sr_title="")
         body = elect_body(p, doc, reqs, req_meta, places, today, path, base)
         page = page.replace('<div id="results"></div>', f'<div id="results">{body}</div>', 1)
         page = page.replace('<link rel="canonical"', ELECT_ROBOTS + '\n<link rel="canonical"', 1)

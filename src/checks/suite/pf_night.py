@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.15
+# GRANITE_VERSION: 2026-11-16.16
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -3654,7 +3654,7 @@ def _committees_full_sessions():
     n_days = 0
     for b in bodies:
         word = FS.CHAMBER[b]
-        col = re.search(rf"<section><h2>{word}</h2><div class=\"ccards\">(.*?)</div></section>", page, re.S)
+        col = re.search(rf"<section[^>]*><h2>{word}</h2><div class=\"ccards\">(.*?)</div></section>", page, re.S)
         assert col, f"the Committees page has no {word} column"
         first = re.search(r"<a class=\"ccard[^\"]*\" href=\"([^\"]+)\"><span class=\"cc-n\">([^<]+)</span>"
                           r"<span class=\"cc-m\">([^<]*(?:<[^a/][^>]*>[^<]*)*)</span></a>", col.group(1))
