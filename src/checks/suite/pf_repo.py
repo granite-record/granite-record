@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.25
+# GRANITE_VERSION: 2026-11-16.26
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1292,7 +1292,7 @@ def _import_cycles_cut():
 _SPLIT_FROM_SITE = {
     "parts": ("BILL_OF_INTENT", "SINGLE_CHAMBER", "NO_GOVERNOR", "bill_prefix", "CHIP_WORDS",
               "BECAME_LAW", "DIED", "INTERIM_STUDY", "TABLED", "VETOED", "WITHDRAWN", "SIGNED_RE",
-              "REFERENDUM", "docket_line", "TABLE_DEATH"),
+              "REFERENDUM", "docket_line", "TABLE_DEATH", "SOURCE_YEAR", "_source_url"),
     "conferences": ("CONF_REPORT", "CONF_FAILED", "NEW_CONF", "NEXT_MOTION", "CONF_REJECTED",
                     "CONF_UNABLE", "CONF_UNABLE_RE", "CHAMBERS_APART", "ENDED_AS",
                     "CONF_UNSIGNED_RE", "CONF_LATE_RE", "FAILURE_RANK", "_failure_how",
@@ -1403,7 +1403,8 @@ def _split_out(site, mod, names):
 def _site_shares_from_parts(B, PARTS):
     """What a bill of each kind has to clear, bill_prefix, the chip's six words, SIGNED_RE,
     REFERENDUM, docket_line and TABLE_DEATH moved from build_site_v2 to parts.py on 20
-    November 2026 (the refactor's finding 4), as they stood, so that a module split out of
+    November 2026 (the refactor's finding 4), and SOURCE_YEAR and _source_url, the address of
+    a cited calendar or journal, after them, as they stood, so that a module split out of
     build_site_v2 can read them without importing it back (_import_cycles_cut). Undone, half done, or copied back
     into build_site_v2 beside parts' own, this says which name."""
     names = _SPLIT_FROM_SITE["parts"]

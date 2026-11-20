@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.306
+# GRANITE_VERSION: 2026-09-05.307
 """
 Generate the faceted site from real General Court data.
 
@@ -246,14 +246,10 @@ def _paired_by_count(raws, mine):
     return out
 
 
-# The year a published volume is from, out of the path in its own link. Two
-# shapes, because the two files were fetched by different scripts:
-#
-#   .../Journals/2026/HJ 03 February 5, 2026.PDF
-#   .../viewer.aspx?fileName=calendars%5C2026%5CNo10 March 6 2026.pdf
-#
-# Every one of the 188 keys on file yields a year this way.
-SOURCE_YEAR = re.compile(r"(?:%5C|/)(\d{4})(?:%5C|/)", re.I)
+# THE YEAR A CITED VOLUME IS FROM, AND ITS ADDRESS (SOURCE_YEAR, _source_url) are
+# parts.py's (20 November 2026): _cite below reads them, and so do the committee
+# reports. Each name is here as before.
+from parts import SOURCE_YEAR, _source_url  # noqa: E402,F401
 
 
 def _with_plain(events, bill):
@@ -316,25 +312,6 @@ def _cite(ev, sources, year=""):
     if url:
         out["cite_url"] = url
     return out
-
-
-def _source_url(sources, key, year):
-    """The address for a calendar or journal cited in a given year, or "".
-
-    The year-qualified key first; the bare key only where the address it holds
-    is from that same year. One rule for every citation on the site --
-    committee_reports() used to take the bare key unguarded, and all 7,376
-    House report citations of 2013-2022 linked a 2023 or 2024 calendar and
-    printed that calendar's date as the day the report was printed.
-    """
-    if not key:
-        return ""
-    url = sources.get(f"{key} {year}") if year else None
-    if url:
-        return url
-    bare = sources.get(key, "")
-    m = SOURCE_YEAR.search(bare)
-    return bare if (m and year and m.group(1) == str(year)) else ""
 
 
 # The calendar and journal PDF finders moved to queue_links.py on 24 September
