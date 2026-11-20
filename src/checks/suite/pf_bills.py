@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.40
+# GRANITE_VERSION: 2026-11-16.41
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2320,13 +2320,13 @@ def _request_sponsor_name_forms(build_lsrs):
                   "the owner's word is refused")
 
 
-@check("build", "a request's member-elect sponsor is drawn Rep. “Elect” or Sen. “Elect” "
+@check("build", "a request's member-elect sponsor is drawn Rep.-elect or Sen.-elect "
                 "on its card and its page until the day they take office; a sitting member as ever",
        needs=("build_lsrs", "build_request_pages"))
 def _request_member_elect_title(build_lsrs, build_request_pages):
-    """The owner, 17 November 2026: on a request's card a member-elect's chip reads Rep.
-    “Elect” Colin Mitchell (R), the title the search already gives them (Sen.
-    “Elect” for the Senate), until 2 December, when the members-elect take office.
+    """The owner, 17 November 2026: on a request's card a member-elect's chip reads Rep.-elect
+    Colin Mitchell (R), the title the search already gives them (Sen.-elect
+    for the Senate), until 2 December, when the members-elect take office.
     On the live list of that day 54 requests of 18 members-elect read "Colin Mitchell (R)".
 
     build_lsrs gives the label the title (elect_title) while elect_window is open -- the build's
@@ -2384,7 +2384,7 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
         else:
             os.environ["GRANITE_BUILD_DATE"] = was
         shutil.rmtree(tmp, ignore_errors=True)
-    rep, sen = "Rep. “Elect” ", "Sen. “Elect” "
+    rep, sen = "Rep.-elect ", "Sen.-elect "
     labels, names, chips = got["2026-11-17"]
     want = {"2027-0646": rep + "Colin Mitchell (R)", "2027-0651": rep + "Colin Mitchell (R)",
             "2027-0700": sen + "Kurt Webber (D)", "2027-0556": rep + "Jeff Goley (D)",
@@ -2396,12 +2396,12 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
     assert (chips["colin-mitchell-carr-8"], chips["kurt-webber-sd-2"], chips["ellen-read-rock-10"]) == (
         rep + "Colin Mitchell (R)", sen + "Kurt Webber (D)", "Rep. Ellen Read (D - Rock 10)"), chips
     labels, _names, chips = got["2026-12-02"]
-    assert not any("“Elect”" in v for v in list(labels.values()) + list(chips.values())), (
+    assert not any(re.match(r"(Rep|Sen)\.-elect ", v) for v in list(labels.values()) + list(chips.values())), (
         f"a member-elect still titled on the day they take office: {labels} {chips}")
     assert L.label_name(rep + "Colin Mitchell (R)") == "Colin Mitchell"
-    return "ok", ("before 2 December Colin Mitchell's House and CACR requests read Rep. “Elect” "
-                  "Colin Mitchell (R), Kurt Webber's Sen. “Elect”, and Jeff Goley, a former "
-                  "member returning, Rep. “Elect”, on the card's label and the page's chip; a "
+    return "ok", ("before 2 December Colin Mitchell's House and CACR requests read Rep.-elect "
+                  "Colin Mitchell (R), Kurt Webber's Sen.-elect, and Jeff Goley, a former "
+                  "member returning, Rep.-elect, on the card's label and the page's chip; a "
                   "sitting member, re-elected or elected to the Senate, as before; the search reads the "
                   "name alone; on 2 December no one is titled")
 
@@ -2414,7 +2414,7 @@ const fs = require("fs");
 let s;
 try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") + "; ({cardSponsor})"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
-const labels = ["Rep. \u201cElect\u201d Colin Mitchell (R)", "Sen. \u201cElect\u201d Kurt Webber (R)",
+const labels = ["Rep.-elect Colin Mitchell (R)", "Sen.-elect Kurt Webber (R)",
                 "Rep. Ellen Read (D)"];
 const out = {en: labels.map(l => s.cardSponsor({sponsor_label: l}).display_full)};
 globalThis.window.GR_WORDS = JSON.parse(fs.readFileSync("./words.json", "utf8"));
@@ -2428,11 +2428,11 @@ console.log("@@" + JSON.stringify(out));
                    "lang/es.json")
 def _request_card_elect_title_es():
     """The owner, 18 November 2026: on /es/ pages a member-elect sponsor's chip on a request card
-    read "Rep. “Elect”", in English. The row carries the English title (build_lsrs.elect_title);
+    read "Rep.-elect", in English. The row carries the English title (build_lsrs.elect_title);
     app.js's cardSponsor now puts the page's words for it in its place, the keys elect.title_rep
     and elect.title_sen that find.js already draws. Run in node: on an English page the labels
-    are as the row has them; on a Spanish page, with lang/es.json's words, "Rep. “Electo/a”
-    Colin Mitchell (R)" and "Sen. “Electo/a” Kurt Webber (R)", and a sitting member's label
+    are as the row has them; on a Spanish page, with lang/es.json's words, "Rep. electo/a
+    Colin Mitchell (R)" and "Sen. electo/a Kurt Webber (R)", and a sitting member's label
     unchanged; the party still read from the label."""
     es = json.loads(_source("src/pages/lang/es.json"))
     es = es.get("strings", es)
@@ -2441,7 +2441,7 @@ def _request_card_elect_title_es():
     got = _node_app(_CARD_ELECT_HARNESS, {"words.json": json.dumps(words)})
     if got is None:
         return "skip", "node, app.js or the DOM stub is not here"
-    rep, sen = "Rep. \u201cElect\u201d ", "Sen. \u201cElect\u201d "
+    rep, sen = "Rep.-elect ", "Sen.-elect "
     assert got["en"] == [rep + "Colin Mitchell (R)", sen + "Kurt Webber (R)", "Rep. Ellen Read (D)"], got["en"]
     assert got["es"] == [words["elect.title_rep"] + " Colin Mitchell (R)",
                          words["elect.title_sen"] + " Kurt Webber (R)", "Rep. Ellen Read (D)"], got["es"]
@@ -11174,7 +11174,7 @@ def _requests_search_by_name():
     typed ("rep", "sen") agreeing with the label's, and a single word a WHOLE word -- "bail" is not Rep.
     Bailey. A request whose title has the words lists as it did. Held, on a fixture of requests: a full name
     lists the sponsor's requests and the ones they co-sponsor; "bail" lists the bail request and not
-    Bailey's; "sen" before a Rep.'s name lists none; a member-elect, whose label is titled "Rep. “Elect”"
+    Bailey's; "sen" before a Rep.'s name lists none; a member-elect, whose label is titled "Rep.-elect"
     since 17 November 2026 (build_lsrs.elect_title), is found by "rep jane doe" and not by "sen jane doe", and
     the Sponsor list names them without the title, as it names a sitting member without "Rep."; the party filter counts a sitting member's and a member-elect's party; the Sponsor list
     names a sponsor with the party their label gives (a request's label has no seat); the Topic group of the
@@ -11206,7 +11206,7 @@ def _requests_search_by_name():
     rows = [req(1, "relative to school funding.", "Ellen Read", "Rep. Ellen Read (D)", "ellen-read-rock-10", "D"),
             req(2, "relative to the state flag.", "Pat Bailey", "Rep. Pat Bailey (R)", "pat-bailey-hills-1", "R",
                 ["Ellen Read"]),
-            req(3, "relative to dog licensing.", "Jane Doe", "Rep. “Elect” Jane Doe (R)", "jane-doe-elect",
+            req(3, "relative to dog licensing.", "Jane Doe", "Rep.-elect Jane Doe (R)", "jane-doe-elect",
                 "R"),
             req(4, "relative to fishing licences.", "Sam Senn", "Sen. Sam Senn (D)", "sam-senn-sd-1", "D"),
             dict(req(5, "relative to the budget.", "Nobody Known", "Nobody Known", "", ""),
@@ -11353,7 +11353,7 @@ def _requests_search_by_name():
         f"the party filter counts {got['party']}: sitting and elect members alike")
     assert got["cosp"] == "Include co-sponsored requests", got["cosp"]
     assert ["Ellen Read", "Rep. Ellen Read (D)"] in got["sponsors"], f"the Sponsor list shows {got['sponsors']}"
-    assert got["does"] == [["Jane Doe", "Rep. \u201cElect\u201d Jane Doe (R)"]] and got["electSen"] == [], (
+    assert got["does"] == [["Jane Doe", "Rep.-elect Jane Doe (R)"]] and got["electSen"] == [], (
         f"a member-elect's title: the Sponsor list shows {got['does']}, 'sen jane doe' lists {got['electSen']}")
     assert got["republican"] == ["2", "3", "8", "9"], f"the party filter lists {got['republican']}"
     # The names the site prints. Lee C. Nyquist's request is 7, Jim (James) Creighton's 8.

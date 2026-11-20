@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of the laws pages.
 
@@ -1518,7 +1518,7 @@ s.IDX.push(
   row("HB14", "Riley", "Riley (Hills 3)", "relative to lakes", "Elections", "House Transportation"),
   row("HB13", "Jane Housing", "Rep. Jane Housing (D - Hills 9)", "relative to the Jane Lake wells", "Housing",
       "House Transportation"),
-  row("HB12", "Colin Mitchell", "Rep. “Elect” Colin Mitchell (R)", "relative to signs", "Elections",
+  row("HB12", "Colin Mitchell", "Rep.-elect Colin Mitchell (R)", "relative to signs", "Elections",
       "House Transportation"));
 // The titles searched as app.js's loader makes them searchable (ensureTerm).
 s.IDX.forEach(b => { b.hayT = (b.id + " " + b.title).toLowerCase(); });
@@ -1581,7 +1581,7 @@ def _filter_offers_person():
     than a surname ("carson", "post", "wade", and "riley", the whole name of a sponsor of 1989-1998),
     since such words are ordinary searches as often as names; a
     person's offer comes before the topic a word of their name is offered ("jane housing"); a word still being typed ("alice wad") does not; two sponsors of 1989-1998 named Allen are no one's;
-    an initial is no part of a name ("lee nyquist"); a member-elect is "Rep. “Elect”", in Spanish in the page's
+    an initial is no part of a name ("lee nyquist"); a member-elect is "Rep.-elect", in Spanish in the page's
     words with lang/es.json's; a person already chosen is not offered; "housing" and "minimum wage" offer no
     person. The down arrow and Return take it as they take the topic's: the person ticked, the Sponsor group
     open, the address naming them, the box emptied -- and the filter list the same as ticking it by hand. A
@@ -1624,7 +1624,7 @@ def _filter_offers_person():
     assert [o[:4] for o in got["lee nyquist"]] == [
         ["sponsor", "Lee C. Nyquist", 1, "All bills filed by <b>Rep. Lee C. Nyquist</b>"]], (
         f"'lee nyquist', the name without its initial, offers {got['lee nyquist']}")
-    elect = [["sponsor", "Colin Mitchell", 1, "All bills filed by <b>Rep. “Elect” Colin Mitchell</b>", ""]]
+    elect = [["sponsor", "Colin Mitchell", 1, "All bills filed by <b>Rep.-elect Colin Mitchell</b>", ""]]
     assert got["colin mitchell"] == elect and got["rep elect colin mitchell"] == elect, (
         f"a member-elect: {got['colin mitchell']} / {got['rep elect colin mitchell']}")
     say = es["bills.offer_sponsor"].replace("{name}", es["elect.title_rep"] + " Colin Mitchell")

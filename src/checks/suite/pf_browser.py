@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.18
+# GRANITE_VERSION: 2026-11-16.19
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -9404,7 +9404,7 @@ def _elect_pages_link_own():
     names, that page's GR_MEMBER the file's id, and every member the file
     links is linked somewhere; Pat Newell, new and cross-nominated, is drawn
     on the neutral chip with both letters and never as a link -- on the
-    Members-Elect tab as the Legislators tab's chip, "Rep. “Elect” Pat Newell
+    Members-Elect tab as the Legislators tab's chip, "Rep.-elect Pat Newell
     (R/D - Rock 32)", with NEW beside it, in each of its two views (the
     owner's walks of 7 and 8 November 2026); and the one
     line -- "Elected November 3, 2026, for Rockingham district 6. Takes
@@ -9415,7 +9415,7 @@ def _elect_pages_link_own():
     the other John Smith's (900003), nor on any sitting member's the list
     does not name. app.js draws the same line from GR_ELECT, and only for
     the member it names, and heads a returning member's page with the title
-    GR_ELECT gives, "Rep. “Elect”". And a place's "e" is its own races."""
+    GR_ELECT gives, "Rep.-elect". And a place's "e" is its own races."""
     absent = _elect_absent()
     if absent:
         return "skip", "not here: " + ", ".join(absent)
@@ -9451,7 +9451,7 @@ def _elect_pages_link_own():
                 elif member_of(slug) != want[slug][0]:
                     bad.append(f"{rel} links a member-elect to {slug}, the page of "
                                f"{member_of(slug)}, not {want[slug][0]}")
-        if re.search(r"<a\b[^>]*>(?:(?:Rep|Sen)\. “Elect” )?Pat Newell", text):
+        if re.search(r"<a\b[^>]*>(?:(?:Rep|Sen)\.-elect )?Pat Newell", text):
             bad.append(f"{rel} links Pat Newell, a new person")
     if set(want) - linked:
         bad.append(f"never linked: {sorted(set(want) - linked)}")
@@ -9462,7 +9462,7 @@ def _elect_pages_link_own():
     # The Members-Elect tab draws the Legislators tab's chip, with a title and
     # the district, and the word beside it (the owner's walks of 7 and 8
     # November 2026), in each of its two views.
-    tab = re.findall(r'<span class="mchip p-X" translate="no">Rep\. “Elect” Pat Newell <span class="mtag">'
+    tab = re.findall(r'<span class="mchip p-X" translate="no">Rep\.-elect Pat Newell <span class="mtag">'
                      r'\(R/D - Rock \d+\)</span></span> <span class="elkind" translate="yes">New</span>',
                      sources["officials.html"])
     if len(tab) != 2:
@@ -9492,7 +9492,7 @@ def _elect_pages_link_own():
             ok = (line == ["Elected November 3, 2026. Takes office December 2, 2026."]
                   and len(g) == 1 and g[0].get("mode") == "returning"
                   # The title the page is headed with (16 November 2026).
-                  and g[0].get("title") == "Rep. “Elect”"
+                  and g[0].get("title") == "Rep.-elect"
                   and g[0].get("where") == "Member-elect of the New Hampshire House of "
                   f"Representatives, {words.get(key).replace(' district', '')}."
                   and {k: v for k, v in g[0].items() if k in ("id", "key", "election", "takes_office")}

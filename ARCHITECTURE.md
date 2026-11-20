@@ -2475,7 +2475,7 @@ card and its map (`build_elections.with_pages`). Since 16 November 2026 the
 page is a member's in the member-elect's form, built ahead in Python from
 the components the member page draws with: the head a returning
 member-elect's page has (the trail ending Member-elect, the name and party
-the results print under their title spelled out, "Representative “Elect”
+the results print under their title spelled out, "Representative-elect
 Heather Deiner (D)" -- `build_legislator_pages.elect_heading`, and `GR_ELECT`'s
 title in `app.js` -- since the owner asked for it on 16 November 2026), the
 district's towns, the election's line, a tab of
@@ -2487,7 +2487,7 @@ regular page when the General Court numbers them. Only a former member elected a
 re-headed: their own page is headed as a new member-elect's is, the
 member-elect of the new seat, with the earlier seat kept below. A sitting
 member elected to the other chamber is headed as that chamber's member-elect,
-"Senator “Elect” Laura Telerski (D)" (the owner, 17 November 2026: 'link the
+"Senator-elect Laura Telerski (D)" (the owner, 17 November 2026: 'link the
 new member pages as Sen. "Elect" Laura Telerski for the title but connect it to
 their house record as well'), on the page of the record they sit under now,
 the seat they hold named by its office on the line ("Representative for
@@ -2592,14 +2592,14 @@ so today no tab has it; a new member-elect's provisional page is held to the sam
 The search finds them too (the owner, 16 November 2026). `build_indexes.elect_rows`
 gives `find.json` a row of the kind `elect` for each new member-elect with a
 provisional page and each former member elected again, named with the
-Members-Elect tab's title and the seat they were elected to -- "Rep. “Elect”
+Members-Elect tab's title and the seat they were elected to -- "Rep.-elect
 Heather Deiner (D - Hills 25)" -- and leading to their own page. `find.js`
 finds and ranks it as a member's row, by the words of the name, the seat and
 the county, in the header's box and the home page's alike, and `/search` lists
 it under Senators-Elect or Representatives-Elect. A sitting member re-elected,
 or elected within their own chamber, keeps their own row. A former member
 elected again stands in for their "Former Rep." row, and a sitting member
-elected to the other chamber, "Sen. “Elect” Laura Telerski (D - SD13)" leading
+elected to the other chamber, "Sen.-elect Laura Telerski (D - SD13)" leading
 to her House page, for their member's row, the seat they hold among its words:
 the row stood in for is carried and is theirs again on the day they take
 office, by the reader's clock as well as the build's (`find.js`, `findNow`);
@@ -2703,8 +2703,10 @@ request has a title and a prime sponsor, so the search finds it by the
 sponsor's name (prime or co-sponsor; sitting, member-elect or former) and the
 Sponsor filter lists each with their party, where the roster or the results
 give one. Until the day they take office a member-elect's label, and so the
-request's card and the chip on its page, carries their title, "Rep. “Elect”"
-or "Sen. “Elect”" (`elect_title`, `elect_window`); the Sponsor filter lists
+request's card and the chip on its page, carries their title, "Rep.-elect"
+or "Sen.-elect" (`elect_title`, `elect_window`; hyphenated everywhere since
+the owner's word of 20 November 2026, the traditional form, where from
+16 November the word Elect stood in quotation marks); the Sponsor filter lists
 them by name. A prime sponsor is found by every name the site prints for them:
 where the card's label or the page it links to gives the name in other words
 than the list does, as the search reads words (accents and apostrophes left

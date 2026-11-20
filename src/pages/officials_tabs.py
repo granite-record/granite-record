@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.26
+# GRANITE_VERSION: 2026-10-10.27
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -740,9 +740,11 @@ def presiding(officers, legs, today, lang="en"):
 # and 8 November 2026). Each member-elect is the Legislators tab's own chip,
 # with a title and a district -- "Rep.-elect Kristine Trow (D - Rock 13)",
 # "Sen.-elect David Rochefort (R - SD1)", the owner's choice of "Rep.-elect"
-# (since the walk of dry run 8, 8 November 2026, "Rep. “Elect” Kristine Trow",
-# the quotation marks inside the chip) -- and beside it, outside it, one word
-# for who they are (the walk of dry run 7, through the laptop manager).
+# (from the walk of dry run 8, 8 November 2026, until 20 November the word
+# Elect stood in quotation marks; the owner, 20 November 2026: "the
+# hyphenated version appears to be the traditional format") -- and beside
+# it, outside it, one word for who they are (the walk of dry run 7, through
+# the laptop manager).
 #
 # THE WORD IS build_members_elect.elect_status's, the one classification the
 # list, its counts and its filter share (the owner, 12 November 2026):
@@ -813,9 +815,9 @@ def elect_chip(e, key, lang="en"):
     m = KEY_RE.match(key)
     p = str(e.get("p") or "")
     if m.group(3):
-        title, where = I.say(lang, "elect.title_sen", "Sen. “Elect”"), district_tag("S", m.group(3))
+        title, where = I.say(lang, "elect.title_sen", "Sen.-elect"), district_tag("S", m.group(3))
     else:
-        title = I.say(lang, "elect.title_rep", "Rep. “Elect”")
+        title = I.say(lang, "elect.title_rep", "Rep.-elect")
         where = district_tag("H", m.group(2), county=m.group(1))
     tag = " - ".join(x for x in (p, where) if x)
     return pchip({"party_code": p if len(p) == 1 else "X",
@@ -1321,8 +1323,9 @@ ELECT_FILTER_JS = """<script>
 // item {st, p, ch, hay} against what was typed and chosen; every word typed
 // must be in hay ("names | district words | towns"), accents folded and
 // apostrophes left out (the hay carries both readings). Its own rules:
-// a word under five letters starts a word; rep, sen and the long forms are
-// left out of a name, and before a number name the chamber; "elect" (the
+// a word under five letters starts a word; rep, sen, the long forms and the
+// chip's own "rep.-elect" and "sen.-elect" are left out of a name, and
+// before a number name the chamber; "elect" (the
 // chip's word) is left out; a number is a district's: after a county word
 // ("merr 5", "sd 8") or "district", or alone, it is that number in the
 // district part; after "ward" it is a ward of the town named before it;
@@ -1331,7 +1334,9 @@ function fold(s){s=String(s==null?"":s).toLowerCase();
   s=s.normalize?s.normalize("NFD").replace(/[\\u0300-\\u036f]/g,""):s;
   return s.replace(/['‘’ʼ]/g,"");}
 // A title is left out of a name; before a number it names the chamber.
-var TITLE={rep:"H","rep.":"H",representative:"H",sen:"S","sen.":"S",senator:"S"};
+var TITLE={rep:"H","rep.":"H",representative:"H",sen:"S","sen.":"S",senator:"S",
+  "rep.-elect":"H","rep-elect":"H","representative-elect":"H",
+  "sen.-elect":"S","sen-elect":"S","senator-elect":"S"};
 // What the chip prints beside the title, and how the record shortens a place.
 var ELECT={elect:1,electo:1,electa:1,"electo/a":1};
 var LONG={"loc.":"location","pur.":"purchase"};

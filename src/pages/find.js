@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.67
+// GRANITE_VERSION: 2026-09-16.68
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -114,17 +114,17 @@ const _fstudy=r=>!!r&&(r[0]==="statutory"||r[0]==="study");
    gives each new member-elect, and each former member elected again, a row
    of the kind "elect" (build_indexes.elect_rows), named with the title the
    Officials page's Members-Elect tab gives them and the seat they were
-   elected to, "Rep. “Elect” Heather Deiner (D - Hills 25)", and leading to
+   elected to, "Rep.-elect Heather Deiner (D - Hills 25)", and leading to
    their own page. It is a "Member-Elect", found and ranked as a sitting
    member's row is -- above the bills on a whole word of the name -- and on
    /search listed under its chamber's own heading. Its title is drawn in the
    page's language, as the tab draws it; the matcher reads find.json's. A
    sitting member keeps their own row: they are a member. */
 FKIND.elect=tr("find.kind.elect","Member-Elect");
-const FELECT_TITLE=/^(Rep|Sen)\. “Elect”(?= )/;
+const FELECT_TITLE=/^(Rep|Sen)\.-elect(?= )/;
 function findElectName(r){
   return String(r[1]||"").replace(FELECT_TITLE,(m,h)=>h==="Sen"
-    ?tr("elect.title_sen","Sen. “Elect”"):tr("elect.title_rep","Rep. “Elect”"));
+    ?tr("elect.title_sen","Sen.-elect"):tr("elect.title_rep","Rep.-elect"));
 }
 /* AND ONLY UNTIL THEY TAKE OFFICE. A former member elected again is a
    member-elect while the members-elect file lasts, and their own page is

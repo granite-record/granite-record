@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.362
+// GRANITE_VERSION: 2026-09-07.363
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -2331,7 +2331,7 @@ function nameWords(q){
 }
 // Whether the title typed agrees with the one a label begins with: a label
 // that names none (a sponsor matched to nobody) agrees with any; a
-// member-elect's "Rep. “Elect”" is Rep.
+// member-elect's "Rep.-elect" is Rep.
 const titleAgrees=(title,label)=>{
   const t=/^(Rep\.|Sen\.)/.exec(String(label||""));
   return !title||!t||t[1]===title;
@@ -2395,9 +2395,9 @@ function noteSponsors(term,rows){
   for(const b of rows){
     if(!b.sponsor||!b.sponsor_label)continue;
     const k=spKey(b);
-    // A member-elect's title goes with the rest ("Rep. “Elect” Colin Mitchell (R)",
+    // A member-elect's title goes with the rest ("Rep.-elect Colin Mitchell (R)",
     // build_lsrs.elect_title): the filter lists the name.
-    if(!(k in m))m[k]=String(b.sponsor_label).replace(/^(Rep\.|Sen\.)\s*(“Elect”\s*)?/,"");
+    if(!(k in m))m[k]=String(b.sponsor_label).replace(/^(Rep\.|Sen\.)(-elect)?\s*/,"");
     if(b.sponsor_names&&!(k in o))o[k]=b.sponsor_names;
   }
 }
@@ -2678,7 +2678,7 @@ const offerCommittee=v=>tr("bills.offer_committee","All bills referred to the <b
    don't accidentally have an unrelated dropdown pop-up"). The Sponsor filter
    for one person of the term, offered first, in the words their chip
    carries: the row's sponsor_label without the seat and party ("Rep. Alice
-   Wade", "Sen. Sharon Carson"), a member-elect's "Rep. “Elect”" in the
+   Wade", "Sen. Sharon Carson"), a member-elect's "Rep.-elect" in the
    page's language as a card says it (CARD_ELECT_TITLE), and a sponsor of
    1989-1998 with no member page by the name and seat the filter tells them
    apart by (spKey). Taken as any offer is (takeOffer): the person ticked,
@@ -2744,7 +2744,7 @@ function sponsorOffer(q,rows,vals){
   if(found.length!==1||agree.some(p=>p!==found[0]&&has(p)))return null;
   const p=found[0];
   const shown=(p.label||p.k).replace(CARD_ELECT_TITLE,(m,h)=>h==="Sen"
-    ?tr("elect.title_sen","Sen. “Elect”"):tr("elect.title_rep","Rep. “Elect”"));
+    ?tr("elect.title_sen","Sen.-elect"):tr("elect.title_rep","Rep.-elect"));
   return {key:"sponsor",v:p.k,name:shown,n:0,how:0,rest:"",
     html:tr("bills.offer_sponsor","All bills filed by <b>{name}</b>",{name:esc(shown)})};
 }
@@ -4070,8 +4070,8 @@ function spRosterLoad(t){
 const spOrder=n=>{const w=String(n||"").split(/\s+/).filter(Boolean);
   while(w.length>1&&/^(jr|sr|ii|iii|iv|v)\.?$/i.test(w[w.length-1]))w.pop();
   return (w.length>1?w[w.length-1]+", "+w.slice(0,-1).join(" "):w.join(" ")).toLowerCase();};
-// The chamber a label's honorific names; a member-elect's "Rep. “Elect”" is Rep.
-const spChamber=l=>{const h=String(l||"").split(" ")[0];return h==="Rep."?"H":h==="Sen."?"S":"";};
+// The chamber a label's honorific names; a member-elect's "Rep.-elect" is Rep.
+const spChamber=l=>{const h=String(l||"").split(" ")[0].replace(/-elect$/,"");return h==="Rep."?"H":h==="Sen."?"S":"";};
 // Everyone the list offers in this term, once each by the key the filter
 // keeps: the file's members, then anyone the term's rows name that it does
 // not, then a sponsor ticked elsewhere whom this term names nowhere.
@@ -9248,11 +9248,11 @@ function datedRail(b,d){
 // them but never the topic model's "Miscellaneous". `line` is what happened
 // to the bill at the meeting or on the day a page lists it under.
 // A member-elect's title in the page's language (find.js's findElectName): the
-// row carries the English, "Rep. “Elect” Colin Mitchell (R)" (build_lsrs.elect_title).
-const CARD_ELECT_TITLE=/^(Rep|Sen)\. “Elect”(?= )/;
+// row carries the English, "Rep.-elect Colin Mitchell (R)" (build_lsrs.elect_title).
+const CARD_ELECT_TITLE=/^(Rep|Sen)\.-elect(?= )/;
 function cardSponsor(b){
   const who=String(b.sponsor_label||b.sponsor||"").replace(CARD_ELECT_TITLE,(m,h)=>h==="Sen"
-    ?tr("elect.title_sen","Sen. “Elect”"):tr("elect.title_rep","Rep. “Elect”"));
+    ?tr("elect.title_sen","Sen.-elect"):tr("elect.title_rep","Rep.-elect"));
   if(!who)return null;
   const party=b.sponsor_party||(/\(([A-Z])\b/.exec(who)||[])[1]||"";
   return {display_full:who,party,slug:b.sponsor_slug||""};
@@ -9775,8 +9775,8 @@ function formerName(m){
    reader without JavaScript the same way; the page's title, its link card
    and every list keep the short form. */
 const HONORIFIC_FULL={"Rep.":"Representative","Sen.":"Senator"};
-const fullTitle=who=>String(who||"").replace(/^(Former )?(Rep\.|Sen\.) /,
-  (_,f,h)=>`${f||""}${HONORIFIC_FULL[h]} `);
+const fullTitle=who=>String(who||"").replace(/^(Former )?(Rep\.|Sen\.)(-elect)? /,
+  (_,f,h,e)=>`${f||""}${HONORIFIC_FULL[h]}${e||""} `);
 
 
 const memberBills=(m,prime)=>(m.sponsored||[])
@@ -10242,7 +10242,7 @@ function renderMemberHead(m){
   //     New Hampshire House of Representatives, Hillsborough 16.", the
   //     election's line), the earlier seat kept in the facts below;
   //   chamber -- a sitting member elected to the other chamber: headed as
-  //     that chamber's member-elect, "Senator “Elect” Laura Telerski (D)"
+  //     that chamber's member-elect, "Senator-elect Laura Telerski (D)"
   //     (the owner, 17 November 2026: 'link the new member pages as Sen.
   //     "Elect" Laura Telerski for the title but connect it to their house
   //     record as well'), the page their House record, its line the seat
@@ -10257,7 +10257,7 @@ function renderMemberHead(m){
     return t<String(EG.takes_office||"").slice(0,10);})());
   const retPage=electLive&&EG.mode==="returning", chamPage=electLive&&EG.mode==="chamber";
   // TITLED AS A MEMBER-ELECT (the owner, 16 November 2026): GR_ELECT's title,
-  // "Rep. “Elect”", which fullTitle spells out, as build_legislator_pages.
+  // "Rep.-elect", which fullTitle spells out, as build_legislator_pages.
   // elect_heading heads a new member-elect's page.
   const named=(retPage||chamPage)?(EG.title?String(EG.title)+" ":"")+String(EG.name||plain)+(EG.party?` (${EG.party})`:"")
     :former&&/^(Rep|Sen)\. /.test(plain)?"Former "+plain:plain;

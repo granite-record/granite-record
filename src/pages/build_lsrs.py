@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.29
+# GRANITE_VERSION: 2026-09-18.30
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -221,18 +221,18 @@ def departed(site, collected="collected", year=None):
 
 
 # "Rep. " or "Sen. " before a name, which a label carries and a name does not,
-# and a member-elect's "Rep. “Elect”" (elect_title).
-_TITLE = re.compile("^(?:Rep|Sen)\\.\\s*(?:“Elect”\\s*)?")
+# and a member-elect's "Rep.-elect" (elect_title).
+_TITLE = re.compile("^(?:Rep|Sen)\\.(?:-elect)?\\s*")
 
 
 def elect_title(chamber):
-    """A member-elect's title, by the chamber they were elected to -- "Rep.
-    “Elect”", "Sen. “Elect”" -- in the words
+    """A member-elect's title, by the chamber they were elected to -- "Rep.-elect",
+    "Sen.-elect" -- in the words
     build_legislator_pages.elect_title gives the search and their own page
     (the i18n keys elect.title_rep and elect.title_sen)."""
     import i18n
-    return (i18n.say("en", "elect.title_sen", "Sen. “Elect”") if chamber == "S"
-            else i18n.say("en", "elect.title_rep", "Rep. “Elect”"))
+    return (i18n.say("en", "elect.title_sen", "Sen.-elect") if chamber == "S"
+            else i18n.say("en", "elect.title_rep", "Rep.-elect"))
 
 
 def elect_window(site):
@@ -277,7 +277,7 @@ def page_names(site):
 def label_name(label):
     """A sponsor's label as the name in it, the title and the party taken off:
     "Rep. Ellen Read (D)" -> "Ellen Read", "Lee C. Nyquist (D)" -> "Lee C. Nyquist",
-    and a member-elect's "Rep. “Elect” Colin Mitchell (R)" -> "Colin Mitchell"."""
+    and a member-elect's "Rep.-elect Colin Mitchell (R)" -> "Colin Mitchell"."""
     return _TITLE.sub("", re.sub(r"\s*\([^()]*\)\s*$", "", str(label or ""))).strip()
 
 
@@ -401,8 +401,8 @@ def election_winners(results, drawn, pages, people, titled=False):
     request is filed as "Jeffrey Goley", which matched nobody, because a short
     form is never taken on a name alone (NICKNAMES). That record ties the two.
 
-    `titled` (elect_window): a member-elect's label carries their title, "Rep.
-    “Elect” Jeff Goley (D)" (the owner, 17 November 2026) -- a winner
+    `titled` (elect_window): a member-elect's label carries their title, "Rep.-elect
+    Jeff Goley (D)" (the owner, 17 November 2026) -- a winner
     the members-elect file draws as new or as a former member returning, or one
     with a provisional page; never one who sits now."""
     by_slug = {m.get("slug"): m for m in people if m.get("slug")}

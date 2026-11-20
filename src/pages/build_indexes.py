@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.35
+# GRANITE_VERSION: 2026-09-13.36
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -512,8 +512,8 @@ def officials_rows(off):
 
 
 # A member-elect's title as a reader may type it, among the words of their
-# row: "rep-elect deiner" and "member-elect" find the row that prints "Rep.
-# “Elect” Heather Deiner" as surely as "rep elect deiner" does.
+# row: "rep-elect deiner" and "member-elect" find the row that prints "Rep.-elect
+# Heather Deiner" as surely as "rep elect deiner" does.
 ELECT_WORDS = {"H": "member-elect rep-elect representative-elect",
                "S": "member-elect sen-elect senator-elect"}
 
@@ -538,7 +538,7 @@ def elect_rows(site, rows, people):
     page is not a sitting member's gets a row of the kind "elect", named
     with the title the Officials page's Members-Elect tab gives them (build_
     legislator_pages.elect_title) and the seat of the race that elected them,
-    as a member's row is named -- "Rep. “Elect” Heather Deiner (D - Hills
+    as a member's row is named -- "Rep.-elect Heather Deiner (D - Hills
     25)" -- its line a member's, "House · Hills 25 · Democrat", and found
     as a member's is, by the words of the name, the seat and the county:
 
@@ -562,7 +562,7 @@ def elect_rows(site, rows, people):
       a SITTING MEMBER ELECTED TO THE OTHER CHAMBER (the owner, 17 November
         2026: 'link the new member pages as Sen. "Elect" Laura Telerski for
         the title but connect it to their house record as well'), from the
-        same file: "Sen. “Elect” Laura Telerski (D - SD13)", leading to the
+        same file: "Sen.-elect Laura Telerski (D - SD13)", leading to the
         page of the record they sit under now, which their page heads the
         same way while the file lasts. It stands in for their member's row
         and carries it whole, with the day they take office, as a former
