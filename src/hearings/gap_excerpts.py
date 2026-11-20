@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.1
+# GRANITE_VERSION: 2026-10-23.2
 """
 The few minutes of caption text around each proceeding with no stated
 boundary, for a person (or a session) to read.
@@ -51,15 +51,11 @@ import re
 from collections import Counter, defaultdict
 
 import proceedings as P
+from proceedings import hms
 import segment_markers as S
 
 SETTINGS = {"hearing": "hearing", "executive": "executive", "work": "work",
             "conference": "conference"}
-
-
-def hms(t):
-    t = int(t)
-    return f"{t // 3600}:{t % 3600 // 60:02d}:{t % 60:02d}"
 
 
 def mentions(words, text, when, bill, title):

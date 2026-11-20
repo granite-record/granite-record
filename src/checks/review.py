@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.28
+# GRANITE_VERSION: 2026-09-09.29
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -70,6 +70,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import bench_ledger as BL
 import inline_js as IJ
+import proceedings as P
 import site_read as SR
 
 OUT = Path("review")
@@ -108,7 +109,7 @@ def _hms(sec):
         s = int(float(sec))
     except (TypeError, ValueError):
         return ""
-    return f"{s // 3600}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+    return P.hms(s)
 
 
 def _yt(vid, sec=None):

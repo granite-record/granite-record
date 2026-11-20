@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Transcribe one hearing video and work out where each docketed bill sits in it.
 
@@ -44,6 +44,8 @@ import re
 import subprocess
 import child
 from collections import defaultdict
+
+from proceedings import hms as hhmmss
 
 # ---------------------------------------------------------------- spoken forms
 
@@ -535,11 +537,6 @@ def align(targets, hits, T, silences, step=30.0, min_len=180.0, recess=600.0):
             if t is not None:
                 run_.append(t)
     return out, extras
-
-
-def hhmmss(s):
-    s = int(s)
-    return f"{s//3600}:{(s%3600)//60:02d}:{s%60:02d}"
 
 
 # ---------------------------------------------------------------- main

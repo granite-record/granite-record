@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
@@ -381,8 +381,7 @@ def main():
                 if not e.get("precise"):
                     continue
                 s, t = int(e["window_start"]), int(e["debate_end"])
-                print(f"  {b:<9} {e['date']}  debate ends {t//3600}:{(t%3600)//60:02d}:"
-                      f"{t%60:02d}, window opens {s//3600}:{(s%3600)//60:02d}:{s%60:02d}"
+                print(f"  {b:<9} {e['date']}  debate ends {P.hms(t)}, window opens {P.hms(s)}"
                       f"  ({len(e['motions'])} motion"
                       f"{'s' if len(e['motions'])!=1 else ''})")
 

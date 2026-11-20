@@ -48,6 +48,17 @@ source, never the copy.
 | `src/pages/live_gen.py`, from where each value is kept | `workers/live/live.gen.js` | `_live_layer` |
 | `src/pages/follow_site.py`, from the site's colours and words | `workers/follow/site.gen.js` | `_follow_site_current` |
 
+## Written many times in Python, and given one home
+
+Not twins across the languages: one Python rule that several modules wrote
+out for themselves (stage0-code.md, finding 8). Each copy was run on the real
+inputs it sees and gave the home's answer before it was pointed there; a copy
+that gave another answer kept its own and is named here.
+
+| the rule | its home | read by | held by | kept apart |
+|---|---|---|---|---|
+| Seconds into a recording as a clock, "1:02:03" | `src/lib/proceedings.py` `hms` | `verify_batch`, `gap_excerpts`, `floor_markers`, `apply_markers`, `review`, `transcribe_and_align`, and inline in `build_floor_index`, `segment_markers` and `probe_alignment.clock` | `_seconds_clock_one_home` | `caption_span.hms`, which rounds to the nearest second; a session day's "01:02:03" (`build_session_pages.hms`, app.js's form); the fetchers' "1h 02m" (`fetch_captions`, `fetch_bill_text`) and `probe_alignment.hms`'s "62m 03s", other forms |
+
 ## Not held by any check
 
 | the rule | where it is written | what holds part of it |

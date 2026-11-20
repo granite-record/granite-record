@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Reconcile stated boundaries against estimated ones, and adopt the stated ones
 where they hold up.
@@ -98,6 +98,7 @@ import shutil
 import statistics
 
 import floor_markers
+import proceedings as P
 
 # A stated boundary is a caption cue's start time, and cues are merged into
 # chunks before matching, so the words can begin a little after the cue does.
@@ -111,8 +112,8 @@ PAD = 90.0
 
 
 def hms(s):
-    s = int(s or 0)
-    return f"{s // 3600}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+    """proceedings.hms, with no value read as 0:00:00."""
+    return P.hms(s or 0)
 
 
 def caps_from_transcript(path):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.19
+# GRANITE_VERSION: 2026-09-05.20
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -120,6 +120,22 @@ def iso_seconds(s):
         return 0
     d, h, mi, sec = (int(x or 0) for x in m.groups())
     return d * 86400 + h * 3600 + mi * 60 + sec
+
+
+def hms(sec):
+    """Seconds into a recording as a clock: 3723.9 -> "1:02:03", the hours
+    unpadded and the second the moment is in (not the nearest one).
+
+    ONE HOME SINCE 20 NOVEMBER 2026. The hearings tools and the bench each wrote
+    this out for themselves (verify_batch, gap_excerpts, floor_markers,
+    apply_markers, caption_span, transcribe_and_align, review, and inline in
+    build_floor_index, segment_markers and probe_alignment), and every one that
+    reads it here gave this answer on every real input. caption_span rounds to
+    the nearest second instead, and keeps its own; a session day's page writes
+    "01:02:03", as app.js does, in build_session_pages. preflight's
+    _seconds_clock_one_home holds it."""
+    s = int(sec)
+    return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
 
 
 def video_facts(root="."):

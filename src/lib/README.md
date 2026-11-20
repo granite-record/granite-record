@@ -2,8 +2,8 @@
 
 Shared by every stage:
 
-- `proceedings`: the one table's reader, and the term arithmetic about
-  forty modules use;
+- `proceedings`: the one table's reader, the term arithmetic about
+  forty modules use, and seconds into a recording as a clock (`hms`);
 - `freeze_term`: a finished term's frozen inputs, and also the command run
   at the term switch;
 - `terms`: the term arithmetic by year (`term_of_year`), and which of the two
