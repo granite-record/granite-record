@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.14
+# GRANITE_VERSION: 2026-11-07.15
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -87,11 +87,11 @@ from collections import Counter
 import build_date
 import build_district_map as BDM
 import build_members_elect as BME
-import build_town_pages as BT
 import components as C
 import election_margin as EM
 import i18n
 import shell as S
+from parts import TABS_JS
 
 E = C.esc
 OUT_DIR = "elections"
@@ -1019,7 +1019,7 @@ def page_body(election, results, decided_races, report, hand, site, ballots, set
             + f"<span>{sources_line(results)} {deadline_line(hand, report, election, settled)}</span></div>"
             '<p class="src er-other">The Governor, the Executive Council, Congress and the county '
             "offices are not on this page yet: their results files have not been read.</p>"
-            + tabs_html(panels) + BT.TABS_JS + MARGIN_JS + "</div>")
+            + tabs_html(panels) + TABS_JS + MARGIN_JS + "</div>")
 
 
 def index_body(items, today=None):

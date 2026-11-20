@@ -146,6 +146,8 @@ The record and its own pages:
 - `build_study_committees`: a page for every active statutory and study
   committee, from the database copy in `db/`;
 - `build_town_pages`: a page per town and ward, everyone who represents it;
+- `town_elections`: each town page's Elections tab, every race on the town's
+  ballot by year, from the results files the elections pages read;
 - `build_lsrs`: next session's bill requests, as a term the bill search can
   open;
 - `build_request_pages`: a page for each of those bill requests;
