@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.324
+# GRANITE_VERSION: 2026-09-05.325
 """
 Generate the faceted site from real General Court data.
 
@@ -1195,6 +1195,74 @@ def journey_told(narr, bid, rcs, chapter, dl, term, bill_texts, current, ballot)
     return untold, btext, intro, jsteps, voters
 
 
+def row_sponsors(row, prime, sp_list, term, current, sponsors, _shared_names, people):
+    """The index row's sponsors past the prime: a prime sponsor placed on a person
+    with no page keyed on their full name (sponsor_person), the co-sponsors by
+    the name the Sponsor filter groups on (cosp), and everyone the row names
+    noted in `people` for the term's list (sponsor_roster). Fills `row`,
+    `_shared_names` ({term: full names two employee numbers share}, read once a
+    term) and `people`. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    # A PRIME SPONSOR PLACED ON A PERSON (past_roster.py), who has no page and
+    # no party: the Sponsor filter keys them on their full name, not on the
+    # surname and seat it must use for a row left as printed (app.js
+    # spKey). Only while no other employee number of the term carries the
+    # same full name; two do, and the seat tells them apart again.
+    if (prime and prime.get("employee") and prime.get("matched") == PAST_ROSTER_MATCH
+            and not prime.get("slug") and not prime.get("party")):
+        if term not in _shared_names:
+            _shared_names[term] = past_roster_shared_names(
+                P.per_term(sponsors, term, current), person_name)
+        if row["sponsor"] not in _shared_names[term]:
+            row["sponsor_person"] = 1
+    # THE CO-SPONSORS, by the name the Sponsor filter groups on (the
+    # person, 12 October 2026: choosing a sponsor shows "the prime
+    # sponsored bills by the selected rep first and then the bills they
+    # cosponsor"). Only where there are any, so the index grows by little.
+    _cosp = list(dict.fromkeys(
+        n for n in (person_name(s_.get("name") or "") for s_ in sp_list if s_ is not prime)
+        if n and n != row.get("sponsor")))
+    if _cosp:
+        row["cosp"] = _cosp
+    # And everyone the row names, for the Sponsor filter's list of the
+    # term's members (sponsor_roster: site/sponsors/<term>.json).
+    if people is not None:
+        SR.note_bill(people, term, row, sp_list, prime, person_name)
+
+
+def unenrolled_rows(story, narr, kind, row, ev, intro, dates):
+    """The docket's "Enrolled" rows of a bill a chamber ended (enrolled_untold), the
+    chamber that ended it, and the days the bill was acted on without those rows:
+    (unenrolled, ended_in, dates), with the row's last action and carried-over
+    mark taken again from those days. [] and "" and `dates` as given for every
+    other bill. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    # AN "ENROLLED" ROW ON A BILL A CHAMBER ENDED IS NOT A DAY IT WAS ACTED
+    # ON (enrolled_untold). Asked here because the rail is what says the
+    # bill ended in a chamber: SB 286 of 2025's last action is the day the
+    # Senate killed it on its table, and it was not carried into 2026.
+    unenrolled = [] if story else enrolled_untold(narr, kind, row["passage"])
+    ended_in = ""
+    if unenrolled:
+        rail_ = row["passage"]
+        ended_in = {"H": "House", "S": "Senate"}[
+            rail_[0] if rail_[1] == "x" else "S" if rail_[0] == "H" else "H"]
+        dates = action_dates([e for e in ev if not any(e is u for u in unenrolled)])
+        row["last_action"] = dates[-1] if dates else ""
+        row["carried"] = bool(row["carried"]) and carried_over(dates, intro)
+    return unenrolled, ended_in, dates
+
+
+def index_tags(row, tagging, term, bid):
+    """The bill's tags, {id: why} from site_tagging's answer, or None; the index row
+    gains them as their places in meta.json's list. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    # THE BILL'S TAGS, as their places in meta.json's list (site_tagging),
+    # only on a bill that has one: the up-front index grows by a few
+    # digits a tagged bill, and by nothing without a registry.
+    bill_tags_ = ((tagging or {}).get("bills") or {}).get((term, bid))
+    if bill_tags_:
+        row["tags"] = [tagging["at"][t_] for t_ in bill_tags_]
+    return bill_tags_
+
+
 def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over):
     """What build_bills says, after its loop, of the statuses it gave: how many the
     status page stated and how many of a closed term were marked finished, the
@@ -1563,31 +1631,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             acted=list(dict.fromkeys(s["body"] for s in jsteps
                                      if s["body"] in ("H", "S"))),
             live=own and not session_over)
-        # A PRIME SPONSOR PLACED ON A PERSON (past_roster.py), who has no page and
-        # no party: the Sponsor filter keys them on their full name, not on the
-        # surname and seat it must use for a row left as printed (app.js
-        # spKey). Only while no other employee number of the term carries the
-        # same full name; two do, and the seat tells them apart again.
-        if (prime and prime.get("employee") and prime.get("matched") == PAST_ROSTER_MATCH
-                and not prime.get("slug") and not prime.get("party")):
-            if term not in _shared_names:
-                _shared_names[term] = past_roster_shared_names(
-                    P.per_term(sponsors, term, current), person_name)
-            if row["sponsor"] not in _shared_names[term]:
-                row["sponsor_person"] = 1
-        # THE CO-SPONSORS, by the name the Sponsor filter groups on (the
-        # person, 12 October 2026: choosing a sponsor shows "the prime
-        # sponsored bills by the selected rep first and then the bills they
-        # cosponsor"). Only where there are any, so the index grows by little.
-        _cosp = list(dict.fromkeys(
-            n for n in (person_name(s_.get("name") or "") for s_ in sp_list if s_ is not prime)
-            if n and n != row.get("sponsor")))
-        if _cosp:
-            row["cosp"] = _cosp
-        # And everyone the row names, for the Sponsor filter's list of the
-        # term's members (sponsor_roster: site/sponsors/<term>.json).
-        if people is not None:
-            SR.note_bill(people, term, row, sp_list, prime, person_name)
+        row_sponsors(row, prime, sp_list, term, current, sponsors, _shared_names, people)
         # NO RAIL FOR A BILL THAT WAS NEVER INTRODUCED. The rail's first stop
         # is "Introduced", drawn as passed, and its second is a chamber the
         # bill is shown stopping in. A bill the Senate refused to introduce,
@@ -1598,25 +1642,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # (not_introduced); the status says it for a field (NEVER_INTRODUCED).
         if status in NEVER_INTRODUCED or (narr or {}).get("not_introduced"):
             row["passage"] = ""
-        # AN "ENROLLED" ROW ON A BILL A CHAMBER ENDED IS NOT A DAY IT WAS ACTED
-        # ON (enrolled_untold). Asked here because the rail is what says the
-        # bill ended in a chamber: SB 286 of 2025's last action is the day the
-        # Senate killed it on its table, and it was not carried into 2026.
-        unenrolled = [] if story else enrolled_untold(narr, kind, row["passage"])
-        ended_in = ""
-        if unenrolled:
-            rail_ = row["passage"]
-            ended_in = {"H": "House", "S": "Senate"}[
-                rail_[0] if rail_[1] == "x" else "S" if rail_[0] == "H" else "H"]
-            dates = action_dates([e for e in ev if not any(e is u for u in unenrolled)])
-            row["last_action"] = dates[-1] if dates else ""
-            row["carried"] = bool(row["carried"]) and carried_over(dates, intro)
-        # THE BILL'S TAGS, as their places in meta.json's list (site_tagging),
-        # only on a bill that has one: the up-front index grows by a few
-        # digits a tagged bill, and by nothing without a registry.
-        bill_tags_ = ((tagging or {}).get("bills") or {}).get((term, bid))
-        if bill_tags_:
-            row["tags"] = [tagging["at"][t_] for t_ in bill_tags_]
+        unenrolled, ended_in, dates = unenrolled_rows(story, narr, kind, row, ev, intro, dates)
+        bill_tags_ = index_tags(row, tagging, term, bid)
         index.append(row)
         # THE RAIL'S ENDINGS (the person, 8 and 9 October 2026): a bill that
         # died on the table is the pause where it was tabled and the cross at
