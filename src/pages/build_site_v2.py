@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.319
+# GRANITE_VERSION: 2026-09-05.320
 """
 Generate the faceted site from real General Court data.
 
@@ -960,6 +960,129 @@ from related import (RELATED_GROUPS, RELATED_MAX, add_related, add_same_number, 
                      check_notes, related_entries, same_number_rows, site_tagging)
 
 
+def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over):
+    """What build_bills says, after its loop, of the statuses it gave: how many the
+    status page stated and how many of a closed term were marked finished, the
+    chips as they were written, and what the database's dump answered. `index`
+    is the loop's rows; the counts are its own. A step of build_bills, lifted out
+    of it as it stood (20 November 2026)."""
+    if status_pages:
+        print(f"  {n_stated:,} bills take their status from the page; "
+              f"{len(index) - n_stated:,} still derive it from the docket")
+        if n_stale:
+            print(f"  {n_stale:,} bills in closed terms read as still moving "
+                  "and are marked finished;")
+            print("    the status word the record gave them is unchanged")
+    # THE CHIPS, counted as they were written: a build whose chips came out
+    # all one word, or none of the six, says so in its own output.
+    chips = Counter(r["chip"] for r in index)
+    print("  chips: " + ", ".join(f"{w} {chips[w]:,}" for w in CHIP_WORDS)
+          + f"; {sum(v for k, v in chips.items() if k not in CHIP_WORDS):,} keep a "
+          "still-moving stage or a word that is not one of the six"
+          + (f" (the session of {current} ended {session_over}, so none is Tabled or Vetoed)"
+             if session_over else ""))
+    # What the database's dump answered, or that it is not here: a dump that
+    # is missing looks exactly like one with nothing to add. main() says the
+    # second again as its last line, which is the one build_all shows.
+    held = sorted(t for t, rows in _DB_STATUS.items() if rows)
+    print(f"  {n_db:,} bills take their status from the database's own code, where the "
+          "status page states nothing and the docket gives only a guess (a dump holds "
+          f"{', '.join(held) or 'no term'})")
+    if no_dump_for(current):
+        print("  " + no_dump_for(current))
+
+
+def say_journeys(j_tally, j_current, current):
+    """What build_bills says of the journeys it told against each bill's status and
+    rail (journey_disagrees): `j_tally` counted per term, `j_current` this term's
+    that disagree. A step of build_bills, lifted out of it as it stood (20
+    November 2026)."""
+    # THE JOURNEY, THE STATUS AND THE RAIL, AS ONE ACCOUNT. A build that drew
+    # a list contradicting the chip above it would otherwise exit zero.
+    j_all = Counter()
+    for (t_, k_), v_ in j_tally.items():
+        j_all[k_] += v_
+    print(f"  journey: {j_all['agree']:,} bills agree with their status and "
+          f"rail, {j_all['disagree']:,} do not, {j_all['empty']:,} have no "
+          f"floor decision on record; this term: "
+          f"{j_tally[(current, 'agree')]:,} / {j_tally[(current, 'disagree')]:,}"
+          f" / {j_tally[(current, 'empty')]:,}")
+    for line in j_current[:10]:
+        print(f"      {line}")
+
+
+def say_chapters(n_chapter):
+    """What build_bills says of where each chapter of the session laws came from
+    (chapter_of counts them). A step of build_bills, lifted out of it as it stood
+    (20 November 2026)."""
+    if n_chapter:
+        print(f"  chapter of the session laws: {n_chapter['the status page']:,}"
+              f" from the status page, {n_chapter['the docket']:,} from the "
+              f"docket; {n_chapter['differ']} where the two differ (the "
+              f"page's field shown), {n_chapter['withheld']} withheld")
+
+
+def write_station_census(out, station_states, station_kinds, n_station_bills):
+    """site/station_census.json, the stations build_bills drew counted by state and
+    kind, which about.html's figures are read from (about_figures.py), and the
+    line the build says of them. build_bills holds the counters, filled as each
+    bill's stations are drawn; this writes them. A step of build_bills, lifted
+    out of it as it stood (20 November 2026)."""
+    # THE ABOUT PAGE'S ARITHMETIC, written here rather than in main() because
+    # this is the function that holds the counter. station_states above says
+    # why it is counted at all.
+    #
+    # The four group totals share the counter, so the sum of everything in it
+    # is twice the number of stations. Counted off the state names instead --
+    # the ones a station actually carries, which never begin with "_".
+    _n_stations = sum(v for k, v in station_states.items()
+                      if not k.startswith("_"))
+    # Written under site/ beside the other build products. Nothing fetches it;
+    # build_pages.py runs next in the pipeline and writes about.html from it.
+    (out / "station_census.json").write_text(json.dumps({
+        "total": _n_stations,
+        "bills": n_station_bills,
+        "placed": station_states["_placed"],
+        "recording_only": station_states["_recording_only"],
+        "consent": station_states["_consent"],
+        "no_recording": station_states["_no_recording"],
+        "by_state": {k: v for k, v in station_states.most_common()
+                     if not k.startswith("_")},
+        "by_kind": dict(station_kinds.most_common()),
+    }, indent=1), encoding="utf-8")
+    print(f"  station census: {_n_stations:,} stations across "
+          f"{n_station_bills:,} bills "
+          f"({station_states['_placed']:,} placed at the moment, "
+          f"{station_states['_recording_only']:,} recording only, "
+          f"{station_states['_consent']:,} consent calendar, "
+          f"{station_states['_no_recording']:,} no recording)")
+
+
+def say_hearing_reports(hearing_reports, hr_tally, hr_unmatched):
+    """What build_bills says of the Senate's hearing reports it placed on their
+    hearings (attach_hearing_reports counts them), naming the ones that found
+    none. A step of build_bills, lifted out of it as it stood (20 November
+    2026)."""
+    if hearing_reports:
+        _offered = sum(len(v) for byb in hearing_reports.values()
+                       for v in byb.values())
+        print(f"  Senate hearing reports: {hr_tally['matched']:,} of "
+              f"{_offered:,} placed on their hearing "
+              f"({hr_tally['plain']:,} drawn as plain text); "
+              f"{hr_tally['members']:,} legislators who testified drawn as "
+              f"members, {hr_tally['members_unresolved']:,} left as the "
+              "report printed them")
+        if hr_unmatched:
+            # Named, not just counted: each is a report whose date the docket
+            # does not carry, shown under that date on a station of its own
+            # (report_station), and the docket for that bill says what it
+            # has instead.
+            print(f"  {len(hr_unmatched):,} found no Senate public hearing "
+                  "of that bill on that date in proceedings.csv, and are "
+                  "shown under the report's own date: "
+                  + ", ".join(hr_unmatched))
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
@@ -1897,94 +2020,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                          for t_, w_ in bill_tags_.items()]} if bill_tags_ else {}),
         }), encoding="utf-8")
 
-    if status_pages:
-        print(f"  {n_stated:,} bills take their status from the page; "
-              f"{len(index) - n_stated:,} still derive it from the docket")
-        if n_stale:
-            print(f"  {n_stale:,} bills in closed terms read as still moving "
-                  "and are marked finished;")
-            print("    the status word the record gave them is unchanged")
-    # THE CHIPS, counted as they were written: a build whose chips came out
-    # all one word, or none of the six, says so in its own output.
-    chips = Counter(r["chip"] for r in index)
-    print("  chips: " + ", ".join(f"{w} {chips[w]:,}" for w in CHIP_WORDS)
-          + f"; {sum(v for k, v in chips.items() if k not in CHIP_WORDS):,} keep a "
-          "still-moving stage or a word that is not one of the six"
-          + (f" (the session of {current} ended {session_over}, so none is Tabled or Vetoed)"
-             if session_over else ""))
-    # What the database's dump answered, or that it is not here: a dump that
-    # is missing looks exactly like one with nothing to add. main() says the
-    # second again as its last line, which is the one build_all shows.
-    held = sorted(t for t, rows in _DB_STATUS.items() if rows)
-    print(f"  {n_db:,} bills take their status from the database's own code, where the "
-          "status page states nothing and the docket gives only a guess (a dump holds "
-          f"{', '.join(held) or 'no term'})")
-    if no_dump_for(current):
-        print("  " + no_dump_for(current))
-    # THE JOURNEY, THE STATUS AND THE RAIL, AS ONE ACCOUNT. A build that drew
-    # a list contradicting the chip above it would otherwise exit zero.
-    j_all = Counter()
-    for (t_, k_), v_ in j_tally.items():
-        j_all[k_] += v_
-    print(f"  journey: {j_all['agree']:,} bills agree with their status and "
-          f"rail, {j_all['disagree']:,} do not, {j_all['empty']:,} have no "
-          f"floor decision on record; this term: "
-          f"{j_tally[(current, 'agree')]:,} / {j_tally[(current, 'disagree')]:,}"
-          f" / {j_tally[(current, 'empty')]:,}")
-    for line in j_current[:10]:
-        print(f"      {line}")
-    if n_chapter:
-        print(f"  chapter of the session laws: {n_chapter['the status page']:,}"
-              f" from the status page, {n_chapter['the docket']:,} from the "
-              f"docket; {n_chapter['differ']} where the two differ (the "
-              f"page's field shown), {n_chapter['withheld']} withheld")
+    say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over)
+    say_journeys(j_tally, j_current, current)
+    say_chapters(n_chapter)
 
-    # THE ABOUT PAGE'S ARITHMETIC, written here rather than in main() because
-    # this is the function that holds the counter. station_states above says
-    # why it is counted at all.
-    #
-    # The four group totals share the counter, so the sum of everything in it
-    # is twice the number of stations. Counted off the state names instead --
-    # the ones a station actually carries, which never begin with "_".
-    _n_stations = sum(v for k, v in station_states.items()
-                      if not k.startswith("_"))
-    # Written under site/ beside the other build products. Nothing fetches it;
-    # build_pages.py runs next in the pipeline and writes about.html from it.
-    (out / "station_census.json").write_text(json.dumps({
-        "total": _n_stations,
-        "bills": n_station_bills,
-        "placed": station_states["_placed"],
-        "recording_only": station_states["_recording_only"],
-        "consent": station_states["_consent"],
-        "no_recording": station_states["_no_recording"],
-        "by_state": {k: v for k, v in station_states.most_common()
-                     if not k.startswith("_")},
-        "by_kind": dict(station_kinds.most_common()),
-    }, indent=1), encoding="utf-8")
-    print(f"  station census: {_n_stations:,} stations across "
-          f"{n_station_bills:,} bills "
-          f"({station_states['_placed']:,} placed at the moment, "
-          f"{station_states['_recording_only']:,} recording only, "
-          f"{station_states['_consent']:,} consent calendar, "
-          f"{station_states['_no_recording']:,} no recording)")
-    if hearing_reports:
-        _offered = sum(len(v) for byb in hearing_reports.values()
-                       for v in byb.values())
-        print(f"  Senate hearing reports: {hr_tally['matched']:,} of "
-              f"{_offered:,} placed on their hearing "
-              f"({hr_tally['plain']:,} drawn as plain text); "
-              f"{hr_tally['members']:,} legislators who testified drawn as "
-              f"members, {hr_tally['members_unresolved']:,} left as the "
-              "report printed them")
-        if hr_unmatched:
-            # Named, not just counted: each is a report whose date the docket
-            # does not carry, shown under that date on a station of its own
-            # (report_station), and the docket for that bill says what it
-            # has instead.
-            print(f"  {len(hr_unmatched):,} found no Senate public hearing "
-                  "of that bill on that date in proceedings.csv, and are "
-                  "shown under the report's own date: "
-                  + ", ".join(hr_unmatched))
+    write_station_census(out, station_states, station_kinds, n_station_bills)
+    say_hearing_reports(hearing_reports, hr_tally, hr_unmatched)
     for _said in early_party_said(sponsored, _people, _parties):
         print(_said)
     return index, years, unnamed, dict(sponsored)
