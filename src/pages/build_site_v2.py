@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.331
+# GRANITE_VERSION: 2026-09-05.332
 """
 Generate the faceted site from real General Court data.
 
@@ -2594,27 +2594,10 @@ def committee_records(a, narratives):
     return reports, vetoes, chapters, hearing_reports
 
 
-def main():
-    a = parse_args()
-
-    D, out = Path(a.data), Path(a.out)
-    (out / "bills").mkdir(parents=True, exist_ok=True)
-    (out / "legislators").mkdir(parents=True, exist_ok=True)
-
-    bills = bills_with_topics(D)
-    sponsors = sponsors_merged(D, bills)
-    legs, leg_by_sort, leg_by_name = sitting_roster(D)
-
-    # Members who left mid-term are already named upstream: resolve_members.py
-    # writes former_members.json to the project root, build_data.py reads it
-    # there, and every member_votes row therefore carries a resolved "name"
-    # whether the member is sitting or not. That is what the double build_data
-    # pass in build_all.py exists for. Reading the file a second time here
-    # would only add a way for the two to disagree -- and the copy this looked
-    # for, under the data directory, is not where the pipeline writes it.
-    towns = load(D / "towns.json", {})
-    narratives, notes, rollcalls, MOVED_TO_BILL = dockets_and_rollcalls(a, bills)
-    reports, vetoes, chapters, hearing_reports = committee_records(a, narratives)
+def bill_and_amendment_texts():
+    """The amendments' texts (amendments.json) and the bills' (bill_text.json, the
+    current session's, with every earlier term's from its archived page:
+    archive_text.merge_into), each said. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
     # Written by extract_amendments.py out of the cached calendars. Absent is
     # fine: the amendments are still listed, without their text.
     amend_texts = load("amendments.json", {})
@@ -2635,7 +2618,15 @@ def main():
     _at = AT.merge_into(bill_texts)
     if _at:
         print(f"  {_at:,} more from their archived pages (archive_text.json)")
-    tagging = site_tagging(bills, bill_texts)
+    return amend_texts, bill_texts
+
+
+def citations_and_signins():
+    """What a docket line cites and a hearing's sign-ins: the journals' and
+    calendars' addresses (calendars.json, journals.json and every calendar the
+    drain fetched), the retired scraped testimony as {} (the comment below says
+    why), and the database's sign-ins per bill and per hearing
+    (testimony_db.json). A step of main's loading, lifted out of it as it stood (20 November 2026)."""
     # Journal and calendar URLs, so every docket line can cite its source.
     sources = {**load("calendars.json", {}), **load("journals.json", {})}
     # Every calendar the drain fetched, under its own year, where the files
@@ -2666,6 +2657,14 @@ def main():
         print(f"testimony sign-ins: {ns:,} across {nb:,} bills, per hearing")
     if sources:
         print(f"source links available for {len(sources)} journals and calendars")
+    return sources, testimony, testimony_db
+
+
+def proceedings_by_bill(a):
+    """proceedings.csv, every proceeding on the site, as its rows (`prows`) and in
+    the two shapes the station code reads, keyed (term, bill): the committee
+    proceedings (`procs`) and the floor appearances (`floor`). Refuses to go on
+    without the file unless --allow-no-manifest. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
     # One table for every proceeding on the site: committee hearings, executive
     # sessions, work sessions, floor debates. Presented below in the two shapes
     # the station code was written against -- manifest columns for committee
@@ -2725,7 +2724,13 @@ def main():
     print(f"{sum(len(v) for v in procs.values()):,} committee proceedings and "
           f"{sum(len(v) for v in floor.values()):,} floor appearances from "
           f"{P.PATH.name}")
+    return prows, procs, floor
 
+
+def ballots_by_bill_and_member(D, MOVED_TO_BILL):
+    """data/member_votes.json's ballots, by bill ({(term, bill): {roll call:
+    [ballot]}}) and by member ({member id: [ballot]}), a roll call drawn under
+    the bill whose debate it was on taking that bill (MOVED_TO_BILL). A step of main's loading, lifted out of it as it stood (20 November 2026)."""
     votes_by_bill = defaultdict(lambda: defaultdict(list))
     votes_by_member = defaultdict(list)
     for v in load(D / "member_votes.json", []):
@@ -2743,6 +2748,36 @@ def main():
         # (proceedings.vote_term): HR 1 of 2027, not of 2025.
         votes_by_bill[(P.vote_term(v["year"], v.get("date")), v["bill"])][key].append(v)
         votes_by_member[v["member_id"]].append(v)
+    return votes_by_bill, votes_by_member
+
+
+def main():
+    a = parse_args()
+
+    D, out = Path(a.data), Path(a.out)
+    (out / "bills").mkdir(parents=True, exist_ok=True)
+    (out / "legislators").mkdir(parents=True, exist_ok=True)
+
+    bills = bills_with_topics(D)
+    sponsors = sponsors_merged(D, bills)
+    legs, leg_by_sort, leg_by_name = sitting_roster(D)
+
+    # Members who left mid-term are already named upstream: resolve_members.py
+    # writes former_members.json to the project root, build_data.py reads it
+    # there, and every member_votes row therefore carries a resolved "name"
+    # whether the member is sitting or not. That is what the double build_data
+    # pass in build_all.py exists for. Reading the file a second time here
+    # would only add a way for the two to disagree -- and the copy this looked
+    # for, under the data directory, is not where the pipeline writes it.
+    towns = load(D / "towns.json", {})
+    narratives, notes, rollcalls, MOVED_TO_BILL = dockets_and_rollcalls(a, bills)
+    reports, vetoes, chapters, hearing_reports = committee_records(a, narratives)
+    amend_texts, bill_texts = bill_and_amendment_texts()
+    tagging = site_tagging(bills, bill_texts)
+    sources, testimony, testimony_db = citations_and_signins()
+    prows, procs, floor = proceedings_by_bill(a)
+
+    votes_by_bill, votes_by_member = ballots_by_bill_and_member(D, MOVED_TO_BILL)
     print(f"{len(bills):,} bills, {len(legs):,} legislators, "
           f"{sum(len(x) for x in votes_by_member.values()):,} member votes")
 
