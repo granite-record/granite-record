@@ -150,15 +150,17 @@ status codes where the status page states nothing (`db_statuses`,
 lists of its record (`_cite`, `bill_documents`, `journal_story`,
 `record_notes`) is `documents.py`, a bill's docket lines and the stages its
 history tells (`docket_lines`, `stages_told`, `settled_step`, `chapter_of`)
-are `docket_told.py`, and what they share with the rest of it -- what a bill
-of each kind has to clear, a bill's letters, the chip's six words, the
-docket line, a cited volume's address -- is `parts.py`'s. A module split out
-of `build_site_v2` never imports it back (`_import_cycles_cut`), and
+are `docket_told.py`, what became of a bill and where that answer came from
+(`bill_disposition`, `ended_with_the_term`, `journey_disagrees`) is
+`disposition.py`, and what they share with the rest of it -- what a bill of
+each kind has to clear, a bill's letters, the chip's six words, the docket
+line, a cited volume's address -- is `parts.py`'s. A module split out of
+`build_site_v2` never imports it back (`_import_cycles_cut`), and
 `build_site_v2` imports every moved name back where it was, so
 `build_site_v2.journey` and the rest still answer for every caller;
 `preflight`'s `_site_*` checks after `_import_cycles_cut` hold each move
 whole and not undone. `build_bills` and `main` stay in `build_site_v2`, and
-so for now do a bill's disposition and the related bills.
+so for now do the related bills.
 
 ## How it runs
 

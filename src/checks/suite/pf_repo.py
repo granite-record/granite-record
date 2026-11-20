@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.36
+# GRANITE_VERSION: 2026-11-16.37
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1398,6 +1398,11 @@ _SPLIT_FROM_SITE = {
                           "STEP_CLAIM action_dates called_off carried_over chapter_of "
                           "docket_lines enrolled_untold is_routine listed_line marked_cancelled "
                           "settled_step stages_told").split()),
+    "disposition": tuple(("CONFERENCE_NOT_REPORTED CONSIDERATION_REFUSED DIED_ON_TABLE_ROW "
+                          "Disposition ENDED_WITH_TERM ENDING_NOT_ON_RECORD NO_DISPOSITION "
+                          "SECOND_ADOPTED SESSION_ENDED_STANDS STAGE_STATED UNFINISHED "
+                          "bill_disposition ended_with_the_term journey_disagrees origin_of "
+                          "stated_stage").split()),
 }
 
 
@@ -1773,6 +1778,28 @@ def _site_docket_told_moved(B, DT):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in docket_told.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the docket lines' own")
+
+
+@check("files", "what became of a bill and where that answer came from -- its disposition, the "
+                "chamber it started in, a finished term's measure that cannot still be moving and "
+                "the test that its journey, status and rail agree -- is disposition.py's, every "
+                "name of it imported back into build_site_v2",
+       needs=("build_site_v2", "disposition"))
+def _site_disposition_moved(B, DSP):
+    """build_site_v2's disposition moved to disposition.py on 20 November 2026 (the
+    refactor's finding 4), as it stood: origin_of, journey_disagrees, Disposition,
+    STAGE_STATED and stated_stage, SECOND_ADOPTED, DIED_ON_TABLE_ROW, the section on a
+    measure of a finished term (ENDING_NOT_ON_RECORD, CONFERENCE_NOT_REPORTED,
+    SESSION_ENDED_STANDS, UNFINISHED, NO_DISPOSITION, CONSIDERATION_REFUSED,
+    ENDED_WITH_TERM), ended_with_the_term and bill_disposition. Every name of them is held
+    to be disposition.py's, defined nowhere in build_site_v2.py, and build_site_v2.<name>
+    the same object, so build_bills and the checks that ask build_site_v2.bill_disposition
+    settle a bill the one way."""
+    names = _SPLIT_FROM_SITE["disposition"]
+    bad = _split_out(B, DSP, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in disposition.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the disposition's own")
 
 
 def _readme_unlisted(folder, root=None):

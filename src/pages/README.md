@@ -140,9 +140,9 @@ The record and its own pages:
   proceedings' stations, the members, the conferences, the amendments, the
   rail's endings, the committee and hearing reports, the sponsors, a bill's
   topic, what a bill amends, its roll calls, a CACR's ballot, the database's
-  statuses, its documents and the docket lines it tells are modules of their
-  own beside it since 20 November 2026 (the next sixteen lines), and it
-  imports every name of theirs back;
+  statuses, its documents, the docket lines it tells and its disposition are
+  modules of their own beside it since 20 November 2026 (the next seventeen
+  lines), and it imports every name of theirs back;
 - `journey`: the passage rail and the journey -- the four stops a bill passes
   (`passage`) and what each chamber decided and when (`journey`,
   `journey_rail` and the `_j_` readers), read from the docket for the rail's
@@ -241,6 +241,13 @@ The record and its own pages:
   closed (`settled_step`) and its chapter of the session laws
   (`chapter_of`); a section of `build_site_v2` until 20 November 2026,
   which imports every name of it back;
+- `disposition`: what became of a bill and where that answer came from --
+  its disposition (`bill_disposition`, a `Disposition`), the chamber it
+  started in (`origin_of`), a measure of a finished term that cannot still
+  be moving (`ended_with_the_term`) and the test that its journey, status
+  and rail tell one story (`journey_disagrees`); a section of
+  `build_site_v2` until 20 November 2026, which imports every name of it
+  back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a
   file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,
