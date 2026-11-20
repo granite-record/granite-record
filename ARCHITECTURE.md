@@ -138,7 +138,9 @@ and the night reads its result at the end, `nightly.py --checks-result`, and
 its verdict is clean only where it passed),
 `src/checks/check_site.py`, a census of the build against the last good
 build's counts (`archive/census.json`), and a ceiling of 95,000 files
-(`FILE_CEILING`) that nothing lifts. A build that passes goes to a preview
+(`FILE_CEILING`) that nothing lifts. The census, the tree hash and the list of
+every file with its sha256 are made from one walk of the built site, which
+reads each file once (`nightly.SiteWalk`, since 19 November 2026). A build that passes goes to a preview
 address and, when the night judged it fit for production, to the bucket as
 one archive for the second job; what the night changed goes back to the kit
 (`cloud.py kit-up`); and the night's verdict -- what it did,
@@ -209,7 +211,11 @@ file with that night's build, whose sha256 list the night keeps as a state
 file (`archive/night-site.json.gz`, `nightly.NIGHT_SITE`; never a dry run's or
 a New term run's), less the files that carry a time and the changes files: a
 difference is a warning in the week's verdict, naming the first files, and
-holds no night.
+holds no night. Since 19 November 2026 it also measures the private bucket,
+read only, by top-level prefix (`cloud.py bucket-size`): files, bytes, the
+oldest file and the change since last week go into the week's results, and a
+prefix a lifecycle rule should empty (`nights/`, `logs/`, `replaced/`) that
+holds a file older than the rule keeps is a warning.
 
 **The current term's data, from the database** (since 16 October 2026). After
 the day's files and the study committees, a night that fetches takes from the
@@ -491,7 +497,11 @@ to twenty recordings, one at a time and a minute or two apart, within a time
 limit of its own. A refusal stops the asking for that run and holds the
 night's machine for twelve hours, doubling with each refusal in a row to a
 week; it is recorded in the livestream state, never asked again in the same
-run, and is not a failure -- the night publishes. Inside the build,
+run, and is not a failure -- the night publishes. Nor, since 19 November
+2026, is a missing or refused YouTube key (or no yt-dlp): the step exits 3
+and records why, nothing new is listed, the recordings and their rows stay as
+they were, and the night publishes with a warning of what to fix
+(`nightly.youtube_warned`). Inside the build,
 `src/ops/livestreams.py --markers` reads the captioned recordings into
 `candidate_segments.json` and `caption_spans.json`, which have been the
 night's files in the kit since 10 October 2026, and keeps nothing unless the

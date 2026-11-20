@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.101
+# GRANITE_VERSION: 2026-09-04.105
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -134,8 +134,11 @@ night itself does is here, and what differs on that machine is behind --runner:
                       YouTube refusing GitHub's machine is not a failure: the
                       night publishes. The laptop's evening run, which fills
                       the captions inbox, reports each run to the bucket, and
-                      its refusal and hold are said beside GitHub's
-  the record moving   whether it has stopped under a night that publishes:
+                      its refusal and hold are said beside GitHub's. Nor is
+                      a missing or refused YouTube key since 19 November
+                      2026: a warning, and the site keeps the recordings it
+                      had (youtube_warned)
+  the record moving  whether it has stopped under a night that publishes:
                       the docket standing still longer than its season ever
                       has, a database piece not taken, the laptop's share or
                       its caption runs behind, the inbox silent -- a warning
@@ -1518,8 +1521,11 @@ def build_running():
         return False
 
 
-def census(site):
-    """The few numbers that say whether this is still the site, from what was built."""
+def census(site, walk=None):
+    """The few numbers that say whether this is still the site, from what was built.
+    With `walk`, a SiteWalk of `site`, the counts of files are taken from its
+    one walk rather than four more (ONE READ OF THE BUILT SITE): the same
+    numbers."""
     def count_json(name):
         try:
             return len(json.loads((site / name).read_text(encoding="utf-8")))
@@ -1534,6 +1540,14 @@ def census(site):
             return len(SR.bill_index(site) or [])
         except SR.Broken:
             return 0
+    if walk is not None:
+        return {"bills": count_bills(),
+                "legislators": count_json("legislators.json"),
+                "bill_data": walk.count("bills/*/*.json", "bills/*.json"),
+                "bill_pages": walk.count("bill/**/*.html"),
+                "feeds": walk.count("feed/**/*.xml"),
+                "files": len(walk.files),
+                "terms": term_counts(site)}
     return {"bills": count_bills(),
             "legislators": count_json("legislators.json"),
             "bill_data": (sum(1 for _ in (site / "bills").glob("*/*.json"))
@@ -1719,6 +1733,9 @@ def main():
     ap.add_argument("--cold", metavar="OUTCOME", default=None,
                     help="(--weekly --close) the cold build step's outcome: its record is folded "
                          "into the week's verdict, a warning where it differs or did not finish")
+    ap.add_argument("--bucket", metavar="OUTCOME", default=None,
+                    help="(--weekly --close) the bucket-size step's outcome: its record of the "
+                         "bucket's size by prefix is folded into the week's verdict")
     ap.add_argument("--new-term", action="store_true",
                     help="(--runner) the night, or the weekly job, a term turns over: the "
                          "General Court's smaller files accepted, once")
@@ -2081,7 +2098,12 @@ def main():
             left = load_json(LEFT_OUT)
             if night and isinstance(left, dict) and left.get("rows"):
                 night.v["left_out"] = left
-            after = census(site)
+            # ONE READ OF THE BUILT SITE: the census, the tree hash and the list
+            # of every file are made from one walk of it (SiteWalk).
+            walk = SiteWalk(site, night.tree_days()) if night else None
+            if night:
+                night.walk = walk
+            after = census(site, walk)
             if before is None:
                 stop, blocked = [], []
                 lines = [f"  {'':<14}{'before':>10}{'after':>10}"]
@@ -2169,6 +2191,7 @@ def main():
         say("\n" + "=" * 74)
         say(f"finished {datetime.now():%H:%M}, "
             f"{(datetime.now() - started).seconds // 60} min, exit {code}")
+        say(cpu_line(cpu_record()))
         if machine_lows():
             say(f"the machine: {machine_lows()}")
         logs = Path("logs")
@@ -2364,6 +2387,78 @@ def machine_lows():
         if WATCH[k]:
             out.append(f"lowest {name} {WATCH[k][0]:.1f} GB, during {WATCH[k][1]}")
     return "; ".join(out)
+
+
+# THE MACHINE'S PROCESSOR, AND A FIXED PROBE (19 November 2026; the refactor's
+# B14). GitHub gives the night whichever machine it has, and a night's
+# minutes moved with it as much as with any change of the code's, so no
+# saving could be told from a faster machine. The night says the processor's
+# model, how many logical CPUs it has, and how long one fixed loop of pure
+# Python took (CPU_PROBE_STEPS steps, the best of CPU_PROBE_RUNS runs), once,
+# in its log and in the verdict ("cpu"), which stay in the private bucket.
+# Not in site/build.json: no reader needs it, and on GitHub's machine it is
+# GitHub's hardware, but a build.json from anywhere else would publish that
+# machine's. The loop never changes: CPU_PROBE_SUM is what it adds up to,
+# and a different loop is a different probe, whose times no older night's
+# can be compared with.
+CPU_PROBE_STEPS = 500_000
+CPU_PROBE_RUNS = 3
+CPU_PROBE_SUM = 2270474384
+CPU = {}
+
+
+def cpu_model():
+    """The processor's model as the machine names it; "" where it does not."""
+    try:
+        if os.name == "nt":
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                r"HARDWARE\DESCRIPTION\System\CentralProcessor\0") as k:
+                return " ".join(str(winreg.QueryValueEx(k, "ProcessorNameString")[0]).split())
+        for ln in Path("/proc/cpuinfo").read_text(encoding="utf-8", errors="replace").splitlines():
+            if ln.lower().startswith("model name") and ":" in ln:
+                return " ".join(ln.split(":", 1)[1].split())
+    except (OSError, ImportError, ValueError):
+        pass
+    import platform
+    return " ".join(platform.processor().split())
+
+
+def cpu_probe(steps=CPU_PROBE_STEPS, runs=CPU_PROBE_RUNS):
+    """(the best of `runs` timings of the fixed loop in milliseconds, what the
+    loop adds up to). The clock is the time module's own perf_counter, imported
+    here, because the checks replace this module's `time` to count a night's
+    waits."""
+    from time import perf_counter
+    best, x = None, 0
+    for _ in range(max(1, runs)):
+        t = perf_counter()
+        x = 0
+        for i in range(steps):
+            x = (x * 31 + i) & 0xFFFFFFFF
+        s = perf_counter() - t
+        best = s if best is None else min(best, s)
+    return round(best * 1000, 1), x
+
+
+def cpu_record():
+    """{"model", "cpus", "probe_ms", "probe", "python"}: THE MACHINE'S
+    PROCESSOR, AND A FIXED PROBE, worked out once a process."""
+    if not CPU:
+        import platform
+        ms, total = cpu_probe()
+        CPU.update(model=cpu_model() or "not named", cpus=os.cpu_count() or 0, probe_ms=ms,
+                   probe=f"best of {CPU_PROBE_RUNS} runs of a fixed {CPU_PROBE_STEPS:,}-step loop"
+                   + ("" if total == CPU_PROBE_SUM else ", which no longer adds up as it did"),
+                   python=platform.python_version())
+    return dict(CPU)
+
+
+def cpu_line(rec):
+    """cpu_record() as the night's log says it."""
+    return (f"the machine's processor: {rec.get('model')}, {rec.get('cpus')} logical CPUs; the "
+            f"fixed probe ({rec.get('probe')}) took {rec.get('probe_ms')} ms on Python "
+            f"{rec.get('python')}")
 
 
 def load_json(path):
@@ -3661,6 +3756,9 @@ def captions_record(started, st=None, now=None, laptop=None):
            "why": captions_why(st, now, laptop)}
     if tonight and lr.get("setup"):
         rec["setup"] = lr["setup"]
+    # What the step said is not set up tonight, its exit 3 (youtube_warned).
+    if tonight and isinstance(lr.get("not_set_up"), list) and lr["not_set_up"]:
+        rec["not_set_up"] = [str(x) for x in lr["not_set_up"]]
     if read_tonight and mk.get("probe"):
         rec["probe"] = mk["probe"]
     if laptop_said(laptop, now):
@@ -5628,9 +5726,13 @@ def tree_day_forms(days):
     return sorted(forms, key=len, reverse=True)
 
 
-def tree_hash(site, days):
+def tree_hash(site, days, walk=None):
     """Sixteen hex of every file in `site`, by path and content with the build
-    day taken out of the text (TREE_KEY), or None where there is no file."""
+    day taken out of the text (TREE_KEY), or None where there is no file.
+    With `walk`, a SiteWalk of `site` made with the same days, from what it
+    read (ONE READ OF THE BUILT SITE): the same hash."""
+    if walk is not None and walk.forms == tree_day_forms(days):
+        return walk.tree()
     site = Path(site)
     forms = [f.encode("utf-8") for f in tree_day_forms(days)]
     h, n = hashlib.sha256(), 0
@@ -5649,14 +5751,90 @@ def tree_hash(site, days):
     return h.hexdigest()[:16] if n else None
 
 
-def stamp_tree(site, days):
+# ONE READ OF THE BUILT SITE (19 November 2026; the refactor's B10, its build
+# inventory's F8). After the build the night walked the whole site four times
+# to count it (census), read every file for the tree hash (stamp_tree), and
+# read every file again for the list of every file with its sha256
+# (site_manifest): 58,444 files, about 2 GB, twice over. SiteWalk walks it
+# once and reads each file once, keeping each file's sha256, size and time
+# and its digest for the tree, and the census, the tree hash and the list are
+# made from that. The same numbers, hash and list, byte for byte: the walk is
+# in the order each made its own, and the day comes out of the text as
+# tree_hash takes it out. The list is made last, after build.json has had the
+# commit and the tree written into it, so it looks again at every file's size
+# and time (a stat, not a read) and reads again build.json and anything
+# written, added or changed since the walk; a file gone since is not listed.
+class SiteWalk:
+    def __init__(self, site, days=()):
+        self.site = Path(site)
+        self.forms = tree_day_forms(days)
+        forms = [f.encode("utf-8") for f in self.forms]
+        # Every path under the site, files and folders, as the census's globs
+        # see them; and each file's (sha256 hex, size, mtime_ns, tree digest
+        # or None where the tree leaves it out), in the order rglob sorts.
+        self.rels, self.files = [], {}
+        for p in sorted(self.site.rglob("*")):
+            rel = p.relative_to(self.site)
+            self.rels.append(rel)
+            if not p.is_file():
+                continue
+            body = p.read_bytes()
+            st = p.stat()
+            raw = hashlib.sha256(body)
+            name = rel.as_posix()
+            tree = None
+            if not (name in TREE_LEFT_OUT or name.startswith(TREE_LEFT_OUT_UNDER)):
+                tree = raw.digest()
+                if b"\x00" not in body[:4096] and any(f in body for f in forms):
+                    for f in forms:
+                        body = body.replace(f, TREE_DAY)
+                    tree = hashlib.sha256(body).digest()
+            self.files[name] = (raw.hexdigest(), st.st_size, st.st_mtime_ns, tree)
+
+    def count(self, *patterns):
+        """How many paths, files or folders, match any of `patterns` (relative
+        to the site), as Path.glob and rglob match them on this machine."""
+        return sum(1 for r in self.rels if any(r.full_match(x) for x in patterns))
+
+    def tree(self):
+        """tree_hash's sixteen hex, from the walk; None where no file is in it."""
+        h, n = hashlib.sha256(), 0
+        for name, (_sha, _size, _mtime, tree) in self.files.items():
+            if tree is not None:
+                h.update(name.encode("utf-8") + b"\x00" + tree)
+                n += 1
+        return h.hexdigest()[:16] if n else None
+
+    def rows(self):
+        """site_manifest's rows, (path, sha256 hex, size), sorted: what the walk
+        read for every file whose size and time are as they were, read again
+        for build.json and for anything else written since."""
+        rows = []
+        for p in self.site.rglob("*"):
+            if p.is_file():
+                name = p.relative_to(self.site).as_posix()
+                st = p.stat()
+                kept = self.files.get(name)
+                if kept and name != BUILD_RECORD and kept[1:3] == (st.st_size, st.st_mtime_ns):
+                    rows.append((name, kept[0], st.st_size))
+                    continue
+                h = hashlib.sha256()
+                with p.open("rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                rows.append((name, h.hexdigest(), p.stat().st_size))
+        rows.sort()
+        return rows
+
+
+def stamp_tree(site, days, walk=None):
     """tree_hash into site/build.json beside the commit; the hash, or None
     where it could not be written (then production's copy names none and the
-    next night publishes over it)."""
+    next night publishes over it). With `walk`, from what it read."""
     p = Path(site) / BUILD_RECORD
     try:
         d = json.loads(p.read_text(encoding="utf-8"))
-        t = tree_hash(site, days)
+        t = tree_hash(site, days, walk)
     except (OSError, ValueError):
         return None
     if not isinstance(d, dict) or not t:
@@ -5677,19 +5855,23 @@ def serves_this_build(live, fp, live_commit, sha, live_tree, tree, tree_read=Tru
     return not (tree and tree_read and live_tree != tree)
 
 
-def site_manifest(site, out):
+def site_manifest(site, out, walk=None):
     """Every file in site/ with its sha256 and size, sorted: the file-for-file
     comparison CLOUD_MOVE.md asks of the first dry runs, and the record of what
-    a night built. The files it lists."""
-    rows = []
-    for p in site.rglob("*"):
-        if p.is_file():
-            h = hashlib.sha256()
-            with p.open("rb") as fh:
-                for chunk in iter(lambda: fh.read(1 << 20), b""):
-                    h.update(chunk)
-            rows.append((p.relative_to(site).as_posix(), h.hexdigest(), p.stat().st_size))
-    rows.sort()
+    a night built. The files it lists. With `walk`, a SiteWalk of `site`, from
+    what it read where a file is as it was (ONE READ OF THE BUILT SITE)."""
+    if walk is not None:
+        rows = walk.rows()
+    else:
+        rows = []
+        for p in site.rglob("*"):
+            if p.is_file():
+                h = hashlib.sha256()
+                with p.open("rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                rows.append((p.relative_to(site).as_posix(), h.hexdigest(), p.stat().st_size))
+        rows.sort()
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("".join(f"{d}  {s}  {r}\n" for r, d, s in rows), encoding="utf-8",
@@ -5718,6 +5900,9 @@ def site_manifest(site, out):
 # too (build_date.utcnow), which would move the times it publishes.
 NIGHT_SITE = Path("archive/night-site.json.gz")
 COLD_RECORD = Path("logs/cold-build.json")
+# The weekly's record of the bucket's size by prefix (cloud.BUCKET_RECORD,
+# THE BUCKET'S SIZE, BY PREFIX), which --close folds into the week's verdict.
+BUCKET_RECORD = Path("logs/bucket-size.json")
 COLD_NAMED = 8                  # the files a difference names, first by path
 # What the aside leaves out, at the folder's top only: the build's cache, which
 # is what "cold" means, and the lock. Not site/: the kit brings site/committees.json,
@@ -6694,6 +6879,51 @@ def backup_warned(path=None):
                           f"more than {BACKUP_DAYS}: {run}.")]
 
 
+# A REFUSED YOUTUBE KEY WARNS, AND THE NIGHT GOES OUT (19 November 2026; the
+# owner's decision 4 of the refactor's stage 0, reversing the deliberate
+# failure of 10 October). The livestream step exits 3 when it is not set up --
+# no YOUTUBE_API_KEY, a key the API refuses, or no yt-dlp -- and records why
+# in its state's last_run ("not_set_up"), which captions_record carries for
+# tonight's run. That was a failed night, so a revoked key stopped the bills
+# publishing. Now it is a warning of the night's own health, which never
+# holds a night, and --close does not count that step's failure when tonight's
+# record says this was why (close_verdict). Nothing new is listed or asked
+# for, and the recordings, their rows and the start times already read stay
+# as they were: the site keeps the livestream data it had.
+KIND_YOUTUBE = KIND_HEALTH + "the livestream step not set up"
+YOUTUBE_SECRET = "YOUTUBE_API_KEY"
+
+
+def youtube_warned(caps):
+    """[(kind, sentence)] for tonight's livestream step that was not set up
+    (A REFUSED YOUTUBE KEY WARNS), one per reason it gave, in the words a
+    person reads over breakfast: what is wrong, then what to do. [] for a
+    step that was set up, did not run tonight, or no record."""
+    if not isinstance(caps, dict) or not isinstance(caps.get("not_set_up"), list):
+        return []
+    kept = "so no new recordings were listed tonight, and the site keeps the ones it had"
+    out = []
+    for why in caps["not_set_up"]:
+        why = str(why)
+        short = why.split(" -- ")[0].strip()
+        if YOUTUBE_SECRET in why and "not set" in why:
+            said = (f"The night has no YouTube key (GitHub's {YOUTUBE_SECRET} secret is empty), "
+                    f"{kept}: put the night's key back in that secret.")
+        elif "key itself was refused" in why:
+            said = (f"YouTube refused the night's key ({short}), {kept}: make a new YouTube Data "
+                    f"API v3 key in the Google Cloud project and put it in GitHub's "
+                    f"{YOUTUBE_SECRET} secret.")
+        elif "yt-dlp" in why:
+            said = (f"The night's machine has no yt-dlp ({short}), so no captions were asked for "
+                    "tonight and the recordings wait as they were: the livestream step's log "
+                    "says why its install did not take.")
+        else:
+            said = (f"YouTube answered the livestream step with {short}, {kept}: the livestream "
+                    "step's log says which channel or playlist.")
+        out.append((KIND_YOUTUBE, said))
+    return out
+
+
 def health_warned(v, private=False):
     """[(kind, sentence)] of THE NIGHT'S OWN HEALTH that a verdict carries:
     each a kind the gate never holds a night for. Read by Night.warned() for
@@ -6704,7 +6934,8 @@ def health_warned(v, private=False):
             + sources_warned(v.get("sources"))
             + backup_warned()
             + functions_warned((v.get("preview") if isinstance(v.get("preview"), dict) else {})
-                               .get("functions")))
+                               .get("functions"))
+            + youtube_warned(v.get("captions")))
 
 
 class Night:
@@ -6723,6 +6954,9 @@ class Night:
         # Who started the night: the timer, GitHub's schedule or a person
         # (WHO STARTED THE NIGHT), and a warning where the schedule had to.
         self.v["started_by"] = started_by_record()
+        # The machine's processor and the fixed probe, before the night's
+        # work (THE MACHINE'S PROCESSOR, AND A FIXED PROBE).
+        self.v["cpu"] = cpu_record()
         # The private list of renewal dates, as state-down brought it (KNOWN
         # EXPIRIES): each due within EXPIRY_DAYS, or past, warns.
         self.v["expiries"] = expiries_record(started.date())
@@ -6828,6 +7062,11 @@ class Night:
             f"(run {rec.get('run_id') or '?'}), from {CENSUS}")
         return c, rec.get("fingerprint")
 
+    def tree_days(self):
+        """The days the build may print, which the tree hash takes out of the
+        text (TREE_KEY): the night's own, and the day it started."""
+        return {self.day, str(self.v.get("started", ""))[:10]}
+
     def judge(self, site, before, after, stop, changed, accepted=()):
         """After a build that passed check_site: can it go to production?
 
@@ -6852,7 +7091,7 @@ class Night:
         else:
             say(f"\n  {site.as_posix()}/{BUILD_RECORD} names no commit (no full commit id "
                 "tonight, or no build.json): a later night will not know this build's code")
-        v[TREE_KEY] = stamp_tree(site, {self.day, str(v.get("started", ""))[:10]})
+        v[TREE_KEY] = stamp_tree(site, self.tree_days(), getattr(self, "walk", None))
         blocking = []
         if before is None:
             v["gates"] = "no baseline"
@@ -6949,7 +7188,8 @@ class Night:
             # and the data API's hashes its change feed compared with.
             say("  " + keep_first_seen())
             say("  " + keep_api_hashes())
-        n = site_manifest(site, Path("logs") / f"site-{self.day}.sha256")
+        n = site_manifest(site, Path("logs") / f"site-{self.day}.sha256",
+                          getattr(self, "walk", None))
         say(f"  logs/site-{self.day}.sha256 lists all {n:,} files, with their sha256")
         # ... and the same, for the weekly's cold build to compare with (NIGHT_SITE):
         # a real night's, never a dry run's or a New term run's, whose kit is held.
@@ -7772,7 +8012,9 @@ def close_verdict(a):
     with one that says so, rather than letting last night's CLEAN stand.
 
     Exit 1 when any step it is told of failed, so a step allowed to carry on
-    past its own failure -- the livestreams -- still fails the night at the end.
+    past its own failure -- the livestreams -- still fails the night at the end,
+    unless tonight's record says only that it was not set up, a missing or
+    refused YouTube key among them, which is a warning (youtube_warned).
     A night that was not clean puts plain_why()'s sentence at the top of the
     run's page on GitHub: an error when the job fails, a warning otherwise.
     A dry run's is its own verdict, kept apart (DRY_VERDICT): one that never
@@ -7833,6 +8075,15 @@ def close_verdict(a):
                        + ([f"- {off_main_line(v['off_main'])}"] if v.get("off_main") else []))
     v["steps"] = steps
     failed = [f"{k} ({r})" for k, r in steps.items() if r not in ("success", "skipped", "")]
+    # A REFUSED YOUTUBE KEY WARNS, AND THE NIGHT GOES OUT: the livestream
+    # step's failure is not counted where tonight's own record says it was not
+    # set up (youtube_warned), which the night's warnings already carry. Any
+    # other failure of it -- a state it could not read, a step killed at its
+    # limit, or a verdict that is not tonight's -- still fails the night.
+    if steps.get("livestreams") == "failure" and youtube_warned(v.get("captions")):
+        failed = [f for f in failed if not f.startswith("livestreams (")]
+        v["livestreams_not_set_up"] = "warned, not failed: " + "; ".join(
+            str(x) for x in v["captions"]["not_set_up"])
     # THE CODE CHECKS, FROM THEIR OWN JOB (CHECKS_JOB): what --checks-result
     # read, folded in as a step of the night's job is. Only "success" passes:
     # an empty result, one that was skipped or cancelled, or a step that could
@@ -7865,6 +8116,27 @@ def close_verdict(a):
         if cold_warns(cold):
             v["warnings"] = list(v.get("warnings") or []) + [f"the cold build {said}"]
         gh_summary([f"- the cold build {said}"])
+    # THE BUCKET'S SIZE, BY PREFIX (cloud.py bucket-size, the weekly's step
+    # before its fetches): into the week's results, which the morning triage
+    # reads, with "bucket" the record and its warnings -- a lifecycle rule
+    # that is not deleting -- among the week's. Never into whether the week
+    # was clean or its job failed. A record of another run, or none, is said
+    # with the step's outcome; told nothing (an older workflow), nothing is.
+    told_bucket = getattr(a, "bucket", None)
+    if a.weekly and told_bucket is not None:
+        size = load_json(BUCKET_RECORD)
+        if isinstance(size, dict) and str(size.get("run_id") or "") == str(rid or "") \
+                and size.get("said"):
+            said = str(size["said"])
+            v["bucket"] = {k: x for k, x in size.items() if k not in ("before", "said")}
+            v["warnings"] = list(v.get("warnings") or []) + [str(w) for w in
+                                                             size.get("warnings") or []]
+        else:
+            said = ("not measured: the bucket-size step left no record this week "
+                    f"(its step: {told_bucket or 'no outcome'})")
+        v.setdefault("results", {})["the bucket"] = said
+        # The run's page is public: the total, not the prefixes.
+        gh_summary([f"- the bucket: {said.split(': ', 1)[0]}"])
     if failed:
         v["clean"] = False
         v.setdefault("not_clean", []).append("workflow steps that did not succeed: "
@@ -8152,6 +8424,7 @@ def weekly(a):
         say("\n" + "=" * 74)
         say(f"finished {datetime.now():%H:%M}, "
             f"{(datetime.now() - started).seconds // 60} min, exit {code}")
+        say(cpu_line(cpu_record()))
         if machine_lows():
             say(f"the machine: {machine_lows()}")
         logs = Path("logs")

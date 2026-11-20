@@ -325,10 +325,21 @@ jobs:
           }
           exit 0
 
+      # THE HISTORY ONLY WHERE IT IS READ (19 November 2026; the refactor's
+      # B16). Of every step of this job, only the patch notes read the history
+      # (the commits since the live site's), and they run only on a run by
+      # hand that is not the timer's: that run takes every commit, branch and
+      # tag, as every night did; the timer's and the clock's take the run's
+      # commit alone, which is all the build, the stamps (against HEAD) and
+      # nightly.py's own reads of git (status, the branch's name) need. The
+      # condition is the patch notes step's own, and preflight holds the two
+      # together. The code checks' job and the weekly keep the whole history:
+      # preflight --code reads it (every commit's address, the Clerks' list on
+      # any ref, dev's registers).
       - name: Check out main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: ${{ (github.event_name == 'workflow_dispatch' && !(inputs.timer == true || inputs.timer == 'true')) && '0' || '1' }}
           persist-credentials: false
 
       # THE PATCH NOTES ON THE RUN'S PAGE (13 November 2026; the Notes box
@@ -377,10 +388,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-Date -Format "yyyy-MM-dd HH:mm zzz"
 
+      # THE PIP CACHE (19 November 2026; the refactor's B16). setup-python keeps
+      # pip's downloads between runs, keyed by this runner's system, the Python
+      # and the files named below, which hold every pin installed here: a pin
+      # changed is a new key, and the old downloads are never installed in its
+      # place, since pip installs exactly the pinned versions either way. A
+      # cache that cannot be read or saved is a warning, never a failure.
       - name: Python 3.14
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            .github/workflows/nightly.yml
 
       - name: Node 24
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -467,10 +488,14 @@ jobs:
       # new" and "captions deferred": YouTube refusing this machine is
       # recorded and held (livestreams.py, A REFUSAL), never asked again in
       # the same run, and the recordings keep the schedule's approximate
-      # start; the verdict says how many wait and why. Any other exit -- 3 is
-      # "not set up": no key, a refused key, or no yt-dlp -- fails the night,
-      # loudly, at --close, without stopping the day's General Court files
-      # from being taken and built: those cannot be taken later. Its own time
+      # start; the verdict says how many wait and why. Exit 3 is "not set
+      # up": no key, a refused key, or no yt-dlp. Since 19 November 2026 (the
+      # owner's decision 4) that is a warning, never a failed night: the state
+      # says why, the night's verdict warns of it, --close does not count it,
+      # and the site keeps the recordings it had (nightly.youtube_warned). Any
+      # other exit fails the night, loudly, at --close, without stopping the
+      # day's General Court files from being taken and built: those cannot be
+      # taken later. Its own time
       # limit, so a hang inside one yt-dlp call can never eat the night: the
       # step's sixty minutes of asking (livestreams.BUDGET), the last ask's
       # fourteen past it (LAST_ASK_MINUTES), and the listing; preflight holds
@@ -493,7 +518,7 @@ jobs:
           python src/ops/livestreams.py --since-state --inbox archive/captions-inbox
           $rc = $LASTEXITCODE
           if ($rc -eq 3) {
-            Write-Output "livestreams.py exit 3: not set up. The night goes on, and fails at its end."
+            Write-Output "livestreams.py exit 3: not set up. The night goes on, and its verdict warns of it."
           }
           exit $rc
 
@@ -759,10 +784,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-Date -Format "yyyy-MM-dd HH:mm zzz"
 
+      # The pip cache, as the night's (THE PIP CACHE, above).
       - name: Python 3.14
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            .github/workflows/nightly.yml
 
       - name: Node 24, for preflight
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0

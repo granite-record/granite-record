@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.19
+# GRANITE_VERSION: 2026-09-25.20
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and read into the start
@@ -409,7 +409,9 @@ EXIT STATUS
   3  not configured: no YOUTUBE_API_KEY or the API refused the key itself, so
      nothing new was listed -- what was already waiting was still captioned;
      or yt-dlp is not installed, so no caption was asked for and nothing
-     counted against a recording.
+     counted against a recording. The state's last_run says which
+     ("not_set_up"), and the night warns of it and publishes with the
+     recordings it had (the owner's decision 4, 19 November 2026).
 
 WITHOUT THE NETWORK
 
@@ -2193,10 +2195,14 @@ def since_state(a):
     line = "LIVESTREAMS: " + head + "; " + ", ".join(tail) + \
         ("; " + "; ".join(notes) if notes else "")
     # What the night's verdict reads (nightly.captions_record): tonight's
-    # answers by outcome, what still waits, and the setup that asked.
+    # answers by outcome, what still waits, and the setup that asked; and,
+    # for an exit 3, what is not set up, which the night says as a warning
+    # rather than failing on (nightly.youtube_warned, 19 November 2026).
+    unset = [n[len("not configured: "):] for n in notes if n.startswith("not configured: ")]
     st["last_run"] = {"at": iso(now), "origin": a.origin, "units": units,
                       "captions": asked, "waiting": waiting,
-                      "verdict": line, **({"setup": kit} if kit else {})}
+                      "verdict": line, **({"setup": kit} if kit else {}),
+                      **({"not_set_up": unset} if unset else {})}
     save_state(st)
     print("\n" + line)
     return code

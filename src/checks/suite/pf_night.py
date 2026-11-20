@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.13
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -3883,6 +3883,80 @@ def _night_started_by(NI):
                   f"a schedule more than {NI.TIMER_GRACE} minutes past it warns, in two wordings, "
                   "never holding the night, in the warnings, the standing ones and a night that "
                   "stopped early, and nothing else does")
+
+
+@check("workflows", "the night says its machine's processor, how many CPUs, and a fixed probe's "
+                    "time, in its log and its verdict, never in the published build.json",
+       needs=("nightly",))
+def _night_cpu_probe(NI):
+    """THE MACHINE'S PROCESSOR, AND A FIXED PROBE (nightly.py; the refactor's
+    B14). The loop is the one it always was (it adds up to CPU_PROBE_SUM),
+    timed as the best of CPU_PROBE_RUNS runs; cpu_record() names the model,
+    the CPUs, the time and the Python, works them out once a process, and a
+    loop that no longer adds up says so; a Night's verdict carries it from
+    the start; the night's log and the week's say it in cpu_line()'s words
+    before they are written; and nothing that writes site/build.json does."""
+    import inspect
+    import types
+    from datetime import datetime
+    ms, total = NI.cpu_probe()
+    assert total == NI.CPU_PROBE_SUM and ms > 0, (
+        f"the fixed probe adds up to {total}, not {NI.CPU_PROBE_SUM}: a different loop is a "
+        "different probe, and no older night's time can be compared with it")
+    assert NI.cpu_probe(steps=NI.CPU_PROBE_STEPS - 1)[1] != NI.CPU_PROBE_SUM
+    saved = dict(NI.CPU), NI.cpu_probe
+    try:
+        NI.CPU.clear()
+        calls = []
+
+        def probe():
+            calls.append(1)
+            return 12.5, NI.CPU_PROBE_SUM
+        NI.cpu_probe = probe
+        rec = NI.cpu_record()
+        again = NI.cpu_record()
+        assert calls == [1] and rec == again, "the probe ran more than once in one process"
+        assert set(rec) == {"model", "cpus", "probe_ms", "probe", "python"} and \
+            rec["probe_ms"] == 12.5 and isinstance(rec["cpus"], int) and rec["cpus"] >= 1 and \
+            rec["model"] and rec["probe"] == (f"best of {NI.CPU_PROBE_RUNS} runs of a fixed "
+                                              f"{NI.CPU_PROBE_STEPS:,}-step loop"), rec
+        line = NI.cpu_line(rec)
+        assert line.startswith("the machine's processor: ") and "12.5 ms" in line and \
+            f"{rec['cpus']} logical CPUs" in line and "\n" not in line, line
+        NI.CPU.clear()
+        NI.cpu_probe = lambda: (12.5, 1)
+        assert "no longer adds up" in NI.cpu_record()["probe"], "a changed loop was not said"
+        NI.CPU.clear()
+        NI.cpu_probe = probe
+        here = Path(".").resolve()
+        tmp = Path(tempfile.mkdtemp(prefix="gr-cpu-"))
+        try:
+            os.chdir(tmp)
+            night = NI.Night(types.SimpleNamespace(no_fetch=True, dry_run=True, new_term=False),
+                             datetime(2026, 11, 19, 3, 20))
+        finally:
+            os.chdir(here)
+            shutil.rmtree(tmp, ignore_errors=True)
+        assert night.v.get("cpu") == rec, ("a night's verdict does not carry the machine",
+                                           night.v.get("cpu"))
+    finally:
+        NI.CPU.clear()
+        NI.CPU.update(saved[0])
+        NI.cpu_probe = saved[1]
+    for fn in (NI.main, NI.weekly):
+        src = inspect.getsource(fn)
+        said = src.find("say(cpu_line(cpu_record()))")
+        wrote = src.find('"\\n".join(LOG)', said)
+        assert said >= 0 and wrote > said, f"{fn.__name__}'s log does not say the machine"
+    for fn in (NI.stamp_commit,):
+        assert "cpu" not in inspect.getsource(fn), "the machine went into site/build.json"
+    build_all = _source(_paths.ROOT / "build_all.py")
+    assert "cpu_record" not in build_all and "cpu_count" not in build_all, \
+        "build_all writes the machine into site/build.json, which every deployment serves"
+    return "ok", (f"a {NI.CPU_PROBE_STEPS:,}-step loop adding up to {NI.CPU_PROBE_SUM}, best of "
+                  f"{NI.CPU_PROBE_RUNS}, {ms} ms here; model, CPUs, time and Python worked out once "
+                  "a process; a changed loop said; in a night's verdict and the night's and the "
+                  "week's logs; not in site/build.json")
 
 
 @check("workflows", "the night reads the private list of renewal dates brought down with its state "
@@ -16134,6 +16208,124 @@ def _bug_hunt_already_serves_whole_site():
     assert not NI.serves_this_build("f0", "f1", sha, sha, "t1", "t1"), "changed data was 'already served'"
     assert not NI.serves_this_build("f1", "f1", "b" * 40, sha, "t1", "t1"), "changed code was 'already served'"
     return "ok", "the same pages are the same build; a changed calendar page publishes"
+
+
+@check("night", "the night reads its built site once for the census, the tree hash and the list of "
+       "every file, and each comes out byte for byte as three reads made it")
+def _night_one_site_read():
+    """ONE READ OF THE BUILT SITE (nightly.py, SiteWalk; the refactor's B10). Two copies of one
+    fixture site -- the bill index, legislators, bill data two levels down and at the top, bill
+    pages at every depth and an upper-case one, feeds, a folder named like a JSON file, hidden
+    files, an image with a NUL, the build's day in every form a page prints, and the files the
+    tree leaves out -- go through the night's sequence after the build: the census, the commit and
+    the tree into build.json, then the list of every file. One as it was, with three reads; one
+    with a SiteWalk. The census, the hash, build.json and the list are the same bytes; a file
+    written, rewritten at another size or removed after the walk is listed as it is, not as the
+    walk read it; and with the walk no file but build.json and the few JSON files the census reads
+    is opened more than once. Then main() and Night.judge are held to passing the walk."""
+    import inspect
+    import shell
+    from datetime import date
+    import nightly as NI
+    day, started = "2026-11-19", "2026-11-18"
+    days = {day, started}
+    d = date.fromisoformat(day)
+    short = shell.cite_day(d)
+    sha = "c" * 40
+    root = Path(tempfile.mkdtemp(prefix="gr-onewalk-"))
+
+    def fixture(s):
+        _bill_index_write(s, [{"term": "2025-2026", "id": f"HB{i}"} for i in range(1, 4)]
+                          + [{"term": "1989-1990", "id": "HB7"}])
+        (s / "legislators.json").write_text('[{"id": "1"}, {"id": "2"}]', encoding="utf-8")
+        (s / "home.json").write_text('{"generated": "%s"}' % day, encoding="utf-8")
+        for rel, body in (("bills/2025-2026/HB1.json", f'{{"built": "{day}"}}'),
+                          ("bills/2025-2026/HB2.JSON", "{}"), ("bills/top.json", "{}"),
+                          ("bills/.hidden/.h.json", "{}"), ("bills/2025-2026/x.json/in.json", "{}"),
+                          ("bill/2025-2026/hb1.html", f"Accessed {day}; {short}"),
+                          ("bill/hb2.HTML", f"Retrieved {shell.cite_day_full(short)}"),
+                          ("bill/.r.html", "r"), ("bill/2025-2026/deep/a/p.html", f"from {started}"),
+                          ("feed/all.xml", f"<lastBuildDate>{day}T03:17:00Z</lastBuildDate>"),
+                          ("feed/z.xml/in.xml", "x"), ("changes/current.json", f'"{day}"'),
+                          ("data/manifest.json", f'"{day}"'), ("calendar/documents.json", "[]"),
+                          ("calendar/2026-W47.html", "Hearing on 2026-11-24"),
+                          ("build.json", json.dumps({"finished": f"{day}T03:30:00"}))):
+            p = s / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(body, encoding="utf-8")
+        (s / "logo.png").write_bytes(b"\x89PNG\x00\x00" + day.encode() + b" fixed")
+        return s
+
+    # Every read through pathlib opens the file with Path.open (read_bytes and
+    # read_text among them), so its reads are counted there; a write is not.
+    reads = Counter()
+    real_open = Path.open
+
+    def op(self, mode="r", *a, **k):
+        if not any(c in mode for c in "wax+"):
+            reads[self.resolve()] += 1
+        return real_open(self, mode, *a, **k)
+
+    def night(s, walk_it, after=None):
+        walk = NI.SiteWalk(s, days) if walk_it else None
+        c = NI.census(s, walk)
+        assert NI.stamp_commit(s, sha)
+        t = NI.stamp_tree(s, days, walk)
+        if after:
+            after(s)
+        n = NI.site_manifest(s, root / f"{s.name}.sha256", walk)
+        return c, t, n, (root / f"{s.name}.sha256").read_bytes(), (s / "build.json").read_bytes()
+
+    try:
+        old = night(fixture(root / "a"), False)
+        fixture(root / "b")
+        Path.open = op
+        try:
+            new = night(root / "b", True)
+        finally:
+            Path.open = real_open
+        assert old[0] == new[0] and old[0]["bill_data"] == 5 and old[0]["bill_pages"] == 4 and \
+            old[0]["feeds"] == 3 and old[0]["bills"] == 4, ("the census differs", old[0], new[0])
+        assert old[1] and old[1:] == new[1:], ("the tree hash, the list or build.json differs",
+                                               old[1:3], new[1:3])
+        census_reads = {"meta.json", "legislators.json", "build.json"}
+        b = (root / "b").resolve()
+        inside = {p.relative_to(b).as_posix(): k for p, k in reads.items() if p.is_relative_to(b)}
+        again = sorted(r for r, k in inside.items()
+                       if k > 1 and r not in census_reads and not r.startswith("idx/"))
+        assert len(inside) >= len(new[3].splitlines()), (
+            "the walk's reads were not counted", len(inside), len(new[3].splitlines()))
+        assert not again, f"read more than once with the walk: {again}"
+        assert reads[(root / "b" / "bill" / "hb2.HTML").resolve()] == 1, reads
+
+        def change(s):
+            (s / "calendar" / "added.html").write_text("added after the walk", encoding="utf-8")
+            (s / "bill" / ".r.html").write_text("rewritten after the walk", encoding="utf-8")
+            (s / "feed" / "z.xml" / "in.xml").unlink()
+            # build.json at the size and time the walk saw, with other bytes:
+            # read again whatever its size and time say.
+            was, at = was_build[s.name]
+            (s / "build.json").write_bytes(was.replace(b"03:30", b"04:30"))
+            os.utime(s / "build.json", ns=(at, at))
+        was_build = {}
+        for name in ("c", "e"):
+            fixture(root / name)
+            was_build[name] = ((root / name / "build.json").read_bytes(),
+                               (root / name / "build.json").stat().st_mtime_ns)
+        assert night(root / "c", False, change)[2:] == night(root / "e", True, change)[2:], \
+            "a file written, rewritten or removed after the walk is listed as the walk read it"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    main_src, judge_src = inspect.getsource(NI.main), inspect.getsource(NI.Night.judge)
+    assert "SiteWalk(site, night.tree_days())" in main_src and "census(site, walk)" in main_src \
+        and "night.walk = walk" in main_src, "the night's census does not use the one walk"
+    assert 'stamp_tree(site, self.tree_days(), getattr(self, "walk", None))' in judge_src and \
+        judge_src.count('getattr(self, "walk", None)') == 2, \
+        "the tree hash or the list of every file does not use the night's walk"
+    return "ok", (f"census {old[0]['files']} files, tree {old[1]}, build.json and the list of "
+                  f"{old[2]} files the same bytes from one walk as from three reads; files "
+                  "changed after the walk listed as they are; nothing but build.json and the "
+                  "census's JSON read twice; main() and judge pass the walk")
 
 
 @check("build", "nightly.py: a step that outlives its timeout is killed and fails the night naming it; the lock is made exclusively")

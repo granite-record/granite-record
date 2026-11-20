@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.35
+# GRANITE_VERSION: 2026-09-25.36
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -62,6 +62,9 @@ The nightly's kit and the laptop's backup, in the project's private R2 bucket.
     python3 src/ops/cloud.py sources-up [--dry-run]    the state documents read on the laptop,
                                                        to the bucket's sources/ (state_sources.py)
     python3 src/ops/cloud.py sources-down              ... and into a session's sources/
+    python3 src/ops/cloud.py bucket-size               the weekly's: the bucket's size by its
+                                                       top-level prefix, read only (THE
+                                                       BUCKET'S SIZE, BY PREFIX)
 
     --local-bucket FOLDER   a folder stands in for the bucket, for testing
     --root FOLDER           the working folder (default: the current one)
@@ -969,6 +972,22 @@ class FolderBucket:
                 out[f.relative_to(self.root).as_posix()] = f.stat().st_size
         return out
 
+    def dated(self, prefix):
+        """{key: (size, when it was last written, in seconds since the epoch)}
+        under prefix: its files' dates. "" is every key but .meta/'s."""
+        base = self._p(prefix.rstrip("/")) if prefix else self.root
+        out = {}
+        if not base.is_dir():
+            return out
+        for dirpath, dirs, names in os.walk(base):
+            if Path(dirpath) == self.root:
+                dirs[:] = [d for d in dirs if d != ".meta"]
+            for n in names:
+                f = Path(dirpath) / n
+                st = f.stat()
+                out[f.relative_to(self.root).as_posix()] = (st.st_size, st.st_mtime)
+        return out
+
     def head(self, key):
         if not self._p(key).exists():
             return None
@@ -1036,6 +1055,9 @@ class NotAsked(FolderBucket):
         return f"the bucket (not asked: {self.why})"
 
     def list(self, prefix):
+        return {}
+
+    def dated(self, prefix):
         return {}
 
     def head(self, key):
@@ -1117,6 +1139,17 @@ class R2Bucket:
         for page in pages:
             for o in page.get("Contents") or []:
                 out[o["Key"]] = o["Size"]
+        return out
+
+    def dated(self, prefix):
+        """{key: (size, when it was last written, in seconds since the epoch)}
+        under prefix, from the same listing: R2 gives the date with each key."""
+        out = {}
+        pages = self.s3.get_paginator("list_objects_v2").paginate(
+            Bucket=self.bucket, Prefix=prefix)
+        for page in pages:
+            for o in page.get("Contents") or []:
+                out[o["Key"]] = (o["Size"], o["LastModified"].timestamp())
         return out
 
     def head(self, key):
@@ -5054,6 +5087,108 @@ def cmd_inbox_clear(a, root):
            + ("would be cleared" if a.dry_run else "cleared") if older else ""))
 
 
+# THE BUCKET'S SIZE, BY PREFIX (19 November 2026; the refactor's ops inventory,
+# item 13: "nothing reads the bucket's size by prefix"). The weekly, after its
+# state-down and before its fetches, lists the whole bucket once -- read only,
+# one listing, no object read -- and keeps for each top-level prefix (kit/,
+# state/, nights/, logs/, replaced/, inbox/, sources/, backup/) how many files,
+# how many bytes and how old its oldest file is, with the change since last
+# week's (the week's verdict's "bucket", which state-down brought), in
+# BUCKET_RECORD; nightly.py --weekly --close folds it into the week's results.
+#
+# THE WARNING IS A LIFECYCLE RULE THAT IS NOT DELETING. The bucket has no size
+# limit and its cost grows by the gigabyte, so no size is a natural line. The
+# prefixes the bucket's lifecycle rules empty are: nights/ after a few days
+# (three, as preview.yml and nightly.held_for_approval say; seven in the plan,
+# and the rule itself never read back), logs/ after 30 days (seen on 7
+# November 2026), and replaced/ after 30 (this file's docstring). A file older
+# than the longest of those, and a day, means the rule is gone or not working,
+# and the prefix grows without end: that is a warning, once a week.
+BUCKET_RECORD = "logs/bucket-size.json"
+# Last week's record, in the week's verdict, where state-down puts it
+# (cloud_kit.json's state list; nightly.WEEKLY_VERDICT).
+BUCKET_LAST_WEEK = "archive/last-weekly.json"
+BUCKET_KEPT_DAYS = {"nights/": 7, "logs/": 30, "replaced/": 30}
+BUCKET_GRACE_DAYS = 1
+BUCKET_TOP = "(top level)"
+
+
+def bucket_sizes(bucket, now=None, before=None):
+    """THE BUCKET'S SIZE, BY PREFIX, from one dated listing of `bucket`: the
+    record BUCKET_RECORD holds. `now` is seconds since the epoch; `before`
+    last week's record, or None."""
+    now = time.time() if now is None else now
+    pre = {}
+    for key, (size, when) in bucket.dated("").items():
+        p = key.split("/", 1)[0] + "/" if "/" in key else BUCKET_TOP
+        e = pre.setdefault(p, {"files": 0, "bytes": 0, "oldest": when})
+        e["files"] += 1
+        e["bytes"] += int(size)
+        e["oldest"] = min(e["oldest"], when)
+    prefixes = {p: {"files": e["files"], "bytes": e["bytes"],
+                    "oldest_days": max(0, int((now - e["oldest"]) // 86400))}
+                for p, e in sorted(pre.items(), key=lambda kv: (-kv[1]["bytes"], kv[0]))}
+    rec = {"format": 1, "at": datetime.fromtimestamp(now).isoformat(timespec="seconds"),
+           "bucket": bucket.describe(), "files": sum(e["files"] for e in prefixes.values()),
+           "bytes": sum(e["bytes"] for e in prefixes.values()), "prefixes": prefixes}
+    if isinstance(before, dict) and isinstance(before.get("bytes"), int):
+        rec["before"] = {"at": before.get("at"), "bytes": before["bytes"],
+                         "prefixes": {p: e.get("bytes") for p, e in
+                                      (before.get("prefixes") or {}).items()
+                                      if isinstance(e, dict)}}
+    rec["warnings"] = bucket_warned(rec)
+    rec["said"] = bucket_said(rec)
+    return rec
+
+
+def bucket_said(rec):
+    """The record as one line of the week's results."""
+    was = rec.get("before") or {}
+    change = ""
+    if isinstance(was.get("bytes"), int):
+        d = rec["bytes"] - was["bytes"]
+        change = f" ({'+' if d >= 0 else '-'}{human(abs(d))} since {str(was.get('at'))[:10]})"
+    parts = ", ".join(f"{p} {human(e['bytes'])}" for p, e in rec["prefixes"].items())
+    return (f"{human(rec['bytes'])} in {rec['files']:,} files{change}: "
+            + (parts or "nothing in it"))
+
+
+def bucket_warned(rec):
+    """[sentence] for each prefix a lifecycle rule should empty whose oldest
+    file is older than the rule keeps, and a day (BUCKET_KEPT_DAYS); [] for none."""
+    out = []
+    for p, days in BUCKET_KEPT_DAYS.items():
+        e = rec["prefixes"].get(p)
+        if e and e["oldest_days"] > days + BUCKET_GRACE_DAYS:
+            out.append(f"The bucket's {p} holds a file {e['oldest_days']} days old, where its "
+                       f"lifecycle rule keeps {days} days at most, so it keeps growing "
+                       f"({human(e['bytes'])} now): check the rule for {p} in R2's settings "
+                       "for the bucket.")
+    return out
+
+
+def cmd_bucket_size(a, root):
+    """bucket-size: THE BUCKET'S SIZE, BY PREFIX, into BUCKET_RECORD, beside
+    the run's id; and said. Read only toward the bucket."""
+    bucket = open_to_read(a)
+    week = Path(root) / BUCKET_LAST_WEEK
+    try:
+        last = json.loads(week.read_text(encoding="utf-8")).get("bucket")
+    except (OSError, ValueError, AttributeError):
+        last = None
+    rec = bucket_sizes(bucket, before=last)
+    rec["run_id"] = os.environ.get("GITHUB_RUN_ID", "")
+    out = Path(root) / BUCKET_RECORD
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(rec, indent=1) + "\n", encoding="utf-8")
+    say(f"{bucket.describe()}: {rec['said']}")
+    for p, e in rec["prefixes"].items():
+        say(f"  {p:<14}{e['files']:>9,} files  {human(e['bytes']):>12}  oldest {e['oldest_days']} days")
+    for w in rec["warnings"]:
+        say(f"WARNING {w}")
+    say(f"kept in {BUCKET_RECORD}")
+
+
 COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,
             "kit-down": cmd_kit_down, "kit-up": cmd_kit_up,
             "state-down": cmd_state_down, "state-up": cmd_state_up,
@@ -5065,7 +5200,8 @@ COMMANDS = {"kit-list": cmd_kit_list, "seed-kit": cmd_seed_kit,
             "send-night": cmd_send_night,
             "inbox-down": cmd_inbox_down, "inbox-clear": cmd_inbox_clear,
             "sources-up": lambda a, root: _sources("up", a, root),
-            "sources-down": lambda a, root: _sources("down", a, root)}
+            "sources-down": lambda a, root: _sources("down", a, root),
+            "bucket-size": cmd_bucket_size}
 
 
 def _sources(cmd, a, root):
@@ -5156,13 +5292,14 @@ def main(argv=None):
         if a.command == "kit-list":
             cmd_kit_list(a, root)
         elif a.command in ("pull", "send-night", "inbox-down", "inbox-clear") and a.dry_run \
-                or a.command == "restore":
+                or a.command in ("restore", "bucket-size"):
             # A dry pull writes nothing, so there is no writer for the lock to
             # keep out -- and taking it would make archive/cloud/, a folder a
             # dry run has no business making. A dry send-night writes nothing
             # either, nor a dry inbox-down or inbox-clear (17 October 2026).
             # Nor does restore write anything another command reads, and a
-            # whole one takes hours (16 November 2026).
+            # whole one takes hours (16 November 2026). Nor bucket-size, whose
+            # one file only the weekly's --close reads.
             COMMANDS[a.command](a, root)
         else:
             with machine_lock(root):
