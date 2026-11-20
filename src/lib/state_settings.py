@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.7
+# GRANITE_VERSION: 2026-11-11.8
 """
 The state's facts, read from src/lib/state_settings.json.
 
