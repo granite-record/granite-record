@@ -101,10 +101,12 @@ typed from the root answers "can't open file".
 
 **`build_site_v2.py` comes apart by subsystem** (the refactor's finding 4,
 20 November 2026), a subsystem a commit and the built site the same bytes
-after each: the passage rail and the journey are `journey.py`, what the two
-chambers did with each other's version is `conferences.py`, and what they
-share with the rest of it -- what a bill of each kind has to clear, a bill's
-letters, the chip's six words, the docket line -- is `parts.py`'s. A module
+after each: the passage rail and the journey are `journey.py`, a bill's
+status (the status vocabulary, `classify`, `closing_stage`, `next_step`) is
+`status.py`, what the two chambers did with each other's version is
+`conferences.py`, and what they share with the rest of it -- what a bill of
+each kind has to clear, a bill's letters, the chip's six words, the docket
+line -- is `parts.py`'s. A module
 split out of `build_site_v2` never imports it back (`_import_cycles_cut`),
 and `build_site_v2` imports every moved name back where it was, so
 `build_site_v2.journey` and the rest still answer for every caller;

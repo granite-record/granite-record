@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1146,6 +1146,16 @@ _SPLIT_FROM_SITE = {
                       "_j_tally _j_unfile _j_unsuspend _j_untold _j_vote_words "
                       "_j_words _j_year_slip _journey_rail journey journey_rail "
                       "journey_state law_day law_in_stages law_line_dated passage").split()),
+    "status": tuple(("CLOSING CONF_NEVER_REPORTED CONF_REPORT_NOT_TAKEN_UP "
+                     "CONF_UNABLE_CLOSING DISPOSED ENDED_UNFINISHED ENDED_UNVOTED "
+                     "ENDING_UNTOLD JOURNAL_SOURCE NEVER_INTRODUCED NOT_INTRODUCED "
+                     "ONE_CHAMBER_DONE PROPOSED_ONLY RECONSIDER_CARRIED RETURNED_ROW "
+                     "SESSION_ENDED_AFTER_FAILED SESSION_ENDED_AFTER_VOTES "
+                     "SESSION_ENDED_PLAINLY STATED UNTOLD_FOR WITHDRAWN_ACT "
+                     "WITHDRAWN_PRIOR _long_date classify classify_stated "
+                     "closing_stage docket_outcome floor_disposed for_bill_kind "
+                     "journal_not_introduced last_decision next_step untold_ending "
+                     "veto_outcome veto_votes").split()),
 }
 
 
@@ -1235,6 +1245,24 @@ def _site_journey_moved(B, J):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in journey.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the journey's own; no _j_ reader left in build_site_v2")
+
+
+@check("files", "a bill's status -- the status vocabulary and classify, closing_stage and next_step -- "
+                "is status.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "status"))
+def _site_status_moved(B, STA):
+    """build_site_v2's status classification moved to status.py on 20 November 2026 (the
+    refactor's finding 4), as it stood, from three places in the file: the status vocabulary
+    (for_bill_kind, STATED and the statuses of a bill never introduced), journal_not_introduced,
+    and classify_stated to next_step -- classify, docket_outcome, closing_stage and the endings
+    the docket does not tell among them. Every name of them is held to be status.py's, defined
+    nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so bill_disposition,
+    build_bills and the checks that ask build_site_v2.classify read the one classification."""
+    names = _SPLIT_FROM_SITE["status"]
+    bad = _split_out(B, STA, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in status.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the status's own")
 
 
 def _readme_unlisted(folder, root=None):
