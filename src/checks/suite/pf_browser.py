@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.23
+# GRANITE_VERSION: 2026-11-16.24
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -10686,3 +10686,109 @@ def _tags_in_search(BP):
     return "ok", ("weed -> the Cannabis topic's bill; gravel tax -> the tagged bill; attorney general -> the title's "
                   "bill, then the tag's two, nothing said of the tag; offers name and count it; none of it without "
                   "tags; the header's matcher reads the tag's phrase once find.js hands it the words")
+
+
+# APP.JS IS ITS PARTS (20 November 2026, the refactor's finding 6). app.js is
+# written from the files in src/pages/app/, joined in the order of their names
+# (app_parts.py), and stays in the repository: everything that reads it reads
+# the joined file. Who may name the parts, each with its reason; a module of
+# the suite plants trees of its own and is not read.
+APP_PARTS_READERS = {
+    "app_parts.py": "writes app.js from them, and carries an edit made in app.js back",
+}
+
+
+@check("files", "app.js is its parts in src/pages/app/, joined in order; a billmatch part is one "
+                "BILLMATCH region whole; and nothing but app_parts.py reads a part", needs=("app_parts",))
+def _app_js_is_its_parts(AP):
+    """app.js is made of its parts (app_parts.py): app.js's own first line,
+    its stamp, then each file of src/pages/app/ in the order of its name.
+    The build, the fast path, the search index and every check read app.js,
+    the joined file, and never a part. Held:
+
+      on a planted tree: app.js that is its parts is said to be; a part
+      edited is found, by its line, until app.js is written, which keeps the
+      stamp line and writes nothing a second time; an edit made in app.js
+      goes back into the part that holds it (--split), and --split refuses,
+      writing nothing, where a part's first line is gone from app.js; a
+      part misnamed, a billmatch part that is not one region whole, a
+      marker in another part and a first line found twice are each named;
+      here: the parts are right and app.js is their join;
+      no code file but APP_PARTS_READERS imports app_parts or names the
+      parts' folder in its code (its docstrings aside), so no builder reads a
+      part on its own.
+    """
+    import ast
+
+    from pf_core import _parsed
+    stamp = b"// GRANITE_VERSION: 2026-01-02.3\n"
+    planted = {"010-a.js": b"const A=1;\n",
+               "020-billmatch-b.js": b"// BILLMATCH:BEGIN -- b\nfunction b(){return A;}\n// BILLMATCH:END\n",
+               "030-c.js": b"// C, the last\nconst C=3;\n"}
+    tmp = Path(tempfile.mkdtemp(prefix="gr-parts-"))
+    try:
+        (tmp / AP.FOLDER).mkdir(parents=True)
+        for n, t in planted.items():
+            (tmp / AP.FOLDER / n).write_bytes(t)
+        app, last = tmp / AP.APP, tmp / AP.FOLDER / "030-c.js"
+        app.write_bytes(stamp + b"".join(planted.values()))
+        assert AP.stale(tmp) is None and AP.faults(tmp) == [], (
+            f"a planted app.js that is its parts: {AP.stale(tmp)} {AP.faults(tmp)}")
+        last.write_bytes(b"// C, the last\nconst C=4;\n")
+        why = AP.stale(tmp)
+        assert why and "line 7" in why, f"a part edited and app.js not written is said as {why!r}"
+        assert AP.write(tmp) and app.read_bytes().startswith(stamp) and b"C=4" in app.read_bytes() \
+            and AP.stale(tmp) is None and not AP.write(tmp), (
+            "writing app.js did not put the edited part in after its stamp line, once")
+        app.write_bytes(app.read_bytes().replace(b"C=4", b"C=5"))
+        assert AP.stale(tmp) and AP.split(tmp) == ["030-c.js"] and b"C=5" in last.read_bytes() \
+            and AP.stale(tmp) is None, "an edit made in app.js did not go back into its part"
+        app.write_bytes(app.read_bytes().replace(b"// C, the last", b"// C"))
+        try:
+            AP.split(tmp)
+            raise AssertionError("--split cut app.js where a part's first line was gone from it")
+        except ValueError:
+            pass
+        assert b"C=5" in last.read_bytes() and b"// C, the last" in last.read_bytes(), \
+            "a refused --split wrote a part"
+        (tmp / AP.FOLDER / "020-billmatch-b.js").write_bytes(b"// BILLMATCH:BEGIN\nfunction b(){}\n")
+        (tmp / AP.FOLDER / "010-a.js").write_bytes(b"// C, the last\n// BILLMATCH:END\n")
+        (tmp / AP.FOLDER / "x.js").write_bytes(b"const X=0;\n")
+        said = " | ".join(AP.faults(tmp))
+        for want in ("x.js: a part is named", "020-billmatch-b.js: a billmatch part is one",
+                     "010-a.js:2: a BILLMATCH marker outside", "found 2 times"):
+            assert want in said, f"the planted faults are said as {said!r}, without {want!r}"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    bad = AP.faults()
+    assert not bad, "the parts of app.js: " + "; ".join(bad[:4])
+    why = AP.stale()
+    assert why is None, why
+    regions = [p.name for p in AP.parts() if AP.BILLMATCH in p.name]
+    assert regions, "no part of app.js is a BILLMATCH region: site/billmatch.js would be cut from nothing"
+
+    def code_strings(tree):
+        prose = {id(d.body[0].value) for d in ast.walk(tree)
+                 if isinstance(d, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                 and d.body and isinstance(d.body[0], ast.Expr) and isinstance(d.body[0].value, ast.Constant)}
+        return [d.value for d in ast.walk(tree) if isinstance(d, ast.Constant)
+                and isinstance(d.value, str) and id(d) not in prose]
+    suite = (_paths.ROOT / "src" / "checks" / "suite").resolve()
+    folder = AP.FOLDER.rstrip("/")
+    readers = {}
+    for f in _paths.code_files("*.py"):
+        if f.resolve().parent == suite:
+            continue
+        tree = _parsed(f)
+        if any(isinstance(n, ast.Import) and any(a.name == "app_parts" for a in n.names)
+               or isinstance(n, ast.ImportFrom) and n.module == "app_parts" for n in ast.walk(tree)) \
+                or any(s.rstrip("/") == folder or (folder + "/") in s for s in code_strings(tree)):
+            readers[f.name] = f
+    unknown = sorted(set(readers) - set(APP_PARTS_READERS))
+    assert not unknown, ("these read app.js's parts, which only app_parts.py may: " + ", ".join(unknown)
+                         + ". Read app.js, which is the parts joined, or say in APP_PARTS_READERS why not.")
+    gone = sorted(set(APP_PARTS_READERS) - set(readers))
+    assert not gone, "APP_PARTS_READERS names modules that do not read the parts: " + ", ".join(gone)
+    return "ok", (f"app.js is its {len(AP.parts())} parts, {len(regions)} of them the BILLMATCH regions "
+                  f"site/billmatch.js is cut from; read by {', '.join(sorted(readers))} alone; and on a "
+                  "planted tree a part edited, an edit in app.js and five faults are each found")
