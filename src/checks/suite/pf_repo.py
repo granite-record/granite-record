@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.28
+# GRANITE_VERSION: 2026-11-16.29
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1375,6 +1375,7 @@ _SPLIT_FROM_SITE = {
                        "party_record report_author report_authors sponsor_record_chambers "
                        "sponsor_record_rows sponsor_record_said story_people term_voters "
                        "vote_member").split()),
+    "bill_topics": tuple(("ADDED_CODES TOPICS_GUESSED merge_guessed_topics unify_vocabulary").split()),
 }
 
 
@@ -1618,6 +1619,25 @@ def _site_sponsors_moved(B, SP):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in sponsors.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the sponsors' own")
+
+
+@check("files", "a bill's topic as the index files it -- the topic model's for the terms the "
+                "General Court gave none, and the site's one vocabulary applied last -- is "
+                "bill_topics.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "bill_topics"))
+def _site_bill_topics_moved(B, BT):
+    """build_site_v2's topic vocabulary moved to bill_topics.py on 20 November 2026 (the
+    refactor's finding 4), as it stood: TOPICS_GUESSED and merge_guessed_topics,
+    ADDED_CODES, and unify_vocabulary. Every name of them is held to be bill_topics.py's,
+    defined nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so main
+    and the checks that ask build_site_v2.unify_vocabulary file a bill's topic the one way.
+    (The vocabulary itself, vocabulary_of and TOPIC_WORDS, is
+    src/parse/topic_vocabulary.py's.)"""
+    names = _SPLIT_FROM_SITE["bill_topics"]
+    bad = _split_out(B, BT, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in bill_topics.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the topics' own")
 
 
 def _readme_unlisted(folder, root=None):

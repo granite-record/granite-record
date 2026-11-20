@@ -138,9 +138,9 @@ The record and its own pages:
   index, and the legislators', towns' and committees' files the pages after
   it read (there was never a v1 here); its journey, a bill's status, the
   proceedings' stations, the members, the conferences, the amendments, the
-  rail's endings, the committee and hearing reports and the sponsors are
-  modules of their own beside it since 20 November 2026 (the next nine
-  lines), and it imports every name of theirs back;
+  rail's endings, the committee and hearing reports, the sponsors and a
+  bill's topic are modules of their own beside it since 20 November 2026
+  (the next ten lines), and it imports every name of theirs back;
 - `journey`: the passage rail and the journey -- the four stops a bill passes
   (`passage`) and what each chamber decided and when (`journey`,
   `journey_rail` and the `_j_` readers), read from the docket for the rail's
@@ -197,6 +197,11 @@ The record and its own pages:
   motion's mover (`mover_member`), a committee report's author
   (`report_authors`); a section of `build_site_v2` until 20 November 2026,
   which imports every name of it back;
+- `bill_topics`: a bill's topic as the bill index files it -- the topic
+  model's answer for the terms the General Court gave none
+  (`merge_guessed_topics`) and the site's one vocabulary applied to every
+  bill last (`unify_vocabulary`); a section of `build_site_v2` until 20
+  November 2026, which imports every name of it back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a
   file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,
