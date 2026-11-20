@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of the calendar.
 
@@ -3327,8 +3327,9 @@ _DATE_EXEMPT = {
     # which only the browser has: month first, as dateWords writes a day.
     # (The home page's floor-session titles, "August 19th, 2026", were the
     # other exception until 25 October 2026: the audit's M8 retired them.)
-    # In the page's locale since 23 October 2026 (window.GR_LOCALE, i18n.py).
-    "chrome.py": ('.toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})',),
+    # In the page's locale since 23 October 2026 (window.GR_LOCALE, i18n.py). The
+    # footer's script, chrome.FOOT_JS, in its own file since 20 November 2026.
+    "chrome.foot.js": ('.toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})',),
     # A month and its year ("October 2026") over the month's grid: not a day.
     "build_calendar.py": ('monthWords(m){ return MONTH[',),
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.24
+# GRANITE_VERSION: 2026-10-23.25
 """
 The site in more than one language, and how a translation stays current.
 
@@ -63,7 +63,7 @@ person can read them, on the preview or on the live site -- but nothing
 links to them, search engines are asked not to index them, no English page
 names them as its alternate, and the browser's language moves nobody. A
 reader who opens one of them is shown the language control from then on, in
-that browser (chrome.LANG_HEAD), so the person can try all of it before
+that browser (chrome.lang_head), so the person can try all of it before
 anyone else is shown it. "offered": true is the person's switch.
 """
 

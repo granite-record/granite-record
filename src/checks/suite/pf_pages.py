@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.17
+# GRANITE_VERSION: 2026-11-16.18
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -11468,7 +11468,7 @@ process.stdout.write("\n@@" + JSON.stringify(out));
                    "else their browser's, and only a choice moves a reader off a Spanish page",
        needs=("chrome",))
 def _language_choice(chrome):
-    """chrome.LANG_HEAD, run in node against a stub of the page for each case
+    """chrome.lang_head()'s script, run in node against a stub of the page for each case
     the person's request names -- chosen in Settings, or the browser's -- and
     the rule that keeps an unoffered language to the people trying it. Fails
     on a redirect that should not happen (an English reader sent to Spanish

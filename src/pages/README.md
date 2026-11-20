@@ -93,7 +93,7 @@ edit to its English. The record's own words (titles, names, docket lines) are
 not translated. The home page is built at `/` and `/es/` from the same data;
 the header, footer and Settings speak the page's language; the language
 choice is a row of Settings (`find.js`, `langMount`) and the browser's
-language is read before the first paint (`chrome.LANG_HEAD`). Spanish stays
+language is read before the first paint (`chrome.lang_head`). Spanish stays
 unlisted until `"offered"` is set in the catalog. `docs/TRANSLATING.md` is the
 walk-through, and `src/ops/translations.py` the proofreader's sheet.
 
