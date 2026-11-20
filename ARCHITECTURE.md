@@ -57,6 +57,18 @@ through `inline_js.script()`, which fills a hole written `__NAME__` and
 refuses one left empty or a value with no hole, and writes it into its page
 exactly as the Python string did; the folder is not a code folder, nothing
 copies it into `site/`, and each file is read by its own builder alone.
+`app.js` itself is written from its parts in `src/pages/app/` (since
+20 November 2026): its first line, the version stamp, then the files there
+joined in the order of their names (`NNN-what.js`), cut where its own
+headers already divided it and at each `BILLMATCH` region, so that the
+joined file is the one it was, byte for byte. It stays in the repository,
+written by `src/pages/app_parts.py`, and everything that reads it -- the
+build, the fast path, the search index, the checks and their node
+harnesses -- reads the joined file and never a part; preflight's
+`_app_js_is_its_parts` holds the two equal, and `app_parts.py --split`
+carries an edit merged into `app.js` back into its parts. The parts carry
+no stamp, so a part changed is `app.js` changed, and are no input of a
+build (`build_inputs.NOT_INPUTS`).
 The rules for those five pages alone are scoped to them with
 `:where(body.pg)`; a record page's rule that would redraw them is scoped
 away with `:where(body:not(.pg))` (the note at the top of `app.css`). The
@@ -989,7 +1001,8 @@ which a tag does not replace until the measure in the tags report says so.
 
 ## The bill search, and what it reads
 
-One matcher, in `app.js` between its `BILLMATCH` marks. `/bills` runs it
+One matcher, in `app.js` between its `BILLMATCH` marks, each region a part
+of its own (`src/pages/app/NNN-billmatch-*.js`). `/bills` runs it
 there; `build_pages.py` cuts the marked lines into `site/billmatch.js`, which
 `find.js` loads for the header's search box and for `/search`. So the three
 count the same bills, and a change to the marked lines changes all three.

@@ -465,7 +465,8 @@ that nothing is found missing a session later. Every one ends the same way:
 1. `src/pages/build_site_v2.py` puts it in the bill's record; if it comes
    from a new file, declare that file in the step's `needs`.
 2. `src/pages/app.js` draws it, in the tab's `render…` function (`BILL_TABS`
-   maps each tab's address to its function). A person, a committee, a date
+   maps each tab's address to its function), which is in one of its parts
+   (*Change the browser's script*). A person, a committee, a date
    or a time is drawn with `components.js`'s helper for it, never by hand.
 3. If the bills list or the search needs it too, the index row (the
    function near `idx/<term>.json` in build_site_v2) -- every visitor loads
@@ -476,6 +477,22 @@ that nothing is found missing a session later. Every one ends the same way:
 6. A check: preflight loads `app.js` in node against `tests/dom_stub.js` and
    calls `render()` and `renderDetail()` on the fixture, so a check can hold
    what the tab draws.
+
+**Change the browser's script (`app.js`).** `src/pages/app.js` is written
+from its parts in `src/pages/app/`, a file for each section its headers
+mark, joined in the order of their names (since 20 November 2026).
+1. Find the part: `grep -n "function renderSummary" src/pages/app/*.js`.
+   Edit it there, never in `app.js`; a new section is a new part, named
+   `NNN-what.js` with a number that puts it in its place.
+2. `python3 src/pages/app_parts.py` writes `app.js` from the parts, keeping
+   its first line, the stamp. Commit both: everything reads `app.js`.
+3. `python3 src/ops/inventory.py --bump-changed` raises `app.js`'s stamp;
+   the parts carry none.
+4. A change merged into `app.js` from a branch older than the parts goes
+   back into them with `python3 src/pages/app_parts.py --split`, which says
+   where it cannot tell which part a line is in.
+5. preflight's `_app_js_is_its_parts` fails while `app.js` is not its parts,
+   and so does `build_all.py --front-end`.
 
 **Change a word the site says in many places.** The approved wording lives
 once, in `src/pages/words/` (`votes.json`, `chips.json`, `glossary.json`,
