@@ -121,14 +121,17 @@ pages' files (`build_legislators`) -- is `members.py`, what the two chambers
 did with each other's version is `conferences.py`, a bill's amendments and
 its text (`bill_amendments`, `bill_text_block`) are `amendments.py`, the
 rail's endings -- a bill the session's end killed with no vote, on the table
-or in interim study (`table_death`, `study_ending`) -- are `endings.py`, and
+or in interim study (`table_death`, `study_ending`) -- are `endings.py`,
+what a bill's committees reported and who spoke at its hearings
+(`committee_reports`, `attach_hearing_reports`) is `hearing_reports.py`, and
 what they share with the rest of it -- what a bill of each kind has to
-clear, a bill's letters, the chip's six words, the docket line -- is
-`parts.py`'s. A module split out of `build_site_v2` never imports it back
-(`_import_cycles_cut`), and `build_site_v2` imports every moved name back
-where it was, so `build_site_v2.journey` and the rest still answer for every
-caller; `preflight`'s `_site_*` checks after `_import_cycles_cut` hold each
-move whole and not undone. `build_bills` and `main` stay in `build_site_v2`.
+clear, a bill's letters, the chip's six words, the docket line, a cited
+volume's address -- is `parts.py`'s. A module split out of `build_site_v2`
+never imports it back (`_import_cycles_cut`), and `build_site_v2` imports
+every moved name back where it was, so `build_site_v2.journey` and the rest
+still answer for every caller; `preflight`'s `_site_*` checks after
+`_import_cycles_cut` hold each move whole and not undone. `build_bills` and
+`main` stay in `build_site_v2`.
 
 ## How it runs
 

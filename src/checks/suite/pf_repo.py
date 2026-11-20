@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.26
+# GRANITE_VERSION: 2026-11-16.27
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1362,6 +1362,12 @@ _SPLIT_FROM_SITE = {
                       "lsr_bills next_term_bill session_end_line session_endings study_ending "
                       "table_death table_death_line table_death_told table_session_ends "
                       "term_years with_journals").split()),
+    "hearing_reports": tuple(("CAL_DATE INTERIM_FROM_DOCKET INTERIM_SIDE INTERIM_WORDS "
+                              "LOST_RECONSIDER MONTHS PUBLIC_HEARING REPORT_AGAIN REPORT_CAL "
+                              "SPEAKER_TITLE _again_carried _cal_date _cal_key _mdy "
+                              "_same_statement attach_hearing_reports committee_reports "
+                              "hearing_report_for_page hearing_testimony interim_cards rec_key "
+                              "report_station resolve_speaker speaker_index").split()),
 }
 
 
@@ -1560,6 +1566,29 @@ def _site_endings_moved(B, END):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in endings.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the endings' own")
+
+
+@check("files", "what a bill's committees reported and who spoke at its hearings -- the calendars' "
+                "committee reports, the interim study statements, a hearing's sign-ins and the "
+                "Senate's hearing reports -- are hearing_reports.py's, every name of them imported "
+                "back into build_site_v2",
+       needs=("build_site_v2", "hearing_reports"))
+def _site_hearing_reports_moved(B, HR):
+    """build_site_v2's committee and hearing reports moved to hearing_reports.py on 20
+    November 2026 (the refactor's finding 4), as they stood: PUBLIC_HEARING, which only the
+    sign-ins read, then from CAL_DATE, a calendar's publication date, to
+    attach_hearing_reports -- rec_key, the interim study statements as cards
+    (interim_cards), committee_reports, hearing_testimony, the speakers matched to members
+    (speaker_index, resolve_speaker) and the Senate's hearing reports placed on their
+    hearings (hearing_report_for_page, report_station). Every name of them is held to be
+    hearing_reports.py's, defined nowhere in build_site_v2.py, and build_site_v2.<name> the
+    same object, so build_bills, main and the checks that ask
+    build_site_v2.committee_reports read the one copy."""
+    names = _SPLIT_FROM_SITE["hearing_reports"]
+    bad = _split_out(B, HR, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in hearing_reports.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the reports' own")
 
 
 def _readme_unlisted(folder, root=None):

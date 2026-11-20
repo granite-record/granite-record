@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.23
+# GRANITE_VERSION: 2026-11-16.24
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -1926,10 +1926,11 @@ def _states_covered():
     """
     b = _paths.locate("build_site_v2.py")
     stn = _paths.locate("stations.py")
+    hr = _paths.locate("hearing_reports.py")
     page, h = page_source()
-    if not (b.exists() and stn.exists() and h):
-        return "skip", "build_site_v2.py, stations.py or bills.html not here"
-    src = _source(b) + _source(stn)
+    if not (b.exists() and stn.exists() and hr.exists() and h):
+        return "skip", "build_site_v2.py, stations.py, hearing_reports.py or bills.html not here"
+    src = _source(b) + _source(stn) + _source(hr)
 
     emitted = set(re.findall(r'"state":\s*"(\w+)"', src))
     emitted |= set(re.findall(r'\["state"\]\s*=\s*"(\w+)"', src))
