@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-20.2
+# GRANITE_VERSION: 2026-11-20.3
 """
 A member of the General Court as the site has them: how a member is named,
 the roll calls and the floor as a member's record reads them, and the
@@ -53,6 +53,7 @@ import entities as EN
 import member_figures as MF
 import member_links as ML
 import motions as MO
+import names as NM
 import proceedings as P
 import state_settings as ST
 import vote_passage as VP
@@ -477,7 +478,7 @@ def floor_moment(st):
             "stated": st.get("debate_start") is not None, "s": state}
 
 
-_SUFFIX = {"jr", "sr", "ii", "iii", "iv"}
+_SUFFIX = NM.SUFFIXES
 
 
 def _surname(name):

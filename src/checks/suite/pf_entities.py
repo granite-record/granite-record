@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.29
+# GRANITE_VERSION: 2026-11-16.30
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -2055,6 +2055,94 @@ def _slug_one_home():
     return "ok", (f"{len(_SLUG_READERS)} copies bound to entities.slug and town_slug, the rule written out "
                   f"nowhere else but {len(_SLUG_OTHERS)} other rule (state_sources' stem); the home's answers "
                   "held, and each planted copy refused")
+
+
+# THE WORDS AFTER A NAME HAVE ONE HOME (the refactor's finding 8, 20 November 2026): names.SUFFIXES,
+# a Jr., a Sr. and the numerals II to IV, lower case. Each of these wrote the list out until then
+# and binds the home now, by the name it had (file, that name; None where the list was written
+# inline and the test reads NM.SUFFIXES itself). Every read of each is a membership test, so the
+# home being a frozenset where a copy was a set or a tuple changes no answer.
+_SUFFIX_READERS = (
+    ("src/ops/state_sources.py", "SUFFIXES"),
+    ("src/parse/text_sponsors.py", "SUFFIXES"),
+    ("src/pages/build_lsrs.py", "_SUFFIX"),
+    ("src/pages/members.py", "_SUFFIX"),
+    ("src/parse/past_roll.py", "SFX"),
+    ("src/towns/town_boards.py", "SUFFIX"),
+    ("src/ops/election_week.py", None),
+    ("src/parse/parse_sos_offices.py", None),
+)
+
+
+def _suffix_literals(tree, words):
+    """[line] of the sets, tuples, lists and frozensets of string constants in a parsed file that
+    hold exactly `words`, ignoring case: the list written out again."""
+    out = []
+    for n in ast.walk(tree):
+        elts = n.elts if isinstance(n, (ast.Set, ast.Tuple, ast.List)) else None
+        if elts and all(isinstance(e, ast.Constant) and isinstance(e.value, str) for e in elts) \
+                and {e.value.lower() for e in elts} == set(words):
+            out.append(n.lineno)
+    return out
+
+
+def _suffix_reader_faults(tree, name):
+    """What is wrong with a reader's reading of names.SUFFIXES in a parsed file; [] where none."""
+    home = "NM.SUFFIXES"
+    if name is None:
+        reads = [n for n in ast.walk(tree) if isinstance(n, ast.Attribute) and ast.unparse(n) == home]
+    else:
+        binds = [n for n in tree.body if isinstance(n, ast.Assign)
+                 and any(isinstance(t, ast.Name) and t.id == name for t in n.targets)]
+        if len(binds) != 1 or ast.unparse(binds[0].value) != home:
+            return [f"{name} is bound {len(binds)} times" + (f", to {ast.unparse(binds[0].value)}" if binds else "")
+                    + f", not once to {home}"]
+        reads = [n for n in ast.walk(tree) if isinstance(n, ast.Name) and n.id == name and isinstance(n.ctx, ast.Load)]
+    member = {id(c) for n in ast.walk(tree) if isinstance(n, ast.Compare)
+              for op, c in zip(n.ops, n.comparators) if isinstance(op, (ast.In, ast.NotIn))}
+    imported = any(isinstance(n, ast.Import) and any(a.name == "names" and a.asname == "NM" for a in n.names)
+                   for n in tree.body)
+    return ([] if imported else ["no `import names as NM`"]) + ([] if reads else [f"nothing reads {home}"]) + \
+        [f"line {n.lineno} reads {name or home} otherwise than as `x in ...`" for n in reads if id(n) not in member]
+
+
+@check("files", "a name's Jr., Sr. and numerals are names.SUFFIXES alone: each list that was written out "
+                "reads it, and none is written again", needs=("names",))
+def _name_suffixes_one_home(NM):
+    """THE WORDS AFTER A NAME, ONE HOME (finding 8 of stage0-code.md, "suffix x7"). jr, sr, ii,
+    iii and iv were written out as a list of their own in eight modules until 20 November 2026;
+    names.SUFFIXES now. Held: each reader _SUFFIX_READERS names binds it once by its old name
+    (or tests NM.SUFFIXES where the list was inline), and reads it only as `x in ...`, so a set or a
+    tuple become a frozenset answers the same; no code file outside the suite and the tests writes
+    the same five words as a list again. The longer lists are other rules and stay where they are:
+    the Manuals' "2nd" and "3rd" (build_manual_seats, unh_measure), sponsor_roster's "v" and stops,
+    parse_clerks' capitals and "V", and the patterns that read a suffix in place. Planted, each
+    must be refused: the list written back, a second binding, a read that is not a test."""
+    words = NM.SUFFIXES
+    assert isinstance(words, frozenset) and words == {"jr", "sr", "ii", "iii", "iv"}, f"names.SUFFIXES is {words!r}"
+    for path, name in _SUFFIX_READERS:
+        faults = _suffix_reader_faults(_parsed(_paths.ROOT / path), name)
+        assert not faults, f"{path}: " + "; ".join(faults) + " (read names.SUFFIXES)"
+    stray = []
+    for f in _paths.code_files("*.py"):
+        rel = f.relative_to(_paths.ROOT).as_posix()
+        if _in_suite(f) or "tests" in f.relative_to(_paths.ROOT).parts or rel == "src/parse/names.py":
+            continue
+        stray += [f"{rel}:{n}" for n in _suffix_literals(_parsed(f), words)]
+    assert not stray, ("the name suffixes written out again: " + ", ".join(stray[:8])
+                       + ". Read names.SUFFIXES")
+    imp = "import names as NM\n"
+    for planted, name in ((imp + 'SFX = {"jr", "sr", "ii", "iii", "iv"}\n', "SFX"),
+                          (imp + "SFX = NM.SUFFIXES\nSFX = NM.SUFFIXES\n", "SFX"),
+                          (imp + "SFX = NM.SUFFIXES\nx = sorted(SFX)\n", "SFX"),
+                          ("SFX = NM.SUFFIXES\nx = 'jr' in SFX\n", "SFX"),
+                          (imp + "x = '|'.join(NM.SUFFIXES)\n", None)):
+        assert _suffix_reader_faults(ast.parse(planted), name), f"a copy of the suffixes was missed: {planted!r}"
+    assert not _suffix_reader_faults(ast.parse(imp + "SFX = NM.SUFFIXES\nx = [w for w in y if w not in SFX]\n"), "SFX")
+    assert _suffix_literals(ast.parse('x = w in ("JR", "SR", "II", "III", "IV")\n'), words) == [1]
+    assert not _suffix_literals(ast.parse('S = {"jr", "sr", "ii", "iii", "iv", "2nd", "3rd"}\n'), words)
+    return "ok", (f"{len(_SUFFIX_READERS)} readers take names.SUFFIXES, each read a membership test; the "
+                  "five words written as a list nowhere else; each planted copy refused")
 
 
 # ---- the one district table, with its eras and every spelling (the design's step 4) --------------

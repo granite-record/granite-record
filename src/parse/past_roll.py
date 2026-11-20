@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.3
+# GRANITE_VERSION: 2026-11-13.4
 """
 The House's CALL OF THE ROLL of 1989 to 1997, matched to the General Court's employee numbers only where certain.
 
@@ -43,6 +43,7 @@ import re
 from collections import Counter, defaultdict
 
 import member_links as ML
+import names as NM
 import past_members
 import past_roster as PR
 import past_sponsors as PSP
@@ -61,7 +62,7 @@ VOLUMES = {"journalofhouseof1997newh.csv": ("1997-1998", 1997),
            "journalofhouseof1989newh.csv": ("1989-1990", 1989)}
 JUNK = re.compile(r"(?i)\bvacan|\bseats?\)|quorum|\bresolved\b|^\W*$|^dist\b")
 LEAD = re.compile(r"^(?:\d+\s+|Dist\.?,?\s*No\.?\s*[\d\s()]+)")
-SFX = {"jr", "sr", "ii", "iii", "iv"}
+SFX = NM.SUFFIXES
 
 
 def read(path):

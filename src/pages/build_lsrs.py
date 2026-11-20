@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.31
+# GRANITE_VERSION: 2026-09-18.32
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -85,6 +85,8 @@ import datetime
 import json
 import re
 import unicodedata
+
+import names as NM
 
 def requests_term(year):
     """(the requests' term key, the term picker's label) for a session year:
@@ -311,7 +313,7 @@ def _words(s):
 # A name that serves two (Pat: Patrick, Patricia; Chris; Sam) is never added,
 # because a table entry is a certainty and those are not.
 NICKNAMES = [{"ben", "benjamin"}]
-_SUFFIX = {"jr", "sr", "ii", "iii", "iv"}
+_SUFFIX = NM.SUFFIXES
 
 # FORMS OF ONE PERSON'S NAME THE OWNER CONFIRMED (18 November 2026): LSR
 # 2027-0708 is filed by "Samuel Hoehn", the results print the Coos 1

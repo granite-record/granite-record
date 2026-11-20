@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-17.5
+# GRANITE_VERSION: 2026-11-17.6
 """
 The Secretary of State's count of a general election's races for Governor,
 United States Senator, Representative in Congress, Executive Councilor and
@@ -115,6 +115,7 @@ import re
 import build_members_elect as BME
 import election_town_rows as ETR
 import parse_sos_results as PSR
+import names as NM
 import state_settings as ST
 
 SOURCES = PSR.SOURCES
@@ -298,7 +299,7 @@ def label(e):
 def name_words(name):
     """A name's words, its commas and a Jr., Sr. or numeral after it set aside."""
     words = re.sub(r",", " ", name).split()
-    while len(words) > 1 and words[-1].rstrip(".").lower() in ("jr", "sr", "ii", "iii", "iv"):
+    while len(words) > 1 and words[-1].rstrip(".").lower() in NM.SUFFIXES:
         words.pop()
     return [w.lower() for w in words]
 

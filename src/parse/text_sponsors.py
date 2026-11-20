@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.12
+# GRANITE_VERSION: 2026-09-14.13
 """
 Sponsors read off each bill's own text, for the bills the database names none for.
 
@@ -89,6 +89,7 @@ import unicodedata
 from collections import Counter, defaultdict
 
 from member_links import COUNTIES, SHORT, seat as label_seat
+import names as NM
 import state_settings as ST
 
 PAGES = Path("legislation")
@@ -100,7 +101,7 @@ OUT = Path("text_sponsors.json")
 SOURCE = "bill text"
 
 ABBR = ST.COUNTY_ABBR
-SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
+SUFFIXES = NM.SUFFIXES
 
 HONORIFIC = re.compile(r"^(Rep|Sen)s?\b\.?\s*", re.I)
 # ONE SPONSOR ENDS AT A SEMICOLON, OR AT A COMMA THE NEXT "Rep." OR "Sen." FOLLOWS. 1999
