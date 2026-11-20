@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.16
+# GRANITE_VERSION: 2026-11-07.17
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -321,7 +321,7 @@ def inc_legend(chamber):
 
 
 def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=False, inc=frozenset(),
-                   chamber="H", unopposed=False):
+                   chamber="H", unopposed=False, links=None):
     """The race's rows, most votes first. `mine` is the candidate a member's
     Elections tab is about (same_name), whose row is marked er-me.
 
@@ -340,6 +340,12 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=Fal
     AN INCUMBENT (`inc`, same_name of each, build_member_elections.incumbents:
     a certain match who held a seat of the race's chamber on election day) has
     an asterisk after the name.
+
+    A CHIP LINKS as a general's winner's does (chip_slug: the member
+    members_elect linked), or, on a primary's card, by `links` ({same_name:
+    the member's page}, build_member_elections.nominee_links): a nominee
+    matched to a member by the certain rule (the owner, 20 November 2026). A
+    candidate who lost links nowhere, on a general's card or a primary's.
 
     AN UNOPPOSED RACE (`unopposed`, the owner, 19 November 2026: "Unopposed
     races like that can still show write-ins separately"): its scattered
@@ -361,7 +367,7 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=Fal
         most = primary and c.get("nominated") is True
         chipm = {"party_code": p if len(p) == 1 else "X",
                  "display_full": f'{c["name"]} ({p})' if p else c["name"],
-                 "slug": chip_slug(won)}
+                 "slug": chip_slug(won) or (links or {}).get(same_name(c["name"]), "")}
         share = f' <span>&middot; {100 * c["votes"] / counted:.1f}%</span>' if one and counted else ""
         bar_cls = p[:1] if p[:1] in ("R", "D") else "X"
         out.append(
@@ -459,7 +465,7 @@ def margin_data(m):
 
 
 def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=None, anchor=True,
-              primary="", inc=frozenset()):
+              primary="", inc=frozenset(), links=None):
     """One race as its card. The elections page draws every race so; a
     member's Elections tab draws each race the member is in by this same
     function (build_member_elections), with `mine` their candidate's name
@@ -469,8 +475,9 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
     under the rows (margin_line); the page's card also carries the margin for
     its filter (margin_data). `primary` is a primary's party, for a member's
     tab (build_member_elections.primary_rows): its leaders Nominated, its
-    label with no letter; the race's "other_votes", the votes for candidates
-    of another party the tab leaves off, are said in the note."""
+    label with no letter, each nominee who is a member linked to their page
+    (`links`, candidate_rows); the race's "other_votes", the votes for
+    candidates of another party the tab leaves off, are said in the note."""
     elected_names = {e["n"]: e for e in me.get("elected") or []}
     held = held_names(hand or {}, key)
     towns = race.get("towns") or []
@@ -519,7 +526,7 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
     return (f'<article class="er-race"{at}>'
             f'<div class="er-hd"><{h}>{E(race_name(key, race))}</{h}>{margin_chip(m)}</div>'
             f'<p class="er-meta">{" &middot; ".join(E(x) if not x.startswith("<b>") else x for x in meta)}</p>'
-            f'<ul class="er-rows">{candidate_rows(race, elected_names, held, mine, bool(primary), inc, key[0], unopp)}</ul>'
+            f'<ul class="er-rows">{candidate_rows(race, elected_names, held, mine, bool(primary), inc, key[0], unopp, links)}</ul>'
             + margin_line(m, seats, not me.get("not_final"), bool(primary))
             + status_lines(me)
             + "".join(f'<p class="er-note">{n}</p>' for n in notes)

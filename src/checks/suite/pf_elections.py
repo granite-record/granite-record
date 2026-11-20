@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.37
+# GRANITE_VERSION: 2026-11-16.38
 """
 preflight's checks of members-elect and election results.
 
@@ -2222,6 +2222,55 @@ def _primary_nominees_say_nominated(BE, TE):
                   "general, Elected three times; a town tab's special primary, its leader Nominated")
 
 
+@check("build", "a primary's card links each nominee who is a member to their page, by the certain rule, as a "
+       "general's card links its winners; a candidate who lost links nowhere on either",
+       needs=("build_member_elections", "build_elections"))
+def _primary_nominees_link(BMEL, BE):
+    """The owner, 20 November 2026, from the live site: on a primary's card a sitting member's chip
+    was a plain name, where a general's card links its winners to their pages. A general links a
+    winner members_elect places (chip_slug) and never a loser, an incumbent who lost included; a
+    primary's card now does the same with its nominees (nominee_links: "nominated": true and
+    placed by the certain rule). On a made-up court (Wayne Burton, Loren Selig and Cy Out,
+    Democrats sitting for Rockingham 9), a two-seat primary: "Wayne M. Burton" and Loren Selig,
+    nominated, link to their pages on every card of the race; Cy Out, a member who lost, and Ann
+    Nu, nobody's, do not; the same three as a general, Burton and Selig elected: the winners link
+    and Cy Out, marked an incumbent, does not. (A special primary's nominee: Bea Zane in
+    _member_elections_specials.)"""
+    def dem(*a):
+        return dict(_mel_member(*a), party="D")
+    sitting = [dem("3001", "Burton", "Wayne", "H", "Rockingham", "9"), dem("3002", "Selig", "Loren", "H", "Rockingham", "9"),
+               dem("3004", "Out", "Cy", "H", "Rockingham", "9")]
+    roster = BMEL.Roster(sitting, [], ["2025-2026", "2023-2024"])
+
+    def cand(name, votes, nominated):
+        return {"name": name, "party": "d", "votes": votes, "write_in": False, "nominated": nominated}
+    race = {"party": "d", "seats": 2, "floterial": False, "towns": ["Alpha"], "scatter": 0,
+            "candidates": [cand("Wayne M. Burton", 900, True), cand("Loren Selig", 800, True),
+                           cand("Cy Out", 100, False), cand("Ann Nu", 50, False)]}
+    doc = {"election": "2026-09-08", "general": "2026-11-03", "races": {"D|H|Rockingham|9": race}}
+    rows, _rep = BMEL.primary_rows("2026-09-08", doc, roster)
+    assert sorted(rows) == ["3001", "3002", "3004"], f"the primary's rows: {sorted(rows)}"
+
+    def linked(card):
+        return re.findall(r'<a href="legislator/([^"]+)">', card)
+    for mid in ("3001", "3002", "3004"):
+        card = rows[mid][0]["c"]
+        assert linked(card) == ["wayne-burton", "loren-selig"], f"{mid}'s card links {linked(card)}"
+        assert '<span class="mchip p-D" translate="no"><a href="legislator/wayne-burton">Wayne M. Burton' in card, (
+            "a nominee's chip is not the general's chip with its link")
+        assert 'translate="no">Cy Out <span class="mtag">(D)</span></span>' in card, "the member who lost is linked"
+    general = dict(race, candidates=[dict(c, elected=c["nominated"]) for c in race["candidates"]])
+    me = {"seats": 2, "elected": [{"n": "Wayne M. Burton", "id": "3001", "s": "wayne-burton"},
+                                  {"n": "Loren Selig", "id": "3002", "s": "loren-selig"}]}
+    inc = BMEL.incumbents("H|Rockingham|9", general, "2026-11-03", roster, {e["n"]: e for e in me["elected"]})
+    gcard = BE.race_card("H|Rockingham|9", general, me, {"election": "2026-11-03", "races": {}}, {}, "2026-11-03",
+                         anchor=False, inc=inc)
+    assert linked(gcard) == ["wayne-burton", "loren-selig"] and "Cy Out" in inc, (
+        f"a general's card links {linked(gcard)}, marks {sorted(inc)}")
+    return "ok", ("a primary's two nominees linked on every card of the race, the member who lost and a "
+                  "stranger not; a general's the same: its winners linked, its incumbent who lost not")
+
+
 @check("build", "a member's Elections tab is one column of race cards under a heading for each election "
        "cycle, strictly newest first: a cycle's general, then its primary",
        needs=("build_member_elections",))
@@ -2332,6 +2381,10 @@ def _member_elections_specials(BMEL):
     assert (p["cy"], p["pp"], p["r"], p["v"]) == ("2024", "D", "most", 615) and "Unopposed" in p["c"] \
         and '<span class="chip">Nominated</span>' in p["c"] and "Most votes" not in p["c"] \
         and "Elected" not in p["c"], f"the special primary's row: {p}"
+    # Her chip links on the special's card (the winner) and, since 20 November 2026, on its
+    # primary's (the nominee, nominee_links), as a general's card links its winners.
+    assert 'href="legislator/bea-zane"' in s["c"] and 'href="legislator/bea-zane"' in p["c"], (
+        f"Zane's chip on the special primary's card is not a link: {p['c']}")
     assert "5003" not in rows and any(r[2] == "Ned Old" and "2015-2016" in r[4] for r in report), (
         f"Ned Old, who held Carroll 7 in 2015-2016 only, is linked or not listed: {report}")
     assert "5002" not in rows and any(r[2] == "Max D. Teller" for r in report), (

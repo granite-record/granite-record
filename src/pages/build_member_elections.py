@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.13
+# GRANITE_VERSION: 2026-11-10.14
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -96,7 +96,10 @@ by the same certain rule as a loss above, never by the hand file (its matches
 are the general's), and never on another party's ballot: the votes a file
 lists for another party's candidates are left off the card and said in its
 note. Each leader, as many as the seats, is marked "Nominated" (the owner,
-20 November 2026; "Most votes" until then); the label has no letter.
+20 November 2026; "Most votes" until then); the label has no letter. A
+nominee placed by that rule links to their page, as a general's winner does,
+and a candidate who lost links nowhere, as on a general's card
+(nominee_links; the owner, 20 November 2026).
 A race with no more candidates than seats is a card too, labelled Unopposed.
 
 THE SPECIAL ELECTIONS (the owner, 19 November 2026, "Yes to all 9" of
@@ -520,11 +523,16 @@ def primary_rows(day, doc, roster):
             continue
         race = primary_race(doc["races"][key])
         ballot = party.upper()
+        found = {}
         for c in race["candidates"]:
             printed = str(c.get("party") or "").upper()
             got, why = roster.certain(c["name"], gkey, day, race, c.get("party"), initials=True)
             if got and not printed and got[0]["party"] != ballot:
                 got, why = [], f"printed with no party on the {ballot} ballot; the member is not of it"
+            found[c["name"]] = (got, why)
+        links = nominee_links(race, {n: g[0] if g else None for n, (g, _w) in found.items()})
+        for c in race["candidates"]:
+            got, why = found[c["name"]]
             if not got:
                 if why:
                     report.append((day, f"{ballot} primary {gkey}", c["name"],
@@ -538,11 +546,22 @@ def primary_rows(day, doc, roster):
                 row["fl"] = 1
             inc = incumbents(gkey, race, day, roster)
             row["c"] = BE.race_card(gkey, race, {}, doc, {}, day, {}, mine=BE.same_name(c["name"]),
-                                    anchor=False, primary=ballot, inc=inc)
+                                    anchor=False, primary=ballot, inc=inc, links=links)
             if inc:
                 row["inc"] = gkey[0]
             rows[member["id"]].append(row)
     return rows, report
+
+
+def nominee_links(race, matched):
+    """{same_name: the member's page} for a primary's card: each nominee
+    ("nominated": true) whom `matched` ({printed name: member or None}, the
+    certain rule's answer for each candidate) places, as a general's card
+    links the winner members_elect places (the owner, 20 November 2026: a
+    sitting member's chip on a primary's card was not a link). A candidate
+    who was not nominated links nowhere, as a general's loser does not."""
+    return {BE.same_name(c["name"]): m["slug"] for c in race["candidates"]
+            for m in [matched.get(c["name"])] if m and m.get("slug") and c.get("nominated") is True}
 
 
 def near_members(name, key, people):
@@ -802,8 +821,11 @@ def special_rows(specials, generals, roster, people=None):
         for pc, pcands in prims:
             ballot = str(pc.get("party") or "").upper()
             prace = special_race(pc, pcands, general)
+            placed = {c["name"]: link(c, pc["election"], prace, f"{ballot} special primary {key}")
+                      for c in prace["candidates"]}
+            links = nominee_links(prace, placed)
             for c in prace["candidates"]:
-                m = link(c, pc["election"], prace, f"{ballot} special primary {key}")
+                m = placed[c["name"]]
                 if m is None:
                     continue
                 row = {"d": pc["election"], "st": "special-primary", "pp": ballot, "k": key,
@@ -813,7 +835,7 @@ def special_rows(specials, generals, roster, people=None):
                     row["fl"] = 1
                 row.update(extra)
                 row["c"] = BE.race_card(key, prace, {}, {}, {}, pc["election"], {}, mine=BE.same_name(c["name"]),
-                                        anchor=False, primary=ballot)
+                                        anchor=False, primary=ballot, links=links)
                 rows[m["id"]].append(row)
     return rows, report
 
