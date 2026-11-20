@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.15
+# GRANITE_VERSION: 2026-11-07.16
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -333,8 +333,9 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=Fal
     back: the shares would say what the hidden row holds.
 
     A PRIMARY (`primary`, a member's Elections tab): the reader's leaders,
-    "nominated": true, are marked Most votes -- never "nominated", which the
-    files do not say (the design's decision 4) -- and nothing is Elected.
+    "nominated": true -- as many as the race has seats -- are marked
+    Nominated (the owner's word, 20 November 2026; until then "Most votes",
+    which a three-seat primary showed three times), and nothing is Elected.
 
     AN INCUMBENT (`inc`, same_name of each, build_member_elections.incumbents:
     a certain match who held a seat of the race's chamber on election day) has
@@ -369,7 +370,7 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=Fal
             + (inc_mark(chamber) if same_name(c["name"]) in inc else "")
             + (' <span class="er-wi">write-in</span>' if c.get("write_in") else "")
             + (" " + C.chip("Elected") if won else "")
-            + (" " + C.chip("Most votes") if most else "")
+            + (" " + C.chip("Nominated") if most else "")
             + (" " + C.chip("Tied for the last seat") if tied and not won else "")
             + f'</span><span class="er-n">{c["votes"]:,}{share}</span>'
             + f'<span class="er-b" aria-hidden="true"><i class="er-{bar_cls}" '
@@ -467,7 +468,7 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
     margin's label is at the top right of either (margin_chip), and the gap
     under the rows (margin_line); the page's card also carries the margin for
     its filter (margin_data). `primary` is a primary's party, for a member's
-    tab (build_member_elections.primary_rows): its leaders Most votes, its
+    tab (build_member_elections.primary_rows): its leaders Nominated, its
     label with no letter; the race's "other_votes", the votes for candidates
     of another party the tab leaves off, are said in the note."""
     elected_names = {e["n"]: e for e in me.get("elected") or []}

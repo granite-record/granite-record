@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.3
+# GRANITE_VERSION: 2026-11-19.4
 """
 A town page's Elections tab (the owner, 19 November 2026: "Town pages should
 also have an elections tab organized by election and year which should
@@ -577,7 +577,7 @@ def cand_rows(race, primary=False):
         bar = p[:1] if p[:1] in ("R", "D") else "X"
         mark = ""
         if primary:
-            mark = " " + C.chip("Most votes") if c.get("most") else ""
+            mark = " " + C.chip("Nominated") if c.get("most") else ""
         elif c.get("won") is True:
             mark = " " + C.chip("Won the race")
         elif c.get("won") is None:

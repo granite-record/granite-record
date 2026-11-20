@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.11
+# GRANITE_VERSION: 2026-11-10.12
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -81,7 +81,8 @@ their own party's ballot is a row ("st": "primary", "pp": the party), matched
 by the same certain rule as a loss above, never by the hand file (its matches
 are the general's), and never on another party's ballot: the votes a file
 lists for another party's candidates are left off the card and said in its
-note. The leader is "Most votes", never nominated; the label has no letter.
+note. Each leader, as many as the seats, is marked "Nominated" (the owner,
+20 November 2026; "Most votes" until then); the label has no letter.
 A race with no more candidates than seats is a card too, labelled Unopposed.
 
 THE SPECIAL ELECTIONS (the owner, 19 November 2026, "Yes to all 9" of
