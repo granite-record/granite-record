@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.7
+# GRANITE_VERSION: 2026-09-20.8
 """
 The Secretary of State's clerks and polling places, out of the CSV export.
 
@@ -78,7 +78,7 @@ import re
 import parse_clerks
 import parse_officials
 import town_sources
-from entities import slug
+from slugs import slug
 
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.

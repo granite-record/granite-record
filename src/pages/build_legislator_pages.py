@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.46
+# GRANITE_VERSION: 2026-09-04.47
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -43,7 +43,7 @@ import re
 import unicodedata
 
 import build_date
-import entities
+import slugs
 import components as C
 import member_links as ML
 import shell as S
@@ -75,7 +75,7 @@ def person_slug(m):
         seat = f"{m.get('chamber','')}-{m.get('district','')}"
     raw = f"{name} {seat}"
     raw = unicodedata.normalize("NFKD", raw).encode("ascii", "ignore").decode()
-    return entities.slug(raw)
+    return slugs.slug(raw)
 
 
 def describe(m, rec=None):

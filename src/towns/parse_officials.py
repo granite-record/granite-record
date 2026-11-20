@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.9
+# GRANITE_VERSION: 2026-09-12.10
 """
 Municipal officials, out of the Department of Transportation's directory.
 
@@ -98,7 +98,7 @@ import json
 import pathlib
 import re
 
-import entities
+import slugs
 import town_sources
 
 # The repository root, wherever this file sits (_paths.py): the data it
@@ -453,7 +453,7 @@ def main():
         if not real:
             unmatched.append(name)
             continue
-        s = entities.slug(real)
+        s = slugs.slug(real)
         out[s] = dict(rec, as_of=as_of)
     counts = collections.Counter(
         o["position"] for r in out.values() for o in r["officials"])

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.13
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -95,6 +95,8 @@ import re
 import string
 from pathlib import Path
 
+from slugs import slug  # lower case, letters and digits, a hyphen between: the one rule (slugs.py)
+
 FORMAT = 1
 KINDS = ("person", "office", "district", "place", "term", "tenure", "contest", "candidacy")
 FILES = {"person": "people.json", "office": "offices.json", "district": "districts.json",
@@ -123,27 +125,6 @@ PLACE = r"^[^|]+\|\d+$"
 # Primary readers id their races (src/parse/parse_sos_primary_results.py).
 CONTEST = r"^\d{4}-\d{2}-\d{2}\.[a-z]+(?:-[a-z]+)?\.[a-z0-9:-]+\.[a-z0-9-]+$"
 CANDIDACY = r"^\d{4}-\d{2}-\d{2}\.[a-z]+(?:-[a-z]+)?\.[a-z0-9:-]+\.[a-z0-9-]+\.[a-z0-9-]+$"
-
-
-def slug(text):
-    """Lower case, letters and digits, a hyphen between: "Hillsborough" -> "hillsborough",
-    "Kelly Ayotte" -> "kelly-ayotte", "r/d" -> "r-d"."""
-    return re.sub(r"[^a-z0-9]+", "-", str(text or "").lower()).strip("-")
-
-
-def town_slug(town, ward):
-    """A town's page key: "Bean's Grant", "0" -> "bean-s-grant"; "Manchester", "3" ->
-    "manchester-ward-3". A ward of "" or "0" is the whole town, and a ward is
-    written as it is given.
-
-    ONE HOME FOR EACH SINCE 20 NOVEMBER 2026. The page builders, the town
-    readers and the downloads each wrote slug out for themselves (fourteen
-    files), and build_town_pages and fetch_town_clerks this one; every copy gave
-    the same answer on every real input before it was pointed here (src/TWINS.md;
-    preflight's _slug_one_home holds them). parse_clerks writes a ward's key its
-    own way, its leading zeros dropped, and keeps that."""
-    s = slug(town)
-    return f"{s}-ward-{ward}" if ward and str(ward) != "0" else s
 
 
 def place_id(town, ward):

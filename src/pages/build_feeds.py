@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.52
+# GRANITE_VERSION: 2026-09-04.53
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -42,7 +42,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import build_date
-from entities import slug
+from slugs import slug
 import build_members_elect as BME
 import build_pages as BP
 import build_rsa as BR

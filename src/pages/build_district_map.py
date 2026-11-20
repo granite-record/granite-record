@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.7
+# GRANITE_VERSION: 2026-10-09.8
 """
 The district map's data, and its script and stylesheet, into the site.
 
@@ -69,7 +69,7 @@ import shutil
 import state_settings as ST
 import strip_js
 import town_boards
-from entities import slug
+from slugs import slug
 # Who November's election sent, while there are any: the one reader of
 # site/members_elect.json, beside its one writer (16 October 2026). And the
 # one reader of corrections/officials.json, which puts a councillor's or a

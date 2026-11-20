@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.30
+# GRANITE_VERSION: 2026-11-16.31
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -1976,10 +1976,10 @@ def _party_readers_read_the_table(ST):
                   "planted table read as planted")
 
 
-# A NAME AS AN ADDRESS HAS ONE HOME (the refactor's finding 8, 20 November 2026): entities.slug, and
-# entities.town_slug for a town's page key. The copies that were only the rule are bound to it by
-# import, by the name they had (file, that name, entities' name); every other reader calls
-# entities.slug where it wrote the rule out. Each gave the same answer as the home on all 26,340
+# A NAME AS AN ADDRESS HAS ONE HOME (the refactor's finding 8, 20 November 2026): slugs.slug, and
+# slugs.town_slug for a town's page key (src/lib/slugs.py, which the model takes slug from too). The copies that were only the rule are bound to it by
+# import, by the name they had (file, that name, slugs' name); every other reader calls
+# slugs.slug where it wrote the rule out. Each gave the same answer as the home on all 26,340
 # real strings, 591 town-ward pairs and 2,563 member records it was run on.
 _SLUG_READERS = (
     ("src/towns/parse_clerks_csv.py", "slug", "slug"),
@@ -1997,23 +1997,24 @@ _SLUG_WRITTEN = re.compile(r"""\[\^a-z0-9\]\+['"]\s*,\s*['"]-['"]""")
 
 
 def _slug_reader_faults(tree, name, home):
-    """What is wrong with `name`'s binding to entities.<home> in a parsed file; [] where none."""
-    took = [n for n in tree.body if isinstance(n, ast.ImportFrom) and n.module == "entities"
+    """What is wrong with `name`'s binding to slugs.<home> in a parsed file; [] where none."""
+    took = [n for n in tree.body if isinstance(n, ast.ImportFrom) and n.module == "slugs"
             and any(a.name == home and (a.asname or a.name) == name for a in n.names)]
     again = [n.lineno for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.Assign))
              and (getattr(n, "name", None) == name or any(isinstance(t, ast.Name) and t.id == name
                                                           for t in getattr(n, "targets", [])))
              and n.col_offset == 0]
-    return ([] if took else [f"no `from entities import {home}` binds {name}"]) + \
+    return ([] if took else [f"no `from slugs import {home}` binds {name}"]) + \
            [f"line {n} binds {name} again" for n in again]
 
 
-@check("files", "a name is made an address by entities.slug alone, and a town's page key by entities.town_slug: "
+@check("files", "a name is made an address by slugs.slug alone, and a town's page key by slugs.town_slug: "
                 "the copies are bound to them and the rule is written out nowhere else")
 def _slug_one_home():
     """A NAME AS AN ADDRESS, ONE HOME (finding 8 of stage0-code.md, "slug x6"). Lower case, letters
     and digits, one hyphen between: written out in fourteen files until 20 November 2026, and a town
-    with its ward in two more; entities.slug and entities.town_slug now. Held: each copy
+    with its ward in two more; slugs.slug and slugs.town_slug now (src/lib/slugs.py, not the
+    model's module: a module importing entities reads the model). Held: each copy
     _SLUG_READERS names is bound to the home by import and bound nowhere else in its file; no code
     file outside the suite and the tests writes the rule out (`re.sub(r"[^a-z0-9]+", "-", ...)`) but
     the home and _SLUG_OTHERS, each another rule said there; and the home's answers. A reader that
@@ -2022,37 +2023,39 @@ def _slug_one_home():
     (a ward's leading zeros dropped) around it. Planted, each must be refused: the copy written back,
     a second binding, the rule inline."""
     import entities as EN
+    import slugs as SL
     for path, name, home in _SLUG_READERS:
         faults = _slug_reader_faults(_parsed(_paths.ROOT / path), name, home)
-        assert not faults, f"{path}: " + "; ".join(faults) + f" (read entities.{home})"
+        assert not faults, f"{path}: " + "; ".join(faults) + f" (read slugs.{home})"
     stray = []
     for f in _paths.code_files("*.py"):
         rel = f.relative_to(_paths.ROOT).as_posix()
         if _in_suite(f) or "tests" in f.relative_to(_paths.ROOT).parts or rel in _SLUG_OTHERS \
-                or rel == "src/lib/entities.py":
+                or rel == "src/lib/slugs.py":
             continue
         stray += [f"{rel}:{i}" for i, line in enumerate(_source(f, errors="replace").splitlines(), 1)
                   if _SLUG_WRITTEN.search(line)]
     assert not stray, ("the slug rule written out again: " + ", ".join(stray[:8])
-                       + ". Call entities.slug, or say in _SLUG_OTHERS why it is another rule")
+                       + ". Call slugs.slug, or say in _SLUG_OTHERS why it is another rule")
     for path in _SLUG_OTHERS:
         assert any(_SLUG_WRITTEN.search(l) for l in _source(_paths.ROOT / path).splitlines()), \
             f"{path} no longer writes its own: take it off _SLUG_OTHERS"
-    said = [EN.slug(x) for x in ("Bean's Grant", "Kelly Ayotte", "r/d", "  Hart's Location ", None, "Wentworth's Loc.")]
+    said = [SL.slug(x) for x in ("Bean's Grant", "Kelly Ayotte", "r/d", "  Hart's Location ", None, "Wentworth's Loc.")]
     assert said == ["bean-s-grant", "kelly-ayotte", "r-d", "hart-s-location", "", "wentworth-s-loc"], said
-    said = [EN.town_slug(t, w) for t, w in (("Manchester", "3"), ("Bean's Grant", "0"), ("Acworth", ""), ("Nashua", 9))]
+    said = [SL.town_slug(t, w) for t, w in (("Manchester", "3"), ("Bean's Grant", "0"), ("Acworth", ""), ("Nashua", 9))]
     assert said == ["manchester-ward-3", "bean-s-grant", "acworth", "nashua-ward-9"], said
+    assert EN.slug is SL.slug, "entities writes a slug of its own: it takes slugs.slug"
     for planted, name, home in (
             ('def slug(s):\n    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")\n', "slug", "slug"),
-            ('from entities import slug\ndef slug(s):\n    return s\n', "slug", "slug"),
-            ('from entities import slug\nslug = str.lower\n', "slug", "slug"),
-            ('from entities import slug\n', "slug", "town_slug")):
+            ('from slugs import slug\ndef slug(s):\n    return s\n', "slug", "slug"),
+            ('from slugs import slug\nslug = str.lower\n', "slug", "slug"),
+            ('from slugs import slug\n', "slug", "town_slug")):
         assert _slug_reader_faults(ast.parse(planted), name, home), f"a copy of the slug rule was missed: {planted!r}"
-    assert not _slug_reader_faults(ast.parse("from entities import town_slug as slug\n"), "slug", "town_slug")
+    assert not _slug_reader_faults(ast.parse("from slugs import town_slug as slug\n"), "slug", "town_slug")
     for line in ('s = re.sub(r"[^a-z0-9]+", "-", town.lower()).strip("-")', "k = re.sub(r'[^a-z0-9]+', '-', t)"):
         assert _SLUG_WRITTEN.search(line), f"an inline copy was missed: {line}"
     assert not _SLUG_WRITTEN.search('re.sub(r"[^a-z0-9]+", " ", s)') and not _SLUG_WRITTEN.search('re.sub(r"[^a-z0-9]+", "_", s)')
-    return "ok", (f"{len(_SLUG_READERS)} copies bound to entities.slug and town_slug, the rule written out "
+    return "ok", (f"{len(_SLUG_READERS)} copies bound to slugs.slug and town_slug (entities' slug the same one), the rule written out "
                   f"nowhere else but {len(_SLUG_OTHERS)} other rule (state_sources' stem); the home's answers "
                   "held, and each planted copy refused")
 

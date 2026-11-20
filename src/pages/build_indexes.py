@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.37
+# GRANITE_VERSION: 2026-09-13.38
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -50,7 +50,7 @@ from urllib.parse import quote_plus
 import bill_order as BO
 import build_date
 import build_legislator_pages as BLP
-import entities
+import slugs
 import guides as G
 import officials_tabs as OT
 import shell as S
@@ -355,7 +355,7 @@ def towns_page(site, base, towns, urls):
     for town, seats in sorted(towns.items()):
         county = (seats[0].get("county") if seats else "") or "Other"
         wards = sorted({s.get("ward") or "0" for s in seats}, key=lambda w: int(w) if w.isdigit() else 0)
-        base_slug = entities.slug(town)
+        base_slug = slugs.slug(town)
         links = []
         for w in wards:
             slug = f"{base_slug}-ward-{w}" if w and w != "0" else base_slug
@@ -750,7 +750,7 @@ def find_index(site, legs, towns):
     pages = {p.stem for p in (site / "town").glob("*.html")}
     for town, seats in sorted(towns.items()):
         county = (seats[0].get("county") if seats else "") or ""
-        stem = entities.slug(town)
+        stem = slugs.slug(town)
         wards = sorted({s.get("ward") or "0" for s in seats},
                        key=lambda w: int(w) if str(w).isdigit() else 0)
         where = (county + " County" if county else "") or "New Hampshire"

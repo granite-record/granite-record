@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.6
+# GRANITE_VERSION: 2026-09-12.7
 """
 The town clerk and the polling place for every town and ward, in one request.
 
@@ -80,7 +80,7 @@ import re
 import urllib.error
 import urllib.request
 
-from entities import town_slug as slug  # the key build_town_pages.py names its files with
+from slugs import town_slug as slug  # the key build_town_pages.py names its files with
 
 URL = "https://app.sos.nh.gov/statelistclerkandpolling"
 RAW = Path("archive/sos_clerks.html")

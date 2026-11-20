@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.3
+# GRANITE_VERSION: 2026-11-12.4
 """
 The town and ward rows of the Secretary of State's State Representative and
 State Senate general-election files, kept (stage 1 of the elections plan,
@@ -64,7 +64,7 @@ import json
 import re
 import unicodedata
 
-import entities
+import slugs
 from collections import Counter, defaultdict
 
 TOWN_COLUMNS = ["row_id", "election_id", "election_date", "contest_id", "office", "district_key",
@@ -91,7 +91,7 @@ TIEOUT = Path("collected") / "election_tieout.json"
 
 def slug(s):
     s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode("ascii")
-    return entities.slug(s)
+    return slugs.slug(s)
 
 
 def district_words(key):

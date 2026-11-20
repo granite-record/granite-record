@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.26
+# GRANITE_VERSION: 2026-10-23.27
 """
 The site in more than one language, and how a translation stays current.
 
@@ -71,7 +71,7 @@ import json
 import re
 
 import _paths
-import entities
+import slugs
 
 # Where the pages' code is: the catalogs beside it in lang/, and the files
 # whose words translation_audit.code_words() reads.
@@ -233,7 +233,7 @@ def say_word(lang, group, en):
 # English again, and named by preflight, until its translation catches up.
 def gloss_key(term, field):
     """"gloss.itl.name", "gloss.public-hearing.says"."""
-    return f"gloss.{entities.slug(term)}.{field}"
+    return f"gloss.{slugs.slug(term)}.{field}"
 
 
 def gloss_entries():

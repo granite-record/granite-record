@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.61
+# GRANITE_VERSION: 2026-09-09.62
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -75,7 +75,7 @@ import key_dates as KD
 import shell as S
 import state_settings as ST
 import town_websites
-from entities import town_slug as slug
+from slugs import town_slug as slug
 # Who November's election sent, for the weeks before they sit: the one
 # reader of site/members_elect.json, beside its one writer (16 October 2026).
 # And the one reader of corrections/officials.json, which puts each office's

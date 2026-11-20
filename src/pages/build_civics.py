@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.97
+# GRANITE_VERSION: 2026-09-08.98
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -41,7 +41,7 @@ from collections import Counter
 import build_date
 import chrome
 import civics
-import entities
+import slugs
 import i18n as I
 import inline_js as IJ
 import components as C
@@ -1196,7 +1196,7 @@ def _slug(inner):
     """A heading's own words, as an address."""
     bare = html.unescape(re.sub(r"<[^>]+>", "", inner))
     flat = unicodedata.normalize("NFKD", bare).encode("ascii", "ignore").decode()
-    s = entities.slug(flat)
+    s = slugs.slug(flat)
     if not s:
         raise SystemExit("a learn heading has no words to make an address "
                          "from: " + inner[:60])

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.4
+# GRANITE_VERSION: 2026-10-17.5
 """
 New Hampshire's Constitution, read into collected/constitution.json from the
 pages nh.gov publishes it on.
@@ -70,7 +70,7 @@ import html
 import json
 import re
 
-import entities
+import slugs
 
 SOURCES = _paths.ROOT / "records" / "sources" / "constitution"
 OUT = _paths.ROOT / "collected" / "constitution.json"
@@ -297,7 +297,7 @@ def parse(src=SOURCES):
 
 
 def _slug(name):
-    return entities.slug(name.lower().replace("etc.", ""))
+    return slugs.slug(name.lower().replace("etc.", ""))
 
 
 def articles(con):
