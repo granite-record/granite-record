@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -3319,6 +3319,8 @@ def _changed_selects():
       _rows_one_at_a_time, and fewer than half of the checks;
       a change to narrative.py chooses a check that needs it and _chain,
       whose fixture build_site_v2 builds, which imports it;
+      a change to a builder's own script in inline/ chooses what a change
+      to the builder does: chrome's language script, _language_choice;
       a change to a check's own lines chooses it, and a change to main's,
       or to _in_order's, chooses every check, whichever file of the suite
       holds them; and on two files planted as a suite, the lines a change
@@ -3362,6 +3364,10 @@ def _changed_selects():
         "a change to narrative.py left out " + ", ".join(
             (sorted(set(needs_it) - narr) + ([] if "_chain" in narr else ["_chain"]))[:5]))
     assert "_rows_one_at_a_time" not in narr, "a change to narrative.py chose a check of JSON rows"
+    lang = chosen(["src/pages/inline/chrome.lang_head.js"])
+    assert "_language_choice" in lang and "_rows_one_at_a_time" not in lang, (
+        "a change to chrome's language script in inline/ did not choose _language_choice, "
+        "which runs it, or chose a check of JSON rows")
     index = CS._Index([(p.relative_to(_paths.ROOT).as_posix(), _parsed(p)) for p in suite])
 
     def moved(name, line=None):
