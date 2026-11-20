@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.1
+# GRANITE_VERSION: 2026-11-19.3
 """
 What the page builders share: the pieces more than one builder draws a page
 with, kept here rather than inside one builder that the others import.
@@ -11,6 +11,7 @@ with, kept here rather than inside one builder that the others import.
     P.district_tag("H", "07", "Carroll")   # "Carr 7"
     P.tel(num), P.maillink(addr), P.weblink(url)   # the town pages and the Officials tabs
     P.TABS_JS                  # the tab strip's script (the town pages, Legislators, the Learn hub)
+    P.bill_prefix("CACR9")     # "CACR"; with what each kind must clear and the chip's six words
 
 WHY THIS MODULE (the refactor's stage 3, 19 November 2026). These were the
 builders' own -- build_pages' calendar cards, Latest activity's sizes and
@@ -25,6 +26,15 @@ build_site_v2.district_tag, build_town_pages.tel, ...), so nothing that reads
 the old name changed. A builder imports this module; this module imports no
 builder at load (committee_codes asks build_committees for today's committees
 only when it is handed the data to ask with).
+
+AND THE BILL BUILDER'S OWN SHARED PIECES (20 November 2026). build_site_v2 is
+split by subsystem into modules beside it (stage0-code.md, finding 4), and a
+module split out of it may not import it back. What those modules read of
+build_site_v2 and is no one subsystem's came here the same way: what a bill of
+each kind has to clear (SINGLE_CHAMBER, NO_GOVERNOR, BILL_OF_INTENT),
+bill_prefix, the chip's six words, the docket's signature (SIGNED_RE), a
+CACR's referendum (REFERENDUM), docket_line and the Senate's Rule 3-23 deaths
+(TABLE_DEATH); build_site_v2 imports each back under its name.
 
 Each part keeps the comments that say why it is as it is; the section a part
 came from is named above it.
@@ -759,6 +769,100 @@ def district_tag(chamber, district, county=None, county_abbr=None):
     ab = (county_abbr or "").strip() or COUNTY_OF.get(
         (county or "").strip().rstrip(".").lower(), "")
     return f"{ab} {d}" if ab else ""
+
+
+# ---- from build_site_v2: what a bill of each kind has to clear -----------------------------
+
+# What a bill of each kind actually has to clear before it is finished.
+#
+# Reading every bill as House, then Senate, then governor is right for HB and
+# SB and wrong for everything else. A House Resolution is adopted by the House
+# and that is the end of it; a concurrent resolution needs both chambers and
+# never goes to the governor; a CACR needs both chambers and then the voters.
+# Measured on this term: 32 adopted resolutions read "Passed one chamber" and
+# three more read "In progress", one of them offering "Pending action in the
+# other chamber" for a resolution that has no other chamber.
+# "SS" is a special session's numbering of the same kinds: SSHR 1 of 2008 is
+# the House adopting its rules, SSHCR 1 of 2015 a concurrent resolution both
+# chambers adopted the same day.
+#
+# AND A HOUSE BILL OF INTENT, the House's measure of 1989-1994 (HBI, fourteen
+# of them): passing one sends its subject to its committee to study and report
+# on -- "STATEMENT OF INTENT The committee to which this bill is referred
+# shall review existing legislation ... The committee shall submit any
+# recommendations for legislation" (HBI 2 of 1991's own text) -- and it never
+# goes to the Senate; none of the fourteen dockets has a Senate row. Read as a bill,
+# the six the House passed said "Passed one chamber", of a second chamber
+# they were never going to, and HBI 2011 of 1990 "Committee report filed",
+# which is the report of the study it ordered.
+BILL_OF_INTENT = "HBI"
+SINGLE_CHAMBER = {"HR": "House", "SR": "Senate", "SSHR": "House", "SSSR": "Senate",
+                  BILL_OF_INTENT: "House"}
+NO_GOVERNOR = {"HCR", "SCR", "CACR", "SSHCR", "SSSCR"}
+
+
+# ---- from build_site_v2: a bill's kind by its letters --------------------------------------
+
+def bill_prefix(bid):
+    """HB1442 -> HB, CACR9 -> CACR. The letters, which say what kind it is."""
+    m = re.match(r"^[A-Za-z]+", str(bid or ""))
+    return m.group(0).upper() if m else ""
+
+
+# ---- from build_site_v2: the chip's six words ----------------------------------------------
+
+# THE SIX ARE WORDS, WRITTEN ONCE (the component plan's C3, 9 October 2026):
+# src/pages/words/chips.json's "chip", in the person's order, each with the
+# class app.js colours it by, which components.py reads and the build writes
+# into components.js. A seventh word there, or one fewer, stops the build
+# here rather than shifting a word onto the wrong ending; _chip_words holds
+# the six to the person's.
+CHIP_WORDS = tuple(WORDBOOK["chips"]["chip"])
+BECAME_LAW, DIED, INTERIM_STUDY, TABLED, VETOED, WITHDRAWN = CHIP_WORDS
+
+
+# ---- from build_site_v2: the governor's signature in the docket ----------------------------
+
+# The docket writes the signature two ways -- "Signed by Governor Ayotte
+# 7/10/2026" and "Signed by the Governor on 7/10/2026" -- and the second is
+# 233 of the 632. Reading only the first left those bills showing whatever
+# they were before it: 137 "Passed one chamber", 82 "Passed, awaiting the
+# governor", nine "In committee" and five "Killed", for bills that are law.
+SIGNED_RE = re.compile(r"signed by (?:the )?governor", re.I)
+
+
+# ---- from build_site_v2: a CACR's referendum in the docket ---------------------------------
+
+# What became of a CACR once both chambers passed it is the voters' to say, and
+# the docket records their answer for nine of them: "AMENDMENT ADOPTED BY 2/3
+# REF(199,229-26,336)" (CACR 23 of 1990) and "Amendment Failed Referendum
+# (271,091 - 205,589)" (CACR 5 of 2004). A referendum needs two thirds, so
+# "failed" there means it did not reach two thirds, not that most voted no.
+REFERENDUM = re.compile(r"\bamendment\s+(?P<how>adopted|failed)\b[^;]{0,20}?\bref(?:erendum)?\b\s*\(",
+                        re.I)
+
+
+# ---- from build_site_v2: the docket line an event was read from ----------------------------
+
+def docket_line(e):
+    """The docket line an event was read from, as the clerk typed it: the
+    whole line where the event is one question of a line told question by
+    question and is the one that carries it ("line"), else its own `raw`."""
+    return e.get("line") or e.get("raw") or ""
+
+
+# ---- from build_site_v2: a Senate Rule 3-23 death in the docket ----------------------------
+
+# THE 2020 SENATE LEFT 427 BILLS ON THE TABLE, and its Rule 3-23 killed them at
+# adjournment: every one's last docket line is "Inexpedient to Legislate,
+# Senate Rule 3-23, Adjournment 09/16/2020", while its status field still said
+# LAID ON TABLE. The site already called this ending "Died on the table" on 211
+# bills whose last line is the same, 164 of them in other terms (2015-2016 to
+# 2023-2024) and 47 in 2019-2020 itself.
+#
+# THE 2025 ROW HAS NO "ADJOURNMENT": "Inexpedient to Legislate, Senate Rule
+# 3-23, 10/31/2025". The rule is named, and that is what the row is.
+TABLE_DEATH = re.compile(r"inexpedient to legislate,\s*senate\s+rule\s+3-23\b", re.I)
 
 
 # ---- from build_town_pages: a number that dials, an address that mails ---------------------

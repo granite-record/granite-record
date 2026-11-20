@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.68
+// GRANITE_VERSION: 2026-09-16.69
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -2193,7 +2193,7 @@ function ytLook(box,res){
 /* THE LANGUAGE, A ROW OF SETTINGS (the person, 23 October 2026: "an option
    to select the language manually in the settings section or to
    automatically set it based on the browser"). i18n.py says how the site's
-   languages are kept; chrome.LANG_HEAD, in every page's head, has already
+   languages are kept; chrome.lang_head, in every page's head, has already
    read the choice (gr-lang) and the browser's languages, gone to this page
    in the language wanted where it has one, and marked html.langs where a
    language is on offer to this reader. Without that mark there is no row.

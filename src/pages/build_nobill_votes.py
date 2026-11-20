@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.8
+# GRANITE_VERSION: 2026-10-23.9
 """
 A page a term of the votes not on a bill: what each was about, how it went,
 and the session day it was taken on.
@@ -55,6 +55,7 @@ import re
 from collections import Counter, defaultdict
 
 import components as C
+import inline_js as IJ
 import journal_motions as JM
 import proceedings as P
 import shell as S
@@ -228,22 +229,8 @@ def row_html(x):
             f'<td class="o" data-l="Result">{chip} <i>{E(count)}</i>{note}</td></tr>')
 
 
-SCRIPT = """<script>
-(function(){
-  var sel=document.querySelector(".nbkind"),rows=document.querySelectorAll(".nbtab tbody tr"),
-      count=document.querySelector(".nbcount");
-  if(!sel)return;
-  function show(){
-    var k=sel.value,n=0;
-    [].forEach.call(rows,function(r){var on=!k||r.dataset.kind===k;r.hidden=!on;if(on)n++;});
-    count.textContent=n.toLocaleString("en-US")+(n===1?" vote":" votes")+" shown";
-    if(history.replaceState)history.replaceState(null,"",location.pathname+(k?"?kind="+k:"")+location.hash);
-  }
-  sel.addEventListener("change",show);
-  var want=new URLSearchParams(location.search).get("kind");
-  if(want&&[].some.call(sel.options,function(o){return o.value===want;})){sel.value=want;show();}
-})();
-</script>"""
+# The filter by kind, and the kind in the address: inline/build_nobill_votes.js.
+SCRIPT = "<script>\n" + IJ.script("build_nobill_votes") + "</script>"
 
 
 def page_body(term, rows, terms, path, base):

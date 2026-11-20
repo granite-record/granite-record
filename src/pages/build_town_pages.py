@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.59
+# GRANITE_VERSION: 2026-09-09.60
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -70,6 +70,7 @@ import urllib.parse
 
 import build_date
 import components as C
+import inline_js as IJ
 import key_dates as KD
 import shell as S
 import state_settings as ST
@@ -1604,24 +1605,8 @@ def map_section(town, ward, dist):
 # Map tab is shown, at the size it will have, since a map drawn into
 # a hidden panel measures nothing. The page carries <base href="/">, so the
 # addresses are the site root's either way.
-MAP_JS = """<link rel="stylesheet" href="/map.css">
-<script src="/map.js" defer></script>
-<script>
-(function(){
-  var el=document.getElementById("twnmap"),api=null;
-  if(!el)return;
-  function mount(){
-    if(api||!window.GRMap||el.offsetParent===null)return;
-    api=GRMap.mount(el,{layer:"base",layers:["base","senate","exec","cong"],
-      frame:el.dataset.town,town:el.dataset.town,ward:el.dataset.ward||null,
-      pick:el.dataset.pick||null,list:false,dim:true});
-  }
-  addEventListener("DOMContentLoaded",mount);
-  var pane=el.closest(".twnpane");
-  if(pane&&window.MutationObserver)
-    new MutationObserver(mount).observe(pane,{attributes:true,attributeFilter:["hidden"]});
-})();
-</script>"""
+MAP_JS = ('<link rel="stylesheet" href="/map.css">\n<script src="/map.js" defer></script>\n<script>\n'
+          + IJ.script("build_town_pages") + "</script>")
 
 
 def tabbed(label, panels):

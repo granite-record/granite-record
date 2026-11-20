@@ -27,6 +27,9 @@ Scripts that write no record and no page, only a verdict or a report:
   pools and written as SQL for the owner to load (`bench_pack`), and what
   they answered, pulled, screened and, on her word, merged into the ledger
   (`bench_pull`, the one writer of the ledger but `review.py`);
+  the bench page's script, and `drawn_pages`' node driver, are files in
+  `inline/` (`review.js`, `drawn_pages.js`), each read through
+  `inline_js` as src/pages/README.md says;
 - a built site against the kept manifest of a commit's build
   (`site_manifest`: `record` after a build, `compare` after a change), so a
   "nothing moved" proof builds its baseline once a commit;

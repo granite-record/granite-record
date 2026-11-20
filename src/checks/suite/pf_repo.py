@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.18
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -900,15 +900,22 @@ def _code_dirs_unlisted(root=None):
     nobody's import path, and no guard that reads every script (SCRIPT_DIRS)
     reads it. A folder that holds data a module reads by its own path, as
     components.py reads src/pages/words/ (9 October 2026), holds no code, is
-    imported by nobody, and is not one."""
+    imported by nobody, and is not one. Nor is a builder's inline/ folder
+    beside a code folder (inline_js, 20 November 2026): scripts its builder
+    reads by their path and writes into its pages, and nothing imports."""
+    import inline_js as IJ
     base = Path(root).resolve() if root is not None else _paths.ROOT
     listed = {(base / d).resolve() for d in _paths.SRC_DIRS}
     src = base / "src"
     if not src.is_dir():
         return []
+
+    def inline(d):
+        return d.name == IJ.FOLDER and d.parent.resolve() in listed and all(
+            f.suffix == ".js" for f in d.iterdir() if f.is_file())
     return [d.relative_to(base).as_posix()
             for d in sorted(p for p in src.rglob("*") if p.is_dir() and p.name != "__pycache__")
-            if d.resolve() not in listed
+            if d.resolve() not in listed and not inline(d)
             and any(f.is_file() and (f.suffix == ".py" or f.suffix in _paths.BROWSER)
                     for f in d.iterdir())]
 
@@ -939,12 +946,14 @@ def _code_names_unique():
                      "src/pages/README.md": "", "src/pages/b.js": "", "tests/b.js": "",
                      "watchers/c.py": "", "tests/c.py": "", "notes.json": "",
                      "tests/notes.json": "", "src/extra/d.py": "", "src/web/e.js": "",
-                     "src/pages/words/w.json": "", "src/pages/words/README.md": ""})
+                     "src/pages/words/w.json": "", "src/pages/words/README.md": "",
+                     "src/pages/inline/b.js": "", "src/parse/inline/f.py": ""})
         got = _code_name_clashes(tmp)
         assert got == {"a.py": ["a.py", "src/parse/a.py"], "b.js": ["src/pages/b.js", "tests/b.js"],
                        "c.py": ["watchers/c.py", "tests/c.py"]}, \
             f"the reader of names found {got} in a tree made to share three"
-        assert _code_dirs_unlisted(tmp) == ["src/extra", "src/web"], _code_dirs_unlisted(tmp)
+        assert _code_dirs_unlisted(tmp) == ["src/extra", "src/parse/inline", "src/web"], \
+            _code_dirs_unlisted(tmp)
         off = _src_dirs_off_list(("", "src/parse", "src/extra", "watchers"), ("src/parse",))
         assert off == ["src/extra"], f"the reader of the lists found {off}"
     finally:
@@ -964,6 +973,166 @@ def _code_names_unique():
     n = len(_paths.code_files("*.py"))
     assert n >= 160, f"only {n} scripts were read in the code folders; there were 165 on 6 October"
     return "ok", f"{n} scripts across {len(_paths.code_dirs())} code folders, each name once"
+
+
+# A BUILDER'S OWN SCRIPTS ARE FILES (20 November 2026, the refactor's finding 5).
+# What were JavaScript strings in a builder are .js files in inline/ beside it,
+# which inline_js reads and the builder writes into its page as the string was
+# (src/pages/README.md). A script's marks, in a string of a builder that has
+# moved its scripts: a function, an arrow, a listener, the page or the window,
+# a declaration.
+_INLINE_MARK = re.compile(r"\bfunction\s*\w*\s*\(|=>|\baddEventListener\s*\(|\bdocument\.\w"
+                          r"|\bwindow\.\w|\b(?:var|let|const)\s+\w+\s*=")
+# Kept in a builder that has moved its scripts, each (module, the name assigned)
+# with its reason.
+_INLINE_KEPT = {
+    # The Calendar's picker in Spanish: pairs of (a piece of the English script,
+    # what replaces it), put over inline/calendar_documents.picker.js by
+    # picker_js(). A patch of pieces, not a script; each piece is checked to
+    # be in the script once, as it is applied.
+    ("calendar_documents", "PICKER_ES"),
+}
+
+
+def _inline_faults(trees, names):
+    """What is wrong with the builders' inline scripts, as sentences.
+    `trees` is {module: its parse} of the code files (the suite's left out),
+    `names` the inline scripts there are (inline_js.files()). A script read
+    by no module or by more than one, or by a module that is not the builder
+    its name begins with; a script read that is not there; a call that does
+    not write its script's name out; a module but inline_js and the
+    translation audit naming an inline/ path itself; and a builder that has
+    scripts in inline/ and still holds one in a string of three lines or
+    more (_INLINE_MARK), but for _INLINE_KEPT."""
+    faults, readers = [], {}
+    for mod, tree in sorted(trees.items()):
+        alias = {a.asname or a.name for n in ast.walk(tree) if isinstance(n, ast.Import)
+                 for a in n.names if a.name == "inline_js"}
+        docs = {id(n.body[0].value) for n in ast.walk(tree)
+                if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and n.body and isinstance(n.body[0], ast.Expr)}
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "script" \
+                    and isinstance(n.func.value, ast.Name) and n.func.value.id in alias:
+                arg = n.args[0] if n.args else None
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    readers.setdefault(arg.value, []).append(mod)
+                else:
+                    faults.append(f"{mod}:{n.lineno} reads a script whose name is not written out")
+            elif mod not in ("inline_js", "translation_audit") and isinstance(n, ast.Constant) \
+                    and isinstance(n.value, str) and id(n) not in docs \
+                    and re.search(r"(?:^|[/\\])inline[/\\]", n.value):
+                faults.append(f"{mod}:{n.lineno} reads inline/ itself, not through inline_js")
+    for name in sorted(names):
+        got, own = readers.get(name, []), name.split(".")[0]
+        if len(got) != 1:
+            faults.append(f"inline/{name}.js is read by {len(got)} modules "
+                          f"({', '.join(got) or 'none'}), not by its builder alone")
+        elif got[0] != own:
+            faults.append(f"inline/{name}.js is read by {got[0]}, not by {own}")
+    faults += [f"{', '.join(readers[n])} reads inline/{n}.js, which is not there"
+               for n in sorted(set(readers) - set(names))]
+    for mod in sorted({n.split(".")[0] for n in names} & set(trees)):
+        tree = trees[mod]
+        docs = {id(n.body[0].value) for n in ast.walk(tree)
+                if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and n.body and isinstance(n.body[0], ast.Expr)}
+        kept = {id(c) for n in tree.body if isinstance(n, ast.Assign)
+                and any(isinstance(x, ast.Name) and (mod, x.id) in _INLINE_KEPT for x in n.targets)
+                for c in ast.walk(n.value)}
+        parts = {id(v) for n in ast.walk(tree) if isinstance(n, ast.JoinedStr) for v in n.values}
+        for n in ast.walk(tree):
+            if id(n) in docs or id(n) in kept or id(n) in parts \
+                    or getattr(n, "end_lineno", None) is None:
+                continue
+            if isinstance(n, ast.JoinedStr):
+                text = "".join(v.value for v in n.values if isinstance(v, ast.Constant))
+            elif isinstance(n, ast.Constant) and isinstance(n.value, str):
+                text = n.value
+            else:
+                continue
+            m = _INLINE_MARK.search(text) if n.end_lineno - n.lineno >= 2 else None
+            if m:
+                faults.append(f"{mod}:{n.lineno} still holds a script in a string ({m.group(0)!r}); "
+                              "its scripts are in inline/")
+    return faults
+
+
+@check("files", "a builder's own scripts are files in inline/ beside it, each read by that builder "
+                "alone through inline_js, which refuses a hole left empty or a value with no hole; "
+                "and a builder that has them holds no script in a string")
+def _inline_scripts_read_once():
+    """The scripts a builder writes into its pages are .js files in inline/
+    beside it (inline_js, 20 November 2026), so that a JavaScript tool, the
+    search for dead code and a check of a twin can read them, and the page
+    is the same to the byte. Held here:
+
+      the reader: a hole (__NAME__) with no value, a value with no hole and
+      a value that is not a string are refused; a hole is filled in one pass
+      and JavaScript's own braces and __proto__ are not holes; a name that is
+      not <builder> or <builder>.<what>, or names no builder, is refused;
+      every file is where its name says, inline/ beside its builder;
+      the rule (_inline_faults), on planted code that breaks each part of
+      it, and on the code: each script read by its builder alone and by
+      name, none read from inline/ but through inline_js, and no builder
+      that has scripts there holding one in a string but _INLINE_KEPT's.
+    """
+    import inline_js as IJ
+    for text, values, why in (("a __A__ b", {}, "a hole no value fills"),
+                              ("a b", {"A": "1"}, "a value no hole takes"),
+                              ("a __A__", {"A": 1}, "a value that is not a string")):
+        try:
+            IJ.fill(text, values)
+        except ValueError:
+            continue
+        raise AssertionError(f"inline_js.fill took {why}")
+    got = IJ.fill("x=__A__;y=__proto__;f(){return {a:1}};__A__", {"A": "__B__"})
+    assert got == "x=__B__;y=__proto__;f(){return {a:1}};__B__", f"inline_js.fill gave {got!r}"
+    for bad in ("../app", "Build_civics", "build_civics.a.b", "", "build_civics/otp"):
+        try:
+            IJ.path(bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"inline_js took {bad!r} for a script's name")
+    try:
+        IJ.path("no_builder_has_this_name.x")
+        raise AssertionError("inline_js found a script for a builder that is not there")
+    except LookupError:
+        pass
+    # The rule, on planted code.
+    ok = {"build_a": ast.parse('import inline_js as IJ\nJS = "<script>\\n" + IJ.script("build_a") '
+                               '+ "</script>"\n')}
+    assert _inline_faults(ok, {"build_a"}) == [], _inline_faults(ok, {"build_a"})
+    planted = {
+        "build_a": ast.parse('import inline_js as IJ\nJS = IJ.script("build_a")\n'
+                             'OLD = """<script>\n(function(){\n  document.title="x";\n})();\n</script>"""\n'
+                             'KEEP = """a\nb\nc"""\n'),
+        "build_b": ast.parse('import inline_js as J\nX = J.script("build_a")\nY = J.script(NAME)\n'
+                             'Z = J.script("build_b.gone")\nW = open("src/pages/inline/build_b.x.js").read()\n'),
+    }
+    got = _inline_faults(planted, {"build_a", "build_b.x"})
+    want = ("build_b:3 reads a script whose name is not written out",
+            "build_b:5 reads inline/ itself", "inline/build_a.js is read by 2 modules",
+            "inline/build_b.x.js is read by 0 modules", "reads inline/build_b.gone.js, which is not there",
+            "build_a:3 still holds a script in a string")
+    missed = [w for w in want if not any(w in g for g in got)]
+    assert not missed and len(got) == len(want), (
+        f"the rule missed {missed} in planted code, or found more: {got}")
+    # The code.
+    names = IJ.files()
+    for name, p in names.items():
+        assert p == IJ.path(name), f"{p} is not where its name says: {IJ.path(name)}"
+    trees = {f.stem: _parsed(f) for f in _paths.code_files("*.py") if not _in_suite(f)}
+    faults = _inline_faults(trees, set(names))
+    assert not faults, f"{len(faults)} faults in the builders' inline scripts: " + "; ".join(faults[:6])
+    builders = sorted({n.split(".")[0] for n in names})
+    assert len(names) >= 20 and len(builders) >= 12, (
+        f"only {len(names)} inline scripts of {len(builders)} builders: there were 20 of 12 on "
+        "20 November 2026")
+    return "ok", (f"{len(names)} scripts in inline/ of {len(builders)} builders, each read by its own "
+                  "builder alone, by name, through inline_js; none of those builders holds a script "
+                  "in a string but the Spanish picker's patch; the reader refuses a hole left empty, "
+                  "a value with no hole and a value that is not a string")
 
 
 def _import_graph(files=None):
@@ -1105,6 +1274,164 @@ def _import_cycles_cut():
                       + "; ".join(" <-> ".join(c) for c in gone))
     return "ok", (f"{len(graph)} modules, {len(cycles)} import cycles, all known (the largest "
                   f"{max(map(len, cycles), default=0)} modules); i18n and the page builders in none")
+
+
+# THE MODULES build_site_v2.py IS SPLIT INTO (the refactor's finding 4, 20 November 2026), each
+# with the names it took. build_site_v2 imports each back under its name, so build_site_v2.<name>
+# answers for every caller as it did; the checks below hold each move made whole and not undone.
+_SPLIT_FROM_SITE = {
+    "parts": ("BILL_OF_INTENT", "SINGLE_CHAMBER", "NO_GOVERNOR", "bill_prefix", "CHIP_WORDS",
+              "BECAME_LAW", "DIED", "INTERIM_STUDY", "TABLED", "VETOED", "WITHDRAWN", "SIGNED_RE",
+              "REFERENDUM", "docket_line", "TABLE_DEATH"),
+    "conferences": ("CONF_REPORT", "CONF_FAILED", "NEW_CONF", "NEXT_MOTION", "CONF_REJECTED",
+                    "CONF_UNABLE", "CONF_UNABLE_RE", "CHAMBERS_APART", "ENDED_AS",
+                    "CONF_UNSIGNED_RE", "CONF_LATE_RE", "FAILURE_RANK", "_failure_how",
+                    "conference_failure", "conferees_disagreed", "_conference_vote",
+                    "conference_outcome", "concurrence_outcome", "BEFORE_CONFERENCE",
+                    "BEFORE_CONCURRENCE", "BEFORE_UNABLE", "CONFERENCE_ROW", "between_chambers",
+                    "CONF_NOT_TAKEN_UP", "conference_not_taken_up"),
+    "journey": tuple(("J_ACTS J_AMENDED J_AMEND_ADOPTED J_AMEND_LIST J_AMEND_SUBJ "
+                      "J_BARE_REFERRAL J_CHAPTERED J_CHAPTER_THEN_DAY J_CLAUSE_DAY "
+                      "J_CONF J_DAY J_DIVIDED_OUT J_DONE_VERB J_EFF_ANY J_EFF_MORE "
+                      "J_EFF_PART J_EFF_PROVIDED J_EFF_SEVERAL J_EFF_WHAT J_ENDING "
+                      "J_FILED J_FROM_REPORT J_IF_PASSED J_INTRO_ROW J_MARK J_MON "
+                      "J_MONTH_DAY J_NEW_CONFERENCE J_NOT_FLOOR J_NOT_VOTED J_NO_CODE "
+                      "J_NO_WORD J_ON_THE_TABLE J_OTHER_BILL J_OUTCOME_ONLY J_PASSING "
+                      "J_RC_BARE J_RECONSIDER J_RECON_END J_RECON_NAMES J_RECON_NOT "
+                      "J_REFERRED_TO J_REF_TALLY J_REMAINING J_ROW_DAY "
+                      "J_SECOND_COMMITTEE J_SIGNED J_SKIP J_SUSPEND J_SUSPENDED "
+                      "J_SUSP_CODE J_SUSP_REFERRAL J_SUSP_VOTE J_SUSP_WORD "
+                      "J_TAKES_OUTCOME J_TALLY J_TALLY_TAIL J_THIRD J_UNSIGNED "
+                      "J_VETOED J_VETO_VOTE J_VOICE J_WAIVED J_WRAPPED_TALLY "
+                      "J_YES_CODE J_YES_WORD ONE_CHAMBER OWN_CHAMBER RAIL_ACT "
+                      "RAIL_DEAD_TABLE RAIL_MARK_OF_CHIP RAIL_REFINES RAIL_SAY "
+                      "STAGES_FROM _STAGE_END _j_act _j_act_sections _j_amended_on "
+                      "_j_answers_after _j_chaptered _j_clauses _j_days _j_decide "
+                      "_j_effective _j_effective_parts _j_gov_more _j_has_outcome "
+                      "_j_in_recess _j_in_term _j_introduced _j_iso _j_merge _j_motion "
+                      "_j_motions _j_outcome _j_prose_date _j_reconsidered "
+                      "_j_roll_call _j_row_day _j_rows _j_second_committee _j_sections "
+                      "_j_segments _j_settle _j_stated_day _j_suspension_failed "
+                      "_j_tally _j_unfile _j_unsuspend _j_untold _j_vote_words "
+                      "_j_words _j_year_slip _journey_rail journey journey_rail "
+                      "journey_state law_day law_in_stages law_line_dated passage").split()),
+    "status": tuple(("CLOSING CONF_NEVER_REPORTED CONF_REPORT_NOT_TAKEN_UP "
+                     "CONF_UNABLE_CLOSING DISPOSED ENDED_UNFINISHED ENDED_UNVOTED "
+                     "ENDING_UNTOLD JOURNAL_SOURCE NEVER_INTRODUCED NOT_INTRODUCED "
+                     "ONE_CHAMBER_DONE PROPOSED_ONLY RECONSIDER_CARRIED RETURNED_ROW "
+                     "SESSION_ENDED_AFTER_FAILED SESSION_ENDED_AFTER_VOTES "
+                     "SESSION_ENDED_PLAINLY STATED UNTOLD_FOR WITHDRAWN_ACT "
+                     "WITHDRAWN_PRIOR _long_date classify classify_stated "
+                     "closing_stage docket_outcome floor_disposed for_bill_kind "
+                     "journal_not_introduced last_decision next_step untold_ending "
+                     "veto_outcome veto_votes").split()),
+}
+
+
+def _top_names(tree):
+    """{name: "defined" | "imported"} of what a module's own top level binds."""
+    out = {}
+    for n in tree.body:
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            out[n.name] = "defined"
+        elif isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+            for t in (n.targets if isinstance(n, ast.Assign) else [n.target]):
+                for x in ast.walk(t):
+                    if isinstance(x, ast.Name):
+                        out[x.id] = "defined"
+        elif isinstance(n, ast.ImportFrom):
+            for a in n.names:
+                out.setdefault(a.asname or a.name, "imported")
+    return out
+
+
+def _split_out(site, mod, names):
+    """What is wrong with `names` having moved out of build_site_v2 (`site`) into the module
+    `mod`, as strings: a name the module does not define itself, one build_site_v2 defines
+    again rather than imports, and one build_site_v2 answers with something else than the
+    module's. Read from the two files as they stand and from the two modules imported."""
+    module = mod.__name__
+    mine, theirs = _top_names(_parsed(mod.__file__)), _top_names(_parsed(site.__file__))
+    bad = [f"{module}.py does not define {n}" for n in names if mine.get(n) != "defined"]
+    bad += [f"build_site_v2.py defines {n} again; it imports it from {module}" for n in names
+            if theirs.get(n) == "defined"]
+    bad += [f"build_site_v2.{n} is not {module}.{n}" for n in names
+            if getattr(site, n, None) is not getattr(mod, n, object())]
+    return bad
+
+
+@check("files", "the pieces of build_site_v2 its split modules share are parts.py's, defined there "
+                "and imported back, so build_site_v2.<name> is parts.<name>",
+       needs=("build_site_v2", "parts"))
+def _site_shares_from_parts(B, PARTS):
+    """What a bill of each kind has to clear, bill_prefix, the chip's six words, SIGNED_RE,
+    REFERENDUM, docket_line and TABLE_DEATH moved from build_site_v2 to parts.py on 20
+    November 2026 (the refactor's finding 4), as they stood, so that a module split out of
+    build_site_v2 can read them without importing it back (_import_cycles_cut). Undone, half done, or copied back
+    into build_site_v2 beside parts' own, this says which name."""
+    names = _SPLIT_FROM_SITE["parts"]
+    bad = _split_out(B, PARTS, names)
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(names)} names defined in parts.py, none in build_site_v2.py, each "
+                  "build_site_v2.<name> parts' own")
+
+
+@check("files", "what the two chambers did with each other's version is conferences.py's, every "
+                "name of it imported back into build_site_v2",
+       needs=("build_site_v2", "conferences"))
+def _site_conferences_moved(B, CF):
+    """build_site_v2's section on what the two chambers did with each other's version --
+    concurrences, committees of conference, conferees who could not agree -- moved to
+    conferences.py on 20 November 2026 (the refactor's finding 4), as it stood, because the
+    journey reads conference_failure and is a module of its own; and conference_not_taken_up,
+    which the status reads, after it. Every name of them is held to be conferences.py's,
+    defined nowhere in build_site_v2.py, and build_site_v2.<name> the same object."""
+    names = _SPLIT_FROM_SITE["conferences"]
+    bad = _split_out(B, CF, names)
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(names)} names defined in conferences.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> conferences' own")
+
+
+@check("files", "the passage rail and the journey are journey.py's, every name of them imported back "
+                "into build_site_v2, and build_site_v2 defines no _j_ reader of its own",
+       needs=("build_site_v2", "journey"))
+def _site_journey_moved(B, J):
+    """build_site_v2's largest subsystem -- passage, the four stops a bill passes, and the
+    journey, what each chamber decided and when, with every _j_ reader and J_ pattern, RAIL_SAY
+    and J_ENDING -- moved to journey.py on 20 November 2026 (the refactor's finding 4), as it
+    stood. Every name it took is held to be journey.py's, defined nowhere in build_site_v2.py,
+    and build_site_v2.<name> the same object, so the callers of build_site_v2.journey, its
+    checks among them, read the one journey. And no _j_ reader is defined in build_site_v2.py:
+    a new one goes beside the others, where the journey can call it. (J_DECIDED_ACT stays in
+    build_site_v2 with journal_decided_story, the one reader of it.)"""
+    names = _SPLIT_FROM_SITE["journey"]
+    bad = _split_out(B, J, names)
+    own = sorted(n for n, how in _top_names(_parsed(B.__file__)).items()
+                 if how == "defined" and n.startswith("_j_"))
+    if own:
+        bad.append("build_site_v2.py defines journey readers of its own: " + ", ".join(own))
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in journey.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the journey's own; no _j_ reader left in build_site_v2")
+
+
+@check("files", "a bill's status -- the status vocabulary and classify, closing_stage and next_step -- "
+                "is status.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "status"))
+def _site_status_moved(B, STA):
+    """build_site_v2's status classification moved to status.py on 20 November 2026 (the
+    refactor's finding 4), as it stood, from three places in the file: the status vocabulary
+    (for_bill_kind, STATED and the statuses of a bill never introduced), journal_not_introduced,
+    and classify_stated to next_step -- classify, docket_outcome, closing_stage and the endings
+    the docket does not tell among them. Every name of them is held to be status.py's, defined
+    nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so bill_disposition,
+    build_bills and the checks that ask build_site_v2.classify read the one classification."""
+    names = _SPLIT_FROM_SITE["status"]
+    bad = _split_out(B, STA, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in status.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the status's own")
 
 
 def _readme_unlisted(folder, root=None):
@@ -3150,6 +3477,8 @@ def _changed_selects():
       _rows_one_at_a_time, and fewer than half of the checks;
       a change to narrative.py chooses a check that needs it and _chain,
       whose fixture build_site_v2 builds, which imports it;
+      a change to a builder's own script in inline/ chooses what a change
+      to the builder does: chrome's language script, _language_choice;
       a change to a check's own lines chooses it, and a change to main's,
       or to _in_order's, chooses every check, whichever file of the suite
       holds them; and on two files planted as a suite, the lines a change
@@ -3193,6 +3522,10 @@ def _changed_selects():
         "a change to narrative.py left out " + ", ".join(
             (sorted(set(needs_it) - narr) + ([] if "_chain" in narr else ["_chain"]))[:5]))
     assert "_rows_one_at_a_time" not in narr, "a change to narrative.py chose a check of JSON rows"
+    lang = chosen(["src/pages/inline/chrome.lang_head.js"])
+    assert "_language_choice" in lang and "_rows_one_at_a_time" not in lang, (
+        "a change to chrome's language script in inline/ did not choose _language_choice, "
+        "which runs it, or chose a check of JSON rows")
     index = CS._Index([(p.relative_to(_paths.ROOT).as_posix(), _parsed(p)) for p in suite])
 
     def moved(name, line=None):

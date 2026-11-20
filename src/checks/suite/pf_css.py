@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the stylesheet (app.css).
 
@@ -1642,7 +1642,7 @@ def _scrollstop_tables():
     css_p = Path("src/pages/app.css")
     if not css_p.exists():
         return "skip", "app.css is not there"
-    sources = sorted(Path("src/pages").glob("*.py")) + [Path("src/pages/app.js")]
+    sources = sorted(Path("src/pages").glob("*.py")) + [Path("src/pages/app.js")] + sorted(Path("src/pages/inline").glob("*.js"))
     tables = {}
     for p in sources:
         if not p.exists():
@@ -2875,7 +2875,7 @@ def _chips_one_shape():
         "chip were planted and the person chip and the Calendar's controls are other names")
 
     bad = _chip_css_faults(css)
-    for p in sorted(Path("src/pages").glob("*")):
+    for p in sorted(Path("src/pages").glob("*")) + sorted(Path("src/pages/inline").glob("*.js")):
         if p.suffix not in (".js", ".py", ".html") or p.stem == "components":
             continue
         for ln, h in _chips_by_hand(p.read_text(encoding="utf-8")):

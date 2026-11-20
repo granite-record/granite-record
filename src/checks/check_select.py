@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.4
+# GRANITE_VERSION: 2026-10-09.5
 """
 Which of preflight's checks a change can reach: `preflight.py --changed`.
 
@@ -34,6 +34,8 @@ working tree, and the files git sees that it does not track -- and then:
      imp("x"), import x) or a changed file by its name or its path. A module
      is reached by a change to itself, or to a module it imports, however
      far down; and one hop of a launch ("x.py" in a script that starts it).
+     A builder's own script in inline/ (inline_js) is the builder: a change
+     to inline/chrome.themer.js is a change to chrome.py.
      Docstrings are not read: they are prose, and name half the repository.
   4. A CHECK WHOSE OWN LINES MOVED, or those of a helper it calls, where
      a file of the suite changed: preflight.py, or a module of
@@ -90,6 +92,9 @@ IMPORT_RX = re.compile(r"^[ \t]*(?:from[ \t]+([A-Za-z_]\w*)|import[ \t]+([A-Za-z
 NAMED_RX = re.compile(r"""(?:__import__|imp)\(\s*["']([A-Za-z_]\w*)["']""")
 LAUNCH_RX = re.compile(r"""["']([A-Za-z_]\w*)\.py["']""")
 CODE_KINDS = (".py", ".js", ".css", ".html", ".md", ".bat", ".yml", ".yaml", ".toml")
+# A builder's own script, in inline/ beside it (inline_js, 20 November 2026):
+# <builder>.js or <builder>.<what>.js.
+INLINE_RX = re.compile(r"(?:^|/)inline/([a-z][a-z0-9_]*)(?:\.[a-z][a-z0-9_]*)?\.js$")
 
 
 def _git(args, root):
@@ -356,6 +361,7 @@ def choose(checks, source, base=None, parse=None, root=".", changed=None, lines=
     stems = {s.stem for s in sources}
     project = set(edges) | stems
     mods_changed = {Path(p).stem for p in changed if p.endswith(".py")} & project
+    mods_changed |= {m.group(1) for m in map(INLINE_RX.search, changed) if m} & project
     reach = reached(mods_changed - stems, edges)
     names_changed = set(changed) | {p.rsplit("/", 1)[-1] for p in changed}
     any_code = any(p.endswith(CODE_KINDS) for p in changed)

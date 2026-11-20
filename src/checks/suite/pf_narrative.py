@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of a bill's history as the site tells it (narrative.py).
 
@@ -8434,8 +8434,8 @@ def _committee_stages_named(N, CN):
 
 @check("status", "the journey reads a bill's rows once, and its clause readers keep only what a "
        "fresh reading gives, over every real docket row the checks hold",
-       needs=("narrative", "build_site_v2"))
-def _journey_clauses_kept(N, build_site_v2):
+       needs=("narrative", "journey"))
+def _journey_clauses_kept(N, journey):
     """journey reads a bill's rows once, and _j_act, _j_has_outcome and
     _j_clauses (behind _j_segments) keep their answers by their argument (16
     October 2026, private/SITE_DATA_PROFILE.md, P2): together a minute and a
@@ -8448,8 +8448,12 @@ def _journey_clauses_kept(N, build_site_v2):
     bill or anything a caller sets would differ here before it differed on
     a page. And _j_segments hands each caller a list of its own: one a
     caller changes does not change the next caller's. Undone, the step is
-    slower and nothing else would say so."""
-    B = build_site_v2
+    slower and nothing else would say so.
+
+    The readers are journey.py's (20 November 2026), and the journey calls
+    them there: the plain readers are put in for the fresh reading, and
+    _j_rows counted, on that module, not on build_site_v2."""
+    B = journey
     kept = ("_j_act", "_j_has_outcome", "_j_clauses")
     missing = [n for n in kept if not hasattr(getattr(B, n), "cache_info")]
     assert not missing, (f"{', '.join(missing)} no longer keep what they read: the site data "

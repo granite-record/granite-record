@@ -1,0 +1,1 @@
+fetch(new URL("build.json",location.origin+"/").href).then(r=>r.json()).then(B=>{var e=document.getElementById("built");if(!e||!B.finished)return;e.textContent=" "+tr("foot.rebuilt","Data rebuilt {date}.",{date:new Date(B.finished).toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})});}).catch(function(){});

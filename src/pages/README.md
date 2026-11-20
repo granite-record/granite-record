@@ -93,7 +93,7 @@ edit to its English. The record's own words (titles, names, docket lines) are
 not translated. The home page is built at `/` and `/es/` from the same data;
 the header, footer and Settings speak the page's language; the language
 choice is a row of Settings (`find.js`, `langMount`) and the browser's
-language is read before the first paint (`chrome.LANG_HEAD`). Spanish stays
+language is read before the first paint (`chrome.lang_head`). Spanish stays
 unlisted until `"offered"` is set in the catalog. `docs/TRANSLATING.md` is the
 walk-through, and `src/ops/translations.py` the proofreader's sheet.
 
@@ -136,7 +136,24 @@ The record and its own pages:
 
 - `build_site_v2`: the record builder -- each bill's payload and the bill
   index, and the legislators', towns' and committees' files the pages after
-  it read (there was never a v1 here);
+  it read (there was never a v1 here); its journey, a bill's status and the
+  conferences are modules of their own beside it since 20 November 2026 (the
+  next three lines), and it imports every name of theirs back;
+- `journey`: the passage rail and the journey -- the four stops a bill passes
+  (`passage`) and what each chamber decided and when (`journey`,
+  `journey_rail` and the `_j_` readers), read from the docket for the rail's
+  dated stops and How it got here; a section of `build_site_v2` until 20
+  November 2026, which imports every name of it back;
+- `status`: a bill's status -- the General Court's status words read against
+  what a bill of each kind has to clear, the docket where the status page
+  does not cover a bill (`classify`), a closing paragraph for an ending the
+  docket never tells (`closing_stage`) and what happens next (`next_step`); a
+  section of `build_site_v2` until 20 November 2026, which imports every name
+  of it back;
+- `conferences`: what the two chambers did with each other's version of a
+  bill -- a concurrence, a committee of conference and how it ended -- read
+  from the docket; a section of `build_site_v2` until 20 November 2026, which
+  imports every name of it back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a
   file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,
@@ -221,7 +238,10 @@ The helpers the builders share:
 - `parts`: what more than one builder draws with -- a day of the Calendar's
   cards and what one meeting is (`cal_days`, `meeting_key`), Latest
   activity's sizes, a party's word, a district's tag, a number, address or
-  link that works, the tab strip's script -- named where each was too;
+  link that works, the tab strip's script, and the pieces of `build_site_v2`
+  the modules split from it share (what a bill of each kind has to clear, a
+  bill's letters, the chip's six words, the docket line) -- named where each
+  was too;
 - `shell`: the page every record's own address is, `bills.html` with one
   record open;
 - `chrome`: the frame every page shares -- the head, the header, the
@@ -233,6 +253,8 @@ The helpers the builders share:
   the source, and each catalog checked against it (preflight's and
   `src/ops/translations.py`'s; no builder imports it);
 - `strip_js`: the browser's scripts as published, without their comments;
+- `inline_js`: a builder's own scripts, read from `inline/` with their
+  holes filled, for the builder to write into its pages;
 - `structured`: what a search engine is told a page is about (schema.org);
 - `bill_order`: the order bill numbers are listed in;
 - `ballot_source`: whose count a ballot result is, in words;
@@ -267,6 +289,21 @@ The browser's files, copied into `site/` (scripts without their comments):
 - `map.js` and `map.css`: the district map;
 - `live.js` and `live.css`: Live Now;
 - `motions.js`: which motion a vote was on, for the live session page.
+
+A builder's own scripts, written into its pages (20 November 2026):
+
+- `inline/`: what was a JavaScript string in a builder -- a filter, a tab
+  strip, `chrome`'s theme and language scripts -- a `.js` file each, named
+  for the builder: `<builder>.js`, or `<builder>.<what>.js` where it has
+  more than one. The builder has it through `inline_js.script(name)`, which
+  fills each hole written `__NAME__` and refuses one left empty, and writes
+  it into its page exactly as the string held it, comments and all: so a
+  file carries no version stamp, and no comment the page should not carry.
+  Nothing copies these into `site/`, and no bare name finds one. Each is
+  read by its own builder alone (preflight's `_inline_scripts_read_once`);
+  `src/checks/inline/` holds the bench's page script and `drawn_pages`'
+  driver the same way. `build_pages`, `build_calendar` and `build_rsa`
+  still hold theirs in strings.
 
 The data beside the code:
 

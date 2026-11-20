@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.95
+# GRANITE_VERSION: 2026-09-08.96
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -42,6 +42,7 @@ import build_date
 import chrome
 import civics
 import i18n as I
+import inline_js as IJ
 import components as C
 import constitution_tab as CT
 import guides as G
@@ -1446,48 +1447,7 @@ def learn_page(tmpl, *, slug, title, lead, description, secs, foot, base, after=
 # or on Escape (focus back on its button), as the approved prototype's does.
 # Inline, after the page, so it needs no file of its own; a page read without
 # JavaScript has a <details> that opens and closes by itself.
-OTP_JS = """<script>
-(function(){
-  var d=document.querySelector(".l-otp");
-  if(!d)return;
-  document.addEventListener("click",function(e){
-    if(!d.open)return;
-    if(e.target.closest(".l-otpb a")||!e.target.closest(".l-otp"))d.open=false;
-  });
-  document.addEventListener("keydown",function(e){
-    if(e.key==="Escape"&&d.open){d.open=false;d.querySelector("summary").focus();}
-  });
-  // Common Questions print open (civics.faq).
-  window.addEventListener("beforeprint",function(){
-    document.querySelectorAll(".l-faq details").forEach(function(x){x.open=true;});
-  });
-  // The same list beside the page, where app.css gives it a column
-  // (.l-sidewrap), the section being read marked as the reader scrolls.
-  var page=document.querySelector(".l-page"),src=d.querySelector(".l-otpb");
-  if(!page||!src)return;
-  var wrap=document.createElement("div"),nav=document.createElement("nav"),h=document.createElement("p");
-  wrap.className="l-sidewrap";nav.className="l-side";
-  nav.setAttribute("aria-label",src.getAttribute("aria-label")||"On this page");
-  h.className="l-sidehead";h.textContent=d.querySelector("summary").textContent;
-  nav.appendChild(h);nav.appendChild(src.querySelector("ol").cloneNode(true));
-  wrap.appendChild(nav);page.insertBefore(wrap,page.firstChild);
-  var links={};
-  nav.querySelectorAll("a").forEach(function(a){var i=a.href.indexOf("#");if(i>=0)links[decodeURIComponent(a.href.slice(i+1))]=a;});
-  var secs=[].slice.call(document.querySelectorAll(".l-art > .l-sec[id]")).filter(function(s){return links[s.id];});
-  if(!secs.length||!("IntersectionObserver" in window))return;
-  var cur=null;
-  function mark(){
-    var y=window.innerHeight*0.25,best=secs[0];
-    secs.forEach(function(s){if(s.getBoundingClientRect().top<=y)best=s;});
-    if(best===cur)return;
-    if(cur)links[cur.id].removeAttribute("aria-current");
-    cur=best;links[cur.id].setAttribute("aria-current","location");
-  }
-  var io=new IntersectionObserver(mark,{rootMargin:"0px 0px -75% 0px"});
-  secs.forEach(function(s){io.observe(s);});
-  window.addEventListener("scroll",mark,{passive:true});mark();
-})();
-</script>"""
+OTP_JS = "<script>\n" + IJ.script("build_civics.otp") + "</script>"
 
 
 # ---------------------------------------------------------------------------
@@ -1906,96 +1866,7 @@ def guides_tab(lang, published=(), articles=()):
 # Arrow keys move through the suggestions, Enter opens one, or the first, or,
 # with none, asks the site's search; Escape closes them. The last suggestion
 # is always the site's search for what was typed.
-GFIND_JS = """<script>
-(function(){
-  var box=document.getElementById("gfind"), list=document.getElementById("gfind-list"),
-      stat=document.getElementById("gfind-status"), src=document.getElementById("gfind-data");
-  if(!box||!list||!src)return;
-  var D=JSON.parse(src.textContent), S=D.s, G=D.g, act=-1, opts=[];
-  var STOP={};
-  ("a an the to how do does i im my me can could get for of in on is it its what where when who "
-   +"and or with need want about your you be am are we our at from as by this that should "
-   +"como de del la el los las un una mi mis para que en y o con por se puedo quiero necesito "
-   +"sobre su sus al lo le hacer").split(" ").forEach(function(w){STOP[w]=1;});
-  var SYN={updat:"renew",renewal:"renew",expir:"renew",licence:"license",testimony:"testify",
-    testimoni:"testify",testif:"testify",dump:"transfer",garbage:"trash",rubbish:"trash",
-    homeles:"homeless",evict:"eviction",daycare:"child",childcare:"child",snap:"food",
-    rep:"representative",reps:"representative",sen:"senator"};
-  function norm(s){return String(s||"").toLowerCase().normalize("NFD")
-    .replace(/[\\u0300-\\u036f]/g,"").replace(/['\\u2019]/g,"").replace(/[^a-z0-9]+/g," ").trim();}
-  function stem(w){
-    if(SYN[w])return SYN[w];
-    if(w.length>5&&/ies$/.test(w))w=w.slice(0,-3)+"y";
-    else if(w.length>5&&/ing$/.test(w))w=w.slice(0,-3);
-    else if(w.length>4&&/ed$/.test(w))w=w.slice(0,-2);
-    else if(w.length>3&&/s$/.test(w)&&!/ss$/.test(w))w=w.slice(0,-1);
-    return SYN[w]||w;
-  }
-  function toks(s){var o=[];norm(s).split(" ").forEach(function(w){if(w&&!STOP[w])o.push(stem(w));});return o;}
-  G.forEach(function(g){
-    g.w={};
-    [[g.t,3],[g.k,2],[g.l,1]].forEach(function(p){
-      toks(p[0]).forEach(function(w){if(!(g.w[w]>=p[1]))g.w[w]=p[1];});
-    });
-  });
-  function score(g,q){
-    var s=0,hit=0;
-    q.forEach(function(w){
-      var best=g.w[w]||0;
-      if(!best&&w.length>=3){for(var k in g.w){if(k.indexOf(w)===0&&g.w[k]*0.8>best)best=g.w[k]*0.8;}}
-      if(best){s+=best;hit++;}
-    });
-    return hit?s+(hit===q.length?2:0):0;
-  }
-  function pick(i){
-    opts.forEach(function(li,k){li.setAttribute("aria-selected",k===i?"true":"false");});
-    act=i;
-    if(i>=0){box.setAttribute("aria-activedescendant",opts[i].id);opts[i].scrollIntoView({block:"nearest"});}
-    else box.removeAttribute("aria-activedescendant");
-  }
-  function close(){list.hidden=true;box.setAttribute("aria-expanded","false");pick(-1);}
-  function option(i,href,head,line,cls){
-    var li=document.createElement("li"),a=document.createElement("a"),b=document.createElement("b");
-    li.id="gfind-o"+i;li.setAttribute("role","option");li.setAttribute("aria-selected","false");
-    if(cls)li.className=cls;
-    a.href=href;a.tabIndex=-1;b.textContent=head;a.appendChild(b);
-    if(line){var sp=document.createElement("span");sp.textContent=line;a.appendChild(sp);}
-    li.appendChild(a);list.appendChild(li);return li;
-  }
-  var found=[];
-  function draw(){
-    var raw=box.value.trim();
-    list.innerHTML="";opts=[];act=-1;
-    if(!raw){close();stat.textContent="";return;}
-    var q=toks(raw);
-    found=G.map(function(g){return [q.length?score(g,q):0,g];})
-      .filter(function(x){return x[0]>0;})
-      .sort(function(a,b){return b[0]-a[0]||a[1].t.length-b[1].t.length;}).slice(0,6);
-    found.forEach(function(x,i){opts.push(option(i,x[1].h,x[1].t,x[1].l));});
-    opts.push(option(found.length,"/search?q="+encodeURIComponent(raw),
-      S.all.replace("{q}",raw),"","g-findall"));
-    list.hidden=false;box.setAttribute("aria-expanded","true");
-    stat.textContent=found.length?(found.length===1?S.one:S.many.replace("{n}",found.length)):S.none;
-  }
-  box.setAttribute("role","combobox");box.setAttribute("aria-autocomplete","list");
-  box.setAttribute("aria-controls","gfind-list");box.setAttribute("aria-expanded","false");
-  box.addEventListener("input",draw);
-  box.addEventListener("focus",function(){if(box.value.trim())draw();});
-  box.addEventListener("keydown",function(e){
-    if(e.key==="ArrowDown"||e.key==="ArrowUp"){
-      if(list.hidden)draw();
-      if(!opts.length)return;
-      e.preventDefault();
-      var n=opts.length,i=e.key==="ArrowDown"?(act+1)%n:(act<=0?n-1:act-1);
-      pick(i);
-    }else if(e.key==="Enter"){
-      var li=act>=0?opts[act]:(found.length?opts[0]:null);
-      if(li){e.preventDefault();location.href=li.querySelector("a").href;}
-    }else if(e.key==="Escape"){if(!list.hidden){e.preventDefault();close();}}
-  });
-  document.addEventListener("click",function(e){if(!e.target.closest||!e.target.closest(".g-findbox"))close();});
-})();
-</script>"""
+GFIND_JS = "<script>\n" + IJ.script("build_civics.gfind") + "</script>"
 
 
 def hub_guides(published=(), articles=()):
@@ -2182,32 +2053,7 @@ def record_years(when):
             f'<option value="">All years</option>{opts}</select></label></p>')
 
 
-YR_JS = """<script>
-(function(){
-  // The year of the laws to show, in every chapter at once (record_years).
-  var p=document.querySelector(".g-yrp"), sel=p&&p.querySelector(".g-yr");
-  if(!sel)return;
-  p.hidden=false;
-  sel.addEventListener("change",function(){
-    var y=sel.value;
-    document.querySelectorAll(".g-laws").forEach(function(box){
-      var more=box.querySelector(".rs-more"), none=box.querySelector(".g-yrnone"), shown=0;
-      box.querySelectorAll("li[data-y]").forEach(function(li){
-        li.hidden=!!y&&li.getAttribute("data-y")!==y; if(!li.hidden)shown++; });
-      if(more){ if(y){more.open=true;} more.querySelector("summary").hidden=!!y; }
-      if(none)none.hidden=!y||shown>0;
-    });
-    // Passed, not yet in effect: in the year each passed, or under All.
-    document.querySelectorAll(".g-pass").forEach(function(box){
-      var more=box.querySelector(".rs-more"), shown=0;
-      box.querySelectorAll("li[data-y]").forEach(function(li){
-        li.hidden=!!y&&li.getAttribute("data-y")!==y; if(!li.hidden)shown++; });
-      if(more){ if(y){more.open=true;} more.querySelector("summary").hidden=!!y; }
-      box.hidden=!!y&&!shown;
-    });
-  });
-})();
-</script>"""
+YR_JS = "<script>\n" + IJ.script("build_civics.yr") + "</script>"
 
 
 def _record_lang(english, lang):
@@ -3075,18 +2921,7 @@ def hub_page(tmpl, base, topics, groups, published=(), articles=()):
 # panel's id put the strip above the top of a phone's screen, at a large text
 # size, so the reader saw a panel with no way to tell it was one of three (the
 # approved prototype's fix).
-LAND_JS = """<script>
-(function(){
-  var s=document.querySelector(".r-tabs");
-  if(!s)return;
-  function land(){
-    var h=(location.hash||"").slice(1);
-    if(!h||!document.getElementById("tab-"+h))return;
-    window.scrollTo(0,Math.max(0,s.getBoundingClientRect().top+window.scrollY-8));
-  }
-  addEventListener("load",function(){land();setTimeout(land,0);});
-})();
-</script>"""
+LAND_JS = "<script>\n" + IJ.script("build_civics.land") + "</script>"
 
 
 def main():

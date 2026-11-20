@@ -47,6 +47,15 @@ could settle, and publishes a script it refuses as it is): the comments in
 `app.js` 82 KB over the wire rather than 189. `preflight` runs every node
 harness that loads a page's script on the published copy as well as on the
 source, and holds the two to the same result.
+A builder's own script -- a page's filter, a tab strip, the theme and
+language scripts in every page's head -- is a file in `inline/` beside the
+builder (since 20 November 2026, when twelve builders' strings moved out;
+`build_pages`, `build_calendar` and `build_rsa` still hold theirs), so a
+JavaScript tool and the search for dead code can read it. The builder has it
+through `inline_js.script()`, which fills a hole written `__NAME__` and
+refuses one left empty or a value with no hole, and writes it into its page
+exactly as the Python string did; the folder is not a code folder, nothing
+copies it into `site/`, and each file is read by its own builder alone.
 The rules for those five pages alone are scoped to them with
 `:where(body.pg)`; a record page's rule that would redraw them is scoped
 away with `:where(body:not(.pg))` (the note at the top of `app.css`). The
@@ -98,6 +107,20 @@ gives the path from the root --
 `python3 src/hearings/probe_alignment.py --truth` -- and `preflight` fails a
 tracked command that names a script under `src/` without its folder, which
 typed from the root answers "can't open file".
+
+**`build_site_v2.py` comes apart by subsystem** (the refactor's finding 4,
+20 November 2026), a subsystem a commit and the built site the same bytes
+after each: the passage rail and the journey are `journey.py`, a bill's
+status (the status vocabulary, `classify`, `closing_stage`, `next_step`) is
+`status.py`, what the two chambers did with each other's version is
+`conferences.py`, and what they share with the rest of it -- what a bill of
+each kind has to clear, a bill's letters, the chip's six words, the docket
+line -- is `parts.py`'s. A module
+split out of `build_site_v2` never imports it back (`_import_cycles_cut`),
+and `build_site_v2` imports every moved name back where it was, so
+`build_site_v2.journey` and the rest still answer for every caller;
+`preflight`'s `_site_*` checks after `_import_cycles_cut` hold each move
+whole and not undone. `build_bills` and `main` stay in `build_site_v2`.
 
 ## How it runs
 

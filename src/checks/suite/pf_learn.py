@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of Learn, the guides, civics and the numbers pages.
 
@@ -1717,8 +1717,9 @@ def _how_to_tasks(G, civics, BC, BP):
     assert BC.article_href(civics.HOW_TO[0]).startswith("guides/") and \
         BC.article_href("general-court").startswith("learn/"), "article_href puts a page in the wrong folder"
     stale = []
-    for f in ("src/pages/civics.py", "src/pages/guides.py", "src/pages/build_civics.py",
-              "src/pages/build_pages.py", "src/pages/legislative_year.py"):
+    for f in ["src/pages/civics.py", "src/pages/guides.py", "src/pages/build_civics.py",
+              "src/pages/build_pages.py", "src/pages/legislative_year.py",
+              *sorted(Path("src/pages/inline").glob("build_civics.*.js"))]:
         text = _source(f)
         stale += [f"{f}: learn/{s}" for s in civics.HOW_TO
                   if re.search(rf'href="/?learn/{re.escape(s)}\b|"/learn/{re.escape(s)}\.html', text)]
