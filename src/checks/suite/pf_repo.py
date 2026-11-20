@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.24
+# GRANITE_VERSION: 2026-11-16.25
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1355,6 +1355,13 @@ _SPLIT_FROM_SITE = {
                          "PREAMBLE_END RSA_CITE_T TARGET_ALL TARGET_SECT _amendment_said "
                          "amended_bill amendment_claims amendment_num amendment_targets "
                          "amendments_in_text bill_amendments bill_text_block").split()),
+    "endings": tuple(("FIRST_YEAR_TABLE_DIES NEXT_LSR NO_SITTING_ROW ROW_DAY SESSION_END_DEATHS "
+                      "SITTING_TYPES SPECIAL_JOURNAL SPECIAL_SESSION_ROW TABLE_DEATH_ROW "
+                      "TABLING_ROW TOLD_TABLE_DEATH _sat_by_journal adjourned_by "
+                      "chamber_sittings died_on_table interim_report journal_sittings last_sat "
+                      "lsr_bills next_term_bill session_end_line session_endings study_ending "
+                      "table_death table_death_line table_death_told table_session_ends "
+                      "term_years with_journals").split()),
 }
 
 
@@ -1527,6 +1534,31 @@ def _site_amendments_moved(B, AM):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in amendments.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the amendments' own")
+
+
+@check("files", "the rail's endings -- a bill the session's end killed with no vote, left on the "
+                "table or held for interim study, and the days each chamber sat -- are "
+                "endings.py's, every name of them imported back into build_site_v2",
+       needs=("build_site_v2", "endings"))
+def _site_endings_moved(B, END):
+    """build_site_v2's session endings and table deaths moved to endings.py on 20 November
+    2026 (the refactor's finding 4), as they stood: from the heading THE RAIL'S ENDINGS --
+    the days each chamber sat (SITTING_TYPES, chamber_sittings, journal_sittings,
+    with_journals, term_years), a bill left on the table (died_on_table,
+    table_session_ends, table_death, adjourned_by, last_sat, table_death_line,
+    table_death_told), the study committee's report (interim_report), the next term's bill
+    (lsr_bills, next_term_bill) and study_ending -- to session_endings, and
+    SESSION_END_DEATHS and session_end_line. Every name of them is held to be endings.py's,
+    defined nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so
+    build_bills, main, journey_disagrees and the checks that ask build_site_v2.table_death
+    read the one copy. (committee_acts' interim study patterns, imported among them, came
+    with them and are imported back too; the rail's index row, RAIL_CODE to index_rail,
+    stays.)"""
+    names = _SPLIT_FROM_SITE["endings"]
+    bad = _split_out(B, END, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in endings.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the endings' own")
 
 
 def _readme_unlisted(folder, root=None):

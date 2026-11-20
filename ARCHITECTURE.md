@@ -119,7 +119,9 @@ withheld before one is drawn are `stations.py`, a member -- how one is named
 a member's record reads them, former members, attendance and the legislator
 pages' files (`build_legislators`) -- is `members.py`, what the two chambers
 did with each other's version is `conferences.py`, a bill's amendments and
-its text (`bill_amendments`, `bill_text_block`) are `amendments.py`, and
+its text (`bill_amendments`, `bill_text_block`) are `amendments.py`, the
+rail's endings -- a bill the session's end killed with no vote, on the table
+or in interim study (`table_death`, `study_ending`) -- are `endings.py`, and
 what they share with the rest of it -- what a bill of each kind has to
 clear, a bill's letters, the chip's six words, the docket line -- is
 `parts.py`'s. A module split out of `build_site_v2` never imports it back

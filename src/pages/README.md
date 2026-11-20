@@ -137,9 +137,9 @@ The record and its own pages:
 - `build_site_v2`: the record builder -- each bill's payload and the bill
   index, and the legislators', towns' and committees' files the pages after
   it read (there was never a v1 here); its journey, a bill's status, the
-  proceedings' stations, the members, the conferences and the amendments are
-  modules of their own beside it since 20 November 2026 (the next six lines),
-  and it imports every name of theirs back;
+  proceedings' stations, the members, the conferences, the amendments and the
+  rail's endings are modules of their own beside it since 20 November 2026
+  (the next seven lines), and it imports every name of theirs back;
 - `journey`: the passage rail and the journey -- the four stops a bill passes
   (`passage`) and what each chamber decided and when (`journey`,
   `journey_rail` and the `_j_` readers), read from the docket for the rail's
@@ -174,6 +174,12 @@ The record and its own pages:
   moved, in the order it took them up, with what each says it changes
   (`bill_amendments`, `amendment_targets`), and the text the General Court
   printed, its analysis told apart from the bill (`bill_text_block`); a
+  section of `build_site_v2` until 20 November 2026, which imports every name
+  of it back;
+- `endings`: the rail's endings -- a bill the session's end killed with no
+  vote, left on the table (`table_death`) or held for interim study
+  (`study_ending`, with the study committee's report, `interim_report`) --
+  and the days each chamber sat, which date them (`chamber_sittings`); a
   section of `build_site_v2` until 20 November 2026, which imports every name
   of it back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a

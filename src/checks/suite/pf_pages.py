@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.21
+# GRANITE_VERSION: 2026-11-16.22
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -12143,7 +12143,7 @@ def _interim_report_one_colour(BP):
     for k in ("rec", "not", "without"):
         if order.get(f".jl .jrec-{k} .jg", -1) <= first:
             bad.append(f".jl .jrec-{k} .jg is not after .jl .j-istudy .jg, so the orange wins")
-    src = _source("src/pages/build_site_v2.py")
+    src = _source("src/pages/endings.py")
     if '"rec": rep["rec"]' not in src:
         bad.append("build_site_v2's interim report line no longer says which of the three it was")
     assert not bad, "; ".join(bad[:8])
