@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.330
+# GRANITE_VERSION: 2026-09-05.331
 """
 Generate the faceted site from real General Court data.
 
@@ -2458,25 +2458,13 @@ def sitting_roster(D):
     return legs, leg_by_sort, leg_by_name
 
 
-def main():
-    a = parse_args()
-
-    D, out = Path(a.data), Path(a.out)
-    (out / "bills").mkdir(parents=True, exist_ok=True)
-    (out / "legislators").mkdir(parents=True, exist_ok=True)
-
-    bills = bills_with_topics(D)
-    sponsors = sponsors_merged(D, bills)
-    legs, leg_by_sort, leg_by_name = sitting_roster(D)
-
-    # Members who left mid-term are already named upstream: resolve_members.py
-    # writes former_members.json to the project root, build_data.py reads it
-    # there, and every member_votes row therefore carries a resolved "name"
-    # whether the member is sitting or not. That is what the double build_data
-    # pass in build_all.py exists for. Reading the file a second time here
-    # would only add a way for the two to disagree -- and the copy this looked
-    # for, under the data directory, is not where the pipeline writes it.
-    towns = load(D / "towns.json", {})
+def dockets_and_rollcalls(a, bills):
+    """The histories (narratives.json), the standing notes
+    (corrections/bill_notes.json, held to the bills by check_notes) and the roll
+    calls (rollcalls.json), each refused in the flat shape, with a roll call on
+    no bill drawn under the bill whose debate it divided, limited or called the
+    question of (vote_passage.move_on_bills, whose map of them is MOVED_TO_BILL).
+    `a` is the parsed arguments. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
     narratives = load(a.narratives, {})
     # {term: {bill: record}}, for the reason rollcalls.json is: a bill number
     # is unique within a term and not across terms. Reading the old flat shape
@@ -2508,6 +2496,16 @@ def main():
         print(f"  {len(MOVED_TO_BILL)} roll call(s) on no bill drawn under the bill whose debate "
               "they divided, limited or called the question of: "
               + ", ".join(f"{k} -> {b}" for k, b in sorted(MOVED_TO_BILL.items())))
+    return narratives, notes, rollcalls, MOVED_TO_BILL
+
+
+def committee_records(a, narratives):
+    """The committee reports, the House's corrected from the committee's filed copy
+    (report_check) and the Senate's merged in, with each committee's interim
+    study statement (interim_cards); the veto messages; the chapters of the
+    session laws (extract_chapters); and the Senate's reports of its public
+    hearings: each {term: {bill: ...}}, refused in the flat shape, and each said.
+    A step of main's loading, lifted out of it as it stood (20 November 2026)."""
     reports = load(a.reports, {})
     # The Senate's committee reports, with their reasoning, from the General
     # Court's database -- the half the House Calendar PDFs cannot cover. Kept
@@ -2593,6 +2591,30 @@ def main():
         print(f"Senate hearing reports: NONE -- {a.hearing_reports} is not "
               "here or is empty, so no Hearings tab carries one. "
               "senate_hearing_reports.py writes it.")
+    return reports, vetoes, chapters, hearing_reports
+
+
+def main():
+    a = parse_args()
+
+    D, out = Path(a.data), Path(a.out)
+    (out / "bills").mkdir(parents=True, exist_ok=True)
+    (out / "legislators").mkdir(parents=True, exist_ok=True)
+
+    bills = bills_with_topics(D)
+    sponsors = sponsors_merged(D, bills)
+    legs, leg_by_sort, leg_by_name = sitting_roster(D)
+
+    # Members who left mid-term are already named upstream: resolve_members.py
+    # writes former_members.json to the project root, build_data.py reads it
+    # there, and every member_votes row therefore carries a resolved "name"
+    # whether the member is sitting or not. That is what the double build_data
+    # pass in build_all.py exists for. Reading the file a second time here
+    # would only add a way for the two to disagree -- and the copy this looked
+    # for, under the data directory, is not where the pipeline writes it.
+    towns = load(D / "towns.json", {})
+    narratives, notes, rollcalls, MOVED_TO_BILL = dockets_and_rollcalls(a, bills)
+    reports, vetoes, chapters, hearing_reports = committee_records(a, narratives)
     # Written by extract_amendments.py out of the cached calendars. Absent is
     # fine: the amendments are still listed, without their text.
     amend_texts = load("amendments.json", {})
