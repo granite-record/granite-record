@@ -49,8 +49,9 @@ harness that loads a page's script on the published copy as well as on the
 source, and holds the two to the same result.
 A builder's own script -- a page's filter, a tab strip, the theme and
 language scripts in every page's head -- is a file in `inline/` beside the
-builder (since 20 November 2026, when twelve builders' strings moved out;
-`build_pages`, `build_calendar` and `build_rsa` still hold theirs), so a
+builder (since 20 November 2026, when twelve builders' strings moved out,
+and `build_rsa`'s after them; `build_pages` and `build_calendar` still hold
+theirs), so a
 JavaScript tool and the search for dead code can read it. The builder has it
 through `inline_js.script()`, which fills a hole written `__NAME__` and
 refuses one left empty or a value with no hole, and writes it into its page

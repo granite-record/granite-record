@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of Learn, the guides, civics and the numbers pages.
 
@@ -5218,6 +5218,10 @@ def _language_sweep_words(civics, C):
     src = lambda p: _paths.locate(p).read_text(encoding="utf-8")   # noqa: E731
     app = src("app.js")
     pages = src("build_pages.py")
+    import inline_js as IJ
+    # A builder and its scripts, in inline/ since 20 November 2026.
+    own = lambda b: src(b + ".py") + "".join(   # noqa: E731
+        _source(p) for n, p in IJ.files().items() if n.split(".")[0] == b)
     learn = " ".join(v for k, v in vars(civics).items()
                      if isinstance(v, str) and k.isupper())
     learn += " ".join(json.dumps(v) for k, v in vars(civics).items()
@@ -5255,7 +5259,7 @@ def _language_sweep_words(civics, C):
             # The example a page the build writes (not_found_example; P2 of the
             # polish of 26 October 2026), held by _not_found_example_is_there.
             ("build_pages.py", pages, "/bill/&lt;year&gt;/&lt;number&gt;", "<code>[[example]]</code>"),
-            ("build_rsa.py", src("build_rsa.py"), "the bills now proposing to",
+            ("build_rsa.py", own("build_rsa"), "the bills now proposing to",
              "laws not yet included."),
             ("build_site_v2.py", src("build_site_v2.py"), '"text": f"Still in interim study when',
              "In interim study: the committee studies the subject in the fall of"),
