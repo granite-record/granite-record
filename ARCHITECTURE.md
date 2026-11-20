@@ -2517,9 +2517,16 @@ measure (`_margins_on_file`), the page and its script in node
 A member's Elections tab also lists their State Primary candidacies
 (`build_member_elections.primary_rows`, from `collected/primary_<year>.json`),
 on their own party's ballot only and by the same certain rule as a loss; the
-card is `race_card`'s with `primary=` the ballot's party: the leader Most votes,
-never nominated, the label with no letter, the votes the file lists for another
-party's candidates left off and said in the note. The tab is one column of
+card is `race_card`'s with `primary=` the ballot's party: each leader, as many
+as the seats, Nominated (the owner, 20 November 2026), and linked to their page
+where the certain rule places a member (`nominee_links`), as a general's winner
+is and a candidate who lost is not; the label with no letter, the votes the file
+lists for another party's candidates left off and said in the note. The certain
+rule, for a general's candidates and a primary's, also takes a name printed with
+a middle initial the roster lacks, or the other way round, where the rest is
+certain (`Roster.initial_match`, which reuses the bill requests'
+`build_lsrs.compatible`): the seat held, the party, no other candidate of the
+surname, one member; a special's candidates keep the letter-for-letter rule. The tab is one column of
 cards under a heading for each election cycle, strictly newest first: a cycle's
 general, then its primary under it (`sort_rows`, `cycle_of`). A special election
 and its party primaries (`special_rows`, from `collected/specials.json`) carry

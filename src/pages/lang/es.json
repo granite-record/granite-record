@@ -25734,8 +25734,8 @@
    "state": "draft"
   },
   "race.intro_primary": {
-   "en": "A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; its leader is marked Most votes.",
-   "es": "Una primaria se muestra en la papeleta del propio partido del miembro, debajo de las elecciones generales de ese año; quien encabeza se marca con Más votos.",
+   "en": "A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; a candidate it nominated is marked Nominated.",
+   "es": "Una primaria se muestra en la papeleta del propio partido del miembro, debajo de las elecciones generales de ese año; quien resultó nominado/a se marca con Nominado/a.",
    "state": "draft"
   },
   "race.intro_special": {
@@ -25749,8 +25749,8 @@
    "state": "draft"
   },
   "race.omitted": {
-   "en": "A race this member lost appears only where the name and the district match the record exactly; any other is left off.",
-   "es": "Una contienda que este miembro perdió aparece solo cuando el nombre y el distrito coinciden exactamente con el registro; las demás se omiten.",
+   "en": "A race this member lost appears only where the name and the district match the record exactly, or but for a middle initial; any other is left off.",
+   "es": "Una contienda que este miembro perdió aparece solo cuando el nombre y el distrito coinciden exactamente con el registro, o salvo por una inicial del segundo nombre; las demás se omiten.",
    "state": "draft"
   },
   "race.place": {

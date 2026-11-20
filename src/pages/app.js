@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.363
+// GRANITE_VERSION: 2026-09-07.365
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10533,13 +10533,13 @@ function renderMemberElections(m){
   const cyc=[...new Set(cards.map(r=>r.cy||r.d.slice(0,4)))];
   const stack=cyc.map(y=>`<h3 class="er-cycle">${esc(y)}</h3><div class="er-cards er-stack">${
     cards.filter(r=>(r.cy||r.d.slice(0,4))===y).map(electionCard).join("")}</div>`).join("");
-  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}${prim?" "+tr("race.intro_primary","A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; its leader is marked Most votes."):""}${sp.length?" "+tr("race.intro_special","A special election is shown under the election cycle of the term whose seat it filled, by its date, with its primary under it."):""}</p>
+  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}${prim?" "+tr("race.intro_primary","A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; a candidate it nominated is marked Nominated."):""}${sp.length?" "+tr("race.intro_special","A special election is shown under the election cycle of the term whose seat it filled, by its date, with its primary under it."):""}</p>
     ${electionUpcoming(m.up)}${stack}${inc}${plain.length?`
     <table class="votes vfull"><thead><tr><th>${esc(tr("race.col_election","Election"))}</th>
       <th>${esc(tr("race.col_race","Race"))}</th><th>${esc(tr("race.col_result","Result"))}</th>
       <th>${esc(tr("race.col_votes","Votes"))}</th></tr></thead>
       <tbody>${plain.map(electionRow).join("")}</tbody></table>`:""}
-    <p class="src">${tr("race.omitted","A race this member lost appears only where the name and the district match the record exactly; any other is left off.")}
+    <p class="src">${tr("race.omitted","A race this member lost appears only where the name and the district match the record exactly, or but for a middle initial; any other is left off.")}
       ${days.length?tr("race.source","Source: the New Hampshire Secretary of State&rsquo;s official results, shown on the elections pages: {years}. Each row links to its race there.",{years:src}):""}${prim?" "+tr("race.source_primary","The primaries are from the Secretary of State&rsquo;s State Primary results files: {years}; no page of them is on this site yet.",{years:esc(prim)}):""}${sp.length?" "+tr("race.source_special","The special elections are from the Secretary of State&rsquo;s page of each: {list}.",{list:spsrc}):""}</p>`;
 }
 

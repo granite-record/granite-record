@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.36
+# GRANITE_VERSION: 2026-11-16.39
 """
 preflight's checks of members-elect and election results.
 
@@ -2121,13 +2121,13 @@ def _member_elections_cards(BMEL, BME, BE):
 
 
 @check("build", "a member's Elections tab shows their primaries on their own party's ballot by the general "
-       "cards' certain rule, the leader Most votes and never nominated, the label with no letter, another "
+       "cards' certain rule, the leaders marked Nominated, the label with no letter, another "
        "party's candidates left off and said, each primary before its year's general",
        needs=("build_member_elections", "build_elections"))
 def _member_elections_primaries(BMEL, BE):
     """The owner, 19 November 2026, on the made-up court of _mel_world and a made-up State
     Primary of 8 September 2026: Dee Moss (sitting, Rockingham 2) and Ed Ford (who held it in
-    2025-2026) each get the Republican primary's card, Moss marked Most votes, the label +14.3,
+    2025-2026) each get the Republican primary's card, Moss marked Nominated, the label +14.3,
     the Democrat written in on that ballot left off and said; Ann Hart (R), with 3 votes on the
     Democratic ballot, gets nothing and nobody else's card names her; Fay Ives, printed with no
     party on the Democratic ballot, is not hers (she is R) and goes to the owner's list. The rows
@@ -2154,13 +2154,15 @@ def _member_elections_primaries(BMEL, BE):
     assert (ford["r"], ford["v"]) == ("not", 300), f"Ford's row: {ford}"
     card = moss["c"]
     assert '<span class="chip er-mg">+14.3</span>' in card and 'Dee Moss <span class="mtag">(R)</span>' in card \
-        and card.count('<span class="chip">Most votes</span>') == 1 and "Elected" not in card, f"Moss's card: {card}"
+        and card.count('<span class="chip">Nominated</span>') == 1 and "Elected" not in card, f"Moss's card: {card}"
     assert "Dan Dunn" not in card and "1 candidate of another party, with 5 votes, is not shown." in card, (
         f"the Democrat written in on the Republican ballot: {card[-300:]}")
     assert "Most votes by <b>100 votes</b>, 14.3 points." in card and "would have changed" not in card, (
         f"the figures of a primary: {card}")
     low = re.sub(r"<[^>]+>", " ", " ".join(r["c"] for rs in rows.values() for r in rs)).lower()
-    assert "nominat" not in low and "won by" not in low, "a primary's card says nominated or won"
+    assert low.count("nominat") == low.count(" nominated ") == 2 and "won by" not in low \
+        and "most votes " not in low.replace("most votes by", ""), (
+        "a primary's card says nominated other than on its nominee's chip, or won, or Most votes")
     assert any(x[2] == "Fay Ives" and "not of it" in x[4] for x in report), f"Fay Ives is not listed: {report}"
     order = BMEL.sort_rows([{"d": "2024-11-05", "k": "H|A|1"}, {"d": "2026-09-08", "k": "H|A|1", "st": "primary"},
                             {"d": "2024-09-10", "k": "H|A|1", "st": "primary"}, {"d": "2026-11-03", "k": "S|5"}])
@@ -2172,11 +2174,101 @@ def _member_elections_primaries(BMEL, BE):
         return "ok", "the rows and cards held in Python; node, app.js or the stub is not here for the tab"
     assert '<p class="er-when">Republican primary, ' in html and "/elections/2026-09-08" not in html, (
         f"the primary's head: {html[:600]}")
-    assert "its leader is marked Most votes" in html and "State Primary results files: 2026" in html \
+    assert "a candidate it nominated is marked Nominated" in html and "State Primary results files: 2026" in html \
         and "shown on the elections pages" not in html, f"the tab's notes for a primary: {html[-700:]}"
-    return "ok", ("Moss and Ford on the Republican ballot, Moss Most votes at +14.3, the written-in Democrat "
+    return "ok", ("Moss and Ford on the Republican ballot, Moss Nominated at +14.3, the written-in Democrat "
                   "left off and said, Hart on the other ballot and Ives with no party not shown, a "
                   "year's general and then its primary, the tab's head and notes")
+
+
+@check("build", "a primary's card marks each candidate who takes one of its seats Nominated, never Most votes, "
+       "on a member's Elections tab and a town tab alike; a general's winners stay Elected",
+       needs=("build_elections", "town_elections"))
+def _primary_nominees_say_nominated(BE, TE):
+    """The owner, 20 November 2026, from the live site: Hillsborough 10's Democratic primary of
+    2026, three seats, tagged each of its three nominees "Most votes"; she chose "Nominated".
+    On a made-up primary of that shape (three seats, four candidates, three marked "nominated"
+    by the reader): its card (build_elections.race_card with primary=) says Nominated on the
+    three and on nobody else, and Most votes on no chip; the same race as a general, its three
+    winners drawn, says Elected three times and Nominated never; and a town tab's special
+    primary (town_elections.race_card, its one leader "most") says Nominated."""
+    def cand(name, votes, nominated):
+        return {"name": name, "party": "d", "votes": votes, "write_in": False, "nominated": nominated}
+    race = {"party": "d", "seats": 3, "floterial": False, "towns": ["Alpha"], "scatter": 0,
+            "candidates": [cand("Ana Hill", 900, True), cand("Kit Lane", 800, True),
+                           cand("Mo Jay", 700, True), cand("Ty Last", 100, False)]}
+    doc = {"election": "2026-09-08", "general": "2026-11-03", "races": {"D|H|Rockingham|9": race}}
+    card = BE.race_card("H|Rockingham|9", race, {}, doc, {}, "2026-09-08", {}, anchor=False, primary="D")
+    chips = re.findall(r'<li class="er-row[^"]*"><span class="er-who">.*?</li>', card, re.S)
+    marked = [re.search(r'translate="no">([^<]+)', r).group(1).strip() for r in chips
+              if '<span class="chip">Nominated</span>' in r]
+    assert marked == ["Ana Hill", "Kit Lane", "Mo Jay"], f"the primary's Nominated chips: {marked}"
+    assert '<span class="chip">Most votes</span>' not in card and "Elected" not in card, (
+        f"a primary's card still says Most votes, or Elected: {card}")
+    general = dict(race, candidates=[dict(c, elected=c["nominated"]) for c in race["candidates"]])
+    me = {"seats": 3, "elected": [{"n": c["name"]} for c in general["candidates"] if c["elected"]]}
+    gcard = BE.race_card("H|Rockingham|9", general, me, {"election": "2026-11-03", "races": {}}, {},
+                         "2026-11-03", anchor=False)
+    assert gcard.count('<span class="chip">Elected</span>') == 3 and "Nominated" not in gcard, (
+        f"a general's card: {gcard}")
+    town = TE.race_card({"key": "H|Rockingham|9", "name": "State House, Rockingham 9", "seats": 1, "href": "",
+                         "scatter": 0, "unopposed": False,
+                         "cands": [{"name": "Ana Hill", "party": "d", "votes": 9, "most": True, "slug": ""},
+                                   {"name": "Ty Last", "party": "d", "votes": 1, "most": False, "slug": ""}]},
+                        primary=True)
+    assert town.count('<span class="chip">Nominated</span>') == 1 and "Most votes" not in town, (
+        f"a town tab's special primary: {town}")
+    return "ok", ("a three-seat primary's three nominees Nominated and nobody Most votes; the same race as a "
+                  "general, Elected three times; a town tab's special primary, its leader Nominated")
+
+
+@check("build", "a primary's card links each nominee who is a member to their page, by the certain rule, as a "
+       "general's card links its winners; a candidate who lost links nowhere on either",
+       needs=("build_member_elections", "build_elections"))
+def _primary_nominees_link(BMEL, BE):
+    """The owner, 20 November 2026, from the live site: on a primary's card a sitting member's chip
+    was a plain name, where a general's card links its winners to their pages. A general links a
+    winner members_elect places (chip_slug) and never a loser, an incumbent who lost included; a
+    primary's card now does the same with its nominees (nominee_links: "nominated": true and
+    placed by the certain rule). On a made-up court (Wayne Burton, Loren Selig and Cy Out,
+    Democrats sitting for Rockingham 9), a two-seat primary: "Wayne M. Burton" and Loren Selig,
+    nominated, link to their pages on every card of the race; Cy Out, a member who lost, and Ann
+    Nu, nobody's, do not; the same three as a general, Burton and Selig elected: the winners link
+    and Cy Out, marked an incumbent, does not. (A special primary's nominee: Bea Zane in
+    _member_elections_specials.)"""
+    def dem(*a):
+        return dict(_mel_member(*a), party="D")
+    sitting = [dem("3001", "Burton", "Wayne", "H", "Rockingham", "9"), dem("3002", "Selig", "Loren", "H", "Rockingham", "9"),
+               dem("3004", "Out", "Cy", "H", "Rockingham", "9")]
+    roster = BMEL.Roster(sitting, [], ["2025-2026", "2023-2024"])
+
+    def cand(name, votes, nominated):
+        return {"name": name, "party": "d", "votes": votes, "write_in": False, "nominated": nominated}
+    race = {"party": "d", "seats": 2, "floterial": False, "towns": ["Alpha"], "scatter": 0,
+            "candidates": [cand("Wayne M. Burton", 900, True), cand("Loren Selig", 800, True),
+                           cand("Cy Out", 100, False), cand("Ann Nu", 50, False)]}
+    doc = {"election": "2026-09-08", "general": "2026-11-03", "races": {"D|H|Rockingham|9": race}}
+    rows, _rep = BMEL.primary_rows("2026-09-08", doc, roster)
+    assert sorted(rows) == ["3001", "3002", "3004"], f"the primary's rows: {sorted(rows)}"
+
+    def linked(card):
+        return re.findall(r'<a href="legislator/([^"]+)">', card)
+    for mid in ("3001", "3002", "3004"):
+        card = rows[mid][0]["c"]
+        assert linked(card) == ["wayne-burton", "loren-selig"], f"{mid}'s card links {linked(card)}"
+        assert '<span class="mchip p-D" translate="no"><a href="legislator/wayne-burton">Wayne M. Burton' in card, (
+            "a nominee's chip is not the general's chip with its link")
+        assert 'translate="no">Cy Out <span class="mtag">(D)</span></span>' in card, "the member who lost is linked"
+    general = dict(race, candidates=[dict(c, elected=c["nominated"]) for c in race["candidates"]])
+    me = {"seats": 2, "elected": [{"n": "Wayne M. Burton", "id": "3001", "s": "wayne-burton"},
+                                  {"n": "Loren Selig", "id": "3002", "s": "loren-selig"}]}
+    inc = BMEL.incumbents("H|Rockingham|9", general, "2026-11-03", roster, {e["n"]: e for e in me["elected"]})
+    gcard = BE.race_card("H|Rockingham|9", general, me, {"election": "2026-11-03", "races": {}}, {}, "2026-11-03",
+                         anchor=False, inc=inc)
+    assert linked(gcard) == ["wayne-burton", "loren-selig"] and "Cy Out" in inc, (
+        f"a general's card links {linked(gcard)}, marks {sorted(inc)}")
+    return "ok", ("a primary's two nominees linked on every card of the race, the member who lost and a "
+                  "stranger not; a general's the same: its winners linked, its incumbent who lost not")
 
 
 @check("build", "a member's Elections tab is one column of race cards under a heading for each election "
@@ -2236,7 +2328,7 @@ def _member_elections_specials(BMEL):
     candidate printed as the roster's Bea Zane in another district gets nothing.
 
     Zane's rows: the special (st special, cy 2024, Elected, D+3.9, the margin's rule) and its
-    primary (st special-primary, Most votes, Unopposed); sorted with her 2026 general, 2024
+    primary (st special-primary, Nominated, Unopposed); sorted with her 2026 general, 2024
     general and 2024 primary, the order is 2026's general, then under 2024 the special, its
     primary, the 2024 general and its primary. app.js draws headings 2026 and 2024 in that order,
     heads the cards "Special election, " and "Special primary (Democratic), " with no link to an
@@ -2287,7 +2379,12 @@ def _member_elections_specials(BMEL):
     assert '<span class="chip er-mg pt-D">D+3.9</span>' in s["c"] and "Elected" in s["c"] and "1 seat" in s["c"] \
         and "Lambda, Mu" in s["c"] and 'class="er-row er-me"' in s["c"], f"the special's card: {s['c']}"
     assert (p["cy"], p["pp"], p["r"], p["v"]) == ("2024", "D", "most", 615) and "Unopposed" in p["c"] \
-        and "Most votes" in p["c"] and "Elected" not in p["c"], f"the special primary's row: {p}"
+        and '<span class="chip">Nominated</span>' in p["c"] and "Most votes" not in p["c"] \
+        and "Elected" not in p["c"], f"the special primary's row: {p}"
+    # Her chip links on the special's card (the winner) and, since 20 November 2026, on its
+    # primary's (the nominee, nominee_links), as a general's card links its winners.
+    assert 'href="legislator/bea-zane"' in s["c"] and 'href="legislator/bea-zane"' in p["c"], (
+        f"Zane's chip on the special primary's card is not a link: {p['c']}")
     assert "5003" not in rows and any(r[2] == "Ned Old" and "2015-2016" in r[4] for r in report), (
         f"Ned Old, who held Carroll 7 in 2015-2016 only, is linked or not listed: {report}")
     assert "5002" not in rows and any(r[2] == "Max D. Teller" for r in report), (
@@ -2319,7 +2416,7 @@ def _member_elections_specials(BMEL):
         f"the tab's notes for a special: {html[-900:]}")
     flat = re.sub(r"<[^>]+>", " ", html).lower()
     assert not re.search(r"\b(replac|vacan|resign|predecessor)", flat), "the tab says whom a winner replaced"
-    return "ok", ("Zane's special (Elected, D+3.9) and its primary (Most votes, Unopposed) under 2024, above that "
+    return "ok", ("Zane's special (Elected, D+3.9) and its primary (Nominated, Unopposed) under 2024, above that "
                   "cycle's general, 2026's general first; Max D. Teller listed for the owner, not linked; headed "
                   "Special election and Special primary, the tie's re-run said, no elections-page link, the "
                   "Secretary of State's page cited, nothing of whom a winner replaced")
@@ -2502,7 +2599,7 @@ def _member_elections_order_on_file(BMEL, BME):
 
 
 @check("data", "on today's roster and primary files, Alice Wade's 2024 Democratic primary in Strafford 15 is "
-       "on her tab, Most votes at +42.1 with Keith Mistretta's 0 left off, and her written-in votes on "
+       "on her tab, Nominated at +42.1 with Keith Mistretta's 0 left off, and her written-in votes on "
        "2026's Republican ballot are not", needs=("build_member_elections", "build_members_elect"))
 def _member_primaries_on_file(BMEL, BME):
     """The owner's own cases of 19 November 2026, on site/legislators.json and site/former.json (a
@@ -2528,7 +2625,7 @@ def _member_primaries_on_file(BMEL, BME):
     assert [(r["d"], r["pp"], r["k"], r["r"], r["v"]) for r in got] == [
         ("2024-09-10", "D", "H|Strafford|15", "most", 405)], f"Wade's primaries: {[(r['d'], r['pp'], r['k']) for r in got]}"
     card = got[0]["c"]
-    assert '<span class="chip er-mg">+42.1</span>' in card and "Lucas Veitch" in card and "Most votes" in card \
+    assert '<span class="chip er-mg">+42.1</span>' in card and "Lucas Veitch" in card and ">Nominated<" in card \
         and "Keith Mistretta" not in card and "1 candidate of another party, with 0 votes, is not shown." in card, (
             f"Wade's 2024 primary card: {card}")
     return "ok", f"Wade's one primary of 2024 and 2026 as the owner described it; {n} primary rows in those two years"
@@ -2592,6 +2689,64 @@ def _election_incumbents(BMEL, BE, BME):
     return "ok", ("Beck and Lowe marked, Hart (a newcomer), Old, a member gone before the election, a "
                   "namesake and a Representative in a Senate race not; the card's asterisk, the page's "
                   "one line and the tab's one line a chamber")
+
+
+@check("build", "a candidate printed with a middle initial the roster lacks is the member only where the rest is "
+       "certain -- the seat held, the party, no rival of the surname, one member; never on a special's card -- "
+       "and is then marked * and shown on their tab like any other",
+       needs=("build_member_elections", "build_lsrs"))
+def _election_middle_initial(BMEL, BL):
+    """The owner, 20 November 2026, from the live site: Strafford 10's Democratic primary of 2026
+    marked Loren Selig and Timothy Horrigan as incumbents and not Wayne M. Burton, a sitting member
+    the roster names "Burton, Wayne": the letter-for-letter match missed him. Roster.initial_match
+    takes the bill requests' rule (build_lsrs.compatible) and holds the rest certain. On a made-up
+    court (Wayne Burton and Loren Selig, Democrats sitting for Rockingham 9): "Wayne M. Burton" is
+    marked and has his primary row; and he is nobody where another candidate of the surname is in
+    the race, where he filed under another party, in a seat he never held, printed "Wayne Q. Burton"
+    against a member "Burton, Wayne R." (two initials that differ), "Way Burton" (a bare prefix),
+    "Loren Selig Jr." (a suffix alone). A special's card keeps the letter-for-letter rule: Max D.
+    Teller in _member_elections_specials."""
+    def dem(*a):
+        return dict(_mel_member(*a), party="D")
+    sitting = [dem("3001", "Burton", "Wayne", "H", "Rockingham", "9"), dem("3002", "Selig", "Loren", "H", "Rockingham", "9"),
+               dem("3003", "Hale", "Jo R.", "H", "Rockingham", "9")]
+    roster = BMEL.Roster(sitting, [], ["2025-2026", "2023-2024"])
+
+    def cand(name, votes, party="d", nominated=True):
+        return {"name": name, "party": party, "votes": votes, "write_in": False, "nominated": nominated}
+
+    def primary(*cands, seats=3):
+        return {"party": "d", "seats": seats, "floterial": False, "towns": ["Alpha"], "scatter": 0,
+                "candidates": list(cands)}
+    race = primary(cand("Wayne M. Burton", 900), cand("Loren Selig", 800), cand("Ann Nu", 700),
+                   cand("Ty Last", 10, nominated=False))
+    inc = BMEL.incumbents("H|Rockingham|9", race, "2026-09-08", roster)
+    assert inc == {"Wayne M. Burton", "Loren Selig"}, f"the incumbents of the primary: {set(inc)}"
+    doc = {"election": "2026-09-08", "general": "2026-11-03", "races": {"D|H|Rockingham|9": race}}
+    rows, _rep = BMEL.primary_rows("2026-09-08", doc, roster)
+    assert sorted(rows) == ["3001", "3002"] and rows["3001"][0]["v"] == 900, f"the primary's rows: {dict(rows)}"
+    assert rows["3001"][0]["c"].count('class="er-inc"') == 2, "Burton's card does not mark both incumbents"
+
+    def who(name, key="H|Rockingham|9", party="d", others=()):
+        r = primary(cand(name, 900, party), *[cand(o, 5) for o in others])
+        got, why = roster.certain(name, key, "2026-09-08", r, party, initials=True)
+        return [p["id"] for p in got], why
+    assert who("Wayne M. Burton") == (["3001"], ""), who("Wayne M. Burton")
+    ids, why = who("Wayne M. Burton", others=("Mary Burton",))
+    assert ids == [] and "another candidate of that surname" in why, (ids, why)
+    assert who("Wayne M. Burton", party="r")[0] == [], "another party's candidate was taken for a Democrat"
+    assert who("Wayne M. Burton", key="H|Rockingham|8")[0] == [], "a seat he never held"
+    assert who("Jo Q. Hale")[0] == [], "two middle initials that differ were taken as one person"
+    assert who("Jo Hale")[0] == ["3003"], "a middle initial on the roster's side only is the same rule"
+    assert who("Way Burton")[0] == [], "a bare prefix of a first name was taken"
+    assert who("Loren Selig Jr.")[0] == [], "a suffix alone was taken as a middle initial"
+    assert who("Wayne Burton")[0] == ["3001"] and who("Wayne Burton", others=("Mary Burton",))[0] == ["3001"], (
+        "the letter-for-letter rule changed")
+    assert not BMEL.differs("Loren Selig Jr.", "Selig, Loren") and BMEL.differs("Wayne M. Burton", "Burton, Wayne"), (
+        "differs: a suffix alone is not a middle initial")
+    assert BL.compatible("Wayne M. Burton", "Wayne Burton")[0], "the requests' rule moved"
+    return "ok", ("Wayne M. Burton marked and on his tab beside Selig; nobody with a rival Burton, another "
+                  "party, another seat, differing initials, a bare prefix or a suffix alone")
 
 
 @check("data", "on today's roster and results, the incumbents' marks fall where the record says: Alice Wade "
