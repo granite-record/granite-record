@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -5377,6 +5377,7 @@ def _nightly_runner(NI):
     saved_env = {k: os.environ.get(k) for k in env_keys}
     calls, size, empty = [], {"bills": 100}, {"rc": 0, "left": 0, "pages": []}
     lsr = {"rc": 0, "rows": 3}
+    saved_roster = NI.lsr_roster
     kept = {}                   # each night's own verdict, as site-up sends it with its site
 
     def fake(args, label, cwd=None):
@@ -5467,6 +5468,8 @@ def _nightly_runner(NI):
         NI.run = fake
         NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
         NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
+        # The request guard asks no site served for its roster here.
+        NI.lsr_roster = lambda base, into, timeout=60: (None, "a fixture")
         NI.tracked_changes = lambda: ([], [])
         today = f"{datetime.now():%Y-%m-%d}"
 
@@ -5782,6 +5785,7 @@ def _nightly_runner(NI):
         (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes, NI.current_branch,
          NI.upload_and_check, NI.captions_compared, NI.time, sys.argv, refusal.MARK,
          refusal.LOCK) = saved
+        NI.lsr_roster = saved_roster
         for k, val in saved_env.items():
             if val is None:
                 os.environ.pop(k, None)
@@ -5834,8 +5838,9 @@ def _lsrs_filed_not_withdrawn(NI):
         Path("lsrs.json").write_text(json.dumps(old), encoding="utf-8")
         Path("Docket.txt").write_text("﻿", encoding="utf-8")
         said = NI.take_lsrs()
-        assert said == ("not taken: it would newly withdraw 20 of the 60 standing requests; the "
-                        "earlier 60 kept"), said
+        assert said == ("not taken: it would newly withdraw 20 of the 60 standing requests (who is "
+                        "not returning could not be told: no site/legislators.json here, and no "
+                        "site to read it from); the earlier 60 kept"), said
         assert json.loads(Path("lsrs.json").read_text(encoding="utf-8")) == old, \
             "a refused list did not put the earlier one back"
     finally:
@@ -5844,6 +5849,125 @@ def _lsrs_filed_not_withdrawn(NI):
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("20 of 60 requests gone from the list as bills the docket files: taken, said as "
                   "filed; the same 20 with no docket naming them: refused, the earlier list kept")
+
+
+@check("build", "the night's request list sets aside, from the count that refuses it, the requests "
+                "gone of members not returning, as build_lsrs decides it, read from site/ or from "
+                "the site production serves; the rest are counted as before",
+       needs=("nightly",))
+def _lsrs_unreturned_set_aside(NI):
+    """The nights of 19 and 20 November 2026 refused the list: "it would newly
+    withdraw 76 (then 78) of the 731 standing requests", the requests the
+    General Court took off it after the election, and with them the 200 filed
+    since. take_lsrs now sets aside the gone requests of sponsors
+    build_lsrs.not_returning decides are not returning (unreturned_of) and
+    counts the rest. Driven with the fetch answered here, on a roster of three
+    sitting members: one not among the winners of a decided race, one a
+    winner, one whose race is not final. 60 standing requests (30, 20, 10),
+    the guard's line max(5, 6) = 6. Held: the not-returning member's 20 gone
+    alone are taken, said, and still marked withdrawn; a returning member's 20
+    are refused as before; a mix counts only the others (3 taken, 7 refused,
+    and a race not final is counted); a fetch that fails or writes nothing is
+    refused whatever is set aside; no roster is said; and on GitHub's machine
+    -- no site/ -- the roster is read from the site served, a members-elect
+    file it no longer serves passed over."""
+    import urllib.error
+    import urllib.request
+    was, cwd = (NI.run, NI.say, urllib.request.urlopen), os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lsrs-aside-"))
+    who = ["Gone Member"] * 30 + ["Stays Member"] * 20 + ["Open Member"] * 10
+    old = [{"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB", "title": "t.",
+            "sponsor": who[n - 1], "withdrawn": False, "cosponsors": []} for n in range(1, 61)]
+    roster = {
+        "legislators.json": [
+            {"name": "Member, Gone", "slug": "gone-member", "chamber": "H", "county": "Fixture",
+             "district": "1", "party_code": "R"},
+            {"name": "Member, Stays", "slug": "stays-member", "chamber": "H", "county": "Fixture",
+             "district": "1", "party_code": "D"},
+            {"name": "Member, Open", "slug": "open-member", "chamber": "H", "county": "Fixture",
+             "district": "2", "party_code": "R"}],
+        "former.json": [], "meta.json": {"terms": ["2025-2026"]},
+        "members_elect.json": {"term": "2027-2028", "races": {
+            "H|Fixture|1": {"elected": [{"s": "stays-member"}]},
+            "H|Fixture|2": {"elected": [], "not_final": True}}}}
+    fetched = {"rc": 0, "gone": set(), "write": True}
+
+    def fetch(args, label, cwd=None, env=None, root=None):
+        # fetch_lsrs's merge: the requests the list no longer has are kept, marked withdrawn.
+        NI.LSRS.write_text(json.dumps(
+            [dict(r, withdrawn=r["lsr"] in fetched["gone"]) for r in old]
+            if fetched["write"] else []), encoding="utf-8")
+        return fetched["rc"]
+
+    def take(gone, rc=0, write=True):
+        Path("lsrs.json").write_text(json.dumps(old), encoding="utf-8")
+        fetched.update(rc=rc, gone={f"2027-{n:04d}" for n in gone}, write=write)
+        return NI.take_lsrs("https://site.invalid")
+
+    def served(req, timeout=None):
+        name = req.full_url.rsplit("/", 1)[1]
+        if name not in roster:
+            raise urllib.error.HTTPError(req.full_url, 404, "not found", {}, None)
+        import io
+        return io.BytesIO(json.dumps(roster[name]).encode("utf-8"))
+    kept = ("; the earlier 60 kept")
+    try:
+        os.chdir(tmp)
+        NI.run, NI.say = fetch, lambda *a, **k: None
+        Path("site").mkdir()
+        for name, doc in roster.items():
+            (Path("site") / name).write_text(json.dumps(doc), encoding="utf-8")
+        Path("Docket.txt").write_text("﻿", encoding="utf-8")
+        gm, sm, om = range(1, 21), range(31, 51), range(51, 61)
+
+        said = take(gm)
+        assert said == ("installed, 40 requests (was 60); 20 no longer listed, 20 of them by "
+                        "members not returning (set aside from the check: Gone Member 20)"), said
+        took = json.loads(Path("lsrs.json").read_text(encoding="utf-8"))
+        assert sum(1 for r in took if r["withdrawn"]) == 20, \
+            "a request set aside was not still marked withdrawn"
+        said = take(sm)
+        assert said == "not taken: it would newly withdraw 20 of the 60 standing requests" + kept, said
+        assert json.loads(Path("lsrs.json").read_text(encoding="utf-8")) == old, \
+            "a refused list did not put the earlier one back"
+        said = take(list(gm) + [31, 32, 33])
+        assert said == ("installed, 37 requests (was 60); 23 no longer listed, 20 of them by "
+                        "members not returning (set aside from the check: Gone Member 20)"), said
+        said = take(list(gm) + list(range(31, 38)))
+        assert said == ("not taken: it would newly withdraw 7 of the 60 standing requests (beside "
+                        "20 by members not returning: Gone Member 20)" + kept), said
+        assert NI.kind_of(said) == NI.kind_of(take(sm)), \
+            "the set-aside made the refusal another kind of warning"
+        said = take(list(gm) + list(om))
+        assert said == ("not taken: it would newly withdraw 10 of the 60 standing requests (beside "
+                        "20 by members not returning: Gone Member 20)" + kept), \
+            ("a request whose sponsor's race is not final was set aside", said)
+        said = take(gm, rc=1)
+        assert said == "not taken: the fetch did not complete (exit 1)" + kept, said
+        said = take(gm, write=False)
+        assert said == "not taken: the fetch wrote no requests" + kept, said
+
+        # On GitHub's machine: no site/, the roster read from the site served,
+        # elect_pages.json and districts.json answering 404 and passed over.
+        shutil.rmtree("site")
+        urllib.request.urlopen = served
+        said = take(gm)
+        assert said.startswith("installed, 40 requests (was 60); 20 no longer listed, 20 of them"), said
+        # And a site that cannot be read sets nothing aside, and says so.
+        del roster["former.json"]
+        said = take(gm)
+        assert said == ("not taken: it would newly withdraw 20 of the 60 standing requests (who is "
+                        "not returning could not be told: https://site.invalid answered 404 for "
+                        "former.json)" + kept), said
+    finally:
+        NI.run, NI.say, urllib.request.urlopen = was
+        os.chdir(cwd)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("of 60 standing requests, 20 gone of a member not returning: taken, said and still "
+                  "withdrawn; 20 of a returning member: refused; 20 beside 3 others taken, beside 7 "
+                  "refused with the 20 said in brackets (the same kind); a race not final counted; "
+                  "a failed or empty fetch refused; the roster read from the site served where "
+                  "site/ has none, and a roster unreadable said")
 
 
 @check("build", "the night fetches the request texts the list links and this disk does not hold, at "

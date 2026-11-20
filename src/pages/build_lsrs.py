@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.29
+# GRANITE_VERSION: 2026-09-18.30
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -1125,6 +1125,36 @@ def drop_unreturned(rows, gone):
         slug = r.get("sponsor_slug")
         (dropped if r.get("withdrawn") and slug and slug in gone else kept).append(r)
     return kept, dropped
+
+
+def unreturned_of(requests, site, collected="collected", year=None):
+    """(the requests of `requests` this step would drop as a member's not
+    returning, what to say where that could not be worked out): for the
+    night's guard on a list that loses many requests (nightly.take_lsrs; the
+    nights of 19 and 20 November 2026, which refused the list for the 78
+    requests the election took off it). `requests` are lsrs.json's rows that
+    left the list, `site` a folder holding the site's legislators.json,
+    former.json, meta.json and, while they are written, members_elect.json and
+    elect_pages.json.
+
+    THE SAME DECISION AS main's, never a second one: a sponsor's slug as main
+    finds it (roster, the winners, the owner's name forms: rows_from), and
+    who is not returning by that slug (not_returning, drop_unreturned). What
+    main also passes rows_from -- the bills, the texts, the earlier titles --
+    changes no sponsor's slug, and a request gone from the list that the
+    docket files as a bill the night has already left out."""
+    site = Path(site)
+    if not (site / "legislators.json").is_file():
+        return [], f"no roster in {site}"
+    year = year or newest_session(requests)[0]
+    winners, _said = load_winners(site, collected)
+    rows, _unmatched = rows_from(requests, roster(site, collected, year), year=year,
+                                 winners=winners, forms=name_forms())
+    _r, _turned, _t, why = election_races(site, collected)
+    gone, _undecided = not_returning(site, collected, year=year)
+    _kept, dropped = drop_unreturned(rows, gone)
+    ids = {r["n"] for r in dropped}
+    return [r for r in requests if "LSR " + str(r.get("lsr") or "").strip() in ids], why
 
 
 def with_topics(rows, bills):

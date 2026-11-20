@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.105
+# GRANITE_VERSION: 2026-09-04.106
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -763,9 +763,23 @@ STUDY_NIGHTLY = ("StatStudMeetings", "StatStudDetails")
 # LSR_GONE_FLOOR). It warns rather than blocks: a list beside the record going
 # stale for a night is no reason to hold back the day's docket, and a site
 # left alone for a month must not stop because one page changed.
+#
+# EXCEPT THE REQUESTS OF MEMBERS NOT RETURNING (the nights of 19 and 20
+# November 2026, which refused the list for the 76, then 78, requests the
+# General Court took off it after the election, and with them the 200 filed
+# since). Before the count, the requests gone that build_lsrs would drop as a
+# member's not returning (build_lsrs.unreturned_of, its own decision) are set
+# aside and said, and the guard counts the rest. They are still marked
+# withdrawn, as every request gone is. Who is not returning is read from
+# site/ where this machine has the site's roster, and on GitHub's machine,
+# whose site/ starts empty, from the site production serves (LSR_ROSTER):
+# last night's roster and members-elect, which the requests kept were built
+# beside.
 LSRS = Path("lsrs.json")
 LSR_GONE_MOST = 0.10
 LSR_GONE_FLOOR = 5
+LSR_ROSTER = ("meta.json", "legislators.json", "former.json")
+LSR_ROSTER_MAY = ("members_elect.json", "elect_pages.json", "districts.json")
 
 # THE CALENDARS AND JOURNALS THE GENERAL COURT LISTS (1 October 2026): the
 # list the Calendar page's picker is built from, and what its pages listed
@@ -1967,7 +1981,7 @@ def main():
                             # And next session's bill requests, from the site.
                             EXITS.clear()
                             if not refusal.MARK.exists():
-                                night.v["lsrs"] = take_lsrs()
+                                night.v["lsrs"] = take_lsrs(a.base)
                             # And the statutes, on the nights a new law takes
                             # effect (STATUTE_NIGHTS), from the same host.
                             if not a.new_term and not refusal.MARK.exists() \
@@ -4313,11 +4327,14 @@ def not_moving_of(v):
             if isinstance(x, (list, tuple)) and len(x) == 2]
 
 
-def take_lsrs():
+def take_lsrs(base=None):
     """Next session's bill requests into lsrs.json, whole or not at all, and a
     line saying what happened: "installed, ..." or "not taken: ...". The fetch
     runs here, in the working folder, so that a refusal it meets is recorded in
-    the refusal record every other fetch reads."""
+    the refusal record every other fetch reads. Where the requests gone would
+    trip the guard, those of members not returning are set aside from its
+    count (NEXT SESSION'S BILL REQUESTS), read from site/ or else from the
+    site `base` serves (lsr_roster); the rest are counted as before."""
     before = LSRS.read_bytes() if LSRS.exists() else None
     old = load_json(LSRS) if before is not None else []
     old = old if isinstance(old, list) else []
@@ -4339,13 +4356,25 @@ def take_lsrs():
     left = [r for r in (new if isinstance(new, list) else [])
             if isinstance(r, dict) and r.get("withdrawn") and r.get("lsr") in standing]
     gone = [r for r in left if r.get("lsr") not in billed]
+    most = max(LSR_GONE_FLOOR, LSR_GONE_MOST * len(standing))
+    # Asked only where the guard would trip: a night of a few withdrawals
+    # needs nobody's roster, and is said as it always was.
+    aside, untold = ([], "")
+    if rc == 0 and isinstance(new, list) and new and len(gone) > most:
+        aside, untold = unreturned(gone, base)
+    counted = [r for r in gone if r not in aside]
+    who = lsr_sponsors(aside)
     why = ""
     if rc != 0:
         why = f"the fetch did not complete (exit {rc})"
     elif not isinstance(new, list) or not new:
         why = "the fetch wrote no requests"
-    elif len(gone) > max(LSR_GONE_FLOOR, LSR_GONE_MOST * len(standing)):
-        why = f"it would newly withdraw {len(gone)} of the {len(standing)} standing requests"
+    elif len(counted) > most:
+        # The aside in brackets, where kind_of reads past them: the same
+        # warning is the same kind whatever the election took.
+        why = (f"it would newly withdraw {len(counted)} of the {len(standing)} standing requests"
+               + (f" (beside {len(aside)} by members not returning: {who})" if aside else
+                  f" (who is not returning could not be told: {untold})" if untold else ""))
     if why:
         if before is not None:
             tmp = LSRS.with_name(LSRS.name + ".part")
@@ -4358,9 +4387,78 @@ def take_lsrs():
                 + (f"the earlier {len(standing)} kept" if before is not None else "none on file"))
     active = sum(1 for r in new if isinstance(r, dict) and not r.get("withdrawn"))
     filed = len(left) - len(gone)
-    return (f"installed, {active} requests (was {len(standing)})"
+    said = (f"installed, {active} requests (was {len(standing)})"
             + (f"; {filed} filed as bills" if filed else "")
-            + (f"; {len(gone)} newly withdrawn" if gone else ""))
+            + (f"; {len(gone)} no longer listed, {len(aside)} of them by members not returning "
+               f"(set aside from the check: {who})" if aside else
+               f"; {len(gone)} newly withdrawn" if gone else ""))
+    if aside:
+        say(f"  bill requests {said}")
+    return said
+
+
+def unreturned(gone, base=None):
+    """(the requests of `gone` by members not returning, what to say where
+    that could not be told) for take_lsrs: build_lsrs.unreturned_of, the
+    decision build_lsrs makes, on the roster lsr_roster finds. Nothing is set
+    aside where it cannot be read, so the guard counts every request gone,
+    as it did before."""
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="gr-lsr-roster-") as tmp:
+        site, untold = lsr_roster(base, Path(tmp))
+        if site is None:
+            return [], untold
+        try:
+            import build_lsrs
+            aside, why = build_lsrs.unreturned_of(gone, site)
+        except Exception as e:      # noqa: BLE001 -- a guard's helper never stops the night
+            return [], f"{type(e).__name__}: {e}"
+    return aside, ("" if aside else why)
+
+
+def lsr_roster(base, into, timeout=60):
+    """(a folder holding the site's roster files, what to say where there is
+    none) for unreturned: site/ where it holds legislators.json -- the
+    laptop, and any machine that built -- else LSR_ROSTER and LSR_ROSTER_MAY
+    as `base` serves them, read into `into`: last night's, on GitHub's
+    machine, whose site/ starts empty when this runs. LSR_ROSTER must each
+    read as JSON; LSR_ROSTER_MAY are left out where production answers 404,
+    as after 2 December, when the members-elect files retire."""
+    if (Path("site") / "legislators.json").is_file():
+        return Path("site"), ""
+    if not base:
+        return None, "no site/legislators.json here, and no site to read it from"
+    for name in LSR_ROSTER + LSR_ROSTER_MAY:
+        req = urllib.request.Request(f"{base.rstrip('/')}/{name}", headers={
+            "User-Agent": "granite-record-selfcheck/1.0", "Cache-Control": "no-cache"})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                body = r.read()
+            json.loads(body.decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code == 404 and name in LSR_ROSTER_MAY:
+                continue
+            return None, f"{base} answered {e.code} for {name}"
+        except Exception as e:      # noqa: BLE001 -- unreadable is "could not be told"
+            if name in LSR_ROSTER_MAY:
+                continue
+            return None, f"{name} from {base} could not be read ({type(e).__name__})"
+        (into / name).write_bytes(body)
+    return into, ""
+
+
+def lsr_sponsors(rows, top=3):
+    """'Joseph Barton 21, Victoria Sullivan 6, Tim McGough 6 and 25 others':
+    the sponsors of `rows` as the list names them, the most requests first,
+    for take_lsrs's line."""
+    by = {}
+    for r in rows:
+        name = str(r.get("sponsor") or "").strip() or "no sponsor named"
+        by[name] = by.get(name, 0) + 1
+    ranked = sorted(by.items(), key=lambda x: (-x[1], x[0]))
+    more = len(ranked) - top
+    return (", ".join(f"{n} {k}" for n, k in ranked[:top])
+            + (f" and {more} other{'s' if more != 1 else ''}" if more > 0 else ""))
 
 
 def billed_lsrs(docket=Path("Docket.txt")):

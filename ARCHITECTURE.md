@@ -2728,7 +2728,15 @@ again from Organization Day, when it retires, while the roster is still the
 old term's (`election_races`), and once the roster is the new term's by the
 roster itself, each member of the old term not on it (`departed`), whom a
 request's sponsor is matched to as a sitting member is and drawn by name and
-party, never the seat they left. A
+party, never the seat they left. The night takes the list whole or not at
+all (`nightly.take_lsrs`): it keeps the earlier list where the fetch failed,
+wrote nothing, or would newly withdraw more than a tenth of the standing
+requests (and more than five), a request the docket files as a bill not
+counted; and since 20 November 2026 nor is one this step would drop as its
+sponsor's not returning (`build_lsrs.unreturned_of`, the same decision, on
+`site/`'s roster where the machine has one and otherwise the one production
+serves), which the night's line names with its sponsors and which is still
+marked withdrawn. A
 request's topic comes from its title alone (`src/parse/request_topics.py`: the
 topic classifier with the committee left out, learned from every term's official
 code with the current term's counted three times, and Miscellaneous below its
