@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.325
+# GRANITE_VERSION: 2026-09-05.326
 """
 Generate the faceted site from real General Court data.
 
@@ -1263,6 +1263,52 @@ def index_tags(row, tagging, term, bid):
     return bill_tags_
 
 
+def rail_drawn(story, row, narr, jsteps, intro, bid, kind, status, term, current, own,
+               session_over, sittings, lsrs, ending, table_ends, j_tally, j_current):
+    """The bill's rail and its endings: (ending, jrail, srep) -- the closing
+    paragraph, now with a death on the table or in interim study where the rail
+    ends there (session_endings); the rail's dated stops (journey_rail), whose
+    copy the index row takes (index_rail); and what the committee reported on a
+    bill held for interim study (study_report), or None. Counts the journey
+    against the status and the rail in `j_tally` and `j_current`
+    (journey_disagrees), and takes the words off the journey's and the rail's
+    stops, which the page says itself. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    # THE RAIL'S ENDINGS (the person, 8 and 9 October 2026): a bill that
+    # died on the table is the pause where it was tabled and the cross at
+    # Law on the day it died, with the death's line and, where its history
+    # does not tell it, the sentence; a bill held for interim study, once
+    # its session is over, the cross at Law on the day its chamber last
+    # sat, with that line and the committee's report's (study_ending).
+    tabled = None
+    if not story and row.get("passage"):
+        tabled, ending = session_endings(
+            narr, jsteps, row["passage"], row.get("chip", ""), status, term,
+            not (own and not session_over), sittings, lsrs, ending, ends=table_ends)
+    jrail = journey_rail(intro, jsteps, row["passage"], bid, status, chip=row.get("chip", ""),
+                         tabled=tabled)
+    # What the committee reported, on a bill held for interim study: the
+    # note under the panel (app.js endNote).
+    srep = study_report(narr, term) if row.get("chip") == INTERIM_STUDY else None
+    # The same stops on the list card, from the start (index_rail).
+    if jrail:
+        row["rail"] = index_rail(jrail)
+    why = journey_disagrees(jsteps, kind, status, row["passage"], bid)
+    j_tally[(term, "empty" if not jsteps else "disagree" if why else "agree")] += 1
+    if why and term == current:
+        j_current.append(f"{bid}: {why}")
+    for s_ in jsteps:
+        law_line_dated(s_)
+        s_.pop("short", None)
+        # The Law stop has taken its day (law_day); the line keeps its words.
+        s_.pop("effective", None)
+    # NOR DO THE RECORD'S STOPS (RAIL_CODE): the rail draws a day and no
+    # words, and the page says each stop in its own `say`. The index row
+    # keeps its copy, the only one a card has to say before the record.
+    for s_ in jrail:
+        s_.pop("short", None)
+    return ending, jrail, srep
+
+
 def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over):
     """What build_bills says, after its loop, of the statuses it gave: how many the
     status page stated and how many of a closed term were marked finished, the
@@ -1645,39 +1691,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         unenrolled, ended_in, dates = unenrolled_rows(story, narr, kind, row, ev, intro, dates)
         bill_tags_ = index_tags(row, tagging, term, bid)
         index.append(row)
-        # THE RAIL'S ENDINGS (the person, 8 and 9 October 2026): a bill that
-        # died on the table is the pause where it was tabled and the cross at
-        # Law on the day it died, with the death's line and, where its history
-        # does not tell it, the sentence; a bill held for interim study, once
-        # its session is over, the cross at Law on the day its chamber last
-        # sat, with that line and the committee's report's (study_ending).
-        tabled = None
-        if not story and row.get("passage"):
-            tabled, ending = session_endings(
-                narr, jsteps, row["passage"], row.get("chip", ""), status, term,
-                not (own and not session_over), sittings, lsrs, ending, ends=table_ends)
-        jrail = journey_rail(intro, jsteps, row["passage"], bid, status, chip=row.get("chip", ""),
-                             tabled=tabled)
-        # What the committee reported, on a bill held for interim study: the
-        # note under the panel (app.js endNote).
-        srep = study_report(narr, term) if row.get("chip") == INTERIM_STUDY else None
-        # The same stops on the list card, from the start (index_rail).
-        if jrail:
-            row["rail"] = index_rail(jrail)
-        why = journey_disagrees(jsteps, kind, status, row["passage"], bid)
-        j_tally[(term, "empty" if not jsteps else "disagree" if why else "agree")] += 1
-        if why and term == current:
-            j_current.append(f"{bid}: {why}")
-        for s_ in jsteps:
-            law_line_dated(s_)
-            s_.pop("short", None)
-            # The Law stop has taken its day (law_day); the line keeps its words.
-            s_.pop("effective", None)
-        # NOR DO THE RECORD'S STOPS (RAIL_CODE): the rail draws a day and no
-        # words, and the page says each stop in its own `say`. The index row
-        # keeps its copy, the only one a card has to say before the record.
-        for s_ in jrail:
-            s_.pop("short", None)
+        ending, jrail, srep = rail_drawn(story, row, narr, jsteps, intro, bid, kind, status,
+                                         term, current, own, session_over, sittings, lsrs,
+                                         ending, table_ends, j_tally, j_current)
 
         # ---- one detail file per bill, loaded only when expanded
         # ---- the official documents behind this bill --------------------
