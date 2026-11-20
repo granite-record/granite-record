@@ -3005,7 +3005,12 @@ history is matched against (`_seat_history_reads_the_model`), and
 `build_site_v2.printed_record`, `term_seats`' first source for the seat of the
 term a session day names a member by (`_printed_record_reads_the_model`).
 `term_seats`' second source, a member's ballots in their last term, is not a
-tenure of the model and stays where it is.
+tenure of the model and stays where it is. A seat from either source is named
+only where it is a district of the lines the term sat on (the district table,
+`seat_of_the_lines`; 2013-2014 on), else the member is named alone: Carlos E.
+Gonzalez's 2015-2016 days named the Hills 48 of 2001-2002
+(`_term_seats_of_the_terms_lines`, and `_term_seats_built_of_their_lines` on
+the built `data/floor_record.json`).
 `_entities_step_in_the_plan` lets the readers it lists (`SEAT_READERS`) import
 the shapes' module, and nothing names the folder.
 

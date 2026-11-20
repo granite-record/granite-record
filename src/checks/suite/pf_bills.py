@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.39
+# GRANITE_VERSION: 2026-11-16.40
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -6756,6 +6756,143 @@ def _former_label_is_the_last_terms_seat(B2, PDIST, ST):
                   "Rock 22 is the Rock 37 the last term's bills print; a Senate 30 and today's Hills 48, no "
                   "district of their lines, none; a seat of the lines, two printed seats and a term before 2013 "
                   "as they were; no page moves; main applies it before the pages are written")
+
+
+def _lines_of(EN, ST, house, senate):
+    """A made-up district table (entities.district_table's) of the 2012 and 2022 lines: `house`
+    {county: districts numbered 1 to n}, `senate` districts 1 to n, a town apiece."""
+    era = lambda e: {"house": {(c, k): {"seats": 1, "floterial": False, "towns": [(f"{c} Town {k}", 0)]}
+                               for c, n in house.items() for k in range(1, n + 1)},
+                     "senate": {k: [(f"Senate Town {e} {k}", 0)] for k in range(1, senate + 1)}}
+    return EN.district_table({"2012": era("2012"), "2022": era("2022")}, ST.SETTINGS)
+
+
+@check("session", "a term's seat is named only where it is a district of the lines the term sat on, "
+                  "else the member is named alone; the build reads the district table for it",
+       needs=("build_site_v2", "build_session_pages", "entities", "state_settings"))
+def _term_seats_of_the_terms_lines(B2, BSP, EN, ST):
+    """term_seats and the district table (20 November 2026). Carlos E. Gonzalez's 2015-2016
+    session days named him "Rep. Carlos E. Gonzalez (R - Hills 48)": his bills of 2015-2016 print
+    no seat, so the seat was his ballots' in his last term, which is the record's one seat for him
+    (a correction whose evidence is the 2001-2002 journals), and 2015-2016 sat on the 2012 lines,
+    which number Hillsborough's districts to 45. Held, on made-up ballots against a made-up table
+    of the 2012 and 2022 lines (Hillsborough 1-45, Grafton 1-18, Senate 1-24): a last term's
+    ballot seat and a printed seat that are no district of the term's lines are refused, House and
+    Senate, and said; a seat of the lines is kept, in either era; a term before 2013, with no lines
+    on file, keeps its seat as before; the ballots map, which links and shows no seat, is as it
+    was; the session day names him alone, with the chamber's honorific; and main reads the
+    district table once and hands it to term_seats."""
+    import ast
+    import contextlib
+    import io
+
+    def ballot(year, label, member, name, vote="Yea"):
+        return {"year": str(year), "body": "H" if label.startswith(("Rep. ", "Gonz", "Kept", "Two")) else "S",
+                "vote_number": 1, "member_id": member, "name": name, "party": "R", "label": label,
+                "date": f"3/1/{year}", "vote": vote, "bill": "HB1"}
+    lines = _lines_of(EN, ST, {"Hillsborough": 45, "Grafton": 18}, 24)
+    gonzalez = [ballot(y, "Gonzalez, Carlos E.(R) Hillsborough 48", "376341", "Gonzalez, Carlos E.")
+                for y in (2001, 2015, 2016)]
+    kept = [ballot(y, "Kept, Kay(R) Hillsborough 22", "1", "Kept, Kay") for y in (2015, 2017)]
+    sen = [ballot(2015, "Sen. Sal Senator (R - SD30)", "4", "Senator, Sal"),
+           ballot(2016, "Sen. Sal Senator (R - SD30)", "4", "Senator, Sal")]
+    two = [ballot(2015, "Two, Tess(R) Grafton 5", "3", "Two, Tess"),
+           ballot(2023, "Two, Tess(R) Grafton 5", "3", "Two, Tess")]
+    votes = {"376341": gonzalez, "1": kept, "4": sen, "3": two}
+    one = {("2001-2002", "376341"): ("H", "Hillsborough", "48"),
+           # printed seats: one of the lines, one that is none of 2015-2016's
+           ("2015-2016", "3"): ("H", "Grafton", "5"),
+           ("2015-2016", "1"): ("H", "Hillsborough", "47")}
+    refused = []
+    seats = B2.term_seats(votes, record=(one, set(), {}), lines=lines, refused=refused)
+    got = {(t, m): lab for t, ms in seats.items() for m, lab in ms.items()}
+    want = {("2001-2002", "376341"): "Rep. Carlos E. Gonzalez (R - Hills 48)",
+            ("2017-2018", "1"): "Rep. Kay Kept (R - Hills 22)",
+            ("2015-2016", "3"): "Rep. Tess Two (R - Graf 5)",
+            ("2023-2024", "3"): "Rep. Tess Two (R - Graf 5)"}
+    assert got == want, f"term_seats gives {got}, not {want}"
+    assert sorted(refused) == [("2015-2016", "1", "Rep. Kay Kept (R - Hills 47)"),
+                               ("2015-2016", "376341", "Rep. Carlos E. Gonzalez (R - Hills 48)"),
+                               ("2015-2016", "4", "Sen. Sal Senator (R - SD30)")], (
+        f"the seats refused are said as {refused}")
+    # With no lines on file the rule is the old one: every seat kept, the ballots map unchanged.
+    balls_a, balls_b = {}, {}
+    old = B2.term_seats(votes, record=(one, set(), {}), lines=([], []), ballots=balls_b)
+    B2.term_seats(votes, record=(one, set(), {}), lines=lines, ballots=balls_a)
+    assert old["2015-2016"]["376341"] == "Rep. Carlos E. Gonzalez (R - Hills 48)" and balls_a == balls_b, (
+        "with no lines on file a seat was refused, or the ballots map moved with the lines")
+    assert B2.seat_of_the_lines("2015-2016", "Rep. A B (D - Hills 45)", EN.district_index({"district": lines[0]}),
+                                {(d["kind"], d["era"]) for d in lines[0]})
+    # The session day names him alone, with the chamber's honorific.
+    root = Path(tempfile.mkdtemp(prefix="gr-lines-"))
+    try:
+        (root / "legislators.json").write_text("[]", encoding="utf-8")
+        (root / "former.json").write_text(json.dumps([
+            {"id": "376341", "slug": "carlos-e-gonzalez-hills-48", "name": "Gonzalez, Carlos E.",
+             "chamber": "H", "party": "R", "display_full": "Rep. Carlos E. Gonzalez (R - Hills 48)"}]),
+            encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            m = BSP.Members(root)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    m.seats, m.current = seats, "2025-2026"
+    m.term = "2015-2016"
+    day = m.label("carlos-e-gonzalez-hills-48", "H")
+    assert day == "Rep. Carlos E. Gonzalez", f"his 2015-2016 days name him {day!r}"
+    m.term = "2001-2002"
+    assert m.label("carlos-e-gonzalez-hills-48", "H") == "Rep. Carlos E. Gonzalez (R - Hills 48)"
+    # main reads the table once, for the former members' labels and the terms' seats.
+    tree = _parsed(_paths.locate("build_site_v2.py"))
+    main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+    calls = [n for n in ast.walk(main) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "term_seats"]
+    assert calls and all(any(k.arg == "lines" and isinstance(k.value, ast.Name) and k.value.id == "district_lines"
+                             for k in c.keywords) for c in calls), "main's term_seats is not given the district table"
+    tl = [n for n in ast.walk(main) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+          and n.func.id == "last_term_labels"]
+    assert tl and all(isinstance(a, ast.Name) and a.id == "district_lines" for a in tl[0].args[3:4]), (
+        "the former members' labels and the terms' seats read the district table apart")
+    return "ok", ("Gonzalez's Hills 48 and a Senate 30 in 2015-2016, no districts of the 2012 lines, refused and "
+                  "said, and his days name him alone; a printed Hills 47 refused; seats of the lines in both eras "
+                  "and 2001-2002's kept; with no lines on file the old rule; the ballots map unmoved; main hands "
+                  "term_seats the district table")
+
+
+@check("data", "every seat the last build names a member by on a term's session days is a district of the lines that term sat on",
+       needs=("build_site_v2", "parse_districts", "state_settings"))
+def _term_seats_built_of_their_lines(B2, PDIST, ST):
+    """data/floor_record.json's seats (term_seats, as the build wrote them) against the district
+    table read from the files here: each seat of a term the table holds the lines of (2013-2014
+    on) names one of its districts. Against the record, so on the night it warns (RECORD_CHECKS):
+    a seat outside its term's lines is the record's (a correction or a ballot's undated seat) or
+    the table's, and the site goes on. Measured on 20 November 2026 against the build of 9
+    November: 2,869 seats of 2013-2026, one not of its lines (Carlos E. Gonzalez, Hills 48 in
+    2015-2016); 2,810 of 1999-2012, with no lines on file."""
+    f = Path("data") / "floor_record.json"
+    if not f.is_file():
+        return "skip", "no data/floor_record.json here: no build has run"
+    seats = json.loads(f.read_text(encoding="utf-8")).get("seats") or {}
+    said = []
+    lines = PDIST.table(".", ST.SETTINGS, said)
+    import entities as EN
+    index = EN.district_index({"district": lines[0]})
+    held = {(d["kind"], d.get("era")) for d in lines[0]}
+    if not held:
+        return "skip", "no district table here: " + "; ".join(said or ["records/districts is not here"])
+    bad, checked, open_ = [], 0, 0
+    for term, ms in sorted(seats.items()):
+        era = EN.era_of(term)
+        for mid, lab in sorted(ms.items()):
+            if era is None or not any(e == era for _k, e in held):
+                open_ += 1
+                continue
+            checked += 1
+            if not B2.seat_of_the_lines(term, lab, index, held):
+                bad.append(f"{lab} in {term}")
+    assert not bad, (f"{len(bad)} seat(s) on the session days name no district of their term's lines, e.g. "
+                     + "; ".join(bad[:5]) + ": rebuild, or see where the seat comes from (term_seats)")
+    return "ok", (f"{checked:,} seats of terms whose lines are on file, each a district of them; {open_:,} "
+                  "of terms before every era on file" + (f" ({'; '.join(said)})" if said else ""))
 
 
 @check("build", "a former member's last vote is the last of their last term, whatever day the "

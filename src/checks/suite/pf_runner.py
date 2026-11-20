@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 The runner: what `python3 preflight.py` does with its checks.
 
@@ -141,6 +141,9 @@ RECORD_CHECKS = {
     # A district the roster, the results or the map prints that the district table does not
     # hold (16 November 2026): the record's spelling or the table's age, never last night's.
     "_districts_printed_today",
+    # A session day's seat that is no district of its term's lines (20 November 2026): the
+    # record's seat for the member, or the table's, never last night's.
+    "_term_seats_built_of_their_lines",
     # A past election, against the Secretary of State's saved files and the
     # roll calls (17 October 2026): what they find is the record's, or the
     # rule's, and never last night's.
