@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.30
+# GRANITE_VERSION: 2026-11-16.31
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1381,6 +1381,8 @@ _SPLIT_FROM_SITE = {
                        "sponsor_record_rows sponsor_record_said story_people term_voters "
                        "vote_member").split()),
     "bill_topics": tuple(("ADDED_CODES TOPICS_GUESSED merge_guessed_topics unify_vocabulary").split()),
+    "bill_statutes": tuple(("AMEND_WORD CLAUSE_END NEXT_SECTION PART_WORD REPEALED REPEAL_LIST "
+                            "_CONSTITUTION bill_amends constitution_targets").split()),
 }
 
 
@@ -1643,6 +1645,24 @@ def _site_bill_topics_moved(B, BT):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in bill_topics.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the topics' own")
+
+
+@check("files", "what a bill's text says it changes -- the statutes it amends and the articles a "
+                "CACR amends -- is bill_statutes.py's, every name of it imported back into "
+                "build_site_v2",
+       needs=("build_site_v2", "bill_statutes"))
+def _site_bill_statutes_moved(B, BST):
+    """build_site_v2's reading of what a bill's text says it changes moved to
+    bill_statutes.py on 20 November 2026 (the refactor's finding 4), as it stood:
+    AMEND_WORD and the patterns beside it, bill_amends, _CONSTITUTION and
+    constitution_targets. Every name of them is held to be bill_statutes.py's, defined
+    nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so build_bills
+    and the checks that ask build_site_v2.bill_amends read a bill's statutes the one way."""
+    names = _SPLIT_FROM_SITE["bill_statutes"]
+    bad = _split_out(B, BST, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in bill_statutes.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the statutes' own")
 
 
 def _readme_unlisted(folder, root=None):
