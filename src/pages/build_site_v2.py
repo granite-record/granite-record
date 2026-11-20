@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.328
+# GRANITE_VERSION: 2026-09-05.329
 """
 Generate the faceted site from real General Court data.
 
@@ -1517,6 +1517,83 @@ def count_stations(stations, station_states, station_kinds):
             station_states["_no_recording"] += 1
 
 
+def record_story(narr, kind, row, unenrolled, story, ending, _mpool, _mpages):
+    """The record's history: (_narrative, _stages, _story_who) -- the stages' text
+    run together, the stages as they are told with the closing paragraph where
+    the ending is only on the status page (or a House Journal record's own), and
+    the members the story names, among the term's members with the seat each
+    held then (story_people), or []. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    # The stages' text run together; of the stages as they are told,
+    # where one of them is told without its enrolment (stages_told).
+    _narrative = (" ".join(s_["text"] for s_ in stages_told(narr, kind, row["passage"]))
+                  if unenrolled else (narr or {}).get("narrative", ""))
+    # The history, plus a closing paragraph where the bill's ending
+    # is only on the status page. 120 bills showed a settled headline
+    # over a story that stopped at the committee report.
+    _stages = (story["stages"] if story else
+               stages_told(narr, kind, row["passage"]) + ([ending] if ending else []))
+    # The members the story names, for the page to link (story_people).
+    # Among the term's own members with the seat each held then, as for a
+    # roll call's mover (mover_pool): the sitting roster in the current
+    # term, a finished term's frozen roster after the turn, and a term of
+    # 1999-2024 its own voters by the seat of the term.
+    # _story_who, NOT _people: that is every member and former member,
+    # which bill_sponsor_list and the hearing record read for the bills
+    # after this one; taking the name made it a list there, and the dry run
+    # of 8f700a7 stopped in the site data ('list' object has no attribute
+    # 'get') on the second current-term bill a sponsor list was read for.
+    _story_who = (story_people([_narrative] + [s_.get("text") or "" for s_ in _stages or []],
+                            _mpool, pages=_mpages) if _mpool is not None else [])
+    return _narrative, _stages, _story_who
+
+
+def record_events(narr, bid, sources, tdb, testimony, own, unenrolled, ended_in):
+    """The record's docket lines, each with its citation and plain words: a corrected
+    date and why, an "Enrolled" row the history does not tell, a row that calls
+    a meeting off or the docket cancelled, a misfiled row's note, a notice, and
+    the hearing's sign-ins. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    return _with_plain([{"date": e["date"], "text": listed_line(e),
+             "routine": is_routine(docket_line(e)),
+             **({"date_as_recorded": e["date_as_recorded"],
+                 "date_note": e.get("date_note") or (
+                     "The General Court's online docket gives "
+                     "another date for this; the journal and the "
+                     "other records of that session day place it "
+                     "on the date shown.")}
+                if e.get("date_as_recorded") else {}),
+             # An "Enrolled" row on a bill a chamber ended, with
+             # why the history does not tell it (enrolled_untold).
+             **({"row_note": ENROLLED_NOT_TOLD.format(chamber=ended_in)}
+                if any(e is u for u in unenrolled) else {}),
+             # A row that calls a meeting off (called_off), which
+             # the history does not tell, with why; the feeds
+             # leave it out by the same mark (build_feeds), as the
+             # Documents tab does. A cancelled row of another kind
+             # (marked_cancelled) carries the same mark, so it is
+             # left out of both in the same way, and its own note.
+             **({"row_note": CANCELLED_NOT_TOLD if called_off(e)
+                             else CANCELLED_ROW_NOT_TOLD,
+                 "called_off": True}
+                if marked_cancelled(e) else {}),
+             # A ROW FILED UNDER THE WRONG BILL (docket_corrections
+             # .json "misfiled") is listed here, with its note, and
+             # nowhere else on the page; the bill it belongs to
+             # carries a note on its own row of the same vote.
+             **({"row_note": e["row_note"]} if e.get("row_note") else {}),
+             # A meeting row told as a notice (docket_lines): the
+             # Hearings tab says the docket noticed one where it
+             # draws none.
+             **({"notice": True} if e.get("notice") else {}),
+             # The sign-ins belong to the hearing's notice, which
+             # carries them; a row calling it off does not repeat
+             # them.
+             **({} if marked_cancelled(e) else hearing_testimony(
+                 e, tdb, testimony.get(bid) if own else None)),
+             **_cite(e, sources,
+                     e.get("cite_year") or (e.get("date") or "")[:4])}
+            for e in docket_lines(narr)], bid)
+
+
 def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over):
     """What build_bills says, after its loop, of the statuses it gave: how many the
     status page stated and how many of a closed term were marked finished, the
@@ -1937,27 +2014,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if _bd not in year_dirs:
             _bd.mkdir(parents=True, exist_ok=True)
             year_dirs.add(_bd)
-        # The stages' text run together; of the stages as they are told,
-        # where one of them is told without its enrolment (stages_told).
-        _narrative = (" ".join(s_["text"] for s_ in stages_told(narr, kind, row["passage"]))
-                      if unenrolled else (narr or {}).get("narrative", ""))
-        # The history, plus a closing paragraph where the bill's ending
-        # is only on the status page. 120 bills showed a settled headline
-        # over a story that stopped at the committee report.
-        _stages = (story["stages"] if story else
-                   stages_told(narr, kind, row["passage"]) + ([ending] if ending else []))
-        # The members the story names, for the page to link (story_people).
-        # Among the term's own members with the seat each held then, as for a
-        # roll call's mover (mover_pool): the sitting roster in the current
-        # term, a finished term's frozen roster after the turn, and a term of
-        # 1999-2024 its own voters by the seat of the term.
-        # _story_who, NOT _people: that is every member and former member,
-        # which bill_sponsor_list and the hearing record read for the bills
-        # after this one; taking the name made it a list there, and the dry run
-        # of 8f700a7 stopped in the site data ('list' object has no attribute
-        # 'get') on the second current-term bill a sponsor list was read for.
-        _story_who = (story_people([_narrative] + [s_.get("text") or "" for s_ in _stages or []],
-                                _mpool, pages=_mpages) if _mpool is not None else [])
+        _narrative, _stages, _story_who = record_story(narr, kind, row, unenrolled, story,
+                                                       ending, _mpool, _mpages)
         (_bd / f"{bid}.json").write_text(json.dumps({
             "id": bid, "year": year, "term": term,
             "title": b.get("title", ""),
@@ -1989,46 +2047,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # A DATE A PERSON CORRECTED (docket_corrections.json) is shown on
             # the day it happened, beside the clerk's line, which still says
             # the other date -- so the line carries why, in plain words.
-            "events": _with_plain([{"date": e["date"], "text": listed_line(e),
-                        "routine": is_routine(docket_line(e)),
-                        **({"date_as_recorded": e["date_as_recorded"],
-                            "date_note": e.get("date_note") or (
-                                "The General Court's online docket gives "
-                                "another date for this; the journal and the "
-                                "other records of that session day place it "
-                                "on the date shown.")}
-                           if e.get("date_as_recorded") else {}),
-                        # An "Enrolled" row on a bill a chamber ended, with
-                        # why the history does not tell it (enrolled_untold).
-                        **({"row_note": ENROLLED_NOT_TOLD.format(chamber=ended_in)}
-                           if any(e is u for u in unenrolled) else {}),
-                        # A row that calls a meeting off (called_off), which
-                        # the history does not tell, with why; the feeds
-                        # leave it out by the same mark (build_feeds), as the
-                        # Documents tab does. A cancelled row of another kind
-                        # (marked_cancelled) carries the same mark, so it is
-                        # left out of both in the same way, and its own note.
-                        **({"row_note": CANCELLED_NOT_TOLD if called_off(e)
-                                        else CANCELLED_ROW_NOT_TOLD,
-                            "called_off": True}
-                           if marked_cancelled(e) else {}),
-                        # A ROW FILED UNDER THE WRONG BILL (docket_corrections
-                        # .json "misfiled") is listed here, with its note, and
-                        # nowhere else on the page; the bill it belongs to
-                        # carries a note on its own row of the same vote.
-                        **({"row_note": e["row_note"]} if e.get("row_note") else {}),
-                        # A meeting row told as a notice (docket_lines): the
-                        # Hearings tab says the docket noticed one where it
-                        # draws none.
-                        **({"notice": True} if e.get("notice") else {}),
-                        # The sign-ins belong to the hearing's notice, which
-                        # carries them; a row calling it off does not repeat
-                        # them.
-                        **({} if marked_cancelled(e) else hearing_testimony(
-                            e, tdb, testimony.get(bid) if own else None)),
-                        **_cite(e, sources,
-                                e.get("cite_year") or (e.get("date") or "")[:4])}
-                       for e in docket_lines(narr)], bid),
+            "events": record_events(narr, bid, sources, tdb, testimony, own, unenrolled,
+                                    ended_in),
             # Prefer what the General Court says over what we would infer.
             # Where the docket has settled the bill, the per-chamber fields
             # are describing a superseded state and reading them beside
