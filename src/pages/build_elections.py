@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.17
+# GRANITE_VERSION: 2026-11-07.18
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -1097,7 +1097,7 @@ def build(site, base, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT
     import build_member_elections as BMEL
     meta_p = site / "meta.json"
     terms = (json.loads(meta_p.read_text(encoding="utf-8")).get("terms") or []) if meta_p.is_file() else []
-    roster = BMEL.Roster(sitting, former, terms, history)
+    roster = BMEL.Roster(sitting, former, terms, history, BMEL.BL.name_forms())
     for election, _p, results in items:
         settled = settled_in(items, election)
         races_me, report, hand = decided(results, sitting, former, districts, hand_path, today,

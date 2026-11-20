@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.4
+# GRANITE_VERSION: 2026-11-19.5
 """
 A town page's Elections tab (the owner, 19 November 2026: "Town pages should
 also have an elections tab organized by election and year which should
@@ -505,7 +505,8 @@ def load(site, collected, hand_path, today, sponsors=None):
     meta = BME.load_json(site / "meta.json", "the site's meta.json, which names its terms")
     terms = meta.get("terms") if isinstance(meta, dict) else None
     history = BME.load_history(sponsors)
-    roster = BMEL.Roster(sitting, former, terms if isinstance(terms, list) else [], history)
+    roster = BMEL.Roster(sitting, former, terms if isinstance(terms, list) else [], history,
+                         BMEL.BL.name_forms())
     by_member, _report, _days = BMEL.build(site, collected, hand_path, today, sponsors)
     items = BE.elections_on_file(collected)
     pages = BE.provisional(site)

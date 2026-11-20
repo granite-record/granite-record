@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.14
+# GRANITE_VERSION: 2026-11-10.15
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -50,6 +50,15 @@ THE MATCHING (the owner's approval of 10 November 2026):
   (Roster.initial_match). A general's candidates and a primary's are read so;
   a special's are not: THE SPECIAL ELECTIONS, below, sends a middle initial
   to the owner's list, and widening that is hers to say.
+
+  TWO FORMS OF ONE NAME THE OWNER TIED (20 November 2026: "Marty Jack and
+  Michael Costable can be linked"). A printed name the owner's
+  corrections/name_forms.json gives a form for is read as that form
+  (Roster's `forms`, build_lsrs.name_forms, the file the bill requests'
+  matcher reads): "Marty Jack" as "Martin Jack", "Michael Costable Jr." as
+  "Michael Costable". The rest of the rule is unchanged -- the very seat held
+  in the term before or after, one member only -- so the file ties a name,
+  never a race.
 
   The same rule reads a race that is not final -- all of them, until the
   recount deadline has passed -- because members_elect draws no winner for
@@ -185,8 +194,10 @@ class Roster:
     """The sitting and former members, read for the one question: who is this
     printed name in this race. `terms` is the site's terms, newest first."""
 
-    def __init__(self, sitting, former, terms, history=None):
+    def __init__(self, sitting, former, terms, history=None, forms=None):
         self.members, self.by_name = {}, defaultdict(list)
+        # {folded printed form: the form the owner tied it to} (build_lsrs.name_forms).
+        self.forms = dict(forms or {})
         # {(term, seat)} each member held: the roster's one seat for the term it
         # is the seat of, and every seat the member printed on a bill of a term
         # (BME.seat_history), which is how a former member of an older term, and a
@@ -302,6 +313,8 @@ class Roster:
             window = {t for t in (BME.term_before(after), after) if BME.on_this_map(t, year)}
         if (race or {}).get("surnames"):
             return self.surname_match(name, key, window, race, party)
+        # A form the owner tied to another is read as that one (TWO FORMS OF ONE NAME).
+        name = self.forms.get(BL._fold(name), name)
         same = self.by_name.get(nfc_fold(name), [])
         fits = [p for p in same if any((t, key) in p["held"] for t in window)]
         if len(fits) == 1:
@@ -858,7 +871,8 @@ def build(site, collected, hand_path, today, sponsors=BME.SPONSORS_DEFAULT, up=N
     meta = BME.load_json(site / "meta.json", "the site's meta.json, which names its terms")
     terms = meta.get("terms") if isinstance(meta, dict) else None
     history = BME.load_history(sponsors)
-    roster = Roster(sitting, former, terms if isinstance(terms, list) else [], history)
+    roster = Roster(sitting, former, terms if isinstance(terms, list) else [], history,
+                    BL.name_forms())
     items = BE.elections_on_file(collected)
     by_member, report = defaultdict(list), []
     pages = BE.provisional(site)

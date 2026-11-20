@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.39
+# GRANITE_VERSION: 2026-11-16.40
 """
 preflight's checks of members-elect and election results.
 
@@ -2747,6 +2747,44 @@ def _election_middle_initial(BMEL, BL):
     assert BL.compatible("Wayne M. Burton", "Wayne Burton")[0], "the requests' rule moved"
     return "ok", ("Wayne M. Burton marked and on his tab beside Selig; nobody with a rival Burton, another "
                   "party, another seat, differing initials, a bare prefix or a suffix alone")
+
+
+@check("build", "a printed name the owner's name forms tie to another is matched as that one on the election "
+       "cards -- the seat held and one member still required -- and the three builders that make a roster "
+       "pass the forms",
+       needs=("build_member_elections", "build_lsrs"))
+def _election_name_forms(BMEL, BL):
+    """The owner, 20 November 2026: "Marty Jack and Michael Constable can be linked" -- Hillsborough
+    10's "Marty Jack" (member "Jack, Martin") and Carroll 8's "Michael Costable Jr." (member
+    "Costable, Michael"), which the middle-initial rule rightly leaves apart (a short form not in
+    the table; a suffix alone). corrections/name_forms.json is where she ties two forms, and the
+    bill requests' matcher already reads it (build_lsrs.name_forms); Roster's `forms` reads the same.
+    On a made-up court: with the forms, "Marty Jack" is member 733 in the seat he held and nobody in
+    a seat he never held, and "Michael Costable Jr." is 8389 in Carroll 8; without them, both are
+    nobody, as before. And build_member_elections.build, build_elections and town_elections each
+    hand BL.name_forms() to the Roster they make, so no card reads a name the others do not."""
+    sitting = [dict(_mel_member("733", "Jack", "Martin", "H", "Hillsborough", "10"), party="D")]
+    former = [_mel_member("8389", "Costable", "Michael", "H", "Carroll", "8", kind="former")]
+    forms = {BL._fold("Marty Jack"): "Martin Jack", BL._fold("Michael Costable Jr."): "Michael Costable"}
+    tied = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"], forms=forms)
+    plain = BMEL.Roster(sitting, former, ["2025-2026", "2023-2024"])
+
+    def who(roster, name, key, party, election="2026-09-08"):
+        race = {"party": party, "seats": 3, "floterial": False, "towns": ["Alpha"], "scatter": 0,
+                "candidates": [{"name": name, "party": party, "votes": 9, "write_in": False, "nominated": True}]}
+        return [m["id"] for m in roster.certain(name, key, election, race, party, initials=True)[0]]
+    assert who(tied, "Marty Jack", "H|Hillsborough|10", "d") == ["733"], "a tied form was not matched"
+    assert who(tied, "Marty Jack", "H|Hillsborough|11", "d") == [], "a tied form was matched in a seat never held"
+    assert who(tied, "Michael Costable Jr.", "H|Carroll|8", "r", "2024-09-10") == ["8389"], "the suffix form"
+    assert who(plain, "Marty Jack", "H|Hillsborough|10", "d") == [] and \
+        who(plain, "Michael Costable Jr.", "H|Carroll|8", "r", "2024-09-10") == [], "no forms, yet matched"
+    assert who(tied, "Martin Jack", "H|Hillsborough|10", "d") == ["733"], "the letter-for-letter rule moved"
+    for rel in ("src/pages/build_member_elections.py", "src/pages/build_elections.py", "src/pages/town_elections.py"):
+        text = _source(rel)
+        made = re.findall(r"Roster\((?:[^()]|\([^()]*\))*\)", text)
+        assert made and all("name_forms()" in m for m in made), f"{rel} makes a Roster without the name forms: {made}"
+    return "ok", ("Marty Jack is Martin Jack (733) in Hillsborough 10 and nobody in 11; Michael Costable Jr. is "
+                  "8389 in Carroll 8; neither without the forms; all three builders pass them")
 
 
 @check("data", "on today's roster and results, the incumbents' marks fall where the record says: Alice Wade "
