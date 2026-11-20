@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.326
+# GRANITE_VERSION: 2026-09-05.327
 """
 Generate the faceted site from real General Court data.
 
@@ -1309,6 +1309,86 @@ def rail_drawn(story, row, narr, jsteps, intro, bid, kind, status, term, current
     return ending, jrail, srep
 
 
+def reports_and_documents(b, bid, st, narr, sources, reports, term, story):
+    """A bill's committee reports and the documents a reader can open:
+    (rep_written, rep_docket, rep_actions, docs, text_url) -- the reports dated
+    and in order, the Senate's beside the House's (committee_reports), and the
+    documents deduped on the address with the bill's own text's (bill_documents),
+    with the journals a House Journal record cites (`story`, journal_story's).
+    A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    # ---- the official documents behind this bill --------------------
+    # Every one of these is a page or a PDF the General Court publishes.
+    # They are already scattered across the tabs -- a text link in the
+    # header, a citation on a timeline row, a calendar name under a
+    # committee report -- and somebody who wants the source rather than
+    # the summary has to hunt for them. Gathered in one place, with the
+    # thing each one actually is written next to it.
+    # Every committee report on this bill, dated and in order, with
+    # the Senate's alongside the House's. Computed here because the
+    # Documents list below cites the same calendars.
+    rep_written, rep_docket, rep_actions = committee_reports(
+        reports.get(term, {}).get(bid, []), narr, sources,
+        b.get("house_committee", ""), b.get("senate_committee", ""))
+
+    docs, text_url = bill_documents(b, bid, st, narr, sources,
+                                    rep_written, rep_docket)
+    # The journals a House Journal record cites, in place of the docket's.
+    for _lab, _url in (story or {}).get("docs", []):
+        if _url not in {x["url"] for x in docs}:
+            docs.append({"label": _lab, "url": _url, "kind": "record"})
+    return rep_written, rep_docket, rep_actions, docs, text_url
+
+
+def rollcalls_named(rc_out, bid, term, _mpool, _mpages, rep_written, rc_cards):
+    """Each roll call of the bill (`rc_out`, bill_rollcalls') in the approved words
+    of its motion (motions.classify), with the chair's ruling where the Journal
+    states it and its mover as the person among the term's members (`_mpool`,
+    mover_pool's); each committee report's author likewise (report_authors);
+    and where each roll call's card is on the bill's Votes tab, for the session
+    days (`rc_cards`). A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    for r in rc_out:
+        r.pop("_ord", None)
+        # THE VOTE WORDS' KEY (the person, 8 October 2026; motions.py):
+        # which motion this was, read once here, so the Votes tab draws
+        # its head and its chip in the approved words (components.
+        # vote_head, vote_chip), with the record's own words under it
+        # where they differ (mrec).
+        r.update(MO.classify(r.get("question"), bid, r.get("body") or "",
+                             _WORDBOOK["votes"]["motions"]))
+        # WHAT THE CHAIR RULED (the owner, 23 October 2026: "Uphold the
+        # Ruling of the Chair" with the ruling for context, where the
+        # Journal states it, and no gloss): journal_motions.ruling_of.
+        if r.get("mk") == "uphold_ruling" and not r.get("ruling") and r.get("_rc"):
+            rul = VP.ruling(r["_rc"])
+            if rul:
+                r["ruling"] = rul
+        # THE MOVER AS THE PERSON IN A SENTENCE (D14): "Moved by Rep. Joe
+        # Alexander (R - Hills 29)", linked, where the docket's "Rep.
+        # Alexander Jr." can mean one member of the chamber. Among the
+        # term's own members with the seat each held then (mover_pool):
+        # the sitting roster in the current term, a finished term's frozen
+        # roster after the turn; elsewhere the docket's words stand.
+        if r.get("mover") and _mpool is not None:
+            who = mover_member(r["mover"], r.get("body"), _mpool, pages=_mpages)
+            if who:
+                r["mover_m"] = who
+    # THE MEMBER WHO WROTE A COMMITTEE'S REPORT AS THE PERSON'S CHIP (the
+    # owner, 19 November 2026), by the movers' rule and among the same
+    # members, with the seat held then: report_author says when.
+    if _mpool is not None:
+        report_authors(rep_written, _mpool, _mpages)
+    # WHERE EACH ROLL CALL'S CARD IS on this bill's Votes tab, for the
+    # session days (`rc_cards`, write_floor_record): {term: {bill: {roll
+    # call: index into the record's rollcalls}}}.
+    _cards = {}
+    for _card, _rc in enumerate(rc_out):
+        _rc_key = _rc.pop("_rc", None)
+        if _rc_key:
+            _cards[_rc_key] = _card
+    if rc_cards is not None and _cards:
+        rc_cards.setdefault(term, {})[bid] = _cards
+
+
 def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over):
     """What build_bills says, after its loop, of the statuses it gave: how many the
     status page stated and how many of a closed term were marked finished, the
@@ -1696,26 +1776,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                                          ending, table_ends, j_tally, j_current)
 
         # ---- one detail file per bill, loaded only when expanded
-        # ---- the official documents behind this bill --------------------
-        # Every one of these is a page or a PDF the General Court publishes.
-        # They are already scattered across the tabs -- a text link in the
-        # header, a citation on a timeline row, a calendar name under a
-        # committee report -- and somebody who wants the source rather than
-        # the summary has to hunt for them. Gathered in one place, with the
-        # thing each one actually is written next to it.
-        # Every committee report on this bill, dated and in order, with
-        # the Senate's alongside the House's. Computed here because the
-        # Documents list below cites the same calendars.
-        rep_written, rep_docket, rep_actions = committee_reports(
-            reports.get(term, {}).get(bid, []), narr, sources,
-            b.get("house_committee", ""), b.get("senate_committee", ""))
-
-        docs, text_url = bill_documents(b, bid, st, narr, sources,
-                                        rep_written, rep_docket)
-        # The journals a House Journal record cites, in place of the docket's.
-        for _lab, _url in (story or {}).get("docs", []):
-            if _url not in {x["url"] for x in docs}:
-                docs.append({"label": _lab, "url": _url, "kind": "record"})
+        rep_written, rep_docket, rep_actions, docs, text_url = reports_and_documents(
+            b, bid, st, narr, sources, reports, term, story)
 
         bill_amds = bill_amendments(narr, amend_texts, claims.get(term, {}))
 
@@ -1724,47 +1786,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # Whom this term's movers are looked for among (mover_pool).
         _mpool, _mpages = mover_pool(term, current, legs, term_rosters, _people,
                                      voter_pools)
-        for r in rc_out:
-            r.pop("_ord", None)
-            # THE VOTE WORDS' KEY (the person, 8 October 2026; motions.py):
-            # which motion this was, read once here, so the Votes tab draws
-            # its head and its chip in the approved words (components.
-            # vote_head, vote_chip), with the record's own words under it
-            # where they differ (mrec).
-            r.update(MO.classify(r.get("question"), bid, r.get("body") or "",
-                                 _WORDBOOK["votes"]["motions"]))
-            # WHAT THE CHAIR RULED (the owner, 23 October 2026: "Uphold the
-            # Ruling of the Chair" with the ruling for context, where the
-            # Journal states it, and no gloss): journal_motions.ruling_of.
-            if r.get("mk") == "uphold_ruling" and not r.get("ruling") and r.get("_rc"):
-                rul = VP.ruling(r["_rc"])
-                if rul:
-                    r["ruling"] = rul
-            # THE MOVER AS THE PERSON IN A SENTENCE (D14): "Moved by Rep. Joe
-            # Alexander (R - Hills 29)", linked, where the docket's "Rep.
-            # Alexander Jr." can mean one member of the chamber. Among the
-            # term's own members with the seat each held then (mover_pool):
-            # the sitting roster in the current term, a finished term's frozen
-            # roster after the turn; elsewhere the docket's words stand.
-            if r.get("mover") and _mpool is not None:
-                who = mover_member(r["mover"], r.get("body"), _mpool, pages=_mpages)
-                if who:
-                    r["mover_m"] = who
-        # THE MEMBER WHO WROTE A COMMITTEE'S REPORT AS THE PERSON'S CHIP (the
-        # owner, 19 November 2026), by the movers' rule and among the same
-        # members, with the seat held then: report_author says when.
-        if _mpool is not None:
-            report_authors(rep_written, _mpool, _mpages)
-        # WHERE EACH ROLL CALL'S CARD IS on this bill's Votes tab, for the
-        # session days (`rc_cards`, write_floor_record): {term: {bill: {roll
-        # call: index into the record's rollcalls}}}.
-        _cards = {}
-        for _card, _rc in enumerate(rc_out):
-            _rc_key = _rc.pop("_rc", None)
-            if _rc_key:
-                _cards[_rc_key] = _card
-        if rc_cards is not None and _cards:
-            rc_cards.setdefault(term, {})[bid] = _cards
+        rollcalls_named(rc_out, bid, term, _mpool, _mpages, rep_written, rc_cards)
 
         # Two short builders, defined together above main(). Committee
         # proceedings and floor appearances are different enough to need
