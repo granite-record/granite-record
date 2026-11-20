@@ -163,8 +163,14 @@ is `parts.py`'s. A module split out of `build_site_v2` never imports it back
 where it was, so `build_site_v2.journey` and the rest still answer for every
 caller; `preflight`'s `_site_*` checks after `_import_cycles_cut` hold each
 move whole and not undone. `build_bills` and `main` stay in `build_site_v2`,
-with the pieces of a bill's index row (`bill_index_row`, `chip_word`), the
-steps `build_bills` is made of and the loading `main` does.
+with the pieces of a bill's index row (`bill_index_row`, `chip_word`) and
+the steps the two are made of, each a block of its body lifted out as it
+stood and called where it was (20 November 2026): `build_bills`' setup
+(`sponsor_pool`, `members_who_left`, `early_sponsor_parties`), its loop's
+(`status_record`, `journey_told`, `rail_drawn`, `stations_drawn`,
+`record_events` and the rest) and its reports (`say_statuses` to
+`say_hearing_reports`); and `main`'s loading, a file or a family of files a
+step (`bills_with_topics` to `ballots_by_bill_and_member`).
 
 ## How it runs
 
@@ -3252,8 +3258,11 @@ bills again is outlined with that count on its hover. `FBAR_PLACE`
 Each is described where it belongs; this is the list in one place.
 
 - `build_bills` and `main` are the two longest functions in
-  `build_site_v2.py`, each several hundred lines. Item 5 says why length is a
-  hazard there.
+  `build_site_v2.py`, 500 and 544 lines on 20 November 2026 (1,028 and 847
+  before their steps were lifted out). What is left of `build_bills` is
+  mostly the record's own dict, field by field with the comment that says why
+  each is there; of `main`, the members' records and the pages' files after
+  the bills. Item 5 says why length is a hazard there.
 - Five tools carry `--manifest default="verification_manifest.csv"`:
   `align_all`, `apply_markers`, `probe_alignment`, `transcribe_and_align`,
   `verify_batch`. Each opens whatever `--manifest` names, so run with no

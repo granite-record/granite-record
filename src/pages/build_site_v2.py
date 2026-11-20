@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.332
+# GRANITE_VERSION: 2026-09-05.333
 """
 Generate the faceted site from real General Court data.
 
@@ -961,9 +961,10 @@ from related import (RELATED_GROUPS, RELATED_MAX, add_related, add_same_number, 
 
 
 def stated_status_pages():
-    """bill_status.json, the General Court's status pages, {term: {bill: record}}
-    (or one term's, not keyed), or {} where it is not here; and the line the
-    build says of how many bills it covers. A step of build_bills, lifted out of it as it stood (20 November 2026)."""
+    """bill_status.json, the General Court's status pages, {term: {bill: record}} (or
+    one term's, not keyed), or {} where it is not here; and the line the build says of
+    how many bills it covers. A step of build_bills, lifted out of it as it stood (20
+    November 2026)."""
     status_pages = load("bill_status.json", {})
     if status_pages:
         n = (sum(len(v) for v in status_pages.values())
@@ -976,10 +977,11 @@ def stated_status_pages():
 
 def sponsor_pool(legs, former, links, numbers):
     """Everyone a bill's sponsor lookup can name, {id: member}: the sitting members
-    (`legs`) and the former ones, then under the numbers a sitting member voted
-    under in the other chamber (`links`, member_links') and the employee numbers
-    of the register (`numbers`), each only where the person is one the site has
-    a page for. The comments below say why each. A step of build_bills, lifted out of it as it stood (20 November 2026)."""
+    (`legs`) and the former ones, then under the numbers a sitting member voted under in
+    the other chamber (`links`, member_links') and the employee numbers of the register
+    (`numbers`), each only where the person is one the site has a page for. The comments
+    below say why each. A step of build_bills, lifted out of it as it stood (20 November
+    2026)."""
     # For the sponsor lookup only. Built once rather than per bill: 33,683
     # bills against one dict merge.
     #
@@ -1017,10 +1019,10 @@ def sponsor_pool(legs, former, links, numbers):
 
 def members_who_left(term_rosters, former):
     """The former members by name, for a term whose own roster is frozen and for the
-    term still sitting (bill_sponsor_list says why): (by sort name, by name key),
-    each a list of every member of that name in order, or None where there is no
-    frozen roster and no former member; and `term_rosters`, {} where None was
-    given. A step of build_bills, lifted out of it as it stood (20 November 2026)."""
+    term still sitting (bill_sponsor_list says why): (by sort name, by name key), each a
+    list of every member of that name in order, or None where there is no frozen roster
+    and no former member; and `term_rosters`, {} where None was given. A step of
+    build_bills, lifted out of it as it stood (20 November 2026)."""
     # And, for a term whose own roster is frozen and not the sitting one
     # (main says which), the members who left by name: bill_sponsor_list
     # says why. Every one of a name, in order, since only the one who sat
@@ -1045,9 +1047,9 @@ def members_who_left(term_rosters, former):
 
 def hearing_speakers(legs, former, term_rosters):
     """The members a Senate hearing report's speakers are resolved among
-    (speaker_index): every sitting and former member, and for each term whose
-    own roster is frozen, that roster and the members who left before it was.
-    A step of build_bills, lifted out of it as it stood (20 November 2026)."""
+    (speaker_index): every sitting and former member, and for each term whose own roster
+    is frozen, that roster and the members who left before it was. A step of
+    build_bills, lifted out of it as it stood (20 November 2026)."""
     # The Senate's hearing reports: who testified, resolved to members where
     # a line names one. Counted as they are attached, so the build says how
     # many found their hearing and names the ones that did not.
@@ -1065,9 +1067,10 @@ def hearing_speakers(legs, former, term_rosters):
 
 def early_sponsor_parties(id_parties, bills, current, sponsors, _people, leg_by_sort,
                           leg_by_name, seats, _left, term_rosters, record_chambers):
-    """The parties a 1989-1998 sponsor placed on a page takes (party_record), drawn
-    from the labels of their bills of 1999 on exactly as build_bills' loop will
-    draw them, or None where no `id_parties` is given. A step of build_bills, lifted out of it as it stood (20 November 2026)."""
+    """The parties a 1989-1998 sponsor placed on a page takes (party_record), drawn from
+    the labels of their bills of 1999 on exactly as build_bills' loop will draw them, or
+    None where no `id_parties` is given. A step of build_bills, lifted out of it as it
+    stood (20 November 2026)."""
     # THE PARTY A 1989-1998 SPONSOR PLACED ON A PAGE TAKES (early_party, the owner's
     # decisions of 15 November 2026) is the page's only where every record of the person gives
     # that one party, else the bill's term's Manual's, and the labels of their bills of
@@ -1092,9 +1095,9 @@ def early_sponsor_parties(id_parties, bills, current, sponsors, _people, leg_by_
 
 def status_record(status_pages, b, bid, term, current, own):
     """The status page's record of bill `bid` of `term`, each field it leaves blank
-    filled from the bill's own record (`b`), or that record's fields for an
-    archived term the file does not hold. `own` is whether `term` is the current
-    one. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    filled from the bill's own record (`b`), or that record's fields for an archived
+    term the file does not hold. `own` is whether `term` is the current one. A step of
+    build_bills' loop, lifted out of it as it stood (20 November 2026)."""
     # An archived term reads its own term out of bill_status.json, and
     # falls back to the statuses carried on the bill record itself -- put
     # there by build_data from the General Court's own search, in the same
@@ -1119,11 +1122,12 @@ def status_record(status_pages, b, bid, term, current, own):
 
 
 def status_source_of(disp, status, settled, told, b, ev):
-    """Where a bill's status is from, in the words the page says it: the House
-    Journal, the General Court docket, its database, its bill status page, the
-    docket read where nothing states it, or a CACR's ballot row. `disp` is
-    bill_disposition's answer and `status`, `settled` and `told` its fields; `ev`
-    the bill's docket rows not cancelled. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    """Where a bill's status is from, in the words the page says it: the House Journal,
+    the General Court docket, its database, its bill status page, the docket read where
+    nothing states it, or a CACR's ballot row. `disp` is bill_disposition's answer and
+    `status`, `settled` and `told` its fields; `ev` the bill's docket rows not
+    cancelled. A step of build_bills' loop, lifted out of it as it stood (20 November
+    2026)."""
     # "General Court docket" where a dated docket line decided the status
     # over the fields: settled (the governor, a veto), or between the
     # chambers (a refusal to concur, a conference report voted down, a
@@ -1157,13 +1161,13 @@ def status_source_of(disp, status, settled, told, b, ev):
 
 def journey_told(narr, bid, rcs, chapter, dl, term, bill_texts, current, ballot):
     """How it got here, from the docket, for bill `bid` of `term`: (untold, btext,
-    intro, jsteps, voters) -- the docket rows the journey leaves untold, the
-    bill's text (bill_text_block, read here because a law's own Effective Date
-    lines date its Law stop), the day it was introduced and the journey's steps
-    (journey), with a CACR's voters' line where its ballot row has the answer the
-    docket lacks, and the card its Votes tab draws for the voters (ballot_card),
-    or None. `dl` is the bill's line of the chapters (extract_chapters), `ballot`
-    its ballot_results.json row or None. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    intro, jsteps, voters) -- the docket rows the journey leaves untold, the bill's text
+    (bill_text_block, read here because a law's own Effective Date lines date its Law
+    stop), the day it was introduced and the journey's steps (journey), with a CACR's
+    voters' line where its ballot row has the answer the docket lacks, and the card its
+    Votes tab draws for the voters (ballot_card), or None. `dl` is the bill's line of
+    the chapters (extract_chapters), `ballot` its ballot_results.json row or None. A
+    step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
     # HOW IT GOT HERE, from the docket: every floor decision, dated. The
     # rail's marks are read with it and the rail's dates are read from
     # it, so the list card, the bill's own rail and On the record are
@@ -1196,12 +1200,12 @@ def journey_told(narr, bid, rcs, chapter, dl, term, bill_texts, current, ballot)
 
 
 def row_sponsors(row, prime, sp_list, term, current, sponsors, _shared_names, people):
-    """The index row's sponsors past the prime: a prime sponsor placed on a person
-    with no page keyed on their full name (sponsor_person), the co-sponsors by
-    the name the Sponsor filter groups on (cosp), and everyone the row names
-    noted in `people` for the term's list (sponsor_roster). Fills `row`,
-    `_shared_names` ({term: full names two employee numbers share}, read once a
-    term) and `people`. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    """The index row's sponsors past the prime: a prime sponsor placed on a person with
+    no page keyed on their full name (sponsor_person), the co-sponsors by the name the
+    Sponsor filter groups on (cosp), and everyone the row names noted in `people` for
+    the term's list (sponsor_roster). Fills `row`, `_shared_names` ({term: full names
+    two employee numbers share}, read once a term) and `people`. A step of build_bills'
+    loop, lifted out of it as it stood (20 November 2026)."""
     # A PRIME SPONSOR PLACED ON A PERSON (past_roster.py), who has no page and
     # no party: the Sponsor filter keys them on their full name, not on the
     # surname and seat it must use for a row left as printed (app.js
@@ -1232,9 +1236,9 @@ def row_sponsors(row, prime, sp_list, term, current, sponsors, _shared_names, pe
 def unenrolled_rows(story, narr, kind, row, ev, intro, dates):
     """The docket's "Enrolled" rows of a bill a chamber ended (enrolled_untold), the
     chamber that ended it, and the days the bill was acted on without those rows:
-    (unenrolled, ended_in, dates), with the row's last action and carried-over
-    mark taken again from those days. [] and "" and `dates` as given for every
-    other bill. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    (unenrolled, ended_in, dates), with the row's last action and carried-over mark
+    taken again from those days. [] and "" and `dates` as given for every other bill. A
+    step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
     # AN "ENROLLED" ROW ON A BILL A CHAMBER ENDED IS NOT A DAY IT WAS ACTED
     # ON (enrolled_untold). Asked here because the rail is what says the
     # bill ended in a chamber: SB 286 of 2025's last action is the day the
@@ -1253,7 +1257,8 @@ def unenrolled_rows(story, narr, kind, row, ev, intro, dates):
 
 def index_tags(row, tagging, term, bid):
     """The bill's tags, {id: why} from site_tagging's answer, or None; the index row
-    gains them as their places in meta.json's list. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    gains them as their places in meta.json's list. A step of build_bills' loop, lifted
+    out of it as it stood (20 November 2026)."""
     # THE BILL'S TAGS, as their places in meta.json's list (site_tagging),
     # only on a bill that has one: the up-front index grows by a few
     # digits a tagged bill, and by nothing without a registry.
@@ -1265,14 +1270,14 @@ def index_tags(row, tagging, term, bid):
 
 def rail_drawn(story, row, narr, jsteps, intro, bid, kind, status, term, current, own,
                session_over, sittings, lsrs, ending, table_ends, j_tally, j_current):
-    """The bill's rail and its endings: (ending, jrail, srep) -- the closing
-    paragraph, now with a death on the table or in interim study where the rail
-    ends there (session_endings); the rail's dated stops (journey_rail), whose
-    copy the index row takes (index_rail); and what the committee reported on a
-    bill held for interim study (study_report), or None. Counts the journey
-    against the status and the rail in `j_tally` and `j_current`
-    (journey_disagrees), and takes the words off the journey's and the rail's
-    stops, which the page says itself. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    """The bill's rail and its endings: (ending, jrail, srep) -- the closing paragraph,
+    now with a death on the table or in interim study where the rail ends there
+    (session_endings); the rail's dated stops (journey_rail), whose copy the index row
+    takes (index_rail); and what the committee reported on a bill held for interim study
+    (study_report), or None. Counts the journey against the status and the rail in
+    `j_tally` and `j_current` (journey_disagrees), and takes the words off the journey's
+    and the rail's stops, which the page says itself. A step of build_bills' loop,
+    lifted out of it as it stood (20 November 2026)."""
     # THE RAIL'S ENDINGS (the person, 8 and 9 October 2026): a bill that
     # died on the table is the pause where it was tabled and the cross at
     # Law on the day it died, with the death's line and, where its history
@@ -1310,12 +1315,12 @@ def rail_drawn(story, row, narr, jsteps, intro, bid, kind, status, term, current
 
 
 def reports_and_documents(b, bid, st, narr, sources, reports, term, story):
-    """A bill's committee reports and the documents a reader can open:
-    (rep_written, rep_docket, rep_actions, docs, text_url) -- the reports dated
-    and in order, the Senate's beside the House's (committee_reports), and the
-    documents deduped on the address with the bill's own text's (bill_documents),
-    with the journals a House Journal record cites (`story`, journal_story's).
-    A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    """A bill's committee reports and the documents a reader can open: (rep_written,
+    rep_docket, rep_actions, docs, text_url) -- the reports dated and in order, the
+    Senate's beside the House's (committee_reports), and the documents deduped on the
+    address with the bill's own text's (bill_documents), with the journals a House
+    Journal record cites (`story`, journal_story's). A step of build_bills' loop, lifted
+    out of it as it stood (20 November 2026)."""
     # ---- the official documents behind this bill --------------------
     # Every one of these is a page or a PDF the General Court publishes.
     # They are already scattered across the tabs -- a text link in the
@@ -1340,12 +1345,12 @@ def reports_and_documents(b, bid, st, narr, sources, reports, term, story):
 
 
 def rollcalls_named(rc_out, bid, term, _mpool, _mpages, rep_written, rc_cards):
-    """Each roll call of the bill (`rc_out`, bill_rollcalls') in the approved words
-    of its motion (motions.classify), with the chair's ruling where the Journal
-    states it and its mover as the person among the term's members (`_mpool`,
-    mover_pool's); each committee report's author likewise (report_authors);
-    and where each roll call's card is on the bill's Votes tab, for the session
-    days (`rc_cards`). A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    """Each roll call of the bill (`rc_out`, bill_rollcalls') in the approved words of
+    its motion (motions.classify), with the chair's ruling where the Journal states it
+    and its mover as the person among the term's members (`_mpool`, mover_pool's); each
+    committee report's author likewise (report_authors); and where each roll call's card
+    is on the bill's Votes tab, for the session days (`rc_cards`). A step of
+    build_bills' loop, lifted out of it as it stood (20 November 2026)."""
     for r in rc_out:
         r.pop("_ord", None)
         # THE VOTE WORDS' KEY (the person, 8 October 2026; motions.py):
@@ -1391,13 +1396,13 @@ def rollcalls_named(rc_out, bid, term, _mpool, _mpages, rep_written, rc_cards):
 
 def stations_drawn(bid, term, procs, segs, marks, narr, tdb, floor, hearing_reports, _hr_term,
                    _hr_idx, _hr_name, hr_tally, hr_unmatched, _people, video_facts, moments):
-    """The stations a bill's Hearings tab draws, in date order: its committee
-    sittings (bill_stations) less a notice the bill's own record says no
-    committee held (proceedings.notice_only), with the sign-ins of each hearing
-    and the Senate's hearing reports on theirs (attach_hearing_reports, counted
-    in `hr_tally` and `hr_unmatched`), its floor appearances (station_for_floor)
-    and each recording's length; and each floor station's moment, for the
-    session day's card (`moments`). A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    """The stations a bill's Hearings tab draws, in date order: its committee sittings
+    (bill_stations) less a notice the bill's own record says no committee held
+    (proceedings.notice_only), with the sign-ins of each hearing and the Senate's
+    hearing reports on theirs (attach_hearing_reports, counted in `hr_tally` and
+    `hr_unmatched`), its floor appearances (station_for_floor) and each recording's
+    length; and each floor station's moment, for the session day's card (`moments`). A
+    step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
     # Two short builders, defined together above main(). Committee
     # proceedings and floor appearances are different enough to need
     # different code and close enough that a change to one usually belongs
@@ -1485,7 +1490,8 @@ def stations_drawn(bid, term, procs, segs, marks, narr, tdb, floor, hearing_repo
 
 def count_stations(stations, station_states, station_kinds):
     """The census of a bill's stations, by state and kind and in the four groups a
-    reader meets, into the counters write_station_census writes. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    reader meets, into the counters write_station_census writes. A step of build_bills'
+    loop, lifted out of it as it stood (20 November 2026)."""
     for _st in stations:
         _state = str(_st.get("state") or "?")
         station_states[_state] += 1
@@ -1518,11 +1524,11 @@ def count_stations(stations, station_states, station_kinds):
 
 
 def record_story(narr, kind, row, unenrolled, story, ending, _mpool, _mpages):
-    """The record's history: (_narrative, _stages, _story_who) -- the stages' text
-    run together, the stages as they are told with the closing paragraph where
-    the ending is only on the status page (or a House Journal record's own), and
-    the members the story names, among the term's members with the seat each
-    held then (story_people), or []. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    """The record's history: (_narrative, _stages, _story_who) -- the stages' text run
+    together, the stages as they are told with the closing paragraph where the ending is
+    only on the status page (or a House Journal record's own), and the members the story
+    names, among the term's members with the seat each held then (story_people), or [].
+    A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
     # The stages' text run together; of the stages as they are told,
     # where one of them is told without its enrolment (stages_told).
     _narrative = (" ".join(s_["text"] for s_ in stages_told(narr, kind, row["passage"]))
@@ -1549,9 +1555,10 @@ def record_story(narr, kind, row, unenrolled, story, ending, _mpool, _mpages):
 
 def record_events(narr, bid, sources, tdb, testimony, own, unenrolled, ended_in):
     """The record's docket lines, each with its citation and plain words: a corrected
-    date and why, an "Enrolled" row the history does not tell, a row that calls
-    a meeting off or the docket cancelled, a misfiled row's note, a notice, and
-    the hearing's sign-ins. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    date and why, an "Enrolled" row the history does not tell, a row that calls a
+    meeting off or the docket cancelled, a misfiled row's note, a notice, and the
+    hearing's sign-ins. A step of build_bills' loop, lifted out of it as it stood (20
+    November 2026)."""
     return _with_plain([{"date": e["date"], "text": listed_line(e),
              "routine": is_routine(docket_line(e)),
              **({"date_as_recorded": e["date_as_recorded"],
@@ -1596,10 +1603,10 @@ def record_events(narr, bid, sources, tdb, testimony, own, unenrolled, ended_in)
 
 def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over):
     """What build_bills says, after its loop, of the statuses it gave: how many the
-    status page stated and how many of a closed term were marked finished, the
-    chips as they were written, and what the database's dump answered. `index`
-    is the loop's rows; the counts are its own. A step of build_bills, lifted out
-    of it as it stood (20 November 2026)."""
+    status page stated and how many of a closed term were marked finished, the chips as
+    they were written, and what the database's dump answered. `index` is the loop's
+    rows; the counts are its own. A step of build_bills, lifted out of it as it stood
+    (20 November 2026)."""
     if status_pages:
         print(f"  {n_stated:,} bills take their status from the page; "
               f"{len(index) - n_stated:,} still derive it from the docket")
@@ -1627,10 +1634,9 @@ def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_
 
 
 def say_journeys(j_tally, j_current, current):
-    """What build_bills says of the journeys it told against each bill's status and
-    rail (journey_disagrees): `j_tally` counted per term, `j_current` this term's
-    that disagree. A step of build_bills, lifted out of it as it stood (20
-    November 2026)."""
+    """What build_bills says of the journeys it told against each bill's status and rail
+    (journey_disagrees): `j_tally` counted per term, `j_current` this term's that
+    disagree. A step of build_bills, lifted out of it as it stood (20 November 2026)."""
     # THE JOURNEY, THE STATUS AND THE RAIL, AS ONE ACCOUNT. A build that drew
     # a list contradicting the chip above it would otherwise exit zero.
     j_all = Counter()
@@ -1647,8 +1653,8 @@ def say_journeys(j_tally, j_current, current):
 
 def say_chapters(n_chapter):
     """What build_bills says of where each chapter of the session laws came from
-    (chapter_of counts them). A step of build_bills, lifted out of it as it stood
-    (20 November 2026)."""
+    (chapter_of counts them). A step of build_bills, lifted out of it as it stood (20
+    November 2026)."""
     if n_chapter:
         print(f"  chapter of the session laws: {n_chapter['the status page']:,}"
               f" from the status page, {n_chapter['the docket']:,} from the "
@@ -1658,10 +1664,10 @@ def say_chapters(n_chapter):
 
 def write_station_census(out, station_states, station_kinds, n_station_bills):
     """site/station_census.json, the stations build_bills drew counted by state and
-    kind, which about.html's figures are read from (about_figures.py), and the
-    line the build says of them. build_bills holds the counters, filled as each
-    bill's stations are drawn; this writes them. A step of build_bills, lifted
-    out of it as it stood (20 November 2026)."""
+    kind, which about.html's figures are read from (about_figures.py), and the line the
+    build says of them. build_bills holds the counters, filled as each bill's stations
+    are drawn; this writes them. A step of build_bills, lifted out of it as it stood (20
+    November 2026)."""
     # THE ABOUT PAGE'S ARITHMETIC, written here rather than in main() because
     # this is the function that holds the counter. station_states above says
     # why it is counted at all.
@@ -1693,10 +1699,9 @@ def write_station_census(out, station_states, station_kinds, n_station_bills):
 
 
 def say_hearing_reports(hearing_reports, hr_tally, hr_unmatched):
-    """What build_bills says of the Senate's hearing reports it placed on their
-    hearings (attach_hearing_reports counts them), naming the ones that found
-    none. A step of build_bills, lifted out of it as it stood (20 November
-    2026)."""
+    """What build_bills says of the Senate's hearing reports it placed on their hearings
+    (attach_hearing_reports counts them), naming the ones that found none. A step of
+    build_bills, lifted out of it as it stood (20 November 2026)."""
     if hearing_reports:
         _offered = sum(len(v) for byb in hearing_reports.values()
                        for v in byb.values())
@@ -2368,7 +2373,8 @@ def bills_with_topics(D):
     bill's topic: the General Court's own subject code for the archive
     (official_topics), the topic model's for the terms it gave none
     (merge_guessed_topics), and the site's one vocabulary over all of them, last
-    (unify_vocabulary). `D` is the data folder. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
+    (unify_vocabulary). `D` is the data folder. A step of main's loading, lifted out of
+    it as it stood (20 November 2026)."""
     bills = load(D / "bills.json", {})
     # {term: {bill: record}} -- the file the whole per-bill loop is driven from.
     # Read flat and the loop would run over term names instead of bills.
@@ -2391,10 +2397,11 @@ def bills_with_topics(D):
 
 def sponsors_merged(D, bills):
     """data/sponsors.json with the sponsors each bill's own text names where the
-    database names nobody (text_sponsors.merge_into), 2023-2024 from the General
-    Court's own sponsor record and every other past term filled from it
-    (past_sponsors.merge_into), and the seats dated from the bill's own printed
-    line (text_sponsors.seat_into), in that order. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
+    database names nobody (text_sponsors.merge_into), 2023-2024 from the General Court's
+    own sponsor record and every other past term filled from it
+    (past_sponsors.merge_into), and the seats dated from the bill's own printed line
+    (text_sponsors.seat_into), in that order. A step of main's loading, lifted out of it
+    as it stood (20 November 2026)."""
     sponsors = load(D / "sponsors.json", {})
     # The sponsors each bill's own text names, for the bills the database names
     # nobody for: every term before 2023, as the lane saves their pages.
@@ -2442,8 +2449,9 @@ def sponsors_merged(D, bills):
 
 def sitting_roster(D):
     """The sitting members, {id: member}, from data/legislators.json, and the two
-    lookups a sponsor is joined to them by (roster_name_keys), with a warning for
-    two members one key names. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
+    lookups a sponsor is joined to them by (roster_name_keys), with a warning for two
+    members one key names. A step of main's loading, lifted out of it as it stood (20
+    November 2026)."""
     legs = {m["id"]: m for m in load(D / "legislators.json", [])}
     # Sponsor records carry a name but not a party or a district. The roster
     # has both, so they are joined on the surname-first form of the name --
@@ -2459,12 +2467,12 @@ def sitting_roster(D):
 
 
 def dockets_and_rollcalls(a, bills):
-    """The histories (narratives.json), the standing notes
-    (corrections/bill_notes.json, held to the bills by check_notes) and the roll
-    calls (rollcalls.json), each refused in the flat shape, with a roll call on
-    no bill drawn under the bill whose debate it divided, limited or called the
-    question of (vote_passage.move_on_bills, whose map of them is MOVED_TO_BILL).
-    `a` is the parsed arguments. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
+    """The histories (narratives.json), the standing notes (corrections/bill_notes.json,
+    held to the bills by check_notes) and the roll calls (rollcalls.json), each refused
+    in the flat shape, with a roll call on no bill drawn under the bill whose debate it
+    divided, limited or called the question of (vote_passage.move_on_bills, whose map of
+    them is MOVED_TO_BILL). `a` is the parsed arguments. A step of main's loading,
+    lifted out of it as it stood (20 November 2026)."""
     narratives = load(a.narratives, {})
     # {term: {bill: record}}, for the reason rollcalls.json is: a bill number
     # is unique within a term and not across terms. Reading the old flat shape
@@ -2501,11 +2509,11 @@ def dockets_and_rollcalls(a, bills):
 
 def committee_records(a, narratives):
     """The committee reports, the House's corrected from the committee's filed copy
-    (report_check) and the Senate's merged in, with each committee's interim
-    study statement (interim_cards); the veto messages; the chapters of the
-    session laws (extract_chapters); and the Senate's reports of its public
-    hearings: each {term: {bill: ...}}, refused in the flat shape, and each said.
-    A step of main's loading, lifted out of it as it stood (20 November 2026)."""
+    (report_check) and the Senate's merged in, with each committee's interim study
+    statement (interim_cards); the veto messages; the chapters of the session laws
+    (extract_chapters); and the Senate's reports of its public hearings: each {term:
+    {bill: ...}}, refused in the flat shape, and each said. A step of main's loading,
+    lifted out of it as it stood (20 November 2026)."""
     reports = load(a.reports, {})
     # The Senate's committee reports, with their reasoning, from the General
     # Court's database -- the half the House Calendar PDFs cannot cover. Kept
@@ -2597,7 +2605,8 @@ def committee_records(a, narratives):
 def bill_and_amendment_texts():
     """The amendments' texts (amendments.json) and the bills' (bill_text.json, the
     current session's, with every earlier term's from its archived page:
-    archive_text.merge_into), each said. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
+    archive_text.merge_into), each said. A step of main's loading, lifted out of it as
+    it stood (20 November 2026)."""
     # Written by extract_amendments.py out of the cached calendars. Absent is
     # fine: the amendments are still listed, without their text.
     amend_texts = load("amendments.json", {})
@@ -2622,11 +2631,11 @@ def bill_and_amendment_texts():
 
 
 def citations_and_signins():
-    """What a docket line cites and a hearing's sign-ins: the journals' and
-    calendars' addresses (calendars.json, journals.json and every calendar the
-    drain fetched), the retired scraped testimony as {} (the comment below says
-    why), and the database's sign-ins per bill and per hearing
-    (testimony_db.json). A step of main's loading, lifted out of it as it stood (20 November 2026)."""
+    """What a docket line cites and a hearing's sign-ins: the journals' and calendars'
+    addresses (calendars.json, journals.json and every calendar the drain fetched), the
+    retired scraped testimony as {} (the comment below says why), and the database's
+    sign-ins per bill and per hearing (testimony_db.json). A step of main's loading,
+    lifted out of it as it stood (20 November 2026)."""
     # Journal and calendar URLs, so every docket line can cite its source.
     sources = {**load("calendars.json", {}), **load("journals.json", {})}
     # Every calendar the drain fetched, under its own year, where the files
@@ -2661,10 +2670,11 @@ def citations_and_signins():
 
 
 def proceedings_by_bill(a):
-    """proceedings.csv, every proceeding on the site, as its rows (`prows`) and in
-    the two shapes the station code reads, keyed (term, bill): the committee
-    proceedings (`procs`) and the floor appearances (`floor`). Refuses to go on
-    without the file unless --allow-no-manifest. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
+    """proceedings.csv, every proceeding on the site, as its rows (`prows`) and in the
+    two shapes the station code reads, keyed (term, bill): the committee proceedings
+    (`procs`) and the floor appearances (`floor`). Refuses to go on without the file
+    unless --allow-no-manifest. A step of main's loading, lifted out of it as it stood
+    (20 November 2026)."""
     # One table for every proceeding on the site: committee hearings, executive
     # sessions, work sessions, floor debates. Presented below in the two shapes
     # the station code was written against -- manifest columns for committee
@@ -2728,9 +2738,10 @@ def proceedings_by_bill(a):
 
 
 def ballots_by_bill_and_member(D, MOVED_TO_BILL):
-    """data/member_votes.json's ballots, by bill ({(term, bill): {roll call:
-    [ballot]}}) and by member ({member id: [ballot]}), a roll call drawn under
-    the bill whose debate it was on taking that bill (MOVED_TO_BILL). A step of main's loading, lifted out of it as it stood (20 November 2026)."""
+    """data/member_votes.json's ballots, by bill ({(term, bill): {roll call: [ballot]}})
+    and by member ({member id: [ballot]}), a roll call drawn under the bill whose debate
+    it was on taking that bill (MOVED_TO_BILL). A step of main's loading, lifted out of
+    it as it stood (20 November 2026)."""
     votes_by_bill = defaultdict(lambda: defaultdict(list))
     votes_by_member = defaultdict(list)
     for v in load(D / "member_votes.json", []):
