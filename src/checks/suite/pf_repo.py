@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.38
+# GRANITE_VERSION: 2026-11-16.39
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1404,6 +1404,8 @@ _SPLIT_FROM_SITE = {
                           "bill_disposition ended_with_the_term journey_disagrees origin_of "
                           "stated_stage").split()),
     "session_status": tuple(("build_status session_over session_over_in").split()),
+    "related": tuple(("RELATED_GROUPS RELATED_MAX add_related add_same_number bill_note "
+                      "check_notes related_entries same_number_rows site_tagging").split()),
 }
 
 
@@ -1819,6 +1821,24 @@ def _site_session_status_moved(B, SS):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in session_status.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the session's own")
+
+
+@check("files", "what main adds to the bills' pages after the loop -- a standing note, the related "
+                "bills, the same number in other terms and the tags -- is related.py's, every name "
+                "of it imported back into build_site_v2",
+       needs=("build_site_v2", "related"))
+def _site_related_moved(B, REL):
+    """build_site_v2's related bills and tagging moved to related.py on 20 November 2026
+    (the refactor's finding 4), as they stood: bill_note and check_notes; RELATED_GROUPS,
+    RELATED_MAX, related_entries and add_related; same_number_rows and add_same_number;
+    site_tagging. Every name of them is held to be related.py's, defined nowhere in
+    build_site_v2.py, and build_site_v2.<name> the same object, so main, build_bills and
+    the checks that ask build_site_v2 add to a bill's page the one way."""
+    names = _SPLIT_FROM_SITE["related"]
+    bad = _split_out(B, REL, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in related.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the related bills' own")
 
 
 def _readme_unlisted(folder, root=None):
