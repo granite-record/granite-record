@@ -50,8 +50,8 @@ source, and holds the two to the same result.
 A builder's own script -- a page's filter, a tab strip, the theme and
 language scripts in every page's head -- is a file in `inline/` beside the
 builder (since 20 November 2026, when twelve builders' strings moved out,
-and `build_rsa`'s and `build_pages`' after them; `build_calendar` still
-holds its own), so a
+and `build_rsa`'s, `build_pages`' and `parts`' tab strip after them;
+`build_calendar` still holds its own), so a
 JavaScript tool and the search for dead code can read it. The builder has it
 through `inline_js.script()`, which fills a hole written `__NAME__` and
 refuses one left empty or a value with no hole, and writes it into its page
