@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.30
+# GRANITE_VERSION: 2026-11-16.39
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1381,6 +1381,31 @@ _SPLIT_FROM_SITE = {
                        "sponsor_record_rows sponsor_record_said story_people term_voters "
                        "vote_member").split()),
     "bill_topics": tuple(("ADDED_CODES TOPICS_GUESSED merge_guessed_topics unify_vocabulary").split()),
+    "bill_statutes": tuple(("AMEND_WORD CLAUSE_END NEXT_SECTION PART_WORD REPEALED REPEAL_LIST "
+                            "_CONSTITUTION bill_amends constitution_targets").split()),
+    "bill_votes": tuple(("AMENDMENT_ROW NOBILL PASSAGE_Q RC_TALLY VOTE_KIND_RE _paired_by_count "
+                         "bill_rollcalls vote_chronology vote_note_for write_nobill_cards").split()),
+    "cacr_ballots": tuple(("BALLOTS BALLOT_SOURCE ELECTION_IN_TEXT ISO_DAY NOT_RATIFIED RATIFIED "
+                           "TO_THE_VOTERS ballot_card ballot_step cacr_to_the_voters "
+                           "docket_count_differs election_day load_ballots ratified").split()),
+    "db_status": tuple(("DB_FROZEN DB_LEGISLATION DB_STATUS_COLUMNS _DB_STATUS _status_codes "
+                        "db_statuses fill_status_from_db no_dump_for terms_without_a_dump").split()),
+    "documents": tuple(("DOCKET_SOURCE J_DECIDED_ACT PAST_SOURCE ROW_NAMES_ANOTHER _cite "
+                        "_docket_as_entered _long_day _with_plain bill_documents bill_text_url "
+                        "journal_decided_story journal_story record_notes").split()),
+    "docket_told": tuple(("CALLED_OFF_KINDS CANCELLED_NOT_TOLD CANCELLED_ROW_NOT_TOLD "
+                          "CLERKS_NOTE ENROLLED_NOT_TOLD ENROLLED_SAID PENDING ROUTINE "
+                          "STEP_CLAIM action_dates called_off carried_over chapter_of "
+                          "docket_lines enrolled_untold is_routine listed_line marked_cancelled "
+                          "settled_step stages_told").split()),
+    "disposition": tuple(("CONFERENCE_NOT_REPORTED CONSIDERATION_REFUSED DIED_ON_TABLE_ROW "
+                          "Disposition ENDED_WITH_TERM ENDING_NOT_ON_RECORD NO_DISPOSITION "
+                          "SECOND_ADOPTED SESSION_ENDED_STANDS STAGE_STATED UNFINISHED "
+                          "bill_disposition ended_with_the_term journey_disagrees origin_of "
+                          "stated_stage").split()),
+    "session_status": tuple(("build_status session_over session_over_in").split()),
+    "related": tuple(("RELATED_GROUPS RELATED_MAX add_related add_same_number bill_note "
+                      "check_notes related_entries same_number_rows site_tagging").split()),
 }
 
 
@@ -1643,6 +1668,177 @@ def _site_bill_topics_moved(B, BT):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in bill_topics.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the topics' own")
+
+
+@check("files", "what a bill's text says it changes -- the statutes it amends and the articles a "
+                "CACR amends -- is bill_statutes.py's, every name of it imported back into "
+                "build_site_v2",
+       needs=("build_site_v2", "bill_statutes"))
+def _site_bill_statutes_moved(B, BST):
+    """build_site_v2's reading of what a bill's text says it changes moved to
+    bill_statutes.py on 20 November 2026 (the refactor's finding 4), as it stood:
+    AMEND_WORD and the patterns beside it, bill_amends, _CONSTITUTION and
+    constitution_targets. Every name of them is held to be bill_statutes.py's, defined
+    nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so build_bills
+    and the checks that ask build_site_v2.bill_amends read a bill's statutes the one way."""
+    names = _SPLIT_FROM_SITE["bill_statutes"]
+    bad = _split_out(B, BST, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in bill_statutes.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the statutes' own")
+
+
+@check("files", "a bill's roll calls as its Votes tab draws them, and the card of a roll call on no "
+                "bill, are bill_votes.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "bill_votes"))
+def _site_bill_votes_moved(B, BV):
+    """build_site_v2's roll calls moved to bill_votes.py on 20 November 2026 (the
+    refactor's finding 4), as they stood: VOTE_KIND_RE, vote_chronology, the patterns
+    _paired_by_count reads and it, NOBILL and write_nobill_cards, bill_rollcalls and
+    vote_note_for. Every name of them is held to be bill_votes.py's, defined nowhere in
+    build_site_v2.py, and build_site_v2.<name> the same object, so build_bills, main and
+    the checks that ask build_site_v2.bill_rollcalls draw a bill's votes the one way."""
+    names = _SPLIT_FROM_SITE["bill_votes"]
+    bad = _split_out(B, BV, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in bill_votes.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the votes' own")
+
+
+@check("files", "a constitutional amendment's ballot -- the election its text names, the voters' "
+                "answer, its line and its card -- is cacr_ballots.py's, every name of it imported "
+                "back into build_site_v2",
+       needs=("build_site_v2", "cacr_ballots"))
+def _site_cacr_ballots_moved(B, CB):
+    """build_site_v2's CACR ballots moved to cacr_ballots.py on 20 November 2026 (the
+    refactor's finding 4), as they stood: ELECTION_IN_TEXT, TO_THE_VOTERS and election_day,
+    BALLOTS, RATIFIED, NOT_RATIFIED, ISO_DAY, ratified and load_ballots, BALLOT_SOURCE,
+    ballot_step, docket_count_differs, ballot_card and cacr_to_the_voters. Every name of
+    them is held to be cacr_ballots.py's, defined nowhere in build_site_v2.py, and
+    build_site_v2.<name> the same object, so build_bills, main, bill_disposition and the
+    checks that ask build_site_v2 read a CACR's ballot the one way."""
+    names = _SPLIT_FROM_SITE["cacr_ballots"]
+    bad = _split_out(B, CB, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in cacr_ballots.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the ballots' own")
+
+
+@check("files", "the database's status codes, where the status page states nothing, are "
+                "db_status.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "db_status"))
+def _site_db_status_moved(B, DBS):
+    """build_site_v2's reading of the database's status codes moved to db_status.py on 20
+    November 2026 (the refactor's finding 4), as it stood: DB_LEGISLATION,
+    DB_STATUS_COLUMNS, _DB_STATUS and _status_codes, DB_FROZEN and db_statuses,
+    terms_without_a_dump, no_dump_for and fill_status_from_db. Every name of them is held
+    to be db_status.py's, defined nowhere in build_site_v2.py, and build_site_v2.<name> the
+    same object -- _DB_STATUS the one dict of terms read -- so build_bills, main and the
+    checks that ask build_site_v2 fill a status the one way."""
+    names = _SPLIT_FROM_SITE["db_status"]
+    bad = _split_out(B, DBS, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in db_status.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the database statuses' own")
+
+
+@check("files", "what a bill's page cites and lists of its record -- a docket line's citation, its "
+                "documents, a House Journal record's story and where a record comes from -- is "
+                "documents.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "documents"))
+def _site_documents_moved(B, DOC):
+    """build_site_v2's documents, journal story and record notes moved to documents.py on
+    20 November 2026 (the refactor's finding 4), as they stood: _with_plain and _cite;
+    bill_documents, _long_day, journal_story, J_DECIDED_ACT and journal_decided_story,
+    PAST_SOURCE and DOCKET_SOURCE, ROW_NAMES_ANOTHER, _docket_as_entered, record_notes and
+    bill_text_url. Every name of them is held to be documents.py's, defined nowhere in
+    build_site_v2.py, and build_site_v2.<name> the same object, so build_bills,
+    bill_disposition and the checks that ask build_site_v2 cite and list a record the one
+    way."""
+    names = _SPLIT_FROM_SITE["documents"]
+    bad = _split_out(B, DOC, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in documents.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the documents' own")
+
+
+@check("files", "a bill's docket lines and the stages its history tells -- the routine rows, the "
+                "days it was acted on, the lines its page lists, the status box once a term has "
+                "closed and its chapter -- are docket_told.py's, every name of it imported back "
+                "into build_site_v2",
+       needs=("build_site_v2", "docket_told"))
+def _site_docket_told_moved(B, DT):
+    """build_site_v2's docket lines and stages told moved to docket_told.py on 20 November
+    2026 (the refactor's finding 4), as they stood: ROUTINE and is_routine; CLERKS_NOTE,
+    action_dates and carried_over; ENROLLED_SAID, ENROLLED_NOT_TOLD, CANCELLED_NOT_TOLD,
+    CANCELLED_ROW_NOT_TOLD, CALLED_OFF_KINDS, called_off, enrolled_untold and stages_told;
+    listed_line, marked_cancelled, docket_lines, PENDING, STEP_CLAIM, settled_step and
+    chapter_of. Every name of them is held to be docket_told.py's, defined nowhere in
+    build_site_v2.py, and build_site_v2.<name> the same object, so build_bills,
+    bill_disposition and the checks that ask build_site_v2 tell a docket the one way."""
+    names = _SPLIT_FROM_SITE["docket_told"]
+    bad = _split_out(B, DT, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in docket_told.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the docket lines' own")
+
+
+@check("files", "what became of a bill and where that answer came from -- its disposition, the "
+                "chamber it started in, a finished term's measure that cannot still be moving and "
+                "the test that its journey, status and rail agree -- is disposition.py's, every "
+                "name of it imported back into build_site_v2",
+       needs=("build_site_v2", "disposition"))
+def _site_disposition_moved(B, DSP):
+    """build_site_v2's disposition moved to disposition.py on 20 November 2026 (the
+    refactor's finding 4), as it stood: origin_of, journey_disagrees, Disposition,
+    STAGE_STATED and stated_stage, SECOND_ADOPTED, DIED_ON_TABLE_ROW, the section on a
+    measure of a finished term (ENDING_NOT_ON_RECORD, CONFERENCE_NOT_REPORTED,
+    SESSION_ENDED_STANDS, UNFINISHED, NO_DISPOSITION, CONSIDERATION_REFUSED,
+    ENDED_WITH_TERM), ended_with_the_term and bill_disposition. Every name of them is held
+    to be disposition.py's, defined nowhere in build_site_v2.py, and build_site_v2.<name>
+    the same object, so build_bills and the checks that ask build_site_v2.bill_disposition
+    settle a bill the one way."""
+    names = _SPLIT_FROM_SITE["disposition"]
+    bad = _split_out(B, DSP, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in disposition.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the disposition's own")
+
+
+@check("files", "where the session is -- the day the current term ran out of session days and the "
+                "site's panel of it -- is session_status.py's, every name of it imported back into "
+                "build_site_v2",
+       needs=("build_site_v2", "session_status"))
+def _site_session_status_moved(B, SS):
+    """build_site_v2's session panel moved to session_status.py on 20 November 2026 (the
+    refactor's finding 4), as it stood: session_over, session_over_in and build_status.
+    Every name of them is held to be session_status.py's, defined nowhere in
+    build_site_v2.py, and build_site_v2.<name> the same object, so main, build_bills and
+    the checks that ask build_site_v2.session_over_in read the day the session ended the
+    one way."""
+    names = _SPLIT_FROM_SITE["session_status"]
+    bad = _split_out(B, SS, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in session_status.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the session's own")
+
+
+@check("files", "what main adds to the bills' pages after the loop -- a standing note, the related "
+                "bills, the same number in other terms and the tags -- is related.py's, every name "
+                "of it imported back into build_site_v2",
+       needs=("build_site_v2", "related"))
+def _site_related_moved(B, REL):
+    """build_site_v2's related bills and tagging moved to related.py on 20 November 2026
+    (the refactor's finding 4), as they stood: bill_note and check_notes; RELATED_GROUPS,
+    RELATED_MAX, related_entries and add_related; same_number_rows and add_same_number;
+    site_tagging. Every name of them is held to be related.py's, defined nowhere in
+    build_site_v2.py, and build_site_v2.<name> the same object, so main, build_bills and
+    the checks that ask build_site_v2 add to a bill's page the one way."""
+    names = _SPLIT_FROM_SITE["related"]
+    bad = _split_out(B, REL, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in related.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the related bills' own")
 
 
 def _readme_unlisted(folder, root=None):

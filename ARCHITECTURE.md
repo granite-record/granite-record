@@ -139,16 +139,38 @@ what a bill's committees reported and who spoke at its hearings
 members a bill's record names -- its sponsors with the Manual's seats and
 parties, each ballot's voter, a motion's mover, a report's author
 (`bill_sponsor_list`, `vote_member`) -- are `sponsors.py`, a bill's topic as
-the index files it (`unify_vocabulary`) is `bill_topics.py`, and what they
-share with the rest of it -- what a bill of each kind has to clear, a bill's
+the index files it (`unify_vocabulary`) is `bill_topics.py`, what a bill's
+text says it changes (`bill_amends`, `constitution_targets`) is
+`bill_statutes.py`, a bill's roll calls as its Votes tab draws them and the
+card of a roll call on no bill (`bill_rollcalls`, `write_nobill_cards`) are
+`bill_votes.py`, a constitutional amendment's ballot (`load_ballots`,
+`ballot_card`, `cacr_to_the_voters`) is `cacr_ballots.py`, the database's
+status codes where the status page states nothing (`db_statuses`,
+`fill_status_from_db`) are `db_status.py`, what a bill's page cites and
+lists of its record (`_cite`, `bill_documents`, `journal_story`,
+`record_notes`) is `documents.py`, a bill's docket lines and the stages its
+history tells (`docket_lines`, `stages_told`, `settled_step`, `chapter_of`)
+are `docket_told.py`, what became of a bill and where that answer came from
+(`bill_disposition`, `ended_with_the_term`, `journey_disagrees`) is
+`disposition.py`, where the session is (`session_over_in`, `build_status`)
+is `session_status.py`, what `main` adds to the bills' pages after the loop
+-- a standing note, the related bills, the same number in other terms, the
+tags (`add_related`, `site_tagging`) -- is `related.py`, and what they share
+with the rest of it -- what a bill of each kind has to clear, a bill's
 letters, the chip's six words, the docket line, a cited volume's address --
 is `parts.py`'s. A module split out of `build_site_v2` never imports it back
 (`_import_cycles_cut`), and `build_site_v2` imports every moved name back
 where it was, so `build_site_v2.journey` and the rest still answer for every
 caller; `preflight`'s `_site_*` checks after `_import_cycles_cut` hold each
 move whole and not undone. `build_bills` and `main` stay in `build_site_v2`,
-and so for now do a bill's disposition, documents, roll calls and CACR
-ballots, the database's statuses and the related bills.
+with the pieces of a bill's index row (`bill_index_row`, `chip_word`) and
+the steps the two are made of, each a block of its body lifted out as it
+stood and called where it was (20 November 2026): `build_bills`' setup
+(`sponsor_pool`, `members_who_left`, `early_sponsor_parties`), its loop's
+(`status_record`, `journey_told`, `rail_drawn`, `stations_drawn`,
+`record_events` and the rest) and its reports (`say_statuses` to
+`say_hearing_reports`); and `main`'s loading, a file or a family of files a
+step (`bills_with_topics` to `ballots_by_bill_and_member`).
 
 ## How it runs
 
@@ -3236,8 +3258,11 @@ bills again is outlined with that count on its hover. `FBAR_PLACE`
 Each is described where it belongs; this is the list in one place.
 
 - `build_bills` and `main` are the two longest functions in
-  `build_site_v2.py`, each several hundred lines. Item 5 says why length is a
-  hazard there.
+  `build_site_v2.py`, 500 and 544 lines on 20 November 2026 (1,028 and 847
+  before their steps were lifted out). What is left of `build_bills` is
+  mostly the record's own dict, field by field with the comment that says why
+  each is there; of `main`, the members' records and the pages' files after
+  the bills. Item 5 says why length is a hazard there.
 - Five tools carry `--manifest default="verification_manifest.csv"`:
   `align_all`, `apply_markers`, `probe_alignment`, `transcribe_and_align`,
   `verify_batch`. Each opens whatever `--manifest` names, so run with no

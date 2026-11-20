@@ -138,9 +138,12 @@ The record and its own pages:
   index, and the legislators', towns' and committees' files the pages after
   it read (there was never a v1 here); its journey, a bill's status, the
   proceedings' stations, the members, the conferences, the amendments, the
-  rail's endings, the committee and hearing reports, the sponsors and a
-  bill's topic are modules of their own beside it since 20 November 2026
-  (the next ten lines), and it imports every name of theirs back;
+  rail's endings, the committee and hearing reports, the sponsors, a bill's
+  topic, what a bill amends, its roll calls, a CACR's ballot, the database's
+  statuses, its documents, the docket lines it tells, its disposition, the
+  session's panel and the related bills are modules of their own beside it
+  since 20 November 2026 (the next nineteen lines), and it imports every
+  name of theirs back;
 - `journey`: the passage rail and the journey -- the four stops a bill passes
   (`passage`) and what each chamber decided and when (`journey`,
   `journey_rail` and the `_j_` readers), read from the docket for the rail's
@@ -202,6 +205,61 @@ The record and its own pages:
   (`merge_guessed_topics`) and the site's one vocabulary applied to every
   bill last (`unify_vocabulary`); a section of `build_site_v2` until 20
   November 2026, which imports every name of it back;
+- `bill_statutes`: what a bill's text says it changes -- the statutes its
+  clauses amend or repeal (`bill_amends`), as against every statute it
+  mentions, and the articles a CACR amends (`constitution_targets`); a
+  section of `build_site_v2` until 20 November 2026, which imports every
+  name of it back;
+- `bill_votes`: a bill's roll calls as its Votes tab draws them -- a day's
+  votes in the order they happened with the amendments named
+  (`vote_chronology`), every recorded vote on one bill (`bill_rollcalls`)
+  and the note above the table -- and the card of a roll call on no bill,
+  a term to a file (`write_nobill_cards`); a section of `build_site_v2`
+  until 20 November 2026, which imports every name of it back;
+- `cacr_ballots`: a constitutional amendment's ballot -- the election its
+  text names, the voters' answer where the docket records none
+  (`corrections/ballot_results.json`, `load_ballots`), its line of How it
+  got here and its card (`ballot_step`, `ballot_card`) and what a CACR both
+  chambers passed now says (`cacr_to_the_voters`); a section of
+  `build_site_v2` until 20 November 2026, which imports every name of it
+  back;
+- `db_status`: the General Court database's status codes where the status
+  page states nothing -- the dump's codes in the page's words, a term read
+  from whichever dump holds it (`db_statuses`), the terms no dump holds
+  (`no_dump_for`) and a record's blank fields filled from it
+  (`fill_status_from_db`); a section of `build_site_v2` until 20 November
+  2026, which imports every name of it back;
+- `documents`: what a bill's page cites and lists of its record -- a docket
+  line's citation and plain words (`_cite`, `_with_plain`), the documents a
+  reader can open (`bill_documents`), the story of a bill whose record is
+  the House Journal's (`journal_story`) and the notes on where a record
+  comes from (`record_notes`); a section of `build_site_v2` until 20
+  November 2026, which imports every name of it back;
+- `docket_told`: a bill's docket lines and the stages its history tells --
+  the routine rows (`is_routine`), the days it was acted on
+  (`action_dates`, `carried_over`), the stages told (`stages_told`), the
+  lines its page lists (`docket_lines`), the status box once a term has
+  closed (`settled_step`) and its chapter of the session laws
+  (`chapter_of`); a section of `build_site_v2` until 20 November 2026,
+  which imports every name of it back;
+- `disposition`: what became of a bill and where that answer came from --
+  its disposition (`bill_disposition`, a `Disposition`), the chamber it
+  started in (`origin_of`), a measure of a finished term that cannot still
+  be moving (`ended_with_the_term`) and the test that its journey, status
+  and rail tell one story (`journey_disagrees`); a section of
+  `build_site_v2` until 20 November 2026, which imports every name of it
+  back;
+- `session_status`: where the session is -- the day the current term ran
+  out of session days, as `corrections/status/status.txt` states it
+  (`session_over`, `session_over_in`), and the site's panel of where the
+  session is (`build_status`); a section of `build_site_v2` until 20
+  November 2026, which imports every name of it back;
+- `related`: what `main` adds to the bills' pages after the loop -- a
+  standing note where a bill's number carries a meaning across terms
+  (`bill_note`, `check_notes`), the related bills (`add_related`), the same
+  number in other terms (`add_same_number`) and the tags while the owner's
+  registry is in force (`site_tagging`); a section of `build_site_v2`
+  until 20 November 2026, which imports every name of it back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a
   file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,
