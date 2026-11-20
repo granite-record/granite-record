@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.17
+# GRANITE_VERSION: 2026-10-23.18
 """
 The site's translations: what is translated, what has gone stale, and the
 proofreader's sheet out and back. src/pages/i18n.py says how a translation
@@ -45,6 +45,7 @@ import csv
 import json
 
 import i18n
+import translation_audit
 
 COLUMNS = ("key", "on the site", "english", "translation", "state", "note", "corrected", "ok")
 
@@ -128,9 +129,9 @@ def save(lang, data):
 
 def status(lang):
     data = load(lang)
-    words, _p = i18n.code_words()
+    words, _p = translation_audit.code_words()
     st = [e.get("state") for e in data["strings"].values()]
-    problems = i18n.check(lang)
+    problems = translation_audit.check(lang)
     print(f"{lang} ({i18n.NAMES.get(lang, lang)}): {len(words)} words in the code; "
           f"{st.count('proofread')} proofread, {st.count('draft')} drafts; "
           f"{'offered to everyone' if data.get('offered') else 'not yet offered (unlisted)'}")
@@ -141,7 +142,7 @@ def status(lang):
 
 def sheet(lang, out, drafts_only=False):
     data = load(lang)
-    words, _p = i18n.code_words()
+    words, _p = translation_audit.code_words()
     n = 0
     with open(out, "w", encoding="utf-8-sig", newline="") as f:
         w = csv.writer(f)
@@ -158,7 +159,7 @@ def sheet(lang, out, drafts_only=False):
 
 def take(lang, src):
     data = load(lang)
-    words, _p = i18n.code_words()
+    words, _p = translation_audit.code_words()
     changed, refused = [], []
     with open(src, encoding="utf-8-sig", newline="") as f:
         for row in csv.DictReader(f):
@@ -203,7 +204,7 @@ def take(lang, src):
 
 def set_one(lang, key, text):
     data = load(lang)
-    words, _p = i18n.code_words()
+    words, _p = translation_audit.code_words()
     if key not in words:
         print(f"{key}: no code asks for it")
         return 1
@@ -221,7 +222,7 @@ def set_one(lang, key, text):
 
 def drop_unused(lang):
     data = load(lang)
-    words, _p = i18n.code_words()
+    words, _p = translation_audit.code_words()
     gone = sorted(set(data["strings"]) - set(words))
     for k in gone:
         print(f"  {k}: {data['strings'][k].get(lang)!r}")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.17
+# GRANITE_VERSION: 2026-11-16.18
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -288,7 +288,8 @@ def _class_collisions():
     # The components draw on both sides by design: components.js with the
     # browser's files, components.py with the builders.
     app_side = ["components.js", "app.js", "find.js", "print.js", "bills.html"]
-    bld_side = [f.name for f in _paths.code_files("build_*.py")] + ["shell.py", "components.py"]
+    bld_side = [f.name for f in _paths.code_files("build_*.py")] + ["shell.py", "components.py",
+                                                                    "parts.py"]
     if not all(_paths.locate(f).exists() for f in app_side + ["shell.py"]) or not bld_side:
         return "skip", "not all renderers are in this directory"
 

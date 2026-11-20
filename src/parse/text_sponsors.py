@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.11
+# GRANITE_VERSION: 2026-09-14.12
 """
 Sponsors read off each bill's own text, for the bills the database names none for.
 
@@ -468,10 +468,10 @@ def record(i, sp, m):
 
 def saved_pages(bills):
     """(term, bill, path) for every saved page whose bill is in data/bills.json."""
-    import fetch_legislation as FL
+    import legislation_text as LT
     out, strays = [], []
     for f in sorted(PAGES.glob("[0-9][0-9][0-9][0-9]/*.htm*")):
-        m = FL.PAD.match(f.stem.upper())
+        m = LT.PAD.match(f.stem.upper())
         if not m:
             continue
         term, bid = term_of(f.parent.name), f"{m.group(1)}{int(m.group(2))}"
@@ -485,8 +485,8 @@ def saved_pages(bills):
 
 
 def read_line(path):
-    import fetch_legislation as FL
-    return FL.parse(FL.decode(Path(path).read_bytes())).get("sponsors") or ""
+    import legislation_text as LT
+    return LT.parse(LT.decode(Path(path).read_bytes())).get("sponsors") or ""
 
 
 def unprinted(term, rows, people, sat, source):

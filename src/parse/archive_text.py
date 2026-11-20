@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.10
+# GRANITE_VERSION: 2026-09-16.11
 """
 The text of every archived bill, read off the pages already on this disk.
 
@@ -56,7 +56,7 @@ import json
 import re
 from collections import Counter
 
-import fetch_legislation as FL
+import legislation_text as LT
 import text_sponsors as TS
 
 BILLS = Path("data/bills.json")
@@ -201,7 +201,7 @@ PRIVATE = re.compile("[-\U000f0000-\U0010ffff]")
 
 def text_of(path, keep_front=False):
     """The text of one saved page with its lines kept, or "" if it is not a bill."""
-    t = flatten(FL.decode(Path(path).read_bytes()))
+    t = flatten(LT.decode(Path(path).read_bytes()))
     if len(t) < LEAST or (len(t) < 400 and STUB.search(t)):
         return ""
     # The caller strips the front matter, because the version is read off it
@@ -223,7 +223,7 @@ def flatten(html):
     t = BLOCK.sub("\n", t)
     t = TAG_BEFORE_MARK.sub("", t)
     t = re.sub(r"<[^>]+>", " ", t)
-    t = FL._unescape(t)
+    t = LT._unescape(t)
     # A page saved before 10 September was decoded as UTF-8 on the way in, and
     # the archive's non-breaking spaces became U+FFFD. They were spaces.
     t = t.replace("�", " ")

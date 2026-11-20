@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.22
+# GRANITE_VERSION: 2026-11-16.23
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -1598,7 +1598,7 @@ def _party_table(BE, EN, PE, ST):
 #   words  the English the translations file gives each of the table's keys
 #   css    the stylesheet's party inks and tints in each theme, and every class that draws one
 _PARTY_COPIES = (
-    ("src/pages/build_pages.py", "party_word", "say", "name, adjective, plural, none"),
+    ("src/pages/parts.py", "party_word", "say", "name, adjective, plural, none"),
     ("src/pages/build_elections.py", "chamber_block", "parts", "adjective"),
     ("src/pages/app.js", "PARTY_NAME", "js", "name"),
     ("src/pages/app.js", "PARTY_WORD", "js", "name"),

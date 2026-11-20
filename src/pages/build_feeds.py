@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.50
+# GRANITE_VERSION: 2026-09-04.51
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -435,7 +435,7 @@ def slug(s):
 
 
 # A TOPIC RENAMED KEEPS ITS FEED'S ADDRESS (17 October 2026): two topics took a
-# reader's words (build_site_v2.TOPIC_WORDS), and their feeds and follow keys
+# reader's words (topic_vocabulary.TOPIC_WORDS), and their feeds and follow keys
 # stay where a reader already subscribed to them. A TOPIC SPLIT IN TWO (17
 # November 2026, topic_model.SPLITS) leaves its address to the half that
 # holds most of its bills, so a feed or an email follow of the old topic goes

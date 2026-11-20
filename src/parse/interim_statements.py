@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-29.2
+# GRANITE_VERSION: 2026-10-29.3
 """
 What each House committee said about the bills it held for interim study:
 the INTERIM STUDY STATEMENTS of the House Calendar's autumn edition.
@@ -73,7 +73,7 @@ import json
 import re
 from collections import Counter
 
-import fetch_committee_reports as FCR
+import committee_report_text as CRT
 import proceedings as P
 
 OUT = Path("interim_statements.json")
@@ -203,7 +203,7 @@ LOOSE = re.compile(r"(?P<who>Reps?\.?[ \t]+[A-Z][^:]{2,140}?)[ \t]*:[ \t]")
 
 
 class _Line:
-    """A member's line read by LOOSE, shaped as FCR.AUTHOR's match is."""
+    """A member's line read by LOOSE, shaped as CRT.AUTHOR's match is."""
 
     def __init__(self, m, who, committee):
         self._m, self._g = m, {"who": who, "committee": committee, "side": None}
@@ -242,7 +242,7 @@ def statement(cmte, raw, source, names=None):
     sig = list(SIGNED.finditer(raw))
     if sig:
         raw = raw[:sig[-1].start()]
-    s = FCR.clean_pdf_text(raw)
+    s = CRT.clean_pdf_text(raw)
     b = ENTRY.match(s)
     if not b:
         return "no bill at its start", None
@@ -252,8 +252,8 @@ def statement(cmte, raw, source, names=None):
     first = re.search(r"\bReps?\.?\s", s[b.end():])
     if re.search(r"\bMAJORITY\s*:", s[b.end():b.end() + (first.start() if first else len(s))]):
         return "a majority's and a minority's statement", None
-    a = FCR.AUTHOR.search(s, b.end()) or member_line(s, b.end(), cmte, names)
-    if a and len(list(FCR.AUTHOR.finditer(s, a.end()))):
+    a = CRT.AUTHOR.search(s, b.end()) or member_line(s, b.end(), cmte, names)
+    if a and len(list(CRT.AUTHOR.finditer(s, a.end()))):
         return "more than one member's statement", None
     bare = not a and not sig
     if bare and not REC.search(s, b.end()):
@@ -301,8 +301,8 @@ def statement(cmte, raw, source, names=None):
     # left as printed: which digit the dash fell from is a guess.
     body = re.sub(r"\bVotes?[ \t]*:?[ \t]*(?=\d{1,3}\s*[-\u2013]\s*\d)", "Vote ", body)
     v = None
-    for cand in FCR.VOTE_TAIL.finditer(body):
-        if len(body) - cand.end() <= FCR.VOTE_TAIL_SLACK:
+    for cand in CRT.VOTE_TAIL.finditer(body):
+        if len(body) - cand.end() <= CRT.VOTE_TAIL_SLACK:
             v = cand
     if not v:
         v = BARE_TALLY.search(body)
@@ -337,7 +337,7 @@ def read(root="."):
     names = Counter()
     for f, sec in found:
         for cmte, raw in chunks(sec):
-            a = FCR.AUTHOR.search(FCR.clean_pdf_text(raw))
+            a = CRT.AUTHOR.search(CRT.clean_pdf_text(raw))
             if a and cmte:
                 names[(cmte, re.sub(r"\s+", " ", a.group("committee")).strip())] += 1
     spelled = {}

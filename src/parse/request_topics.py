@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.7
+# GRANITE_VERSION: 2026-11-12.8
 """
 An initial topic for a bill request, from its title.
 
@@ -80,7 +80,7 @@ is Study Committees and Commissions, and a housing title (is_housing) is
 Housing, as they are for every bill.
 
 THE SITE'S CATEGORY, NEVER A NEW ONE. The model answers in the General Court's
-own names; build_site_v2.vocabulary_of turns each into the category the site
+own names; topic_vocabulary.vocabulary_of turns each into the category the site
 shows (the folds, the renamed name, the two split in two), the one path every
 term's topics take. A name the site retired comes out as None and the request is
 Miscellaneous. THE TWO SPLIT IN TWO (17 November 2026, topic_model.SPLITS) are
@@ -179,7 +179,7 @@ def train_on(bills, subjects=None, codes=None):
 
 def topic_of(model, title, site_name=None):
     """(the site's topic for a request titled `title`, or "" where none is
-    confident; the margin). `site_name` is build_site_v2.vocabulary_of, passed
+    confident; the margin). `site_name` is topic_vocabulary.vocabulary_of, passed
     in so a caller that has it loaded is not made to load it twice."""
     import topic_model as TM
     rec = {"title": title, "subject": "", "bill": ""}
@@ -198,8 +198,8 @@ def topic_of(model, title, site_name=None):
 
 
 def _vocabulary_of():
-    import build_site_v2
-    return lambda s, rec: build_site_v2.vocabulary_of(s, rec, "")
+    import topic_vocabulary
+    return lambda s, rec: topic_vocabulary.vocabulary_of(s, rec, "")
 
 
 def assign(rows, model, site_name=None):

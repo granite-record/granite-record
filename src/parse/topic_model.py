@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.16
+# GRANITE_VERSION: 2026-09-16.17
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 src/parse/topic_model.py --apply              # write topics_assigned.json
@@ -326,7 +326,7 @@ def is_study(title):
 # 616 to 618 are penalties, fines and forfeitures, which stay with the crimes
 # -- and LXII the Criminal Code 625 to 651-F.
 #
-# APPLIED AFTER THE MODEL, AS TOPIC_WORDS IS (build_site_v2.vocabulary_of).
+# APPLIED AFTER THE MODEL, AS TOPIC_WORDS IS (topic_vocabulary.vocabulary_of).
 # The model is measured in the General Court's 46 names and still answers in
 # them; remap_gold, fit and new_vocabulary do not split, so no answer of the
 # model changes, only the name the site files it under. Measured on the
@@ -432,7 +432,7 @@ def split_names():
 # Cannabis for Therapeutic Purposes) added none on the record of 17 November
 # 2026 that the title had not.
 #
-# APPLIED AFTER THE MODEL, AS THE SPLITS ARE (build_site_v2.vocabulary_of), and
+# APPLIED AFTER THE MODEL, AS THE SPLITS ARE (topic_vocabulary.vocabulary_of), and
 # to the General Court's own codes as much as the model's answers -- the one
 # place the site files a bill the General Court coded against its code. The
 # model is not retrained and never answers Cannabis. On that record: 174 bills,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.2
+# GRANITE_VERSION: 2026-10-30.3
 """
 A committee page's live stream at the top (the live layer's design, section
 1.6): the hook the night writes into every committee and study-committee page,
@@ -40,6 +40,7 @@ from pathlib import Path
 sys.path += [str(p) for p in Path(__file__).resolve().parents if (p / "_paths.py").is_file()][:1]
 import _paths  # noqa: E402,F401
 
+import csv
 import json
 
 import live_gen as LG
@@ -66,10 +67,23 @@ def stems(chamber, name, history):
     return [m for i, m in enumerate(out) if m and m not in out[:i]]
 
 
+def past_stems(root=Path(".")):
+    """{canonical committee: {title stems}} from every video index (proceedings.video_indexes)."""
+    import build_manifest as BM
+    import proceedings
+    out = {}
+    for p in proceedings.video_indexes(root):
+        with p.open(encoding="utf-8", newline="") as f:
+            for row in csv.DictReader(f):
+                c = (row.get("parsed_committee") or "").strip()
+                if c and row.get("title"):
+                    out.setdefault(BM.canon(c), set()).add(LG.stem(row["title"]))
+    return out
+
+
 def past():
-    """build_live.past_stems(): {canonical committee: {title stems}}."""
-    import build_live as BL
-    return BL.past_stems()
+    """past_stems(): {canonical committee: {title stems}}."""
+    return past_stems()
 
 
 def longer(chamber, name, others):

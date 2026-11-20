@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.17
+# GRANITE_VERSION: 2026-09-10.18
 """The committee a bill was referred to, read out of the docket.
 
     python3 src/parse/referrals.py            # what it finds, by term, no network
@@ -957,11 +957,11 @@ def _spelled_out():
     pages = Path("legislation")
     if pages.is_dir():
         try:
-            import fetch_legislation as FL
+            import legislation_text as LT
         except ImportError:
             return out
         for f in pages.rglob("*.html"):
-            got = FL.parse(FL.decode(f.read_bytes()))
+            got = LT.parse(LT.decode(f.read_bytes()))
             if got.get("committee"):
                 out[got["committee"]] += 1
     return out

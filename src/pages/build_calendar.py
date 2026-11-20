@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.57
+# GRANITE_VERSION: 2026-09-18.58
 """
 The General Court's week, one page per week.
 
@@ -125,11 +125,11 @@ from collections import Counter, OrderedDict, defaultdict
 
 import bill_order as BO
 import build_date
-import build_pages as BP
 import calendar_documents as CD
 import chrome
 import i18n
 import key_dates as KD
+import parts as P
 import proceedings
 import shell as S
 import structured as LD
@@ -155,7 +155,7 @@ FROM = "2025-01-01"
 FLOOR = {"H": "House floor", "S": "Senate floor"}
 FLOOR_KINDS = ("floor debate",)
 # build_pages.meeting_key's, which keys a conference on its bill.
-CONFERENCE = BP.CONFERENCE
+CONFERENCE = P.CONFERENCE
 
 
 def floor_name(kind, body):
@@ -2174,7 +2174,7 @@ def collect(site, study_rows=()):
                     years[b["id"]] = b.get("year")
 
     # By chamber and name: build_pages.committee_codes says why.
-    code = BP.committee_codes(site)
+    code = P.committee_codes(site)
 
     return (weeks_from(list(proceedings.load()) + list(study_rows)),
             titles, years, code)
@@ -2230,7 +2230,7 @@ def weeks_from(rows, names=None):
             # The committee's own page, which its card leads to (study_page).
             if r.get("page"):
                 row["page"] = r["page"]
-        weeks[week_key(d)][date].setdefault(BP.meeting_key(row), []).append(row)
+        weeks[week_key(d)][date].setdefault(P.meeting_key(row), []).append(row)
     # A BILL'S ROW AT A STUDY COMMITTEE'S MEETING TAKES THE MEETING'S TIME AND
     # ROOM. The docket gives neither; the database copy's row for the same
     # committee on the same day does, and without this the one card would
@@ -2250,7 +2250,7 @@ def weeks_from(rows, names=None):
                 # into a timed row, and its card listed HB 1709 twice and said
                 # "2 bills" under a title naming one. A card's line carries no
                 # video, so two identical lines are one line said twice.
-                if BP.is_conference(key):
+                if P.is_conference(key):
                     kept, seen = [], set()
                     for x in [x for x in rs if x["time"]] or rs:
                         sig = tuple(sorted(x.items()))
@@ -2501,7 +2501,7 @@ def week_facts(key, weeks, today, events=None, lang="en"):
     # week of 13 January 2025, when one of the 22 was the Opioid Abatement
     # commission's cancelled meeting. The same cards are left out of the
     # week script's count, which reads data-cancelled off the card.
-    live = {k for k, rows in meets.items() if not BP.is_cancelled(rows)}
+    live = {k for k, rows in meets.items() if not P.is_cancelled(rows)}
     off = len(meets) - len(live)
     n = sum(1 for v in days.values() for k in v if k in live)
 
@@ -2593,8 +2593,8 @@ def cats_html(lang="en"):
     .calcat): the drawing is the key, the checkbox the filter. The key is
     the same seven names and colours, so the page reads the same either way.
     """
-    names = {c: legend_word(w, lang) for c, w in BP.MEET_LEGEND}
-    assert [c for _v, c, _on in CATEGORIES] == [c for c, _w in BP.MEET_LEGEND], (
+    names = {c: legend_word(w, lang) for c, w in P.MEET_LEGEND}
+    assert [c for _v, c, _on in CATEGORIES] == [c for c, _w in P.MEET_LEGEND], (
         "the Calendar's boxes and build_pages.MEET_LEGEND name the kinds differently")
     boxes = "".join(f'<label class="calcat {c}"><input type="checkbox" name="cat" '
                     f'value="{v}"{" checked" if on else ""}>'
@@ -2605,7 +2605,7 @@ def cats_html(lang="en"):
             f'<div class="calcatrow">{boxes}</div></fieldset>'
             f'<ul class="calkey" aria-label="{say(lang, "calp.colors", "What the colors mean")}">'
             + "".join(f'<li><i class="{c}" aria-hidden="true"></i>{S.E(legend_word(w, lang))}</li>'
-                      for c, w in BP.MEET_LEGEND)
+                      for c, w in P.MEET_LEGEND)
             + "</ul>")
 
 
@@ -2805,9 +2805,9 @@ def study_hidden(days, meets, draw, lang="en"):
     parts, live, off = [], 0, 0
     for date, keys in days.items():
         html = draw({date: keys})
-        study = [k for k in keys if BP.meeting_who(k.name, meets[k]) == "study"]
-        live += sum(1 for k in study if not BP.is_cancelled(meets[k]))
-        off += sum(1 for k in study if BP.is_cancelled(meets[k]))
+        study = [k for k in keys if P.meeting_who(k.name, meets[k]) == "study"]
+        live += sum(1 for k in study if not P.is_cancelled(meets[k]))
+        off += sum(1 for k in study if P.is_cancelled(meets[k]))
         if keys and len(study) == len(keys):
             assert html.endswith("</div>"), f"{date}: a day's block no longer ends its div"
             html = html[:-len("</div>")] + study_only(lang) + "</div>"
@@ -2873,7 +2873,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     # level=2: the h1 of this page is the week itself, so a day is the
     # section under it. On the home page the days sit under "Coming up"
     # and stay h3.
-    body = study_hidden(days, meets, lambda one: BP.cal_days(
+    body = study_hidden(days, meets, lambda one: P.cal_days(
         one, meets, titles, years, code, lambda d: day_words(d, today, lang), S.E,
         level=2, sessions=sessions, docs=docs, lang=lang, events=events,
         morning=today.isoformat())[0], lang)
@@ -3424,10 +3424,10 @@ def month_files(site, weeks, order, titles, years, code, today,
             day = (weeks.get(k) or {}).get(iso) or {}
             # EVERY DAY, WEEKENDS AND EMPTY ONES INCLUDED: the Day view of a
             # quiet Saturday says it is quiet, in the words the week page uses.
-            html, _m = BP.cal_days({iso: in_order(day)}, day, titles, years, code,
-                                   lambda dd: day_words(dd, today, lang), S.E, level=2,
-                                   sessions=sessions, docs=docs, lang=lang, events=events,
-                                   morning=today.isoformat())
+            html, _m = P.cal_days({iso: in_order(day)}, day, titles, years, code,
+                                  lambda dd: day_words(dd, today, lang), S.E, level=2,
+                                  sessions=sessions, docs=docs, lang=lang, events=events,
+                                  morning=today.isoformat())
             days[iso] = S.clean_links(html)
             cards += len(day)
             if k in weeks and k not in wk:
@@ -3458,9 +3458,9 @@ def month_files(site, weeks, order, titles, years, code, today,
     for k in order:
         for _date, day in (weeks.get(k) or {}).items():
             for key, rows in day.items():
-                a = agg.setdefault(BP.pick_name(key), [Counter(), set()])
-                a[0][BP.meeting_who(key.name, rows)] += 1
-                a[1].update(BP.card_bodies(key, rows))
+                a = agg.setdefault(P.pick_name(key), [Counter(), set()])
+                a[0][P.meeting_who(key.name, rows)] += 1
+                a[1].update(P.card_bodies(key, rows))
     rank = {"standing": 0, "study": 1, "floor": 2}
     names = sorted(([n, c.most_common(1)[0][0], " ".join(sorted(b))]
                     for n, (c, b) in agg.items()),

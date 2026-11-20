@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.3
 """
 preflight's checks of the calendar.
 
@@ -2445,7 +2445,7 @@ def _calendar_study_committees():
         day = weeks["2026-W36"]["2026-09-02"]
         # No chamber in the key: the docket's row carries the BILL's chamber
         # and the database copy's none, and keyed on either they were two.
-        one = BC.BP.Meet("2026-09-02", "", long, "")
+        one = BC.P.Meet("2026-09-02", "", long, "")
         assert list(day) == [one], (
             f"HB 1763's study committee on 2 September is {list(day)}, not one "
             "card under the committee's own name")
@@ -4426,6 +4426,7 @@ def _calendar_in_spanish(BC, CD, i18n):
     Calendar. Nothing the site wrote is left in English on the Spanish page
     outside what is marked lang="en"; the English pages differ from before
     only by data-alt-es and the footer's link to the Spanish version."""
+    import translation_audit
     if not i18n.has("es", "calendar.html"):
         raise AssertionError("i18n.PAGES has no Spanish Calendar")
     shared, base, _ran, _days = _fixture_site_shared()
@@ -4464,7 +4465,7 @@ def _calendar_in_spanish(BC, CD, i18n):
     # is what build_calendar.week_page writes when `alts` is empty.
     # Names of the Calendar's own words that must not stand on a Spanish page
     # outside lang="en": every "calp." word of the code, in English.
-    words, _p = i18n.code_words()
+    words, _p = translation_audit.code_words()
     english = [w["en"] for k, w in words.items() if k.startswith("calp.")
                and len(w["en"].split()) >= 3 and "{" not in w["en"] and "&" not in w["en"]]
     seen = _visible_text(es)

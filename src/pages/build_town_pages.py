@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.58
+# GRANITE_VERSION: 2026-09-09.59
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -83,7 +83,10 @@ from parse_officials import EMAIL_OK
 from town_boards import CITIES, board_role, display_name, in_capitals
 # The one person chip for a legislator, the same one the roster, a committee
 # and a bill draw.
-from build_pages import pchip
+from components import pchip
+# A number that dials, an address that mails, an outward link, and the tabs' script:
+# parts.py's, which the Officials page and the Learn hub use too.
+from parts import PHONE, TABS_JS, _is_address, maillink, tel, weblink
 
 E = S.E
 
@@ -186,60 +189,8 @@ def person(name):
     return f'<span class="mchip" translate="no">{E(display_name(name))}</span>'
 
 
-# Ten digits, then an extension if there is one: "603-588-6785 ext 221",
-# "603-927-2400 ext. 4", "(603) 224-5000 x 12".
-PHONE = re.compile(r"^\s*\(?(\d{3})\)?[-. ]?(\d{3})[-. ]?(\d{4})\s*,?\s*"
-                   r"(?:(?:ext\.?|ex\.?|x)\s*(\d+))?\s*$", re.I)
-
-
-def tel(num):
-    """A number that dials, on the device most readers are holding.
-
-    These were plain text. A town clerk's number on a town page is the single
-    most likely thing on this site to be tapped, and tapping it did nothing.
-
-    AN EXTENSION IS NOT MORE OF THE NUMBER. This took every digit in the
-    value, so "603-588-6785 ext 221" dialled +6035886785221 -- a number in no
-    country this site is about -- and 28 links on the town pages did that.
-    The extension is written the way a phone reads it now, `;ext=221` after
-    the number (RFC 3966), and a value that holds no single number -- two
-    numbers in one cell -- is shown as written and not linked, because either
-    guess would ring somebody.
-    """
-    m = PHONE.match(num or "")
-    if m:
-        a, b, c, ext = m.groups()
-        href = f"tel:+1{a}{b}{c}" + (f";ext={ext}" if ext else "")
-        return f'<a class="offtel" href="{href}">{E(num)}</a>'
-    digits = re.sub(r"[^0-9]", "", num or "")
-    if len(digits) == 10:
-        digits = "1" + digits
-    if len(digits) == 11 and digits.startswith("1"):
-        return f'<a class="offtel" href="tel:+{digits}">{E(num)}</a>'
-    return f'<span class="offtel">{E(num)}</span>'
-
-
-def maillink(addr):
-    """A mailto link for an e-mail address, and nothing for anything else.
-
-    NHDOT's e-mail column holds notes as well as addresses -- "can email
-    through the website, no stated email", "no stated email address", "not
-    listed", once a street address -- 125 of them across 104 towns, and every
-    one was published as a mailto link a reader could click. A note that
-    says there is no address tells a reader what no link already does, and
-    the town's website is on the page, so nothing is drawn.
-
-    All five places on these pages that write a mailto go through here.
-    """
-    a = (addr or "").strip()
-    if not EMAIL_OK.match(a):
-        return ""
-    # A LINE MAY BREAK AFTER THE @, and so the address breaks there rather
-    # than wherever the column runs out: at the interface's 16px a select
-    # board member's address in a town card's contact column read
-    # "Jim.Craig@GoffstownNH.g" over "ov" (the review of the polish
-    # foundation, 8 October 2026). Only the words drawn; the address is whole.
-    return f'<a href="mailto:{E(a)}">{E(a).replace("@", "@<wbr>", 1)}</a>'
+# tel and maillink, a number that dials and an address that mails, are parts.py's:
+# the Officials page's tabs link them too.
 
 
 # Words in a printed name that are not the person's first or last name.
@@ -1012,51 +963,7 @@ def clerk_row(loc, seat="Town or city clerk"):
     return off_row(person(loc["clerk"]), how, seat)
 
 
-def weblink(url, label=None):
-    """An outward link labelled with where it goes, or nothing.
-
-    "official page" told a reader nothing about which page; the host does, and
-    it is what they would read off the address bar anyway. The arrow is this
-    site's mark for a link that leaves it.
-
-    A SCHEME IS ADDED AND A NON-ADDRESS IS REFUSED. The DoT directory does not
-    write addresses the way a browser reads them, and this function used to
-    pass every value through untouched into an href:
-
-      * 17 of its 234 rows are a bare host -- "www.concordnh.gov". With no
-        scheme that is a RELATIVE link, and bills.html carries <base href="/">,
-        so it left the site for /www.concordnh.gov. 40 dead links.
-      * 4 rows are prose -- "no website", "website was discontinued" -- which
-        became links to /no%20website. 8 dead links.
-      * 7 more are the directory's two columns interleaved a character at a
-        time by parse_officials.py: "httpsT:o//wwnw wIn.bfooscawennh.gov/" is
-        "https://www.boscawennh.gov/" with "To www Info" threaded through it.
-        A parser bug, not this file's to fix -- but not this file's to publish
-        as a link either.
-
-    So the host is checked before anything is written. No dot, a space, or an
-    "@" (town_clerks.json records an email address as the website for two
-    towns) and it is not an address this page can send a reader to, and the
-    caller draws nothing rather than a link to a 404.
-    """
-    url = (url or "").strip()
-    if not url:
-        return ""
-    # https:// and not http://: a guess, and the safe one -- every host here
-    # that does carry a scheme carries this one, and a server that only speaks
-    # http will redirect where the reverse would not.
-    if not re.match(r"^https?://", url, re.I):
-        url = "https://" + url
-    if not _is_address(re.sub(r"^https?://", "", url, flags=re.I).split("/")[0]):
-        return ""
-    host = re.sub(r"^https?://(?:www\.)?", "", url).rstrip("/").split("/")[0]
-    return (f'<a href="{E(url)}" target="_blank" rel="noopener">{E(label or host)}'
-            "</a>")
-
-
-def _is_address(host):
-    """Whether a host is one a reader could be sent to. See weblink()."""
-    return bool(host) and "." in host and " " not in host and "@" not in host
+# weblink, an outward link labelled with where it goes, is parts.py's.
 
 
 def election_day(raw):
@@ -1743,165 +1650,8 @@ def tabbed(label, panels):
             + "".join(panes))
 
 
-# THE SWITCHING SCRIPT, the legislators page's (build_pages.py, "THREE TABS,
-# WHICH ARE THE ORDERING") with the address added. Inline, after the panels,
-# so it runs before the page is first painted and a reader never sees three
-# panels collapse into one.
-#
-# ONE HISTORY ENTRY PER PAGE, NOT PER CLICK: replaceState rather than
-# pushState, so Back leaves the page rather than stepping through its tabs.
-# A hash that names no tab -- #results, from the skip link -- is left alone
-# and the first tab shown.
-#
-# A SECTION'S ADDRESS OPENS ITS TAB (6 November 2026), as the Constitution
-# tab's script already does (constitution_tab.TABS_JS): an address naming
-# something inside a panel -- /officials#of-county-strafford, a county's
-# heading on County Officials -- opened the first tab and landed nowhere,
-# because what it named was hidden. The panel holding it opens, the address
-# is left as it was, and the page is brought to it once loaded and again
-# when the web fonts arrive, since the browser's own jump came while the
-# panel was still hidden. #results wraps the panels and is in none, so it is
-# left alone as before.
-#
-# THE ADDRESS IS WRITTEN WITH THE PAGE'S OWN PATH. The page carries
-# <base href="/">, so a bare "#officials" resolves against the site's root:
-# choosing "Town officials" on /town/acworth wrote /#officials into the address
-# bar, and a reload, a bookmark or a link copied from there opened the home
-# page (the audit of 2 October 2026, on all 320 pages). The trap is written
-# down in six other places in the build; this call had been missed.
-#
-# HOME AND END, as the bill's and the member's tabs have them: a tab list
-# answers both, and here End scrolled the page to its foot with the keyboard
-# left on a tab out of sight (the review of 2 October 2026).
-TABS_JS = """<script>
-(function(){
-  var bar=document.querySelector(".twntabs");
-  if(!bar)return;
-  var tabs=[].slice.call(bar.querySelectorAll("[role=tab]"));
-  if(!tabs.length)return;
-  // The tab an address names: a panel's own, or the one holding what it names.
-  function named(h){
-    if(!h)return null;
-    for(var i=0;i<tabs.length;i++)if(tabs[i].dataset.pane===h)return h;
-    var el=document.getElementById(h),p=el&&el.closest&&el.closest(".twnpane");
-    for(i=0;p&&i<tabs.length;i++)if(tabs[i].dataset.pane===p.id)return p.id;
-    return null;
-  }
-  function hash(){try{return decodeURIComponent(location.hash.slice(1));}catch(e){return "";}}
-  // A TAB THAT HAS RETIRED (the owner, 7 November 2026): from 2 December
-  // the Officials page's Members-Elect tab hides itself (data-until, judged
-  // by the reader's own date as components.js judges it), and an address
-  // naming it -- a bookmark, a link someone shared -- opened six tabs with
-  // none chosen and nothing under them. It opens the strip's data-retired
-  // tab instead (Legislators, which the tab's intro said "lists who holds
-  // each seat"), else the first tab still shown, and says so in the address.
-  function gone(t){
-    if(!t)return false;
-    if(t.hidden)return true;
-    var u=t.getAttribute("data-until");
-    if(u===null)return false;
-    var d=new Date(),day=d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+
-      ("0"+d.getDate()).slice(-2);
-    return !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(u)||day>=u;
-  }
-  function tab(id){for(var i=0;i<tabs.length;i++)if(tabs[i].dataset.pane===id)return tabs[i];return null;}
-  function live(){return tabs.filter(function(t){return !gone(t);});}
-  function instead(){
-    var r=bar.getAttribute("data-retired");
-    if(r&&tab(r)&&!gone(tab(r)))return r;
-    var l=live();
-    return (l[0]||tabs[0]).dataset.pane;
-  }
-  // To what a section's address names, once its panel is open.
-  function land(){
-    var h=hash(),id=named(h);
-    if(!id||h===id||gone(tab(id)))return;
-    var el=document.getElementById(h);
-    if(el)el.scrollIntoView();
-  }
-  // AGAIN ONCE LOADED AND WHEN THE FONTS ARRIVE, but only on a first arrival
-  // and only while the reader has not moved: a reload or Back is put back
-  // where the reader was by the browser itself, and a reader who has scrolled
-  // on, on a slow connection, was pulled back to the heading 17 seconds later
-  // (the review of 6 November 2026).
-  var moved=false,restored=false;
-  try{var nv=performance.getEntriesByType("navigation")[0];
-    restored=!!nv&&(nv.type==="reload"||nv.type==="back_forward");}catch(e){}
-  ["wheel","touchmove","keydown","pointerdown"].forEach(function(t){
-    addEventListener(t,function(){moved=true;},{passive:true,once:true});
-  });
-  // A reader sent from a retired tab is shown the strip, once loaded, so
-  // that what they were given -- Legislators, chosen -- is in view.
-  var sent=false;
-  function later(){if(moved||restored)return;if(sent)toStrip();else land();}
-  // A LINK TO A TAB from inside another -- County Officials' "by county in
-  // Legislators" -- shows that tab; the browser's own jump went to a panel
-  // still hidden and left the reader where they were, halfway down a
-  // different list. The strip is brought back into view, as the hub's
-  // LAND_JS sets it for a tab's address.
-  function toStrip(){
-    var t=bar.getBoundingClientRect().top;
-    if(t<0)window.scrollTo(0,Math.max(0,t+window.scrollY-8));
-  }
-  function show(id,write){
-    tabs.forEach(function(t){
-      var on=t.dataset.pane===id;
-      t.setAttribute("aria-selected",String(on));
-      t.tabIndex=on?0:-1;
-      var pane=document.getElementById(t.dataset.pane);
-      if(pane)pane.hidden=!on;
-    });
-    if(write&&history.replaceState)
-      history.replaceState(null,"",location.pathname+location.search+"#"+id);
-    inView();
-  }
-  // THE CHOSEN TAB IN VIEW, as the Officials page's strip does: on a phone the
-  // strip scrolls, and /town/acworth#services opened Services with its tab
-  // past the strip's edge (the town-pages fix of 25 October 2026). The strip
-  // moves, 2rem clear of the edge where its shadow is; the page does not.
-  function inView(){
-    var t=bar.querySelector('[aria-selected="true"]');
-    if(!t||bar.scrollWidth<=bar.clientWidth+2)return;
-    var a=t.getBoundingClientRect(),b=bar.getBoundingClientRect();
-    if(a.left<b.left)bar.scrollLeft-=b.left-a.left+32;
-    else if(a.right>b.right)bar.scrollLeft+=a.right-b.right+32;
-  }
-  tabs.forEach(function(t){
-    t.addEventListener("click",function(){show(t.dataset.pane,true);});
-  });
-  // The keys go round the tabs still shown: a retired one takes no focus.
-  // One that retired while it had it -- a page left open past midnight --
-  // gives the keys to the tab it hands over to.
-  bar.addEventListener("keydown",function(e){
-    var on=live(),i=on.indexOf(document.activeElement);
-    if(i<0&&tabs.indexOf(document.activeElement)>=0)i=on.indexOf(tab(instead()));
-    if(i<0)return;
-    var j;
-    if(e.key==="ArrowRight")j=(i+1)%on.length;
-    else if(e.key==="ArrowLeft")j=(i-1+on.length)%on.length;
-    else if(e.key==="Home")j=0;
-    else if(e.key==="End")j=on.length-1;
-    else return;
-    e.preventDefault();
-    on[j].focus(); show(on[j].dataset.pane,true);
-  });
-  addEventListener("hashchange",function(){
-    var h=hash(),id=named(h);
-    if(!id)return;
-    if(gone(tab(id))){show(instead(),true);toStrip();return;}
-    show(id,false);
-    if(h===id)toStrip();else land();
-  });
-  bar.hidden=false;
-  var first=named(hash());
-  if(first&&gone(tab(first))){sent=true;show(instead(),true);}
-  else show(first||(live()[0]||tabs[0]).dataset.pane,false);
-  addEventListener("load",later);
-  // and again once the fonts have their widths
-  if(document.fonts&&document.fonts.ready)
-    document.fonts.ready.then(function(){inView();later();});
-})();
-</script>"""
+# THE SWITCHING SCRIPT (TABS_JS) is parts.py's: the legislators page and the Learn
+# hub switch their tabs with it too.
 
 
 def main():

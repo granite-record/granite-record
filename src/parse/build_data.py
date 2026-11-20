@@ -1251,15 +1251,15 @@ def page_titles(path, rec=None):
     character cap: CACR 32 of 1993 runs to 566), and a constitutional
     amendment's "relating to X. providing that Y". [] where the page is not
     there, or prints an LSR that is not `rec`'s (fetch_legislation.same_bill)."""
-    import fetch_legislation as FL
+    import legislation_text as LT
     try:
-        flat = FL.flatten(FL.decode(Path(path).read_bytes()))
+        flat = LT.flatten(LT.decode(Path(path).read_bytes()))
     except OSError:
         return []
-    if rec is not None and FL.same_bill(flat, rec) is False:
+    if rec is not None and LT.same_bill(flat, rec) is False:
         return []
     got = []
-    m = FL.TITLE_RE[0].search(flat)
+    m = LT.TITLE_RE[0].search(flat)
     if m:
         got.append(m.group(1))
     m = _CACR_TITLE.search(flat)

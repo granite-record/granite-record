@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of Learn, the guides, civics and the numbers pages.
 
@@ -2946,7 +2946,7 @@ def _sortable_tables(LN):
 def _translations(i18n):
     """A translation that outlives an edit to its English goes on saying what
     the English page no longer says, and nothing on either page shows it.
-    So every say() and tr() is read from the source (i18n.code_words), and
+    So every say() and tr() is read from the source (translation_audit.code_words), and
     each must have an entry in lang/<code>.json translated from the English
     the code says now, with the same {placeholders}; an entry no code asks
     for is a leftover. And say() itself is held to the rule on a catalog
@@ -2955,16 +2955,17 @@ def _translations(i18n):
     proofreader is told where each key's words are by its first part
     (src/ops/translations.py's AREAS), so every first part has its place
     there, and no place is kept for a first part nothing uses."""
+    import translation_audit
     import chrome
     import build_pages as BP
-    words, problems = i18n.code_words()
+    words, problems = translation_audit.code_words()
     assert not problems, "the code's words cannot all be read: " + "; ".join(problems[:6])
     assert len(words) > 150, f"only {len(words)} words found to translate: the scan is broken"
     said = []
     for lang in i18n.LANGS:
         if lang == i18n.DEFAULT:
             continue
-        bad = i18n.check(lang)
+        bad = translation_audit.check(lang)
         assert not bad, (f"lang/{lang}.json against the code, {len(bad)} problems (python3 "
                          "src/ops/translations.py says the same; --set brings one up to date): "
                          + "; ".join(bad[:5]) + (f" (+{len(bad) - 5} more)" if len(bad) > 5 else ""))
@@ -3078,16 +3079,17 @@ def _slogan_one_line(i18n):
     and "into link previews when the site is shared on social media". It is
     in four places now, so they are held to chrome.SLOGAN: the home page's
     line under the logo and its title, as the code asks the catalog for them
-    (i18n.code_words, so in English the words the page says); the alt text
+    (translation_audit.code_words, so in English the words the page says); the alt text
     of the logo card a page with no card of its own names (chrome.card); and
     the line build_brand.py draws on that card, og.png, in small capitals
     without the full stop. The card itself is drawn on the laptop from the
     private originals, so what is checked here is the line it is told to
     draw: a card drawn before 24 October 2026 has none until build_brand.py
     is run again there."""
+    import translation_audit
     import chrome
     import build_brand as BB
-    words, problems = i18n.code_words()
+    words, problems = translation_audit.code_words()
     assert not problems, "; ".join(problems[:4])
     slogan, bare = chrome.SLOGAN, chrome.SLOGAN.rstrip(".")
     want = {"home.slogan": slogan, "home.title": f"Granite Record — {bare}"}
@@ -3501,6 +3503,7 @@ def _spanish_officials(i18n, BP, OT, seating):
     drawn in Spanish here with nothing English left; and a Spanish page tells
     find.js where the Spanish Officials page is (window.GR_HREFS), so the
     Your Town card's County Officials link does not leave the language."""
+    import translation_audit
     import html as _h
     assert i18n.has("es", "officials.html"), "i18n.PAGES does not name officials.html for Spanish"
     shared, _base, _ran, _days = _fixture_site_shared()
@@ -3535,7 +3538,7 @@ def _spanish_officials(i18n, BP, OT, seating):
         bad.append(f"its links to the Officials page leave Spanish: {sorted(set(own))[:4]}")
     # Every word the page asks for, current -- the fixture's data reaches
     # only some of them.
-    words, problems = i18n.code_words()
+    words, problems = translation_audit.code_words()
     assert not problems, problems[:3]
     prefixes = ("of.", "off.", "roster.", "comp.", "seat.", "lf.", "sc.", "party.", "map.")
     asked = [k for k in words if k.startswith(prefixes)]
@@ -3916,9 +3919,10 @@ def _spanish_guides_stale(i18n, G, BC):
     stale, and one at its first words, which is a new key with no entry.
     The Spanish page must say each of them in English, in <span lang="en">,
     and never the Spanish of the old words, while their neighbours stay in
-    Spanish; and i18n.check must name the stale entry, the missing one and
+    Spanish; and translation_audit.check must name the stale entry, the missing one and
     the entry no code asks for any more -- which is what fails preflight
     until a translation is brought up to date."""
+    import translation_audit
     import copy
     import html
     i = next(k for k, g in enumerate(G.GUIDES) if g["slug"] == "how-to-vote")
@@ -3943,7 +3947,7 @@ def _spanish_guides_stale(i18n, G, BC):
         i18n.MISSES.clear()
         page = BC.guide_page_lang(g, "es", "https://graniterecord.org")
         missed = set(i18n.MISSES)
-        problems = i18n.check("es")
+        problems = translation_audit.check("es")
         new_key = G.page_keys("how-to-vote")[edits[1][1]]
     finally:
         G.GUIDES[i] = real
@@ -5254,7 +5258,7 @@ def _language_sweep_words(civics, C):
              "laws not yet included."),
             ("build_site_v2.py", src("build_site_v2.py"), '"text": f"Still in interim study when',
              "In interim study: the committee studies the subject in the fall of"),
-            ("build_site_v2.py", src("build_site_v2.py"), "TOPIC_WORDS = {}",
+            ("topic_vocabulary.py", src("topic_vocabulary.py"), "TOPIC_WORDS = {}",
              '"CACR": "Constitutional Amendments"')):
         if gone in text:
             bad.append(f"{where} says {gone!r} again")

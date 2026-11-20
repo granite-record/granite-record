@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.9
+# GRANITE_VERSION: 2026-10-17.10
 """
 The legislature's year: a two-year term as a timeline, with this term's dates
 where the chambers' own calendars print them, and the usual pattern where
@@ -607,7 +607,7 @@ def seasons_of(term, lang=I.DEFAULT):
 # 25 October 2026). TERMS's words -- a season's name and when it falls, a
 # step's name and sentence, a deadline it gathers -- and PATTERN's and
 # RULE_WORDS' are data, each keyed year.<its first words> (year_words), and
-# i18n.code_words asks a catalog for them where the language has this page.
+# translation_audit.code_words asks a catalog for them where the language has this page.
 # The words a calendar prints beside a date (a step's cites) are the
 # record's, and are not among them.
 def _data_words():

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.3
+# GRANITE_VERSION: 2026-11-12.4
 """
 The General Court's own subject code as an archived bill's topic.
 
@@ -19,7 +19,7 @@ build_site_v2.unify_vocabulary: the five folded categories go to their parents
 (topic_model.FOLD), "Regular Meeting" is retired, Housing and Study Committees
 are claimed by their title rules (topic_model.remap_gold), and the two renamed
 names are worded. So there is ONE mapping for all nineteen terms, and a code the
-site dropped is never revived. build_site_v2.vocabulary_of() is that path for
+site dropped is never revived. topic_vocabulary.vocabulary_of() is that path for
 one record, which the table and preflight call.
 
 THE 27 CODES WITH NO NAME ON DISK (PUP, ENW, PRR, ENR, UTI, HIG, EDH, ...) are

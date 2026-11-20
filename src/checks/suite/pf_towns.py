@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of towns, districts and the map.
 
@@ -827,11 +827,13 @@ def _town_mailto(B):
         f"a town page links {got}; only the one address in the fixture is an "
         "address, and a note published as a mailto is a link to nowhere")
 
-    # Nothing on these pages may write a mailto except through maillink().
-    src = _source(_paths.locate("build_town_pages.py"))
+    # Nothing on these pages may write a mailto except through maillink(),
+    # which is parts.py's since 19 November 2026: the two files together
+    # write one, maillink's own.
+    src = _source(_paths.locate("build_town_pages.py")) + _source(_paths.locate("parts.py"))
     sites = src.count('href="mailto:')
     assert sites == 1, (
-        f"build_town_pages.py writes a mailto href in {sites} places. Every "
+        f"build_town_pages.py and parts.py write a mailto href in {sites} places. Every "
         "one goes through maillink(), which is where a note is refused.")
 
     hampton = [

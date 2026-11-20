@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.19
+# GRANITE_VERSION: 2026-09-11.20
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -45,7 +45,7 @@ An era module is docket_era_1989.py, docket_era_1999.py, docket_era_2007.py.
 import re
 from datetime import date as _date
 
-import narrative
+import docket_lines
 
 import docket_era_1989 as E1989
 import docket_era_1999 as E1999
@@ -148,7 +148,7 @@ def as_of(desc, created, session=None):
         year = int(str(session)[:4])
     except (TypeError, ValueError):
         year = None
-    if year is not None and not narrative.session_keeps(
+    if year is not None and not docket_lines.session_keeps(
             when.year, when.month, when.day, year):
         return None
     return when
@@ -205,10 +205,10 @@ def _ensure_date(d, created, session=None, desc=None):
     # narrative.session_keeps: within a year of the session, or anywhere in
     # its term -- a retained bill's session is its second year, and its
     # introduction was entered the December before its first.
-    if not narrative.session_keeps(yr, mo, dy, year):
+    if not docket_lines.session_keeps(yr, mo, dy, year):
         # The year the row was entered for, before the session's
         # (narrative.years_to_try).
-        for y in narrative.years_to_try(year, mo, dy, created):
+        for y in docket_lines.years_to_try(year, mo, dy, created):
             try:
                 d["date"] = _date(y, mo, dy).strftime("%m/%d/%Y")
                 break
@@ -289,7 +289,7 @@ def _event(pid, typ, m, fixed, clean, mod, created, session=None, desc=None):
         except TypeError:
             fix(d, created)
     if typ == "report":
-        d.update(narrative.report_fields(d.pop("rest", "") or ""))
+        d.update(docket_lines.report_fields(d.pop("rest", "") or ""))
     return _expand_committees(_ensure_date(d, created, session, desc), written)
 
 
@@ -310,15 +310,15 @@ def classify(desc, created=None, session=None):
     if mend is not None and mend(desc) != desc:
         ev = classify(mend(desc), created, session)
         if ev:
-            ev["_raw"] = narrative.clean(desc)
+            ev["_raw"] = docket_lines.clean(desc)
         return ev
-    clean = narrative.clean(desc)
+    clean = docket_lines.clean(desc)
     for pid, typ, pat, fixed in first:
         m = pat.search(clean)
         if m:
             return _event(pid, typ, m, fixed, clean, mod, created, session,
                           desc)
-    ev = narrative.classify(desc)
+    ev = docket_lines.classify(desc)
     if ev["_type"] != "other":
         # A modern pattern read it; it still needs this era's glue, because
         # its date may be "3/12/08" or missing altogether.
@@ -415,7 +415,7 @@ def join_rows(rows, session=None):
         if mark:
             floor = sum(1 for p in pieces
                         if ((classify(p.get("desc") or "", p.get("created"), session)
-                             or narrative.classify(p.get("desc") or ""))
+                             or docket_lines.classify(p.get("desc") or ""))
                             .get("_type") in _FLOOR))
             told = [p for p in parts
                     if (p.get("event") or {}).get("_type") in _FLOOR]
@@ -442,8 +442,8 @@ def _answers(rows, mod, session):
                     (r.get("created"), "", r.get("body", ""), r.get("desc", ""))) \
             if prev is not None and not r.get("event") else None
         if text:
-            ev = classify(text, r.get("created"), session) or narrative.classify(text)
-            ev["_raw"] = narrative.clean(r.get("desc", ""))
+            ev = classify(text, r.get("created"), session) or docket_lines.classify(text)
+            ev["_raw"] = docket_lines.clean(r.get("desc", ""))
             r = {**r, "event": ev}
         out.append(r)
     return out
@@ -454,7 +454,7 @@ _FLOOR = ("floor", "veto_override")
 
 def _clause_event(text, mod, table, created, session):
     """The event one clause of a joined line tells on its own, or None."""
-    clean = narrative.clean(text)
+    clean = docket_lines.clean(text)
     for pid, typ, pat, fixed in table:
         m = pat.search(clean)
         if m:
@@ -502,11 +502,11 @@ def questions(row, session=None):
     if cut is None or not table:
         return [row]
     desc, created = row.get("desc") or "", row.get("created")
-    text = narrative.clean(desc)
+    text = docket_lines.clean(desc)
     spans = cut(text)
     if len(spans) < 2:
         return [row]
-    whole = classify(desc, created, session) or narrative.classify(desc)
+    whole = classify(desc, created, session) or docket_lines.classify(desc)
     k = None
     if whole.get("_type") != "other":
         at = whole.get("_at", 0)

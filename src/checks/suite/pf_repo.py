@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -964,6 +964,147 @@ def _code_names_unique():
     n = len(_paths.code_files("*.py"))
     assert n >= 160, f"only {n} scripts were read in the code folders; there were 165 on 6 October"
     return "ok", f"{n} scripts across {len(_paths.code_dirs())} code folders, each name once"
+
+
+def _import_graph(files=None):
+    """{module: {the project's modules it imports}} of every code file (or of
+    `files`), by bare name, counting an import anywhere in a file: at the top,
+    inside a function, under __main__. An import by a string (imp(), needs=)
+    is not counted: it is the suite's, and imports nothing at load."""
+    files = _paths.code_files("*.py") if files is None else files
+    names = {Path(f).stem for f in files}
+    graph = {}
+    for f in files:
+        own = Path(f).stem
+        out = graph.setdefault(own, set())
+        for n in ast.walk(_parsed(f)):
+            if isinstance(n, ast.Import):
+                out |= {a.name.split(".")[0] for a in n.names}
+            elif isinstance(n, ast.ImportFrom) and n.level == 0 and n.module:
+                out.add(n.module.split(".")[0])
+        out &= names - {own}
+    return graph
+
+
+def _import_cycles(graph):
+    """The import cycles of `graph`, as sorted tuples of the modules each ties
+    together (the strongly connected parts of more than one module), largest
+    first. Tarjan's, without recursion."""
+    index, low, on, stack, out = {}, {}, set(), [], []
+    for root in sorted(graph):
+        if root in index:
+            continue
+        work = [(root, iter(sorted(graph.get(root, ()))))]
+        index[root] = low[root] = len(index)
+        stack.append(root)
+        on.add(root)
+        while work:
+            v, it = work[-1]
+            w = next(it, None)
+            if w is not None:
+                if w not in index:
+                    index[w] = low[w] = len(index)
+                    stack.append(w)
+                    on.add(w)
+                    work.append((w, iter(sorted(graph.get(w, ())))))
+                elif w in on:
+                    low[v] = min(low[v], index[w])
+                continue
+            work.pop()
+            if work:
+                low[work[-1][0]] = min(low[work[-1][0]], low[v])
+            if low[v] == index[v]:
+                comp = []
+                while True:
+                    x = stack.pop()
+                    on.discard(x)
+                    comp.append(x)
+                    if x == v:
+                        break
+                if len(comp) > 1:
+                    out.append(tuple(sorted(comp)))
+    return sorted(out, key=lambda c: (-len(c), c))
+
+
+# THE IMPORT CYCLES THERE ARE, AND NO MORE (the refactor's stage 3, 19 November 2026). On
+# 16 November thirty modules of src/pages imported one another in one knot, and two things
+# held it: i18n's translation audit, which read the builders' word lists from the module every
+# builder imports, and builders used as libraries by other builders. Each was cut by moving
+# code, not by rewriting it (reports/refactor/stage0-code.md, section 9, step 3). These are
+# the cycles left; a change that ties a new one, or grows one of these, fails here.
+_IMPORT_CYCLES_KNOWN = {
+    ("cloud", "livestreams", "refusal", "state_sources"),
+    ("past_roster", "past_sponsors", "text_sponsors"),
+    ("api_db", "api_schema"),
+    ("build_elections", "build_member_elections"),
+    ("build_lsrs", "request_topics"),
+    ("build_past_roster", "past_roll"),
+    ("caption_span", "segment_markers"),
+    ("civics", "legislative_year"),
+    ("parse_sos_primary_offices", "parse_sos_primary_results"),
+    ("proceedings", "terms"),
+}
+# The imports those moves cut, (importer, what it imported): each piece lives now where the
+# comment says, and the importer takes it from there.
+_IMPORTS_CUT = {
+    ("i18n", "guides"), ("i18n", "build_civics"), ("i18n", "officials_tabs"),
+    ("i18n", "build_pages"), ("i18n", "legislative_year"),      # translation_audit.py
+    ("build_calendar", "build_pages"), ("build_live", "build_pages"),
+    ("latest_activity", "build_pages"), ("officials_tabs", "build_pages"),
+    ("officials_tabs", "build_site_v2"), ("officials_tabs", "build_town_pages"),
+    ("build_town_pages", "build_pages"), ("build_pages", "build_town_pages"),   # parts.py
+    ("live_hook", "build_live"),                                # live_hook.past_stems
+    ("request_topics", "build_site_v2"),                        # topic_vocabulary.py
+    ("archive_text", "fetch_legislation"), ("build_data", "fetch_legislation"),
+    ("past_sponsors", "fetch_legislation"), ("referrals", "fetch_legislation"),
+    ("text_sponsors", "fetch_legislation"),                     # legislation_text.py
+    ("extract_amendments", "fetch_committee_reports"),
+    ("interim_statements", "fetch_committee_reports"),          # committee_report_text.py
+    ("docket_vocab", "narrative"),                              # docket_lines.py
+}
+
+
+@check("files", "the code's import cycles are the known ones and no more: i18n, which every "
+                "page imports, imports none of the builders, and no builder is in a cycle")
+def _import_cycles_cut():
+    """A module that every builder imports and that imports a builder ties
+    the whole folder into one cycle: i18n's translation audit did, until it
+    became translation_audit.py. A cycle works while each side uses the
+    other's names only at call time, and stops working when code moves
+    across the line that imports, so the cycles there are are listed here
+    (_IMPORT_CYCLES_KNOWN), and a new one or a bigger one fails. A cycle
+    taken apart comes off the list in the same commit."""
+    planted = {"a": {"b"}, "b": {"c"}, "c": {"a"}, "d": {"a", "e"}, "e": {"d"}, "f": set()}
+    got = _import_cycles(planted)
+    assert got == [("a", "b", "c"), ("d", "e")], f"the cycle reader found {got} in a planted graph"
+    graph = _import_graph()
+    assert len(graph) >= 160 and "i18n" in graph and "build_pages" in graph, len(graph)
+    cycles = set(_import_cycles(graph))
+    tied = [c for c in cycles if "i18n" in c or "translation_audit" in c]
+    assert not tied, f"i18n is in an import cycle again: {tied}"
+    # The builders that took a helper from another builder take it from parts.py
+    # (19 November 2026): none of the knot's builders is in a cycle again.
+    builders = {"build_pages", "build_calendar", "build_live", "build_town_pages", "build_site_v2",
+                "build_committees", "build_session_pages", "officials_tabs", "latest_activity",
+                "live_hook", "parts"}
+    tied = [c for c in cycles if builders & set(c)]
+    assert not tied, ("a builder is in an import cycle again; take what two builders share "
+                      f"from parts.py rather than from either: {tied}")
+    # And the imports that were cut stay cut, cycle or not: each was one module
+    # reaching into another for a piece that is now a module of its own.
+    back = sorted(f"{a} -> {b}" for a, b in _IMPORTS_CUT if b in graph.get(a, ()))
+    assert not back, ("an import cut on 19 November 2026 is back; take the piece from where "
+                      "it lives now (_IMPORTS_CUT says where): " + ", ".join(back))
+    new = sorted(cycles - _IMPORT_CYCLES_KNOWN)
+    gone = sorted(_IMPORT_CYCLES_KNOWN - cycles)
+    assert not new, ("an import cycle that is not on _IMPORT_CYCLES_KNOWN, new or grown: "
+                     + "; ".join(" <-> ".join(c) for c in new)
+                     + ". Import the shared piece from a module both can import instead.")
+    assert not gone, ("these cycles on _IMPORT_CYCLES_KNOWN are gone: take them off the list "
+                      "so they cannot come back unseen: "
+                      + "; ".join(" <-> ".join(c) for c in gone))
+    return "ok", (f"{len(graph)} modules, {len(cycles)} import cycles, all known (the largest "
+                  f"{max(map(len, cycles), default=0)} modules); i18n and the page builders in none")
 
 
 def _readme_unlisted(folder, root=None):

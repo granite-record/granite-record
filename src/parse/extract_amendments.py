@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Amendment text, out of the calendars already on this disk.
 
@@ -163,7 +163,7 @@ def repair_hyphens(doc):
 # heading -- "...shall take effect upon its passage. Amendment to HB 85-FN (".
 # That fragment is cut off the end.
 try:
-    from fetch_committee_reports import PAGE_FURNITURE as _HEADER
+    from committee_report_text import PAGE_FURNITURE as _HEADER
 except Exception:
     _HEADER = RUNNING_HEAD
 NEXT_HEADING = re.compile(
@@ -381,7 +381,7 @@ def main():
     if not pdfs:
         sys.exit(f"No {'texts' if a.text else 'PDFs'} under {a.calendars}/ or below it.")
 
-    from fetch_committee_reports import extract_text
+    from committee_report_text import extract_text
 
     print(f"reading {len(pdfs)} calendars, no network\n")
     found, per_file = {}, Counter()
