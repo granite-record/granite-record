@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.27
+# GRANITE_VERSION: 2026-11-16.28
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1368,6 +1368,13 @@ _SPLIT_FROM_SITE = {
                               "_same_statement attach_hearing_reports committee_reports "
                               "hearing_report_for_page hearing_testimony interim_cards rec_key "
                               "report_station resolve_speaker speaker_index").split()),
+    "sponsors": tuple(("MANUAL_PARTY MOVER_HONORIFIC MOVER_SUFFIX Parties STORY_PERSON "
+                       "_LABEL_PARTY _SPELLINGS _VOTE_LABELS _manual_name_keys _spellings "
+                       "bill_sponsor_list early_party early_party_said manual_parties "
+                       "manual_said manual_seats mover_member mover_pool party_ids party_letter "
+                       "party_record report_author report_authors sponsor_record_chambers "
+                       "sponsor_record_rows sponsor_record_said story_people term_voters "
+                       "vote_member").split()),
 }
 
 
@@ -1589,6 +1596,28 @@ def _site_hearing_reports_moved(B, HR):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in hearing_reports.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the reports' own")
+
+
+@check("files", "the members a bill's record names -- its sponsors with the seats and parties the "
+                "term's Manual gives, each ballot's voter, a motion's mover and a report's author "
+                "-- are sponsors.py's, every name of them imported back into build_site_v2",
+       needs=("build_site_v2", "sponsors"))
+def _site_sponsors_moved(B, SP):
+    """build_site_v2's sponsors and the Manual's seats moved to sponsors.py on 20 November
+    2026 (the refactor's finding 4), as they stood, from _VOTE_LABELS to bill_sponsor_list:
+    a ballot's member labelled once (vote_member), a motion's mover (mover_member,
+    mover_pool, term_voters), a committee report's author (report_author, report_authors),
+    the members the story names (story_people), the sponsor record's chambers
+    (sponsor_record_chambers), the seats and parties the Manuals print (manual_seats,
+    manual_parties, party_letter, early_party, party_record) and bill_sponsor_list. Every
+    name of them is held to be sponsors.py's, defined nowhere in build_site_v2.py, and
+    build_site_v2.<name> the same object, so bill_rollcalls, build_bills, main and the
+    checks that ask build_site_v2.bill_sponsor_list read the one copy."""
+    names = _SPLIT_FROM_SITE["sponsors"]
+    bad = _split_out(B, SP, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in sponsors.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the sponsors' own")
 
 
 def _readme_unlisted(folder, root=None):

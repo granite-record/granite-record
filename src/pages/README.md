@@ -138,9 +138,9 @@ The record and its own pages:
   index, and the legislators', towns' and committees' files the pages after
   it read (there was never a v1 here); its journey, a bill's status, the
   proceedings' stations, the members, the conferences, the amendments, the
-  rail's endings and the committee and hearing reports are modules of their
-  own beside it since 20 November 2026 (the next eight lines), and it imports
-  every name of theirs back;
+  rail's endings, the committee and hearing reports and the sponsors are
+  modules of their own beside it since 20 November 2026 (the next nine
+  lines), and it imports every name of theirs back;
 - `journey`: the passage rail and the journey -- the four stops a bill passes
   (`passage`) and what each chamber decided and when (`journey`,
   `journey_rail` and the `_j_` readers), read from the docket for the rail's
@@ -190,6 +190,13 @@ The record and its own pages:
   the Senate's written hearing reports, their speakers matched to members
   (`attach_hearing_reports`); a section of `build_site_v2` until 20 November
   2026, which imports every name of it back;
+- `sponsors`: the members a bill's record names -- its sponsors, each with the
+  seat and the party the term's Manual gives where the General Court's own
+  record has none (`bill_sponsor_list`, `manual_seats`, `manual_parties`),
+  and the members its docket names: each ballot's voter (`vote_member`), a
+  motion's mover (`mover_member`), a committee report's author
+  (`report_authors`); a section of `build_site_v2` until 20 November 2026,
+  which imports every name of it back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a
   file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,
