@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.26
+# GRANITE_VERSION: 2026-11-16.27
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -14968,6 +14968,17 @@ def _row_comes_and_goes():
             if any(_row_key(h) == "live" for h in re.findall(r'<a href="([^"]*)"', CH.NAV_RE.search(t).group(0)))]
     if not build_live.LINKED:
         assert not live, f"LINKED is off and {len(live)} pages link Live now in the header: {live[:3]}"
+    # A members-elect file that will not read stops the builders that draw
+    # them, and leaves the header's item out: it stopped every page builder
+    # once (preflight's own request-card check, whose file is a fragment).
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / "members_elect.json").write_text('{"races": {}}', encoding="utf-8")
+        CH.use_site(d)
+        try:
+            broken = CH.row_facts()["elect_until"]
+        finally:
+            CH.use_site(site)
+    assert broken is None, f"a members-elect file that will not read drew the item until {broken}"
     keys = re.findall(r'say\(lang, "(nav\.row\.[^"]+)"', _source("src/pages/chrome.py"))
     cat = i18n.catalog("es").get("strings", {})
     missing = [k for k in keys if k not in cat]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.13
+# GRANITE_VERSION: 2026-10-23.14
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -253,11 +253,14 @@ def row_facts():
     r = (read(site / "meta.json", {}) or {}).get("requests")
     req = ({"term": r["term"], "year": str(r.get("year") or str(r["term"])[:4])}
            if isinstance(r, dict) and r.get("term") else None)
+    # A members-elect file that will not read stops each builder that draws
+    # the members-elect, which says why (build_members_elect.for_pages); the
+    # header leaves their item out rather than stopping every other page too.
     try:
         from build_members_elect import for_pages
         elect = for_pages(site)
         until = elect["takes_office"] if elect else None
-    except ImportError:
+    except (ImportError, SystemExit):
         until = None
     former = any(isinstance(m, dict) and m.get("slug") for m in (read(site / "former.json", []) or []))
     _FACTS.update({"requests": req, "elect_until": until,
@@ -282,8 +285,8 @@ _LINKED_LINE = _re.compile(r"^LINKED = (True|False)\s*$", _re.M)
 def live_linked():
     """build_live.LINKED, the owner's switch for Live now, read from the line
     in build_live.py that sets it."""
-    from pathlib import Path
-    m = _LINKED_LINE.search((Path(__file__).with_name("build_live.py")).read_text(encoding="utf-8"))
+    import _paths
+    m = _LINKED_LINE.search(_paths.locate("build_live.py").read_text(encoding="utf-8"))
     assert m, "build_live.py no longer sets LINKED on a line of its own"
     return m.group(1) == "True"
 
