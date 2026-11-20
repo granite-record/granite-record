@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.321
+# GRANITE_VERSION: 2026-09-05.322
 """
 Generate the faceted site from real General Court data.
 
@@ -1090,6 +1090,71 @@ def early_parties(id_parties, bills, current, sponsors, _people, leg_by_sort, le
     return _parties
 
 
+def status_record(status_pages, b, bid, term, current, own):
+    """The status page's record of bill `bid` of `term`, each field it leaves blank
+    filled from the bill's own record (`b`), or that record's fields for an
+    archived term the file does not hold. `own` is whether `term` is the current
+    one. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    # An archived term reads its own term out of bill_status.json, and
+    # falls back to the statuses carried on the bill record itself -- put
+    # there by build_data from the General Court's own search, in the same
+    # vocabulary classify_stated already reads -- for a term the file does
+    # not hold yet.
+    st = P.per_term(status_pages, term, current).get(bid, {})
+    # A BLANK FIELD IS NOT AN ANSWER. bill_status.json comes from the
+    # status pages and leaves fields empty or null -- HB 523 of 2023 has
+    # no House status there -- while data/bills.json carries what the
+    # General Court's own search said about the same bill, in the same
+    # vocabulary ("INEXPEDIENT TO LEGISLATE"). The page's value wins
+    # where it has one; where it has none, the record fills it. Without
+    # this, 79 bills killed by their chamber fell through to a status
+    # derived from the docket, which called them "In committee".
+    fields = ("gen_status", "house_status", "senate_status", "text_pdf")
+    if not st and not own:
+        st = {k: b.get(k, "") for k in fields}
+    elif st:
+        st = {**st, **{k: b.get(k) for k in fields
+                       if not (st.get(k) or "").strip() and b.get(k)}}
+    return st
+
+
+def status_source_of(disp, status, settled, told, b, ev):
+    """Where a bill's status is from, in the words the page says it: the House
+    Journal, the General Court docket, its database, its bill status page, the
+    docket read where nothing states it, or a CACR's ballot row. `disp` is
+    bill_disposition's answer and `status`, `settled` and `told` its fields; `ev`
+    the bill's docket rows not cancelled. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    # "General Court docket" where a dated docket line decided the status
+    # over the fields: settled (the governor, a veto), or between the
+    # chambers (a refusal to concur, a conference report voted down, a
+    # resolution the second chamber adopted).
+    # "House Journal" where the bill is in none of the General Court's
+    # files and the journal is its record (journal_story) -- and where
+    # the journal's resolution of introduction is what says the bill was
+    # not introduced (NOT_INTRODUCED).
+    # "General Court database" where the fields that state it are the
+    # database's own, on a record build_data made from it: no status page
+    # was read for that bill.
+    status_source = (
+        JOURNAL_SOURCE if disp.source == JOURNAL_SOURCE or status == NOT_INTRODUCED
+        else "General Court docket" if settled or disp.between
+        else PAST_SOURCE if told and (b.get("source") == PAST_SOURCE
+                                      or disp.source == PAST_SOURCE)
+        else "General Court bill status page" if told
+        else "derived from the docket")
+    # A CACR'S VOTERS ARE NOT ON ITS STATUS PAGE, which stops at the
+    # second chamber: "ratified" or "not ratified" was its docket's
+    # referendum line where it has one, and the ballot row's count against
+    # two thirds where it has not. Credited to the status page on all
+    # eighteen until the review of 5 October 2026.
+    if status in (RATIFIED, NOT_RATIFIED) and status_source in (
+            "General Court bill status page", "derived from the docket"):
+        status_source = ("General Court docket"
+                         if any(REFERENDUM.search(e.get("raw") or "") for e in ev)
+                         else BALLOT_SOURCE)
+    return status_source
+
+
 def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over):
     """What build_bills says, after its loop, of the statuses it gave: how many the
     status page stated and how many of a closed term were marked finished, the
@@ -1356,26 +1421,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         narr = narratives.get(term, {}).get(bid)
         # Only for the term these files describe; see the loop header.
         own = term == current
-        # An archived term reads its own term out of bill_status.json, and
-        # falls back to the statuses carried on the bill record itself -- put
-        # there by build_data from the General Court's own search, in the same
-        # vocabulary classify_stated already reads -- for a term the file does
-        # not hold yet.
-        st = P.per_term(status_pages, term, current).get(bid, {})
-        # A BLANK FIELD IS NOT AN ANSWER. bill_status.json comes from the
-        # status pages and leaves fields empty or null -- HB 523 of 2023 has
-        # no House status there -- while data/bills.json carries what the
-        # General Court's own search said about the same bill, in the same
-        # vocabulary ("INEXPEDIENT TO LEGISLATE"). The page's value wins
-        # where it has one; where it has none, the record fills it. Without
-        # this, 79 bills killed by their chamber fell through to a status
-        # derived from the docket, which called them "In committee".
-        fields = ("gen_status", "house_status", "senate_status", "text_pdf")
-        if not st and not own:
-            st = {k: b.get(k, "") for k in fields}
-        elif st:
-            st = {**st, **{k: b.get(k) for k in fields
-                           if not (st.get(k) or "").strip() and b.get(k)}}
+        st = status_record(status_pages, b, bid, term, current, own)
         dl = (chapters or {}).get(term, {}).get(bid) or {}
         db_st = fill_status_from_db(st, b, bid, term, current)
         # A CACR's row of ballot_results.json: the statewide vote on it.
@@ -1430,34 +1476,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # "carried over" from a session it was never in.
         if status in NEVER_INTRODUCED or (narr or {}).get("not_introduced"):
             carried = False
-        # "General Court docket" where a dated docket line decided the status
-        # over the fields: settled (the governor, a veto), or between the
-        # chambers (a refusal to concur, a conference report voted down, a
-        # resolution the second chamber adopted).
-        # "House Journal" where the bill is in none of the General Court's
-        # files and the journal is its record (journal_story) -- and where
-        # the journal's resolution of introduction is what says the bill was
-        # not introduced (NOT_INTRODUCED).
-        # "General Court database" where the fields that state it are the
-        # database's own, on a record build_data made from it: no status page
-        # was read for that bill.
-        status_source = (
-            JOURNAL_SOURCE if disp.source == JOURNAL_SOURCE or status == NOT_INTRODUCED
-            else "General Court docket" if settled or disp.between
-            else PAST_SOURCE if told and (b.get("source") == PAST_SOURCE
-                                          or disp.source == PAST_SOURCE)
-            else "General Court bill status page" if told
-            else "derived from the docket")
-        # A CACR'S VOTERS ARE NOT ON ITS STATUS PAGE, which stops at the
-        # second chamber: "ratified" or "not ratified" was its docket's
-        # referendum line where it has one, and the ballot row's count against
-        # two thirds where it has not. Credited to the status page on all
-        # eighteen until the review of 5 October 2026.
-        if status in (RATIFIED, NOT_RATIFIED) and status_source in (
-                "General Court bill status page", "derived from the docket"):
-            status_source = ("General Court docket"
-                             if any(REFERENDUM.search(e.get("raw") or "") for e in ev)
-                             else BALLOT_SOURCE)
+        status_source = status_source_of(disp, status, settled, told, b, ev)
         # Committees carry their chamber. Both chambers have a Finance, a
         # Judiciary and a Ways and Means, and the ones that differ differ
         # slightly -- Senate "Health and Human Services" against House "Health,
