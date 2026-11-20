@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1120,6 +1120,31 @@ _SPLIT_FROM_SITE = {
                     "conference_failure", "conferees_disagreed", "_conference_vote",
                     "conference_outcome", "concurrence_outcome", "BEFORE_CONFERENCE",
                     "BEFORE_CONCURRENCE", "BEFORE_UNABLE", "CONFERENCE_ROW", "between_chambers"),
+    "journey": tuple(("J_ACTS J_AMENDED J_AMEND_ADOPTED J_AMEND_LIST J_AMEND_SUBJ "
+                      "J_BARE_REFERRAL J_CHAPTERED J_CHAPTER_THEN_DAY J_CLAUSE_DAY "
+                      "J_CONF J_DAY J_DIVIDED_OUT J_DONE_VERB J_EFF_ANY J_EFF_MORE "
+                      "J_EFF_PART J_EFF_PROVIDED J_EFF_SEVERAL J_EFF_WHAT J_ENDING "
+                      "J_FILED J_FROM_REPORT J_IF_PASSED J_INTRO_ROW J_MARK J_MON "
+                      "J_MONTH_DAY J_NEW_CONFERENCE J_NOT_FLOOR J_NOT_VOTED J_NO_CODE "
+                      "J_NO_WORD J_ON_THE_TABLE J_OTHER_BILL J_OUTCOME_ONLY J_PASSING "
+                      "J_RC_BARE J_RECONSIDER J_RECON_END J_RECON_NAMES J_RECON_NOT "
+                      "J_REFERRED_TO J_REF_TALLY J_REMAINING J_ROW_DAY "
+                      "J_SECOND_COMMITTEE J_SIGNED J_SKIP J_SUSPEND J_SUSPENDED "
+                      "J_SUSP_CODE J_SUSP_REFERRAL J_SUSP_VOTE J_SUSP_WORD "
+                      "J_TAKES_OUTCOME J_TALLY J_TALLY_TAIL J_THIRD J_UNSIGNED "
+                      "J_VETOED J_VETO_VOTE J_VOICE J_WAIVED J_WRAPPED_TALLY "
+                      "J_YES_CODE J_YES_WORD ONE_CHAMBER OWN_CHAMBER RAIL_ACT "
+                      "RAIL_DEAD_TABLE RAIL_MARK_OF_CHIP RAIL_REFINES RAIL_SAY "
+                      "STAGES_FROM _STAGE_END _j_act _j_act_sections _j_amended_on "
+                      "_j_answers_after _j_chaptered _j_clauses _j_days _j_decide "
+                      "_j_effective _j_effective_parts _j_gov_more _j_has_outcome "
+                      "_j_in_recess _j_in_term _j_introduced _j_iso _j_merge _j_motion "
+                      "_j_motions _j_outcome _j_prose_date _j_reconsidered "
+                      "_j_roll_call _j_row_day _j_rows _j_second_committee _j_sections "
+                      "_j_segments _j_settle _j_stated_day _j_suspension_failed "
+                      "_j_tally _j_unfile _j_unsuspend _j_untold _j_vote_words "
+                      "_j_words _j_year_slip _journey_rail journey journey_rail "
+                      "journey_state law_day law_in_stages law_line_dated passage").split()),
 }
 
 
@@ -1186,6 +1211,29 @@ def _site_conferences_moved(B, CF):
     assert not bad, "; ".join(bad)
     return "ok", (f"{len(names)} names defined in conferences.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> conferences' own")
+
+
+@check("files", "the passage rail and the journey are journey.py's, every name of them imported back "
+                "into build_site_v2, and build_site_v2 defines no _j_ reader of its own",
+       needs=("build_site_v2", "journey"))
+def _site_journey_moved(B, J):
+    """build_site_v2's largest subsystem -- passage, the four stops a bill passes, and the
+    journey, what each chamber decided and when, with every _j_ reader and J_ pattern, RAIL_SAY
+    and J_ENDING -- moved to journey.py on 20 November 2026 (the refactor's finding 4), as it
+    stood. Every name it took is held to be journey.py's, defined nowhere in build_site_v2.py,
+    and build_site_v2.<name> the same object, so the callers of build_site_v2.journey, its
+    checks among them, read the one journey. And no _j_ reader is defined in build_site_v2.py:
+    a new one goes beside the others, where the journey can call it. (J_DECIDED_ACT stays in
+    build_site_v2 with journal_decided_story, the one reader of it.)"""
+    names = _SPLIT_FROM_SITE["journey"]
+    bad = _split_out(B, J, names)
+    own = sorted(n for n, how in _top_names(_parsed(B.__file__)).items()
+                 if how == "defined" and n.startswith("_j_"))
+    if own:
+        bad.append("build_site_v2.py defines journey readers of its own: " + ", ".join(own))
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in journey.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the journey's own; no _j_ reader left in build_site_v2")
 
 
 def _readme_unlisted(folder, root=None):

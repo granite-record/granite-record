@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.40
+# GRANITE_VERSION: 2026-11-16.41
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -5265,6 +5265,7 @@ def _study_report_said_once(B, PA):
     # Typed out again nowhere else, and the old copies gone.
     typed = [said["rec"], said["not"], f"{head}: {said['without']}"]
     for f in ("src/pages/app.js", "src/pages/components.js", "src/pages/build_site_v2.py",
+              "src/pages/journey.py",
               "src/pages/build_committees.py", "src/parse/plain_action.py", "tests/follow/sender.test.js"):
         text = _source(f)
         again = [w for w in typed + list(_STUDY_WORDS_GONE) if w in text]

@@ -137,6 +137,11 @@ The record and its own pages:
 - `build_site_v2`: the record builder -- each bill's payload and the bill
   index, and the legislators', towns' and committees' files the pages after
   it read (there was never a v1 here);
+- `journey`: the passage rail and the journey -- the four stops a bill passes
+  (`passage`) and what each chamber decided and when (`journey`,
+  `journey_rail` and the `_j_` readers), read from the docket for the rail's
+  dated stops and How it got here; a section of `build_site_v2` until 20
+  November 2026, which imports every name of it back;
 - `conferences`: what the two chambers did with each other's version of a
   bill -- a concurrence, a committee of conference and how it ended -- read
   from the docket; a section of `build_site_v2` until 20 November 2026, which
