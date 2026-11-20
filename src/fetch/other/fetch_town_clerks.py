@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.5
+# GRANITE_VERSION: 2026-09-12.6
 """
 The town clerk and the polling place for every town and ward, in one request.
 
@@ -80,6 +80,8 @@ import re
 import urllib.error
 import urllib.request
 
+from entities import town_slug as slug  # the key build_town_pages.py names its files with
+
 URL = "https://app.sos.nh.gov/statelistclerkandpolling"
 RAW = Path("archive/sos_clerks.html")
 OUT = Path("collected/town_clerks.json")
@@ -94,17 +96,6 @@ WANT = {
     "state_hours": "state election", "local_hours": "local election",
     "polling_place": "polling place", "election": "election date",
 }
-
-
-def slug(town, ward):
-    """The same key build_town_pages.py names its files with.
-
-    Kept in step with that file by test rather than by memory: the towns in
-    this list and the pages on disk are compared by --parse, and a key that
-    matches nothing is reported instead of silently dropped.
-    """
-    s = re.sub(r"[^a-z0-9]+", "-", town.lower()).strip("-")
-    return f"{s}-ward-{ward}" if ward and str(ward) != "0" else s
 
 
 def split_ward(name):

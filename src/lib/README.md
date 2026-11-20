@@ -53,7 +53,9 @@ Shared by every stage:
   the shape of each kind of record, the rules a model holds to, and the
   views that give today's files back from it -- which `parse/build_entities.py`
   writes to `data/entities/` every night and nothing reads yet; what is the
-  state's in it is `state_settings.json`'s;
+  state's in it is `state_settings.json`'s; and the one rule that makes a
+  name an address (`slug`) and a town's page key (`town_slug`), which the
+  builders and the town readers call;
 - `bench_ledger`: the bench's ledger, `review/checked.jsonl`, read one way by
   every reader (`checks/review.py`, `hearings/probe_alignment.py`): whose a
   line is (the owner's `hand`, or a contributor's `link:<id>` merged from the

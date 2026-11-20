@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.51
+# GRANITE_VERSION: 2026-09-04.52
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -42,6 +42,7 @@ import _paths  # noqa: E402,F401
 
 import argparse
 import build_date
+from entities import slug
 import build_members_elect as BME
 import build_pages as BP
 import build_rsa as BR
@@ -428,10 +429,6 @@ def clip(s, n=88):
     cut = s[:n]
     sp = cut.rfind(" ")
     return (cut[:sp] if sp > n * 0.6 else cut).rstrip(" ,;:-\u2013") + "\u2026"
-
-
-def slug(s):
-    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", (s or "").lower())).strip("-")
 
 
 # A TOPIC RENAMED KEEPS ITS FEED'S ADDRESS (17 October 2026): two topics took a

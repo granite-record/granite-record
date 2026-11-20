@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.6
+# GRANITE_VERSION: 2026-09-20.7
 """
 The Secretary of State's clerks and polling places, out of the CSV export.
 
@@ -78,6 +78,7 @@ import re
 import parse_clerks
 import parse_officials
 import town_sources
+from entities import slug
 
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
@@ -104,10 +105,6 @@ WARD = re.compile(r"^(?P<town>.*?)\s+WARD\s+0*(?P<ward>\d+)\s*$", re.I)
 def clean(s):
     s = re.sub(r"\s+", " ", (s or "")).strip()
     return "" if s.lower() in BLANK else s
-
-
-def slug(s):
-    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
 
 def match_town(name, towns):

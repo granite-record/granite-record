@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.9
+# GRANITE_VERSION: 2026-09-12.10
 """
 The Secretary of State's clerks and polling places, out of the PDF.
 
@@ -100,6 +100,8 @@ import collections
 import json
 import pathlib
 import re
+
+import entities
 
 # The other directory decides two things here: its properly spaced names settle
 # the joins this PDF leaves ambiguous, and its `web_address` decides what counts
@@ -586,7 +588,7 @@ def fold_wards(data, towns):
     for town, wards in towns.items():
         if wards != ["0"] and len(wards) > 1:
             continue
-        s = re.sub(r"[^a-z0-9]+", "-", town.lower()).strip("-")
+        s = entities.slug(town)
         if s in data:
             continue
         mine = sorted((k for k in data if k.startswith(s + "-ward-")),
@@ -655,7 +657,7 @@ def build(rows, towns):
             "election": val(ELECT), "state_hours": val(SHOURS),
             "local_hours": val(LHOURS),
         }
-        s = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+        s = entities.slug(name)
         key = f"{s}-ward-{ward.lstrip('0') or '0'}" if ward else s
         data[key] = {k: v for k, v in rec.items() if v}
         got = surname_in_email(namecase(clerk), email)
@@ -707,7 +709,7 @@ def main():
         have.add((m.group(1), m.group(2) or "0"))
     missing = sorted(f"{t}" + (f" ward {w}" if w != "0" else "")
                      for t, w in want
-                     if (re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-"),
+                     if (entities.slug(t),
                          w.lstrip("0") or "0") not in have)
     print(f"    {sum(1 for v in data.values() if v.get('polling_place'))}"
           f" of {len(data)} carry a polling place, "
