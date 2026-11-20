@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of livestreams, markers, dockets and proceedings.
 
@@ -1094,8 +1094,8 @@ def _seconds_clock_one_home():
             f"{path} no longer writes its own clock: take it off _CLOCK_OTHERS"
     for x in range(0, 2 * 86400, 7):
         s = int(x + 0.9)
-        assert P.hms(x + 0.9) == f"{s//3600}:{(s%3600)//60:02d}:{s%60:02d}", \r
-            f"proceedings.hms({x + 0.9}) is {P.hms(x + 0.9)!r}: the clock is the second a moment is in"
+        assert P.hms(x + 0.9) == f"{s//3600}:{(s%3600)//60:02d}:{s%60:02d}", (
+            f"proceedings.hms({x + 0.9}) is {P.hms(x + 0.9)!r}: the clock is the second a moment is in")
     assert [P.hms(v) for v in (0, 59.99, 3723.9, 36000)] == ["0:00:00", "0:00:59", "1:02:03", "10:00:00"]
     for planted, name, how in (
             ('def hms(s):\n    s = int(s)\n    return f"{s//3600}:{(s%3600)//60:02d}:{s%60:02d}"\n', "hms", "from"),
