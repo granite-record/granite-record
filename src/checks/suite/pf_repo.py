@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.23
+# GRANITE_VERSION: 2026-11-16.24
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1351,6 +1351,10 @@ _SPLIT_FROM_SITE = {
                       "seat_of_the_lines service_order sitting_labels sort_name "
                       "sponsored_in_order term_seats vote_date write_floor_record "
                       "write_rollcall_index").split()),
+    "amendments": tuple(("AMEND_ANY AMEND_NUM DASH_RULE ENACTING EXPLANATION FRONT LEGEND "
+                         "PREAMBLE_END RSA_CITE_T TARGET_ALL TARGET_SECT _amendment_said "
+                         "amended_bill amendment_claims amendment_num amendment_targets "
+                         "amendments_in_text bill_amendments bill_text_block").split()),
 }
 
 
@@ -1501,6 +1505,28 @@ def _site_members_moved(B, MEM):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in members.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the members' own")
+
+
+@check("files", "a bill's amendments and its text -- the amendments the docket moved, in its order, "
+                "and the text's analysis told apart from the bill -- are amendments.py's, every "
+                "name of them imported back into build_site_v2",
+       needs=("build_site_v2", "amendments"))
+def _site_amendments_moved(B, AM):
+    """build_site_v2's amendments and texts moved to amendments.py on 20 November 2026 (the
+    refactor's finding 4), as they stood: AMEND_NUM and AMEND_ANY, the patterns of what an
+    amendment says it changes and amendment_targets, the text's analysis, legend and front
+    matter told apart (ENACTING to EXPLANATION, bill_text_block), amendments_in_text,
+    amended_bill, amendment_num, amendment_claims, bill_amendments and _amendment_said.
+    Every name of them is held to be amendments.py's, defined nowhere in build_site_v2.py,
+    and build_site_v2.<name> the same object, so vote_chronology, bill_rollcalls,
+    build_bills and the checks that ask build_site_v2.bill_amendments read the one copy.
+    (session_days' ADOPTED and amendment_carried are still imported into build_site_v2
+    where they were.)"""
+    names = _SPLIT_FROM_SITE["amendments"]
+    bad = _split_out(B, AM, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in amendments.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the amendments' own")
 
 
 def _readme_unlisted(folder, root=None):
