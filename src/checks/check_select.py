@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.5
+# GRANITE_VERSION: 2026-10-09.6
 """
 Which of preflight's checks a change can reach: `preflight.py --changed`.
 
@@ -87,8 +87,6 @@ RUNNER = {"main", "check", "imp", "_run", "CHECKS", "_in_order"}
 
 FILE_RX = re.compile(r"[\w./-]*?[\w-]+\.(?:py|js|mjs|css|html|json|jsonl|csv|psv|txt|md|yml|yaml"
                      r"|bat|toml|xml|webmanifest)\b")
-IMPORT_RX = re.compile(r"^[ \t]*(?:from[ \t]+([A-Za-z_]\w*)|import[ \t]+([A-Za-z_][\w \t,.]*))",
-                       re.M)
 NAMED_RX = re.compile(r"""(?:__import__|imp)\(\s*["']([A-Za-z_]\w*)["']""")
 LAUNCH_RX = re.compile(r"""["']([A-Za-z_]\w*)\.py["']""")
 CODE_KINDS = (".py", ".js", ".css", ".html", ".md", ".bat", ".yml", ".yaml", ".toml")
