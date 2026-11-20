@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.23
+# GRANITE_VERSION: 2026-11-16.24
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -1594,7 +1594,6 @@ def _party_table(BE, EN, PE, ST):
 #   parts  the function's rows of (count, "er-<letter>", word)
 #   js     an object literal `const NAME={...}` in the file's text (a page's script in a Python
 #          string included): LETTER:"word", LETTER:tr("key","word"), LETTER:[...] or "var(--ink)"
-#   rule   the letters a first-letter rule takes, written "RDILU" in the file
 #   words  the English the translations file gives each of the table's keys
 #   css    the stylesheet's party inks and tints in each theme, and every class that draws one
 _PARTY_COPIES = (
@@ -1607,9 +1606,6 @@ _PARTY_COPIES = (
     ("src/pages/map.js", "PARTY", "js", "adjective"),
     ("src/pages/map.js", "NOUN", "js", "name, plural"),
     ("workers/follow/mail.js", "PARTY_WORDS", "js", "name, plural"),
-    ("src/pages/build_site_v2.py", "RDILU", "rule", "letter"),
-    ("src/parse/names.py", "RDILU", "rule", "letter"),
-    ("src/parse/past_sponsors.py", "RDILU", "rule", "letter"),
     ("src/pages/lang/es.json", "party.*", "words", "the English of each key"),
     ("src/pages/app.css", "party classes", "css", "ink, soft"),
     ("src/pages/map.css", "party classes", "css", "ink"),
@@ -1622,9 +1618,6 @@ _PARTY_DIFFERS = frozenset({
     "src/pages/app.css party classes: X is drawn in --ind, the table's X in --ink-2",
     "workers/follow/mail.js PARTY_WORDS: X is 'member whose party is not on file', the table's X 'Party not on file'",
     "workers/follow/mail.js PARTY_WORDS: X is 'members whose party is not on file', the table's X says no plural",
-    "src/pages/build_site_v2.py RDILU: U, a letter the table does not hold",
-    "src/parse/names.py RDILU: U, a letter the table does not hold",
-    "src/parse/past_sponsors.py RDILU: U, a letter the table does not hold",
 })
 # A copy written in a new place: a letter bound to a party's word, or a party's word to its letter.
 _PARTY_COPY_LINE = re.compile(r"""\bR["']?\s*:\s*[^\n]{0,40}?["'](?:\{n\} )?Republican|["']republican["']\s*:\s*["']R["']""")
@@ -1676,7 +1669,7 @@ def _party_copy_says(ST, path, name, how, holds):
     adjective, party_name, spelling, letter, ink, soft or key:<form> (a key of the translations
     the copy says a word through)."""
     out = []
-    if how in ("py", "say", "parts", "rule"):
+    if how in ("py", "say", "parts"):
         tree = _parsed(_paths.ROOT / path)
     if how == "py":
         found = [ast.literal_eval(n.value) for n in ast.walk(tree) if isinstance(n, ast.Assign)
@@ -1707,10 +1700,6 @@ def _party_copy_says(ST, path, name, how, holds):
                 if m:
                     x = m.group(1)
                     out.append((x, "name" if x == ST.PARTY_NONE["letter"] else holds, a.elts[2].value))
-    elif how == "rule":
-        hits = [n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str) and name in n.value]
-        assert hits, f"{path} no longer writes the rule's letters {name}"
-        out += [(x, "letter", x) for x in name]
     elif how == "js":
         body = _js_object(_source(_paths.ROOT / path), name)
         assert body is not None, f"{path} has no `const {name}={{...}}`: the copy moved or went"
@@ -1764,16 +1753,16 @@ def _party_copies_agree(ST):
     that have, and _party_readers_read_the_table holds them). Until each does, every copy
     _PARTY_COPIES lists -- 26 of them on 16 November, the letter-to-word maps of the pages, the
     downloads and the fetchers, the word-to-letter maps, party_word and the elections' bar, the scripts' maps of
-    words, inks and counts, the follow emails', the first-letter rules, the translations' English,
-    and the stylesheets' inks and tints -- is read where it is, and each thing it says of a party is
+    words, inks and counts, the follow emails', the translations' English, and the stylesheets'
+    inks and tints -- is read where it is, and each thing it says of a party is
     held to the table: the word, plural, adjective and party's own name, a spelling and the letter
     it stands for, the key a word is said through, the ink or tint a class draws it in, and the
     stylesheet's values for each in the light theme (and print) and the dark. What differs today
     is _PARTY_DIFFERS, put right in none: the elections' bar and its X (other or cross-nominated,
-    drawn in the Independent's ink) where the table's X is 'Party not on file'; the follow
-    emails' own words for it; and the first-letter rules' U, which no file prints. Exactly those
-    differ. And no copy is written where the list does not know one: a line binding R to a
-    Republican word, or the word to R, in any code file, the workers' and the Functions' too,
+    drawn in the Independent's ink) where the table's X is 'Party not on file'; and the follow
+    emails' own words for it. Exactly those differ (the first-letter rules, which took a U no
+    table holds, read the table since 20 November 2026: _PARTY_READERS). And no copy is written
+    where the list does not know one: a line binding R to a Republican word, or the word to R, in any code file, the workers' and the Functions' too,
     outside the suite and the tests, is one of the listed copies."""
     differs, said = set(), {}
     for path, name, how, holds in _PARTY_COPIES:
@@ -1849,9 +1838,9 @@ def _party_copies_agree(ST):
         + ". Read state_settings.PARTY instead, or add it to _PARTY_COPIES")
     langs = {how for _p, _n, how, _h in _PARTY_COPIES}
     return "ok", (f"{len(_PARTY_COPIES)} copies ({len(langs)} ways of writing one) say what the table says but "
-                  f"the {len(_PARTY_DIFFERS)} listed: the elections' bar and the emails' X, its ink, and the "
-                  "first-letter rules' U; app.css's inks and tints are the table's in both themes; no copy "
-                  "written anywhere the list does not know")
+                  f"the {len(_PARTY_DIFFERS)} listed: the elections' bar and the emails' X and its ink; "
+                  "app.css's inks and tints are the table's in both themes; no copy written anywhere the "
+                  "list does not know")
 
 
 # THE READERS THAT MOVED ONTO THE TABLE (the design's step 3, 19 November 2026). Each kept its own
@@ -1870,7 +1859,23 @@ _PARTY_READERS = (
     ("src/fetch/gc_web/fetch_rollcall_parties.py", "PARTY", "party_lookup", ()),
     ("src/pages/build_site_v2.py", "MANUAL_PARTY", "party_lookup", ()),
     ("src/parse/office_links.py", "PARTY_WORDS", "party_lookup", ()),
+    ("src/pages/build_site_v2.py", "PARTY_INITIALS", "party_initials", ()),
+    ("src/parse/names.py", "PARTY_INITIALS", "party_initials", ()),
+    ("src/parse/past_sponsors.py", "PARTY_INITIALS", "party_initials", ()),
 )
+# THE FIRST-LETTER RULES among them (20 November 2026): a label's party letter, a name's party
+# tail, a ballot's party, kept where it is one of the letters the table has a word for. Until then
+# each wrote "RDILU" in the file, a U no table holds and no file prints. Each rule's letters are
+# PARTY_INITIALS, and no string in the file writes a run of the table's letters of its own.
+_PARTY_RULES = ("src/pages/build_site_v2.py", "src/parse/names.py", "src/parse/past_sponsors.py")
+
+
+def _party_rule_literals(tree, letters):
+    """[(line, the string)] of the string constants in a parsed file that write `letters` (the
+    table's, "RDIL") in a run of their own, as a first-letter rule once did ("RDILU", "[RDILU]")."""
+    run = re.compile(r"[A-Z]*" + "".join(re.escape(x) for x in letters) + r"[A-Z]*")
+    return [(n.lineno, n.value) for n in ast.walk(tree)
+            if isinstance(n, ast.Constant) and isinstance(n.value, str) and letters and run.search(n.value)]
 
 
 def _party_reader_faults(tree, name, fn, args):
@@ -1908,14 +1913,40 @@ def _party_readers_read_the_table(ST):
     """THE PARTY TABLE IS READ, NOT COPIED (the design's step 3). The copies _PARTY_READERS names
     were dicts of their own until 19 November 2026; each is now bound to the table's view of it
     (state_settings.party_words, party_lookup), which gave the very dict the copy held, so the site
-    did not change by a byte. Held: each name in its file is bound once, to that call, and never
-    written into after; and the views read the table they are given, so a reader follows the
-    table and nothing else. Planted, each must be refused: the dict written back in place of the
+    did not change by a byte; and the three first-letter rules (_PARTY_RULES), which wrote "RDILU"
+    until 20 November 2026, read state_settings.party_initials, the U dropped being a letter no
+    file prints. Held: each name in its file is bound once, to that call, and never written into
+    after; each rule reads its PARTY_INITIALS and writes no run of the letters of its own, and
+    keeps R, L and an "(r)" tail and drops a U; and the views read the table they are given, so a
+    reader follows the table and nothing else. Planted, each must be refused: the dict written back in place of the
     call, a second view, an item set into it, a view of another form; and a table whose
     Republican is planted under another word is read under that word."""
     for path, name, fn, args in _PARTY_READERS:
         faults = _party_reader_faults(_parsed(_paths.ROOT / path), name, fn, args)
         assert not faults, f"{path}: " + "; ".join(faults)
+    # The first-letter rules take their letters from PARTY_INITIALS, and write none of their own.
+    letters = ST.party_initials()
+    assert letters == "".join(ST.party_words("name")) and letters, f"the table's initials are {letters!r}"
+    for path in _PARTY_RULES:
+        tree = _parsed(_paths.ROOT / path)
+        own = _party_rule_literals(tree, letters)
+        assert not own, f"{path} writes the party letters itself: " + "; ".join(f"line {n}: {s!r}" for n, s in own[:3])
+        used = [n for n in ast.walk(tree) if isinstance(n, ast.Name) and n.id == "PARTY_INITIALS"
+                and isinstance(n.ctx, ast.Load)]
+        assert used, f"{path} binds PARTY_INITIALS and its rule does not read it"
+    for planted in ('p = pc if pc in "RDILU" else ""\n', 'R = re.compile(r"\\([RDILU]\\)")\n',
+                    'p = pc if pc in "RDIL" else ""\n'):
+        assert _party_rule_literals(ast.parse(planted), letters), f"a rule writing its own letters was missed: {planted!r}"
+    assert not _party_rule_literals(ast.parse('x = "Rep. Jodi Nelson (R - Rock 13)"\n'), letters)
+    import build_site_v2 as B2
+    import names as NM
+    for s, want in (("Howard Pearl (r)", "Howard Pearl"), ("Nelson, Jodi(R) Rock. 13", "Jodi Nelson"),
+                    ("Rep. Ann Lib (l - Graf 1)", "Ann Lib")):
+        assert B2.person_name(s) == want, f"person_name({s!r}) is {B2.person_name(s)!r}, not {want!r}"
+    kept = [B2.party_letter(x) for x in ("Republican", "l", "U", "C", "X", "")]
+    assert kept == ["R", "L", "", "", "", ""], f"party_letter keeps {kept}"
+    said = [NM.legislator({"name": "Doe, Jane", "chamber": "S", "party": p, "district": "4"}) for p in ("r", "u")]
+    assert said == ["Sen. Jane Doe (R - SD4)", "Sen. Jane Doe (SD4)"], f"names.legislator says {said}"
     good = 'import state_settings as ST\nPARTY = ST.party_words("name")\nx = PARTY.get("R")\n'
     assert _party_reader_faults(ast.parse(good), "PARTY", "party_words", ("name",)) == []
     for planted in ('PARTY = {"R": "Republican", "D": "Democrat"}\n',
@@ -1931,8 +1962,12 @@ def _party_readers_read_the_table(ST):
     assert ST.party_words("name", table)["R"] == "Planted" and ST.party_lookup(table)["planted"] == "R", (
         "the table's views did not read the table they were given")
     assert ST.party_words("name") == {x: row["name"] for x, row in ST.PARTY.items() if row.get("name")}
+    table["letters"]["C"]["name"] = "Constitution"
+    assert ST.party_initials(table) == letters + "C", "the initials did not read the table they were given"
     return "ok", (f"{len(_PARTY_READERS)} readers bound once each to the table's view and never written into; "
-                  "five planted copies refused, and a planted table read as planted")
+                  f"the {len(_PARTY_RULES)} first-letter rules keep the table's {letters} and write no letters "
+                  "of their own (a U is no party); five planted copies and three planted rules refused, and a "
+                  "planted table read as planted")
 
 
 # ---- the one district table, with its eras and every spelling (the design's step 4) --------------

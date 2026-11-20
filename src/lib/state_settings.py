@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.6
+# GRANITE_VERSION: 2026-11-11.7
 """
 The state's facts, read from src/lib/state_settings.json.
 
@@ -75,7 +75,7 @@ SOURCE_HOSTS = SETTINGS["source_hosts"]
 # letter, the site's words for it, the forms the files print it in and its colours as
 # src/pages/app.css draws them, which the file's "parties" says field by field. The model reads
 # it (entities.party_letters), and so do the readers that once kept their own copy (party_words,
-# party_lookup; _party_readers_read_the_table lists them); the copies still in the code are held
+# party_lookup, party_initials; _party_readers_read_the_table lists them); the copies still in the code are held
 # to it by preflight (_party_copies_agree).
 PARTIES = SETTINGS.get("parties") or {}
 PARTY = dict(PARTIES.get("letters") or {})
@@ -106,6 +106,14 @@ def party_words(form, table=None):
     letter-to-word maps here."""
     table = PARTIES if table is None else table
     return {letter: row[form] for letter, row in (table.get("letters") or {}).items() if row.get(form)}
+
+
+def party_initials(table=None):
+    """The letters of the parties the table has a word for, in its order, as one string ("RDIL"
+    of PARTIES today): the letters a first-letter rule keeps -- build_site_v2's party tail and
+    member_labels, names.legislator, past_sponsors' party of a ballot -- so that a letter the
+    site has no word for (C, G, or one no table holds) is read as no party."""
+    return "".join(party_words("name", table))
 
 
 def party_letters(printed, table=None):

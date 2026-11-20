@@ -2943,11 +2943,12 @@ the site's words for it, every form the files print it in, and the colours
 manifest, never guessed. The copies of that table in the code -- 26 on 16
 November, in Python, the pages' scripts, the follow emails, the translations
 and the stylesheets -- move onto it a reader at a time: a reader that has reads
-the table's own view of it (`state_settings.party_words`, `party_lookup`;
-`_party_readers_read_the_table` lists them), and `_party_copies_agree` holds
-each copy still in the code to it, listing the seven places they differ today (the elections' bar and
-the emails give X other words and the elections' bar another ink; three
-first-letter rules take a U no file prints). A district is one id with its era
+the table's own view of it (`state_settings.party_words`, `party_lookup`, and
+for the three first-letter rules `party_initials`, the letters the table has a
+word for; `_party_readers_read_the_table` lists them), and `_party_copies_agree`
+holds each copy still in the code to it, listing the four places they differ
+today (the elections' bar and the emails give X other words and the elections'
+bar another ink). A district is one id with its era
 in it (`house:2022:belknap-8`), and its record carries every spelling the files
 use as a key -- the results' `H|Belknap|8`, the map's `BE8`, the roster's
 `Belk 8`, the General Court's county code with the number `01-8` (the settings'

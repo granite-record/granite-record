@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.294
+# GRANITE_VERSION: 2026-09-05.295
 """
 Generate the faceted site from real General Court data.
 
@@ -1181,16 +1181,19 @@ from parts import COUNTY_ABBR, COUNTY_OF, district_tag
 HONORIFIC = {"H": "Rep.", "S": "Sen."}
 
 _TITLE_RE = re.compile(r"^(?:rep|sen|representative|senator)\.?\s+", re.I)
+# The party letters a name's tail and a label keep: the parties the state's one table has a
+# word for (R, D, I and L; state_settings.party_initials).
+PARTY_INITIALS = ST.party_initials()
 # Case-insensitive: the bill status page writes the letter in lower case,
 # so "Howard Pearl (r)" kept its tail, sorted as "(r), howard pearl" and
 # matched nobody on the roster. 112 sponsor rows, all his.
-_PARTY_TAIL_RE = re.compile(r"\s*\([RDILU](?:\s*[-\u2013][^)]*)?\)\s*$", re.I)
+_PARTY_TAIL_RE = re.compile(r"\s*\([" + re.escape(PARTY_INITIALS) + r"](?:\s*[-\u2013][^)]*)?\)\s*$", re.I)
 # build_data.py's "label" field is a composite -- "Nelson, Jodi(R) Rock. 13" --
 # with the party letter in the MIDDLE and the seat after it. Nothing here is
 # fed that field any more, but a formatter that mangles its input silently is
 # worse than one that guards against it: this cuts at the party marker
 # wherever it appears. No real name contains "(R)".
-_COMPOSITE_RE = re.compile(r"\s*\([RDILU]\)\s.*$")
+_COMPOSITE_RE = re.compile(r"\s*\([" + re.escape(PARTY_INITIALS) + r"]\)\s.*$")
 # A generational suffix, as the rosters write one.
 _SUFFIX_RE = re.compile(r"(?:Jr|Sr)\.?|II|III|IV|V", re.I)
 _PLACEHOLDER_RE = re.compile(r"^(?:Member\s*#|\(unknown)", re.I)
@@ -1294,7 +1297,7 @@ def member_labels(name, chamber=None, party=None, district=None, county=None,
     hon = HONORIFIC.get((chamber or "").strip().upper()[:1], "")
     plain = f"{hon} {who}".strip()
     pc = (party or "").strip()[:1].upper()
-    p = pc if pc in "RDILU" else ""
+    p = pc if pc in PARTY_INITIALS else ""
     short = f"{plain} ({p})" if p else plain
     tag = district_tag((chamber or "").strip().upper()[:1], district, county,
                        county_abbr)
@@ -8946,9 +8949,9 @@ MANUAL_PARTY = ST.party_lookup()
 
 def party_letter(party):
     """The letter a chip and a label draw for `party` -- "R" for "R", "r" or "Republican" -- as
-    member_labels draws it: the first letter, where it is one of RDILU; else ""."""
+    member_labels draws it: the first letter, where it is one of PARTY_INITIALS; else ""."""
     pc = (party or "").strip()[:1].upper()
-    return pc if pc in "RDILU" else ""
+    return pc if pc in PARTY_INITIALS else ""
 
 
 # What the records give as a person's party, for early_party -- party_ids keys it by the ids
