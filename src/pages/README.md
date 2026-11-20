@@ -136,7 +136,24 @@ The record and its own pages:
 
 - `build_site_v2`: the record builder -- each bill's payload and the bill
   index, and the legislators', towns' and committees' files the pages after
-  it read (there was never a v1 here);
+  it read (there was never a v1 here); its journey, a bill's status and the
+  conferences are modules of their own beside it since 20 November 2026 (the
+  next three lines), and it imports every name of theirs back;
+- `journey`: the passage rail and the journey -- the four stops a bill passes
+  (`passage`) and what each chamber decided and when (`journey`,
+  `journey_rail` and the `_j_` readers), read from the docket for the rail's
+  dated stops and How it got here; a section of `build_site_v2` until 20
+  November 2026, which imports every name of it back;
+- `status`: a bill's status -- the General Court's status words read against
+  what a bill of each kind has to clear, the docket where the status page
+  does not cover a bill (`classify`), a closing paragraph for an ending the
+  docket never tells (`closing_stage`) and what happens next (`next_step`); a
+  section of `build_site_v2` until 20 November 2026, which imports every name
+  of it back;
+- `conferences`: what the two chambers did with each other's version of a
+  bill -- a concurrence, a committee of conference and how it ended -- read
+  from the docket; a section of `build_site_v2` until 20 November 2026, which
+  imports every name of it back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a
   file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,
@@ -221,7 +238,10 @@ The helpers the builders share:
 - `parts`: what more than one builder draws with -- a day of the Calendar's
   cards and what one meeting is (`cal_days`, `meeting_key`), Latest
   activity's sizes, a party's word, a district's tag, a number, address or
-  link that works, the tab strip's script -- named where each was too;
+  link that works, the tab strip's script, and the pieces of `build_site_v2`
+  the modules split from it share (what a bill of each kind has to clear, a
+  bill's letters, the chip's six words, the docket line) -- named where each
+  was too;
 - `shell`: the page every record's own address is, `bills.html` with one
   record open;
 - `chrome`: the frame every page shares -- the head, the header, the

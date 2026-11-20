@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1105,6 +1105,164 @@ def _import_cycles_cut():
                       + "; ".join(" <-> ".join(c) for c in gone))
     return "ok", (f"{len(graph)} modules, {len(cycles)} import cycles, all known (the largest "
                   f"{max(map(len, cycles), default=0)} modules); i18n and the page builders in none")
+
+
+# THE MODULES build_site_v2.py IS SPLIT INTO (the refactor's finding 4, 20 November 2026), each
+# with the names it took. build_site_v2 imports each back under its name, so build_site_v2.<name>
+# answers for every caller as it did; the checks below hold each move made whole and not undone.
+_SPLIT_FROM_SITE = {
+    "parts": ("BILL_OF_INTENT", "SINGLE_CHAMBER", "NO_GOVERNOR", "bill_prefix", "CHIP_WORDS",
+              "BECAME_LAW", "DIED", "INTERIM_STUDY", "TABLED", "VETOED", "WITHDRAWN", "SIGNED_RE",
+              "REFERENDUM", "docket_line", "TABLE_DEATH"),
+    "conferences": ("CONF_REPORT", "CONF_FAILED", "NEW_CONF", "NEXT_MOTION", "CONF_REJECTED",
+                    "CONF_UNABLE", "CONF_UNABLE_RE", "CHAMBERS_APART", "ENDED_AS",
+                    "CONF_UNSIGNED_RE", "CONF_LATE_RE", "FAILURE_RANK", "_failure_how",
+                    "conference_failure", "conferees_disagreed", "_conference_vote",
+                    "conference_outcome", "concurrence_outcome", "BEFORE_CONFERENCE",
+                    "BEFORE_CONCURRENCE", "BEFORE_UNABLE", "CONFERENCE_ROW", "between_chambers",
+                    "CONF_NOT_TAKEN_UP", "conference_not_taken_up"),
+    "journey": tuple(("J_ACTS J_AMENDED J_AMEND_ADOPTED J_AMEND_LIST J_AMEND_SUBJ "
+                      "J_BARE_REFERRAL J_CHAPTERED J_CHAPTER_THEN_DAY J_CLAUSE_DAY "
+                      "J_CONF J_DAY J_DIVIDED_OUT J_DONE_VERB J_EFF_ANY J_EFF_MORE "
+                      "J_EFF_PART J_EFF_PROVIDED J_EFF_SEVERAL J_EFF_WHAT J_ENDING "
+                      "J_FILED J_FROM_REPORT J_IF_PASSED J_INTRO_ROW J_MARK J_MON "
+                      "J_MONTH_DAY J_NEW_CONFERENCE J_NOT_FLOOR J_NOT_VOTED J_NO_CODE "
+                      "J_NO_WORD J_ON_THE_TABLE J_OTHER_BILL J_OUTCOME_ONLY J_PASSING "
+                      "J_RC_BARE J_RECONSIDER J_RECON_END J_RECON_NAMES J_RECON_NOT "
+                      "J_REFERRED_TO J_REF_TALLY J_REMAINING J_ROW_DAY "
+                      "J_SECOND_COMMITTEE J_SIGNED J_SKIP J_SUSPEND J_SUSPENDED "
+                      "J_SUSP_CODE J_SUSP_REFERRAL J_SUSP_VOTE J_SUSP_WORD "
+                      "J_TAKES_OUTCOME J_TALLY J_TALLY_TAIL J_THIRD J_UNSIGNED "
+                      "J_VETOED J_VETO_VOTE J_VOICE J_WAIVED J_WRAPPED_TALLY "
+                      "J_YES_CODE J_YES_WORD ONE_CHAMBER OWN_CHAMBER RAIL_ACT "
+                      "RAIL_DEAD_TABLE RAIL_MARK_OF_CHIP RAIL_REFINES RAIL_SAY "
+                      "STAGES_FROM _STAGE_END _j_act _j_act_sections _j_amended_on "
+                      "_j_answers_after _j_chaptered _j_clauses _j_days _j_decide "
+                      "_j_effective _j_effective_parts _j_gov_more _j_has_outcome "
+                      "_j_in_recess _j_in_term _j_introduced _j_iso _j_merge _j_motion "
+                      "_j_motions _j_outcome _j_prose_date _j_reconsidered "
+                      "_j_roll_call _j_row_day _j_rows _j_second_committee _j_sections "
+                      "_j_segments _j_settle _j_stated_day _j_suspension_failed "
+                      "_j_tally _j_unfile _j_unsuspend _j_untold _j_vote_words "
+                      "_j_words _j_year_slip _journey_rail journey journey_rail "
+                      "journey_state law_day law_in_stages law_line_dated passage").split()),
+    "status": tuple(("CLOSING CONF_NEVER_REPORTED CONF_REPORT_NOT_TAKEN_UP "
+                     "CONF_UNABLE_CLOSING DISPOSED ENDED_UNFINISHED ENDED_UNVOTED "
+                     "ENDING_UNTOLD JOURNAL_SOURCE NEVER_INTRODUCED NOT_INTRODUCED "
+                     "ONE_CHAMBER_DONE PROPOSED_ONLY RECONSIDER_CARRIED RETURNED_ROW "
+                     "SESSION_ENDED_AFTER_FAILED SESSION_ENDED_AFTER_VOTES "
+                     "SESSION_ENDED_PLAINLY STATED UNTOLD_FOR WITHDRAWN_ACT "
+                     "WITHDRAWN_PRIOR _long_date classify classify_stated "
+                     "closing_stage docket_outcome floor_disposed for_bill_kind "
+                     "journal_not_introduced last_decision next_step untold_ending "
+                     "veto_outcome veto_votes").split()),
+}
+
+
+def _top_names(tree):
+    """{name: "defined" | "imported"} of what a module's own top level binds."""
+    out = {}
+    for n in tree.body:
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            out[n.name] = "defined"
+        elif isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+            for t in (n.targets if isinstance(n, ast.Assign) else [n.target]):
+                for x in ast.walk(t):
+                    if isinstance(x, ast.Name):
+                        out[x.id] = "defined"
+        elif isinstance(n, ast.ImportFrom):
+            for a in n.names:
+                out.setdefault(a.asname or a.name, "imported")
+    return out
+
+
+def _split_out(site, mod, names):
+    """What is wrong with `names` having moved out of build_site_v2 (`site`) into the module
+    `mod`, as strings: a name the module does not define itself, one build_site_v2 defines
+    again rather than imports, and one build_site_v2 answers with something else than the
+    module's. Read from the two files as they stand and from the two modules imported."""
+    module = mod.__name__
+    mine, theirs = _top_names(_parsed(mod.__file__)), _top_names(_parsed(site.__file__))
+    bad = [f"{module}.py does not define {n}" for n in names if mine.get(n) != "defined"]
+    bad += [f"build_site_v2.py defines {n} again; it imports it from {module}" for n in names
+            if theirs.get(n) == "defined"]
+    bad += [f"build_site_v2.{n} is not {module}.{n}" for n in names
+            if getattr(site, n, None) is not getattr(mod, n, object())]
+    return bad
+
+
+@check("files", "the pieces of build_site_v2 its split modules share are parts.py's, defined there "
+                "and imported back, so build_site_v2.<name> is parts.<name>",
+       needs=("build_site_v2", "parts"))
+def _site_shares_from_parts(B, PARTS):
+    """What a bill of each kind has to clear, bill_prefix, the chip's six words, SIGNED_RE,
+    REFERENDUM, docket_line and TABLE_DEATH moved from build_site_v2 to parts.py on 20
+    November 2026 (the refactor's finding 4), as they stood, so that a module split out of
+    build_site_v2 can read them without importing it back (_import_cycles_cut). Undone, half done, or copied back
+    into build_site_v2 beside parts' own, this says which name."""
+    names = _SPLIT_FROM_SITE["parts"]
+    bad = _split_out(B, PARTS, names)
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(names)} names defined in parts.py, none in build_site_v2.py, each "
+                  "build_site_v2.<name> parts' own")
+
+
+@check("files", "what the two chambers did with each other's version is conferences.py's, every "
+                "name of it imported back into build_site_v2",
+       needs=("build_site_v2", "conferences"))
+def _site_conferences_moved(B, CF):
+    """build_site_v2's section on what the two chambers did with each other's version --
+    concurrences, committees of conference, conferees who could not agree -- moved to
+    conferences.py on 20 November 2026 (the refactor's finding 4), as it stood, because the
+    journey reads conference_failure and is a module of its own; and conference_not_taken_up,
+    which the status reads, after it. Every name of them is held to be conferences.py's,
+    defined nowhere in build_site_v2.py, and build_site_v2.<name> the same object."""
+    names = _SPLIT_FROM_SITE["conferences"]
+    bad = _split_out(B, CF, names)
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(names)} names defined in conferences.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> conferences' own")
+
+
+@check("files", "the passage rail and the journey are journey.py's, every name of them imported back "
+                "into build_site_v2, and build_site_v2 defines no _j_ reader of its own",
+       needs=("build_site_v2", "journey"))
+def _site_journey_moved(B, J):
+    """build_site_v2's largest subsystem -- passage, the four stops a bill passes, and the
+    journey, what each chamber decided and when, with every _j_ reader and J_ pattern, RAIL_SAY
+    and J_ENDING -- moved to journey.py on 20 November 2026 (the refactor's finding 4), as it
+    stood. Every name it took is held to be journey.py's, defined nowhere in build_site_v2.py,
+    and build_site_v2.<name> the same object, so the callers of build_site_v2.journey, its
+    checks among them, read the one journey. And no _j_ reader is defined in build_site_v2.py:
+    a new one goes beside the others, where the journey can call it. (J_DECIDED_ACT stays in
+    build_site_v2 with journal_decided_story, the one reader of it.)"""
+    names = _SPLIT_FROM_SITE["journey"]
+    bad = _split_out(B, J, names)
+    own = sorted(n for n, how in _top_names(_parsed(B.__file__)).items()
+                 if how == "defined" and n.startswith("_j_"))
+    if own:
+        bad.append("build_site_v2.py defines journey readers of its own: " + ", ".join(own))
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in journey.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the journey's own; no _j_ reader left in build_site_v2")
+
+
+@check("files", "a bill's status -- the status vocabulary and classify, closing_stage and next_step -- "
+                "is status.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "status"))
+def _site_status_moved(B, STA):
+    """build_site_v2's status classification moved to status.py on 20 November 2026 (the
+    refactor's finding 4), as it stood, from three places in the file: the status vocabulary
+    (for_bill_kind, STATED and the statuses of a bill never introduced), journal_not_introduced,
+    and classify_stated to next_step -- classify, docket_outcome, closing_stage and the endings
+    the docket does not tell among them. Every name of them is held to be status.py's, defined
+    nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so bill_disposition,
+    build_bills and the checks that ask build_site_v2.classify read the one classification."""
+    names = _SPLIT_FROM_SITE["status"]
+    bad = _split_out(B, STA, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in status.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the status's own")
 
 
 def _readme_unlisted(folder, root=None):
