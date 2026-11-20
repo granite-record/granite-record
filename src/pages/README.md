@@ -137,6 +137,10 @@ The record and its own pages:
 - `build_site_v2`: the record builder -- each bill's payload and the bill
   index, and the legislators', towns' and committees' files the pages after
   it read (there was never a v1 here);
+- `conferences`: what the two chambers did with each other's version of a
+  bill -- a concurrence, a committee of conference and how it ended -- read
+  from the docket; a section of `build_site_v2` until 20 November 2026, which
+  imports every name of it back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a
   file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,

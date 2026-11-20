@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1114,6 +1114,12 @@ _SPLIT_FROM_SITE = {
     "parts": ("BILL_OF_INTENT", "SINGLE_CHAMBER", "NO_GOVERNOR", "bill_prefix", "CHIP_WORDS",
               "BECAME_LAW", "DIED", "INTERIM_STUDY", "TABLED", "VETOED", "WITHDRAWN", "SIGNED_RE",
               "REFERENDUM", "docket_line"),
+    "conferences": ("CONF_REPORT", "CONF_FAILED", "NEW_CONF", "NEXT_MOTION", "CONF_REJECTED",
+                    "CONF_UNABLE", "CONF_UNABLE_RE", "CHAMBERS_APART", "ENDED_AS",
+                    "CONF_UNSIGNED_RE", "CONF_LATE_RE", "FAILURE_RANK", "_failure_how",
+                    "conference_failure", "conferees_disagreed", "_conference_vote",
+                    "conference_outcome", "concurrence_outcome", "BEFORE_CONFERENCE",
+                    "BEFORE_CONCURRENCE", "BEFORE_UNABLE", "CONFERENCE_ROW", "between_chambers"),
 }
 
 
@@ -1163,6 +1169,23 @@ def _site_shares_from_parts(B, PARTS):
     assert not bad, "; ".join(bad)
     return "ok", (f"{len(names)} names defined in parts.py, none in build_site_v2.py, each "
                   "build_site_v2.<name> parts' own")
+
+
+@check("files", "what the two chambers did with each other's version is conferences.py's, every "
+                "name of it imported back into build_site_v2",
+       needs=("build_site_v2", "conferences"))
+def _site_conferences_moved(B, CF):
+    """build_site_v2's section on what the two chambers did with each other's version --
+    concurrences, committees of conference, conferees who could not agree -- moved to
+    conferences.py on 20 November 2026 (the refactor's finding 4), as it stood, because the
+    journey reads conference_failure and is a module of its own. Every name the section
+    defined is held to be conferences.py's, defined nowhere in build_site_v2.py, and
+    build_site_v2.<name> the same object."""
+    names = _SPLIT_FROM_SITE["conferences"]
+    bad = _split_out(B, CF, names)
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(names)} names defined in conferences.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> conferences' own")
 
 
 def _readme_unlisted(folder, root=None):
