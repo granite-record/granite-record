@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.13
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1105,6 +1105,64 @@ def _import_cycles_cut():
                       + "; ".join(" <-> ".join(c) for c in gone))
     return "ok", (f"{len(graph)} modules, {len(cycles)} import cycles, all known (the largest "
                   f"{max(map(len, cycles), default=0)} modules); i18n and the page builders in none")
+
+
+# THE MODULES build_site_v2.py IS SPLIT INTO (the refactor's finding 4, 20 November 2026), each
+# with the names it took. build_site_v2 imports each back under its name, so build_site_v2.<name>
+# answers for every caller as it did; the checks below hold each move made whole and not undone.
+_SPLIT_FROM_SITE = {
+    "parts": ("BILL_OF_INTENT", "SINGLE_CHAMBER", "NO_GOVERNOR", "bill_prefix", "CHIP_WORDS",
+              "BECAME_LAW", "DIED", "INTERIM_STUDY", "TABLED", "VETOED", "WITHDRAWN", "SIGNED_RE",
+              "REFERENDUM", "docket_line"),
+}
+
+
+def _top_names(tree):
+    """{name: "defined" | "imported"} of what a module's own top level binds."""
+    out = {}
+    for n in tree.body:
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            out[n.name] = "defined"
+        elif isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+            for t in (n.targets if isinstance(n, ast.Assign) else [n.target]):
+                for x in ast.walk(t):
+                    if isinstance(x, ast.Name):
+                        out[x.id] = "defined"
+        elif isinstance(n, ast.ImportFrom):
+            for a in n.names:
+                out.setdefault(a.asname or a.name, "imported")
+    return out
+
+
+def _split_out(site, mod, names):
+    """What is wrong with `names` having moved out of build_site_v2 (`site`) into the module
+    `mod`, as strings: a name the module does not define itself, one build_site_v2 defines
+    again rather than imports, and one build_site_v2 answers with something else than the
+    module's. Read from the two files as they stand and from the two modules imported."""
+    module = mod.__name__
+    mine, theirs = _top_names(_parsed(mod.__file__)), _top_names(_parsed(site.__file__))
+    bad = [f"{module}.py does not define {n}" for n in names if mine.get(n) != "defined"]
+    bad += [f"build_site_v2.py defines {n} again; it imports it from {module}" for n in names
+            if theirs.get(n) == "defined"]
+    bad += [f"build_site_v2.{n} is not {module}.{n}" for n in names
+            if getattr(site, n, None) is not getattr(mod, n, object())]
+    return bad
+
+
+@check("files", "the pieces of build_site_v2 its split modules share are parts.py's, defined there "
+                "and imported back, so build_site_v2.<name> is parts.<name>",
+       needs=("build_site_v2", "parts"))
+def _site_shares_from_parts(B, PARTS):
+    """What a bill of each kind has to clear, bill_prefix, the chip's six words, SIGNED_RE,
+    REFERENDUM and docket_line moved from build_site_v2 to parts.py on 20 November 2026 (the
+    refactor's finding 4), as they stood, so that a module split out of build_site_v2 can read
+    them without importing it back (_import_cycles_cut). Undone, half done, or copied back
+    into build_site_v2 beside parts' own, this says which name."""
+    names = _SPLIT_FROM_SITE["parts"]
+    bad = _split_out(B, PARTS, names)
+    assert not bad, "; ".join(bad)
+    return "ok", (f"{len(names)} names defined in parts.py, none in build_site_v2.py, each "
+                  "build_site_v2.<name> parts' own")
 
 
 def _readme_unlisted(folder, root=None):

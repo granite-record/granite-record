@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.296
+# GRANITE_VERSION: 2026-09-05.297
 """
 Generate the faceted site from real General Court data.
 
@@ -39,7 +39,8 @@ import committee_names as CN
 from about_figures import STREAM_START
 # The Speaker's chair, whose occupant's page names the office (member_office).
 from seating import SPEAKER_SEAT
-# The words the pages say, src/pages/words/: here, the chip's six (CHIP_WORDS).
+# The words the pages say, src/pages/words/: here, the vote words and the study
+# reports' (the chip's six, CHIP_WORDS, are parts.py's).
 from components import WORDBOOK as _WORDBOOK
 import narrative as N
 import plain_action as PA
@@ -634,32 +635,10 @@ from queue_links import (calendar_keys_from_queue, journal_keys_from_queue,  # n
 # The General Court's own status vocabulary, mapped to the four display states.
 # Reading the field beats inferring it from docket prose: this is the fact most
 # people come to the site for, and a wrong guess here is a wrong headline.
-# What a bill of each kind actually has to clear before it is finished.
-#
-# Reading every bill as House, then Senate, then governor is right for HB and
-# SB and wrong for everything else. A House Resolution is adopted by the House
-# and that is the end of it; a concurrent resolution needs both chambers and
-# never goes to the governor; a CACR needs both chambers and then the voters.
-# Measured on this term: 32 adopted resolutions read "Passed one chamber" and
-# three more read "In progress", one of them offering "Pending action in the
-# other chamber" for a resolution that has no other chamber.
-# "SS" is a special session's numbering of the same kinds: SSHR 1 of 2008 is
-# the House adopting its rules, SSHCR 1 of 2015 a concurrent resolution both
-# chambers adopted the same day.
-#
-# AND A HOUSE BILL OF INTENT, the House's measure of 1989-1994 (HBI, fourteen
-# of them): passing one sends its subject to its committee to study and report
-# on -- "STATEMENT OF INTENT The committee to which this bill is referred
-# shall review existing legislation ... The committee shall submit any
-# recommendations for legislation" (HBI 2 of 1991's own text) -- and it never
-# goes to the Senate; none of the fourteen dockets has a Senate row. Read as a bill,
-# the six the House passed said "Passed one chamber", of a second chamber
-# they were never going to, and HBI 2011 of 1990 "Committee report filed",
-# which is the report of the study it ordered.
-BILL_OF_INTENT = "HBI"
-SINGLE_CHAMBER = {"HR": "House", "SR": "Senate", "SSHR": "House", "SSSR": "Senate",
-                  BILL_OF_INTENT: "House"}
-NO_GOVERNOR = {"HCR", "SCR", "CACR", "SSHCR", "SSSCR"}
+# What a bill of each kind has to clear before it is finished (BILL_OF_INTENT,
+# SINGLE_CHAMBER, NO_GOVERNOR) is parts.py's (20 November 2026), so that the
+# modules this file is split into can read it without importing this file.
+from parts import BILL_OF_INTENT, NO_GOVERNOR, SINGLE_CHAMBER  # noqa: E402,F401
 
 
 def origin_of(bid, narr=None, st=None):
@@ -766,10 +745,8 @@ def committee_links(index, codes):
     return out
 
 
-def bill_prefix(bid):
-    """HB1442 -> HB, CACR9 -> CACR. The letters, which say what kind it is."""
-    m = re.match(r"^[A-Za-z]+", str(bid or ""))
-    return m.group(0).upper() if m else ""
+# A bill's kind by its letters (bill_prefix) is parts.py's, for the same reason.
+from parts import bill_prefix  # noqa: E402,F401
 
 
 def for_bill_kind(needle, kind, label, prefix):
@@ -898,14 +875,10 @@ NEVER_INTRODUCED = {"Refused introduction", WITHDRAWN_PRIOR, PROPOSED_ONLY, NOT_
 # (CHIP_KEEPS): none of them is among the six, and which word they take is
 # the person's to say.
 #
-# THE SIX ARE WORDS, WRITTEN ONCE (the component plan's C3, 9 October 2026):
-# src/pages/words/chips.json's "chip", in the person's order, each with the
-# class app.js colours it by, which components.py reads and the build writes
-# into components.js. A seventh word there, or one fewer, stops the build
-# here rather than shifting a word onto the wrong ending; _chip_words holds
-# the six to the person's.
-CHIP_WORDS = tuple(_WORDBOOK["chips"]["chip"])
-BECAME_LAW, DIED, INTERIM_STUDY, TABLED, VETOED, WITHDRAWN = CHIP_WORDS
+# The six words (CHIP_WORDS, and a name for each) are parts.py's, read there
+# from src/pages/words/chips.json, for the same reason.
+from parts import (BECAME_LAW, CHIP_WORDS, DIED, INTERIM_STUDY, TABLED,  # noqa: E402,F401
+                   VETOED, WITHDRAWN)
 # A withdrawal the record states: the chamber's, and one before introduction.
 WITHDRAWN_ENDINGS = frozenset({"Withdrawn", WITHDRAWN_PRIOR})
 # A veto whose override vote is still to come, in bill_disposition's words:
@@ -1363,12 +1336,9 @@ def classify_stated(st, prefix="", origin=""):
     return None
 
 
-# The docket writes the signature two ways -- "Signed by Governor Ayotte
-# 7/10/2026" and "Signed by the Governor on 7/10/2026" -- and the second is
-# 233 of the 632. Reading only the first left those bills showing whatever
-# they were before it: 137 "Passed one chamber", 82 "Passed, awaiting the
-# governor", nine "In committee" and five "Killed", for bills that are law.
-SIGNED_RE = re.compile(r"signed by (?:the )?governor", re.I)
+# How the docket writes the governor's signature (SIGNED_RE) is parts.py's, for
+# the same reason.
+from parts import SIGNED_RE  # noqa: E402,F401
 
 
 # How a bill ends when the docket does not say so.
@@ -9918,13 +9888,9 @@ def between_chambers(narr, status):
 # House adopted it, and SCR 3 of 1996, "H ADOPTED DIV(178-116)".
 SECOND_ADOPTED = re.compile(r"^\s*(?:introduced and )?adopted\b", re.I)
 
-# What became of a CACR once both chambers passed it is the voters' to say, and
-# the docket records their answer for nine of them: "AMENDMENT ADOPTED BY 2/3
-# REF(199,229-26,336)" (CACR 23 of 1990) and "Amendment Failed Referendum
-# (271,091 - 205,589)" (CACR 5 of 2004). A referendum needs two thirds, so
-# "failed" there means it did not reach two thirds, not that most voted no.
-REFERENDUM = re.compile(r"\bamendment\s+(?P<how>adopted|failed)\b[^;]{0,20}?\bref(?:erendum)?\b\s*\(",
-                        re.I)
+# A CACR's referendum as the docket records it (REFERENDUM) is parts.py's, for
+# the same reason.
+from parts import REFERENDUM  # noqa: E402,F401
 # Its own text names the election: "submitted to the qualified voters of the
 # state at the state general election to be held in November, 2026".
 ELECTION_IN_TEXT = re.compile(r"general election to be held in (?P<month>[A-Z][a-z]+),?\s*(?P<year>\d{4})")
@@ -11661,11 +11627,9 @@ def stages_told(narr, kind, rail):
     return told
 
 
-def docket_line(e):
-    """The docket line an event was read from, as the clerk typed it: the
-    whole line where the event is one question of a line told question by
-    question and is the one that carries it ("line"), else its own `raw`."""
-    return e.get("line") or e.get("raw") or ""
+# The docket line an event was read from (docket_line) is parts.py's, for the
+# same reason.
+from parts import docket_line  # noqa: E402,F401
 
 
 def listed_line(e):
