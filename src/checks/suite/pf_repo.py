@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1126,9 +1126,9 @@ def _inline_scripts_read_once():
     faults = _inline_faults(trees, set(names))
     assert not faults, f"{len(faults)} faults in the builders' inline scripts: " + "; ".join(faults[:6])
     builders = sorted({n.split(".")[0] for n in names})
-    assert len(names) >= 1 and len(builders) >= 1, (
-        f"only {len(names)} inline scripts of {len(builders)} builders: there was 1 of 1 "
-        "on 20 November 2026, the pilot's")
+    assert len(names) >= 20 and len(builders) >= 12, (
+        f"only {len(names)} inline scripts of {len(builders)} builders: there were 20 of 12 on "
+        "20 November 2026")
     return "ok", (f"{len(names)} scripts in inline/ of {len(builders)} builders, each read by its own "
                   "builder alone, by name, through inline_js; none of those builders holds a script "
                   "in a string but the Spanish picker's patch; the reader refuses a hole left empty, "
