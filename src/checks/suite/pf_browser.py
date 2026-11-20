@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.21
+# GRANITE_VERSION: 2026-11-16.22
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -8722,7 +8722,7 @@ def _member_requests():
     # The member's own file, as build_site_v2 writes it, carries the slug the
     # page finds their requests by (the review of 8 November 2026: it did
     # not, and no member was offered a request).
-    assert '"slug": row["slug"],' in _source("src/pages/build_site_v2.py"), (
+    assert '"slug": row["slug"],' in _source("src/pages/members.py"), (
         "build_site_v2 writes no slug into a member's own file, which the page reads")
     assert jan["terms"][:3] == ["2027-2028", "2027-requests", "2025-2026"], (
         f"once 2027-2028 is published a member is offered {jan['terms']}: their bills of that "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.20
+# GRANITE_VERSION: 2026-11-16.21
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1328,10 +1328,19 @@ _SPLIT_FROM_SITE = {
     "stations": tuple(("CONCURRENCE concurrence_action fold_conference_notices "
                        "invented_end motion_keys station_for_floor "
                        "station_for_proceeding weak_marker withhold_late_captions").split()),
-    "members": tuple(("HONORIFIC PARTY_INITIALS _COMPOSITE_RE _OWN_SLUG _PARTY_TAIL_RE "
-                      "_PLACEHOLDER_RE _SUFFIX_RE _TITLE_RE member_labels member_slug "
-                      "name_key own_slug person_name roster_name_keys sitting_labels "
-                      "sort_name").split()),
+    "members": tuple(("ATTENDANCE_KIND FLOOR_RECORD FORMER_LABEL HONORIFIC "
+                      "MOVED_ADDRESSES PARTY_INITIALS _ATTENDANCE_PRESENT "
+                      "_ATTENDANCE_RANK _COMPOSITE_RE _LABEL_SEAT _OWN_SLUG "
+                      "_PARTY_TAIL_RE _PLACEHOLDER_RE _SUFFIX _SUFFIX_RE _TITLE_RE "
+                      "_member_address _roll_call_key _surname attendance_context "
+                      "ballot_seat build_legislators build_officers corrected_seats "
+                      "date_former_seats floor_moment former_movers former_roster "
+                      "keep_moved last_term_labels member_attendance member_labels "
+                      "member_office member_slug name_key own_slug person_name "
+                      "printed_record printed_seats roster_name_keys same_person "
+                      "seat_of_the_lines service_order sitting_labels sort_name "
+                      "sponsored_in_order term_seats vote_date write_floor_record "
+                      "write_rollcall_index").split()),
 }
 
 
@@ -1460,18 +1469,23 @@ def _site_stations_moved(B, STN):
                   "each build_site_v2.<name> the stations' own")
 
 
-@check("files", "naming a member -- member_labels, the page's address, the names a record prints "
-                "read into one form -- is members.py's, every name of it imported back into "
-                "build_site_v2",
+@check("files", "naming a member, the roll calls and the floor as a member's record reads them, and "
+                "the members, former members and attendance are members.py's, every name of them "
+                "imported back into build_site_v2",
        needs=("build_site_v2", "members"))
 def _site_members_moved(B, MEM):
     """build_site_v2's members moved to members.py on 20 November 2026 (the refactor's finding
     4), as they stood: first the naming of a member they read -- sitting_labels, own_slug,
     member_slug, the honorifics and the party letters a name keeps, person_name, sort_name,
-    name_key, roster_name_keys and member_labels. Every name of them is held to be members.py's,
-    defined nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so the
-    bills' sponsors and votes, main and the checks that ask build_site_v2.member_labels name a
-    member the one way."""
+    name_key, roster_name_keys and member_labels; then the roll calls and the floor as a
+    member's record reads them (vote_date, service_order, write_rollcall_index, term_seats,
+    write_floor_record), and the members, former members and attendance (former_roster,
+    keep_moved, last_term_labels, member_attendance, build_officers, build_legislators). Every
+    name of them is held to be members.py's, defined nowhere in build_site_v2.py, and
+    build_site_v2.<name> the same object, so the bills' sponsors and votes, main and the checks
+    that ask build_site_v2.member_labels or build_site_v2.build_legislators read the one copy.
+    (write_nobill_cards stays in build_site_v2: it draws a vote on no bill with the bill's own
+    bill_rollcalls.)"""
     names = _SPLIT_FROM_SITE["members"]
     bad = _split_out(B, MEM, names)
     assert not bad, "; ".join(bad[:8])

@@ -113,13 +113,15 @@ typed from the root answers "can't open file".
 after each: the passage rail and the journey are `journey.py`, a bill's
 status (the status vocabulary, `classify`, `closing_stage`, `next_step`) is
 `status.py`, a proceeding as a station on the page and the caption times
-withheld before one is drawn are `stations.py`, naming a member
-(`member_labels`, a member's page address) is `members.py`, what the two
-chambers did with each other's version is `conferences.py`, and what they
-share with the rest of it -- what a bill of each kind has to clear, a bill's
-letters, the chip's six words, the docket line -- is `parts.py`'s. A module
-split out of `build_site_v2` never imports it back (`_import_cycles_cut`),
-and `build_site_v2` imports every moved name back where it was, so
+withheld before one is drawn are `stations.py`, a member -- how one is named
+(`member_labels`, a member's page address), the roll calls and the floor as
+a member's record reads them, former members, attendance and the legislator
+pages' files (`build_legislators`) -- is `members.py`, what the two chambers
+did with each other's version is `conferences.py`, and what they share with
+the rest of it -- what a bill of each kind has to clear, a bill's letters,
+the chip's six words, the docket line -- is `parts.py`'s. A module split out
+of `build_site_v2` never imports it back (`_import_cycles_cut`), and
+`build_site_v2` imports every moved name back where it was, so
 `build_site_v2.journey` and the rest still answer for every caller;
 `preflight`'s `_site_*` checks after `_import_cycles_cut` hold each move
 whole and not undone. `build_bills` and `main` stay in `build_site_v2`.

@@ -157,11 +157,15 @@ The record and its own pages:
   out of step with their recording withheld first (`withhold_late_captions`);
   a section of `build_site_v2` until 20 November 2026, which imports every
   name of it back;
-- `members`: a member as the site names them -- the one way of naming a
+- `members`: a member as the site has them -- the one way of naming a
   member (`member_labels`), the address of their page (`member_slug`,
   `own_slug`) and the names a record prints read into one form
-  (`person_name`, `sort_name`); a section of `build_site_v2` until 20
-  November 2026, which imports every name of it back;
+  (`person_name`, `sort_name`); the roll calls and the floor as a member's
+  record reads them (`write_rollcall_index`, `term_seats`,
+  `write_floor_record`); and the members' own files: former members and
+  their kept addresses, attendance, the officers and the legislator pages'
+  files (`build_legislators`); sections of `build_site_v2` until 20 November
+  2026, which imports every name of them back;
 - `conferences`: what the two chambers did with each other's version of a
   bill -- a concurrence, a committee of conference and how it ended -- read
   from the docket; a section of `build_site_v2` until 20 November 2026, which
