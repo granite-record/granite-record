@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.20
+# GRANITE_VERSION: 2026-11-16.21
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -348,7 +348,9 @@ def _find_all_results():
     assert "/search?q=" in t or ('"/search"' in t and '"search.html"' in t and "?q=" in t), (
         "find.js sends its last row somewhere other than /search -- if that "
         "is deliberate, this check names the page it should point at")
-    b = _source(bp)
+    import inline_js as IJ
+    # The builder and its scripts, in inline/ since 20 November 2026.
+    b = _source(bp) + "".join(_source(p) for n, p in IJ.files().items() if n.split(".")[0] == "build_pages")
     assert '"search.html"' in b, (
         "build_pages.py no longer writes search.html, and find.js still sends "
         "every page's search panel to /search")
@@ -2279,9 +2281,13 @@ def _feed_promises():
     along with one per committee and one per subject" while the Learn page said
     "Every bill, member and committee has an RSS feed" -- neither true, and a
     reader who went looking would have found nothing on the page to click."""
+    import inline_js as IJ
     for f, stale in (("build_pages.py", "Every bill has its own feed"),
                      ("civics.py", "Every bill, member and committee has an RSS feed")):
-        assert stale not in _paths.locate(f).read_text(encoding="utf-8"), f"{f} still says: {stale}"
+        # The file and its scripts, in inline/ since 20 November 2026.
+        text = _paths.locate(f).read_text(encoding="utf-8") + "".join(
+            p.read_text(encoding="utf-8") for n, p in IJ.files().items() if n.split(".")[0] == Path(f).stem)
+        assert stale not in text, f"{f} still says: {stale}"
     return "ok", "home and Learn say only bills still moving have feeds"
 
 
@@ -2292,7 +2298,9 @@ def _status_box_parity():
     person set what it should read, and the Python copy had no last floor
     session, no count of hearings and no date -- so it could not say a stale
     summary was stale."""
-    src = _source(_paths.locate("build_pages.py"))
+    import inline_js as IJ
+    # The builder and its scripts, in inline/ since 20 November 2026.
+    src = _source(_paths.locate("build_pages.py")) + "".join(_source(p) for n, p in IJ.files().items() if n.split(".")[0] == "build_pages")
     py = src[src.find("static_state = \"\""):][:3200]
     js = src[src.find("else if(_state)_state.innerHTML="):][:2400]
     # SINCE 16 SEPTEMBER THE SERVER'S COPY WINS. Both are still written -- the
@@ -8104,8 +8112,9 @@ def _testify_two_clocks():
         "components.js's data-until says it reads the reader's clock as a day's name does")
     pointer = "TWO CLOCKS, ON PURPOSE"
     places = (("src/pages/app.js", "const today=new Date(); today.setHours(0,0,0,0);\n  const when=d=>{"),
-              ("src/pages/build_pages.py", "const latRel=(d,now)=>{"),
-              ("src/pages/build_pages.py", "const now=new Date(); now.setHours(0,0,0,0);\n    const dow=now.getDay()"),
+              ("src/pages/inline/build_pages.home.js", "const latRel=(d,now)=>{"),
+              ("src/pages/inline/build_pages.home.js",
+               "const now=new Date(); now.setHours(0,0,0,0);\n    const dow=now.getDay()"),
               ("src/pages/build_calendar.py", "var now=new Date(), TODAY=iso("),
               ("src/pages/components.js", "function day(){\n    var d=new Date();"))
     for f, anchor in places:

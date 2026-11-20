@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of session days and their pages, and the journals.
 
@@ -6462,7 +6462,10 @@ def _plate_agrees():
     if not node:
         return "skip", "node is not on PATH, so the JavaScript copies cannot be run"
     js = _source("src/pages/app.js", errors="replace")
-    bp = _source(_paths.locate("build_pages.py"), errors="replace")
+    import inline_js as IJ
+    # The builder and its scripts, in inline/ since 20 November 2026.
+    bp = _source(_paths.locate("build_pages.py"), errors="replace") + "".join(
+        _source(p, errors="replace") for n, p in IJ.files().items() if n.split(".")[0] == "build_pages")
     grab = lambda src, name: re.search(
         r"function plate\(\w+\)\{.*?\n(?:\s*)\}", src, re.S)
     got = {}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of Learn, the guides, civics and the numbers pages.
 
@@ -1719,7 +1719,8 @@ def _how_to_tasks(G, civics, BC, BP):
     stale = []
     for f in ["src/pages/civics.py", "src/pages/guides.py", "src/pages/build_civics.py",
               "src/pages/build_pages.py", "src/pages/legislative_year.py",
-              *sorted(Path("src/pages/inline").glob("build_civics.*.js"))]:
+              *sorted(Path("src/pages/inline").glob("build_civics.*.js")),
+              *sorted(Path("src/pages/inline").glob("build_pages.*.js"))]:
         text = _source(f)
         stale += [f"{f}: learn/{s}" for s in civics.HOW_TO
                   if re.search(rf'href="/?learn/{re.escape(s)}\b|"/learn/{re.escape(s)}\.html', text)]
@@ -5217,11 +5218,11 @@ def _language_sweep_words(civics, C):
     gone and the one that replaced it; fails if one comes back."""
     src = lambda p: _paths.locate(p).read_text(encoding="utf-8")   # noqa: E731
     app = src("app.js")
-    pages = src("build_pages.py")
     import inline_js as IJ
     # A builder and its scripts, in inline/ since 20 November 2026.
     own = lambda b: src(b + ".py") + "".join(   # noqa: E731
         _source(p) for n, p in IJ.files().items() if n.split(".")[0] == b)
+    pages = own("build_pages")
     learn = " ".join(v for k, v in vars(civics).items()
                      if isinstance(v, str) and k.isupper())
     learn += " ".join(json.dumps(v) for k, v in vars(civics).items()
