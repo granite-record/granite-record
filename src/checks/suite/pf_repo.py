@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.13
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -900,15 +900,22 @@ def _code_dirs_unlisted(root=None):
     nobody's import path, and no guard that reads every script (SCRIPT_DIRS)
     reads it. A folder that holds data a module reads by its own path, as
     components.py reads src/pages/words/ (9 October 2026), holds no code, is
-    imported by nobody, and is not one."""
+    imported by nobody, and is not one. Nor is a builder's inline/ folder
+    beside a code folder (inline_js, 20 November 2026): scripts its builder
+    reads by their path and writes into its pages, and nothing imports."""
+    import inline_js as IJ
     base = Path(root).resolve() if root is not None else _paths.ROOT
     listed = {(base / d).resolve() for d in _paths.SRC_DIRS}
     src = base / "src"
     if not src.is_dir():
         return []
+
+    def inline(d):
+        return d.name == IJ.FOLDER and d.parent.resolve() in listed and all(
+            f.suffix == ".js" for f in d.iterdir() if f.is_file())
     return [d.relative_to(base).as_posix()
             for d in sorted(p for p in src.rglob("*") if p.is_dir() and p.name != "__pycache__")
-            if d.resolve() not in listed
+            if d.resolve() not in listed and not inline(d)
             and any(f.is_file() and (f.suffix == ".py" or f.suffix in _paths.BROWSER)
                     for f in d.iterdir())]
 
@@ -939,12 +946,14 @@ def _code_names_unique():
                      "src/pages/README.md": "", "src/pages/b.js": "", "tests/b.js": "",
                      "watchers/c.py": "", "tests/c.py": "", "notes.json": "",
                      "tests/notes.json": "", "src/extra/d.py": "", "src/web/e.js": "",
-                     "src/pages/words/w.json": "", "src/pages/words/README.md": ""})
+                     "src/pages/words/w.json": "", "src/pages/words/README.md": "",
+                     "src/pages/inline/b.js": "", "src/parse/inline/f.py": ""})
         got = _code_name_clashes(tmp)
         assert got == {"a.py": ["a.py", "src/parse/a.py"], "b.js": ["src/pages/b.js", "tests/b.js"],
                        "c.py": ["watchers/c.py", "tests/c.py"]}, \
             f"the reader of names found {got} in a tree made to share three"
-        assert _code_dirs_unlisted(tmp) == ["src/extra", "src/web"], _code_dirs_unlisted(tmp)
+        assert _code_dirs_unlisted(tmp) == ["src/extra", "src/parse/inline", "src/web"], \
+            _code_dirs_unlisted(tmp)
         off = _src_dirs_off_list(("", "src/parse", "src/extra", "watchers"), ("src/parse",))
         assert off == ["src/extra"], f"the reader of the lists found {off}"
     finally:
@@ -964,6 +973,166 @@ def _code_names_unique():
     n = len(_paths.code_files("*.py"))
     assert n >= 160, f"only {n} scripts were read in the code folders; there were 165 on 6 October"
     return "ok", f"{n} scripts across {len(_paths.code_dirs())} code folders, each name once"
+
+
+# A BUILDER'S OWN SCRIPTS ARE FILES (20 November 2026, the refactor's finding 5).
+# What were JavaScript strings in a builder are .js files in inline/ beside it,
+# which inline_js reads and the builder writes into its page as the string was
+# (src/pages/README.md). A script's marks, in a string of a builder that has
+# moved its scripts: a function, an arrow, a listener, the page or the window,
+# a declaration.
+_INLINE_MARK = re.compile(r"\bfunction\s*\w*\s*\(|=>|\baddEventListener\s*\(|\bdocument\.\w"
+                          r"|\bwindow\.\w|\b(?:var|let|const)\s+\w+\s*=")
+# Kept in a builder that has moved its scripts, each (module, the name assigned)
+# with its reason.
+_INLINE_KEPT = {
+    # The Calendar's picker in Spanish: pairs of (a piece of the English script,
+    # what replaces it), put over inline/calendar_documents.picker.js by
+    # picker_js(). A patch of pieces, not a script; each piece is checked to
+    # be in the script once, as it is applied.
+    ("calendar_documents", "PICKER_ES"),
+}
+
+
+def _inline_faults(trees, names):
+    """What is wrong with the builders' inline scripts, as sentences.
+    `trees` is {module: its parse} of the code files (the suite's left out),
+    `names` the inline scripts there are (inline_js.files()). A script read
+    by no module or by more than one, or by a module that is not the builder
+    its name begins with; a script read that is not there; a call that does
+    not write its script's name out; a module but inline_js and the
+    translation audit naming an inline/ path itself; and a builder that has
+    scripts in inline/ and still holds one in a string of three lines or
+    more (_INLINE_MARK), but for _INLINE_KEPT."""
+    faults, readers = [], {}
+    for mod, tree in sorted(trees.items()):
+        alias = {a.asname or a.name for n in ast.walk(tree) if isinstance(n, ast.Import)
+                 for a in n.names if a.name == "inline_js"}
+        docs = {id(n.body[0].value) for n in ast.walk(tree)
+                if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and n.body and isinstance(n.body[0], ast.Expr)}
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "script" \
+                    and isinstance(n.func.value, ast.Name) and n.func.value.id in alias:
+                arg = n.args[0] if n.args else None
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    readers.setdefault(arg.value, []).append(mod)
+                else:
+                    faults.append(f"{mod}:{n.lineno} reads a script whose name is not written out")
+            elif mod not in ("inline_js", "translation_audit") and isinstance(n, ast.Constant) \
+                    and isinstance(n.value, str) and id(n) not in docs \
+                    and re.search(r"(?:^|[/\\])inline[/\\]", n.value):
+                faults.append(f"{mod}:{n.lineno} reads inline/ itself, not through inline_js")
+    for name in sorted(names):
+        got, own = readers.get(name, []), name.split(".")[0]
+        if len(got) != 1:
+            faults.append(f"inline/{name}.js is read by {len(got)} modules "
+                          f"({', '.join(got) or 'none'}), not by its builder alone")
+        elif got[0] != own:
+            faults.append(f"inline/{name}.js is read by {got[0]}, not by {own}")
+    faults += [f"{', '.join(readers[n])} reads inline/{n}.js, which is not there"
+               for n in sorted(set(readers) - set(names))]
+    for mod in sorted({n.split(".")[0] for n in names} & set(trees)):
+        tree = trees[mod]
+        docs = {id(n.body[0].value) for n in ast.walk(tree)
+                if isinstance(n, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and n.body and isinstance(n.body[0], ast.Expr)}
+        kept = {id(c) for n in tree.body if isinstance(n, ast.Assign)
+                and any(isinstance(x, ast.Name) and (mod, x.id) in _INLINE_KEPT for x in n.targets)
+                for c in ast.walk(n.value)}
+        parts = {id(v) for n in ast.walk(tree) if isinstance(n, ast.JoinedStr) for v in n.values}
+        for n in ast.walk(tree):
+            if id(n) in docs or id(n) in kept or id(n) in parts \
+                    or getattr(n, "end_lineno", None) is None:
+                continue
+            if isinstance(n, ast.JoinedStr):
+                text = "".join(v.value for v in n.values if isinstance(v, ast.Constant))
+            elif isinstance(n, ast.Constant) and isinstance(n.value, str):
+                text = n.value
+            else:
+                continue
+            m = _INLINE_MARK.search(text) if n.end_lineno - n.lineno >= 2 else None
+            if m:
+                faults.append(f"{mod}:{n.lineno} still holds a script in a string ({m.group(0)!r}); "
+                              "its scripts are in inline/")
+    return faults
+
+
+@check("files", "a builder's own scripts are files in inline/ beside it, each read by that builder "
+                "alone through inline_js, which refuses a hole left empty or a value with no hole; "
+                "and a builder that has them holds no script in a string")
+def _inline_scripts_read_once():
+    """The scripts a builder writes into its pages are .js files in inline/
+    beside it (inline_js, 20 November 2026), so that a JavaScript tool, the
+    search for dead code and a check of a twin can read them, and the page
+    is the same to the byte. Held here:
+
+      the reader: a hole (__NAME__) with no value, a value with no hole and
+      a value that is not a string are refused; a hole is filled in one pass
+      and JavaScript's own braces and __proto__ are not holes; a name that is
+      not <builder> or <builder>.<what>, or names no builder, is refused;
+      every file is where its name says, inline/ beside its builder;
+      the rule (_inline_faults), on planted code that breaks each part of
+      it, and on the code: each script read by its builder alone and by
+      name, none read from inline/ but through inline_js, and no builder
+      that has scripts there holding one in a string but _INLINE_KEPT's.
+    """
+    import inline_js as IJ
+    for text, values, why in (("a __A__ b", {}, "a hole no value fills"),
+                              ("a b", {"A": "1"}, "a value no hole takes"),
+                              ("a __A__", {"A": 1}, "a value that is not a string")):
+        try:
+            IJ.fill(text, values)
+        except ValueError:
+            continue
+        raise AssertionError(f"inline_js.fill took {why}")
+    got = IJ.fill("x=__A__;y=__proto__;f(){return {a:1}};__A__", {"A": "__B__"})
+    assert got == "x=__B__;y=__proto__;f(){return {a:1}};__B__", f"inline_js.fill gave {got!r}"
+    for bad in ("../app", "Build_civics", "build_civics.a.b", "", "build_civics/otp"):
+        try:
+            IJ.path(bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"inline_js took {bad!r} for a script's name")
+    try:
+        IJ.path("no_builder_has_this_name.x")
+        raise AssertionError("inline_js found a script for a builder that is not there")
+    except LookupError:
+        pass
+    # The rule, on planted code.
+    ok = {"build_a": ast.parse('import inline_js as IJ\nJS = "<script>\\n" + IJ.script("build_a") '
+                               '+ "</script>"\n')}
+    assert _inline_faults(ok, {"build_a"}) == [], _inline_faults(ok, {"build_a"})
+    planted = {
+        "build_a": ast.parse('import inline_js as IJ\nJS = IJ.script("build_a")\n'
+                             'OLD = """<script>\n(function(){\n  document.title="x";\n})();\n</script>"""\n'
+                             'KEEP = """a\nb\nc"""\n'),
+        "build_b": ast.parse('import inline_js as J\nX = J.script("build_a")\nY = J.script(NAME)\n'
+                             'Z = J.script("build_b.gone")\nW = open("src/pages/inline/build_b.x.js").read()\n'),
+    }
+    got = _inline_faults(planted, {"build_a", "build_b.x"})
+    want = ("build_b:3 reads a script whose name is not written out",
+            "build_b:5 reads inline/ itself", "inline/build_a.js is read by 2 modules",
+            "inline/build_b.x.js is read by 0 modules", "reads inline/build_b.gone.js, which is not there",
+            "build_a:3 still holds a script in a string")
+    missed = [w for w in want if not any(w in g for g in got)]
+    assert not missed and len(got) == len(want), (
+        f"the rule missed {missed} in planted code, or found more: {got}")
+    # The code.
+    names = IJ.files()
+    for name, p in names.items():
+        assert p == IJ.path(name), f"{p} is not where its name says: {IJ.path(name)}"
+    trees = {f.stem: _parsed(f) for f in _paths.code_files("*.py") if not _in_suite(f)}
+    faults = _inline_faults(trees, set(names))
+    assert not faults, f"{len(faults)} faults in the builders' inline scripts: " + "; ".join(faults[:6])
+    builders = sorted({n.split(".")[0] for n in names})
+    assert len(names) >= 1 and len(builders) >= 1, (
+        f"only {len(names)} inline scripts of {len(builders)} builders: there was 1 of 1 "
+        "on 20 November 2026, the pilot's")
+    return "ok", (f"{len(names)} scripts in inline/ of {len(builders)} builders, each read by its own "
+                  "builder alone, by name, through inline_js; none of those builders holds a script "
+                  "in a string but the Spanish picker's patch; the reader refuses a hole left empty, "
+                  "a value with no hole and a value that is not a string")
 
 
 def _import_graph(files=None):

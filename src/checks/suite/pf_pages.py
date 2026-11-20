@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -11208,7 +11208,8 @@ def _one_language_note(chrome, i18n):
     if 'class="r-en">(' not in _source("src/pages/build_civics.py"):
         bad.append("the \"(en inglés)\" markers on a list's English pages are gone")
     old = ("home.lang_note", "guides.lang_note", "guides.hub_lang_note", "learn.lang_note")
-    code = "".join(p.read_text(encoding="utf-8") for p in Path("src/pages").glob("*.py"))
+    code = "".join(p.read_text(encoding="utf-8")
+                   for p in sorted(Path("src/pages").glob("*.py")) + sorted(Path("src/pages/inline").glob("*.js")))
     left = [k for k in old if f'"{k}"' in code or k in i18n.catalog("es")["strings"]]
     if left:
         bad.append(f"the old notes are still asked for or kept: {left}")
@@ -12059,6 +12060,8 @@ def _one_word_per_meaning(BP):
     bare = [m.group(0) for f in ("src/pages/app.js", "src/pages/build_pages.py", "src/pages/build_full_sessions.py",
                                  "src/pages/build_session_pages.py", "src/pages/build_study_committees.py")
             for m in re.finditer(r"<span>Play</span>", _source(f))]
+    bare += [m.group(0) for f in sorted(Path("src/pages/inline").glob("*.js"))
+             for m in re.finditer(r"<span>Play</span>", _source(f))]
     if bare:
         bad.append(f"a player's button says only \"Play\": {bare[:2]}")
     assert not bad, "; ".join(bad)
@@ -14540,8 +14543,9 @@ def _frame_written_once():
            "fonts.googleapis.com/css2": "the fonts", 'id="built"': "the footer's date",
            'localStorage.getItem("gr-theme")': "the theme's pre-paint script"}
     bad = []
-    for f in sorted(Path("src/pages").iterdir()):
-        if f.suffix not in (".py", ".html", ".js") or f.name == "chrome.py":
+    # A builder's own scripts too (inline/), but chrome's, which are the frame's.
+    for f in sorted(Path("src/pages").iterdir()) + sorted(Path("src/pages/inline").glob("*.js")):
+        if f.suffix not in (".py", ".html", ".js") or f.name == "chrome.py" or f.name.startswith("chrome."):
             continue
         code = f.read_text(encoding="utf-8", errors="replace")
         if f.suffix == ".py":

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 The definitions preflight's checks share across areas, and those no check reaches
 by name (the _DOCKET_* rows _journey_clauses_kept reads by their prefix among them).
@@ -799,7 +799,8 @@ def _front_sources(root="."):
     base = Path(root)
     files = [base / "src/pages/components.js", base / "src/pages/app.js", base / "src/pages/find.js",
              base / "src/pages/print.js",
-             base / "src/pages/bills.html"] + sorted((base / "src/pages").glob("*.py"))
+             base / "src/pages/bills.html"] + sorted((base / "src/pages").glob("*.py")) \
+        + sorted((base / "src/pages/inline").glob("*.js"))
     out = []
     for f in files:
         if not f.is_file():

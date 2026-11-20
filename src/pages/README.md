@@ -233,6 +233,8 @@ The helpers the builders share:
   the source, and each catalog checked against it (preflight's and
   `src/ops/translations.py`'s; no builder imports it);
 - `strip_js`: the browser's scripts as published, without their comments;
+- `inline_js`: a builder's own scripts, read from `inline/` with their
+  holes filled, for the builder to write into its pages;
 - `structured`: what a search engine is told a page is about (schema.org);
 - `bill_order`: the order bill numbers are listed in;
 - `ballot_source`: whose count a ballot result is, in words;

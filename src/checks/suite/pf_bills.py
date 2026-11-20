@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.40
+# GRANITE_VERSION: 2026-11-16.41
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -6527,7 +6527,7 @@ def _words_written_once(B):
             bad.append(f"app.js does not read its words from components.js: no {want!r}")
     pats = _word_copies(W)
     srcs = sorted(p for p in Path("src/pages").iterdir()
-                  if p.is_file() and p.suffix in (".py", ".js", ".html"))
+                  if p.is_file() and p.suffix in (".py", ".js", ".html")) + sorted(Path("src/pages/inline").glob("*.js"))
     copies = [f"{p.name}: {what}" for p in srcs
               for what, pat in pats if pat.search(p.read_text(encoding="utf-8"))]
     if copies:

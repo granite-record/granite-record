@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the calendar.
 
@@ -169,7 +169,7 @@ def _chain():
                     bare.append(f"{f.relative_to(root / 'site')}: {m.group(0)[:80]}")
         assert not bare, ("a page that carries <base href=\"/\"> links a bare fragment, "
                           "which goes to the home page: " + "; ".join(bare[:5]))
-        for js in sorted(Path("src/pages").glob("*.js")):
+        for js in sorted(Path("src/pages").glob("*.js")) + sorted(Path("src/pages/inline").glob("*.js")):
             hit = re.search(r'href=\\?"#\$\{', js.read_text(encoding="utf-8"))
             assert not hit, (f"{js.name} writes a link to a bare fragment, href=\"#${{...}}: "
                              "under <base href=\"/\"> it goes to the home page")
@@ -2233,7 +2233,8 @@ def _pager_labels():
         return "skip", "bills.html is not here"
     bad = []
     files = (sorted(Path("src/pages").glob("*.py")) + sorted(Path("src/pages").glob("*.js"))
-             + sorted(Path("src/pages").glob("*.html")) + sorted(Path("src/pages/words").glob("*.json")))
+             + sorted(Path("src/pages").glob("*.html")) + sorted(Path("src/pages/words").glob("*.json"))
+             + sorted(Path("src/pages/inline").glob("*.js")))
     for f in files:
         for i, ln in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
             if ln.strip().startswith(("#", "//", "*")):
