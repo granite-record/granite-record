@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.327
+# GRANITE_VERSION: 2026-09-05.328
 """
 Generate the faceted site from real General Court data.
 
@@ -1389,6 +1389,134 @@ def rollcalls_named(rc_out, bid, term, _mpool, _mpages, rep_written, rc_cards):
         rc_cards.setdefault(term, {})[bid] = _cards
 
 
+def stations_drawn(bid, term, procs, segs, marks, narr, tdb, floor, hearing_reports, _hr_term,
+                   _hr_idx, _hr_name, hr_tally, hr_unmatched, _people, video_facts, moments):
+    """The stations a bill's Hearings tab draws, in date order: its committee
+    sittings (bill_stations) less a notice the bill's own record says no
+    committee held (proceedings.notice_only), with the sign-ins of each hearing
+    and the Senate's hearing reports on theirs (attach_hearing_reports, counted
+    in `hr_tally` and `hr_unmatched`), its floor appearances (station_for_floor)
+    and each recording's length; and each floor station's moment, for the
+    session day's card (`moments`). A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    # Two short builders, defined together above main(). Committee
+    # proceedings and floor appearances are different enough to need
+    # different code and close enough that a change to one usually belongs
+    # in the other; adjacent functions make that visible, which one long
+    # function did not.
+    stations = bill_stations(bid, term, procs, segs, marks)
+    # A SITTING SET FOR A DAY AFTER THE BILL WAS WITHDRAWN DID NOT TAKE
+    # IT UP. The proceedings table reads the docket's notices -- "Public
+    # Hearing: 1/12/2012 10:30 AM LOB 207", entered on 15 December -- and
+    # HB 1284 of 2012 was withdrawn on 4 January. narrative.build dates
+    # the withdrawal and tells such a notice as one; here the notice is
+    # not drawn as a hearing the committee held.
+    # NOR DID ONE SET FOR A BILL THAT WAS NEVER INTRODUCED, withdrawal or
+    # none: no committee was sent it. HB 273 of 2017 has no withdrawal on
+    # its docket and one notice, "Public Hearing: 01/10/2017 01:30 PM LOB
+    # 306", and was drawn a station for a hearing nothing on disk says
+    # was held. Its history tells the notice as the docket's.
+    # The rule is proceedings.notice_only, and the committee's page, the
+    # download and the Learn pages' count ask it of the same rows, so none
+    # of them says a committee sat where this page draws nothing.
+    # And a meeting a later row of the docket cancelled or moved, by its
+    # kind and hour, which leaves the rest of its day drawn.
+    stations = [x for x in stations
+                if not P.notice_only({"date": x.get("when"), "kind": x.get("what"),
+                                      "time": x.get("time"), "body": x.get("body")},
+                                     narr)]
+    # The sign-in counts, on the hearing itself. They already reach the
+    # docket line that records the hearing -- 2,115 of them across 2,018
+    # bills -- but that line sits inside a collapsed disclosure on another
+    # tab, so somebody wanting to know how opinion stood before a hearing
+    # had to go looking for it among the raw docket actions.
+    #
+    # Matched on the date, so the figure belongs to THIS hearing. Where
+    # the database has the bill but not this date, nothing is attached
+    # rather than the whole-bill total: on a station the reader is looking
+    # at one sitting, and a number that quietly means something else is
+    # worse than no number. The docket line still shows the whole-bill
+    # figure and still says that is what it is.
+    if tdb:
+        _by_date = {h.get("date"): h for h in (tdb.get("hearings") or [])}
+        for _st in stations:
+            if "hearing" not in (_st.get("what") or "").lower():
+                continue
+            _hit = _by_date.get(_st.get("when"))
+            if _hit:
+                _st["testimony"] = {**_hit, "dated": True}
+    # The Senate committee's own report of the hearing, on the station
+    # for that hearing: the same bill, the Senate, a public hearing, the
+    # date the report gives. A report whose hearing the docket does not
+    # carry is not pinned to some other sitting: it stands under its own
+    # date, says so, and is named in the build's output. Before the sort
+    # below, so it takes its place in the bill's order of events.
+    attach_hearing_reports(
+        stations, (hearing_reports or {}).get(term, {}).get(bid, []),
+        bid, _hr_term.get(term, _hr_idx), _hr_name, hr_tally, hr_unmatched,
+        pages=_people if term in _hr_term else None)
+    # Floor debates, stacked with the committee proceedings and sorted by
+    # date so a bill's whole journey reads in order: hearing, executive
+    # session, floor, then the second chamber.
+    # A conference noticed and recorded is one sitting, not two stations
+    # a day (fold_conference_notices).
+    stations += [station_for_floor(f, bid, marks)
+                 for f in fold_conference_notices(floor.get((term, bid), []))]
+    stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
+    # How long its recording runs, where the video index says: the Hearings
+    # tab's playlist gives it beside each recording, as a committee's does.
+    for _st in stations:
+        _secs = (video_facts.get(_st.get("video_id") or "") or {}).get("seconds")
+        if _secs:
+            _st["seconds"] = int(_secs)
+    # EACH FLOOR STATION'S MOMENT, for the session day's card of this bill
+    # (`moments`, write_floor_record): the very time this bill's own
+    # Hearings tab opens its player at and the vote it ends on, so the two
+    # pages give one answer (nothing about a timestamp changes). A bill
+    # the consent calendar decided has none: "a bill that passes on the
+    # consent calendar needs no embedded YouTube recording" (the person,
+    # 9 October 2026, v3).
+    if moments is not None:
+        for _st in stations:
+            _m = floor_moment(_st)
+            if _m:
+                moments.setdefault(term, {}).setdefault(bid, []).append(_m)
+    return stations
+
+
+def count_stations(stations, station_states, station_kinds):
+    """The census of a bill's stations, by state and kind and in the four groups a
+    reader meets, into the counters write_station_census writes. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    for _st in stations:
+        _state = str(_st.get("state") or "?")
+        station_states[_state] += 1
+        station_kinds[str(_st.get("what") or "?")] += 1
+        # THE FOUR GROUPS A READER ACTUALLY MEETS, which are not the
+        # eleven state names. Either the page puts you at the moment the
+        # bill was taken up; or it offers the recording and says it has
+        # not established the moment; or the bill went through on a
+        # consent calendar and there is no moment to find; or there is no
+        # recording to offer.
+        #
+        # Taken from the station itself rather than from a list of state
+        # names, because the states do not divide on this cleanly: a
+        # "floor_dated" station has a stated start on the few occasions
+        # the clerk's reading of the committee report was found and none
+        # on the rest, so a list would have to know that. The two
+        # exceptions are named because they are claims the station's own
+        # fields do not carry: "whole_video" needs no start, the recording
+        # being the proceeding; and "candidates" has no video_id yet draws
+        # every recording the sitting could be, which is an offer of
+        # recordings and not the absence of one.
+        if _st.get("start") is not None or _state == "whole_video":
+            station_states["_placed"] += 1
+        elif _state == "consent":
+            station_states["_consent"] += 1
+        elif _st.get("video_id") or _state == "candidates":
+            station_states["_recording_only"] += 1
+        else:
+            station_states["_no_recording"] += 1
+
+
 def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over):
     """What build_bills says, after its loop, of the statuses it gave: how many the
     status page stated and how many of a closed term were marked finished, the
@@ -1788,122 +1916,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                                      voter_pools)
         rollcalls_named(rc_out, bid, term, _mpool, _mpages, rep_written, rc_cards)
 
-        # Two short builders, defined together above main(). Committee
-        # proceedings and floor appearances are different enough to need
-        # different code and close enough that a change to one usually belongs
-        # in the other; adjacent functions make that visible, which one long
-        # function did not.
-        stations = bill_stations(bid, term, procs, segs, marks)
-        # A SITTING SET FOR A DAY AFTER THE BILL WAS WITHDRAWN DID NOT TAKE
-        # IT UP. The proceedings table reads the docket's notices -- "Public
-        # Hearing: 1/12/2012 10:30 AM LOB 207", entered on 15 December -- and
-        # HB 1284 of 2012 was withdrawn on 4 January. narrative.build dates
-        # the withdrawal and tells such a notice as one; here the notice is
-        # not drawn as a hearing the committee held.
-        # NOR DID ONE SET FOR A BILL THAT WAS NEVER INTRODUCED, withdrawal or
-        # none: no committee was sent it. HB 273 of 2017 has no withdrawal on
-        # its docket and one notice, "Public Hearing: 01/10/2017 01:30 PM LOB
-        # 306", and was drawn a station for a hearing nothing on disk says
-        # was held. Its history tells the notice as the docket's.
-        # The rule is proceedings.notice_only, and the committee's page, the
-        # download and the Learn pages' count ask it of the same rows, so none
-        # of them says a committee sat where this page draws nothing.
-        # And a meeting a later row of the docket cancelled or moved, by its
-        # kind and hour, which leaves the rest of its day drawn.
-        stations = [x for x in stations
-                    if not P.notice_only({"date": x.get("when"), "kind": x.get("what"),
-                                          "time": x.get("time"), "body": x.get("body")},
-                                         narr)]
-        # The sign-in counts, on the hearing itself. They already reach the
-        # docket line that records the hearing -- 2,115 of them across 2,018
-        # bills -- but that line sits inside a collapsed disclosure on another
-        # tab, so somebody wanting to know how opinion stood before a hearing
-        # had to go looking for it among the raw docket actions.
-        #
-        # Matched on the date, so the figure belongs to THIS hearing. Where
-        # the database has the bill but not this date, nothing is attached
-        # rather than the whole-bill total: on a station the reader is looking
-        # at one sitting, and a number that quietly means something else is
-        # worse than no number. The docket line still shows the whole-bill
-        # figure and still says that is what it is.
-        if tdb:
-            _by_date = {h.get("date"): h for h in (tdb.get("hearings") or [])}
-            for _st in stations:
-                if "hearing" not in (_st.get("what") or "").lower():
-                    continue
-                _hit = _by_date.get(_st.get("when"))
-                if _hit:
-                    _st["testimony"] = {**_hit, "dated": True}
-        # The Senate committee's own report of the hearing, on the station
-        # for that hearing: the same bill, the Senate, a public hearing, the
-        # date the report gives. A report whose hearing the docket does not
-        # carry is not pinned to some other sitting: it stands under its own
-        # date, says so, and is named in the build's output. Before the sort
-        # below, so it takes its place in the bill's order of events.
-        attach_hearing_reports(
-            stations, (hearing_reports or {}).get(term, {}).get(bid, []),
-            bid, _hr_term.get(term, _hr_idx), _hr_name, hr_tally, hr_unmatched,
-            pages=_people if term in _hr_term else None)
-        # Floor debates, stacked with the committee proceedings and sorted by
-        # date so a bill's whole journey reads in order: hearing, executive
-        # session, floor, then the second chamber.
-        # A conference noticed and recorded is one sitting, not two stations
-        # a day (fold_conference_notices).
-        stations += [station_for_floor(f, bid, marks)
-                     for f in fold_conference_notices(floor.get((term, bid), []))]
-        stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
-        # How long its recording runs, where the video index says: the Hearings
-        # tab's playlist gives it beside each recording, as a committee's does.
-        for _st in stations:
-            _secs = (video_facts.get(_st.get("video_id") or "") or {}).get("seconds")
-            if _secs:
-                _st["seconds"] = int(_secs)
-        # EACH FLOOR STATION'S MOMENT, for the session day's card of this bill
-        # (`moments`, write_floor_record): the very time this bill's own
-        # Hearings tab opens its player at and the vote it ends on, so the two
-        # pages give one answer (nothing about a timestamp changes). A bill
-        # the consent calendar decided has none: "a bill that passes on the
-        # consent calendar needs no embedded YouTube recording" (the person,
-        # 9 October 2026, v3).
-        if moments is not None:
-            for _st in stations:
-                _m = floor_moment(_st)
-                if _m:
-                    moments.setdefault(term, {}).setdefault(bid, []).append(_m)
+        stations = stations_drawn(bid, term, procs, segs, marks, narr, tdb, floor,
+                                  hearing_reports, _hr_term, _hr_idx, _hr_name, hr_tally,
+                                  hr_unmatched, _people, video_facts, moments)
         # The census, taken after the sort so it counts exactly the list the
         # page receives -- including the floor stations, which is the half of
         # the record five tools in one day were found to be missing.
         if stations:
             n_station_bills += 1
-        for _st in stations:
-            _state = str(_st.get("state") or "?")
-            station_states[_state] += 1
-            station_kinds[str(_st.get("what") or "?")] += 1
-            # THE FOUR GROUPS A READER ACTUALLY MEETS, which are not the
-            # eleven state names. Either the page puts you at the moment the
-            # bill was taken up; or it offers the recording and says it has
-            # not established the moment; or the bill went through on a
-            # consent calendar and there is no moment to find; or there is no
-            # recording to offer.
-            #
-            # Taken from the station itself rather than from a list of state
-            # names, because the states do not divide on this cleanly: a
-            # "floor_dated" station has a stated start on the few occasions
-            # the clerk's reading of the committee report was found and none
-            # on the rest, so a list would have to know that. The two
-            # exceptions are named because they are claims the station's own
-            # fields do not carry: "whole_video" needs no start, the recording
-            # being the proceeding; and "candidates" has no video_id yet draws
-            # every recording the sitting could be, which is an offer of
-            # recordings and not the absence of one.
-            if _st.get("start") is not None or _state == "whole_video":
-                station_states["_placed"] += 1
-            elif _state == "consent":
-                station_states["_consent"] += 1
-            elif _st.get("video_id") or _state == "candidates":
-                station_states["_recording_only"] += 1
-            else:
-                station_states["_no_recording"] += 1
+        count_stations(stations, station_states, station_kinds)
 
         # Under the filing year, because a bill number is unique within a term
         # and not beyond it. A 2027 HB686 is a different bill from this one and
