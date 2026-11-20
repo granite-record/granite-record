@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.323
+# GRANITE_VERSION: 2026-09-05.324
 """
 Generate the faceted site from real General Court data.
 
@@ -1155,6 +1155,46 @@ def status_source_of(disp, status, settled, told, b, ev):
     return status_source
 
 
+def journey_told(narr, bid, rcs, chapter, dl, term, bill_texts, current, ballot):
+    """How it got here, from the docket, for bill `bid` of `term`: (untold, btext,
+    intro, jsteps, voters) -- the docket rows the journey leaves untold, the
+    bill's text (bill_text_block, read here because a law's own Effective Date
+    lines date its Law stop), the day it was introduced and the journey's steps
+    (journey), with a CACR's voters' line where its ballot row has the answer the
+    docket lacks, and the card its Votes tab draws for the voters (ballot_card),
+    or None. `dl` is the bill's line of the chapters (extract_chapters), `ballot`
+    its ballot_results.json row or None. A step of build_bills' loop, lifted out of it as it stood (20 November 2026)."""
+    # HOW IT GOT HERE, from the docket: every floor decision, dated. The
+    # rail's marks are read with it and the rail's dates are read from
+    # it, so the list card, the bill's own rail and On the record are
+    # one account. journey_disagrees() is the test that they are.
+    untold = set()
+    # The bill's text, read here rather than with the rest of its record
+    # below: a law's own Effective Date lines date its Law stop.
+    btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid), narr)
+    intro, jsteps = journey(narr, bid, rcs, chapter, dl.get("line", ""), term,
+                            db_effective=dl.get("database_effective", ""),
+                            untold=untold, text=(btext or {}).get("body", ""))
+    # THE VOTERS' LINE, where the docket has none to read it from: the
+    # election and its outcome, from the CACR's ballot row. The rail's
+    # Voters stop is dated from it like every other stop.
+    voters = ballot_card(ballot, narr) if ballot else None
+    if (ballot and ballot.get("yes") is not None
+            and not any(s_["body"] == "V" for s_ in jsteps)):
+        jsteps.append(ballot_step(ballot))
+    # AND WHERE THE DOCKET'S OWN REFERENDUM COUNT IS NOT THE CARD'S, its
+    # line says whose it is, and whose the card's is: CACR 7 of 1992's
+    # How it got here read "249,759–204,475" a tab away from the Votes
+    # card's 204,457, with nothing to say which was which (the review of
+    # 5 October 2026). Now CACR 22 of 1998: the docket's 159,439 against
+    # the Secretary of State's 169,439 (docket_count_differs).
+    elif (voters or {}).get("docket"):
+        for s_ in jsteps:
+            if s_["body"] == "V":
+                s_["text"] += docket_count_differs(ballot)
+    return untold, btext, intro, jsteps, voters
+
+
 def say_statuses(index, status_pages, n_stated, n_stale, n_db, current, session_over):
     """What build_bills says, after its loop, of the statuses it gave: how many the
     status page stated and how many of a closed term were marked finished, the
@@ -1498,34 +1538,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         cmte, cmtes = bill_committees(b, bid)
         chapter = chapter_of(st, (chapters or {}).get(term, {}).get(bid),
                              n_chapter)
-        # HOW IT GOT HERE, from the docket: every floor decision, dated. The
-        # rail's marks are read with it and the rail's dates are read from
-        # it, so the list card, the bill's own rail and On the record are
-        # one account. journey_disagrees() is the test that they are.
-        untold = set()
-        # The bill's text, read here rather than with the rest of its record
-        # below: a law's own Effective Date lines date its Law stop.
-        btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid), narr)
-        intro, jsteps = journey(narr, bid, rcs, chapter, dl.get("line", ""), term,
-                                db_effective=dl.get("database_effective", ""),
-                                untold=untold, text=(btext or {}).get("body", ""))
-        # THE VOTERS' LINE, where the docket has none to read it from: the
-        # election and its outcome, from the CACR's ballot row. The rail's
-        # Voters stop is dated from it like every other stop.
-        voters = ballot_card(ballot, narr) if ballot else None
-        if (ballot and ballot.get("yes") is not None
-                and not any(s_["body"] == "V" for s_ in jsteps)):
-            jsteps.append(ballot_step(ballot))
-        # AND WHERE THE DOCKET'S OWN REFERENDUM COUNT IS NOT THE CARD'S, its
-        # line says whose it is, and whose the card's is: CACR 7 of 1992's
-        # How it got here read "249,759–204,475" a tab away from the Votes
-        # card's 204,457, with nothing to say which was which (the review of
-        # 5 October 2026). Now CACR 22 of 1998: the docket's 159,439 against
-        # the Secretary of State's 169,439 (docket_count_differs).
-        elif (voters or {}).get("docket"):
-            for s_ in jsteps:
-                if s_["body"] == "V":
-                    s_["text"] += docket_count_differs(ballot)
+        untold, btext, intro, jsteps, voters = journey_told(narr, bid, rcs, chapter, dl,
+                                                            term, bill_texts, current,
+                                                            ballot)
         if carried:
             carried = carried_over(dates, intro)
         # A BILL WHOSE RECORD IS THE HOUSE JOURNAL'S has no docket for the
