@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.12
+# GRANITE_VERSION: 2026-11-10.13
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -36,6 +36,20 @@ THE MATCHING (the owner's approval of 10 November 2026):
   corrections/members_elect.json "matches" for the race and the printed name
   settles it either way: an id shows the race on that member's tab, null keeps
   it off.
+
+  A MIDDLE INITIAL ON ONE SIDE ONLY (the owner's report of 20 November 2026:
+  the 2026 primary prints "Wayne M. Burton", the roster "Burton, Wayne", and
+  his Strafford 10 card marked his two colleagues and not him). Where no
+  member has the name letter for letter, the bill requests' matcher decides
+  whether the two names can be one person (build_lsrs.compatible: the same
+  surname, the same first name or a pair its NICKNAMES tables, a middle name
+  only where one side has none and the other's is an initial) -- and the rest
+  must be certain: the very seat held in the term before or after, the party
+  the candidate filed under where both give one, a suffix that agrees, no
+  other candidate in the race of the member's surname, and one member only
+  (Roster.initial_match). A general's candidates and a primary's are read so;
+  a special's are not: THE SPECIAL ELECTIONS, below, sends a middle initial
+  to the owner's list, and widening that is hers to say.
 
   The same rule reads a race that is not final -- all of them, until the
   recount deadline has passed -- because members_elect draws no winner for
@@ -140,6 +154,7 @@ from collections import defaultdict
 
 import build_date
 import build_elections as BE
+import build_lsrs as BL
 import build_members_elect as BME
 import key_dates as KD
 
@@ -151,6 +166,16 @@ def nfc_fold(name):
     """A name as compared: reading order, one form of each letter, case
     ignored. Accents are NOT taken off: Choiniere is not Choinière here."""
     return unicodedata.normalize("NFC", BME.reading_order(name)).casefold()
+
+
+def differs(printed, member):
+    """Whether two names build_lsrs.compatible takes as one differ by what
+    Roster.initial_match is for -- a middle initial, or a first name's tabled
+    short form -- and not by a suffix alone ("Michael Costable Jr." and
+    "Costable, Michael": a father and a son can share the rest) or by
+    punctuation alone, which stay the letter-for-letter rule's."""
+    a, b = BL._parts(BME.reading_order(printed)), BL._parts(BME.reading_order(member))
+    return bool(a and b) and (a[0] != b[0] or a[1] != b[1])
 
 
 class Roster:
@@ -231,11 +256,40 @@ class Roster:
                 found.append(f"{p['label']} [{p['id']}]")
         return ", ".join(sorted(set(found)))
 
-    def certain(self, name, key, election, race=None, party="", window=None):
+    def initial_match(self, name, key, window, race, party):
+        """([members], why not) for a printed name no member has letter for
+        letter: one member who held the race's very seat in `window`, whose
+        name build_lsrs.compatible says can be the printed one (a middle
+        initial on one side only, or a NICKNAMES pair; never a bare prefix),
+        with a suffix that agrees, of the party the candidate filed under
+        where both give one, and no other candidate in the race of their
+        surname. Anything less is nobody."""
+        printed = BME.reading_order(name)
+        _rd, sfx = BME.readings(name)
+        held = [p for p in self.members.values() if any((t, key) in p["held"] for t in window)]
+        fits = [p for p in held if BL.compatible(printed, BME.reading_order(p["name"]))[0]
+                and BME.suffixes_agree(p["sfx"], sfx) and differs(printed, p["name"])]
+        letters = set(BME.party_letters(party).replace("/", ""))
+        fits = [p for p in fits if not p["party"] or not letters or p["party"] in letters]
+        if len(fits) > 1:
+            return [], "more than one member whose name fits held the seat"
+        if not fits:
+            return [], ""
+        sur = {s for s, _f in fits[0]["readings"]}
+        if any(c["name"] != name and sur & {s for s, _f in BME.readings(c["name"])[0]}
+               for c in (race or {}).get("candidates") or []):
+            return [], (f"{fits[0]['label']} [{fits[0]['id']}] fits but for a middle initial or a short "
+                        "form, and another candidate of that surname is in the race")
+        return fits, ""
+
+    def certain(self, name, key, election, race=None, party="", window=None, initials=False):
         """([members], why not): the members a printed name in race `key` is,
         by the strict rule. One member only is a match. `window`, the terms a
         seat held counts in, is the general election's (the term before and
-        the term after) unless given: a special's is its own (special_window)."""
+        the term after) unless given: a special's is its own (special_window).
+        `initials`: where no member has the name letter for letter, a middle
+        initial on one side only may still be certain (initial_match) -- a
+        general's and a primary's candidates, never a special's."""
         year = int(election[:4])
         after = BME.term_after(year)
         # The term before is on the old districts for the election of 2022: no
@@ -252,7 +306,7 @@ class Roster:
         if len(fits) > 1:
             return [], "more than one member of that name held the seat"
         if not same:
-            return [], ""
+            return self.initial_match(name, key, window, race, party) if initials else ([], "")
         why = []
         for p in same:
             if key not in {k for _t, k in p["held"]}:
@@ -343,7 +397,7 @@ def election_rows(election, results, races_me, hand, roster, people):
                                    f"the hand file names {v}, who is no sitting or former member"))
                     continue
             if member is None:
-                got, why = roster.certain(c["name"], key, election, race, c.get("party"))
+                got, why = roster.certain(c["name"], key, election, race, c.get("party"), initials=True)
                 if got:
                     member = got[0]
                 else:
@@ -377,7 +431,7 @@ def member_for(c, key, race, election, drawn, said, roster):
         return None  # a winner the elections page draws and does not link: its refusal stands
     if c["name"] in said:
         return roster.members.get(str(said[c["name"]])) if said[c["name"]] is not None else None
-    got, _why = roster.certain(c["name"], key, election, race, c.get("party"))
+    got, _why = roster.certain(c["name"], key, election, race, c.get("party"), initials=True)
     return got[0] if len(got) == 1 else None
 
 
@@ -451,8 +505,9 @@ def primary_race(race):
 def primary_rows(day, doc, roster):
     """({member id: [row, ...]}, [report line, ...]) for one primary day: a
     member's candidacy on their own party's ballot, by the general cards' own
-    certain rule (Roster.certain: the whole name and a seat held the term
-    before or after; the stricter surname rule where the file prints surnames),
+    certain rule (Roster.certain: the whole name, or it but for a middle
+    initial, and a seat held the term before or after; the stricter surname
+    rule where the file prints surnames),
     never on another party's ballot. A candidate the file prints with no party
     is the member only where the member is of the ballot's party. Each row is
     the general's shape with "st": "primary" and "pp", the ballot's party, and
@@ -467,7 +522,7 @@ def primary_rows(day, doc, roster):
         ballot = party.upper()
         for c in race["candidates"]:
             printed = str(c.get("party") or "").upper()
-            got, why = roster.certain(c["name"], gkey, day, race, c.get("party"))
+            got, why = roster.certain(c["name"], gkey, day, race, c.get("party"), initials=True)
             if got and not printed and got[0]["party"] != ballot:
                 got, why = [], f"printed with no party on the {ballot} ballot; the member is not of it"
             if not got:

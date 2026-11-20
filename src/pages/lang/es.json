@@ -25749,8 +25749,8 @@
    "state": "draft"
   },
   "race.omitted": {
-   "en": "A race this member lost appears only where the name and the district match the record exactly; any other is left off.",
-   "es": "Una contienda que este miembro perdió aparece solo cuando el nombre y el distrito coinciden exactamente con el registro; las demás se omiten.",
+   "en": "A race this member lost appears only where the name and the district match the record exactly, or but for a middle initial; any other is left off.",
+   "es": "Una contienda que este miembro perdió aparece solo cuando el nombre y el distrito coinciden exactamente con el registro, o salvo por una inicial del segundo nombre; las demás se omiten.",
    "state": "draft"
   },
   "race.place": {

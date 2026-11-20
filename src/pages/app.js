@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.363
+// GRANITE_VERSION: 2026-09-07.364
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10539,7 +10539,7 @@ function renderMemberElections(m){
       <th>${esc(tr("race.col_race","Race"))}</th><th>${esc(tr("race.col_result","Result"))}</th>
       <th>${esc(tr("race.col_votes","Votes"))}</th></tr></thead>
       <tbody>${plain.map(electionRow).join("")}</tbody></table>`:""}
-    <p class="src">${tr("race.omitted","A race this member lost appears only where the name and the district match the record exactly; any other is left off.")}
+    <p class="src">${tr("race.omitted","A race this member lost appears only where the name and the district match the record exactly, or but for a middle initial; any other is left off.")}
       ${days.length?tr("race.source","Source: the New Hampshire Secretary of State&rsquo;s official results, shown on the elections pages: {years}. Each row links to its race there.",{years:src}):""}${prim?" "+tr("race.source_primary","The primaries are from the Secretary of State&rsquo;s State Primary results files: {years}; no page of them is on this site yet.",{years:esc(prim)}):""}${sp.length?" "+tr("race.source_special","The special elections are from the Secretary of State&rsquo;s page of each: {list}.",{list:spsrc}):""}</p>`;
 }
 

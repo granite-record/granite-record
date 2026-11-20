@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.36
+# GRANITE_VERSION: 2026-11-16.37
 """
 preflight's checks of members-elect and election results.
 
@@ -2636,6 +2636,64 @@ def _election_incumbents(BMEL, BE, BME):
     return "ok", ("Beck and Lowe marked, Hart (a newcomer), Old, a member gone before the election, a "
                   "namesake and a Representative in a Senate race not; the card's asterisk, the page's "
                   "one line and the tab's one line a chamber")
+
+
+@check("build", "a candidate printed with a middle initial the roster lacks is the member only where the rest is "
+       "certain -- the seat held, the party, no rival of the surname, one member; never on a special's card -- "
+       "and is then marked * and shown on their tab like any other",
+       needs=("build_member_elections", "build_lsrs"))
+def _election_middle_initial(BMEL, BL):
+    """The owner, 20 November 2026, from the live site: Strafford 10's Democratic primary of 2026
+    marked Loren Selig and Timothy Horrigan as incumbents and not Wayne M. Burton, a sitting member
+    the roster names "Burton, Wayne": the letter-for-letter match missed him. Roster.initial_match
+    takes the bill requests' rule (build_lsrs.compatible) and holds the rest certain. On a made-up
+    court (Wayne Burton and Loren Selig, Democrats sitting for Rockingham 9): "Wayne M. Burton" is
+    marked and has his primary row; and he is nobody where another candidate of the surname is in
+    the race, where he filed under another party, in a seat he never held, printed "Wayne Q. Burton"
+    against a member "Burton, Wayne R." (two initials that differ), "Way Burton" (a bare prefix),
+    "Loren Selig Jr." (a suffix alone). A special's card keeps the letter-for-letter rule: Max D.
+    Teller in _member_elections_specials."""
+    def dem(*a):
+        return dict(_mel_member(*a), party="D")
+    sitting = [dem("3001", "Burton", "Wayne", "H", "Rockingham", "9"), dem("3002", "Selig", "Loren", "H", "Rockingham", "9"),
+               dem("3003", "Hale", "Jo R.", "H", "Rockingham", "9")]
+    roster = BMEL.Roster(sitting, [], ["2025-2026", "2023-2024"])
+
+    def cand(name, votes, party="d", nominated=True):
+        return {"name": name, "party": party, "votes": votes, "write_in": False, "nominated": nominated}
+
+    def primary(*cands, seats=3):
+        return {"party": "d", "seats": seats, "floterial": False, "towns": ["Alpha"], "scatter": 0,
+                "candidates": list(cands)}
+    race = primary(cand("Wayne M. Burton", 900), cand("Loren Selig", 800), cand("Ann Nu", 700),
+                   cand("Ty Last", 10, nominated=False))
+    inc = BMEL.incumbents("H|Rockingham|9", race, "2026-09-08", roster)
+    assert inc == {"Wayne M. Burton", "Loren Selig"}, f"the incumbents of the primary: {set(inc)}"
+    doc = {"election": "2026-09-08", "general": "2026-11-03", "races": {"D|H|Rockingham|9": race}}
+    rows, _rep = BMEL.primary_rows("2026-09-08", doc, roster)
+    assert sorted(rows) == ["3001", "3002"] and rows["3001"][0]["v"] == 900, f"the primary's rows: {dict(rows)}"
+    assert rows["3001"][0]["c"].count('class="er-inc"') == 2, "Burton's card does not mark both incumbents"
+
+    def who(name, key="H|Rockingham|9", party="d", others=()):
+        r = primary(cand(name, 900, party), *[cand(o, 5) for o in others])
+        got, why = roster.certain(name, key, "2026-09-08", r, party, initials=True)
+        return [p["id"] for p in got], why
+    assert who("Wayne M. Burton") == (["3001"], ""), who("Wayne M. Burton")
+    ids, why = who("Wayne M. Burton", others=("Mary Burton",))
+    assert ids == [] and "another candidate of that surname" in why, (ids, why)
+    assert who("Wayne M. Burton", party="r")[0] == [], "another party's candidate was taken for a Democrat"
+    assert who("Wayne M. Burton", key="H|Rockingham|8")[0] == [], "a seat he never held"
+    assert who("Jo Q. Hale")[0] == [], "two middle initials that differ were taken as one person"
+    assert who("Jo Hale")[0] == ["3003"], "a middle initial on the roster's side only is the same rule"
+    assert who("Way Burton")[0] == [], "a bare prefix of a first name was taken"
+    assert who("Loren Selig Jr.")[0] == [], "a suffix alone was taken as a middle initial"
+    assert who("Wayne Burton")[0] == ["3001"] and who("Wayne Burton", others=("Mary Burton",))[0] == ["3001"], (
+        "the letter-for-letter rule changed")
+    assert not BMEL.differs("Loren Selig Jr.", "Selig, Loren") and BMEL.differs("Wayne M. Burton", "Burton, Wayne"), (
+        "differs: a suffix alone is not a middle initial")
+    assert BL.compatible("Wayne M. Burton", "Wayne Burton")[0], "the requests' rule moved"
+    return "ok", ("Wayne M. Burton marked and on his tab beside Selig; nobody with a rival Burton, another "
+                  "party, another seat, differing initials, a bare prefix or a suffix alone")
 
 
 @check("data", "on today's roster and results, the incumbents' marks fall where the record says: Alice Wade "
