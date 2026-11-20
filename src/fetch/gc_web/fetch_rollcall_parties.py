@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.8
+# GRANITE_VERSION: 2026-09-10.9
 """The party of everyone who voted before 2017, from one roll call a chamber a year.
 
     python3 src/fetch/gc_web/fetch_rollcall_parties.py --plan     # which votes, no network
@@ -85,8 +85,9 @@ UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
 
 ROW = re.compile(r"<tr[^>]*>(.*?)</tr>", re.I | re.S)
 CELL = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.I | re.S)
-PARTY = {"republican": "R", "democrat": "D", "democratic": "D",
-         "independent": "I", "libertarian": "L"}
+# A ballot row's party word, lower case, to its letter: the state's one table of parties. A
+# cell it does not know (the header's "Party") is no member's row.
+PARTY = ST.party_lookup()
 ERROR_PAGE = re.compile(
     r"is either negative or above rows count|is neither a DataColumn", re.I)
 

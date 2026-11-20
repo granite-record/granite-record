@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.291
+# GRANITE_VERSION: 2026-09-05.293
 """
 Generate the faceted site from real General Court data.
 
@@ -3471,6 +3471,67 @@ def date_former_seats(former, votes_by_member, printed, corrected, legs):
     return former, out
 
 
+def last_term_labels(former, votes_by_member, record, table):
+    """(former, {id: (seat shown, seat now)}): A FORMER MEMBER'S LABEL NAMES THE SEAT THEY HELD IN
+    THEIR LAST TERM ON RECORD, or none (labels-use-the-seat-held-at-the-time; 19 November 2026).
+
+    The seat a former member's page gave was the record's one seat for them -- their last
+    ballot's label, from former_members.json, the General Court's lists or the person's
+    member_corrections.json -- put right from the bills of their last term by date_former_seats
+    where those print one seat and the person set none. Neither says which term the record's seat
+    is of. Carlos E. Gonzalez's correction gives "Hills 48", which the journals print for him in
+    2001-2002, and his last term, 2015-2016, was on the 2012 lines, which number Hillsborough's
+    districts to 45: the label named a seat that did not exist in the term it stands for. So,
+    for the member's last term (by the roll call's own, service_order):
+      - where its bills print one seat in their chamber (`record`'s one), that seat -- over a
+        corrected seat too, whose evidence names earlier terms (three such, 2015-2016);
+      - where they print two, the record's seat, as before: both members so printed (1999-2000)
+        are printed far oftener at the record's seat than at the other;
+      - where they print none and the district table holds the term's era (`table`, the
+        2012 lines from 2013-2014, today's from 2023-2024), the record's seat only if it is a
+        district of those lines; else no district;
+      - else the record's seat, as before (before 2013 no table of the lines is on file).
+    ONLY THE LABEL MOVES, never the page: the row keeps the address it has ("slug"), so no
+    page moves and no link breaks. A district dropped keeps the member's county, which no
+    redrawing of the lines changes. `record` is printed_record's (one, two, named);
+    `table` parse_districts.table's (districts, places)."""
+    one, two, _named = record
+    index = EN.district_index({"district": table[0]})
+    held = {(d["kind"], d.get("era")) for d in table[0]}
+    abbr = {}
+    for m in former.values():
+        if m.get("county") and m.get("county_abbr"):
+            abbr.setdefault(m["county"], m["county_abbr"])
+    out = {}
+    for mid, m in former.items():
+        rows = votes_by_member.get(mid) or []
+        ch = m.get("chamber") or ""
+        county, dist = m.get("county") or "", str(m.get("district") or "").lstrip("0")
+        if not rows or not dist or ch not in ("H", "S"):
+            continue
+        last = max(rows, key=service_order)
+        term = P.vote_term(last.get("year", ""), last.get("date"))
+        got = one.get((term, mid))
+        if got and got[0] == ch:
+            if got[2] == dist and (ch == "S" or got[1].lower()[:4] == county.lower()[:4]):
+                continue
+            now = ((got[1] or county) if ch == "H" else county, got[2])
+        elif (term, mid) in two:
+            continue
+        else:
+            kind, era = ("senate" if ch == "S" else "house"), EN.era_of(term)
+            said = dist if ch == "S" else f"{county} {dist}"
+            if era is None or (kind, era) not in held or EN.resolve_district(index, kind, said, era):
+                continue
+            now = (county, "")
+        new = dict(m, slug=_member_address(m)[len("/legislator/"):], county=now[0], district=now[1],
+                   county_abbr=abbr.get(now[0], m.get("county_abbr") or "") if now[0] != county
+                   else m.get("county_abbr") or "")
+        former[mid] = new
+        out[mid] = (f"{county} {dist}".strip(), f"{now[0]} {now[1]}".strip() if now[1] else "no district")
+    return former, out
+
+
 # EVERY ADDRESS A FORMER MEMBER'S PAGE HAS HAD, KEPT (the review of 5 November
 # 2026; the manager: "keep the 301s permanently -- old emails link through
 # them"). A page's moved_from is worked out afresh every build, so an address
@@ -3919,7 +3980,7 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                                         "committees", "title", "seat")},
                **lab, "n_votes": len(mv), "counts": dict(counts),
                "n_sponsored": len((sponsored or {}).get(mid, [])),
-               "slug": member_slug(m, lab)}
+               "slug": m.get("slug") or member_slug(m, lab)}
         if joined:
             # The numbers this page stands for, as the member's own file lists
             # them: a session day names a mover by the seat their ballots of
@@ -4083,8 +4144,7 @@ def build_composition(a, legs):
                 seats_by[("H", h["county"], h["district"])] = h.get("seats") or 1
     house_seats = sum(seats_by.values()) or 400
 
-    PARTY_FULL = {"R": "Republican", "D": "Democrat", "I": "Independent",
-                  "L": "Libertarian"}
+    PARTY_FULL = ST.party_words("name")      # the state's one table of parties
     comp = {}
     for ch, label, total in (("H", "House", house_seats), ("S", "Senate", 24)):
         members = [m for m in legs.values() if m["chamber"] == ch]
@@ -8912,8 +8972,9 @@ def manual_said(manual, left):
 
 # The party letters the Manual for the General Court's returns print for a candidate of one
 # party (build_manual_seats.PARTY). A line of two or three ("d&r", "r&d&l") is a candidate
-# more than one party nominated, and names no one party.
-MANUAL_PARTY = {"r": "R", "d": "D", "l": "L", "i": "I", "ind": "I"}
+# more than one party nominated, and names no one party. Read by the state's one table of
+# parties, whole: "d&r" is no form of it.
+MANUAL_PARTY = ST.party_lookup()
 
 
 def party_letter(party):
@@ -13528,6 +13589,15 @@ def main():
         print(f"  WARNING: {len(_unrecorded)} former address(es) answered with a 301 are not "
               f"in {MOVED_ADDRESSES}: record them with python3 src/ops/record_moves.py "
               f"after this build, and commit the file. First: {', '.join(_unrecorded[:4])}")
+    # THE LABEL NAMES THE LAST TERM'S SEAT, OR NONE (last_term_labels); the page stays put.
+    import parse_districts as PDIST
+    former, relabelled = last_term_labels(former, votes_by_member, printed_record(),
+                                          PDIST.table(".", ST.SETTINGS))
+    if relabelled:
+        print(f"{len(relabelled)} former member(s) labelled with their last term's seat, or none where "
+              "it is not known; no page moves: "
+              + ", ".join(f"{former[k].get('name')} ({was} -> {now})"
+                          for k, (was, now) in sorted(relabelled.items())[:12]))
     if former:
         print(f"{len(former):,} member(s) in the record hold no seat now; "
               "they get a page of their own and the sitting roster is "

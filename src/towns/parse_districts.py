@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.7
 """
 Turn the Senate and Executive Council district lists into a town lookup.
 
@@ -22,6 +22,10 @@ the three sources line up. Unincorporated places -- "Bean's Purchase",
 
 These are redistricted every ten years. Editing the text files and re-running
 is the whole update.
+
+What this writes is the one district table's view of the newest era
+(entities.district_table, entities.view_districts): the table the model of
+people, offices and districts (src/parse/build_entities.py) is built on too.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -34,6 +38,9 @@ import argparse
 import json
 import re
 from collections import defaultdict
+
+import entities as EN
+import state_settings as ST
 
 HEAD = re.compile(r"^\s*District\s+(\d+)\s*$", re.I)
 
@@ -99,15 +106,104 @@ def parse(path):
     return out
 
 
+# A PLACE AS A RESULTS FILE PRINTS IT: "Laconia Ward 1" is Laconia's ward 1; "Bath" a town of none.
+RESULTS_PLACE = re.compile(r"^(?P<town>.+?) Ward (?P<ward>\d+)$")
+
+
+def results_lists(root, era, spec):
+    """(lists, why): the House's and the Senate's districts of an era no list on file holds (its
+    "results" in the settings' district_eras), as the results files of the elections held on its
+    lines lay them out -- each race's seats, floterial mark and towns, a place printed otherwise
+    than the lists name it read by the era's "printed" -- in entities.district_table's shape. Every
+    race of every file must say what each other file says of it; where one does not, or a file
+    is not here, (None, why), and the era is left out."""
+    root = Path(root)
+    files = list(spec.get("results") or [])
+    gone = [f for f in files if not (root / f).is_file()]
+    if not files or gone:
+        return None, f"{', '.join(gone) or 'no results file'} not here"
+    printed = spec.get("printed") or {}
+    seen = {}
+    for rel in files:
+        for key, race in (json.loads((root / rel).read_text(encoding="utf-8")).get("races") or {}).items():
+            towns = []
+            for t in race.get("towns") or []:
+                t = printed.get(t, t)
+                m = RESULTS_PLACE.match(t)
+                towns.append((m.group("town"), m.group("ward")) if m else (t, "0"))
+            got = (race.get("seats"), bool(race.get("floterial")), towns)
+            first = seen.setdefault(key, (rel, got))
+            if (first[1][0], first[1][1], sorted(first[1][2])) != (got[0], got[1], sorted(towns)):
+                return None, f"{rel} {key} lays the district out otherwise than {first[0]}"
+    kinds = set(spec.get("kinds") or ("house", "senate"))
+    source = ", ".join(files)
+    parts = {"files": {k: source for k in kinds}, "source": source}
+    for key, (_rel, (seats, flot, towns)) in sorted(seen.items(), key=lambda kv: (kv[0].split("|")[:-1],
+                                                                                 int(kv[0].split("|")[-1]))):
+        bits = key.split("|")
+        if bits[0] == "H" and "house" in kinds:
+            parts.setdefault("house", {})[(bits[1], bits[2])] = {"county": bits[1], "district": bits[2],
+                                                                 "seats": seats, "floterial": flot, "towns": towns}
+        elif bits[0] == "S" and "senate" in kinds:
+            parts.setdefault("senate", {})[bits[1]] = towns
+    return parts, None
+
+
+def era_lists(root=".", settings=None, said=None):
+    """{era: lists}, in entities.district_table's shape: records/districts/*.txt under `root`, as
+    parse_house and parse read them, for the era the settings give the files (the newest; a list
+    not there is left out); and each earlier era the settings lay out from its results files
+    (results_lists), newest first, or a line in `said` of why it is left out."""
+    s = ST.SETTINGS if settings is None else settings
+    root = Path(root)
+    folder = root / "records" / "districts"
+    era = max(EN.eras(s))
+    parts = {"files": {}, "source": "records/districts"}
+    if (folder / "house.txt").is_file():
+        parts["house"] = parse_house(folder / "house.txt")
+        parts["files"]["house"] = "records/districts/house.txt"
+    for kind in ("senate", "council", "congress"):
+        k = s["district_kinds"][kind]
+        p = folder / Path(k["file"]).name
+        if p.is_file():
+            parts[kind] = parse(p)
+            parts["files"][kind] = k["file"]
+    out = {era: parts}
+    for e, spec in sorted(s["district_eras"].items(), reverse=True):
+        if e != era and spec.get("results"):
+            got, why = results_lists(root, e, spec)
+            if got is None:
+                if said is not None:
+                    said.append(f"the districts of {e} are left out: {why}")
+                continue
+            out[e] = got
+    return out
+
+
+def table(root=".", settings=None, said=None):
+    """(districts, places): the one district table of every era (entities.district_table of
+    era_lists), as the model of people, offices and districts holds it; without the counties."""
+    s = ST.SETTINGS if settings is None else settings
+    return EN.district_table(era_lists(root, s, said), s)
+
+
 def combine(d, towns=None, say=print):
     """{town: {ward: {"senate", "council", "congress", "house": [...]}}} from
     the four lists in folder `d`: what site/districts.json holds. `towns`,
     site/towns.json where it is built, is only read to say whether the names
     line up. One function, because the district map's check builds the same
     table from the tracked lists (build_district_map.py) and must not build it
-    a second way."""
+    a second way.
+
+    WRITTEN FROM THE ONE DISTRICT TABLE (the model's design, step 4, 19
+    November 2026): the lists are read here, and the table is
+    entities.district_table's, of the newest era the state's settings hold --
+    the same table the model of people, offices and districts is built on --
+    and what this returns is its view of that era (entities.view_districts).
+    What is said along the way is said of the lists as read."""
     d = Path(d)
-    combined = defaultdict(dict)
+    parts = {"source": d.as_posix(), "files": {}}
+    listed = set()      # the towns the Senate's, the Council's and Congress's lists name
     counts = {}
     for kind, fname in (("senate", "senate.txt"), ("council", "council.txt"),
                         ("congress", "congress.txt")):
@@ -116,11 +212,12 @@ def combine(d, towns=None, say=print):
             say(f"missing: {p}")
             continue
         districts = parse(p)
+        parts[kind], parts["files"][kind] = districts, p.as_posix()
         counts[kind] = len(districts)
         n = 0
         for num, entries in districts.items():
             for town, ward in entries:
-                combined[town].setdefault(ward, {})[kind] = int(num)
+                listed.add(town)
                 n += 1
         say(f"{kind}: {len(districts)} districts, {n:,} town-ward entries")
 
@@ -130,7 +227,7 @@ def combine(d, towns=None, say=print):
     if tp and tp.exists():
         house = json.loads(tp.read_text(encoding="utf-8"))
         hnames = set(house)
-        mine = set(combined)
+        mine = set(listed)
         missing = sorted(hnames - mine)
         extra = sorted(mine - hnames)
         say(f"\ntowns in the House file: {len(hnames)}; in these lists: {len(mine)}")
@@ -145,8 +242,10 @@ def combine(d, towns=None, say=print):
 
     # House districts, from the fuller list rather than HouseDistricts.txt.
     hp = d / "house.txt"
+    era = max(EN.eras())
     if hp.exists():
         hd = parse_house(hp)
+        parts["house"], parts["files"]["house"] = hd, hp.as_posix()
         flot = sum(1 for v in hd.values() if v["floterial"])
         seats = sum(v["seats"] for v in hd.values())
         say(f"\nhouse: {len(hd)} districts ({flot} floterial), "
@@ -154,15 +253,9 @@ def combine(d, towns=None, say=print):
         if seats != 400:
             say(f"  seat total is {seats}, not the constitutional 400 "
                   "\u2014 worth checking the source list")
-        for (county, num), rec in hd.items():
-            for town, ward in rec["towns"]:
-                combined[town].setdefault(ward, {}).setdefault("house", []).append(
-                    {"county": county, "district": int(num),
-                     "seats": rec["seats"], "floterial": rec["floterial"]})
-        for town, wards in combined.items():
-            for w, v in wards.items():
-                if "house" in v:
-                    v["house"].sort(key=lambda x: (x["floterial"], x["district"]))
+    table, places = EN.district_table({era: parts}, ST.SETTINGS)
+    combined = EN.view_districts({"district": table, "place": places}, era)
+    if hp.exists():
         nohouse = [f"{t}{'' if w=='0' else ' ward '+w}"
                    for t, ws in combined.items() for w, v in ws.items()
                    if "house" not in v]

@@ -2911,10 +2911,12 @@ into the letters it stands for (`parties`: "R/D" is R and D), by the one table
 of parties in `src/lib/state_settings.json` ("parties": each party's letter,
 the site's words for it, every form the files print it in, and the colours
 `app.css` draws it in); a form the table does not know is listed in the
-manifest, never guessed. The copies of that table in the code -- 26, in Python,
-the pages' scripts, the follow emails, the translations and the stylesheets --
-still read their own until each moves onto it, and `_party_copies_agree` holds
-each to it, listing the seven places they differ today (the elections' bar and
+manifest, never guessed. The copies of that table in the code -- 26 on 16
+November, in Python, the pages' scripts, the follow emails, the translations
+and the stylesheets -- move onto it a reader at a time: a reader that has reads
+the table's own view of it (`state_settings.party_words`, `party_lookup`;
+`_party_readers_read_the_table` lists them), and `_party_copies_agree` holds
+each copy still in the code to it, listing the seven places they differ today (the elections' bar and
 the emails give X other words and the elections' bar another ink; three
 first-letter rules take a U no file prints). A district is one id with its era
 in it (`house:2022:belknap-8`), and its record carries every spelling the files
@@ -2923,16 +2925,31 @@ use as a key -- the results' `H|Belknap|8`, the map's `BE8`, the roster's
 `county_numbers`, Counties.txt's), a page address's `belk-8` -- beside its name
 and its id's own part, so that any of them, as a file prints it (`Belk. 8`,
 `Carr 07`), resolves in an era to the one id (`entities.district_index`). The
+table is built once, by `entities.district_table`, from the lists of each era,
+and both its writers read it: the model, and `site/districts.json`, which
+`parse_districts.combine` writes as the table's view of the newest era
+(`entities.view_districts`; `_districts_json_is_the_tables_view` holds it to
+what the lists read plainly gave, byte for byte). The
 step reads every district the files the site prints districts from spell
 (`build_entities.PRINTED`: the rosters, the members-elect, the town table and
 search, the district map, each election's results, the bills' sponsors), each
 in the era of the term it is printed for, and its manifest's `districts` says
 what resolves to nothing and where a file and the table disagree (seats, the
 floterial mark, a place, a race's towns, one record naming two districts); a
-seat of a term before every era on file -- the 2012 districts are not on file
--- is counted, never read as today's of that number. On the files of 16
-November: 24,554 spellings in 14 files, 19,137 resolved, 5,417 of an earlier
-era, none unresolved and no disagreement (`_districts_printed_today`). Where the hand file and the county roster name
+seat of a term whose districts the table does not hold is counted, never read
+as today's of that number. The table has two eras (the settings'
+`district_eras`): today's, from `records/districts/*.txt`, filling the terms
+from 2023-2024; and the 2012 lines, filling 2013-2014 to 2021-2022, of which no
+table is on file, so its House and Senate districts are as the 2016, 2018 and
+2020 results lay them out (`parse_districts.results_lists`; they agree in all
+three years, and the era is left out, and said, where one does not), a place
+those files print otherwise read under the lists' name (the era's `printed`).
+`_district_era_2012` holds the era to the three files race by race. A former
+member's one district is read in their last term's era where that is today's
+or every term they served is of it. On the files of 19 November: 24,554
+spellings in 14 files, 21,026 resolved, 3,528 of a term whose districts the
+table does not hold, none unresolved and no disagreement
+(`_districts_printed_today`). Where the hand file and the county roster name
 different holders of one seat -- on 16 November the Hillsborough sheriff and
 the Strafford commissioner of district 1, each a vacancy filled since the
 roster's day -- the seat has two tenures, and the manifest lists the

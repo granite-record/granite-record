@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.4
+# GRANITE_VERSION: 2026-09-07.5
 """
 Members who have left, from the General Court's own database.
 
@@ -54,6 +54,7 @@ import json
 
 import probe_db
 import refusal
+import state_settings as ST
 
 # Inactive only. The sitting roster comes from legislators.txt and is richer;
 # this is for the people that file no longer carries.
@@ -70,8 +71,8 @@ WHERE Active = 0 AND PersonID IS NOT NULL
 ORDER BY PersonID
 """
 
-PARTY = {"D": "Democrat", "R": "Republican", "I": "Independent",
-         "L": "Libertarian"}
+# A party in the roster's words, by its letter: the state's one table of parties.
+PARTY = ST.party_words("name")
 
 
 def counties(path="Counties.txt"):

@@ -122,6 +122,21 @@
     "county": {"unit": "county", "name": "{county} County", "eras": false, "constitution": ["Pt. 2, Art. 71"]}
   },
   "district_eras": {
+    "2012": {"first_term": "2013-2014", "kinds": ["house", "senate"],
+             "results": ["collected/election_2016.json", "collected/election_2018.json", "collected/election_2020.json"],
+             "printed": {"Atkinson & Gilmanton Ac Gt": "Atk. & Gil. Academy Grant",
+                         "Atkinson and Gilmanton Ac. Gt.": "Atk. & Gil. Academy Grant",
+                         "Chandler's Purchase": "Chandler's Pur.", "Crawford's Purchase": "Crawford's Pur.",
+                         "Laconia Wd 1": "Laconia Ward 1", "Laconia Wd 2": "Laconia Ward 2",
+                         "Laconia Wd 3": "Laconia Ward 3", "Laconia Wd 4": "Laconia Ward 4",
+                         "Laconia Wd 5": "Laconia Ward 5", "Laconia Wd 6": "Laconia Ward 6",
+                         "Low and Burbank's Grant": "Low & Burbank's Grant",
+                         "Low and Burbank's Gt.": "Low & Burbank's Grant",
+                         "Second College Grant": "Second College Gt",
+                         "Thomp and Mes's Pur": "Thompson & Mes's Purchase",
+                         "Thompson & Meserve's Pur.": "Thompson & Mes's Purchase",
+                         "Wentworth's Location": "Wentworth's Loc."},
+             "source": "The 2012 lines, which the general elections of 2012 to 2020 were held on, for the House and the Senate only: no table of them is on file (the model's design, decision 11), so they are the Secretary of State's results of 2016, 2018 and 2020 (results: each race's seats, floterial mark and towns), which lay them out alike in all three years; 2016's lack Strafford's House races and the Senate. printed: a place as those files print it, under the name records/districts/*.txt gives it (each the same place by parse_sos_results.place_key, a ward written Wd)"},
     "2022": {"first_term": "2023-2024",
              "source": "collected/sos_districts.json: the Secretary of State's 'Towns and Wards as Districted for Election Purposes 2022', which records/districts/*.txt are held to; its elections fill the terms from 2023-2024"}
   },
@@ -133,7 +148,7 @@
     "constitution": ["Pt. 2, Art. 95"],
     "source": "Art. 95: no person holding the office of judge of any court, secretary, treasurer of the state, attorney-general, register of deeds, sheriff or member of Congress shall have a seat in the senate or house of representatives, and no member of the council shall; read by src/parse/office_links.py, which refuses to link an official to a member who held a seat in a term the office was held"},
   "parties": {
-    "source": "The one table of the parties (the model's design of 16 November 2026, step 3), as the site uses them today. letter: what a roster prints and a chip carries. name and plural: the roster's word for a member's party and its plural (site/legislators.json, build_pages.party_word). adjective: the word for a party's side where the site names one (the district map, the elections pages: 'Democratic'). party_name: the party's own name, which structured.py gives search engines; none for an independent, who has no party. spellings: every form the files print a party in, lower case (the General Court's r, d, i, l; the Secretary of State's REP, DEM, LIB, IND; office_links.py's words); a form of two parties, r&d or REP/DEM, is each part. words: the keys of src/pages/lang/ that say name, plural and adjective in another language. colour: the stylesheet's variable (src/pages/app.css) and its value in the light theme (and print) and the dark. none: what is drawn where no party is on file. C and G are known only by spellings (src/parse/office_links.py): the site names and colours neither. Read by src/lib/entities.py (the model) through state_settings.party_letters; the copies of it in the code are held to it by preflight (_party_copies_agree) and move onto it later.",
+    "source": "The one table of the parties (the model's design of 16 November 2026, step 3), as the site uses them today. letter: what a roster prints and a chip carries. name and plural: the roster's word for a member's party and its plural (site/legislators.json, build_pages.party_word). adjective: the word for a party's side where the site names one (the district map, the elections pages: 'Democratic'). party_name: the party's own name, which structured.py gives search engines; none for an independent, who has no party. spellings: every form the files print a party in, lower case (the General Court's r, d, i, l; the Secretary of State's REP, DEM, LIB, IND; office_links.py's words); a form of two parties, r&d or REP/DEM, is each part. words: the keys of src/pages/lang/ that say name, plural and adjective in another language. colour: the stylesheet's variable (src/pages/app.css) and its value in the light theme (and print) and the dark. none: what is drawn where no party is on file. C and G are known only by spellings (src/parse/office_links.py): the site names and colours neither. Read by src/lib/entities.py (the model) through state_settings.party_letters, and by the readers that kept a copy of it until 19 November 2026 through state_settings.party_words and party_lookup (preflight's _party_readers_read_the_table); the copies still in the code are held to it by _party_copies_agree.",
     "order": ["R", "D", "I", "L", "C", "G"],
     "letters": {
       "R": {"name": "Republican", "plural": "Republicans", "adjective": "Republican", "party_name": "Republican Party",

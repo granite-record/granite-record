@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.5
+# GRANITE_VERSION: 2026-09-07.6
 """
 Who sits on each committee, from the General Court's own database.
 
@@ -62,6 +62,7 @@ import json
 
 import probe_db
 import refusal
+import state_settings as ST
 
 SQL = """
 SELECT cm.CommitteeCode AS code,
@@ -80,8 +81,8 @@ JOIN Legislators l ON l.Employeeno = cm.EmployeeNumber
 ORDER BY cm.CommitteeCode, cm.SequenceNumber
 """
 
-PARTY = {"D": "Democrat", "R": "Republican", "I": "Independent",
-         "L": "Libertarian"}
+# A party in the roster's words, by its letter: the state's one table of parties.
+PARTY = ST.party_words("name")
 
 
 def main():

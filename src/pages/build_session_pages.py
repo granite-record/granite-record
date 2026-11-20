@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.67
+# GRANITE_VERSION: 2026-09-19.69
 """
 A page for every day the House sat.
 
@@ -73,6 +73,7 @@ import motions as MO
 import narrative as NR
 import session_days
 import spellings
+import state_settings as ST
 import journal_days
 import officers
 import proceedings
@@ -1195,7 +1196,8 @@ _CAT, _KIND = C.WORDBOOK["chips"]["category"], C.WORDBOOK["chips"]["kind"]
 CONSENT_CLASS = dict(zip(C.WORDBOOK["votes"]["consent"]["groups"],
                          (_CAT["Passed"], _CAT["Died"], _CAT["Interim Study"],
                           _CAT["In Progress"], _KIND["adopted"])))
-PARTY_WORD = {"R": "Republican", "D": "Democrat", "I": "Independent", "L": "Libertarian"}
+# A party's word under the day's counts, by its letter: the state's one table of parties.
+PARTY_WORD = ST.party_words("name")
 
 
 def short_outcome(item):
@@ -2976,8 +2978,9 @@ def rollcall_ids(html):
 FLOOR_RECORD = Path("data") / "floor_record.json"
 TERM_FILE = re.compile(r"\d{4}-\d{4}")
 HOW = {"RC": "roll call", "DV": "division", "VV": "voice vote"}
-PARTY_LETTER = {"republican": "R", "democrat": "D", "democratic": "D",
-                "independent": "I", "libertarian": "L"}
+# Every form of a party the state's one table of parties knows, lower case, to its letter;
+# each form begins with its letter, so a form it does not know falls back to the same answer.
+PARTY_LETTER = ST.party_lookup()
 
 
 def party_letter(p):

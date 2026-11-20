@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.1
+# GRANITE_VERSION: 2026-11-19.2
 """
 The Secretary of State's special elections for State Representative, read from
 its pages as a person saved them, into collected/specials.json (the specials
@@ -69,9 +69,9 @@ one vacancy, whatever the district's seats), and each party's primary for it
 (stage "primary", its party, and "for": the special, so it is never read as a
 State Primary). The district is the model's id, with its era: the term the seat
 is of (proceedings.term_on, the term sitting on the special's day) gives it by
-entities.era_of -- "house:2022:carroll-7" for a term from 2023-2024 -- and a term
-of 2013-2014 to 2021-2022, before every era the state's settings hold, is on the
-2012 lines, written "house:2012:rockingham-9" by the same district_id. The general
+entities.era_of, from the one district table's eras in the state's settings --
+"house:2022:carroll-7" for a term from 2023-2024, and for a term of 2013-2014 to
+2021-2022 the 2012 lines, "house:2012:rockingham-9". The general
 results' race key ("H|Carroll|7") is kept in "keys". A candidacy's person is
 null: whom it is is decided where the site is built, by the certain rule
 (build_member_elections), never here. "takes_office" is the sworn-in day where the
@@ -108,11 +108,6 @@ SOURCE = Path("records") / "sources" / "specials"
 WHERE = "records/sources/specials"
 MANIFEST = "_manifest.json"
 OUT = Path("collected") / "specials.json"
-# The 2012 lines: the districts the elections of 2012 to 2020 were held on, which filled the
-# terms 2013-2014 to 2021-2022. The state's settings hold no era before 2022 (no table of the
-# 2012 districts is on any disk here), so an id of a seat of those terms is written in this
-# era's name, by the model's own district_id.
-PRIOR_ERA, PRIOR_FIRST = "2012", "2013-2014"
 
 MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August",
           "September", "October", "November", "December")
@@ -474,11 +469,9 @@ def read_page(path, entry, generals, root="."):
     race = (results.get("races") or {}).get(key)
     if race is None:
         raise Refused(f"{name}: {key} is no race of the {cycle} general election, which elected {term}")
-    era = EN.era_of(term)
-    if era is None and PRIOR_FIRST <= term:
-        era = PRIOR_ERA
+    era = EN.era_of(term)      # the one district table's eras (state_settings.json district_eras)
     if era is None:
-        raise Refused(f"{name}: {term} is before every era of districts this reader can name")
+        raise Refused(f"{name}: {term} is before every era of districts the state's settings hold")
     where = f"{EN.slug(county)}-{number}"
     did = EN.district_id("house", era, where)
     src = f"{WHERE}/{name}"

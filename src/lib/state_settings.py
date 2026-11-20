@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.5
+# GRANITE_VERSION: 2026-11-11.6
 """
 The state's facts, read from src/lib/state_settings.json.
 
@@ -74,8 +74,9 @@ SOURCE_HOSTS = SETTINGS["source_hosts"]
 # THE PARTIES (the model's design of 16 November 2026, step 3): one table of each party's
 # letter, the site's words for it, the forms the files print it in and its colours as
 # src/pages/app.css draws them, which the file's "parties" says field by field. The model reads
-# it (entities.party_letters); the copies in the code are held to it by preflight
-# (_party_copies_agree), and move onto it a reader at a time.
+# it (entities.party_letters), and so do the readers that once kept their own copy (party_words,
+# party_lookup; _party_readers_read_the_table lists them); the copies still in the code are held
+# to it by preflight (_party_copies_agree).
 PARTIES = SETTINGS.get("parties") or {}
 PARTY = dict(PARTIES.get("letters") or {})
 PARTY_NONE = dict(PARTIES.get("none") or {})
@@ -95,6 +96,16 @@ def party_lookup(table=None):
 
 
 _LOOKUP = party_lookup()
+
+
+def party_words(form, table=None):
+    """{letter: the table's `form` of the party} for each party the table gives one, in the
+    table's order (PARTIES where no table is given): party_words("name") gives R, D, I and L the
+    roster's words (its "D" is "Democrat"), and party_words("party_name") the parties' own names,
+    which an independent has none of. The pages, the downloads and the fetchers read their
+    letter-to-word maps here."""
+    table = PARTIES if table is None else table
+    return {letter: row[form] for letter, row in (table.get("letters") or {}).items() if row.get(form)}
 
 
 def party_letters(printed, table=None):

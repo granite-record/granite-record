@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.11
+# GRANITE_VERSION: 2026-09-13.12
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
@@ -33,6 +33,7 @@ Deliberately NOT said:
 
 Every function returns a dict; shell.page() serialises it safely.
 """
+import state_settings as ST
 
 JURISDICTION = "US-NH"
 # WHO PUBLISHES THE PAGE, as distinct from who made the bill. A bill page used
@@ -67,8 +68,9 @@ def _crumbs(base, trail):
         for i, (name, url) in enumerate(trail, 1)]}
 
 
-# A member's party, by its first letter, as the parties name themselves.
-PARTY_NAME = {"D": "Democratic Party", "R": "Republican Party", "L": "Libertarian Party"}
+# A member's party, by its first letter, as the parties name themselves (the state's one
+# table of parties; an independent belongs to none).
+PARTY_NAME = ST.party_words("party_name")
 
 
 def bill(b, d, base, canon_path, modified=None):
