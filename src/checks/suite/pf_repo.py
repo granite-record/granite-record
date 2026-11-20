@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.19
+# GRANITE_VERSION: 2026-11-16.20
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1328,6 +1328,10 @@ _SPLIT_FROM_SITE = {
     "stations": tuple(("CONCURRENCE concurrence_action fold_conference_notices "
                        "invented_end motion_keys station_for_floor "
                        "station_for_proceeding weak_marker withhold_late_captions").split()),
+    "members": tuple(("HONORIFIC PARTY_INITIALS _COMPOSITE_RE _OWN_SLUG _PARTY_TAIL_RE "
+                      "_PLACEHOLDER_RE _SUFFIX_RE _TITLE_RE member_labels member_slug "
+                      "name_key own_slug person_name roster_name_keys sitting_labels "
+                      "sort_name").split()),
 }
 
 
@@ -1454,6 +1458,25 @@ def _site_stations_moved(B, STN):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in stations.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the stations' own")
+
+
+@check("files", "naming a member -- member_labels, the page's address, the names a record prints "
+                "read into one form -- is members.py's, every name of it imported back into "
+                "build_site_v2",
+       needs=("build_site_v2", "members"))
+def _site_members_moved(B, MEM):
+    """build_site_v2's members moved to members.py on 20 November 2026 (the refactor's finding
+    4), as they stood: first the naming of a member they read -- sitting_labels, own_slug,
+    member_slug, the honorifics and the party letters a name keeps, person_name, sort_name,
+    name_key, roster_name_keys and member_labels. Every name of them is held to be members.py's,
+    defined nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so the
+    bills' sponsors and votes, main and the checks that ask build_site_v2.member_labels name a
+    member the one way."""
+    names = _SPLIT_FROM_SITE["members"]
+    bad = _split_out(B, MEM, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in members.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the members' own")
 
 
 def _readme_unlisted(folder, root=None):

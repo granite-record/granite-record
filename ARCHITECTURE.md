@@ -113,11 +113,11 @@ typed from the root answers "can't open file".
 after each: the passage rail and the journey are `journey.py`, a bill's
 status (the status vocabulary, `classify`, `closing_stage`, `next_step`) is
 `status.py`, a proceeding as a station on the page and the caption times
-withheld before one is drawn are `stations.py`, what the two chambers did
-with each other's version is
-`conferences.py`, and what they share with the rest of it -- what a bill of
-each kind has to clear, a bill's letters, the chip's six words, the docket
-line -- is `parts.py`'s. A module
+withheld before one is drawn are `stations.py`, naming a member
+(`member_labels`, a member's page address) is `members.py`, what the two
+chambers did with each other's version is `conferences.py`, and what they
+share with the rest of it -- what a bill of each kind has to clear, a bill's
+letters, the chip's six words, the docket line -- is `parts.py`'s. A module
 split out of `build_site_v2` never imports it back (`_import_cycles_cut`),
 and `build_site_v2` imports every moved name back where it was, so
 `build_site_v2.journey` and the rest still answer for every caller;

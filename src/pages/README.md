@@ -137,9 +137,9 @@ The record and its own pages:
 - `build_site_v2`: the record builder -- each bill's payload and the bill
   index, and the legislators', towns' and committees' files the pages after
   it read (there was never a v1 here); its journey, a bill's status, the
-  proceedings' stations and the conferences are modules of their own beside
-  it since 20 November 2026 (the next four lines), and it imports every name
-  of theirs back;
+  proceedings' stations, the members and the conferences are modules of their
+  own beside it since 20 November 2026 (the next five lines), and it imports
+  every name of theirs back;
 - `journey`: the passage rail and the journey -- the four stops a bill passes
   (`passage`) and what each chamber decided and when (`journey`,
   `journey_rail` and the `_j_` readers), read from the docket for the rail's
@@ -157,6 +157,11 @@ The record and its own pages:
   out of step with their recording withheld first (`withhold_late_captions`);
   a section of `build_site_v2` until 20 November 2026, which imports every
   name of it back;
+- `members`: a member as the site names them -- the one way of naming a
+  member (`member_labels`), the address of their page (`member_slug`,
+  `own_slug`) and the names a record prints read into one form
+  (`person_name`, `sort_name`); a section of `build_site_v2` until 20
+  November 2026, which imports every name of it back;
 - `conferences`: what the two chambers did with each other's version of a
   bill -- a concurrence, a committee of conference and how it ended -- read
   from the docket; a section of `build_site_v2` until 20 November 2026, which

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.24
+# GRANITE_VERSION: 2026-11-16.25
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -1859,7 +1859,7 @@ _PARTY_READERS = (
     ("src/fetch/gc_web/fetch_rollcall_parties.py", "PARTY", "party_lookup", ()),
     ("src/pages/build_site_v2.py", "MANUAL_PARTY", "party_lookup", ()),
     ("src/parse/office_links.py", "PARTY_WORDS", "party_lookup", ()),
-    ("src/pages/build_site_v2.py", "PARTY_INITIALS", "party_initials", ()),
+    ("src/pages/members.py", "PARTY_INITIALS", "party_initials", ()),
     ("src/parse/names.py", "PARTY_INITIALS", "party_initials", ()),
     ("src/parse/past_sponsors.py", "PARTY_INITIALS", "party_initials", ()),
 )
@@ -1867,7 +1867,8 @@ _PARTY_READERS = (
 # tail, a ballot's party, kept where it is one of the letters the table has a word for. Until then
 # each wrote "RDILU" in the file, a U no table holds and no file prints. Each rule's letters are
 # PARTY_INITIALS, and no string in the file writes a run of the table's letters of its own.
-_PARTY_RULES = ("src/pages/build_site_v2.py", "src/parse/names.py", "src/parse/past_sponsors.py")
+_PARTY_RULES = ("src/pages/build_site_v2.py", "src/pages/members.py", "src/parse/names.py",
+                "src/parse/past_sponsors.py")
 
 
 def _party_rule_literals(tree, letters):
