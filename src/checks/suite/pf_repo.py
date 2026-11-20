@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.34
+# GRANITE_VERSION: 2026-11-16.35
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1390,6 +1390,9 @@ _SPLIT_FROM_SITE = {
                            "docket_count_differs election_day load_ballots ratified").split()),
     "db_status": tuple(("DB_FROZEN DB_LEGISLATION DB_STATUS_COLUMNS _DB_STATUS _status_codes "
                         "db_statuses fill_status_from_db no_dump_for terms_without_a_dump").split()),
+    "documents": tuple(("DOCKET_SOURCE J_DECIDED_ACT PAST_SOURCE ROW_NAMES_ANOTHER _cite "
+                        "_docket_as_entered _long_day _with_plain bill_documents bill_text_url "
+                        "journal_decided_story journal_story record_notes").split()),
 }
 
 
@@ -1724,6 +1727,26 @@ def _site_db_status_moved(B, DBS):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in db_status.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the database statuses' own")
+
+
+@check("files", "what a bill's page cites and lists of its record -- a docket line's citation, its "
+                "documents, a House Journal record's story and where a record comes from -- is "
+                "documents.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "documents"))
+def _site_documents_moved(B, DOC):
+    """build_site_v2's documents, journal story and record notes moved to documents.py on
+    20 November 2026 (the refactor's finding 4), as they stood: _with_plain and _cite;
+    bill_documents, _long_day, journal_story, J_DECIDED_ACT and journal_decided_story,
+    PAST_SOURCE and DOCKET_SOURCE, ROW_NAMES_ANOTHER, _docket_as_entered, record_notes and
+    bill_text_url. Every name of them is held to be documents.py's, defined nowhere in
+    build_site_v2.py, and build_site_v2.<name> the same object, so build_bills,
+    bill_disposition and the checks that ask build_site_v2 cite and list a record the one
+    way."""
+    names = _SPLIT_FROM_SITE["documents"]
+    bad = _split_out(B, DOC, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in documents.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the documents' own")
 
 
 def _readme_unlisted(folder, root=None):
