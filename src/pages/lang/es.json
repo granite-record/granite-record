@@ -2150,6 +2150,11 @@
    "es": "Logotipo dibujado por Debra Caplan, artista de Peterborough, NH",
    "state": "draft"
   },
+  "foot.map": {
+   "en": "Every page",
+   "es": "Todas las páginas",
+   "state": "draft"
+  },
   "foot.new": {
    "en": "The site is new and being tested. Found an error?",
    "es": "El sitio es nuevo y está en pruebas. ¿Encontró un error?",

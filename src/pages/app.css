@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.410 */
+/* GRANITE_VERSION: 2026-09-07.411 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1565,7 +1565,7 @@ line-height:1.1}
   nav.top,.skip,.calskip,.searchrow,.ftoggle,.vpage .vtoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
   .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
-  .followmail .followfreq,.webinar,.testify,.trrep,.trpill,.trbox,nav.subnav{display:none !important}
+  .followmail .followfreq,.webinar,.testify,.trrep,.trpill,.trbox,nav.subnav,nav.smap{display:none !important}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar
      that lists them; the Laws landing its directory, without the filters
@@ -1934,6 +1934,40 @@ min-height:44px;width:100%}
    offer to the reader; the line on a page not yet in the reader's language
    (find.js, langNotice); and the Spanish home page's word on what is in
    Spanish so far. */
+/* THE FOOTER'S MAP OF THE SITE (the owner, 20 November 2026: navigation
+   option A's footer site map, on every page): the six sections as headings,
+   each over its row's pages (chrome.site_map), above the footer's three
+   columns and ruled off from them. The headings are the serif at 17px over
+   15px links, so they outrank what they head. Six columns on a desktop,
+   three on a tablet; on a phone each section folds under its heading, which
+   find.js makes a 44px button (smapMount), its pages in two columns. */
+.smap{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--sp-7) var(--sp-8);
+margin:0 0 var(--sp-7);padding-bottom:var(--sp-7);border-bottom:1px solid var(--rule)}
+.smh{margin:0 0 var(--sp-3);font:600 1.0625rem/1.3 var(--serif);color:var(--ink)}
+.smh a{color:var(--ink);text-decoration:none}
+.smh a:hover{color:var(--pine);text-decoration:underline}
+.smap ul{list-style:none;margin:0;padding:0}
+.smap ul[hidden]{display:none}
+.smap li a{display:inline-block;padding:var(--sp-2) 0;font:500 .9375rem/1.3 var(--sans);
+color:var(--ink-2);text-decoration:none}
+.smap li a:hover{color:var(--pine);text-decoration:underline}
+@media (max-width:68.75em){.smap{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:45em){
+  .smap{display:block;gap:0;padding-bottom:0}
+  .smcol{border-bottom:1px solid var(--rule)}
+  .smcol:last-child{border-bottom:0}
+  .smh{margin:0}
+  .smbtn{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;
+  padding:0;background:none;border:0;font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+  .smbtn::after{content:"";width:8px;height:8px;margin-right:var(--sp-2);border:solid var(--ink-2);
+  border-width:0 2px 2px 0;transform:rotate(45deg)}
+  .smbtn[aria-expanded="true"]::after{transform:rotate(-135deg)}
+  .smbtn:focus-visible{outline-offset:-2px}
+  .smap ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--sp-4);
+  padding-bottom:var(--sp-4)}
+  .smap ul[hidden]{display:none}
+  .smap li a{display:block;min-height:44px;padding:var(--sp-5) 0}
+}
 footer .footlang{display:none;margin:var(--sp-5) 0 0;font-size:var(--t-sm)}
 html.langs footer .footlang{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-3)}
 /* A list to choose from (24 October 2026): the globe and the word, and the

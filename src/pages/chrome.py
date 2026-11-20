@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.12
+# GRANITE_VERSION: 2026-10-23.13
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -462,6 +462,28 @@ def menu_all(page="", item=None, lang="en", facts=None):
                    f'<div class="nvpages">{pages}</div></div>')
     return '<div class="navall">' + "".join(out) + "</div>"
 
+
+def site_map(lang="en", facts=None):
+    """The footer's map of the site: the six sections as headings, each with
+    its row's pages (the owner, 20 November 2026). The same on every page --
+    nothing in it is marked as the page a reader is on -- and drawn from
+    ROWS, as the row and the menu are. On a phone each section folds under
+    its heading (find.js, smapMount); without the script every one is open.
+    Its headings are the serif over the links' sans, so they outrank what
+    they head."""
+    words = tab_words(lang)
+    to = (lambda h: h) if lang == i18n.DEFAULT else (lambda h: i18n.href(lang, h))
+    cols = []
+    for href, _label, _glyph in NAV_TABS:
+        stem = href[:-5]
+        items = "".join(f"<li>{_link(h, extra, label + _in_english(lang, en), False, lang, en)}</li>"
+                        for _iid, label, h, extra, en in row_items(href, lang, facts))
+        cols.append(f'<div class="smcol"><h2 class="smh" id="fm-{stem}"><a href="{to(href)}">'
+                    f'{words[href]}</a></h2><ul id="fm-{stem}-pages" aria-labelledby="fm-{stem}">'
+                    f"{items}</ul></div>")
+    label = _html.escape(say(lang, "foot.map", "Every page"))
+    return f'<nav class="smap" aria-label="{label}">' + "".join(cols) + "</nav>"
+
 # THE REPOSITORY, NAMED ONCE. The footer links it, and so do the Data page
 # and "How this is made" -- three places for three different readers, and one
 # constant so a move cannot leave two of them pointing at nothing.
@@ -655,10 +677,12 @@ def lang_note(lang):
 # Choosing one goes to this page in it (data-href), or to that language's
 # home page where this page has no version in it, and makes it the reader's
 # choice, as Settings' list does (lang_head()).
-def footer_html(lang="en", alt=None):
+def footer_html(lang="en", alt=None, facts=None):
     """The footer in `lang`. `alt` is {code: address} of this page in the
     other languages; a page that has no other is offered the other
-    language's home page."""
+    language's home page. Above its columns, the map of the site
+    (site_map), whose pages that come and go are row_facts()'s, or
+    `facts`, which only a check gives."""
     opts = []
     for code in i18n.LANGS:
         to = ("" if code == lang
@@ -670,6 +694,7 @@ def footer_html(lang="en", alt=None):
     said += [w for w in (say(c, "set.lang", "Language") for c in i18n.LANGS if c != lang)
              if w not in said]
     return f"""<footer><div class="in">
+{site_map(lang, facts)}
 <div class="fcols">
 <div class="fcol">
 <p class="fcolhead">Granite Record</p>
@@ -700,7 +725,17 @@ def footer_html(lang="en", alt=None):
 </div></footer>"""
 
 
-FOOTER = footer_html("en")
+# FOOTER, the English footer, is drawn when it is asked for (__getattr__,
+# below): its map holds the pages that come and go as this run's site has
+# them (row_facts), which a constant made when the module was first
+# imported could not know.
+
+
+def __getattr__(name):
+    """chrome.FOOTER: footer_html("en"), drawn for this run's site."""
+    if name == "FOOTER":
+        return footer_html("en")
+    raise AttributeError(f"module 'chrome' has no attribute {name!r}")
 
 # The one stylesheet, from the root, and the components every page's scripts
 # use, loaded before any of them.
@@ -808,7 +843,7 @@ NAV_RE = _re.compile(r'<nav class="top".*?</nav>(?:<nav class="subnav".*?</nav>)
 
 def footer(lang="en", alt=None):
     """The footer, and the script that puts the data's date in it."""
-    return f"{FOOTER if lang == i18n.DEFAULT and not alt else footer_html(lang, alt)}\n{FOOT_JS}"
+    return f"{footer_html(lang, alt)}\n{FOOT_JS}"
 
 
 def scripts(lang="en"):

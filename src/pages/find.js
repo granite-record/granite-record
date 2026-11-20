@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.70
+// GRANITE_VERSION: 2026-09-16.71
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1659,9 +1659,50 @@ function rowMount(){
   }
 }
 
+/* THE FOOTER'S MAP FOLDS ON A PHONE (the owner, 20 November 2026: "on
+   phones the footer map folds by section"). chrome.site_map writes every
+   section open, under a heading that links the section; below 45em each
+   heading is a button instead, which opens and shuts its own list
+   (aria-expanded, aria-controls), and every list starts shut. From 45em the
+   map is open columns and the headings are links again. Without the script
+   every list is open at every width. */
+function smapMount(){
+  const map=document.querySelector("nav.smap");
+  if(!map||!window.matchMedia)return;
+  const mq=matchMedia("(max-width:45em)");
+  const cols=[...map.querySelectorAll(".smcol")].map(c=>({h:c.querySelector(".smh"),list:c.querySelector("ul")}))
+    .filter(c=>c.h&&c.list);
+  cols.forEach(c=>{c.link=c.h.innerHTML;});
+  const set=()=>cols.forEach(c=>{
+    if(mq.matches){
+      if(!c.btn){
+        c.btn=document.createElement("button");
+        c.btn.type="button";c.btn.className="smbtn";
+        c.btn.setAttribute("aria-expanded","false");
+        c.btn.setAttribute("aria-controls",c.list.id);
+        c.btn.textContent=c.h.textContent;
+        c.btn.addEventListener("click",()=>{
+          const on=c.btn.getAttribute("aria-expanded")!=="true";
+          c.btn.setAttribute("aria-expanded",String(on));
+          c.list.hidden=!on;
+        });
+      }
+      if(!c.h.contains(c.btn)){c.h.textContent="";c.h.appendChild(c.btn);}
+      c.list.hidden=c.btn.getAttribute("aria-expanded")!=="true";
+    }else{
+      if(c.btn&&c.h.contains(c.btn))c.h.innerHTML=c.link;
+      c.list.hidden=false;
+    }
+  });
+  set();
+  if(mq.addEventListener)mq.addEventListener("change",set);
+  else if(mq.addListener)mq.addListener(set);
+}
+
 findMount();
 menuMount();
 rowMount();
+smapMount();
 
 // THE SKIP LINK TAKES THE KEYBOARD WITH IT. Its target -- #results on a record
 // page, #main on the home page, About and the search page -- is a plain

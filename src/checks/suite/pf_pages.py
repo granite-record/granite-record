@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.25
+# GRANITE_VERSION: 2026-11-16.26
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -14979,8 +14979,8 @@ def _row_comes_and_goes():
                   f"all {len(keys)} row labels have a Spanish draft")
 
 
-@check("frontend", "on a page in another language the phone's menu marks a link to a page that is in "
-                   "English only \"(en inglés)\", and the row does not")
+@check("frontend", "on a page in another language the phone's menu and the footer's map mark a link to a "
+                   "page that is in English only \"(en inglés)\", and the row does not")
 def _row_marks_english():
     """The owner, 20 November 2026: on Spanish pages, links to English-only
     pages are marked "(en inglés)" in the footer map and the phone menu, not
@@ -14989,8 +14989,9 @@ def _row_marks_english():
     (i18n.PAGES) do not hold says "(en inglés)", in the catalog's own words
     (guides.in_english), and carries hreflang="en"; each to a Spanish page
     says neither; the row says neither, however its pages are; and an
-    English page marks nothing. Then on every Spanish page the fixture
-    built, the menu is marked so."""
+    English page marks nothing. The same of the footer's map (chrome.site_map),
+    in Spanish and in English. Then on every Spanish page the fixture built,
+    the menu and the map are marked so."""
     import chrome as CH
     import i18n
     some = {"requests": {"term": "2027-requests", "year": "2027"}, "elect_until": "2099-12-01",
@@ -15000,7 +15001,9 @@ def _row_marks_english():
 
     def faults(t, lang):
         out, n = [], 0
-        for href, attrs, inner in _row_menu(t):
+        smap = re.search(r'<nav class="smap".*?</nav>', t, re.S)
+        mapped = re.findall(r'<li><a href="([^"]*)"([^>]*)>(.*?)</a></li>', smap.group(0), re.S) if smap else []
+        for href, attrs, inner in _row_menu(t) + mapped:
             page = (CH._split(_row_key(href))[0] or "index") + ".html"
             english = lang != "en" and not i18n.has(lang, page)
             n += english
@@ -15016,6 +15019,9 @@ def _row_marks_english():
         bad += f
         assert n, f"the Spanish menu on {sec} names no English page"
         bad += faults(CH.nav(sec, facts=some), "en")[0]
+    f, n = faults(CH.footer_html("es", facts=some), "es")
+    assert n, "the Spanish footer's map names no English page"
+    bad += f + faults(CH.footer_html("en", facts=some), "en")[0]
     site = _fixture_site_shared()[0] / "site"
     spanish = 0
     for rel, t in _row_pages(site):
@@ -15025,8 +15031,92 @@ def _row_marks_english():
         bad += [f"{rel}: {x}" for x in faults(t, "es")[0]]
     assert spanish, "the fixture built no Spanish page"
     assert not bad, f"{len(bad)} faults: " + "; ".join(bad[:6])
-    return "ok", (f"the Spanish menu marks every English-only page {word} with hreflang=\"en\" and no "
-                  f"Spanish one, the row none; so on all {spanish} Spanish pages the fixture built")
+    return "ok", (f"the Spanish menu and footer map mark every English-only page {word} with "
+                  f"hreflang=\"en\" and no Spanish one, the row none; so on all {spanish} Spanish pages "
+                  "the fixture built")
+
+
+@check("frontend", "the footer's map of the site is chrome.ROWS, as the header's row and the phone's menu are: "
+                   "every section, every page of its row, in the row's order and words")
+def _footer_map_one_table():
+    """The owner, 20 November 2026 (navigation option A, answer 4): a footer
+    site map on every page, drawn from the same table as the rows, so the
+    row, the phone's menu and the footer cannot come to disagree. Held, in
+    both languages and with every page that comes and goes drawn and with
+    none: chrome.footer_html's map has the six sections of NAV_TABS in their
+    order, each a heading over exactly the links row_items gives its row --
+    the same addresses, attributes and words, in the same order -- and the
+    phone's menu (chrome.menu_all) has the same; nothing in either is marked
+    as the page a reader is on, so the footer is one on every page; and the
+    map sits above the footer's three columns."""
+    import chrome as CH
+    some = {"requests": {"term": "2027-requests", "year": "2027"}, "elect_until": "2099-12-01",
+            "elections": True, "former": True, "documents": True, "live": True}
+    none = {k: None for k in set(CH.COMES_AND_GOES.values())}
+    n = 0
+    for lang in ("en", "es"):
+        for facts in (some, none):
+            foot = CH.footer_html(lang, facts=facts)
+            menu = CH.nav("bills.html", lang=lang, facts=facts)
+            smap = re.search(r'<nav class="smap"[^>]*>.*?</nav>', foot, re.S)
+            assert smap, "the footer has no map of the site"
+            assert foot.index('<nav class="smap"') < foot.index('<div class="fcols">'), (
+                "the map is not above the footer's columns")
+            heads = re.findall(r'<h2 class="smh" id="fm-([a-z]+)">', smap.group(0))
+            assert heads == [h[:-5] for h, _l, _g in CH.NAV_TABS], f"the map's sections are {heads}"
+            cols = re.findall(r'<div class="smcol">(.*?)</ul></div>', smap.group(0), re.S)
+            secs = re.findall(r'<div class="nvsec">(.*?)</div></div>', menu, re.S)
+            for (sec, _l, _g), col, msec in zip(CH.NAV_TABS, cols, secs):
+                want = [(h, extra) for _i, _label, h, extra, _en in CH.row_items(sec, lang, facts)]
+                got = re.findall(r'<li><a href="([^"]*)"((?: [a-z-]+(?:="[^"]*")?)*?)(?: hreflang="en")?>', col)
+                assert got == want, f"{lang}: the footer's {sec} is {got}, not the row's {want}"
+                labels = [lab for _i, lab, _h, _e, _en in CH.row_items(sec, lang, facts)]
+                said = [re.sub(r"\s*<span.*", "", x) for x in re.findall(r"<li><a [^>]*>(.*?)</a></li>", col)]
+                assert said == labels, f"{lang}: the footer's {sec} says {said}, not {labels}"
+                in_menu = re.findall(r'<div class="nvpages">.*', msec, re.S)[0]
+                assert [h for h, _a in re.findall(r'<a href="([^"]*)"([^>]*)>', in_menu)] == [h for h, _e in want], (
+                    f"{lang}: the phone's menu and the footer differ on {sec}")
+                n += len(want)
+            assert 'aria-current' not in smap.group(0), "the footer's map marks a page as the one a reader is on"
+    return "ok", (f"the footer's map and the phone's menu are chrome.ROWS in both languages, with and "
+                  f"without the pages that come and go: {n} links compared, none marked current")
+
+
+@check("frontend", "Elections and Votes are one click from every page: the footer's map links both "
+                   "wherever their pages are written")
+def _elections_votes_one_click():
+    """The owner's ask of 20 November 2026 that started navigation option A:
+    Elections and the vote search were reachable only from inside a bill's or
+    a legislator's page. Now the footer, on every page, links Votes, and
+    Elections wherever the build writes it (chrome.row_facts: there are
+    results on file). Held on the fixture's every page -- it writes the votes
+    page and has no election results, so its footer links Votes and not
+    Elections -- and with the results there, on chrome's footer in both
+    languages; and on site/, where a build has written the elections pages,
+    on every page of it."""
+    import chrome as CH
+    some = {"requests": None, "elect_until": None, "elections": True, "former": True,
+            "documents": True, "live": False}
+    for lang in ("en", "es"):
+        foot = CH.footer_html(lang, facts=some)
+        keys = {_row_key(h) for h in re.findall(r'<a href="([^"]*)"', foot)}
+        assert {"votes", "elections"} <= keys, f"the {lang} footer links {sorted(keys)[:12]}"
+    said = []
+    sites = [("the fixture's site", _fixture_site_shared()[0] / "site")]
+    if (Path("site") / "elections" / "index.html").is_file() and (Path("site") / "votes.html").is_file():
+        sites.append(("site/", Path("site")))
+    for what, site in sites:
+        want = {"votes"} | ({"elections"} if (site / "elections" / "index.html").is_file() else set())
+        bad, n = [], 0
+        for rel, t in _row_pages(site):
+            n += 1
+            foot = re.search(r"<footer>.*?</footer>", t, re.S)
+            keys = {_row_key(h) for h in re.findall(r'<a href="([^"]*)"', foot.group(0))} if foot else set()
+            if not want <= keys:
+                bad.append(f"{rel} lacks {sorted(want - keys)}")
+        assert n > 20 and not bad, f"{what}: {len(bad)} of {n} pages: " + "; ".join(bad[:5])
+        said.append(f"all {n} pages of {what} link {' and '.join(sorted(want))} from the footer")
+    return "ok", "; ".join(said) + "; with results on file, chrome's footer links Elections too, in both languages"
 
 
 @check("frontend", "every page's footer says who makes the site and leads to About, which says it once")
