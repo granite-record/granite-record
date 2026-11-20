@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Check alignment across every video processed, without needing hand-marked times.
 
@@ -32,10 +32,7 @@ import random
 import statistics
 from collections import Counter, defaultdict
 
-
-def hms(s):
-    s = int(s)
-    return f"{s//3600}:{(s%3600)//60:02d}:{s%60:02d}"
+from proceedings import hms
 
 
 def structural(segs):

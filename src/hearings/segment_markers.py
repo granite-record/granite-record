@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.60
+# GRANITE_VERSION: 2026-09-05.61
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -1883,7 +1883,7 @@ def main():
             for _, b, s in flat:
                 t = int(s["start"])
                 end = f" to {int(s['end'])//60}m" if s.get("end") else ""
-                print(f"    {b:<9} {t//3600}:{(t%3600)//60:02d}:{t%60:02d}{end}"
+                print(f"    {b:<9} {P.hms(t)}{end}"
                       f"   {s['what']}, by {s['how']}")
                 print(f"      \"{s['said'][:96]}\"")
 

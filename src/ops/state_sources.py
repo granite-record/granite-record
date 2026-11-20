@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.8
+# GRANITE_VERSION: 2026-10-30.9
 """
 The state documents the guides and Learn pages rest on: from the laptop, where
 a real browser can read them, to the sessions, which cannot.
@@ -110,6 +110,7 @@ import re
 from datetime import date, datetime
 from urllib.parse import urlsplit
 
+import names as NM
 import state_settings as ST
 
 REGISTRY = "records/sources/REGISTRY.csv"
@@ -947,7 +948,7 @@ NOT_THE_OFFICE = {"deputy", "assistant", "deputies"}
 CUES = ("resign", "vacan", "former", "retir", "decease", "interim", "acting", "passed")
 NEAR_OFFICE = 15          # words between a name and the office it is listed under
 NEAR_CUE = 8              # words between a name and a word above, on its own line
-SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
+SUFFIXES = NM.SUFFIXES
 # Common short forms, both ways: a page may print the one the record does not.
 NICKNAMES = [
     {"william", "bill", "billy", "will"}, {"robert", "bob", "rob", "bobby"},

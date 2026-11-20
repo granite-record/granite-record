@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.5
+# GRANITE_VERSION: 2026-09-20.7
 """
 One canonical list of New Hampshire places, and what each source says about it.
 
@@ -98,6 +98,7 @@ import json
 import re
 
 import parse_districts
+from slugs import slug  # 'Bean's Grant' -> 'bean-s-grant', matching town_clerks.json's keys
 
 # The repository root, wherever this file sits (_paths.py): the data it
 # reads is the root's.
@@ -136,12 +137,6 @@ SOURCES = {
                       "date in the filename.",
     },
 }
-
-
-def slug(name):
-    """'Bean's Grant' -> 'bean-s-grant', matching town_clerks.json's keys."""
-    s = re.sub(r"[^a-z0-9]+", "-", name.lower())
-    return s.strip("-")
 
 
 def norm(name):

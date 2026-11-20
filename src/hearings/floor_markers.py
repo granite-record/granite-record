@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Segment a floor session on what the clerk actually says.
 
@@ -38,6 +38,8 @@ import _paths  # noqa: E402,F401
 import argparse
 import json
 import re
+
+from proceedings import hms
 
 # YouTube's copy-paste format runs the timestamp together with a verbose repeat
 # and then the text: "1:07:45" + "1 hour, 7 minutes, 45 seconds" + text.
@@ -165,11 +167,6 @@ OPEN_LOOSE = re.compile(
 
 ROLLCALL = re.compile(r"this is a roll call vote|roll call has been requested", re.I)
 DIVISION = re.compile(r"this is a division vote|division has been requested", re.I)
-
-
-def hms(s):
-    s = int(s)
-    return f"{s // 3600}:{(s % 3600) // 60:02d}:{s % 60:02d}"
 
 
 def parse(path):

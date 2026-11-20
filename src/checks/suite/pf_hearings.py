@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of livestreams, markers, dockets and proceedings.
 
@@ -1018,6 +1018,98 @@ def _markers_fallback():
                       f"stated and start still estimated; verify_batch: {band}")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+# SECONDS AS A CLOCK HAVE ONE HOME (the refactor's finding 8, 20 November 2026): proceedings.hms.
+# Each of these wrote the rule out for itself until then, and each gave the home's answer on all
+# 985,983 real inputs it was run on (proceedings.csv's offsets, review/'s times, 150 recordings'
+# caption starts); (file, the name it is bound to, how it reads the home):
+#   from   `from proceedings import hms` (as the name), and no def of the name
+#   call   a def of the name whose body calls P.hms and writes no clock of its own: the copy kept
+#          how it reads a missing value (apply_markers: none is 0:00:00; review: "" for none)
+_CLOCK_READERS = (
+    ("src/hearings/verify_batch.py", "hms", "from"),
+    ("src/hearings/gap_excerpts.py", "hms", "from"),
+    ("src/hearings/floor_markers.py", "hms", "from"),
+    ("src/fetch/youtube/transcribe_and_align.py", "hhmmss", "from"),
+    ("src/hearings/apply_markers.py", "hms", "call"),
+    ("src/checks/review.py", "_hms", "call"),
+)
+# The clock written out ("{s // 3600}:{...}"), which only the home and these may write: each is
+# a different rule, said here.
+_CLOCK_OTHERS = {
+    "src/hearings/caption_span.py": "rounds to the nearest second, where the home cuts to the second "
+                                    "a moment is in (482,236 of the 985,983 real inputs differ by one)",
+}
+_CLOCK_WRITTEN = re.compile(r"\{\s*\(?\s*\w+\s*\)?\s*//\s*3600\s*\}\s*:")
+
+
+def _clock_reader_faults(tree, name, how):
+    """What is wrong with `name`'s reading of proceedings.hms in a parsed file; [] where none."""
+    defs = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name]
+    if how == "from":
+        took = [n for n in tree.body if isinstance(n, ast.ImportFrom) and n.module == "proceedings"
+                and any(a.name == "hms" and (a.asname or a.name) == name for a in n.names)]
+        return ([] if took else [f"no `from proceedings import hms` binds {name}"]) + \
+               [f"line {d.lineno} defines {name} again" for d in defs]
+    if len(defs) != 1:
+        return [f"{name} is defined {len(defs)} times, not once"]
+    calls = [n for n in ast.walk(defs[0]) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+             and n.func.attr == "hms" and isinstance(n.func.value, ast.Name) and n.func.value.id == "P"]
+    own = [n.lineno for n in ast.walk(defs[0]) if isinstance(n, ast.Constant) and isinstance(n.value, int)
+           and n.value == 3600]
+    return ([] if calls else [f"{name} does not call P.hms"]) + [f"line {n} works out hours itself" for n in own]
+
+
+@check("markers", "seconds into a recording are written as a clock by proceedings.hms alone: the hearings "
+                  "tools and the bench read it, and no copy of the rule is written again")
+def _seconds_clock_one_home():
+    """SECONDS AS A CLOCK, ONE HOME (finding 8 of stage0-code.md, "hms in 9 modules"). The rule
+    "1:02:03", the hours unpadded and the second a moment is in, was written ten times; it is
+    proceedings.hms now, and each copy _CLOCK_READERS names reads it, the two that read a missing
+    value their own way keeping that and nothing else. Held: each reader binds or calls the home
+    and writes no hours of its own; no code file outside the suite and the tests writes the clock
+    out ("{s // 3600}:") but the home and _CLOCK_OTHERS, each a different rule said there (a
+    session day's "01:02:03" is another form, and the fetchers' "1h 02m" another); and the home
+    gives the old formula's answer over two days of seconds. Planted, each must be refused: the
+    old def written back, a reader that works out its own hours, the clock written inline."""
+    from pf_core import _in_suite, _parsed
+    import proceedings as P
+    for path, name, how in _CLOCK_READERS:
+        faults = _clock_reader_faults(_parsed(_paths.ROOT / path), name, how)
+        assert not faults, f"{path}: " + "; ".join(faults) + " (read proceedings.hms)"
+    stray = []
+    for f in _paths.code_files("*.py"):
+        rel = f.relative_to(_paths.ROOT).as_posix()
+        if _in_suite(f) or "tests" in f.relative_to(_paths.ROOT).parts or rel in _CLOCK_OTHERS \
+                or rel == "src/lib/proceedings.py":
+            continue
+        for i, line in enumerate(_source(f, errors="replace").splitlines(), 1):
+            if _CLOCK_WRITTEN.search(line):
+                stray.append(f"{rel}:{i}")
+    assert not stray, ("seconds written out as a clock again: " + ", ".join(stray[:8])
+                       + ". Call proceedings.hms, or say in _CLOCK_OTHERS why it is another rule")
+    for path in _CLOCK_OTHERS:
+        assert any(_CLOCK_WRITTEN.search(l) for l in _source(_paths.ROOT / path).splitlines()), \
+            f"{path} no longer writes its own clock: take it off _CLOCK_OTHERS"
+    for x in range(0, 2 * 86400, 7):
+        s = int(x + 0.9)
+        assert P.hms(x + 0.9) == f"{s//3600}:{(s%3600)//60:02d}:{s%60:02d}", (
+            f"proceedings.hms({x + 0.9}) is {P.hms(x + 0.9)!r}: the clock is the second a moment is in")
+    assert [P.hms(v) for v in (0, 59.99, 3723.9, 36000)] == ["0:00:00", "0:00:59", "1:02:03", "10:00:00"]
+    for planted, name, how in (
+            ('def hms(s):\n    s = int(s)\n    return f"{s//3600}:{(s%3600)//60:02d}:{s%60:02d}"\n', "hms", "from"),
+            ('from proceedings import hms\ndef hms(s):\n    return str(s)\n', "hms", "from"),
+            ('def hms(s):\n    return P.hms(s) if s else f"{s // 3600}"\n', "hms", "call"),
+            ('def _hms(s):\n    return str(s)\n', "_hms", "call")):
+        assert _clock_reader_faults(ast.parse(planted), name, how), f"a reader writing its own clock was missed: {planted!r}"
+    assert not _clock_reader_faults(ast.parse("from proceedings import hms as hhmmss\n"), "hhmmss", "from")
+    for line in ('print(f"{t//3600}:{(t%3600)//60:02d}:{t%60:02d}")', 'x = f"{s // 3600}:{s % 3600 // 60:02d}"'):
+        assert _CLOCK_WRITTEN.search(line), f"an inline clock was missed: {line}"
+    assert not _CLOCK_WRITTEN.search('f"{x // 3600:02d}:{x % 3600 // 60:02d}"')
+    return "ok", (f"{len(_CLOCK_READERS)} readers take proceedings.hms, no clock written out anywhere else but "
+                  f"{len(_CLOCK_OTHERS)} other rule (caption_span's nearest second); the home is the old formula "
+                  "over two days of seconds, and each planted copy is refused")
 
 
 @check("markers", "segment_markers on a few recordings keeps every other "

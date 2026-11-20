@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-29.2
+# GRANITE_VERSION: 2026-10-29.3
 """
 Election week's routine work, around the one step a person does: saving the
 Secretary of State's results files in a browser.
@@ -68,6 +68,7 @@ import re
 import subprocess
 
 import child
+import names as NM
 import parse_sos_results as PSR
 
 LOGS = Path("logs")
@@ -243,7 +244,7 @@ def likely(name, key, roster):
     words = fold(name).split()
     if not words:
         return []
-    last = [w for w in words if w not in ("jr", "sr", "ii", "iii", "iv")][-1]
+    last = [w for w in words if w not in NM.SUFFIXES][-1]
     parts = key.split("|")
     chamber = parts[0]
     county = parts[1] if chamber == "H" and len(parts) > 2 else ""

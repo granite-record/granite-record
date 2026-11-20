@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.13
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -95,6 +95,8 @@ import re
 import string
 from pathlib import Path
 
+from slugs import slug  # lower case, letters and digits, a hyphen between: the one rule (slugs.py)
+
 FORMAT = 1
 KINDS = ("person", "office", "district", "place", "term", "tenure", "contest", "candidacy")
 FILES = {"person": "people.json", "office": "offices.json", "district": "districts.json",
@@ -123,12 +125,6 @@ PLACE = r"^[^|]+\|\d+$"
 # Primary readers id their races (src/parse/parse_sos_primary_results.py).
 CONTEST = r"^\d{4}-\d{2}-\d{2}\.[a-z]+(?:-[a-z]+)?\.[a-z0-9:-]+\.[a-z0-9-]+$"
 CANDIDACY = r"^\d{4}-\d{2}-\d{2}\.[a-z]+(?:-[a-z]+)?\.[a-z0-9:-]+\.[a-z0-9-]+\.[a-z0-9-]+$"
-
-
-def slug(text):
-    """Lower case, letters and digits, a hyphen between: "Hillsborough" -> "hillsborough",
-    "Kelly Ayotte" -> "kelly-ayotte", "r/d" -> "r-d"."""
-    return re.sub(r"[^a-z0-9]+", "-", str(text or "").lower()).strip("-")
 
 
 def place_id(town, ward):

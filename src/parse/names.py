@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.5
+# GRANITE_VERSION: 2026-09-09.6
 """
 One way to write a name, so the same committee reads the same in every term.
 
@@ -94,6 +94,11 @@ TITLE = {"H": "Rep.", "S": "Sen."}
 # The party letters a label keeps: the parties the state's one table has a word for (R, D, I
 # and L), as build_site_v2.member_labels keeps them.
 PARTY_INITIALS = ST.party_initials()
+# The words after a name that are no part of it -- a Jr., a Sr., a numeral -- lower case and
+# without their stops, as every reader of a name compares them. One home since 20 November
+# 2026 (the refactor's finding 8): eight modules wrote the list out for themselves, and read
+# it here now (preflight's _name_suffixes_one_home holds them).
+SUFFIXES = frozenset({"jr", "sr", "ii", "iii", "iv"})
 
 
 def legislator(rec):

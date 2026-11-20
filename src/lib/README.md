@@ -2,8 +2,8 @@
 
 Shared by every stage:
 
-- `proceedings`: the one table's reader, and the term arithmetic about
-  forty modules use;
+- `proceedings`: the one table's reader, the term arithmetic about
+  forty modules use, and seconds into a recording as a clock (`hms`);
 - `freeze_term`: a finished term's frozen inputs, and also the command run
   at the term switch;
 - `terms`: the term arithmetic by year (`term_of_year`), and which of the two
@@ -54,6 +54,10 @@ Shared by every stage:
   views that give today's files back from it -- which `parse/build_entities.py`
   writes to `data/entities/` every night and nothing reads yet; what is the
   state's in it is `state_settings.json`'s;
+- `slugs`: the one rule that makes a name an address (`slug`) and a
+  town's page key (`town_slug`), which the builders, the town readers and
+  `entities` call -- a module of its own, since importing `entities` is
+  reading the model;
 - `bench_ledger`: the bench's ledger, `review/checked.jsonl`, read one way by
   every reader (`checks/review.py`, `hearings/probe_alignment.py`): whose a
   line is (the owner's `hand`, or a contributor's `link:<id>` merged from the

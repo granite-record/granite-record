@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.67
+# GRANITE_VERSION: 2026-09-05.68
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -529,7 +529,7 @@ def clock(s):
     s = float(s)
     whole = int(s)
     frac = s - whole
-    base = f"{whole//3600}:{(whole%3600)//60:02d}:{whole%60:02d}"
+    base = P.hms(whole)
     return base + (f".{int(round(frac*10))}" if 0 < frac < 0.95 else "")
 
 

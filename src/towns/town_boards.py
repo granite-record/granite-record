@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-24.9
+# GRANITE_VERSION: 2026-09-24.10
 """
 Which towns' own websites list their select board, and which cities' their
 mayor and council, as they stand now.
@@ -117,6 +117,7 @@ import datetime as dt
 import json
 import re
 
+import names as NM
 import parse_town_sites as PTS
 import town_websites
 
@@ -316,7 +317,7 @@ def screen(office, person, page, lines):
 
 
 # ------------------------------------------------------------ one person ---
-SUFFIX = {"jr", "sr", "ii", "iii", "iv"}
+SUFFIX = NM.SUFFIXES
 NICK = [("bob", "robert"), ("rob", "robert"), ("bill", "william"),
         ("will", "william"), ("jim", "james"), ("tom", "thomas"),
         ("dick", "richard"), ("rick", "richard"), ("rich", "richard"),
