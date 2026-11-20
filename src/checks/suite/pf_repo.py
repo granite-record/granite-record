@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.29
+# GRANITE_VERSION: 2026-11-16.30
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -902,7 +902,10 @@ def _code_dirs_unlisted(root=None):
     components.py reads src/pages/words/ (9 October 2026), holds no code, is
     imported by nobody, and is not one. Nor is a builder's inline/ folder
     beside a code folder (inline_js, 20 November 2026): scripts its builder
-    reads by their path and writes into its pages, and nothing imports."""
+    reads by their path and writes into its pages, and nothing imports. Nor
+    is src/pages/app/, the parts app.js is written from (app_parts, 20
+    November 2026), which only app_parts.py reads."""
+    import app_parts as AP
     import inline_js as IJ
     base = Path(root).resolve() if root is not None else _paths.ROOT
     listed = {(base / d).resolve() for d in _paths.SRC_DIRS}
@@ -911,7 +914,8 @@ def _code_dirs_unlisted(root=None):
         return []
 
     def inline(d):
-        return d.name == IJ.FOLDER and d.parent.resolve() in listed and all(
+        return (d.name == IJ.FOLDER and d.parent.resolve() in listed
+                or d.resolve() == (base / AP.FOLDER).resolve()) and all(
             f.suffix == ".js" for f in d.iterdir() if f.is_file())
     return [d.relative_to(base).as_posix()
             for d in sorted(p for p in src.rglob("*") if p.is_dir() and p.name != "__pycache__")
@@ -947,7 +951,8 @@ def _code_names_unique():
                      "watchers/c.py": "", "tests/c.py": "", "notes.json": "",
                      "tests/notes.json": "", "src/extra/d.py": "", "src/web/e.js": "",
                      "src/pages/words/w.json": "", "src/pages/words/README.md": "",
-                     "src/pages/inline/b.js": "", "src/parse/inline/f.py": ""})
+                     "src/pages/inline/b.js": "", "src/parse/inline/f.py": "",
+                     "src/pages/app/010-a.js": ""})
         got = _code_name_clashes(tmp)
         assert got == {"a.py": ["a.py", "src/parse/a.py"], "b.js": ["src/pages/b.js", "tests/b.js"],
                        "c.py": ["watchers/c.py", "tests/c.py"]}, \

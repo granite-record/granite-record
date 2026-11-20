@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -15851,6 +15851,47 @@ def _fast_path_inputs(build_all, BI, BP):
         "it is not read.")
     return "ok", (f"{len(seen)} modules on the build's path: the browser's files read by "
                   f"{', '.join(sorted(readers))} alone, and nothing it reads left out")
+
+
+@check("build", "app.js's parts are not what a build is made from: the fast path and the quick "
+                "preview take app.js's change, and the fast path refuses while app.js is not its parts",
+       needs=("build_inputs", "front_end", "quick_preview", "app_parts"))
+def _app_js_parts_not_inputs(BI, FE, QP, AP):
+    """app.js is written from its parts in src/pages/app/ (app_parts.py) and
+    the build reads app.js alone, so the parts are left out of what a build
+    is made from (build_inputs.NOT_INPUTS) and an edit reaches the site as
+    app.js changed. Held:
+
+      build_inputs leaves out every part, and not app.js or app_parts.py;
+      the quick preview applies app.js and ignores a part changed beside it,
+      and still refuses a script;
+      on planted trees the fast path's parts_refusal says nothing with no
+      parts folder (a fixture's) or with app.js its parts, and refuses, saying
+      what to run, while a part is edited and app.js is not written.
+    """
+    part = AP.FOLDER + "/050-x.js"
+    assert BI._skipped(part) and not BI._skipped(AP.APP) and not BI._skipped("src/pages/app_parts.py"), (
+        "build_inputs does not leave app.js's parts out, or leaves out app.js or app_parts.py")
+    apply, ignored, refused = QP.judge([("M", AP.APP), ("M", part)], ("same", "same"))
+    assert apply == [AP.APP] and ignored == [part] and not refused, (
+        f"app.js changed with a part beside it: apply {apply}, ignore {ignored}, refuse {refused}")
+    assert QP.judge([("M", part), ("M", "src/pages/build_pages.py")])[2], "a script beside a part was not refused"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-parts-fe-"))
+    try:
+        stamp = b"// GRANITE_VERSION: 2026-01-02.3\n"
+        (tmp / "src" / "pages").mkdir(parents=True)
+        (tmp / AP.APP).write_bytes(stamp + b"const A=1;\n")
+        assert FE.parts_refusal(tmp) is None, "the fast path refused a folder with no parts"
+        (tmp / AP.FOLDER).mkdir()
+        (tmp / AP.FOLDER / "010-a.js").write_bytes(b"const A=1;\n")
+        assert FE.parts_refusal(tmp) is None, f"app.js its parts was refused: {FE.parts_refusal(tmp)}"
+        (tmp / AP.FOLDER / "010-a.js").write_bytes(b"const A=2;\n")
+        why = FE.parts_refusal(tmp) or ""
+        assert "app_parts.py" in why, f"a part edited and app.js not written was answered {why!r}"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the parts are no input of a build; the quick preview applies app.js and ignores its part; "
+                  "the fast path refuses while a part is edited and app.js not written, and not otherwise")
 
 
 @check("files", "a site's manifest is kept once per build, proved under two seeds, and "

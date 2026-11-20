@@ -324,12 +324,15 @@ The helpers the builders share:
 Run by a person, not by a step:
 
 - `front_end`: the fast path, `build_all.py --front-end`;
+- `app_parts`: `app.js` written from its parts in `app/` (and an edit made
+  in `app.js` carried back into them with `--split`);
 - `build_brand`: the drawn logo and icon into `assets/`, once.
 
 The browser's files, copied into `site/` (scripts without their comments):
 
 - `bills.html`: the template every record page is built from;
-- `app.js`: the bill search and every record page's script;
+- `app.js`: the bill search and every record page's script, written from
+  its parts (below);
 - `app.css`: the one stylesheet;
 - `components.js`: the browser's components, loaded first on every page;
 - `find.js`: Find anything, from the header;
@@ -337,6 +340,19 @@ The browser's files, copied into `site/` (scripts without their comments):
 - `map.js` and `map.css`: the district map;
 - `live.js` and `live.css`: Live Now;
 - `motions.js`: which motion a vote was on, for the live session page.
+
+`app.js`'s parts (20 November 2026):
+
+- `app/`: `app.js` in the pieces its own headers mark -- the bill's
+  facts, versions, report a problem, member and committee, the videos,
+  boot, the votes page -- each a file named `NNN-what.js`, and each
+  `BILLMATCH` region, the lines `site/billmatch.js` is cut from, a part of
+  its own (`NNN-billmatch-what.js`). `app.js` is its first line, its
+  version stamp, and then the parts in the order of their names, byte for
+  byte, and stays in the repository: edit the part, then run
+  `python3 src/pages/app_parts.py`. Everything reads `app.js`, never a
+  part (preflight's `_app_js_is_its_parts`); the parts carry no stamp of
+  their own, so a part changed is `app.js` changed.
 
 A builder's own scripts, written into its pages (20 November 2026):
 

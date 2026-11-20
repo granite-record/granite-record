@@ -43,7 +43,8 @@ source, never the copy.
 | the source | the copy | held by |
 |---|---|---|
 | `src/pages/words/*.json` | `components.WORDBOOK`, and `site/components.js` between its `WORDBOOK` markers (`build_pages.with_words`) | `_words_written_once` |
-| `app.js` between its `BILLMATCH:BEGIN` and `BILLMATCH:END` lines | `site/billmatch.js`, which `find.js` loads (`build_pages`) | `_search_cases`, which runs the copy |
+| `app.js` between its `BILLMATCH:BEGIN` and `BILLMATCH:END` lines, each region a part of its own in `src/pages/app/` | `site/billmatch.js`, which `find.js` loads (`build_pages`) | `_search_cases`, which runs the copy |
+| `src/pages/app/`, the parts `app.js` is written from (`app_parts`) | `src/pages/app.js`, kept in the repository and read by everything | `_app_js_is_its_parts` |
 | `src/pages/live_gen.py`, from where each value is kept | `workers/live/live.gen.js` | `_live_layer` |
 | `src/pages/follow_site.py`, from the site's colours and words | `workers/follow/site.gen.js` | `_follow_site_current` |
 

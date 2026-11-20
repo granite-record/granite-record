@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.3
+# GRANITE_VERSION: 2026-11-11.4
 """
 The quick preview: a change to the browser's files, seen in minutes on GitHub.
 
@@ -48,7 +48,8 @@ and this checkout, each one of:
     while its search tables (SYN, CONCEPTS, STOP) are unchanged, since a
     changed table also changes site/sidx/, which this does not rebuild;
   - a path no build step reads (build_inputs.NOT_INPUTS: logs, tests, reports,
-    private, .github, ...; any .md): said, and ignored.
+    private, .github, app.js's parts in src/pages/app/, which app.js is
+    written from, ...; any .md): said, and ignored.
 
 Everything else is refused by name: a data file, bills.html (the template of
 every record page), chrome.py (the header, nav and footer of every page), a
