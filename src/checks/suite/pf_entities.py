@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.25
+# GRANITE_VERSION: 2026-11-16.26
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -672,8 +672,9 @@ def _entities_printed_seats(BE, EN, PE):
 
 # The readers of the seat a member held in a term that read the model's tenures (the design's
 # step 5), each through entities.printed_tenures: _entities_step_in_the_plan lets them import the
-# shapes' module, and nothing else.
-SEAT_READERS = {"build_members_elect.py", "build_site_v2.py"}
+# shapes' module, and nothing else. build_site_v2's reader (printed_record) is members.py's since
+# 20 November 2026, and build_site_v2 imports the shapes' module still, so both are here.
+SEAT_READERS = {"build_members_elect.py", "build_site_v2.py", "members.py"}
 
 
 def _model_swapped(EN, change):
