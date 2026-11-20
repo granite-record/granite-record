@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.33
+# GRANITE_VERSION: 2026-11-16.34
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1388,6 +1388,8 @@ _SPLIT_FROM_SITE = {
     "cacr_ballots": tuple(("BALLOTS BALLOT_SOURCE ELECTION_IN_TEXT ISO_DAY NOT_RATIFIED RATIFIED "
                            "TO_THE_VOTERS ballot_card ballot_step cacr_to_the_voters "
                            "docket_count_differs election_day load_ballots ratified").split()),
+    "db_status": tuple(("DB_FROZEN DB_LEGISLATION DB_STATUS_COLUMNS _DB_STATUS _status_codes "
+                        "db_statuses fill_status_from_db no_dump_for terms_without_a_dump").split()),
 }
 
 
@@ -1704,6 +1706,24 @@ def _site_cacr_ballots_moved(B, CB):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in cacr_ballots.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the ballots' own")
+
+
+@check("files", "the database's status codes, where the status page states nothing, are "
+                "db_status.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "db_status"))
+def _site_db_status_moved(B, DBS):
+    """build_site_v2's reading of the database's status codes moved to db_status.py on 20
+    November 2026 (the refactor's finding 4), as it stood: DB_LEGISLATION,
+    DB_STATUS_COLUMNS, _DB_STATUS and _status_codes, DB_FROZEN and db_statuses,
+    terms_without_a_dump, no_dump_for and fill_status_from_db. Every name of them is held
+    to be db_status.py's, defined nowhere in build_site_v2.py, and build_site_v2.<name> the
+    same object -- _DB_STATUS the one dict of terms read -- so build_bills, main and the
+    checks that ask build_site_v2 fill a status the one way."""
+    names = _SPLIT_FROM_SITE["db_status"]
+    bad = _split_out(B, DBS, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in db_status.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the database statuses' own")
 
 
 def _readme_unlisted(folder, root=None):

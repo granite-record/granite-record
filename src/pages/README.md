@@ -139,9 +139,9 @@ The record and its own pages:
   it read (there was never a v1 here); its journey, a bill's status, the
   proceedings' stations, the members, the conferences, the amendments, the
   rail's endings, the committee and hearing reports, the sponsors, a bill's
-  topic, what a bill amends, its roll calls and a CACR's ballot are modules
-  of their own beside it since 20 November 2026 (the next thirteen lines),
-  and it imports every name of theirs back;
+  topic, what a bill amends, its roll calls, a CACR's ballot and the
+  database's statuses are modules of their own beside it since 20 November
+  2026 (the next fourteen lines), and it imports every name of theirs back;
 - `journey`: the passage rail and the journey -- the four stops a bill passes
   (`passage`) and what each chamber decided and when (`journey`,
   `journey_rail` and the `_j_` readers), read from the docket for the rail's
@@ -221,6 +221,12 @@ The record and its own pages:
   chambers passed now says (`cacr_to_the_voters`); a section of
   `build_site_v2` until 20 November 2026, which imports every name of it
   back;
+- `db_status`: the General Court database's status codes where the status
+  page states nothing -- the dump's codes in the page's words, a term read
+  from whichever dump holds it (`db_statuses`), the terms no dump holds
+  (`no_dump_for`) and a record's blank fields filled from it
+  (`fill_status_from_db`); a section of `build_site_v2` until 20 November
+  2026, which imports every name of it back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a
   file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,

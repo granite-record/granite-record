@@ -144,16 +144,17 @@ text says it changes (`bill_amends`, `constitution_targets`) is
 `bill_statutes.py`, a bill's roll calls as its Votes tab draws them and the
 card of a roll call on no bill (`bill_rollcalls`, `write_nobill_cards`) are
 `bill_votes.py`, a constitutional amendment's ballot (`load_ballots`,
-`ballot_card`, `cacr_to_the_voters`) is `cacr_ballots.py`, and what they
-share with the rest of it -- what a bill of each kind has to clear, a bill's
-letters, the chip's six words, the docket line, a cited volume's address --
-is `parts.py`'s. A module split out of `build_site_v2` never imports it back
+`ballot_card`, `cacr_to_the_voters`) is `cacr_ballots.py`, the database's
+status codes where the status page states nothing (`db_statuses`,
+`fill_status_from_db`) are `db_status.py`, and what they share with the rest
+of it -- what a bill of each kind has to clear, a bill's letters, the chip's
+six words, the docket line, a cited volume's address -- is `parts.py`'s. A
+module split out of `build_site_v2` never imports it back
 (`_import_cycles_cut`), and `build_site_v2` imports every moved name back
 where it was, so `build_site_v2.journey` and the rest still answer for every
 caller; `preflight`'s `_site_*` checks after `_import_cycles_cut` hold each
 move whole and not undone. `build_bills` and `main` stay in `build_site_v2`,
-and so for now do a bill's disposition and documents, the database's
-statuses and the related bills.
+and so for now do a bill's disposition and documents and the related bills.
 
 ## How it runs
 
