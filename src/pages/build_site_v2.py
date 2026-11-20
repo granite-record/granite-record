@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.322
+# GRANITE_VERSION: 2026-09-05.323
 """
 Generate the faceted site from real General Court data.
 
@@ -974,7 +974,7 @@ def stated_status_pages():
     return status_pages
 
 
-def sponsor_people(legs, former, links, numbers):
+def sponsor_pool(legs, former, links, numbers):
     """Everyone a bill's sponsor lookup can name, {id: member}: the sitting members
     (`legs`) and the former ones, then under the numbers a sitting member voted
     under in the other chamber (`links`, member_links') and the employee numbers
@@ -1063,8 +1063,8 @@ def hearing_speakers(legs, former, term_rosters):
     return _hr_idx, _hr_term
 
 
-def early_parties(id_parties, bills, current, sponsors, _people, leg_by_sort, leg_by_name, seats,
-                  _left, term_rosters, record_chambers):
+def early_sponsor_parties(id_parties, bills, current, sponsors, _people, leg_by_sort,
+                          leg_by_name, seats, _left, term_rosters, record_chambers):
     """The parties a 1989-1998 sponsor placed on a page takes (party_record), drawn
     from the labels of their bills of 1999 on exactly as build_bills' loop will
     draw them, or None where no `id_parties` is given. A step of build_bills, lifted out of it as it stood (20 November 2026)."""
@@ -1337,7 +1337,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     sos_files, sos_day = SA.load(), build_date.today().isoformat()
     status_pages = stated_status_pages()
     n_stated = 0
-    _people = sponsor_people(legs, former, links, numbers)
+    _people = sponsor_pool(legs, former, links, numbers)
     _left, term_rosters = members_who_left(term_rosters, former)
     _hr_idx, _hr_term = hearing_speakers(legs, former, term_rosters)
     _hr_name = SHR.name_part
@@ -1407,8 +1407,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # How many members were in office on each day a chamber took a roll call,
     # which is what three fifths is of on a division (bill_rollcalls).
     in_office = RO.members_in_office(rollcalls)
-    _parties = early_parties(id_parties, bills, current, sponsors, _people, leg_by_sort,
-                             leg_by_name, seats, _left, term_rosters, record_chambers)
+    _parties = early_sponsor_parties(id_parties, bills, current, sponsors, _people,
+                                     leg_by_sort, leg_by_name, seats, _left, term_rosters,
+                                     record_chambers)
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
