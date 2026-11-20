@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.329
+# GRANITE_VERSION: 2026-09-05.330
 """
 Generate the faceted site from real General Court data.
 
@@ -2363,13 +2363,12 @@ def load_transcripts(a, procs, prows):
     return segs, marks
 
 
-def main():
-    a = parse_args()
-
-    D, out = Path(a.data), Path(a.out)
-    (out / "bills").mkdir(parents=True, exist_ok=True)
-    (out / "legislators").mkdir(parents=True, exist_ok=True)
-
+def bills_with_topics(D):
+    """data/bills.json, {term: {bill: record}}, refused in the flat shape, with each
+    bill's topic: the General Court's own subject code for the archive
+    (official_topics), the topic model's for the terms it gave none
+    (merge_guessed_topics), and the site's one vocabulary over all of them, last
+    (unify_vocabulary). `D` is the data folder. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
     bills = load(D / "bills.json", {})
     # {term: {bill: record}} -- the file the whole per-bill loop is driven from.
     # Read flat and the loop would run over term names instead of bills.
@@ -2387,6 +2386,15 @@ def main():
     merge_guessed_topics(bills)
     # LAST, so it catches the General Court's labels and the model's alike.
     unify_vocabulary(bills)
+    return bills
+
+
+def sponsors_merged(D, bills):
+    """data/sponsors.json with the sponsors each bill's own text names where the
+    database names nobody (text_sponsors.merge_into), 2023-2024 from the General
+    Court's own sponsor record and every other past term filled from it
+    (past_sponsors.merge_into), and the seats dated from the bill's own printed
+    line (text_sponsors.seat_into), in that order. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
     sponsors = load(D / "sponsors.json", {})
     # The sponsors each bill's own text names, for the bills the database names
     # nobody for: every term before 2023, as the lane saves their pages.
@@ -2429,6 +2437,13 @@ def main():
     _seated = TS.seat_into(sponsors, current=max(bills) if bills else None)
     if _seated:
         print(f"  sponsors: {_seated:,} seats dated from the bill's own printed line")
+    return sponsors
+
+
+def sitting_roster(D):
+    """The sitting members, {id: member}, from data/legislators.json, and the two
+    lookups a sponsor is joined to them by (roster_name_keys), with a warning for
+    two members one key names. A step of main's loading, lifted out of it as it stood (20 November 2026)."""
     legs = {m["id"]: m for m in load(D / "legislators.json", [])}
     # Sponsor records carry a name but not a party or a district. The roster
     # has both, so they are joined on the surname-first form of the name --
@@ -2440,6 +2455,19 @@ def main():
         print(f"  WARNING: two sitting members share the {_how} {_k!r} "
               f"({' and '.join(str(x.get('name')) + ' ' + str(x.get('id')) for x in _ms)}); a sponsor named by it alone "
               "is left unlinked rather than given to the first")
+    return legs, leg_by_sort, leg_by_name
+
+
+def main():
+    a = parse_args()
+
+    D, out = Path(a.data), Path(a.out)
+    (out / "bills").mkdir(parents=True, exist_ok=True)
+    (out / "legislators").mkdir(parents=True, exist_ok=True)
+
+    bills = bills_with_topics(D)
+    sponsors = sponsors_merged(D, bills)
+    legs, leg_by_sort, leg_by_name = sitting_roster(D)
 
     # Members who left mid-term are already named upstream: resolve_members.py
     # writes former_members.json to the project root, build_data.py reads it
