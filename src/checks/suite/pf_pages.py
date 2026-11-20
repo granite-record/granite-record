@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.19
+# GRANITE_VERSION: 2026-11-16.20
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -15182,7 +15182,7 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         # The states are read the way _states_covered reads them, from both
         # the builder and the page's own branches, since a ternary in the
         # builder hides its else arm from any one pattern.
-        src = _source(B.__file__)
+        src = _source(B.__file__) + _source(_paths.locate("stations.py"))
         states = set(re.findall(r'"state":\s*"(\w+)"', src))
         states |= set(re.findall(r'\["state"\]\s*=\s*"(\w+)"', src))
         states |= set(re.findall(r'state,\s*start\s*=\s*"(\w+)"', src))

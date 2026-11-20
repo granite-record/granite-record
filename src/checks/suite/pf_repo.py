@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.18
+# GRANITE_VERSION: 2026-11-16.19
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1325,6 +1325,9 @@ _SPLIT_FROM_SITE = {
                      "closing_stage docket_outcome floor_disposed for_bill_kind "
                      "journal_not_introduced last_decision next_step untold_ending "
                      "veto_outcome veto_votes").split()),
+    "stations": tuple(("CONCURRENCE concurrence_action fold_conference_notices "
+                       "invented_end motion_keys station_for_floor "
+                       "station_for_proceeding weak_marker withhold_late_captions").split()),
 }
 
 
@@ -1432,6 +1435,25 @@ def _site_status_moved(B, STA):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in status.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the status's own")
+
+
+@check("files", "a proceeding as the station a bill's page draws, and the caption times withheld "
+                "before one is drawn, are stations.py's, every name of them imported back into "
+                "build_site_v2",
+       needs=("build_site_v2", "stations"))
+def _site_stations_moved(B, STN):
+    """build_site_v2's proceedings' stations and caption withholding moved to stations.py on
+    20 November 2026 (the refactor's finding 4), as they stood: CONCURRENCE, concurrence_action,
+    invented_end and weak_marker, which only the stations read, then station_for_proceeding,
+    fold_conference_notices, motion_keys, station_for_floor and withhold_late_captions. Every
+    name of them is held to be stations.py's, defined nowhere in build_site_v2.py, and
+    build_site_v2.<name> the same object, so bill_stations, build_bills, load_transcripts and
+    the checks that ask build_site_v2.station_for_floor draw the one station."""
+    names = _SPLIT_FROM_SITE["stations"]
+    bad = _split_out(B, STN, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in stations.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the stations' own")
 
 
 def _readme_unlisted(folder, root=None):

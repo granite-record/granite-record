@@ -112,7 +112,9 @@ typed from the root answers "can't open file".
 20 November 2026), a subsystem a commit and the built site the same bytes
 after each: the passage rail and the journey are `journey.py`, a bill's
 status (the status vocabulary, `classify`, `closing_stage`, `next_step`) is
-`status.py`, what the two chambers did with each other's version is
+`status.py`, a proceeding as a station on the page and the caption times
+withheld before one is drawn are `stations.py`, what the two chambers did
+with each other's version is
 `conferences.py`, and what they share with the rest of it -- what a bill of
 each kind has to clear, a bill's letters, the chip's six words, the docket
 line -- is `parts.py`'s. A module

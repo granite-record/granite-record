@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.20
+# GRANITE_VERSION: 2026-11-16.21
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -1923,10 +1923,11 @@ def _states_covered():
     covered, and the chain must be a single chain.
     """
     b = _paths.locate("build_site_v2.py")
+    stn = _paths.locate("stations.py")
     page, h = page_source()
-    if not (b.exists() and h):
-        return "skip", "build_site_v2.py or bills.html not here"
-    src = _source(b)
+    if not (b.exists() and stn.exists() and h):
+        return "skip", "build_site_v2.py, stations.py or bills.html not here"
+    src = _source(b) + _source(stn)
 
     emitted = set(re.findall(r'"state":\s*"(\w+)"', src))
     emitted |= set(re.findall(r'\["state"\]\s*=\s*"(\w+)"', src))
@@ -1934,7 +1935,7 @@ def _states_covered():
     # Ternaries: "state": "stated" if said else state -- the else arm is a
     # variable holding one of these, set just above.
     emitted |= set(re.findall(r'state,\s*start\s*=\s*"(\w+)"', src))
-    assert emitted, "no station states found in build_site_v2.py"
+    assert emitted, "no station states found in build_site_v2.py or stations.py"
 
     # hearingPlace (the recorded states' one chain, on `st`) and hearingCard.
     drawn = set(re.findall(r'(?:s\.state|\bst)\s*===\s*"(\w+)"', page))
