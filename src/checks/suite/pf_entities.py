@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.24
+# GRANITE_VERSION: 2026-11-16.25
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -1592,8 +1592,8 @@ def _party_table(BE, EN, PE, ST):
 #   py     a dict literal bound to the name anywhere in the file: {letter: word} or {form: letter}
 #   say    the dicts of say() calls in the function of that name: {word: say(lang, key, English)}
 #   parts  the function's rows of (count, "er-<letter>", word)
-#   js     an object literal `const NAME={...}` in the file's text (a page's script in a Python
-#          string included): LETTER:"word", LETTER:tr("key","word"), LETTER:[...] or "var(--ink)"
+#   js     an object literal `const NAME={...}` in the file's text (a builder's script in
+#          inline/ included): LETTER:"word", LETTER:tr("key","word"), LETTER:[...] or "var(--ink)"
 #   words  the English the translations file gives each of the table's keys
 #   css    the stylesheet's party inks and tints in each theme, and every class that draws one
 _PARTY_COPIES = (
@@ -1602,7 +1602,8 @@ _PARTY_COPIES = (
     ("src/pages/app.js", "PARTY_NAME", "js", "name"),
     ("src/pages/app.js", "PARTY_WORD", "js", "name"),
     ("src/pages/app.js", "PARTY_COLOR", "js", "ink"),
-    ("src/pages/build_pages.py", "PW", "js", "name"),
+    # The roster finder's script (LEGFIND_JS), in its own file since 20 November 2026.
+    ("src/pages/inline/build_pages.legfind.js", "PW", "js", "name"),
     ("src/pages/map.js", "PARTY", "js", "adjective"),
     ("src/pages/map.js", "NOUN", "js", "name, plural"),
     ("workers/follow/mail.js", "PARTY_WORDS", "js", "name, plural"),
@@ -1823,7 +1824,10 @@ def _party_copies_agree(ST):
                 for x, form, v in said[f"{path} {name}"]):
             expected[path] = expected.get(path, 0) + 1
     found = {}
+    import inline_js as IJ
+    # The builders' own scripts too, in inline/ since 20 November 2026.
     files = [f for f in list(_paths.code_files("*.py")) + list(_paths.code_files("*.js"))
+             + sorted(IJ.files().values())
              + sorted((_paths.ROOT / "workers").rglob("*.js")) + sorted((_paths.ROOT / "functions").rglob("*.js"))
              if not _in_suite(f) and "tests" not in f.relative_to(_paths.ROOT).parts
              and "node_modules" not in f.parts]
