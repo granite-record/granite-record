@@ -1843,13 +1843,13 @@
    "state": "draft"
   },
   "elect.title_rep": {
-   "en": "Rep. “Elect”",
-   "es": "Rep. “Electo/a”",
+   "en": "Rep.-elect",
+   "es": "Rep. electo/a",
    "state": "draft"
   },
   "elect.title_sen": {
-   "en": "Sen. “Elect”",
-   "es": "Sen. “Electo/a”",
+   "en": "Sen.-elect",
+   "es": "Sen. electo/a",
    "state": "draft"
   },
   "elect.unsure_why": {

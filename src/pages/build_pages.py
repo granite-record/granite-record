@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.294
+# GRANITE_VERSION: 2026-09-04.295
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2386,7 +2386,7 @@ const memberBills=(rows,s)=>{
     if((m[0]!=="legislator"&&m[0]!=="former"&&m[0]!=="elect")||!_fwhole(m,s))continue;
     const slug=String(m[3]||"").replace(/^[/]?legislator[/]/,"").replace(/[.]html$/,"");
     const who=_fbare(findName(m)).replace(/[ ]*[(][^()]*[)]$/,"");
-    const own=who.replace(/^(Rep|Sen)[.] (“[^”]*” )?/,"");
+    const own=_fbare(m[1]).replace(/[ ]*[(][^()]*[)]$/,"").replace(/^(Rep|Sen)[.](-elect)? /,"");
     const b=pool.find(x=>x.sponsor_slug===slug);
     const name=b?b.sponsor:pool.some(x=>(x.cosp||[]).includes(own))?own:"";
     if(name)return {who,name};

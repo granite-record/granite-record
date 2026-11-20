@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of sponsors, members and officials.
 
@@ -506,7 +506,7 @@ def _elect_returning_pages(OT, LP, BME):
       and whose row is former.json's; "chamber" for a sitting member elected to
       the other chamber; nothing for the re-elected;
     - app.js's renderMemberHead on each: the returning member headed as a new
-      member-elect is (name and party under the title, "Representative “Elect”
+      member-elect is (name and party under the title, "Representative-elect
       Michael Vose (R)", the sentence, the election's line with no
       "for <district>"), the earlier seat kept in the facts and no "Former
       Representative"; the new-chamber member keeps the seat they hold with the
@@ -557,7 +557,7 @@ def _elect_returning_pages(OT, LP, BME):
                    "returning, chamber and none wanted")
     elif back["vose"]["head"] != "Michael Vose (R), member-elect" or back["vose"]["where"] != (
             "Member-elect of the New Hampshire House of Representatives, Rockingham 6.") \
-            or back["creighton"]["where"] != "Member-elect of the New Hampshire Senate, Senate District 8."             or (back["vose"].get("title"), back["creighton"].get("title")) != ("Rep. “Elect”", "Sen. “Elect”"):
+            or back["creighton"]["where"] != "Member-elect of the New Hampshire Senate, Senate District 8."             or (back["vose"].get("title"), back["creighton"].get("title")) != ("Rep.-elect", "Sen.-elect"):
         bad.append(f"elect_back words: {back['vose']} {back['creighton']}")
     if LP.elect_back(dict(vose, former=False), infos["vose"]) is not None:
         bad.append("a file's former member drawn on a record that is not former.json's gets the "
@@ -613,7 +613,7 @@ def _elect_returning_pages(OT, LP, BME):
                 # Rep. "Elect" Heather Denier instead of just their first name"), spelled out
                 # as a member's page spells its title.
                 ("the returning page is headed with the member-elect's title",
-                 '<h1 class="rh1">Representative “Elect” Michael Vose (R)</h1>' in ret
+                 '<h1 class="rh1">Representative-elect Michael Vose (R)</h1>' in ret
                  and '<h1 class="rh1">Former Representative Michael Vose' in gone),
                 ("the returning page is Member-elect in its trail", "Member-elect" in ret),
                 ("once the day is theirs the page is the former member's as before",
@@ -627,10 +627,10 @@ def _elect_returning_pages(OT, LP, BME):
                 # to their house record as well'), the seat held now on the line, by its office.
                 ("the new-chamber member is headed as the Senate's member-elect and keeps the "
                  "seat they hold on the line",
-                 '<h1 class="rh1">Senator “Elect” James Creighton (R)</h1>' in cham
+                 '<h1 class="rh1">Senator-elect James Creighton (R)</h1>' in cham
                  and "Representative for Hillsborough District&nbsp;30" in cham),
                 ("the new-chamber member's page is theirs again with the day",
-                 "Representative James Creighton" in cgone and "“Elect”" not in cgone
+                 "Representative James Creighton" in cgone and not re.search(r"\b(?:Rep\.|Sen\.|Representative|Senator)-elect\b", cgone)
                  and "Representative for" not in cgone),
                 ("the new-chamber member has the sentence beside it",
                  back["creighton"]["where"] in cham),
@@ -645,7 +645,7 @@ def _elect_returning_pages(OT, LP, BME):
                 # The heading says the party she was elected under, and its bar is that
                 # party's ink; the earlier seat keeps the record's own label.
                 ("a returning member elected under another party is drawn in its ink",
-                 "Representative “Elect” Maria Perez (D)" in pret and "rh-pD" in pret and "rh-pI" not in pret
+                 "Representative-elect Maria Perez (D)" in pret and "rh-pD" in pret and "rh-pI" not in pret
                  and "Rep. Maria Perez (I - Hills 43)" in pret),
                 ("without the election her page keeps the record's party",
                  "rh-pI" in pplain and "rh-pD" not in pplain)):
@@ -656,7 +656,7 @@ def _elect_returning_pages(OT, LP, BME):
     until = LP.until_attrs("2026-12-02", "2026-11-20")
     plain_html = LP.static_record(vose, vose, LP.elect_line(None, "2026-11-03", "2026-12-02",
                                                            "2026-11-20"), {}, back["vose"], until)
-    for want in ("<h1>Representative “Elect” Michael Vose (R)</h1>", f"<p>{back['vose']['where']}</p>", line,
+    for want in ("<h1>Representative-elect Michael Vose (R)</h1>", f"<p>{back['vose']['where']}</p>", line,
                  "<p>Earlier seat: Rep. Michael Vose (R - Rock 5)</p>",
                  "<li><b>On record:</b> House, 2017–2018</li>"):
         if want not in plain_html:
@@ -684,7 +684,7 @@ def _elect_returning_pages(OT, LP, BME):
     if "Former Representative" in plain_html:
         bad.append("the plain page of a returning member is headed Former Representative")
     cham_html = LP.static_record(creighton, {}, "", {}, back["creighton"])
-    if "<h1>Senator “Elect” James Creighton (R)</h1>" not in cham_html \
+    if "<h1>Senator-elect James Creighton (R)</h1>" not in cham_html \
             or back["creighton"]["where"] not in cham_html \
             or "<p>Serving now: Rep. James Creighton (R - Hills 30)</p>" not in cham_html:
         bad.append("the plain page of a new-chamber member is not headed as the Senate's member-elect, "
@@ -735,8 +735,8 @@ def _elect_returning_pages(OT, LP, BME):
                   + ("" if got is not None else " (node not here for the page's script)"))
 
 
-@check("build", "a sitting member elected to the other chamber is that chamber's member-elect, Sen. "
-                "“Elect” Laura Telerski, joined to the record they sit under now: on the Members-Elect "
+@check("build", "a sitting member elected to the other chamber is that chamber's member-elect, Sen.-elect "
+                "Laura Telerski, joined to the record they sit under now: on the Members-Elect "
                 "tab, in the search in place of their own row until the day they take office, and on "
                 "their page", needs=("build_indexes", "officials_tabs", "build_legislator_pages"))
 def _elect_other_chamber_joined(BI, OT, LP):
@@ -746,15 +746,15 @@ def _elect_other_chamber_joined(BI, OT, LP):
     senator when its roster turns, and until then the record she has is her House one. Held, the
     build's day stated:
 
-      - the Officials page's Members-Elect tab: "Sen. “Elect” Laura Telerski (D - SD13)", linked to
+      - the Officials page's Members-Elect tab: "Sen.-elect Laura Telerski (D - SD13)", linked to
         her House page;
-      - the search (find_index): one row of the kind "elect", "Sen. “Elect” Laura Telerski (D -
+      - the search (find_index): one row of the kind "elect", "Sen.-elect Laura Telerski (D -
         SD13)", "Senate · SD13 · Democrat", leading to her House page, her House row's words and seat
         among its words and that row carried whole with the day she takes office -- and her own row
         not beside it; a member re-elected to their own seat, and one elected to another seat of
         their own chamber, keep their rows; from that day, by the build's day her own row is back,
         and by the reader's day from a find.json built before it (find.js findNow);
-      - her page: headed "Senator “Elect” Laura Telerski (D)" (elect_back's title spelled out), the
+      - her page: headed "Senator-elect Laura Telerski (D)" (elect_back's title spelled out), the
         sentence of her election and the seat she holds now beside it, on the plain page and in
         app.js's renderMemberHead, which is her House record's head again once the day is hers."""
     import contextlib
@@ -800,7 +800,7 @@ def _elect_other_chamber_joined(BI, OT, LP):
            "Telerski Laura Hillsborough Laura.Telerski@x"]
     before, after = got["2026-11-20"], got["2026-12-02"]
     mine = [r for r in before if r[3] == hers]
-    assert mine == [["elect", "Sen. “Elect” Laura Telerski (D - SD13)", "Senate · SD13 · Democrat", hers,
+    assert mine == [["elect", "Sen.-elect Laura Telerski (D - SD13)", "Senate · SD13 · Democrat", hers,
                      "Laura Telerski Telerski Laura Hillsborough Laura.Telerski@x Hills 11 "
                      "member-elect sen-elect senator-elect", "2026-12-02", own]], (
         f"her rows in the search before she takes office: {mine}")
@@ -827,16 +827,16 @@ def _elect_other_chamber_joined(BI, OT, LP):
             f"by the reader's day her row is {[x for x in day if x[3] == hers]}")
     # The Members-Elect tab.
     chip = OT.elect_chip(me, "S|13")
-    assert "Sen. “Elect” Laura Telerski" in chip and f'legislator/laura-telerski-hills-11"' in chip, chip
+    assert "Sen.-elect Laura Telerski" in chip and f'legislator/laura-telerski-hills-11"' in chip, chip
     # Her page: the plain one and app.js's head.
     m = {"id": "9117", "name": "Telerski, Laura", "chamber": "H", "party": "Democrat", "county": "Hillsborough",
          "district": "11", "display_plain": "Rep. Laura Telerski", "display_full": "Rep. Laura Telerski (D - Hills 11)",
          "slug": "laura-telerski-hills-11", "towns": ["Nashua Ward 3"], "committees": []}
     back = LP.elect_back(m, {"key": "S|13", "k": "sitting", "p": "D"})
-    assert back and back["mode"] == "chamber" and back["title"] == "Sen. “Elect”" \
+    assert back and back["mode"] == "chamber" and back["title"] == "Sen.-elect" \
         and back["name"] == "Laura Telerski", back
     plain = LP.static_record(m, {}, "", {}, back)
-    for want in ("<h1>Senator “Elect” Laura Telerski (D)</h1>",
+    for want in ("<h1>Senator-elect Laura Telerski (D)</h1>",
                  "<p>Member-elect of the New Hampshire Senate, Senate District 13.</p>",
                  "<p>Serving now: Rep. Laura Telerski (D - Hills 11)</p>", "Nashua Ward 3"):
         assert want in plain, f"her plain page lacks {want!r}: {plain[:500]}"
@@ -850,12 +850,12 @@ def _elect_other_chamber_joined(BI, OT, LP):
                     names=("renderMemberHead",))
     if heads is not None:
         now, gone = heads
-        assert '<h1 class="rh1">Senator “Elect” Laura Telerski (D)</h1>' in now \
+        assert '<h1 class="rh1">Senator-elect Laura Telerski (D)</h1>' in now \
             and "Representative for Hillsborough District&nbsp;11" in now and back["where"] in now, now[:900]
-        assert "“Elect”" not in gone and "Representative Laura Telerski" in gone \
+        assert not re.search(r"\b(?:Rep\.|Sen\.|Representative|Senator)-elect\b", gone) and "Representative Laura Telerski" in gone \
             and back["where"] not in gone, gone[:600]
     return "ok", ("the tab, the search's one row in place of hers (back by the build's and the reader's "
-                  "day she takes office) and her page all Sen. “Elect” Laura Telerski, joined to her House "
+                  "day she takes office) and her page all Sen.-elect Laura Telerski, joined to her House "
                   "record and its seat; a member re-elected, or elected within the House, as before"
                   + ("" if heads is not None else "; node not here for the page's script"))
 
@@ -3140,8 +3140,8 @@ def _elect_tab_like_legislators(OT):
     """The owner's walks of 7 and 8 November 2026, for this tab.
 
     THE CHIP. Each member-elect is the Legislators tab's chip, the one
-    component, with a title and a district: "Rep. “Elect” Kristine Trow (D -
-    Rock 13)", "Sen. “Elect” Jim Creighton (R - SD8)" (the owner, walk of dry
+    component, with a title and a district: "Rep.-elect Kristine Trow (D -
+    Rock 13)", "Sen.-elect Jim Creighton (R - SD8)" (the owner, walk of dry
     run 8: the quotation marks inside the chip). Linked only where the file links them; the
     cross-nominated on the neutral chip with both letters, and no letter
     where none was printed; no contact detail. Beside it and outside it,
@@ -3185,16 +3185,16 @@ def _elect_tab_like_legislators(OT):
     plain = lambda s: re.sub(r"\s+", " ", _h.unescape(re.sub(  # noqa: E731
         r"<[^>]+>", " ", re.sub(r"<script>.*?</script>", " ", s, flags=re.S)))).strip()
     want = {  # who -> (the chip's class, linked, tag, word)
-        "Rep. “Elect” Kristine Trow": ("p-D", None, "D - Rock 13", "New"),
-        "Rep. “Elect” Charles Foote": ("p-R", "charles-foote-rock-13", "R - Rock 13", "Incumbent"),
-        "Sen. “Elect” Jim Creighton": ("p-R", "james-creighton-hills-30", "R - SD8", "New chamber"),
-        "Sen. “Elect” Rachel Lane": ("p-D", "rachel-lane-hills-1", "D - SD9", "New chamber"),
-        "Sen. “Elect” Shannon E. Chandley": ("p-D", "shannon-chandley-sd-11", "D - SD11", "Returning"),
-        "Sen. “Elect” Rebecca Perkins Kwoka": ("p-D", "rebecca-perkins-kwoka-sd-21", "D - SD21",
+        "Rep.-elect Kristine Trow": ("p-D", None, "D - Rock 13", "New"),
+        "Rep.-elect Charles Foote": ("p-R", "charles-foote-rock-13", "R - Rock 13", "Incumbent"),
+        "Sen.-elect Jim Creighton": ("p-R", "james-creighton-hills-30", "R - SD8", "New chamber"),
+        "Sen.-elect Rachel Lane": ("p-D", "rachel-lane-hills-1", "D - SD9", "New chamber"),
+        "Sen.-elect Shannon E. Chandley": ("p-D", "shannon-chandley-sd-11", "D - SD11", "Returning"),
+        "Sen.-elect Rebecca Perkins Kwoka": ("p-D", "rebecca-perkins-kwoka-sd-21", "D - SD21",
                                              "Incumbent"),
-        "Rep. “Elect” Ann Burt": ("p-R", "ann-burt-coos-3", "R - Coos 1", "Incumbent"),
-        "Rep. “Elect” Pat Both": ("p-X", None, "R/D - Belk 6", "New"),
-        "Rep. “Elect” Lee Nobody": ("p-X", None, "Belk 6", "New"),
+        "Rep.-elect Ann Burt": ("p-R", "ann-burt-coos-3", "R - Coos 1", "Incumbent"),
+        "Rep.-elect Pat Both": ("p-X", None, "R/D - Belk 6", "New"),
+        "Rep.-elect Lee Nobody": ("p-X", None, "Belk 6", "New"),
     }
     for who, (cls, slug, tag, kind) in want.items():
         inner = (f'<a href="legislator/{slug}">{_h.escape(who)} <span class="mtag">({tag})</span></a>'
@@ -3258,7 +3258,7 @@ def _elect_tab_like_legislators(OT):
     # By last name.
     cols = re.findall(r'<section class="pcol"><h3>([^<]+)</h3>(?:<p class="note">[^<]*</p>)?<ol class="seatlist rlist elroll">(.*?)</ol>',
                       last, re.S)
-    got = [(_h.unescape(h), re.findall(r'translate="no">(?:<a [^>]+>)?(?:Rep|Sen)\. “Elect” ([^<]+?) <', b))
+    got = [(_h.unescape(h), re.findall(r'translate="no">(?:<a [^>]+>)?(?:Rep|Sen)\.-elect ([^<]+?) <', b))
            for h, b in cols]
     if got != [("Democrats — 3", ["Shannon E. Chandley", "Rachel Lane", "Rebecca Perkins Kwoka"]),
                ("Republican — 1", ["Jim Creighton"]),
@@ -3282,7 +3282,7 @@ def _elect_tab_like_legislators(OT):
                    "addresses #of-eld-senate and #of-eld-house")
     summary = (r'<details class="cgrp"><summary><span>([^<]+)</span><span class="ccount">(\d+)</span>'
                r'((?:<span class="ccnf">[^<]+</span>)?)<span class="caret">')
-    senate_by = [(c, n, plain(f), re.findall(r'Sen\. “Elect” ([^<]+?) <', g)) for (c, n, f), g in zip(
+    senate_by = [(c, n, plain(f), re.findall(r'Sen\.-elect ([^<]+?) <', g)) for (c, n, f), g in zip(
         re.findall(summary, sen), re.split(r'<details class="cgrp">', sen)[1:])]
     if senate_by != [("Hillsborough", "1", "", ["Shannon E. Chandley"]),
                      ("Rockingham", "1", "", ["Rebecca Perkins Kwoka"]),
@@ -3298,7 +3298,7 @@ def _elect_tab_like_legislators(OT):
     rock = house_by[house_by.find("<span>Rockingham</span>"):]
     if not re.search(r'</div><p class="elnf"><b>Result not final</b> in District 13 \(2 seats\) '
                      r'&mdash; a recount was requested</p></details>', rock) or re.findall(
-            r'(?:Rep|Sen)\. “Elect” ([^<]+?) <', rock) != ["Zoe Young", "Charles Foote", "Kristine Trow"]:
+            r'(?:Rep|Sen)\.-elect ([^<]+?) <', rock) != ["Zoe Young", "Charles Foote", "Kristine Trow"]:
         bad.append("by county, Rockingham does not list Young (6), then Foote and Trow (13), and "
                    "name District 13's two seats not final")
     # The seats at the top, and under them the seats not final, listed: the
@@ -3348,7 +3348,7 @@ def _elect_tab_like_legislators(OT):
     es_page = OT.members_elect(elect, "2026-11-20", "es", people)
     es = plain(es_page) + " " + " ".join(_h.unescape(v) for v in re.findall(
         r'\b(?:title|aria-label)="([^"]*)"', es_page))
-    for word in ("“Elect”", "Incumbent", "Returning", "Prior service", "Search", "Status",
+    for word in ("Rep.-elect", "Sen.-elect", "Incumbent", "Returning", "Prior service", "Search", "Status",
                  "New district", "New chamber", "New",
                  "By last name", "By county", "Who won the seats", "not final", "seats elected",
                  "More than one party", "no one on file", "lists them", "members-elect",
@@ -3412,6 +3412,90 @@ console.log(JSON.stringify([a,b,c,d,String(scrolled),bars.map(function(x){return
                   "line for a phone, and the seats not final listed; Spanish throughout"
                   + ("; both strips switch their own panes and open the view an address names"
                      if node else " (node absent: the strips' script not run)"))
+
+
+@check("build", "a member-elect is titled Rep.-elect or Sen.-elect (Representative-elect and "
+                "Senator-elect in a page's heading), and no source file writes the title the "
+                "old way, Elect in quotation marks", needs=("officials_tabs", "build_legislator_pages",
+                                                         "build_lsrs", "sponsor_roster", "i18n"))
+def _elect_title_hyphenated(OT, BLP, LS, SR, I):
+    """The owner, 20 November 2026: "You can change the Rep. "Elect" Alice
+    Wade back to the standard format of Rep.-elect Alice Wade since I hadn't
+    realized the hyphenated version appears to be the traditional format."
+    Her choice of 16 November had put the word Elect in quotation marks.
+
+    The title as each place that writes it gives it: the Members-Elect tab's
+    chip (officials_tabs.elect_chip), the search's rows and their own page
+    (build_legislator_pages.elect_title, and elect_heading spelling it out),
+    a request's card and chip (build_lsrs.elect_title), the honorific read
+    back off it (build_lsrs.label_name, sponsor_roster.chamber_of, and in
+    app.js fullTitle, spChamber and cardSponsor, run in node where it is
+    installed), and the Spanish, "Rep. electo/a", the catalog's own adjective
+    for a member-elect ("Miembro electo"), current for the new English.
+
+    And so the old form cannot come back through a default, a pattern or a
+    catalog entry: no file git tracks under src/, workers/, functions/ or
+    words/ carries Elect after an opening quotation mark, as the character,
+    as a backslash-u escape or as an HTML entity, in any case, in English or in the
+    Spanish that mirrored it. The patterns are built here from their parts,
+    so this file is read by the same test."""
+    bad = []
+    rep, sen = "Rep.-elect", "Sen.-elect"
+    got = {"BLP.elect_title": (BLP.elect_title("H"), BLP.elect_title("S")),
+           "build_lsrs.elect_title": (LS.elect_title("H"), LS.elect_title("S"))}
+    for where, pair in got.items():
+        if pair != (rep, sen):
+            bad.append(f"{where} gives {pair!r}, not {(rep, sen)!r}")
+    heads = (BLP.elect_heading(rep, "Heather Deiner", "D"), BLP.elect_heading(sen, "Laura Telerski", "D"))
+    if heads != ("Representative-elect Heather Deiner (D)", "Senator-elect Laura Telerski (D)"):
+        bad.append(f"the headings read {heads!r}")
+    if LS.label_name(rep + " Colin Mitchell (R)") != "Colin Mitchell":
+        bad.append(f"label_name reads {LS.label_name(rep + ' Colin Mitchell (R)')!r}")
+    if (SR.chamber_of(rep + " Colin Mitchell (R)"), SR.chamber_of(sen + " Kurt Webber (D)")) != ("H", "S"):
+        bad.append("sponsor_roster.chamber_of does not read the chamber off the title")
+    chips = {lang: (OT.elect_chip({"n": "Pat Newell", "p": "D", "k": "new"}, "H|Belknap|6", lang),
+                    OT.elect_chip({"n": "Kurt Webber", "p": "D", "k": "new"}, "S|2", lang))
+             for lang in ("en", "es")}
+    if not (">Rep.-elect Pat Newell <" in chips["en"][0] and ">Sen.-elect Kurt Webber <" in chips["en"][1]):
+        bad.append(f"the Members-Elect tab's chips read {chips['en']!r}")
+    if not (">Rep. electo/a Pat Newell <" in chips["es"][0] and ">Sen. electo/a Kurt Webber <" in chips["es"][1]):
+        bad.append(f"the Spanish tab's chips read {chips['es']!r}")
+    es = (I.say("es", "elect.title_rep", rep), I.say("es", "elect.title_sen", sen))
+    if es != ("Rep. electo/a", "Sen. electo/a"):
+        bad.append(f"the Spanish titles are {es!r}: lang/es.json's entry is not current for the English")
+    js = _app_js('[scope.fullTitle("Sen.-elect Laura Telerski (D)"), scope.fullTitle("Former Rep. Jane Doe"),'
+                 ' scope.spChamber("Rep.-elect Colin Mitchell (R)"), scope.spChamber("Sen.-elect Kurt Webber (D)"),'
+                 ' scope.cardSponsor({sponsor_label: "Rep.-elect Colin Mitchell (R)"}).display_full]',
+                 names=("fullTitle", "spChamber", "cardSponsor"))
+    if js is not None and js != ["Senator-elect Laura Telerski (D)", "Former Representative Jane Doe",
+                                 "H", "S", "Rep.-elect Colin Mitchell (R)"]:
+        bad.append(f"app.js reads the title as {js!r}")
+    # The old form, built from its parts: the opening quotation mark, its
+    # escape and its entities, each before "elect".
+    olds = [chr(0x201C) + "elect", "\\" + "u201celect", "&" + "ldquo;elect", "&" + "#8220;elect",
+            "&" + "#x201c;elect"]
+    out = _run(["git", "ls-files", "--", "src", "workers", "functions", "words"],
+               capture_output=True, text=True, timeout=60)
+    if out.returncode != 0:
+        return "skip", "git would not list the tracked files, so the sources were not read"
+    texts = (".py", ".js", ".mjs", ".json", ".html", ".css", ".md", ".txt", ".toml", ".yml", ".yaml")
+    read = 0
+    for name in out.stdout.splitlines():
+        if not name.endswith(texts) or not Path(name).is_file():
+            continue
+        text = _source(name, errors="replace").lower()
+        read += 1
+        for i, line in enumerate(text.splitlines(), 1):
+            if any(o in line for o in olds):
+                bad.append(f"{name}:{i} writes the title the old way")
+    assert read, "no tracked source file was read"
+    assert not bad, "\n  ".join(bad)
+    return "ok", (f"Rep.-elect and Sen.-elect on the tab's chip, the search's rows, a request's card "
+                  f"and their own page, spelled out Representative-elect and Senator-elect in its "
+                  f"heading, and the chamber read back off them in Python"
+                  + (" and in app.js" if js is not None else " (node absent: app.js not run)")
+                  + f"; Rep. electo/a and Sen. electo/a in Spanish; none of {read} tracked source "
+                  f"files under src/, workers/, functions/ and words/ writes Elect in quotation marks")
 
 
 @check("frontend", "the Members-Elect tab has a search box and filters by status, party and "
@@ -3592,8 +3676,8 @@ console.log(JSON.stringify(out));
                 "merrimack district 15": ["ned", "sean"], "hills district 15": [],
                 "o’rorke": ["sean"], "o'rorke": ["sean"], "o rorke": ["sean"], "ororke": ["sean"],
                 "hart’s location": ["tom"], "harts loc.": ["tom"],
-                "Sen. “Elect” Jim Creighton (R - SD8)": ["jim"],
-                "Rep. “Elect” Sean O’Rorke (D - Merr 15)": ["sean"],
+                "Sen.-elect Jim Creighton (R - SD8)": ["jim"],
+                "Rep.-elect Sean O’Rorke (D - Merr 15)": ["sean"],
                 "james creighton": ["jim"], "jim creighton": ["jim"], "rep creighton": ["jim"],
                 "representative creighton": ["jim"], "sen. creighton": ["jim"],
                 "senator james creighton": ["jim"], "rep nobody": ["lee"], "rep Una": ["una"],
@@ -3603,7 +3687,7 @@ console.log(JSON.stringify(out));
                 "dover ward 3": ["dot"], "nashbury ward 1": ["dot"],
                 # the chip's party letter, alone or as a pair, and an initial
                 "creighton r": ["jim"], "(R - SD8)": ["jim"],
-                "Rep. “Elect” Pat Both (R/D - Belk 6)": ["pat"], "J. Creighton": ["jim"],
+                "Rep.-elect Pat Both (R/D - Belk 6)": ["pat"], "J. Creighton": ["jim"],
                 # a title before "district" names the chamber
                 "senator district 1": ["tom"], "rep district 1": ["ann"],
                 "sen district 8": ["jim"], "rep district 8": [],

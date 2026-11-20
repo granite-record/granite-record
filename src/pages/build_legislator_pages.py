@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.44
+# GRANITE_VERSION: 2026-09-04.45
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -328,7 +328,7 @@ def elect_mode(m, info):
                    their earlier service kept below it;
       "chamber"    a sitting member elected to the other chamber (Rep. for
                    Hills 30, elected Senator): headed as that chamber's
-                   member-elect, "Senator “Elect” James Creighton (R)" (the
+                   member-elect, "Senator-elect James Creighton (R)" (the
                    owner, 17 November 2026: 'link the new member pages as
                    Sen. "Elect" Laura Telerski for the title but connect it
                    to their house record as well'), the page their record,
@@ -357,8 +357,8 @@ def elect_member_name(m):
 
 
 def elect_title(chamber):
-    """A member-elect's title, by the chamber they were elected to: "Rep.
-    “Elect”" for the House, "Sen. “Elect”" for the Senate -- the words the
+    """A member-elect's title, by the chamber they were elected to: "Rep.-elect"
+    for the House, "Sen.-elect" for the Senate -- the words the
     Officials page's Members-Elect tab gives them (officials_tabs.elect_chip,
     the owner's walk of dry run 8, 8 November 2026), which the owner asked
     for in the search as well on 16 November 2026: 'use their title as Rep.
@@ -367,15 +367,15 @@ def elect_title(chamber):
     spells it out (elect_heading). Ends with the members-elect, on the day
     they take office."""
     import i18n
-    return (i18n.say("en", "elect.title_sen", "Sen. “Elect”") if chamber == "S"
-            else i18n.say("en", "elect.title_rep", "Rep. “Elect”"))
+    return (i18n.say("en", "elect.title_sen", "Sen.-elect") if chamber == "S"
+            else i18n.say("en", "elect.title_rep", "Rep.-elect"))
 
 
 def elect_heading(title, name, party=""):
     """The heading at the top of a member-elect's own page: their title with
     the honorific in full, as head_name spells a member's ("Representative
-    James Spillane"), then the name and the party -- "Representative “Elect”
-    Heather Deiner (D)" for `title` "Rep. “Elect”" (elect_title), and from
+    James Spillane"), then the name and the party -- "Representative-elect
+    Heather Deiner (D)" for `title` "Rep.-elect" (elect_title), and from
     the day they take office a member's, "Representative Heather Deiner (D)"
     for "Rep.". It was the name and party alone, "Heather Deiner (D)", until
     the owner asked for the title on 16 November 2026. app.js's
@@ -597,8 +597,8 @@ def elect_body(p, doc, reqs, req_meta, places, today, path="", base=""):
 
       the record's head, as a returning member-elect's own page is headed
         (app.js renderMemberHead): the trail ending "Member-elect", their
-        name as the ballot prints it, titled (elect_heading: "Representative
-        “Elect” Heather Deiner"), with the party it prints, the bar in
+        name as the ballot prints it, titled (elect_heading: "Representative-elect
+        Heather Deiner"), with the party it prints, the bar in
         that party's ink, the line saying what they were elected to and the
         towns of the district, each to its page, and the earlier service the
         person confirmed, where there is any; Cite this page and Share;

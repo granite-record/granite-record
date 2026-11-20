@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -3953,7 +3953,7 @@ def _search_enter(BP):
              "legislator/melissa-litchfield-rock-32", "Litchfield Melissa Rockingham"],
             ["legislator", "Rep. Alice Wade (D - Straf 15)", "House · Straf 15 · Democrat",
              "legislator/alice-wade-straf-15", "Wade Alice Strafford"],
-            ["elect", "Rep. “Elect” Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
+            ["elect", "Rep.-elect Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
              "legislator/heather-deiner-hills-25", "Hillsborough"],
             ["committee", "Housing", "House committee", "committee/H64", ""],
             ["committee", "Judiciary", "House committee", "committee/H07", ""],
@@ -4741,8 +4741,8 @@ def _find_elect_site(site):
              "county": "Hillsborough"}]
 
 
-@check("frontend", "the search finds each member-elect by their name, seat and county, titled Rep. "
-                   "“Elect” or Sen. “Elect” and leading to their own page, a former member elected "
+@check("frontend", "the search finds each member-elect by their name, seat and county, titled Rep.-elect "
+                   "or Sen.-elect and leading to their own page, a former member elected "
                    "again in place of their former row until the day they take office; a sitting "
                    "member's row as it was; /search lists them under their chamber",
        needs=("build_indexes", "build_pages"))
@@ -4756,7 +4756,7 @@ def _find_members_elect(BI, BP):
 
     - each new member-elect with a page, and each former member elected again, is one row of
       the kind "elect" after the sitting members, named with the Members-Elect tab's title and
-      the seat they were elected to, "Rep. “Elect” Heather Deiner (D - Hills 25)", its line a
+      the seat they were elected to, "Rep.-elect Heather Deiner (D - Hills 25)", its line a
       member's ("House · Hills 25 · Democrat"), leading to their own page; the former member's
       row is not beside it but in it, with the day they take office; a sitting member's row is
       as it was, and nobody has a second;
@@ -4801,15 +4801,15 @@ def _find_members_elect(BI, BP):
     staub = ["legislator", "Rep. Kathy Staub (D - Hills 25)", "House · Hills 25 · Democrat",
              "legislator/kathy-staub-hills-25", "Staub Kathy Hillsborough"]
     want = [staub,
-            ["elect", "Sen. “Elect” Kurt Webber (D - SD2)", "Senate · SD2 · Democrat",
+            ["elect", "Sen.-elect Kurt Webber (D - SD2)", "Senate · SD2 · Democrat",
              "legislator/kurt-webber-sd-2", "member-elect sen-elect senator-elect"],
-            ["elect", "Rep. “Elect” Pat Both (R/D - Belk 6)", "House · Belk 6 · R/D",
+            ["elect", "Rep.-elect Pat Both (R/D - Belk 6)", "House · Belk 6 · R/D",
              "legislator/pat-both-belk-6", "Belknap member-elect rep-elect representative-elect"],
-            ["elect", "Rep. “Elect” Benjamin Baroody (D - Hills 16)", "House · Hills 16 · Democrat",
+            ["elect", "Rep.-elect Benjamin Baroody (D - Hills 16)", "House · Hills 16 · Democrat",
              "legislator/benjamin-baroody-hills-39",
              "Benjamin C. Baroody Hillsborough Hills D member-elect rep-elect representative-elect",
              "2026-12-02"],
-            ["elect", "Rep. “Elect” Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
+            ["elect", "Rep.-elect Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
              "legislator/heather-deiner-hills-25",
              "Hillsborough member-elect rep-elect representative-elect"]]
     assert people == want, f"find_index's members and members-elect on 20 November are {people}"
@@ -4826,8 +4826,8 @@ def _find_members_elect(BI, BP):
                     ["legislator", "Rep. Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
                      "legislator/heather-deiner-hills-25", "Hillsborough"], was], (
         f"find_index's members on the day they take office are {took}")
-    words = {k: I.lookup("es", k, en) for k, en in (("elect.title_rep", "Rep. “Elect”"),
-                                                    ("elect.title_sen", "Sen. “Elect”"))}
+    words = {k: I.lookup("es", k, en) for k, en in (("elect.title_rep", "Rep.-elect"),
+                                                    ("elect.title_sen", "Sen.-elect"))}
     assert all(words.values()), f"the titles have no Spanish: {words}"
     queries = {"deiner": "Deiner", "Deiner": "Deiner", "heather deiner": "Deiner",
                "deiner heather": "Deiner", "rep deiner": "Deiner", "rep. deiner": "Deiner",
@@ -4867,17 +4867,17 @@ def _find_members_elect(BI, BP):
     bad = []
     by_day = {d: {a: (k, n) for k, n, a in v} for d, v in js["days"].items()}
     base = "legislator/benjamin-baroody-hills-39"
-    if by_day["2026-11-20"].get(base) != ("elect", "Rep. “Elect” Benjamin Baroody (D - Hills 16)") \
+    if by_day["2026-11-20"].get(base) != ("elect", "Rep.-elect Benjamin Baroody (D - Hills 16)") \
             or by_day["2026-12-02"].get(base) != ("former", "Former Rep. Benjamin Baroody") \
             or by_day["2026-12-02"].get("legislator/heather-deiner-hills-25") != (
-                "elect", "Rep. “Elect” Heather Deiner (D - Hills 25)"):
+                "elect", "Rep.-elect Heather Deiner (D - Hills 25)"):
         bad.append(f"the rows find.js takes in on the reader's day: {js['days']}")
     for q, who in queries.items():
         first = (js["match"][q] or [[""]])[0]
-        if who not in first[0] or first[1] != "Member-Elect" or not re.match(r"(Rep|Sen)\. “Elect” ", first[0]):
+        if who not in first[0] or first[1] != "Member-Elect" or not re.match(r"(Rep|Sen)\.-elect ", first[0]):
             bad.append(f"{q!r} first finds {first}")
     deiner = js["match"]["deiner"][0]
-    if deiner != ["Rep. “Elect” Heather Deiner (D - Hills 25)", "Member-Elect",
+    if deiner != ["Rep.-elect Heather Deiner (D - Hills 25)", "Member-Elect",
                   "House · Hills 25 · Democrat", "legislator/heather-deiner-hills-25"]:
         bad.append(f"Heather Deiner's row is {deiner}")
     for q, who in seats.items():
@@ -4887,14 +4887,14 @@ def _find_members_elect(BI, BP):
     text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", js["panel"])).strip()
     if not js["panel"].lstrip().startswith('<a href="/legislator/heather-deiner-hills-25">') \
             or "<mark>Deiner</mark>" not in js["panel"] \
-            or not text.startswith("Rep. “Elect” Heather Deiner (D - Hills 25) Member-Elect House · Hills 25"):
+            or not text.startswith("Rep.-elect Heather Deiner (D - Hills 25) Member-Elect House · Hills 25"):
         bad.append(f"the header's panel draws {text[:200]!r}")
     if js["suggest"]:
         bad.append(f"'elects' is offered {js['suggest']!r}: the title is a word to offer")
-    if sorted(js["es"]) != sorted(n.replace("Rep. “Elect”", words["elect.title_rep"])
-                                  .replace("Sen. “Elect”", words["elect.title_sen"])
+    if sorted(js["es"]) != sorted(n.replace("Rep.-elect", words["elect.title_rep"])
+                                  .replace("Sen.-elect", words["elect.title_sen"])
                                   for n in (w[1] for w in want[1:])) \
-            or any("“Elect”" in n for n in js["es"]):
+            or any("-elect" in n for n in js["es"]):
         bad.append(f"in Spanish the rows are named {js['es']}")
     s = js["search"]
     group = lambda h, html: (re.search(r"<h2>" + h + r"\s*<span", html) is not None)  # noqa: E731
@@ -4904,12 +4904,12 @@ def _find_members_elect(BI, BP):
         bad.append("/search does not list the members-elect under Senators-Elect and "
                    "Representatives-Elect, apart from the members")
     if not (group("Representatives-Elect", s["baroody"]) and "/bills?sponsor=Benjamin%20Baroody&amp;term=all" in s["baroody"]
-            and "Rep. “Elect” Benjamin Baroody&rsquo;s bills" in s["baroody"]):
+            and "Rep.-elect Benjamin Baroody&rsquo;s bills" in s["baroody"]):
         bad.append("/search does not link a former member elected again to their bills: "
                    + re.sub(r"\s+", " ", s["baroody"])[:400])
     assert not bad, "; ".join(bad)
     return "ok", (f"{sum(r[0] == 'elect' for r in rows)} members-elect after the sitting member, "
-                  "titled Rep. “Elect” or Sen. “Elect” with the seat they were elected to; the former "
+                  "titled Rep.-elect or Sen.-elect with the seat they were elected to; the former "
                   "member's row inside theirs, back on the day they take office by the reader's day, "
                   f"a member's for the new by the build's; found by {len(queries) + len(seats)} "
                   "searches, first in the panel, in Spanish words, and under their chamber on /search")
@@ -4957,7 +4957,7 @@ def _find_swapped_letters(BP):
     swaps at a bound of two); and the panel offers the name for "denier"."""
     if not shutil.which("node"):
         return "skip", "node is not installed"
-    rows = [["elect", "Rep. “Elect” Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
+    rows = [["elect", "Rep.-elect Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
              "legislator/heather-deiner-hills-25", "Hillsborough"],
             ["legislator", "Rep. Glenn Bailey (R - Straf 2)", "House · Straf 2 · Republican",
              "legislator/glenn-bailey-straf-2", "Bailey Glenn Strafford"],

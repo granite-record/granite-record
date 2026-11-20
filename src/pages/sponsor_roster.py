@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.2
+# GRANITE_VERSION: 2026-11-19.3
 """
 The members the bill search's Sponsor filter lists, a term at a time:
 site/sponsors/<term>.json (the owner, 19 November 2026: "a dropdown list of
@@ -55,9 +55,9 @@ def sp_key(row):
 
 
 def chamber_of(label):
-    """"H" or "S" by the label's honorific (a member-elect's "Rep. “Elect”" is
+    """"H" or "S" by the label's honorific (a member-elect's "Rep.-elect" is
     Rep.), or "" where the label names none."""
-    head = str(label or "").split(" ", 1)[0]
+    head = str(label or "").split(" ", 1)[0].removesuffix("-elect")
     return HONORIFIC.get(head, "")
 
 

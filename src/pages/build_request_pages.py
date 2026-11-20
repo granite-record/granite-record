@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.20
+# GRANITE_VERSION: 2026-11-08.21
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -92,7 +92,7 @@ def sponsors(site):
     request's own row instead.
 
     A member-elect's chip carries their title until the day they take office,
-    "Rep. “Elect” Colin Mitchell (R)" (the owner, 17 November 2026;
+    "Rep.-elect Colin Mitchell (R)" (the owner, 17 November 2026;
     build_lsrs.elect_title and elect_window), as the request's row labels them
     for its card; a sitting member's is the roster's, as it was."""
     import build_lsrs
