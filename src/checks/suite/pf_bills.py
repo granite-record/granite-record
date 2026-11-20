@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.43
+# GRANITE_VERSION: 2026-11-16.44
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -6750,6 +6750,8 @@ def _former_label_is_the_last_terms_seat(B2, PDIST, ST):
     calls = [n.func.id for n in ast.walk(main) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]
     assert "last_term_labels" in calls and calls.index("keep_moved") < calls.index("last_term_labels") \
         and calls.index("last_term_labels") < calls.index("build_legislators"), "main does not label former members by their last term"
+    text = _source(_paths.locate("members.py"))
+    tree = _parsed(_paths.locate("members.py"))
     bl = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "build_legislators")
     assert '"slug": m.get("slug") or member_slug(m, lab)}' in ast.get_source_segment(text, bl), (
         "build_legislators does not keep the address a former member's row is given")
@@ -7120,7 +7122,7 @@ def _movers_by_term(B2, BL, BP, BI):
         'k:r=>r[0]==="former"&&/^House/.test(r[2])' in grouped, (
         "the site search no longer groups former members by the chamber their line starts with; "
         "say here what it groups by now")
-    src = _source(_paths.locate("build_site_v2.py"))
+    src = _source(_paths.locate("members.py"))
     assert 'row["service"] = ML.service(mv)' in src, (
         "former.json's rows no longer carry each chamber's years for a joined page")
     assert re.search(r"mv = sorted\(\[v for x in \(mid, \*joined\)[^\n]*\n\s*key=service_order, "

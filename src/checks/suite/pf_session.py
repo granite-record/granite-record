@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of session days and their pages, and the journals.
 
@@ -6694,7 +6694,7 @@ def _session_day_folds():
                       ("by_party", "the excused are not counted by party")):
         assert need in src, why
     assert BSP.and_list(["a", "b", "c"]) == "a, b, and c" and BSP.and_list(["a", "b"]) == "a and b"
-    v2 = _source("src/pages/build_site_v2.py")
+    v2 = _source("src/pages/members.py")
     fm = v2[v2.index("def floor_moment("):v2.index("def write_floor_record(")]
     assert '"consent"' not in fm or "return None" in fm
     import build_site_v2 as B2
