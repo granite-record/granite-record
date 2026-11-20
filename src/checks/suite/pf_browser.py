@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.24
+# GRANITE_VERSION: 2026-11-16.25
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -10695,6 +10695,9 @@ def _tags_in_search(BP):
 # the suite plants trees of its own and is not read.
 APP_PARTS_READERS = {
     "app_parts.py": "writes app.js from them, and carries an edit made in app.js back",
+    "build_inputs.py": "leaves them out of what a build is made from: the build reads app.js",
+    "front_end.py": "refuses the fast path while app.js is not its parts, so that a part edited is "
+                    "never left out of the site without a word",
 }
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.3
+# GRANITE_VERSION: 2026-10-09.4
 """
 What the last full build was built from, and what has moved since.
 
@@ -80,6 +80,8 @@ NOT_INPUTS = (
     ".build_cache",  # answers kept under their inputs' and code's sha256
                      # (build_cache.py): what one gives is what working it
                      # out gives, so it is never what a page is made of
+    "src/pages/app", # app.js's parts (app_parts.py): the build reads app.js,
+                     # which is written from them, and never a part
 )
 NOT_INPUT_NAMES = ("__pycache__",)          # at any depth
 NOT_INPUT_FILES = (".build.lock",           # a build's own lock

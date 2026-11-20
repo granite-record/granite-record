@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.8
+# GRANITE_VERSION: 2026-10-09.9
 """
 A change to the browser's files, put into the site the last full build made.
 
@@ -28,7 +28,11 @@ that moved is one of these:
                       comments (build_pages.published_js, strip_js.py) -- and
                       site/sidx/, if the search's tables in it (SYN,
                       CONCEPTS, STOP) moved, by running the search-index step
-                      as the build does (about two minutes)
+                      as the build does (about two minutes). app.js is
+                      written from its parts in src/pages/app/
+                      (app_parts.py), which no build reads; while app.js
+                      is not its parts this refuses (parts_refusal), so a
+                      part edited is never left out without a word
   src/pages/find.js   site/find.js, without its comments
   src/pages/          site/components.js, with the words of src/pages/words/
     components.js     written between its markers (build_pages.with_words),
@@ -142,6 +146,15 @@ def is_fact_source(path):
                or fnmatch.fnmatchcase(path, s) for s in FACT_SOURCES)
 
 
+def parts_refusal(root="."):
+    """Why the fast path will not run where app.js is not its parts in
+    src/pages/app/ (app_parts.stale), or None: there it would build app.js
+    as it stands and leave out the part that was edited, and say the site
+    is current. A folder with no parts (a fixture's) has nothing to hold."""
+    import app_parts as AP
+    return AP.stale(root) if AP.parts(root) else None
+
+
 def judge(rec, now, now_facts):
     """(fast, fact_moved, refused, reruns) for a record and the state now:
 
@@ -208,6 +221,10 @@ def run(a):
         print(f"REFUSED: {SITE}/build.json is not the one the recorded build wrote, so "
               f"{SITE}/ is not that build's: another build, or a copy, has been here since. "
               "Build again: python3 build_all.py --local")
+        return 2
+    why = parts_refusal()
+    if why:
+        print(f"REFUSED: {why}.")
         return 2
     now = BI.state(known=rec["code"])
     now_facts = facts()
