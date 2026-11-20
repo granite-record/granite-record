@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.21
+# GRANITE_VERSION: 2026-11-16.24
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -9934,8 +9934,8 @@ def _unescape(s):
 def _headings_of_sections():
     """Every W4 section heading this code writes, with where it is written: the literal
     headings app.js and build_session_pages.py hand components.section, the story's
-    headings narrative.py and build_site_v2.py make (C8), and every .w4h the fixture's
-    built and drawn pages carry."""
+    headings narrative.py, build_site_v2.py and endings.py make (C8), and every .w4h the
+    fixture's built and drawn pages carry."""
     import narrative as N
     out = []
     for f, rx in ((Path("src/pages/app.js"), r'\bsection\(\s*"([^"]+)"'),
@@ -9944,9 +9944,10 @@ def _headings_of_sections():
     out += [(h, "narrative.STAGE_LABEL") for h in N.STAGE_LABEL.values()]
     out += [(N.stage_label(("H", "committee", "Health, Human Services and Elderly Affairs")),
              "narrative.stage_label")]
-    v2 = _source("src/pages/build_site_v2.py")
-    out += [(h, "build_site_v2.py") for h in re.findall(r'"label": "([A-Z][^"]+)"', v2)
-            if not h.startswith(("Ought", "Inexpedient"))]
+    for v2f in ("build_site_v2.py", "endings.py"):
+        v2 = _source("src/pages/" + v2f)
+        out += [(h, v2f) for h in re.findall(r'"label": "([A-Z][^"]+)"', v2)
+                if not h.startswith(("Ought", "Inexpedient"))]
     shared, _base, _ran, _days = _fixture_site_shared()
     for p in sorted((shared / "site" / "session").rglob("*.html")):
         out += [(_unescape(h), p.name)
@@ -12143,7 +12144,7 @@ def _interim_report_one_colour(BP):
     for k in ("rec", "not", "without"):
         if order.get(f".jl .jrec-{k} .jg", -1) <= first:
             bad.append(f".jl .jrec-{k} .jg is not after .jl .j-istudy .jg, so the orange wins")
-    src = _source("src/pages/build_site_v2.py")
+    src = _source("src/pages/endings.py")
     if '"rec": rep["rec"]' not in src:
         bad.append("build_site_v2's interim report line no longer says which of the three it was")
     assert not bad, "; ".join(bad[:8])
@@ -15185,7 +15186,8 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         # The states are read the way _states_covered reads them, from both
         # the builder and the page's own branches, since a ternary in the
         # builder hides its else arm from any one pattern.
-        src = _source(B.__file__) + _source(_paths.locate("stations.py"))
+        src = (_source(B.__file__) + _source(_paths.locate("stations.py"))
+               + _source(_paths.locate("hearing_reports.py")))
         states = set(re.findall(r'"state":\s*"(\w+)"', src))
         states |= set(re.findall(r'\["state"\]\s*=\s*"(\w+)"', src))
         states |= set(re.findall(r'state,\s*start\s*=\s*"(\w+)"', src))

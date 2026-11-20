@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.4
+# GRANITE_VERSION: 2026-11-19.5
 """
 What the page builders share: the pieces more than one builder draws a page
 with, kept here rather than inside one builder that the others import.
@@ -33,8 +33,10 @@ module split out of it may not import it back. What those modules read of
 build_site_v2 and is no one subsystem's came here the same way: what a bill of
 each kind has to clear (SINGLE_CHAMBER, NO_GOVERNOR, BILL_OF_INTENT),
 bill_prefix, the chip's six words, the docket's signature (SIGNED_RE), a
-CACR's referendum (REFERENDUM), docket_line and the Senate's Rule 3-23 deaths
-(TABLE_DEATH); build_site_v2 imports each back under its name.
+CACR's referendum (REFERENDUM), docket_line, the Senate's Rule 3-23 deaths
+(TABLE_DEATH), and the year a cited calendar or journal is from and its address
+(SOURCE_YEAR, _source_url), which a docket line's citation and a committee's
+report both link by; build_site_v2 imports each back under its name.
 
 Each part keeps the comments that say why it is as it is; the section a part
 came from is named above it.
@@ -864,6 +866,37 @@ def docket_line(e):
 # THE 2025 ROW HAS NO "ADJOURNMENT": "Inexpedient to Legislate, Senate Rule
 # 3-23, 10/31/2025". The rule is named, and that is what the row is.
 TABLE_DEATH = re.compile(r"inexpedient to legislate,\s*senate\s+rule\s+3-23\b", re.I)
+
+
+# ---- from build_site_v2: the year a cited volume is from, and its address ------------------
+
+# The year a published volume is from, out of the path in its own link. Two
+# shapes, because the two files were fetched by different scripts:
+#
+#   .../Journals/2026/HJ 03 February 5, 2026.PDF
+#   .../viewer.aspx?fileName=calendars%5C2026%5CNo10 March 6 2026.pdf
+#
+# Every one of the 188 keys on file yields a year this way.
+SOURCE_YEAR = re.compile(r"(?:%5C|/)(\d{4})(?:%5C|/)", re.I)
+
+
+def _source_url(sources, key, year):
+    """The address for a calendar or journal cited in a given year, or "".
+
+    The year-qualified key first; the bare key only where the address it holds
+    is from that same year. One rule for every citation on the site --
+    committee_reports() used to take the bare key unguarded, and all 7,376
+    House report citations of 2013-2022 linked a 2023 or 2024 calendar and
+    printed that calendar's date as the day the report was printed.
+    """
+    if not key:
+        return ""
+    url = sources.get(f"{key} {year}") if year else None
+    if url:
+        return url
+    bare = sources.get(key, "")
+    m = SOURCE_YEAR.search(bare)
+    return bare if (m and year and m.group(1) == str(year)) else ""
 
 
 # ---- from build_town_pages: a number that dials, an address that mails ---------------------

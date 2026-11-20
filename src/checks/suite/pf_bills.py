@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.45
+# GRANITE_VERSION: 2026-11-16.48
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1145,14 +1145,17 @@ def _vote_member_kept(build_site_v2):
         except TypeError as e:
             bad.append(f"a chamber no dict can hold is refused as a key: {e}")
     asked = []
-    labels = B.member_labels
-    B.member_labels = lambda *a, **k: (asked.append(a), labels(*a, **k))[1]
+    # Counted where vote_member reads member_labels: its own module's (sponsors.py's since
+    # 20 November 2026), which build_site_v2.vote_member is.
+    space = B.vote_member.__globals__
+    labels = space["member_labels"]
+    space["member_labels"] = lambda *a, **k: (asked.append(a), labels(*a, **k))[1]
     try:
         B._VOTE_LABELS.clear()
         for _ in range(3):
             B.vote_member(dict(jodi, party="R"), "H", legs, set())
     finally:
-        B.member_labels = labels
+        space["member_labels"] = labels
     if len(asked) != 1:
         bad.append(f"a member asked three times is labelled by member_labels {len(asked)} "
                    "times, not once: vote_member keeps no pair, or labels some other way, and "
@@ -5265,7 +5268,7 @@ def _study_report_said_once(B, PA):
     # Typed out again nowhere else, and the old copies gone.
     typed = [said["rec"], said["not"], f"{head}: {said['without']}"]
     for f in ("src/pages/app.js", "src/pages/components.js", "src/pages/build_site_v2.py",
-              "src/pages/journey.py",
+              "src/pages/journey.py", "src/pages/endings.py", "src/pages/hearing_reports.py",
               "src/pages/build_committees.py", "src/parse/plain_action.py", "tests/follow/sender.test.js"):
         text = _source(f)
         again = [w for w in typed + list(_STUDY_WORDS_GONE) if w in text]

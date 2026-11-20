@@ -137,9 +137,10 @@ The record and its own pages:
 - `build_site_v2`: the record builder -- each bill's payload and the bill
   index, and the legislators', towns' and committees' files the pages after
   it read (there was never a v1 here); its journey, a bill's status, the
-  proceedings' stations, the members and the conferences are modules of their
-  own beside it since 20 November 2026 (the next five lines), and it imports
-  every name of theirs back;
+  proceedings' stations, the members, the conferences, the amendments, the
+  rail's endings, the committee and hearing reports, the sponsors and a
+  bill's topic are modules of their own beside it since 20 November 2026
+  (the next ten lines), and it imports every name of theirs back;
 - `journey`: the passage rail and the journey -- the four stops a bill passes
   (`passage`) and what each chamber decided and when (`journey`,
   `journey_rail` and the `_j_` readers), read from the docket for the rail's
@@ -170,6 +171,37 @@ The record and its own pages:
   bill -- a concurrence, a committee of conference and how it ended -- read
   from the docket; a section of `build_site_v2` until 20 November 2026, which
   imports every name of it back;
+- `amendments`: a bill's amendments and its text -- the amendments the docket
+  moved, in the order it took them up, with what each says it changes
+  (`bill_amendments`, `amendment_targets`), and the text the General Court
+  printed, its analysis told apart from the bill (`bill_text_block`); a
+  section of `build_site_v2` until 20 November 2026, which imports every name
+  of it back;
+- `endings`: the rail's endings -- a bill the session's end killed with no
+  vote, left on the table (`table_death`) or held for interim study
+  (`study_ending`, with the study committee's report, `interim_report`) --
+  and the days each chamber sat, which date them (`chamber_sittings`); a
+  section of `build_site_v2` until 20 November 2026, which imports every name
+  of it back;
+- `hearing_reports`: what a bill's committees reported and who spoke at its
+  hearings -- the committee reports the calendars printed, read beside the
+  docket (`committee_reports`), the interim study statements as cards
+  (`interim_cards`), a public hearing's sign-ins (`hearing_testimony`) and
+  the Senate's written hearing reports, their speakers matched to members
+  (`attach_hearing_reports`); a section of `build_site_v2` until 20 November
+  2026, which imports every name of it back;
+- `sponsors`: the members a bill's record names -- its sponsors, each with the
+  seat and the party the term's Manual gives where the General Court's own
+  record has none (`bill_sponsor_list`, `manual_seats`, `manual_parties`),
+  and the members its docket names: each ballot's voter (`vote_member`), a
+  motion's mover (`mover_member`), a committee report's author
+  (`report_authors`); a section of `build_site_v2` until 20 November 2026,
+  which imports every name of it back;
+- `bill_topics`: a bill's topic as the bill index files it -- the topic
+  model's answer for the terms the General Court gave none
+  (`merge_guessed_topics`) and the site's one vocabulary applied to every
+  bill last (`unify_vocabulary`); a section of `build_site_v2` until 20
+  November 2026, which imports every name of it back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a
   file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,

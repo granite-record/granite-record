@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.23
+# GRANITE_VERSION: 2026-11-16.29
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1292,7 +1292,7 @@ def _import_cycles_cut():
 _SPLIT_FROM_SITE = {
     "parts": ("BILL_OF_INTENT", "SINGLE_CHAMBER", "NO_GOVERNOR", "bill_prefix", "CHIP_WORDS",
               "BECAME_LAW", "DIED", "INTERIM_STUDY", "TABLED", "VETOED", "WITHDRAWN", "SIGNED_RE",
-              "REFERENDUM", "docket_line", "TABLE_DEATH"),
+              "REFERENDUM", "docket_line", "TABLE_DEATH", "SOURCE_YEAR", "_source_url"),
     "conferences": ("CONF_REPORT", "CONF_FAILED", "NEW_CONF", "NEXT_MOTION", "CONF_REJECTED",
                     "CONF_UNABLE", "CONF_UNABLE_RE", "CHAMBERS_APART", "ENDED_AS",
                     "CONF_UNSIGNED_RE", "CONF_LATE_RE", "FAILURE_RANK", "_failure_how",
@@ -1351,6 +1351,31 @@ _SPLIT_FROM_SITE = {
                       "seat_of_the_lines service_order sitting_labels sort_name "
                       "sponsored_in_order term_seats vote_date write_floor_record "
                       "write_rollcall_index").split()),
+    "amendments": tuple(("AMEND_ANY AMEND_NUM DASH_RULE ENACTING EXPLANATION FRONT LEGEND "
+                         "PREAMBLE_END RSA_CITE_T TARGET_ALL TARGET_SECT _amendment_said "
+                         "amended_bill amendment_claims amendment_num amendment_targets "
+                         "amendments_in_text bill_amendments bill_text_block").split()),
+    "endings": tuple(("FIRST_YEAR_TABLE_DIES NEXT_LSR NO_SITTING_ROW ROW_DAY SESSION_END_DEATHS "
+                      "SITTING_TYPES SPECIAL_JOURNAL SPECIAL_SESSION_ROW TABLE_DEATH_ROW "
+                      "TABLING_ROW TOLD_TABLE_DEATH _sat_by_journal adjourned_by "
+                      "chamber_sittings died_on_table interim_report journal_sittings last_sat "
+                      "lsr_bills next_term_bill session_end_line session_endings study_ending "
+                      "table_death table_death_line table_death_told table_session_ends "
+                      "term_years with_journals").split()),
+    "hearing_reports": tuple(("CAL_DATE INTERIM_FROM_DOCKET INTERIM_SIDE INTERIM_WORDS "
+                              "LOST_RECONSIDER MONTHS PUBLIC_HEARING REPORT_AGAIN REPORT_CAL "
+                              "SPEAKER_TITLE _again_carried _cal_date _cal_key _mdy "
+                              "_same_statement attach_hearing_reports committee_reports "
+                              "hearing_report_for_page hearing_testimony interim_cards rec_key "
+                              "report_station resolve_speaker speaker_index").split()),
+    "sponsors": tuple(("MANUAL_PARTY MOVER_HONORIFIC MOVER_SUFFIX Parties STORY_PERSON "
+                       "_LABEL_PARTY _SPELLINGS _VOTE_LABELS _manual_name_keys _spellings "
+                       "bill_sponsor_list early_party early_party_said manual_parties "
+                       "manual_said manual_seats mover_member mover_pool party_ids party_letter "
+                       "party_record report_author report_authors sponsor_record_chambers "
+                       "sponsor_record_rows sponsor_record_said story_people term_voters "
+                       "vote_member").split()),
+    "bill_topics": tuple(("ADDED_CODES TOPICS_GUESSED merge_guessed_topics unify_vocabulary").split()),
 }
 
 
@@ -1392,7 +1417,8 @@ def _split_out(site, mod, names):
 def _site_shares_from_parts(B, PARTS):
     """What a bill of each kind has to clear, bill_prefix, the chip's six words, SIGNED_RE,
     REFERENDUM, docket_line and TABLE_DEATH moved from build_site_v2 to parts.py on 20
-    November 2026 (the refactor's finding 4), as they stood, so that a module split out of
+    November 2026 (the refactor's finding 4), and SOURCE_YEAR and _source_url, the address of
+    a cited calendar or journal, after them, as they stood, so that a module split out of
     build_site_v2 can read them without importing it back (_import_cycles_cut). Undone, half done, or copied back
     into build_site_v2 beside parts' own, this says which name."""
     names = _SPLIT_FROM_SITE["parts"]
@@ -1501,6 +1527,117 @@ def _site_members_moved(B, MEM):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in members.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the members' own")
+
+
+@check("files", "a bill's amendments and its text -- the amendments the docket moved, in its order, "
+                "and the text's analysis told apart from the bill -- are amendments.py's, every "
+                "name of them imported back into build_site_v2",
+       needs=("build_site_v2", "amendments"))
+def _site_amendments_moved(B, AM):
+    """build_site_v2's amendments and texts moved to amendments.py on 20 November 2026 (the
+    refactor's finding 4), as they stood: AMEND_NUM and AMEND_ANY, the patterns of what an
+    amendment says it changes and amendment_targets, the text's analysis, legend and front
+    matter told apart (ENACTING to EXPLANATION, bill_text_block), amendments_in_text,
+    amended_bill, amendment_num, amendment_claims, bill_amendments and _amendment_said.
+    Every name of them is held to be amendments.py's, defined nowhere in build_site_v2.py,
+    and build_site_v2.<name> the same object, so vote_chronology, bill_rollcalls,
+    build_bills and the checks that ask build_site_v2.bill_amendments read the one copy.
+    (session_days' ADOPTED and amendment_carried are still imported into build_site_v2
+    where they were.)"""
+    names = _SPLIT_FROM_SITE["amendments"]
+    bad = _split_out(B, AM, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in amendments.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the amendments' own")
+
+
+@check("files", "the rail's endings -- a bill the session's end killed with no vote, left on the "
+                "table or held for interim study, and the days each chamber sat -- are "
+                "endings.py's, every name of them imported back into build_site_v2",
+       needs=("build_site_v2", "endings"))
+def _site_endings_moved(B, END):
+    """build_site_v2's session endings and table deaths moved to endings.py on 20 November
+    2026 (the refactor's finding 4), as they stood: from the heading THE RAIL'S ENDINGS --
+    the days each chamber sat (SITTING_TYPES, chamber_sittings, journal_sittings,
+    with_journals, term_years), a bill left on the table (died_on_table,
+    table_session_ends, table_death, adjourned_by, last_sat, table_death_line,
+    table_death_told), the study committee's report (interim_report), the next term's bill
+    (lsr_bills, next_term_bill) and study_ending -- to session_endings, and
+    SESSION_END_DEATHS and session_end_line. Every name of them is held to be endings.py's,
+    defined nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so
+    build_bills, main, journey_disagrees and the checks that ask build_site_v2.table_death
+    read the one copy. (committee_acts' interim study patterns, imported among them, came
+    with them and are imported back too; the rail's index row, RAIL_CODE to index_rail,
+    stays.)"""
+    names = _SPLIT_FROM_SITE["endings"]
+    bad = _split_out(B, END, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in endings.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the endings' own")
+
+
+@check("files", "what a bill's committees reported and who spoke at its hearings -- the calendars' "
+                "committee reports, the interim study statements, a hearing's sign-ins and the "
+                "Senate's hearing reports -- are hearing_reports.py's, every name of them imported "
+                "back into build_site_v2",
+       needs=("build_site_v2", "hearing_reports"))
+def _site_hearing_reports_moved(B, HR):
+    """build_site_v2's committee and hearing reports moved to hearing_reports.py on 20
+    November 2026 (the refactor's finding 4), as they stood: PUBLIC_HEARING, which only the
+    sign-ins read, then from CAL_DATE, a calendar's publication date, to
+    attach_hearing_reports -- rec_key, the interim study statements as cards
+    (interim_cards), committee_reports, hearing_testimony, the speakers matched to members
+    (speaker_index, resolve_speaker) and the Senate's hearing reports placed on their
+    hearings (hearing_report_for_page, report_station). Every name of them is held to be
+    hearing_reports.py's, defined nowhere in build_site_v2.py, and build_site_v2.<name> the
+    same object, so build_bills, main and the checks that ask
+    build_site_v2.committee_reports read the one copy."""
+    names = _SPLIT_FROM_SITE["hearing_reports"]
+    bad = _split_out(B, HR, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in hearing_reports.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the reports' own")
+
+
+@check("files", "the members a bill's record names -- its sponsors with the seats and parties the "
+                "term's Manual gives, each ballot's voter, a motion's mover and a report's author "
+                "-- are sponsors.py's, every name of them imported back into build_site_v2",
+       needs=("build_site_v2", "sponsors"))
+def _site_sponsors_moved(B, SP):
+    """build_site_v2's sponsors and the Manual's seats moved to sponsors.py on 20 November
+    2026 (the refactor's finding 4), as they stood, from _VOTE_LABELS to bill_sponsor_list:
+    a ballot's member labelled once (vote_member), a motion's mover (mover_member,
+    mover_pool, term_voters), a committee report's author (report_author, report_authors),
+    the members the story names (story_people), the sponsor record's chambers
+    (sponsor_record_chambers), the seats and parties the Manuals print (manual_seats,
+    manual_parties, party_letter, early_party, party_record) and bill_sponsor_list. Every
+    name of them is held to be sponsors.py's, defined nowhere in build_site_v2.py, and
+    build_site_v2.<name> the same object, so bill_rollcalls, build_bills, main and the
+    checks that ask build_site_v2.bill_sponsor_list read the one copy."""
+    names = _SPLIT_FROM_SITE["sponsors"]
+    bad = _split_out(B, SP, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in sponsors.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the sponsors' own")
+
+
+@check("files", "a bill's topic as the index files it -- the topic model's for the terms the "
+                "General Court gave none, and the site's one vocabulary applied last -- is "
+                "bill_topics.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "bill_topics"))
+def _site_bill_topics_moved(B, BT):
+    """build_site_v2's topic vocabulary moved to bill_topics.py on 20 November 2026 (the
+    refactor's finding 4), as it stood: TOPICS_GUESSED and merge_guessed_topics,
+    ADDED_CODES, and unify_vocabulary. Every name of them is held to be bill_topics.py's,
+    defined nowhere in build_site_v2.py, and build_site_v2.<name> the same object, so main
+    and the checks that ask build_site_v2.unify_vocabulary file a bill's topic the one way.
+    (The vocabulary itself, vocabulary_of and TOPIC_WORDS, is
+    src/parse/topic_vocabulary.py's.)"""
+    names = _SPLIT_FROM_SITE["bill_topics"]
+    bad = _split_out(B, BT, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in bill_topics.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the topics' own")
 
 
 def _readme_unlisted(folder, root=None):
