@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.1
+# GRANITE_VERSION: 2026-11-19.2
 """
 The translation audit: every word the code asks to be translated, read from
 the source, and what is wrong with a language's catalog against it.
@@ -29,7 +29,8 @@ from i18n import (DEFAULT, HERE, LANGS, STATES, _TR, catalog, gloss_entries, glo
 # The one list of words a translation must answer, for preflight
 # (_translations) and for the proofreader's sheet (src/ops/translations.py):
 # every say() written in a Python file of src/pages, every tr() in a script
-# or in a script held in a Python string, and every word of the tables
+# (inline/ among them: a builder's own, inline_js) or in a script still held
+# in a Python string, and every word of the tables
 # say_word() translates. Read from the source, not from a build, so a word on
 # a page the fixture never draws is held all the same.
 
@@ -99,7 +100,7 @@ def code_words(root=None):
         for key, en, line in calls:
             add(key, en, f"{f.name}:{line}")
         problems += [f"{f.name}:{line}: {why}" for line, why in bad]
-    for f in sorted([*root.glob("*.js"), *root.glob("*.py")]):
+    for f in sorted([*root.glob("*.js"), *root.glob("*.py")]) + sorted(root.glob("inline/*.js")):
         if f.name == "i18n.py":
             continue
         text = f.read_text(encoding="utf-8")

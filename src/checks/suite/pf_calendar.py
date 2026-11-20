@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of the calendar.
 
@@ -169,7 +169,7 @@ def _chain():
                     bare.append(f"{f.relative_to(root / 'site')}: {m.group(0)[:80]}")
         assert not bare, ("a page that carries <base href=\"/\"> links a bare fragment, "
                           "which goes to the home page: " + "; ".join(bare[:5]))
-        for js in sorted(Path("src/pages").glob("*.js")):
+        for js in sorted(Path("src/pages").glob("*.js")) + sorted(Path("src/pages/inline").glob("*.js")):
             hit = re.search(r'href=\\?"#\$\{', js.read_text(encoding="utf-8"))
             assert not hit, (f"{js.name} writes a link to a bare fragment, href=\"#${{...}}: "
                              "under <base href=\"/\"> it goes to the home page")
@@ -2233,7 +2233,8 @@ def _pager_labels():
         return "skip", "bills.html is not here"
     bad = []
     files = (sorted(Path("src/pages").glob("*.py")) + sorted(Path("src/pages").glob("*.js"))
-             + sorted(Path("src/pages").glob("*.html")) + sorted(Path("src/pages/words").glob("*.json")))
+             + sorted(Path("src/pages").glob("*.html")) + sorted(Path("src/pages/words").glob("*.json"))
+             + sorted(Path("src/pages/inline").glob("*.js")))
     for f in files:
         for i, ln in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
             if ln.strip().startswith(("#", "//", "*")):
@@ -3326,8 +3327,9 @@ _DATE_EXEMPT = {
     # which only the browser has: month first, as dateWords writes a day.
     # (The home page's floor-session titles, "August 19th, 2026", were the
     # other exception until 25 October 2026: the audit's M8 retired them.)
-    # In the page's locale since 23 October 2026 (window.GR_LOCALE, i18n.py).
-    "chrome.py": ('.toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})',),
+    # In the page's locale since 23 October 2026 (window.GR_LOCALE, i18n.py). The
+    # footer's script, chrome.FOOT_JS, in its own file since 20 November 2026.
+    "chrome.foot.js": ('.toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})',),
     # A month and its year ("October 2026") over the month's grid: not a day.
     "build_calendar.py": ('monthWords(m){ return MONTH[',),
 }

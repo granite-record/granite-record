@@ -93,7 +93,7 @@ edit to its English. The record's own words (titles, names, docket lines) are
 not translated. The home page is built at `/` and `/es/` from the same data;
 the header, footer and Settings speak the page's language; the language
 choice is a row of Settings (`find.js`, `langMount`) and the browser's
-language is read before the first paint (`chrome.LANG_HEAD`). Spanish stays
+language is read before the first paint (`chrome.lang_head`). Spanish stays
 unlisted until `"offered"` is set in the catalog. `docs/TRANSLATING.md` is the
 walk-through, and `src/ops/translations.py` the proofreader's sheet.
 
@@ -253,6 +253,8 @@ The helpers the builders share:
   the source, and each catalog checked against it (preflight's and
   `src/ops/translations.py`'s; no builder imports it);
 - `strip_js`: the browser's scripts as published, without their comments;
+- `inline_js`: a builder's own scripts, read from `inline/` with their
+  holes filled, for the builder to write into its pages;
 - `structured`: what a search engine is told a page is about (schema.org);
 - `bill_order`: the order bill numbers are listed in;
 - `ballot_source`: whose count a ballot result is, in words;
@@ -287,6 +289,21 @@ The browser's files, copied into `site/` (scripts without their comments):
 - `map.js` and `map.css`: the district map;
 - `live.js` and `live.css`: Live Now;
 - `motions.js`: which motion a vote was on, for the live session page.
+
+A builder's own scripts, written into its pages (20 November 2026):
+
+- `inline/`: what was a JavaScript string in a builder -- a filter, a tab
+  strip, `chrome`'s theme and language scripts -- a `.js` file each, named
+  for the builder: `<builder>.js`, or `<builder>.<what>.js` where it has
+  more than one. The builder has it through `inline_js.script(name)`, which
+  fills each hole written `__NAME__` and refuses one left empty, and writes
+  it into its page exactly as the string held it, comments and all: so a
+  file carries no version stamp, and no comment the page should not carry.
+  Nothing copies these into `site/`, and no bare name finds one. Each is
+  read by its own builder alone (preflight's `_inline_scripts_read_once`);
+  `src/checks/inline/` holds the bench's page script and `drawn_pages`'
+  driver the same way. `build_pages`, `build_calendar` and `build_rsa`
+  still hold theirs in strings.
 
 The data beside the code:
 

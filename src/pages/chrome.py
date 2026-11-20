@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.10
+# GRANITE_VERSION: 2026-10-23.11
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -45,16 +45,17 @@ files): only the page steps of a full build rewrite the pages.
 IN EITHER LANGUAGE (23 October 2026). head(), nav(), footer() and
 scripts() take the page's language, "en" unless a page says otherwise; the
 words are i18n.say()'s, with the English written here as it always was.
-Every page's head also carries LANG_HEAD, which decides, before anything is
-drawn, whether this reader wants the page in another language and goes
-there (i18n says when a language is offered and how a translation stays
-current).
+Every page's head also carries lang_head()'s script, which decides, before
+anything is drawn, whether this reader wants the page in another language
+and goes there (i18n says when a language is offered and how a translation
+stays current).
 """
 
 import html as _html
 import json as _json
 
 import i18n
+import inline_js as IJ
 from components import icon
 from i18n import say
 
@@ -149,36 +150,7 @@ _BRAND = """<link rel="icon" href="/icon.svg" type="image/svg+xml">
 # in the footer's list (data-footlang, 24 October 2026), which then goes to
 # this page in that language, or that language's home page. The comments are
 # here and not in the script, which is on every one of 34,000 pages.
-LANG_HEAD = """<script>
-(function(){
-  var r=document.documentElement,K="gr-lang",here=r.lang||"en",OFFER=__OFFER__,LANGS=__LANGS__;
-  function get(k){try{return localStorage.getItem(k)||"";}catch(e){return "";}}
-  if(here!=="en")try{localStorage.setItem("gr-lang-seen","1");}catch(e){}
-  document.addEventListener("click",function(e){
-    var a=e.target&&e.target.closest&&e.target.closest("[data-setlang]");
-    if(a)try{localStorage.setItem(K,a.getAttribute("data-setlang"));}catch(x){}
-  },true);
-  document.addEventListener("change",function(e){
-    var s=e.target;if(!s||!s.hasAttribute||!s.hasAttribute("data-footlang"))return;
-    var o=s.options[s.selectedIndex];if(!o||o.value===here)return;
-    try{localStorage.setItem(K,o.value);}catch(x){}
-    location.href=o.getAttribute("data-href");
-  });
-  if(OFFER.length<2&&here==="en"&&get("gr-lang-seen")!=="1")return;
-  window.GR_NOTICE=__NOTICE__;
-  var ls=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||""];
-  var browser="",chosen=get(K);
-  for(var i=0;i<ls.length&&!browser;i++){var c=String(ls[i]||"").slice(0,2).toLowerCase();
-    if(LANGS.indexOf(c)>=0)browser=c;}
-  if(LANGS.indexOf(chosen)<0)chosen="";
-  var want=chosen||browser||"en";
-  window.GR_PREF={here:here,want:want,chosen:chosen,browser:browser};
-  r.classList.add("langs");
-  var to=r.getAttribute("data-alt-"+want);
-  if(want!==here&&to&&(chosen||here==="en")&&to!==location.pathname)
-    location.replace(to+location.search+location.hash);
-})();
-</script>"""
+# The script itself is inline/chrome.lang_head.js, whose holes lang_head() fills.
 
 
 def notice_words():
@@ -195,32 +167,20 @@ def notice_words():
 
 
 def lang_head():
-    """LANG_HEAD with the site's languages, the ones offered to everyone and
-    the words a reader of each is shown on an English page."""
+    """The language script (inline/chrome.lang_head.js) with the site's
+    languages, the ones offered to everyone and the words a reader of each is
+    shown on an English page."""
     offer = [c for c in i18n.LANGS if i18n.offered(c)]
     notice = _json.dumps(notice_words(), ensure_ascii=False, separators=(",", ":"))
-    return (LANG_HEAD.replace("__OFFER__", _json.dumps(offer))
-            .replace("__LANGS__", _json.dumps(list(i18n.LANGS)))
-            .replace("__NOTICE__", notice.replace("</", "<\\/")))
+    return ("<script>\n" + IJ.script("chrome.lang_head", OFFER=_json.dumps(offer),
+                                     LANGS=_json.dumps(list(i18n.LANGS)),
+                                     NOTICE=notice.replace("</", "<\\/"))
+            + "</script>")
 
 
 # THE THEME CONTROL, in three pieces: the script that runs before the first
 # paint, the button in the header, and the handler at the foot of the page.
-THEMER_HEAD = """<script>
-/* BEFORE THE FIRST PAINT, and that is the whole reason this is inline in the
-   head rather than in app.js. app.js loads at the end of the body: by the
-   time it ran, a reader who had chosen dark would have already been shown a
-   white page. Three lines, no dependencies, and wrapped in try/catch because
-   localStorage throws outright in a locked-down browser rather than
-   returning null. Absent or unrecognised means follow the system, which is
-   what the stylesheet does on its own.
-   And html.js, set first: a record page carries its record as plain HTML
-   for a reader that runs no scripts (shell.page's static), which app.css
-   hides once scripts are known to run, so it is never painted over. */
-document.documentElement.classList.add("js");
-try{var t=localStorage.getItem("gr-theme");
-if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
-</script>"""
+THEMER_HEAD = "<script>\n" + IJ.script("chrome.themer_head") + "</script>"
 
 THEMER_BTN = ('<button class="themer" id="themer" type="button" hidden><svg class="thsun" '
               'viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path '
@@ -229,58 +189,7 @@ THEMER_BTN = ('<button class="themer" id="themer" type="button" hidden><svg clas
               'aria-hidden="true"><path d="M16.4 12.4A7 7 0 0 1 7.6 3.6a7 7 0 1 0 8.8 8.8z"/></svg>'
               '<span class="thword">Light</span></button>')
 
-THEMER_JS = """<script>
-/* The control, as the person set it out on 13 September. The page follows the
-   reader's system until they choose; the button names the theme on screen,
-   Light or Dark, and swaps to the other; the choice is kept, so it is made
-   once. There is no Auto to cycle through: following the system is what
-   happens before anyone chooses, and a third state was a click nobody asked
-   for. A value this control no longer writes ("auto", from the one before)
-   reads as no choice.
-   It starts hidden and is revealed here, so a reader with JavaScript off is
-   not shown a control that cannot do anything -- the stylesheet still
-   follows their system, which is the sensible default and needs no script. */
-(function(){
-  var b=document.getElementById("themer"); if(!b) return;
-  var K="gr-theme", r=document.documentElement;
-  var mq=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
-  function chosen(){ try{ var v=localStorage.getItem(K); return v==="light"||v==="dark"?v:""; }
-                     catch(e){ return r.dataset.theme||""; } }
-  function shown(){ return chosen()||(mq&&mq.matches?"dark":"light"); }
-  function draw(){
-    var v=shown();
-    // NAME THE DESTINATION, NOT THE STATE. It read "Light" while the page was
-    // light, which is a label describing what you are already looking at --
-    // so the one thing a reader wants from it, what happens if I press this,
-    // was the one thing it did not say. The aria-label has always named the
-    // destination; the visible word now agrees with it.
-    // AN ICON SINCE 24 SEPTEMBER, at the person's request: a sun or a moon
-    // for the theme a press will give, the same destination the word named.
-    // The word stays in the markup -- hidden beside the icon on a desktop,
-    // shown in the phone's Sections panel, where nothing else says "theme".
-    var to=v==="dark"?"light":"dark";
-    b.setAttribute("data-to",to);
-    var w=b.querySelector(".thword"); if(w) w.textContent=to==="light"?tr("theme.light","Light"):tr("theme.dark","Dark");
-    b.title=to==="light"?tr("theme.to_light","Switch to the light theme"):tr("theme.to_dark","Switch to the dark theme");
-    b.setAttribute("aria-label",v==="dark"
-      ?tr("theme.now_dark","Color theme: dark. Activate to switch to light.")
-      :tr("theme.now_light","Color theme: light. Activate to switch to dark."));
-  }
-  b.hidden=false; draw();
-  b.addEventListener("click",function(){
-    var next=shown()==="dark"?"light":"dark";
-    r.dataset.theme=next;
-    try{ localStorage.setItem(K,next); }catch(e){}
-    draw();
-  });
-  // The system changing while nothing is chosen -- a laptop turning to its
-  // evening setting -- changes the page through the stylesheet; the label
-  // follows it.
-  if(mq){ var f=function(){ if(!chosen()) draw(); };
-    if(mq.addEventListener) mq.addEventListener("change",f);
-    else if(mq.addListener) mq.addListener(f); }
-})();
-</script>"""
+THEMER_JS = "<script>\n" + IJ.script("chrome.themer") + "</script>"
 
 # The menu button a phone header carries. The SEARCH button is not here --
 # find.js mounts its own, and a second one would be two controls doing one job.
@@ -302,14 +211,7 @@ def menu_btn(lang="en"):
 # build.json is written -- a baked stamp would always be a few minutes early
 # and would differ page to page. It is one small cached request, and the line
 # simply does not appear if the fetch fails.
-FOOT_JS = (
-    '<script>fetch(new URL("build.json",location.origin+"/").href)'
-    '.then(r=>r.json()).then(B=>{'
-    'var e=document.getElementById("built");'
-    'if(!e||!B.finished)return;'
-    'e.textContent=" "+tr("foot.rebuilt","Data rebuilt {date}.",{date:new Date(B.finished)'
-    '.toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})});'
-    '}).catch(function(){});</script>')
+FOOT_JS = "<script>" + IJ.script("chrome.foot") + "</script>"
 
 def tr_report(lang):
     """On a page in another language, the button that reports a mistake in
@@ -370,7 +272,7 @@ def lang_note(lang):
 #
 # THE LANGUAGE LINE, under the columns: every language, each in its own
 # words, for a reader who does not read this one. It is hidden until
-# LANG_HEAD finds the language offered to this reader (html.langs), and on a
+# lang_head()'s script finds the language offered to this reader (html.langs), and on a
 # Spanish page it leads to the page's English and back.
 #
 # A LIST TO CHOOSE FROM (the owner, 24 October 2026: "make the footer
@@ -379,7 +281,7 @@ def lang_note(lang):
 # and a select holding each language by its own name, this page's chosen.
 # Choosing one goes to this page in it (data-href), or to that language's
 # home page where this page has no version in it, and makes it the reader's
-# choice, as Settings' list does (LANG_HEAD).
+# choice, as Settings' list does (lang_head()).
 def footer_html(lang="en", alt=None):
     """The footer in `lang`. `alt` is {code: address} of this page in the
     other languages; a page that has no other is offered the other

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-18.10
+# GRANITE_VERSION: 2026-10-18.11
 """
 A page for every statutory and study committee the General Court lists as
 active, at /committee/ss<CommitteeID>.
@@ -73,6 +73,7 @@ import build_date
 import build_full_sessions as FS
 import build_rsa as RSA
 import components as C
+import inline_js as IJ
 import live_hook
 import plain_action as PA
 import proceedings
@@ -1081,34 +1082,7 @@ def section_html(rows):
 # The find box: every card whose name, kind or class holds each word typed,
 # and a class with none of them out of the way. No page without it hides a
 # card, and the box is hidden until this shows it.
-FIND_JS = """<script>
-(function(){
-  var box=document.getElementById("statstud");
-  if(!box)return;
-  var wrap=box.querySelector(".ssfind"),q=document.getElementById("ssq"),
-      said=document.getElementById("ssfn"),none=document.getElementById("ssnone"),
-      cards=[].slice.call(box.querySelectorAll(".sscard")),
-      groups=[].slice.call(box.querySelectorAll(".ssgrp"));
-  wrap.hidden=false;
-  function words(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").split(" ").filter(Boolean);}
-  function run(){
-    var w=words(q.value),n=0;
-    cards.forEach(function(c){
-      var hay=" "+c.getAttribute("data-find")+" ";
-      var ok=w.every(function(x){return hay.indexOf(" "+x)>=0;});
-      c.hidden=!ok;n+=ok?1:0;
-    });
-    groups.forEach(function(g){g.hidden=!g.querySelector(".sscard:not([hidden])");});
-    none.hidden=!!n;
-    said.textContent=w.length?(n===1?"1 committee matches.":n+" committees match."):"";
-  }
-  q.addEventListener("input",run);
-  // Opened by an address that names it, as a committee's page leads here.
-  function opened(){if(location.hash==="#statstud")box.open=true;}
-  opened();
-  window.addEventListener("hashchange",opened);
-})();
-</script>"""
+FIND_JS = "<script>\n" + IJ.script("build_study_committees") + "</script>"
 
 
 def fill_section(site, rows):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.18
+# GRANITE_VERSION: 2026-11-16.19
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -290,6 +290,10 @@ def _class_collisions():
     app_side = ["components.js", "app.js", "find.js", "print.js", "bills.html"]
     bld_side = [f.name for f in _paths.code_files("build_*.py")] + ["shell.py", "components.py",
                                                                     "parts.py"]
+    # And their own scripts, in inline/ beside them since 20 November 2026 (inline_js).
+    import inline_js as IJ
+    bld_side += [p.relative_to(_paths.ROOT).as_posix() for n, p in IJ.files().items()
+                 if n.split(".")[0] + ".py" in bld_side]
     if not all(_paths.locate(f).exists() for f in app_side + ["shell.py"]) or not bld_side:
         return "skip", "not all renderers are in this directory"
 
@@ -5244,7 +5248,8 @@ def _record_not_translated():
     # samples a check feeds a page (they were in preflight.py, outside src/,
     # until 16 November 2026).
     loose = []
-    for f in sorted(Path("src").rglob("*.py")) + sorted(Path("src/pages").glob("*.js")):
+    for f in (sorted(Path("src").rglob("*.py")) + sorted(Path("src/pages").glob("*.js"))
+              + sorted(Path("src").glob("*/inline/*.js"))):
         if _in_suite(f):
             continue
         for m in re.finditer(r'<span class="mchip[^"]*"(?:\s+[^>]*)?>', f.read_text(encoding="utf-8")):
@@ -8622,7 +8627,7 @@ def _sits_mostly_january_to_june():
     at all (the owner's choice of 26 October 2026: the rail says what is
     scheduled), so two sources do."""
     files = [_paths.locate("app.js"), _paths.locate("find.js")] + sorted(_paths.code_files("build_*.py")) + [
-        _paths.locate("civics.py")]
+        _paths.locate("civics.py")] + sorted(Path("src/pages/inline").glob("build_*.js"))
     said, bare = [], []
     for f in files:
         if not f or not Path(f).exists():
