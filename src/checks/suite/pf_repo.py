@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.35
+# GRANITE_VERSION: 2026-11-16.36
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1393,6 +1393,11 @@ _SPLIT_FROM_SITE = {
     "documents": tuple(("DOCKET_SOURCE J_DECIDED_ACT PAST_SOURCE ROW_NAMES_ANOTHER _cite "
                         "_docket_as_entered _long_day _with_plain bill_documents bill_text_url "
                         "journal_decided_story journal_story record_notes").split()),
+    "docket_told": tuple(("CALLED_OFF_KINDS CANCELLED_NOT_TOLD CANCELLED_ROW_NOT_TOLD "
+                          "CLERKS_NOTE ENROLLED_NOT_TOLD ENROLLED_SAID PENDING ROUTINE "
+                          "STEP_CLAIM action_dates called_off carried_over chapter_of "
+                          "docket_lines enrolled_untold is_routine listed_line marked_cancelled "
+                          "settled_step stages_told").split()),
 }
 
 
@@ -1747,6 +1752,27 @@ def _site_documents_moved(B, DOC):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in documents.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the documents' own")
+
+
+@check("files", "a bill's docket lines and the stages its history tells -- the routine rows, the "
+                "days it was acted on, the lines its page lists, the status box once a term has "
+                "closed and its chapter -- are docket_told.py's, every name of it imported back "
+                "into build_site_v2",
+       needs=("build_site_v2", "docket_told"))
+def _site_docket_told_moved(B, DT):
+    """build_site_v2's docket lines and stages told moved to docket_told.py on 20 November
+    2026 (the refactor's finding 4), as they stood: ROUTINE and is_routine; CLERKS_NOTE,
+    action_dates and carried_over; ENROLLED_SAID, ENROLLED_NOT_TOLD, CANCELLED_NOT_TOLD,
+    CANCELLED_ROW_NOT_TOLD, CALLED_OFF_KINDS, called_off, enrolled_untold and stages_told;
+    listed_line, marked_cancelled, docket_lines, PENDING, STEP_CLAIM, settled_step and
+    chapter_of. Every name of them is held to be docket_told.py's, defined nowhere in
+    build_site_v2.py, and build_site_v2.<name> the same object, so build_bills,
+    bill_disposition and the checks that ask build_site_v2 tell a docket the one way."""
+    names = _SPLIT_FROM_SITE["docket_told"]
+    bad = _split_out(B, DT, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in docket_told.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the docket lines' own")
 
 
 def _readme_unlisted(folder, root=None):
