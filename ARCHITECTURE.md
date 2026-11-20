@@ -141,16 +141,18 @@ parties, each ballot's voter, a motion's mover, a report's author
 (`bill_sponsor_list`, `vote_member`) -- are `sponsors.py`, a bill's topic as
 the index files it (`unify_vocabulary`) is `bill_topics.py`, what a bill's
 text says it changes (`bill_amends`, `constitution_targets`) is
-`bill_statutes.py`, and what they share with the rest of it -- what a bill
-of each kind has to clear, a bill's letters, the chip's six words, the
-docket line, a cited volume's address -- is `parts.py`'s. A module split out
-of `build_site_v2` never imports it back (`_import_cycles_cut`), and
+`bill_statutes.py`, a bill's roll calls as its Votes tab draws them and the
+card of a roll call on no bill (`bill_rollcalls`, `write_nobill_cards`) are
+`bill_votes.py`, and what they share with the rest of it -- what a bill of
+each kind has to clear, a bill's letters, the chip's six words, the docket
+line, a cited volume's address -- is `parts.py`'s. A module split out of
+`build_site_v2` never imports it back (`_import_cycles_cut`), and
 `build_site_v2` imports every moved name back where it was, so
 `build_site_v2.journey` and the rest still answer for every caller;
 `preflight`'s `_site_*` checks after `_import_cycles_cut` hold each move
 whole and not undone. `build_bills` and `main` stay in `build_site_v2`, and
-so for now do a bill's disposition, documents, roll calls and CACR ballots,
-the database's statuses and the related bills.
+so for now do a bill's disposition, documents and CACR ballots, the
+database's statuses and the related bills.
 
 ## How it runs
 

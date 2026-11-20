@@ -139,9 +139,9 @@ The record and its own pages:
   it read (there was never a v1 here); its journey, a bill's status, the
   proceedings' stations, the members, the conferences, the amendments, the
   rail's endings, the committee and hearing reports, the sponsors, a bill's
-  topic and what a bill amends are modules of their own beside it since 20
-  November 2026 (the next eleven lines), and it imports every name of theirs
-  back;
+  topic, what a bill amends and its roll calls are modules of their own
+  beside it since 20 November 2026 (the next twelve lines), and it imports
+  every name of theirs back;
 - `journey`: the passage rail and the journey -- the four stops a bill passes
   (`passage`) and what each chamber decided and when (`journey`,
   `journey_rail` and the `_j_` readers), read from the docket for the rail's
@@ -208,6 +208,12 @@ The record and its own pages:
   mentions, and the articles a CACR amends (`constitution_targets`); a
   section of `build_site_v2` until 20 November 2026, which imports every
   name of it back;
+- `bill_votes`: a bill's roll calls as its Votes tab draws them -- a day's
+  votes in the order they happened with the amendments named
+  (`vote_chronology`), every recorded vote on one bill (`bill_rollcalls`)
+  and the note above the table -- and the card of a roll call on no bill,
+  a term to a file (`write_nobill_cards`); a section of `build_site_v2`
+  until 20 November 2026, which imports every name of it back;
 - `sponsor_roster`: the members the bill search's Sponsor filter lists, a
   file a term (`site/sponsors/`), which `build_site_v2` collects and writes;
 - `build_bill_pages`: an address for every bill, `/bill/<year>/<bill>.html`,

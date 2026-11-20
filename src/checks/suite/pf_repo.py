@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.31
+# GRANITE_VERSION: 2026-11-16.32
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1383,6 +1383,8 @@ _SPLIT_FROM_SITE = {
     "bill_topics": tuple(("ADDED_CODES TOPICS_GUESSED merge_guessed_topics unify_vocabulary").split()),
     "bill_statutes": tuple(("AMEND_WORD CLAUSE_END NEXT_SECTION PART_WORD REPEALED REPEAL_LIST "
                             "_CONSTITUTION bill_amends constitution_targets").split()),
+    "bill_votes": tuple(("AMENDMENT_ROW NOBILL PASSAGE_Q RC_TALLY VOTE_KIND_RE _paired_by_count "
+                         "bill_rollcalls vote_chronology vote_note_for write_nobill_cards").split()),
 }
 
 
@@ -1663,6 +1665,23 @@ def _site_bill_statutes_moved(B, BST):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in bill_statutes.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the statutes' own")
+
+
+@check("files", "a bill's roll calls as its Votes tab draws them, and the card of a roll call on no "
+                "bill, are bill_votes.py's, every name of it imported back into build_site_v2",
+       needs=("build_site_v2", "bill_votes"))
+def _site_bill_votes_moved(B, BV):
+    """build_site_v2's roll calls moved to bill_votes.py on 20 November 2026 (the
+    refactor's finding 4), as they stood: VOTE_KIND_RE, vote_chronology, the patterns
+    _paired_by_count reads and it, NOBILL and write_nobill_cards, bill_rollcalls and
+    vote_note_for. Every name of them is held to be bill_votes.py's, defined nowhere in
+    build_site_v2.py, and build_site_v2.<name> the same object, so build_bills, main and
+    the checks that ask build_site_v2.bill_rollcalls draw a bill's votes the one way."""
+    names = _SPLIT_FROM_SITE["bill_votes"]
+    bad = _split_out(B, BV, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in bill_votes.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the votes' own")
 
 
 def _readme_unlisted(folder, root=None):
