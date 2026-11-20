@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.408 */
+/* GRANITE_VERSION: 2026-09-07.409 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -10157,6 +10157,34 @@ text-wrap:balance}
    tab's full width at every width, under a heading for each election cycle. */
 .er-cards.er-stack{grid-template-columns:minmax(0,1fr)}
 .er-cycle{margin:var(--sp-6) 0 var(--sp-2);font:600 var(--t-h3)/1.3 var(--serif)}
+/* A TOWN PAGE'S ELECTIONS TAB (the owner, 19 November 2026; town_elections.py): a card
+   for each year, an election's heading in it, then the elections page's race cards,
+   two abreast where there is room. A race's link to its whole race sits where the
+   elections page's margin chip does. */
+.te-year .twnh{font:600 var(--t-h2)/1.25 var(--serif)}
+.te-el{margin:var(--sp-7) 0 var(--sp-3);font:600 var(--t-h3)/1.3 var(--serif)}
+.te-year .twnh + .te-el{margin-top:var(--sp-3)}
+.te-ballot{margin:var(--sp-5) 0 var(--sp-2);font-size:var(--t-ui);font-weight:600;color:var(--ink-2)}
+.te-cards{margin:var(--sp-3) 0 var(--sp-4);align-items:start;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,19rem),1fr));gap:var(--sp-4)}
+.te-race{padding:var(--sp-3) var(--sp-4) var(--sp-4);background:var(--bg)}
+.te-race h5{margin:0;font:600 var(--t-ui)/1.35 var(--sans)}
+.te-race .er-meta{margin:0 0 var(--sp-2)}
+.te-race .er-hd{margin:0 0 var(--sp-2)}
+/* A town's general has a dozen races or more: the card's rows at their tightest, the chip a
+   size down, the bar a hairline, so three cards stand abreast at a desktop's width. */
+.te-race .er-row{padding:var(--sp-2) 0 var(--sp-1);gap:var(--sp-1) var(--sp-3)}
+.te-race .mchip{margin:0;padding:var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-2);font-size:var(--t-sm)}
+.te-race .chip{padding:0 var(--sp-2)}
+.te-race .er-n{font-size:var(--t-sm)}
+.te-race .er-b{height:.25rem}
+.te-full{flex:none;font-size:var(--t-sm)}
+.te-whole{margin:var(--sp-3) 0}
+/* A primary or a special: the whole race's counts, folded under its heading. */
+.te-more{margin:var(--sp-5) 0 0;border-top:1px solid var(--rule)}
+.te-more > summary{cursor:pointer;padding:var(--sp-4) 0 0;list-style-position:outside}
+.te-more > summary .te-el{display:inline;margin:0}
+.te-more > summary .te-n{margin-left:var(--sp-3);font-size:var(--t-sm);color:var(--ink-2)}
 /* Upcoming elections (19 November 2026): the seat's next filing period, primary and
    general, a day and its law to a line, in a card of the tab's own. */
 .er-up-rows{list-style:none;margin:var(--sp-3) 0 0;padding:0}

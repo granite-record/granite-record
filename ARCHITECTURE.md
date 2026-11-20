@@ -2337,8 +2337,9 @@ district only where the cell's own formula names exactly those rows and the
 figure is their sum.
 The other offices' results are read by `src/parse/parse_sos_offices.py`
 into `collected/election_offices_<year>.json`, one file a year beside the
-House reader's, and nothing on the site reads them yet (preflight's
-`_offices_read_by_nothing`). For Governor and United States Senator it reads
+House reader's, and one page step reads them: a town page's Elections tab
+(`src/pages/town_elections.py`; preflight's `_offices_read_by_town_tab_only`
+holds that nothing else does). For Governor and United States Senator it reads
 the summary of the counties and each county's block of towns -- one workbook
 in 2016-2024, a summary file and ten county files in 2026 -- matching a
 county's columns to the summary's by name and party, because the county
@@ -2540,6 +2541,34 @@ in the term sitting that day by the roster's seat or the seats their bills print
 (`entities.printed_tenures`); a former member whose last recorded day is before
 the election's year had left. A candidate the rule cannot place is not marked.
 One line under the cards says what the mark is.
+
+A town or ward page has an Elections tab (the owner, 19 November 2026;
+`src/pages/town_elections.py`, called once by `build_town_pages.main`): a card
+for each year, newest first; in it the general, then each special election,
+newest first. A general's races are the town's own count
+of every race on its ballot -- the House and Senate from
+`collected/election_town_rows_<year>.csv` (the rows the race's count is made of),
+Governor, US Senate, Congress, the Council and the county offices from the place
+rows of `collected/election_offices_<year>.json` (a recount's column where one is
+printed) -- in the ballot's order, a floterial after the town's own district.
+"Won the race" is the race's outcome: `members_elect`'s for the House and Senate,
+as the elections page decides it, the offices file's most votes for the rest,
+shown only once the election's results are final; no margin is drawn, because
+the race's would read as the town's. A special carries no town's count on file,
+so it shows the district's, says so, and is folded under its heading. The State
+Primary is left off (the owner, 19 November 2026: a town shows only its own
+counts): `collected/primary_<year>.json` holds no town's count, and the primaries
+come back when a reader keeps their per-town rows. A printed place is read to the district table's town by the reader's
+spelling, "Ward"/"Wd"/" - Ward", or the unincorporated places' short forms
+(`Places.place_of`); a ward page shows the elections of 2022 on, the lines its
+districts are drawn on (the elections design's decision 13). A chip links to a
+member's page only where that member's own Elections tab carries the same race at
+the same count (`member_links`), a winner's where the elections page links it.
+The tab adds no file: it is part of each town page. preflight holds the counts
+against the files (`_town_elections_counts`), the reading of every printed place
+(`_town_elections_places`), and the order, the marks and the links
+(`_town_elections_order_and_marks`). Municipal contests would be one more kind of
+election entry when a source is found; none is drawn until then.
 
 The next state general election's dates -- its primary's filing period, the
 primary and the general, those still ahead -- are on every week of the Calendar,

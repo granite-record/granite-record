@@ -49,6 +49,11 @@ districts also say who the election sent, from site/members_elect.json alone
 (build_members_elect.for_pages), under the sitting members and with "Serving
 now" over them; places.json carries the same for the My Town card. Outside
 those weeks there is no file, and the pages are what they were.
+
+Each page's Elections tab is the town's or the ward's own count of every race
+on its ballot, by year, from the Secretary of State's results files on disk
+(town_elections.py, read once by main for every page; the owner, 19 November
+2026). It adds no file: the tab is part of the page.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -1402,8 +1407,10 @@ def vote_sections(town, loc, town_off):
     return [card(E(when) if when else "Where you vote", inner, wide=True)]
 
 
-def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
+def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None, elections=None):
     """One town: the answer above, then a tab for each kind of thing.
+    `elections` is the Elections tab's cards (town_elections.tab_cards), None
+    or [] for none.
 
     TABS, NOT ONE LONG PAGE (the person, 24 September 2026): the sections
     "just read as very cluttered and indistinct, making them hard to parse".
@@ -1452,6 +1459,9 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None):
               # only: its id, and so its address (/town/lyme#vote), is a
               # published address and stays.
               ("vote", "How to Vote", vote_sections(town, loc, town_off)),
+              # THE ELECTIONS TAB (the owner, 19 November 2026): the town's own
+              # count of every race on its ballot, by year (town_elections.py).
+              ("elections", "Elections", elections or []),
               # THE SERVICES TAB (24 October 2026): services_sections, where
               # its files are loaded; without them the office is the
               # Officials tab's card already, and the tab is not drawn.
@@ -1679,6 +1689,10 @@ def main():
     ap.add_argument("--stations", default="collected/transfer_stations.json",
                     help="each town's public transfer stations, written by "
                          "parse_transfer_stations.py")
+    ap.add_argument("--collected", default="collected",
+                    help="the election results the Elections tab reads (town_elections.py)")
+    ap.add_argument("--hand", default=str(Path("corrections") / "members_elect.json"),
+                    help="the owner's members-elect file, read as the elections page reads it")
     a = ap.parse_args()
 
     site = Path(a.site)
@@ -1824,6 +1838,18 @@ def main():
     # The members-elect, while there are any: None outside the weeks between
     # the election and Organization Day, and then nothing below draws them.
     elect = members_elect(site)
+    # THE ELECTIONS TAB'S RESULTS (town_elections.py), read once for every
+    # page. Imported here and not at the top: it reads the elections page's
+    # rules (build_elections), which imports this module. A results file the
+    # rules refuse leaves every page without the tab, said loudly.
+    import town_elections as TE
+    try:
+        ledger, said = TE.load(site, a.collected, Path(a.hand), build_date.today().isoformat())
+        print(f"  {said}")
+    except (TE.BME.Refused, OSError, ValueError) as e:
+        ledger = None
+        print(f"  WARNING town elections: no Elections tab on any page: {type(e).__name__}: {e}",
+              file=sys.stderr)
 
     out = site / "town"
     out.mkdir(parents=True, exist_ok=True)
@@ -1832,7 +1858,9 @@ def main():
         wards = districts[town]
         for ward in sorted(wards, key=lambda w: int(w) if w.isdigit() else 0):
             page = build(town, ward, wards, wards[ward], legs, off,
-                         a.base, tmpl, elect)
+                         a.base, tmpl, elect,
+                         TE.tab_cards(ledger.for_page(town, ward), where(town, ward, wards),
+                                      ward_page=len(wards) > 1) if ledger else None)
             (out / f"{slug(town, ward)}.html").write_text(S.clean_links(page),
                                                           encoding="utf-8")
             urls.append(a.base + town_path(town, ward))

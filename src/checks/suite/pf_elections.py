@@ -4627,27 +4627,35 @@ def _offices_read_again(PSO):
                                       "files were tied out"))
 
 
-@check("files", "other offices' results: nothing on the site reads collected/election_offices_*"
-                ".json or the reader that writes them yet -- readers only, until the pages are "
-                "decided",
+@check("files", "other offices' results: one page step reads collected/election_offices_*.json "
+                "-- a town page's Elections tab (town_elections.py) -- and nothing else reads them "
+                "or the reader that writes them; the reader's own words say what reads the file",
        needs=("parse_sos_offices",))
-def _offices_read_by_nothing(PSO):
-    """The model's step 6 is readers only (reports/refactor/design-model-
-    2026-11-16.md, section 3): the pages come later, each its own change.
-    Read off every code file of the code folders and the site's scripts, the
-    suite aside: no Python file imports parse_sos_offices or names its files
-    in a string, and no script names them; the reader's own files are the
-    only ones that do. The State Primary's reader of the same offices
+def _offices_read_by_town_tab_only(PSO):
+    """The model's step 6 was readers only (reports/refactor/design-model-
+    2026-11-16.md, section 3): the pages come later, each its own change. The
+    first is a town page's Elections tab (the owner, 19 November 2026), which
+    reads the files and never the reader. Read off every code file of the
+    code folders and the site's scripts, the suite aside: no Python file but
+    town_elections.py names the files in a string, none imports
+    parse_sos_offices, and no script names them; the reader's own files are
+    the only others that do. And the reader's _about, which every file
+    carries, no longer says nothing reads it. The State Primary's reader of the same offices
     (parse_sos_primary_offices) reads with its rules, a reader too, and no
     page: _primaries_read_by_nothing holds that nothing reads it."""
     import ast
     own = {Path(PSO.__file__).resolve(),
            (_paths.ROOT / "src" / "parse" / "parse_sos_primary_offices.py").resolve()}
-    hits = []
+    tab = (_paths.ROOT / "src" / "pages" / "town_elections.py").resolve()
+    hits, tab_reads = [], False
     for f in _paths.code_files("*.py"):
         if _in_suite(f) or f.resolve() in own:
             continue
         for n in ast.walk(_parsed(f)):
+            if f.resolve() == tab and isinstance(n, ast.Constant) and isinstance(n.value, str):
+                # The tab's own words and its file name, OFFICES; the name is how it reads them.
+                tab_reads = tab_reads or n.value.startswith("election_offices_")
+                continue
             if isinstance(n, ast.Import) and any(a.name == "parse_sos_offices" for a in n.names):
                 hits.append(f"{f.name}:{n.lineno} imports parse_sos_offices")
             elif isinstance(n, ast.ImportFrom) and n.module == "parse_sos_offices":
@@ -4663,8 +4671,11 @@ def _offices_read_by_nothing(PSO):
         if "election_offices" in text or "parse_sos_offices" in text:
             hits.append(f"{f.name} names them")
     assert not hits, "something reads the other offices' results: " + "; ".join(hits[:8])
-    return "ok", (f"no code file but the reader names collected/election_offices_* or imports "
-                  f"parse_sos_offices ({len(scripts)} scripts and every Python file read)")
+    assert tab_reads, "town_elections.py no longer names collected/election_offices_*: say what reads them"
+    assert "Nothing on the site reads this file yet" not in _source(Path(PSO.__file__)), "parse_sos_offices.py's _about still says nothing on the site reads the file"
+    return "ok", (f"no code file but the reader and town_elections.py names collected/election_offices_* "
+                  f"and none imports parse_sos_offices ({len(scripts)} scripts and every Python file "
+                  "read); the reader's _about names what reads the file")
 
 
 @check("build", "State Primary results: the House and Senate reader reads each party's primary as its "
@@ -5657,7 +5668,7 @@ def _primary_hillsborough_2026_r_races(P):
                 "readers that write them yet -- readers only, until the elections display is decided",
        needs=("parse_sos_primary_results",))
 def _primaries_read_by_nothing(P):
-    """As _offices_read_by_nothing has it for the general's other offices:
+    """As _offices_read_by_town_tab_only holds for the general's other offices:
     no Python file of the code folders but the primary readers imports them
     or names their files in a string (a docstring that names them is no
     reader), and no script names them."""

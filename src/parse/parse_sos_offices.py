@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-17.4
+# GRANITE_VERSION: 2026-11-17.5
 """
 The Secretary of State's count of a general election's races for Governor,
 United States Senator, Representative in Congress, Executive Councilor and
 the county offices, read into collected/election_offices_<year>.json, for
-2016 to 2026 (the elections plan's stages 4 and 5, readers only: nothing on
-the site reads these files yet).
+2016 to 2026 (the elections plan's stages 4 and 5). One page step reads
+these files: a town page's Elections tab (src/pages/town_elections.py, the
+owner's request of 19 November 2026).
 
     python3 src/parse/parse_sos_offices.py --year 2026        # write one year
     python3 src/parse/parse_sos_offices.py --all              # every year on disk
@@ -1379,7 +1380,7 @@ def read_year(root, year, registry=None):
         "it is this project's decision but the winners, which the files do not mark: the "
         "candidate with the most votes; a tie is null. A race's count is the summary's Totals "
         "where the files print a summary of the counties, and its places' sum where they do not. "
-        "Nothing on the site reads this file yet.",
+        "A town page's Elections tab reads it (src/pages/town_elections.py).",
         "Write it again by running the reader, never by hand: --check says where the saved files "
         "and this disagree."],
         "_source": [described(p, root, registry) for p in files],

@@ -1,6 +1,6 @@
 {
  "_about": [
-   "What the Secretary of State's results files say of the races for Governor, United States Senator, Representative in Congress, Executive Councilor and the county offices, read by src/parse/parse_sos_offices.py from the files named in _source. Nothing in it is this project's decision but the winners, which the files do not mark: the candidate with the most votes; a tie is null. A race's count is the summary's Totals where the files print a summary of the counties, and its places' sum where they do not. Nothing on the site reads this file yet.",
+   "What the Secretary of State's results files say of the races for Governor, United States Senator, Representative in Congress, Executive Councilor and the county offices, read by src/parse/parse_sos_offices.py from the files named in _source. Nothing in it is this project's decision but the winners, which the files do not mark: the candidate with the most votes; a tie is null. A race's count is the summary's Totals where the files print a summary of the counties, and its places' sum where they do not. A town page's Elections tab reads it (src/pages/town_elections.py).",
    "Write it again by running the reader, never by hand: --check says where the saved files and this disagree."
  ],
  "_notes": [
