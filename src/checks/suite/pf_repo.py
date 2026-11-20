@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.37
+# GRANITE_VERSION: 2026-11-16.38
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1403,6 +1403,7 @@ _SPLIT_FROM_SITE = {
                           "SECOND_ADOPTED SESSION_ENDED_STANDS STAGE_STATED UNFINISHED "
                           "bill_disposition ended_with_the_term journey_disagrees origin_of "
                           "stated_stage").split()),
+    "session_status": tuple(("build_status session_over session_over_in").split()),
 }
 
 
@@ -1800,6 +1801,24 @@ def _site_disposition_moved(B, DSP):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in disposition.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the disposition's own")
+
+
+@check("files", "where the session is -- the day the current term ran out of session days and the "
+                "site's panel of it -- is session_status.py's, every name of it imported back into "
+                "build_site_v2",
+       needs=("build_site_v2", "session_status"))
+def _site_session_status_moved(B, SS):
+    """build_site_v2's session panel moved to session_status.py on 20 November 2026 (the
+    refactor's finding 4), as it stood: session_over, session_over_in and build_status.
+    Every name of them is held to be session_status.py's, defined nowhere in
+    build_site_v2.py, and build_site_v2.<name> the same object, so main, build_bills and
+    the checks that ask build_site_v2.session_over_in read the day the session ended the
+    one way."""
+    names = _SPLIT_FROM_SITE["session_status"]
+    bad = _split_out(B, SS, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in session_status.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the session's own")
 
 
 def _readme_unlisted(folder, root=None):

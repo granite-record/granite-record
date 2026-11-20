@@ -152,10 +152,11 @@ lists of its record (`_cite`, `bill_documents`, `journal_story`,
 history tells (`docket_lines`, `stages_told`, `settled_step`, `chapter_of`)
 are `docket_told.py`, what became of a bill and where that answer came from
 (`bill_disposition`, `ended_with_the_term`, `journey_disagrees`) is
-`disposition.py`, and what they share with the rest of it -- what a bill of
-each kind has to clear, a bill's letters, the chip's six words, the docket
-line, a cited volume's address -- is `parts.py`'s. A module split out of
-`build_site_v2` never imports it back (`_import_cycles_cut`), and
+`disposition.py`, where the session is (`session_over_in`, `build_status`)
+is `session_status.py`, and what they share with the rest of it -- what a
+bill of each kind has to clear, a bill's letters, the chip's six words, the
+docket line, a cited volume's address -- is `parts.py`'s. A module split out
+of `build_site_v2` never imports it back (`_import_cycles_cut`), and
 `build_site_v2` imports every moved name back where it was, so
 `build_site_v2.journey` and the rest still answer for every caller;
 `preflight`'s `_site_*` checks after `_import_cycles_cut` hold each move
