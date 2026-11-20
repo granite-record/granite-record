@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of the laws pages.
 
@@ -998,8 +998,11 @@ def _rsa_history_pills(B, RSA, S):
         bad.append(f"a law's words are on a pill where they are seen: {seen.strip()[:200]!r}")
     if 'How it has changed <span class="rs-fcount">&middot; 6</span>' not in s5:
         bad.append("the heading does not count the pills, six acts of eight rows")
-    if "rs-hist" in _source("src/pages/app.css") \
-            or "rs-hist" in _source("src/pages/build_rsa.py"):
+    import inline_js as IJ
+    # The builder and its scripts, in inline/ since 20 November 2026.
+    drawn = _source("src/pages/build_rsa.py") + "".join(
+        _source(p) for n, p in IJ.files().items() if n.split(".")[0] == "build_rsa")
+    if "rs-hist" in _source("src/pages/app.css") or "rs-hist" in drawn:
         bad.append("the history's rows (rs-hist) are still styled or drawn")
     assert not bad, "; ".join(bad)
     return "ok", ("six acts of eight rows are six pills, newest first, a bill's with its law's year "
@@ -1826,7 +1829,10 @@ def _statute_lead_once(B):
             "October 18, 2026."), B.as_of("2026", today=_dt.date(2026, 10, 25))
     finally:
         B.TABLE_TAKEN = saved
-    src = _source(B.__file__)
+    import inline_js as IJ
+    # The builder and its scripts, in inline/ since 20 November 2026.
+    src = _source(B.__file__) + "".join(
+        _source(p) for n, p in IJ.files().items() if n.split(".")[0] == "build_rsa")
     for gone in ("The text as the General Court's table holds it", "as the General Court\\'s table "
                  "holds them"):
         assert gone not in src, f"build_rsa still says {gone!r}"

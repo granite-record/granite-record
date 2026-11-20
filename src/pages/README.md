@@ -318,8 +318,11 @@ A builder's own scripts, written into its pages (20 November 2026):
   Nothing copies these into `site/`, and no bare name finds one. Each is
   read by its own builder alone (preflight's `_inline_scripts_read_once`);
   `src/checks/inline/` holds the bench's page script and `drawn_pages`'
-  driver the same way. `build_pages`, `build_calendar` and `build_rsa`
-  still hold theirs in strings.
+  driver the same way. Three strings stay where they are, each a patch
+  or a head rather than a page's script, with its reason in preflight's
+  `_INLINE_KEPT`: the Spanish pieces of the Calendar's script and of its
+  picker (`build_calendar.WEEK_ES`, `calendar_documents.PICKER_ES`) and the
+  head of `site/billmatch.js` (`build_pages.BILLMATCH_HEAD`).
 
 The data beside the code:
 

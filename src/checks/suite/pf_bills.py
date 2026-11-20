@@ -7117,7 +7117,9 @@ def _movers_by_term(B2, BL, BP, BI):
     # with: a joined row's starts with its page's, as a one-chamber row's does.
     assert found.get("jeb-bradley-sd-3") == "Senate · SD3 · 2009–2024 · House 1999–2002" \
         and found.get("nancy-alone-sd-24") == "Senate · SD24 · 2011–2016", found
-    grouped = _source(_paths.locate("build_pages.py"))
+    import inline_js as IJ
+    # The builder and its scripts, in inline/ since 20 November 2026.
+    grouped = _source(_paths.locate("build_pages.py")) + "".join(_source(p) for n, p in IJ.files().items() if n.split(".")[0] == "build_pages")
     assert 'k:r=>r[0]==="former"&&/^Senate/.test(r[2])' in grouped and \
         'k:r=>r[0]==="former"&&/^House/.test(r[2])' in grouped, (
         "the site search no longer groups former members by the chamber their line starts with; "

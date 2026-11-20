@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of the calendar.
 
@@ -3331,6 +3331,9 @@ _DATE_EXEMPT = {
     # footer's script, chrome.FOOT_JS, in its own file since 20 November 2026.
     "chrome.foot.js": ('.toLocaleDateString(window.GR_LOCALE||"en-US",{year:"numeric",month:"long",day:"numeric"})',),
     # A month and its year ("October 2026") over the month's grid: not a day.
+    # The Calendar's script (WEEK_JS) in its own file since 20 November 2026;
+    # its Spanish patch (WEEK_ES), which says it again, still in the builder.
+    "build_calendar.js": ('monthWords(m){ return MONTH[',),
     "build_calendar.py": ('monthWords(m){ return MONTH[',),
 }
 _DATE_IDIOMS = (

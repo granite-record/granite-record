@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of towns, districts and the map.
 
@@ -830,7 +830,10 @@ def _town_mailto(B):
     # Nothing on these pages may write a mailto except through maillink(),
     # which is parts.py's since 19 November 2026: the two files together
     # write one, maillink's own.
-    src = _source(_paths.locate("build_town_pages.py")) + _source(_paths.locate("parts.py"))
+    # And their scripts, in inline/ since 20 November 2026 (parts.TABS_JS among them).
+    import inline_js as IJ
+    src = _source(_paths.locate("build_town_pages.py")) + _source(_paths.locate("parts.py")) + "".join(
+        _source(p) for n, p in IJ.files().items() if n.split(".")[0] in ("build_town_pages", "parts"))
     sites = src.count('href="mailto:')
     assert sites == 1, (
         f"build_town_pages.py and parts.py write a mailto href in {sites} places. Every "

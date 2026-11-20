@@ -4419,8 +4419,11 @@ def _find_committee_names(BP):
     text = re.sub(r"<[^>]+>", "", got["html"])
     assert text.index("House Special Committee on Housing") > text.index("House Housing Committee"), (
         "the drawn panel puts the former committee first")
-    assert '{t:"Former Committees",' in _source("src/pages/build_pages.py") \
-        and 'k:r=>r[0]==="committee"&&!r[5]}' in _source("src/pages/build_pages.py"), "the search page lists former committees among the ones that sit"
+    import inline_js as IJ
+    # The builder and its scripts, in inline/ since 20 November 2026.
+    bp = _source("src/pages/build_pages.py") + "".join(_source(p) for n, p in IJ.files().items() if n.split(".")[0] == "build_pages")
+    assert '{t:"Former Committees",' in bp \
+        and 'k:r=>r[0]==="committee"&&!r[5]}' in bp, "the search page lists former committees among the ones that sit"
     bi = _source("src/pages/build_indexes.py")
     assert '.get("archived")' in bi and "row += [max(last), years]" in bi, (
         "build_indexes no longer marks a committee that no longer sits")
