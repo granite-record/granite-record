@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.21
+# GRANITE_VERSION: 2026-11-16.22
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -8115,7 +8115,7 @@ def _testify_two_clocks():
               ("src/pages/inline/build_pages.home.js", "const latRel=(d,now)=>{"),
               ("src/pages/inline/build_pages.home.js",
                "const now=new Date(); now.setHours(0,0,0,0);\n    const dow=now.getDay()"),
-              ("src/pages/build_calendar.py", "var now=new Date(), TODAY=iso("),
+              ("src/pages/inline/build_calendar.js", "var now=new Date(), TODAY=iso("),
               ("src/pages/components.js", "function day(){\n    var d=new Date();"))
     for f, anchor in places:
         text = Path(f).read_text(encoding="utf-8")

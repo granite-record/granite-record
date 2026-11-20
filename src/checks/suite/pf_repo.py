@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.21
+# GRANITE_VERSION: 2026-11-16.22
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -995,6 +995,11 @@ _INLINE_KEPT = {
     # for find.js (bill_matcher_js): three lines around app.js's own code,
     # starting a file of its own in site/, and no page's script.
     ("build_pages", "BILLMATCH_HEAD"),
+    # The Calendar's script in Spanish: pairs of (a piece of the English script,
+    # what replaces it), put over inline/build_calendar.js by week_js(), as
+    # PICKER_ES is over the picker's. Each piece is checked to be in the
+    # script once, as it is applied.
+    ("build_calendar", "WEEK_ES"),
 }
 
 
@@ -1130,12 +1135,13 @@ def _inline_scripts_read_once():
     faults = _inline_faults(trees, set(names))
     assert not faults, f"{len(faults)} faults in the builders' inline scripts: " + "; ".join(faults[:6])
     builders = sorted({n.split(".")[0] for n in names})
-    assert len(names) >= 31 and len(builders) >= 15, (
-        f"only {len(names)} inline scripts of {len(builders)} builders: there were 31 of 15 on "
+    assert len(names) >= 32 and len(builders) >= 16, (
+        f"only {len(names)} inline scripts of {len(builders)} builders: there were 32 of 16 on "
         "20 November 2026")
     return "ok", (f"{len(names)} scripts in inline/ of {len(builders)} builders, each read by its own "
                   "builder alone, by name, through inline_js; none of those builders holds a script "
-                  "in a string but the Spanish picker's patch and the bill matcher's head; the reader "
+                  "in a string but the Spanish patches of the picker and the Calendar and the bill "
+                  "matcher's head; the reader "
                   "refuses a hole left empty, a value with no hole and a value that is not a string")
 
 
