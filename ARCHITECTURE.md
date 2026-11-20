@@ -65,7 +65,7 @@ joined file is the one it was, byte for byte. It stays in the repository,
 written by `src/pages/app_parts.py`, and everything that reads it -- the
 build, the fast path, the search index, the checks and their node
 harnesses -- reads the joined file and never a part; preflight's
-`_app_js_is_its_parts` holds the two equal, and `app_parts.py --split`
+`_app_js_is_its_parts` holds the two equal, and `src/pages/app_parts.py --split`
 carries an edit merged into `app.js` back into its parts. The parts carry
 no stamp, so a part changed is `app.js` changed, and are no input of a
 build (`build_inputs.NOT_INPUTS`).
