@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.32
+# GRANITE_VERSION: 2026-11-16.33
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -1385,6 +1385,9 @@ _SPLIT_FROM_SITE = {
                             "_CONSTITUTION bill_amends constitution_targets").split()),
     "bill_votes": tuple(("AMENDMENT_ROW NOBILL PASSAGE_Q RC_TALLY VOTE_KIND_RE _paired_by_count "
                          "bill_rollcalls vote_chronology vote_note_for write_nobill_cards").split()),
+    "cacr_ballots": tuple(("BALLOTS BALLOT_SOURCE ELECTION_IN_TEXT ISO_DAY NOT_RATIFIED RATIFIED "
+                           "TO_THE_VOTERS ballot_card ballot_step cacr_to_the_voters "
+                           "docket_count_differs election_day load_ballots ratified").split()),
 }
 
 
@@ -1682,6 +1685,25 @@ def _site_bill_votes_moved(B, BV):
     assert not bad, "; ".join(bad[:8])
     return "ok", (f"{len(names)} names defined in bill_votes.py and nowhere in build_site_v2.py, "
                   "each build_site_v2.<name> the votes' own")
+
+
+@check("files", "a constitutional amendment's ballot -- the election its text names, the voters' "
+                "answer, its line and its card -- is cacr_ballots.py's, every name of it imported "
+                "back into build_site_v2",
+       needs=("build_site_v2", "cacr_ballots"))
+def _site_cacr_ballots_moved(B, CB):
+    """build_site_v2's CACR ballots moved to cacr_ballots.py on 20 November 2026 (the
+    refactor's finding 4), as they stood: ELECTION_IN_TEXT, TO_THE_VOTERS and election_day,
+    BALLOTS, RATIFIED, NOT_RATIFIED, ISO_DAY, ratified and load_ballots, BALLOT_SOURCE,
+    ballot_step, docket_count_differs, ballot_card and cacr_to_the_voters. Every name of
+    them is held to be cacr_ballots.py's, defined nowhere in build_site_v2.py, and
+    build_site_v2.<name> the same object, so build_bills, main, bill_disposition and the
+    checks that ask build_site_v2 read a CACR's ballot the one way."""
+    names = _SPLIT_FROM_SITE["cacr_ballots"]
+    bad = _split_out(B, CB, names)
+    assert not bad, "; ".join(bad[:8])
+    return "ok", (f"{len(names)} names defined in cacr_ballots.py and nowhere in build_site_v2.py, "
+                  "each build_site_v2.<name> the ballots' own")
 
 
 def _readme_unlisted(folder, root=None):
