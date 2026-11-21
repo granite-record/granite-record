@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.74
+# GRANITE_VERSION: 2026-09-04.75
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -3371,8 +3371,8 @@ def main():
     # freeze stop the run: that is a turn nobody froze, and building on would
     # lose the term or mix the two.
     import freeze_term
-    sess, gone_terms, gone_years, left_out, left_named = finished_terms_left_out(d, sd, frozen,
-                                                                                 freeze_term)
+    sess, gone_terms, gone_years, left_out, left_named = finished_terms_left_out(
+        d, sd, frozen, freeze_term)
 
     # ---------------------------------------------------------- counties ---
     counties = {}
@@ -3402,9 +3402,8 @@ def main():
     # calls are still the installed ones, and the sitting roster
     # (legislators.json) is the installed one. Before any of that, nothing
     # here moves.
-    roster_terms, term_rosters, md, term_legs, sess_roster = term_roster_files(d, sd, frozen,
-                                                                               freeze_term, legs,
-                                                                               sess)
+    roster_terms, term_rosters, md, term_legs, sess_roster = term_roster_files(
+        d, sd, frozen, freeze_term, legs, sess)
 
     towns = towns_of_seats(sd, counties, legs, report)
 
@@ -3418,17 +3417,8 @@ def main():
     bills, by_lsr = session_bills(d, sd, frozen, sess, subjects, committees, gone_years, left_out,
                                   left_named, report)
 
-    sponsors, lo_bills, departed, flags, missing_lsr, never_sat, disagree = sponsors_from_files(d,
-                                                                                                sd,
-                                                                                                md,
-                                                                                                sess,
-                                                                                                freeze_term,
-                                                                                                bills,
-                                                                                                by_lsr,
-                                                                                                term_legs,
-                                                                                                gone_years,
-                                                                                                left_out,
-                                                                                                report)
+    sponsors, lo_bills, departed, flags, missing_lsr, never_sat, disagree = sponsors_from_files(
+        d, sd, md, sess, freeze_term, bills, by_lsr, term_legs, gone_years, left_out, report)
     # Bills the current session's files do not cover, from the STATUS page --
     # which lists sponsors as labelled links with party and member id, rather
     # than leaving them to be sifted out of docket prose.
@@ -3575,15 +3565,9 @@ def main():
     _former_label = name_departed_sponsors(d, counties, former, sponsors, departed, lo_bills,
                                            placed, seated, report)
 
-    member_votes, ballot_fixed, vote_kinds, hist_bodies, vnums, unmatched_votes, no_person = ballots_of_members(d,
-                                                                                                                sd,
-                                                                                                                gone_years,
-                                                                                                                left_out,
-                                                                                                                legs,
-                                                                                                                term_rosters,
-                                                                                                                former,
-                                                                                                                _former_label,
-                                                                                                                ballot_fix)
+    (member_votes, ballot_fixed, vote_kinds, hist_bodies, vnums, unmatched_votes,
+     no_person) = ballots_of_members(
+        d, sd, gone_years, left_out, legs, term_rosters, former, _former_label, ballot_fix)
 
     # A correction that reaches no ballot has stopped working -- the id space
     # changed under it, or the defect it answered was fixed upstream and the
