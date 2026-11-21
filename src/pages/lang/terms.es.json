@@ -542,7 +542,8 @@
    ],
    "basis": "The Spanish review of 25 October 2026: nombrar is to appoint, which the Governor does not do alone; the Council confirms.",
    "except": {
-    "race.intro_primary": "A party's candidate chosen by a primary's count (nominado/a), the Elections tab's chip of 20 November 2026; not the Governor's nomination to office. A draft for the proofreader."
+    "race.intro_primary": "A party's candidate chosen by a primary's count (nominado/a), the Elections tab's chip of 20 November 2026; not the Governor's nomination to office. A draft for the proofreader.",
+    "race.nominated": "That chip itself, on a primary's card (nominado/a), in Spanish since the owner's word of 21 November 2026; not the Governor's nomination to office. A draft for the proofreader."
    }
   },
   {
