@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.29
+# GRANITE_VERSION: 2026-11-16.30
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -14027,6 +14027,49 @@ def _town_finder_words(BP):
         f"opens them unasked: {opened[:300]!r}")
     return "ok", ("'dover' lists Dover alone, 'hampton' Hampton and New Hampton, 'ham' not Durham; "
                   "/officials?town=Concord opens its wards")
+
+
+# THE OFFICIALS OVERVIEW'S FIXTURES: two chambers as they sit, and a
+# members-elect file whose legislature takes office on 2 December 2026.
+_OV_COMP = {"S": {"chamber": "Senate", "seats": 24, "sitting": 24, "vacant": 0,
+                  "parties": [{"code": "R", "name": "Republican", "n": 16},
+                              {"code": "D", "name": "Democrat", "n": 8}]},
+            "H": {"chamber": "House", "seats": 400, "sitting": 382, "vacant": 18,
+                  "parties": [{"code": "R", "name": "Republican", "n": 212},
+                              {"code": "D", "name": "Democrat", "n": 169},
+                              {"code": "I", "name": "Independent", "n": 1}]}}
+_OV_ELECT = {"election": "2026-11-03", "takes_office": "2026-12-02",
+             "races": {"S|1": {"seats": 1, "elected": [{"n": "A. Winner", "p": "D"}], "not_final": 0},
+                       "S|2": {"seats": 1, "elected": [{"n": "B. Winner", "p": "R"}], "not_final": 0},
+                       "H|Merrimack|4": {"seats": 3, "elected": [{"n": "C. Winner", "p": "D"},
+                                                                  {"n": "D. Winner", "p": "D"}],
+                                         "not_final": 1}}}
+
+
+@check("frontend", "the Members-elect tab draws who sits now, smaller, under each chamber's "
+       "members-elect", needs=("officials_tabs",))
+def _members_elect_sitting_compare(OT):
+    """The owner, 21 November 2026: "keep the currently serving legislators on
+    the members elect page." Read as: the tab's totals keep the chambers as
+    they sit beside the incoming ones, and nothing leaves Legislators. Over
+    the fixture's members-elect and chambers, officials_tabs.members_elect
+    draws, under each chamber's bar of members-elect, "Serving now" and that
+    chamber's sitting counts on a thin bar -- the Senate's under the
+    Senate's, the House's under the House's -- and none without the
+    chambers; the rest of the tab is the same either way."""
+    with_ = OT.members_elect(_OV_ELECT, "2026-11-20", "en", [], {}, _OV_COMP)
+    without = OT.members_elect(_OV_ELECT, "2026-11-20", "en", [], {})
+    comps = with_.split('<div class="comp">')[1:]
+    assert len(comps) == 2 and all(c.count('<div class="compnow">') == 1 for c in comps) \
+        and "<b>Senate</b>" in comps[0] and "2 of 2 seats elected" in comps[0] \
+        and comps[0].find("2 of 2 seats elected") < comps[0].find('<div class="compnow">') \
+        and "16 <span" in comps[0] and "<b>House</b>" in comps[1] and "212 <span" in comps[1] \
+        and "18 vacant" in comps[1] and with_.count("<b>Serving now</b>") == 2, (
+            "the sitting chambers are not drawn under the members-elect's, each under its own")
+    assert "compnow" not in without and re.sub(r'<div class="compnow">.*?</div></div>', "", with_,
+                                               flags=re.S) == without, (
+        "the comparison changes the tab beyond itself, or is drawn without the chambers")
+    return "ok", "\"Serving now\" and the sitting counts on a thin bar under the Senate's and the House's"
 
 
 @check("frontend", "the Statewide Officials tab is Executive Branch, /officials#statewide still "

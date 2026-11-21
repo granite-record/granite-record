@@ -25433,9 +25433,19 @@
    "es": "Servicios Ambientales (Environmental Services)",
    "state": "draft"
   },
+  "off.dept.fish-and-game": {
+   "en": "Fish and Game",
+   "es": "Pesca y Caza (Fish and Game)",
+   "state": "draft"
+  },
   "off.dept.health-and-human-services": {
    "en": "Health and Human Services",
    "es": "Salud y Servicios Humanos (Health and Human Services)",
+   "state": "draft"
+  },
+  "off.dept.information-technology": {
+   "en": "Information Technology",
+   "es": "Tecnología de la Información (Information Technology)",
    "state": "draft"
   },
   "off.dept.insurance": {
