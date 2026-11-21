@@ -1246,7 +1246,6 @@ function nearMap(X){
   });
   return X.near=m;
 }
-const indexHas=term=>!!SIDX[term];
 // The keys a word is filed under: itself, its singular, and itself with the
 // endings a title match allows. build_search_index.py's word_keys() is this.
 function wordKeys(alt){
