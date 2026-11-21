@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.72
+# GRANITE_VERSION: 2026-09-04.73
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2323,100 +2323,15 @@ def session_bills(d, sd, frozen, sess, subjects, committees, gone_years, left_ou
     return bills, by_lsr
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default=".")
-    ap.add_argument("--out", default="data")
-    ap.add_argument("--frozen", metavar="TERM", default="",
-                    help="build TERM alone from its frozen inputs (frozen/TERM/day/ and "
-                         "db/term/TERM/), writing only its bills and sponsors to --out")
-    ap.add_argument("--frozen-terms", action="store_true",
-                    help="build every frozen term older than the session's, each into "
-                         "<out>/frozen/<term>/, and nothing else")
-    a = ap.parse_args()
-    d, out = Path(a.dir), Path(a.out)
-    if a.frozen_terms:
-        return build_frozen_terms(d, out)
-    out.mkdir(parents=True, exist_ok=True)
-    report = []
-    # WHERE THE SESSION'S OWN FILES ARE. The fourteen the night installs are
-    # read from here, and for a frozen term from its freeze; everything else
-    # -- the database's past views, the roll calls of past years, the
-    # journals' withdrawn bills, the status pages, the corrections a person
-    # made -- from --dir and the working folder as ever.
-    frozen = a.frozen
-    sd = d / "frozen" / frozen / "day" if frozen else d
-    if frozen:
-        if not P.TERM_RE.match(frozen) or not (sd / "Docket.txt").exists():
-            sys.exit(f"no frozen day files for {frozen!r} at {sd}")
-        if P.session_term(sd) != frozen:
-            sys.exit(f"the frozen files at {sd} are {P.session_term(sd) or 'of no term'}'s, "
-                     f"not {frozen}'s")
-        print(f"THE FROZEN TERM {frozen}, from {sd} and {d / 'db' / 'term' / frozen}")
-    # ROWS OF A FINISHED TERM IN THE SESSION'S FILES ARE COUNTED AND LEFT OUT,
-    # NEVER MERGED (5 October 2026). The General Court's files do not all turn
-    # on one night, and a turned file can still carry the old term's last rows:
-    # on a copy, ten 2026 docket rows left in a 2027 Docket.txt made
-    # 2025-2026 "already built from session files", so the archive was
-    # skipped for the whole term and it shrank to 19 bills; their sponsors
-    # were filed under 2027-2028; and a docket holding 2025, 2026 and 2027
-    # together keyed the new term's stubs by number onto 2025's. A term frozen
-    # and older than the session's is built from its freeze alone
-    # (finished_builds), so its rows here are dropped as they are read, each
-    # file's count said. One rule for every place that would otherwise replace
-    # or skip a whole term on meeting one such row: senate_hearing_reports,
-    # fetch_testimony_db, narrative, build_proceedings and build_bill_versions
-    # keep it too. And an older term's rows beside the session's with NO
-    # freeze stop the run: that is a turn nobody froze, and building on would
-    # lose the term or mix the two.
-    import freeze_term
-    sess, gone_terms, gone_years, left_out, left_named = finished_terms_left_out(d, sd, frozen,
-                                                                                 freeze_term)
-
-    # ---------------------------------------------------------- counties ---
-    counties = {}
-    for r in rows(sd / "Counties.txt", 3):
-        counties[r[0]] = {"name": r[1], "abbr": r[2].rstrip(".")}
-    print(f"counties: {len(counties)}")
-
-    # ------------------------------------------------------- legislators ---
-    legs = read_roster(sd, counties, report)
-
-    # THE TERM'S OWN MEMBERS, ONCE THE ROSTER IS NOT ITS OWN (the review of 5
-    # October 2026). Organization Day seats the next House, and the General
-    # Court's roster may show it nights before its files show the next term:
-    # a database night takes it when tonight's Members.txt agrees, and an
-    # export whose legislators.txt turns first brings it as it comes. The term
-    # is still the session's then, and built from these files: on a copy with
-    # the next House installed, 1,392 of its bills drew sponsors with no party
-    # ("Former member #10578") and 477 tallied ballots under none. And
-    # LsrsOnly.txt lists sitting members only -- none of its 353 was off the
-    # roster on 5 October 2026, where LsrSponsors.txt kept 21 -- so it would
-    # lose every departed member's sponsorships with them. So while the
-    # session's own term is frozen and the installed roster is not its own
-    # (freeze_term.own_roster_terms), the term's sponsor files and its roster
-    # are the freeze's: its sponsors are read and named as they were before
-    # Organization Day, and the members who left are named on its ballots
-    # from that roster (below), as a finished term's are. Its docket and roll
-    # calls are still the installed ones, and the sitting roster
-    # (legislators.json) is the installed one. Before any of that, nothing
-    # here moves.
-    roster_terms, term_rosters, md, term_legs, sess_roster = term_roster_files(d, sd, frozen,
-                                                                               freeze_term, legs,
-                                                                               sess)
-
-    towns = towns_of_seats(sd, counties, legs, report)
-
-    # --------------------------------------------------------- subjects ---
-    subjects = {r[1]: {"id": r[0], "code": r[1], "name": r[2]}
-                for r in rows(sd / "SubjectCodes.txt", 3)}
-    committees = {r[0]: {"code": r[0], "name": r[1], "abbr": r[2]}
-                  for r in rows(sd / "Committees.txt", 3)}
-    print(f"subjects: {len(subjects)}   committees: {len(committees)}")
-
-    bills, by_lsr = session_bills(d, sd, frozen, sess, subjects, committees, gone_years, left_out,
-                                  left_named, report)
-
+def sponsors_from_files(d, sd, md, sess, freeze_term, bills, by_lsr, term_legs, gone_years,
+                        left_out, report):
+    """The session's sponsors, {bill: [row]}: LsrsOnly.txt's rows, which name the
+    prime, and LsrSponsors.txt's for every member LsrsOnly does not list, prime
+    where LsrsOnly marked none; a member the roster does not hold only where they
+    cast a ballot in the term. Also the bills LsrsOnly covered (`lo_bills`), the
+    rows of members off the roster, named later (`departed`), and the counts
+    sponsors_said reports (`flags`, `missing_lsr`, `never_sat`, `disagree`).
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # --------------------------------------------------------- sponsors ---
     # LsrsOnly.txt is the better sponsor source. It states "Prime" or "Sponsor"
     # outright instead of encoding it in a flag, and carries the bill number and
@@ -2573,72 +2488,15 @@ def main():
         print(f"sponsors: {filled:,} further bills filled from LsrSponsors.txt")
     print(f"sponsors: {sum(len(v) for v in sponsors.values()):,} links across "
           f"{len(sponsors):,} bills in total")
-    # Bills the current session's files do not cover, from the STATUS page --
-    # which lists sponsors as labelled links with party and member id, rather
-    # than leaving them to be sifted out of docket prose.
-    bsp = Path("bill_status.json")
-    if bsp.exists():
-        # Keyed on the term, and each bill takes its own term's record:
-        # status_for_session says why not the newest.
-        raw = json.loads(bsp.read_text(encoding="utf-8"))
-        st, no_slice = status_for_session(raw, bills)
-        if no_slice:
-            print(f"bill status page: nothing for {', '.join(t or 'no term' for t in no_slice)}"
-                  " -- bill_status.json has no slice for it yet")
-        added_sp = added_t = 0
+    return sponsors, lo_bills, departed, flags, missing_lsr, never_sat, disagree
 
-        def status_sponsors(v):
-            """One bill's sponsors as the status page lists them.
 
-            Lifted out of the loop below so an ARCHIVED term can use it too.
-            Its sponsors arrive the same way and in the same shape; the only
-            difference is which term they are filed under, and that used to be
-            unrepresentable because sponsors.json was keyed on the bill number
-            alone.
-            """
-            return [
-                {"member_id": x.get("web_member_id", ""), "name": x["name"],
-                 "party": x.get("party", ""),
-                 # The page states a chamber for members it can link and
-                 # leaves it blank for the rest -- 361 sponsor entries, all of
-                 # them people who have since left, which put them on the page
-                 # under a heading about a missing chamber rather than beside
-                 # their colleagues.
-                 #
-                 # It does give a senate district, and only ever to senators:
-                 # across the 12,659 entries whose chamber the page DOES state,
-                 # all 4,109 senators carry one and none of the 8,550
-                 # representatives does. So a blank chamber with no senate
-                 # district is a representative, which is a reading of the
-                 # page rather than an assumption about who tends to leave.
-                 "chamber": (x.get("chamber", "")
-                             or ("S" if (x.get("senate_district") or "").strip()
-                                 else "H")),
-                 "label": (f"{x['name']} ({x['party']})" if x.get("party")
-                           else x["name"]),
-                 "sequence": i, "prime": i == 0, "url": x.get("url", ""),
-                 "source": "bill status page", "prime_inferred": True}
-                for i, x in enumerate(v.get("sponsors") or [])]
-
-        # The title and STATUS_FILLS, made_bill among them, where the bill's
-        # own record has none.
-        took = fill_from_status(bills, st)
-        added_t = took["title"]
-        print(f"bill status page: {took['made_bill']:,} of {len(bills):,} bills took the day "
-              "their request was made a bill (made_bill)")
-        for bill, v in st.items():
-            if not v.get("sponsors") or (sponsors.get(bill)):
-                continue
-            sponsors[bill] = status_sponsors(v)
-            added_sp += 1
-        if added_sp or added_t:
-            print(f"bill status page: {added_sp:,} bills gained sponsors, "
-                  f"{added_t:,} gained a title")
-            report.append(f"{added_sp:,} bills took their sponsors from the bill "
-                          "status page, because the sponsor files cover the "
-                          "current session only. Prime is the first listed there; "
-                          "the page does not mark the field.")
-
+def sponsors_said(frozen, sess, bills, sponsors, term_legs, flags, missing_lsr, never_sat,
+                  disagree, report):
+    """A new bill's sponsors from its request (sponsors_from_requests, not for a
+    frozen term's run), every row given a prime field, and what the sponsor files
+    gave said in `report` and printed. 
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # A NEW BILL CARRIES ITS REQUEST'S SPONSORS UNTIL THE SPONSOR FILES CARRY IT
     # (17 November 2026; sponsors_from_requests). Not for a frozen term's build.
     if not frozen:
@@ -2672,6 +2530,15 @@ def main():
               f"member(s) who cast no ballot in {sess or 'the term'} left out: "
               + ", ".join(sorted(never_sat)[:8]))
 
+
+def former_members_named(d, legs, roster_terms):
+    """{member id: record} for the members the roster does not hold, from
+    former_members.json, then past_members' list of everyone who served under it,
+    then member_party.json filling a party where there is none, then each roster
+    term's frozen roster where nothing above names a member; and the ids that
+    last named (`_frozen_named`). The corrections a person made go over it in
+    main, after.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # ------------------------------------------------------- roll calls ---
     # Names for members who left mid-term, from resolve_members.py.
     former = {}
@@ -2787,77 +2654,15 @@ def main():
     if _frozen_gave:
         print(f"members of {', '.join(roster_terms)} who hold no seat now, named from that "
               f"term's frozen roster: {_frozen_gave:,}")
+    return former, _frozen_named
 
-    # ------------------------------------------ what a person has corrected ---
-    #
-    # LAST, OVER EVERY GENERATED SOURCE, AND OVER NOTHING ELSE. By this line
-    # `former` has been assembled from all three -- former_members.json, then
-    # past_members under it, then member_party.json filling blanks -- and no
-    # consumer has read it yet, so this is the one place a correction reaches
-    # every name the site shows for a member who has left.
-    #
-    # It exists because a generated name can be wrong and nothing downstream
-    # can tell. resolve_members.py cannot look an id up: the General Court's
-    # website and its data files number people in two spaces, so it deduces
-    # who an id is by intersecting a saved roll call page with the ids that
-    # voted. One of its 676 deductions landed on the wrong person, and put
-    # Thomas Oppel's name on 4,250 ballots cast between 2005 and 2024,
-    # including 362 in which that member presided as Speaker. member_corrections
-    # .json carries the correction and the evidence for it.
-    #
-    # A correction that matches nothing is a correction that has stopped
-    # working -- the id space changed, or the defect was fixed upstream and
-    # the entry outlived it -- so it says so rather than passing quietly.
-    cp = Path("corrections/member_corrections.json")
-    ballot_fix = {}
-    if cp.exists():
-        _doc = json.loads(cp.read_text(encoding="utf-8"))
-        fixed = _doc.get("members") or {}
 
-        # Corrections keyed by ROLL CALL, not by member. Two 2017 House ballots
-        # carry an empty member id in the General Court's own record, and an
-        # empty id is one bucket that both fall into -- so a member-keyed
-        # correction would put both on whichever person it named. The key is
-        # (year, body, vote_number), which names a roll call exactly.
-        for _k, _v in (_doc.get("ballots") or {}).items():
-            if _k.startswith("_") or not isinstance(_v, dict):
-                continue
-            _parts = tuple(_k.split("|"))
-            if len(_parts) != 3:
-                print(f"  WARNING: ballot correction key {_k!r} is not "
-                      f"year|body|vote_number; ignored")
-                continue
-            ballot_fix[_parts] = _v
-
-        hit = named = 0
-        for _mid, _fix in fixed.items():
-            # The file is written by hand and carries prose for the next person
-            # to read. A key starting with "_" is one of those notes, not a
-            # member, and a note is a string rather than an object -- which
-            # crashed this loop the first time one was added here.
-            if _mid.startswith("_") or not isinstance(_fix, dict):
-                continue
-            _fields = {k: v for k, v in _fix.items() if not k.startswith("_")
-                       and k in ("name", "party", "county", "district")}
-            if _mid in former:
-                former[_mid].update(_fields)
-                hit += 1
-            else:
-                # Not a miss. The generators name a member by deduction and
-                # cannot name everybody, so an id with no generated record is
-                # the ordinary case for a correction that supplies a name
-                # rather than replaces one. Whether it reaches a real ballot
-                # is checked below, once the votes are built, which is the
-                # only place that question can actually be answered.
-                former[_mid] = dict(_fields)
-                named += 1
-        if hit:
-            print(f"member_corrections.json: {hit} generated name(s) corrected")
-        if named:
-            print(f"member_corrections.json: {named} id(s) named that the "
-                  f"generators could not name")
-        _corrected_ids = {m for m in fixed if not m.startswith("_")}
-
+def seat_sponsors(legs, sess_roster, former, _frozen_named, sponsors):
+    """Every sponsor row without a district given one: the term's roster's seat and
+    id where the member sits in the row's chamber this term (counted in `seated`),
+    else the seat of the record in `former` of the same first and last name
+    (`placed`), which also gives an id and a party where the row has none.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # ------------------------------------------ sponsors, district and all ---
     #
     # A sponsor the status page could not link is a member who has since left,
@@ -2958,7 +2763,17 @@ def main():
                 _s["county"] = _f.get("county", "")
                 _s["district"] = _f.get("district", "")
                 placed += 1
+    return placed, seated
 
+
+def name_departed_sponsors(d, counties, former, sponsors, departed, lo_bills, placed, seated,
+                           report):
+    """The rows of sponsors the roster does not hold (`departed`) named from
+    `former`, with their chamber from db/Legislators.psv and names.legislator's
+    label, and their bills re-sorted; what the sponsor steps did printed; and
+    _former_label, the ballot label of a member who left. _former_label reads
+    `former` when it is called: main rebinds that name only after its last call.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # ------------------------------ the sponsors who are not on the roster ---
     #
     # HERE, AND NOT WHERE THE SPONSORS ARE READ, because up there nothing can
@@ -3049,6 +2864,259 @@ def main():
         pc = (f.get("party") or "")[:1].upper()
         return (f"{f['name']}({pc}) {f.get('county','')} "
                 f"{f.get('district','')}").strip()
+    return _former_label
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dir", default=".")
+    ap.add_argument("--out", default="data")
+    ap.add_argument("--frozen", metavar="TERM", default="",
+                    help="build TERM alone from its frozen inputs (frozen/TERM/day/ and "
+                         "db/term/TERM/), writing only its bills and sponsors to --out")
+    ap.add_argument("--frozen-terms", action="store_true",
+                    help="build every frozen term older than the session's, each into "
+                         "<out>/frozen/<term>/, and nothing else")
+    a = ap.parse_args()
+    d, out = Path(a.dir), Path(a.out)
+    if a.frozen_terms:
+        return build_frozen_terms(d, out)
+    out.mkdir(parents=True, exist_ok=True)
+    report = []
+    # WHERE THE SESSION'S OWN FILES ARE. The fourteen the night installs are
+    # read from here, and for a frozen term from its freeze; everything else
+    # -- the database's past views, the roll calls of past years, the
+    # journals' withdrawn bills, the status pages, the corrections a person
+    # made -- from --dir and the working folder as ever.
+    frozen = a.frozen
+    sd = d / "frozen" / frozen / "day" if frozen else d
+    if frozen:
+        if not P.TERM_RE.match(frozen) or not (sd / "Docket.txt").exists():
+            sys.exit(f"no frozen day files for {frozen!r} at {sd}")
+        if P.session_term(sd) != frozen:
+            sys.exit(f"the frozen files at {sd} are {P.session_term(sd) or 'of no term'}'s, "
+                     f"not {frozen}'s")
+        print(f"THE FROZEN TERM {frozen}, from {sd} and {d / 'db' / 'term' / frozen}")
+    # ROWS OF A FINISHED TERM IN THE SESSION'S FILES ARE COUNTED AND LEFT OUT,
+    # NEVER MERGED (5 October 2026). The General Court's files do not all turn
+    # on one night, and a turned file can still carry the old term's last rows:
+    # on a copy, ten 2026 docket rows left in a 2027 Docket.txt made
+    # 2025-2026 "already built from session files", so the archive was
+    # skipped for the whole term and it shrank to 19 bills; their sponsors
+    # were filed under 2027-2028; and a docket holding 2025, 2026 and 2027
+    # together keyed the new term's stubs by number onto 2025's. A term frozen
+    # and older than the session's is built from its freeze alone
+    # (finished_builds), so its rows here are dropped as they are read, each
+    # file's count said. One rule for every place that would otherwise replace
+    # or skip a whole term on meeting one such row: senate_hearing_reports,
+    # fetch_testimony_db, narrative, build_proceedings and build_bill_versions
+    # keep it too. And an older term's rows beside the session's with NO
+    # freeze stop the run: that is a turn nobody froze, and building on would
+    # lose the term or mix the two.
+    import freeze_term
+    sess, gone_terms, gone_years, left_out, left_named = finished_terms_left_out(d, sd, frozen,
+                                                                                 freeze_term)
+
+    # ---------------------------------------------------------- counties ---
+    counties = {}
+    for r in rows(sd / "Counties.txt", 3):
+        counties[r[0]] = {"name": r[1], "abbr": r[2].rstrip(".")}
+    print(f"counties: {len(counties)}")
+
+    # ------------------------------------------------------- legislators ---
+    legs = read_roster(sd, counties, report)
+
+    # THE TERM'S OWN MEMBERS, ONCE THE ROSTER IS NOT ITS OWN (the review of 5
+    # October 2026). Organization Day seats the next House, and the General
+    # Court's roster may show it nights before its files show the next term:
+    # a database night takes it when tonight's Members.txt agrees, and an
+    # export whose legislators.txt turns first brings it as it comes. The term
+    # is still the session's then, and built from these files: on a copy with
+    # the next House installed, 1,392 of its bills drew sponsors with no party
+    # ("Former member #10578") and 477 tallied ballots under none. And
+    # LsrsOnly.txt lists sitting members only -- none of its 353 was off the
+    # roster on 5 October 2026, where LsrSponsors.txt kept 21 -- so it would
+    # lose every departed member's sponsorships with them. So while the
+    # session's own term is frozen and the installed roster is not its own
+    # (freeze_term.own_roster_terms), the term's sponsor files and its roster
+    # are the freeze's: its sponsors are read and named as they were before
+    # Organization Day, and the members who left are named on its ballots
+    # from that roster (below), as a finished term's are. Its docket and roll
+    # calls are still the installed ones, and the sitting roster
+    # (legislators.json) is the installed one. Before any of that, nothing
+    # here moves.
+    roster_terms, term_rosters, md, term_legs, sess_roster = term_roster_files(d, sd, frozen,
+                                                                               freeze_term, legs,
+                                                                               sess)
+
+    towns = towns_of_seats(sd, counties, legs, report)
+
+    # --------------------------------------------------------- subjects ---
+    subjects = {r[1]: {"id": r[0], "code": r[1], "name": r[2]}
+                for r in rows(sd / "SubjectCodes.txt", 3)}
+    committees = {r[0]: {"code": r[0], "name": r[1], "abbr": r[2]}
+                  for r in rows(sd / "Committees.txt", 3)}
+    print(f"subjects: {len(subjects)}   committees: {len(committees)}")
+
+    bills, by_lsr = session_bills(d, sd, frozen, sess, subjects, committees, gone_years, left_out,
+                                  left_named, report)
+
+    sponsors, lo_bills, departed, flags, missing_lsr, never_sat, disagree = sponsors_from_files(d,
+                                                                                                sd,
+                                                                                                md,
+                                                                                                sess,
+                                                                                                freeze_term,
+                                                                                                bills,
+                                                                                                by_lsr,
+                                                                                                term_legs,
+                                                                                                gone_years,
+                                                                                                left_out,
+                                                                                                report)
+    # Bills the current session's files do not cover, from the STATUS page --
+    # which lists sponsors as labelled links with party and member id, rather
+    # than leaving them to be sifted out of docket prose.
+    bsp = Path("bill_status.json")
+    if bsp.exists():
+        # Keyed on the term, and each bill takes its own term's record:
+        # status_for_session says why not the newest.
+        raw = json.loads(bsp.read_text(encoding="utf-8"))
+        st, no_slice = status_for_session(raw, bills)
+        if no_slice:
+            print(f"bill status page: nothing for {', '.join(t or 'no term' for t in no_slice)}"
+                  " -- bill_status.json has no slice for it yet")
+        added_sp = added_t = 0
+
+        def status_sponsors(v):
+            """One bill's sponsors as the status page lists them.
+
+            Lifted out of the loop below so an ARCHIVED term can use it too.
+            Its sponsors arrive the same way and in the same shape; the only
+            difference is which term they are filed under, and that used to be
+            unrepresentable because sponsors.json was keyed on the bill number
+            alone.
+            """
+            return [
+                {"member_id": x.get("web_member_id", ""), "name": x["name"],
+                 "party": x.get("party", ""),
+                 # The page states a chamber for members it can link and
+                 # leaves it blank for the rest -- 361 sponsor entries, all of
+                 # them people who have since left, which put them on the page
+                 # under a heading about a missing chamber rather than beside
+                 # their colleagues.
+                 #
+                 # It does give a senate district, and only ever to senators:
+                 # across the 12,659 entries whose chamber the page DOES state,
+                 # all 4,109 senators carry one and none of the 8,550
+                 # representatives does. So a blank chamber with no senate
+                 # district is a representative, which is a reading of the
+                 # page rather than an assumption about who tends to leave.
+                 "chamber": (x.get("chamber", "")
+                             or ("S" if (x.get("senate_district") or "").strip()
+                                 else "H")),
+                 "label": (f"{x['name']} ({x['party']})" if x.get("party")
+                           else x["name"]),
+                 "sequence": i, "prime": i == 0, "url": x.get("url", ""),
+                 "source": "bill status page", "prime_inferred": True}
+                for i, x in enumerate(v.get("sponsors") or [])]
+
+        # The title and STATUS_FILLS, made_bill among them, where the bill's
+        # own record has none.
+        took = fill_from_status(bills, st)
+        added_t = took["title"]
+        print(f"bill status page: {took['made_bill']:,} of {len(bills):,} bills took the day "
+              "their request was made a bill (made_bill)")
+        for bill, v in st.items():
+            if not v.get("sponsors") or (sponsors.get(bill)):
+                continue
+            sponsors[bill] = status_sponsors(v)
+            added_sp += 1
+        if added_sp or added_t:
+            print(f"bill status page: {added_sp:,} bills gained sponsors, "
+                  f"{added_t:,} gained a title")
+            report.append(f"{added_sp:,} bills took their sponsors from the bill "
+                          "status page, because the sponsor files cover the "
+                          "current session only. Prime is the first listed there; "
+                          "the page does not mark the field.")
+
+    sponsors_said(frozen, sess, bills, sponsors, term_legs, flags, missing_lsr, never_sat,
+                  disagree, report)
+
+    former, _frozen_named = former_members_named(d, legs, roster_terms)
+
+    # ------------------------------------------ what a person has corrected ---
+    #
+    # LAST, OVER EVERY GENERATED SOURCE, AND OVER NOTHING ELSE. By this line
+    # `former` has been assembled from all three -- former_members.json, then
+    # past_members under it, then member_party.json filling blanks -- and no
+    # consumer has read it yet, so this is the one place a correction reaches
+    # every name the site shows for a member who has left.
+    #
+    # It exists because a generated name can be wrong and nothing downstream
+    # can tell. resolve_members.py cannot look an id up: the General Court's
+    # website and its data files number people in two spaces, so it deduces
+    # who an id is by intersecting a saved roll call page with the ids that
+    # voted. One of its 676 deductions landed on the wrong person, and put
+    # Thomas Oppel's name on 4,250 ballots cast between 2005 and 2024,
+    # including 362 in which that member presided as Speaker. member_corrections
+    # .json carries the correction and the evidence for it.
+    #
+    # A correction that matches nothing is a correction that has stopped
+    # working -- the id space changed, or the defect was fixed upstream and
+    # the entry outlived it -- so it says so rather than passing quietly.
+    cp = Path("corrections/member_corrections.json")
+    ballot_fix = {}
+    if cp.exists():
+        _doc = json.loads(cp.read_text(encoding="utf-8"))
+        fixed = _doc.get("members") or {}
+
+        # Corrections keyed by ROLL CALL, not by member. Two 2017 House ballots
+        # carry an empty member id in the General Court's own record, and an
+        # empty id is one bucket that both fall into -- so a member-keyed
+        # correction would put both on whichever person it named. The key is
+        # (year, body, vote_number), which names a roll call exactly.
+        for _k, _v in (_doc.get("ballots") or {}).items():
+            if _k.startswith("_") or not isinstance(_v, dict):
+                continue
+            _parts = tuple(_k.split("|"))
+            if len(_parts) != 3:
+                print(f"  WARNING: ballot correction key {_k!r} is not "
+                      f"year|body|vote_number; ignored")
+                continue
+            ballot_fix[_parts] = _v
+
+        hit = named = 0
+        for _mid, _fix in fixed.items():
+            # The file is written by hand and carries prose for the next person
+            # to read. A key starting with "_" is one of those notes, not a
+            # member, and a note is a string rather than an object -- which
+            # crashed this loop the first time one was added here.
+            if _mid.startswith("_") or not isinstance(_fix, dict):
+                continue
+            _fields = {k: v for k, v in _fix.items() if not k.startswith("_")
+                       and k in ("name", "party", "county", "district")}
+            if _mid in former:
+                former[_mid].update(_fields)
+                hit += 1
+            else:
+                # Not a miss. The generators name a member by deduction and
+                # cannot name everybody, so an id with no generated record is
+                # the ordinary case for a correction that supplies a name
+                # rather than replaces one. Whether it reaches a real ballot
+                # is checked below, once the votes are built, which is the
+                # only place that question can actually be answered.
+                former[_mid] = dict(_fields)
+                named += 1
+        if hit:
+            print(f"member_corrections.json: {hit} generated name(s) corrected")
+        if named:
+            print(f"member_corrections.json: {named} id(s) named that the "
+                  f"generators could not name")
+        _corrected_ids = {m for m in fixed if not m.startswith("_")}
+
+    placed, seated = seat_sponsors(legs, sess_roster, former, _frozen_named, sponsors)
+
+    _former_label = name_departed_sponsors(d, counties, former, sponsors, departed, lo_bills,
+                                           placed, seated, report)
 
     # Keyed (year, body, number): a vote sequence number restarts each session,
     # so the year is what keeps 2025's roll call 112 apart from 2026's. That was
