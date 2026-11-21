@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.36
+# GRANITE_VERSION: 2026-11-16.37
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -14457,7 +14457,7 @@ def _town_panel_elect_lines(OV):
                 rec, office = recs[key]
                 beside, row = OV.office_next(rec, office, lang)
                 if beside:
-                    assert f'<span class="k">{beside}</span>' in h, (
+                    assert f'<span class="ytk">{beside}</span>' in h, (
                         f"{lang}: {slug}'s panel does not say {text(beside)!r} beside {rec['name']}")
                 if row:
                     want = text(row[row.index('<span class="k">'):])

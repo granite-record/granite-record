@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.75
+// GRANITE_VERSION: 2026-09-16.76
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1891,10 +1891,10 @@ function ytElectTitle(k){
 function ytHolder(k,o){
   const lang=typeof window!=="undefined"?window.GR_LANG:undefined, f=o[3]||{};
   const label=(n,p)=>p&&/^[A-Z]$/.test(p)?`${n} (${p})`:n;
-  const again=f.r?`<span class="k">${tr("of.ov.reelected","Re-elected {day}",{day:_fesc(dateWords(f.r,"full",lang))})}</span>`:"";
+  const again=f.r?`<span class="ytk">${tr("of.ov.reelected","Re-elected {day}",{day:_fesc(dateWords(f.r,"full",lang))})}</span>`:"";
   let h=ytChip(label(o[0],o[1]),o[1],o[2],true,again);
   if(f.e&&f.e[0])h+=ytChip(label(f.e[0],f.e[1]),f.e[1],"",false,
-    `<span class="k">${tr("of.ov.elect_takes","{office}; takes office {day}",
+    `<span class="ytk">${tr("of.ov.elect_takes","{office}; takes office {day}",
       {office:_fesc(ytElectTitle(k)),day:_fesc(dateWords(f.e[2],"full",lang))})}</span>`,
     ` class="ytnext"${untilAttrs(f.e[2],null)}`);
   return h;
