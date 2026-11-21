@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.74
+// GRANITE_VERSION: 2026-09-16.75
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1865,11 +1865,39 @@ function ytMark(p){
 // Governor -- and then the way to the town's own page.
 // One person, one chip: the name, and the party and district in the chip's
 // tag, which app.css keeps whole (.mtag), as the roster draws it.
-function ytChip(name,party,href,out){
+// `after` is markup after the chip in its item, `attrs` the item's own.
+function ytChip(name,party,href,out,after,attrs){
   const s=String(name||""),i=s.lastIndexOf(" (");
   const nm=i>0&&s.endsWith(")")?`${_fesc(s.slice(0,i))} <span class="mtag">${_fesc(s.slice(i+1))}</span>`:_fesc(s);
   const a=href?`<a href="${_fesc(href)}"${out?' target="_blank" rel="noopener"':""}>${nm}</a>`:nm;
-  return `<li><span class="mchip p-${_fesc(party||"X")}" translate="no">${a}</span></li>`;
+  return `<li${attrs||""}><span class="mchip p-${_fesc(party||"X")}" translate="no">${a}</span>${after||""}</li>`;
+}
+/* WHO HOLDS AN OFFICE NEXT, AS THE OVERVIEW SAYS IT (the owner, 21 November
+   2026: "Elect and re-elected is fine"). An office of places.json's
+   "offices" -- the Executive Council ("ec"), the US House ("cd"), the US
+   Senate ("us") and the Governor ("gov") -- is [name, party, its site] and,
+   where the hand file says so (build_town_pages.panel_offices, from
+   officials_overview.office_facts), a fourth item: "r", the day the holder
+   was re-elected, said beside them, and "e", the successor not yet in office,
+   [name, party, the day they take office], drawn under the holder as
+   "<office>-elect; takes office <day>" and gone from that day by the
+   reader's clock (untilAttrs). The overview's words, through the same keys. */
+function ytElectTitle(k){
+  if(k==="gov")return tr("of.ov.elect.governor","Governor-elect");
+  if(k==="ec")return tr("of.ov.elect.council","Executive Councilor-elect");
+  if(k==="us")return tr("of.ov.elect.us_senate","US Senator-elect");
+  return tr("of.ov.elect.us_house","US Representative-elect");
+}
+function ytHolder(k,o){
+  const lang=typeof window!=="undefined"?window.GR_LANG:undefined, f=o[3]||{};
+  const label=(n,p)=>p&&/^[A-Z]$/.test(p)?`${n} (${p})`:n;
+  const again=f.r?`<span class="k">${tr("of.ov.reelected","Re-elected {day}",{day:_fesc(dateWords(f.r,"full",lang))})}</span>`:"";
+  let h=ytChip(label(o[0],o[1]),o[1],o[2],true,again);
+  if(f.e&&f.e[0])h+=ytChip(label(f.e[0],f.e[1]),f.e[1],"",false,
+    `<span class="k">${tr("of.ov.elect_takes","{office}; takes office {day}",
+      {office:_fesc(ytElectTitle(k)),day:_fesc(dateWords(f.e[2],"full",lang))})}</span>`,
+    ` class="ytnext"${untilAttrs(f.e[2],null)}`);
+  return h;
 }
 /* WHO NOVEMBER'S ELECTION SENT, IN THE CARD (the person's decisions of 16
    October 2026): between the election and Organization Day a place's "e"
@@ -1906,9 +1934,9 @@ function ytSeats(p){
   const who=list=>`<ul class="ytppl">${list.map(s=>{const w=ppl[s]||[s,""];return ytChip(w[0],w[1],"/legislator/"+s);}).join("")}</ul>`;
   const seat=(office,where,body,race)=>`<div class="ytseat"${race?` data-race="${_fesc(race)}"`:""}><p class="ytoff">${office}${where?`<span>${_fesc(where)}</span>`:""}</p>${body}</div>`;
   const named=(k,d)=>{const o=(off[k]||{})[String(d)];
-    return o&&o[0]?`<ul class="ytppl">${ytChip(o[1]&&/^[A-Z]$/.test(o[1])?`${o[0]} (${o[1]})`:o[0],o[1],o[2],true)}</ul>`:`<p class="ytnote">${tr("yt.not_on_file","Not on file.")}</p>`;};
+    return o&&o[0]?`<ul class="ytppl">${ytHolder(k,o)}</ul>`:`<p class="ytnote">${tr("yt.not_on_file","Not on file.")}</p>`;};
   const all=k=>{const o=off[k]||{},ks=Object.keys(o).sort();
-    return ks.length?`<ul class="ytppl">${ks.map(d=>ytChip(o[d][1]&&/^[A-Z]$/.test(o[d][1])?`${o[d][0]} (${o[d][1]})`:o[d][0],o[d][1],o[d][2],true)).join("")}</ul>`:"";};
+    return ks.length?`<ul class="ytppl">${ks.map(d=>ytHolder(k,o[d])).join("")}</ul>`:"";};
   const district=d=>tr("yt.district","District {d}",{d});
   const hs=p.h||[];
   // Each House district a row: its own members, and any member the address

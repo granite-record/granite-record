@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.417 */
+/* GRANITE_VERSION: 2026-09-07.418 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2086,6 +2086,10 @@ color:var(--pine);margin:0 0 var(--sp-3)}
 .ytnow .ytoff{font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink);margin:0 0 var(--sp-3)}
 .ytnow .ytoff span{font-weight:400;color:var(--ink-2);margin-left:var(--sp-3)}
 .ytnow .ytppl li{max-width:100%}
+/* Who holds an office next (find.js ytHolder): the re-election under the
+   holder's chip, the successor a line of their own under them. */
+.ytnow .ytppl li > .k{display:block;margin-top:var(--sp-1);font-size:var(--t-sm);color:var(--ink-2)}
+.ytnow .ytppl .ytnext{flex-basis:100%;padding-left:var(--sp-5)}
 .ytnow .mchip{max-width:100%;white-space:normal;margin:0}
 .ytnow .ytnote{margin:0}
 /* Where the place votes, under its officials (find.js ytVote's panel; the

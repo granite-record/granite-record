@@ -3009,7 +3009,13 @@ the file -- the Officials page, the town pages and `places.json`, the district
 map and `officers.py` -- reads it through one function,
 `build_members_elect.read_officials`, so no two pages can differ about who
 holds an office; preflight's `_officials_one_reader` reads the code for it,
-and `_officials_successor` holds the switch on a made-up file. The day is never
+and `_officials_successor` holds the switch on a made-up file. Until that day
+the Officials overview draws a successor under the holder as "<office>-elect;
+takes office <day>", and a holder whose `reelected` names them as re-elected,
+from one reading of the record, `officials_overview.office_facts`; the town
+panel says the same of the Council, the US House, the US Senate and the
+Governor, from the fourth item `build_town_pages.panel_offices` gives an
+office in `places.json` (`_town_panel_elect_lines`). The day is never
 worked out: nothing on this disk states it for every office. From a week after
 a general election, a `_checked` dated before that week was out is one of
 preflight's reminders, `_officials_rechecked`. The home page's old "Who holds

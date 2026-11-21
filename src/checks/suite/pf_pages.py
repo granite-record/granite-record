@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.35
+# GRANITE_VERSION: 2026-11-16.36
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -14268,6 +14268,8 @@ _TOWN_PANEL_JS = r"""
 require("./stub.js");
 const fs = require("fs"), vm = require("vm");
 const D = JSON.parse(fs.readFileSync("./places.json", "utf8"));
+if (fs.existsSync("./words.json")) {
+  window.GR_WORDS = JSON.parse(fs.readFileSync("./words.json", "utf8")); window.GR_LANG = "es"; }
 let saved = "";
 globalThis.localStorage = {getItem(k){ return k === "gr-town" ? saved : null; }, setItem(){}, removeItem(){}};
 let F;
@@ -14311,11 +14313,12 @@ _TOWN_PANEL_PLACES = {
     "people": {}, "offices": {}}
 
 
-def _town_panel_drawn(places=None):
+def _town_panel_drawn(places=None, words=None):
     """{"panel": {slug: html}, "slot": {slug: html}}: find.js's town panel
     (ytDraw) for each place of `places` (_TOWN_PANEL_PLACES by default) saved
     in turn, and the Learn pages' "vote" slot's ytVote of it, drawn in node
-    with components.js first as every page loads it. None without node."""
+    with components.js first as every page loads it; in Spanish, with
+    `words` its GR_WORDS, where they are given. None without node."""
     if not shutil.which("node"):
         return None
     root = Path(tempfile.mkdtemp())
@@ -14323,6 +14326,8 @@ def _town_panel_drawn(places=None):
         (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
         (root / "find.js").write_text(_with_components(_source("src/pages/find.js")), encoding="utf-8")
         (root / "places.json").write_text(json.dumps(places or _TOWN_PANEL_PLACES), encoding="utf-8")
+        if words:
+            (root / "words.json").write_text(json.dumps(words, ensure_ascii=False), encoding="utf-8")
         (root / "go.js").write_text(_TOWN_PANEL_JS, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8",
                  timeout=60)
@@ -14374,6 +14379,103 @@ def _town_panel_where_you_vote():
     return "ok", ("Where you vote under the officials for a town, a ward, a town by ward and a place "
                   "with none on the list; no clerk's name, phone, email or title in any panel, and the "
                   "Learn pages' slot still names the clerk")
+
+
+@check("frontend", "the town panel names an office's successor and a re-elected holder as the "
+       "overview does, for the Executive Council, the US House, the US Senate and the Governor",
+       needs=("officials_overview",))
+def _town_panel_elect_lines(OV):
+    """The owner, 21 November 2026: "Elect and re-elected is fine." The town
+    panel (find.js ytSeats) draws, for the Executive Council, the US House,
+    the US Senate and the Governor, what the Officials overview draws of them:
+    a successor not yet in office under the holder, "<office>-elect; takes
+    office <day>", gone from that day by the reader's clock, and a holder the
+    hand file says was re-elected, "Re-elected <day>" -- from the same
+    reading of the record, officials_overview.office_facts, which
+    build_town_pages.panel_offices puts into places.json's offices, and in
+    the overview's own words (of.ov.*).
+
+    Over a hand file of ten offices: panel_offices gives a fourth item only
+    to the six whose record says so -- not to a re-election naming somebody
+    else or with no day, nor to a successor who is the holder -- and the
+    panel, drawn in node for two places in English and in Spanish (the
+    catalog's words), says beside or under each holder exactly the words
+    office_next gives the overview for that record, each successor's row
+    carrying data-until on their day. Fails if a line leaves the panel, says
+    other words than the overview, or appears where the record says none."""
+    import build_town_pages as BT
+    import html as _h
+    import i18n
+
+    def text(h):
+        return " ".join(_h.unescape(re.sub(r"<[^>]+>", " ", h)).split())
+    again = {"election": "2026-11-03", "votes": 1, "votes_cast": 2, "source_url": "https://x"}
+    off = {"governor": {"name": "G. Next", "party": "R",
+                        "elect": {"name": "G. Elect", "party": "D", "takes_office": "2027-01-07"}},
+           "council": {"districts": {
+               "1": {"name": "J. Kenney", "party": "R", "official_url": "https://c/1",
+                     "elect": {"name": "L. Bay", "party": "D", "takes_office": "2027-01-06"}},
+               "2": {"name": "K. Hill", "party": "D", "reelected": {**again, "name": "K. Hill"}},
+               "3": {"name": "J. Stevens", "party": "R", "reelected": {**again, "name": "Somebody Else"}},
+               "4": {"name": "J. Stephen", "party": "R", "reelected": {**again, "name": "J. Stephen",
+                                                                       "election": ""}},
+               "5": {"name": "D. Wheeler", "party": "R",
+                     "elect": {"name": "D. Wheeler", "party": "R", "takes_office": "2027-01-06"}}}},
+           "us_house": {"districts": {
+               "1": {"name": "C. Pappas", "party": "D",
+                     "elect": {"name": "S. Shaheen", "party": "D", "takes_office": "2027-01-03"}},
+               "2": {"name": "M. Goodlander", "party": "D", "reelected": {**again, "name": "M. Goodlander"}}}},
+           "us_senate": {"seats": [
+               {"name": "J. Shaheen", "party": "D",
+                "elect": {"name": "C. Pappas", "party": "D", "takes_office": "2027-01-03"}},
+               {"name": "M. Hassan", "party": "D"}]}}
+    offices = BT.panel_offices(off)
+    fourth = {(k, d): v[3] for k, o in offices.items() for d, v in o.items() if len(v) > 3}
+    assert fourth == {("ec", "1"): {"e": ["L. Bay", "D", "2027-01-06"]}, ("ec", "2"): {"r": "2026-11-03"},
+                      ("cd", "1"): {"e": ["S. Shaheen", "D", "2027-01-03"]}, ("cd", "2"): {"r": "2026-11-03"},
+                      ("us", "0"): {"e": ["C. Pappas", "D", "2027-01-03"]},
+                      ("gov", "0"): {"e": ["G. Elect", "D", "2027-01-07"]}}, (
+        f"places.json's offices say who holds them next as {fourth}")
+    recs = {("ec", d): (r, "council") for d, r in off["council"]["districts"].items()}
+    recs.update({("cd", d): (r, "us_house") for d, r in off["us_house"]["districts"].items()})
+    recs.update({("us", str(i)): (r, "us_senate") for i, r in enumerate(off["us_senate"]["seats"])})
+    recs[("gov", "0")] = (off["governor"], "governor")
+    places = {"places": [
+        {"s": "one", "n": "One", "t": "One", "u": "/town/one", "h": [], "ec": 1, "cd": 1, "m": []},
+        {"s": "two", "n": "Two", "t": "Two", "u": "/town/two", "h": [], "ec": 2, "cd": 2, "m": []}],
+        "people": {}, "offices": offices}
+    es = i18n.catalog("es")["strings"]
+    words = {k: v["es"] for k, v in es.items() if k.startswith(("of.ov.", "yt.")) and v.get("es")}
+    drawn = {"en": _town_panel_drawn(places), "es": _town_panel_drawn(places, words)}
+    if drawn["en"] is None:
+        return "skip", "node is not installed"
+    for lang in ("en", "es"):
+        pan = drawn[lang]["panel"]
+        for slug, ec, cd in (("one", "1", "1"), ("two", "2", "2")):
+            h = pan[slug]
+            for key in (("ec", ec), ("cd", cd), ("us", "0"), ("us", "1"), ("gov", "0")):
+                rec, office = recs[key]
+                beside, row = OV.office_next(rec, office, lang)
+                if beside:
+                    assert f'<span class="k">{beside}</span>' in h, (
+                        f"{lang}: {slug}'s panel does not say {text(beside)!r} beside {rec['name']}")
+                if row:
+                    want = text(row[row.index('<span class="k">'):])
+                    took = rec["elect"]["takes_office"]
+                    rows = re.findall(r'<li class="ytnext" data-until="' + took + r'">(.*?)</li>', h)
+                    assert any(text(r).startswith(rec["elect"]["name"]) and text(r).endswith(want)
+                               for r in rows), (
+                        f"{lang}: {slug}'s panel does not draw {rec['elect']['name']} under "
+                        f"{rec['name']} as {want!r}, retiring on {took}")
+        one = text(pan["one"])
+        assert one.count("-elect" if lang == "en" else "electo") >= 4, f"{lang}: {one[:300]!r}"
+    t = text(drawn["en"]["panel"]["two"])
+    assert "Re-elected" in t and t.count("Re-elected") == 2, (
+        f"Two's panel says Re-elected other than for its council member and its representative: {t[:300]!r}")
+    return "ok", ("panel_offices carries a successor or a re-election only where the record names one; "
+                  "the panel says each in the overview's words, in English and in Spanish, for the "
+                  "Council, the US House, the US Senate and the Governor, a successor's row retiring on "
+                  "their day")
 
 
 _TOWN_PANEL_TITLE_JS = r"""

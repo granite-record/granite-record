@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-20.2
+# GRANITE_VERSION: 2026-11-20.3
 """
 The Officials overview: the page the Officials section opens on (the owner's
 choice of draft A, 21 November 2026; the mock is the helpers' draft-a.html).
@@ -88,33 +88,55 @@ def elect_title(office, lang="en"):
     return I.say(lang, "of.ov.elect.us_house", "US Representative-elect")
 
 
-def office_next(rec, office, lang="en"):
-    """(what to add beside the holder, a row to draw under them) for one
-    office's record: "Re-elected November 3, 2026" where its `reelected`
-    names the holder; the successor's own row, "<office>-elect; takes office
-    <day>", where its `elect` names somebody else; ("", "") where it says
-    neither. A re-election with no day, or naming somebody other than the
-    holder, says nothing: the page says only what the record says."""
+def office_facts(rec):
+    """What one office's record says of who holds it next, as data: {"reelected":
+    the election's day} where its `reelected` names the holder with a day, and
+    {"elect": {"name", "party", "takes_office"}} where its `elect` names somebody
+    else with the day they take office (the party only where the office's holder
+    has one: a nonpartisan office's successor has none); {} where it says neither.
+    A re-election with no day, or naming somebody other than the holder, says
+    nothing: the page says only what the record says. office_next draws it on the
+    overview, and the town panel (find.js ytSeats) from places.json, where
+    build_town_pages puts it beside each office (the owner, 21 November 2026:
+    "Elect and re-elected is fine")."""
     rec = rec or {}
     holder = (rec.get("name") or "").strip()
+    out = {}
     again = rec.get("reelected")
-    beside = ""
     if isinstance(again, dict) and holder and (again.get("name") or "").strip() == holder \
             and UNTIL_DAY.fullmatch(str(again.get("election") or "")[:10]):
-        beside = I.say(lang, "of.ov.reelected", "Re-elected {day}",
-                       day=E(date_words(again["election"], "full", lang)))
+        out["reelected"] = str(again["election"])[:10]
     nxt = rec.get("elect")
-    row = ""
     if isinstance(nxt, dict):
         name = (nxt.get("name") or "").strip()
         takes = str(nxt.get("takes_office") or "")[:10]
         if name and name != holder and UNTIL_DAY.fullmatch(takes):
-            row = (f'<li class="ovnext"{until_attrs(takes, None)}>'
-                   + OT.person(name, nxt.get("party") if rec.get("party") else "")
-                   + '<span class="k">' + I.say(lang, "of.ov.elect_takes", "{office}; takes office {day}",
-                                                office=E(elect_title(office, lang)),
-                                                day=E(date_words(takes, "full", lang)))
-                   + "</span></li>")
+            out["elect"] = {"name": name, "party": (nxt.get("party") or "") if rec.get("party") else "",
+                            "takes_office": takes}
+    return out
+
+
+def office_next(rec, office, lang="en"):
+    """(what to add beside the holder, a row to draw under them) for one
+    office's record, from office_facts: "Re-elected November 3, 2026" where
+    its `reelected` names the holder; the successor's own row, "<office>-elect;
+    takes office <day>", where its `elect` names somebody else; ("", "") where
+    it says neither."""
+    got = office_facts(rec)
+    beside = ""
+    if got.get("reelected"):
+        beside = I.say(lang, "of.ov.reelected", "Re-elected {day}",
+                       day=E(date_words(got["reelected"], "full", lang)))
+    row = ""
+    nxt = got.get("elect")
+    if nxt:
+        takes = nxt["takes_office"]
+        row = (f'<li class="ovnext"{until_attrs(takes, None)}>'
+               + OT.person(nxt["name"], nxt["party"])
+               + '<span class="k">' + I.say(lang, "of.ov.elect_takes", "{office}; takes office {day}",
+                                            office=E(elect_title(office, lang)),
+                                            day=E(date_words(takes, "full", lang)))
+               + "</span></li>")
     return beside, row
 
 
