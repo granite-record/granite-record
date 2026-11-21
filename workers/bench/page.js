@@ -4,7 +4,12 @@
  * /bench#<token>; the token never leaves the browser but in the body of the
  * page's own requests. It is taken out of the address bar as soon as the page
  * reads it -- YouTube's player API sends the page's whole address to YouTube
- * -- and kept for the tab alone (sessionStorage), so a reload still works.
+ * -- and kept on the device (localStorage, "gr.bench"; the owner, 21 November
+ * 2026: "Make it remember the link on each device"), so a bookmark of /bench,
+ * a new tab or a reload opens it again. A token in the address always wins and
+ * replaces the kept one. The device forgets it when the bench answers it 404 (a
+ * link turned off, or a wrong one) and when "Forget this link on this
+ * device" is pressed, for a shared computer.
  *
  * WHAT IT IS (the design of 17 November 2026 and its mockups): one item, and
  * only its evidence. A timing: the bill, the proceeding, the day, and the
@@ -195,6 +200,9 @@ white-space:nowrap}
 text-decoration:underline;padding:0}
 .merge{border-left:4px solid var(--pine);background:var(--pine-soft);padding:12px 14px;border-radius:var(--r-in);margin:16px 0 0;
 font-size:15px}
+.forget{margin:24px 0 0}
+.forget button{min-height:44px;padding:0;border:0;background:none;color:var(--ink-2);font:500 14px/1.2 var(--sans);
+text-decoration:underline;text-underline-offset:3px}
 .merge code{font:500 13px/1.4 ui-monospace,"Cascadia Mono",Consolas,monospace;display:block;margin-top:6px;word-break:break-all}
 @media (prefers-reduced-motion:reduce){.card,.track .mine{transition:none}}
 `;
@@ -205,6 +213,9 @@ const FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com">
 
 // The words the page itself says. A card's words are the pack's.
 const NEEDS_LINK = "This page needs a link";
+const NEEDS_WORDS = "Open the private link you were sent once on this device, and this page will remember it.";
+const FORGET = "Forget this link on this device";
+const FORGET_ASK = "Forget this link on this device? To open the bench here again, you will need the link.";
 const KEPT = "Your answers are kept with this link, and nothing else about you is. Answers and notes become " +
   "part of Granite Record’s open data, with no name on them.";
 
@@ -221,11 +232,17 @@ export const SCRIPT = String.raw`(function(){
 // THE TOKEN LEAVES THE ADDRESS AT ONCE. YouTube's player API sends the page's whole
 // address to YouTube when it makes the player (its forigin), and the address held the
 // token after "#" (seen on 17 November 2026). So it is read, taken out of the address
-// bar before anything else runs, and kept for this tab alone, so a reload of the tab
-// still works; nowhere else, and never sent but in a request's body.
+// bar before anything else runs, and kept on this device (localStorage), so /bench
+// alone opens it again here; nowhere else, and never sent but in a request's body. A
+// token in the address replaces the kept one; one a tab kept before (sessionStorage,
+// until 21 November 2026) moves to the device.
 var T=(location.hash||"").replace(/^#(t=)?/,"");
-try{if(T)sessionStorage.setItem("bench",T);else T=sessionStorage.getItem("bench")||"";}catch(e){}
 if(location.hash){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}}
+var KEY="gr.bench",was="";try{was=sessionStorage.getItem("bench")||"";}catch(e){}
+try{if(!T)T=localStorage.getItem(KEY)||was;if(T)localStorage.setItem(KEY,T);if(was)sessionStorage.removeItem("bench");}catch(e){if(!T)T=was;}
+// The device forgets the link: when the bench answers it 404, and when asked to.
+function forget(){T="";try{localStorage.removeItem(KEY);}catch(e){}try{sessionStorage.removeItem("bench");}catch(e){}
+var f=document.getElementById("forget");if(f)f.hidden=true;}
 var $=function(id){return document.getElementById(id);};
 var E={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return E[c];});}
@@ -337,12 +354,16 @@ if(b&&st)b.innerHTML=ICON.mark+" "+esc(st.mark)+" "+(t===null?"":esc(hms(t)));},
 function show(v){S.view=v;var it=(v.items||[])[0]||null;S.item=it;S.step=0;S.steps=[];S.mode="ask";S.note=false;
 if(it&&it.card.type==="moment")cue(it.card.player.id,it.card.steps[0].at);
 S.label=v.progress?v.progress.label:"";draw();}
-function start(){if(!/^[A-Za-z0-9_-]{43}$/.test(T))return needs();
-api("/api/bench/next",{queue:S.queue}).then(function(r){if(r.status===404)return needs();
+function start(){if(!/^[A-Za-z0-9_-]{43}$/.test(T))return lost();$("forget").hidden=false;
+api("/api/bench/next",{queue:S.queue}).then(function(r){if(r.status===404)return lost();
 if(!r.data||r.status>=500)return message("The bench cannot be reached just now","Nothing was lost. Try again in a minute.",true);
 S.queue=r.data.queue||"mix";show(r.data);});}
-function needs(){S.view=null;S.item=null;drawTop();$("far").hidden=true;
-message("${NEEDS_LINK}","Open the bench from the private link you were sent, whole. Nothing here works without it.");}
+// No link, or one the bench does not know (404: turned off, or wrong),
+// which the device then forgets, so a dead link does not linger.
+function lost(){forget();needs();}
+function needs(){S.view=null;S.item=null;S.tab="judge";S.links=null;S.made=null;S.open={};drawTop();$("far").hidden=true;
+$("judge").hidden=false;$("links").hidden=true;$("answers").hidden=false;$("toast").hidden=true;
+message("${NEEDS_LINK}","${NEEDS_WORDS}");}
 function toast(said,undo){$("toastwords").textContent=said;$("undo").hidden=!undo;$("toast").hidden=false;
 clearTimeout(S.toastT);S.toastT=setTimeout(function(){$("toast").hidden=true;},TOAST_MS);}
 // AN ANSWER IS SENT ONLY WHEN IT IS GIVEN. Nothing is chosen in advance.
@@ -351,14 +372,14 @@ note=S.note&&$("note")?$("note").value:"",card=$("card");card.classList.add(side
 var go=function(tries){api("/api/bench/judge",{queue:S.queue,ref:it.ref,answer:answer,note:note}).then(function(r){
 if(r.status===429&&r.data&&r.data.why==="fast"&&tries<2)return setTimeout(function(){go(tries+1);},1100);
 S.busy=false;card.classList.remove("out-l","out-r");
-if(r.status===404)return needs();
+if(r.status===404)return lost();
 if(r.status===200){if(label)S.you[label]=(S.you[label]||0)+1;S.saved={label:label};toast("Saved: "+SAID[side],true);return show(r.data);}
 if(r.data&&r.data.why==="full"){S.view=r.data;S.item=null;drawTop();return message("That is all for today","Thank you. This link works again tomorrow.");}
 if(r.data&&r.data.items){toast(r.data.why==="paused"?"Not saved: this link is paused.":r.status===409?"Not saved: that one had been let go. Here is the next.":"Not saved.",false);return show(r.data);}
 toast("Not saved: the bench could not be reached. Try again.",false);draw();});};
 go(0);}
 function undo(){if(S.busy||$("toast").hidden||$("undo").hidden)return;S.busy=true;$("toast").hidden=true;
-api("/api/bench/undo",{queue:S.queue}).then(function(r){S.busy=false;if(r.status===404)return needs();
+api("/api/bench/undo",{queue:S.queue}).then(function(r){S.busy=false;if(r.status===404)return lost();
 if(!r.data)return toast("Not undone: the bench could not be reached.",false);
 if(r.data.undone&&S.saved&&S.you[S.saved.label])S.you[S.saved.label]--;S.saved=null;show(r.data);});}
 function answer(what){var it=S.item;if(!it||S.busy||S.tab!=="judge")return;var c=it.card;
@@ -377,7 +398,8 @@ function openNote(){S.note=true;draw();var n=$("note");if(n)n.focus();}
 document.addEventListener("click",function(e){var t=e.target.closest?e.target.closest("[data-a],[data-do],#undo,[data-tab],[data-link]"):null;
 if(!t)return;if(t.id==="undo")return undo();if(t.dataset.a)return answer(t.dataset.a);
 if(t.dataset.tab)return tab(t.dataset.tab);if(t.dataset.link)return linkAct(t.dataset.link,t.dataset.id,t.dataset.answer);
-var d=t.dataset.do,st=step();if(d==="retry")return start();if(d==="note")return openNote();
+var d=t.dataset.do,st=step();if(d==="retry")return start();
+if(d==="forget"){if(!confirm("${FORGET_ASK}"))return;forget();return needs();}if(d==="note")return openNote();
 if(d==="play"&&st)return play(st.at);if(d==="back")return nudge(-10);if(d==="fwd")return nudge(10);});
 $("kind").addEventListener("change",function(){S.queue=this.value;start();});
 document.addEventListener("keydown",function(e){
@@ -406,7 +428,7 @@ window.addEventListener("hashchange",function(){if(location.hash)location.reload
 
 // ---- the owner's Links tab ---------------------------------------------------------
 function tab(t){S.tab=t;if(t==="links")return links({action:"list"});draw();}
-function links(body){return api("/api/bench/links",body).then(function(r){if(r.status===404){needs();return r;}
+function links(body){return api("/api/bench/links",body).then(function(r){if(r.status===404){lost();return r;}
 if(!r.data){$("linksbody").innerHTML='<p class="lede">The links cannot be read just now. Try again in a minute.</p>';draw();return r;}
 if(r.data.links)S.links=r.data.links;if(r.data.made)S.made=r.data.made;if(r.data.answers)S.open[body.id]=r.data.answers;
 drawLinks();draw();return r;});}
@@ -484,6 +506,7 @@ ${FONTS}
 <div id="links" hidden><h1 class="page">Links</h1>
 <p class="lede">One link for each person you invite. Only this page, opened with your own link, shows them.</p>
 <div id="linksbody"></div></div>
+<p class="forget" id="forget" hidden><button type="button" data-do="forget">${FORGET}</button></p>
 <noscript><p class="lede">This page needs JavaScript. Your link keeps its key after the &ldquo;#&rdquo; in its address,
 which your browser sends to no server, and a few lines of script on this page read it from there.</p></noscript>
 </main>

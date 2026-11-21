@@ -51,6 +51,12 @@ token itself is never kept, only its SHA-256. An answer is kept with the
 link's id, and goes into the public ledger under that id, never the name,
 once the owner approves it on the laptop (`src/checks/bench_pull.py`).
 
+On the device, the page keeps the token in the browser's own storage
+(`localStorage`, under `gr.bench`), so `/bench` alone opens the bench again
+there, until the link is turned off (the bench then answers 404 and the page
+forgets it) or "Forget this link on this device" is pressed. A token in the
+address always replaces the kept one. Nothing new is kept on the server.
+
 ## The limits
 
 Each a guess of the design's, written once in `store.js`: an item held ten
