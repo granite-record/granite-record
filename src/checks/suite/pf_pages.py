@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.27
+# GRANITE_VERSION: 2026-11-16.28
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -14559,6 +14559,9 @@ def _frame_written_once():
         bad += [f"{f.name} writes {what}" for k, what in own.items() if k in code]
     assert not bad, ("the frame is written outside chrome.py: " + "; ".join(bad[:6])
                      + ". Write it in chrome.py, or ask chrome for it")
+    # The pages that come and go judged against site/, as shell.template's
+    # are below, whatever site an earlier check judged them against.
+    CH.use_site(Path("site"))
     filled = CH.fill(t, "bills.html")
     assert "<!-- CHROME:" not in filled and CH.fill(filled, "bills.html") == filled, (
         "chrome.fill leaves a slot, or changes a template it has filled")
@@ -15013,7 +15016,7 @@ def _row_marks_english():
     def faults(t, lang):
         out, n = [], 0
         smap = re.search(r'<nav class="smap".*?</nav>', t, re.S)
-        mapped = re.findall(r'<li><a href="([^"]*)"([^>]*)>(.*?)</a></li>', smap.group(0), re.S) if smap else []
+        mapped = re.findall(r'<li[^>]*><a href="([^"]*)"([^>]*)>(.*?)</a></li>', smap.group(0), re.S) if smap else []
         for href, attrs, inner in _row_menu(t) + mapped:
             page = (CH._split(_row_key(href))[0] or "index") + ".html"
             english = lang != "en" and not i18n.has(lang, page)
@@ -15079,10 +15082,13 @@ def _footer_map_one_table():
             secs = re.findall(r'<div class="nvsec">(.*?)</div></div>', menu, re.S)
             for (sec, _l, _g), col, msec in zip(CH.NAV_TABS, cols, secs):
                 want = [(h, extra) for _i, _label, h, extra, _en in CH.row_items(sec, lang, facts)]
-                got = re.findall(r'<li><a href="([^"]*)"((?: [a-z-]+(?:="[^"]*")?)*?)(?: hreflang="en")?>', col)
+                # The members-elect's data-elect is the list item's, so that taking
+                # out what carries it leaves no empty item (chrome._elect_part).
+                got = [(h, li + a) for li, h, a in re.findall(
+                    r'<li([^>]*)><a href="([^"]*)"((?: [a-z-]+(?:="[^"]*")?)*?)(?: hreflang="en")?>', col)]
                 assert got == want, f"{lang}: the footer's {sec} is {got}, not the row's {want}"
                 labels = [lab for _i, lab, _h, _e, _en in CH.row_items(sec, lang, facts)]
-                said = [re.sub(r"\s*<span.*", "", x) for x in re.findall(r"<li><a [^>]*>(.*?)</a></li>", col)]
+                said = [re.sub(r"\s*<span.*", "", x) for x in re.findall(r"<li[^>]*><a [^>]*>(.*?)</a></li>", col)]
                 assert said == labels, f"{lang}: the footer's {sec} says {said}, not {labels}"
                 in_menu = re.findall(r'<div class="nvpages">.*', msec, re.S)[0]
                 assert [h for h, _a in re.findall(r'<a href="([^"]*)"([^>]*)>', in_menu)] == [h for h, _e in want], (

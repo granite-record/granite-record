@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.14
+# GRANITE_VERSION: 2026-10-23.15
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -256,9 +256,14 @@ def row_facts():
     # A members-elect file that will not read stops each builder that draws
     # the members-elect, which says why (build_members_elect.for_pages); the
     # header leaves their item out rather than stopping every other page too.
+    # And what for_pages prints is those builders' to say, once each, as the
+    # night's checks count it: the header asks quietly.
     try:
+        import contextlib
+        import io
         from build_members_elect import for_pages
-        elect = for_pages(site)
+        with contextlib.redirect_stdout(io.StringIO()):
+            elect = for_pages(site)
         until = elect["takes_office"] if elect else None
     except (ImportError, SystemExit):
         until = None
@@ -466,6 +471,17 @@ def menu_all(page="", item=None, lang="en", facts=None):
     return '<div class="navall">' + "".join(out) + "</div>"
 
 
+def _elect_part(extra):
+    """The members-elect's data-elect and the day they retire, which in the
+    footer's map the list item carries, not the link, so that taking out each
+    element that carries data-elect leaves no empty item behind (as the
+    night's members-elect checks take them out)."""
+    if not extra.startswith(" data-elect"):
+        return ""
+    i = extra.find(" data-pane")
+    return extra if i < 0 else extra[:i]
+
+
 def site_map(lang="en", facts=None):
     """The footer's map of the site: the six sections as headings, each with
     its row's pages (the owner, 20 November 2026). The same on every page --
@@ -479,7 +495,8 @@ def site_map(lang="en", facts=None):
     cols = []
     for href, _label, _glyph in NAV_TABS:
         stem = href[:-5]
-        items = "".join(f"<li>{_link(h, extra, label + _in_english(lang, en), False, lang, en)}</li>"
+        items = "".join(f"<li{_elect_part(extra)}>"
+                        f"{_link(h, extra[len(_elect_part(extra)):], label + _in_english(lang, en), False, lang, en)}</li>"
                         for _iid, label, h, extra, en in row_items(href, lang, facts))
         cols.append(f'<div class="smcol"><h2 class="smh" id="fm-{stem}"><a href="{to(href)}">'
                     f'{words[href]}</a></h2><ul id="fm-{stem}-pages" aria-labelledby="fm-{stem}">'
