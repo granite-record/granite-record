@@ -24,7 +24,7 @@
  * than copied: the IANA zone carries the daylight-saving rule.
  */
 import { addDays, nhClock } from "../follow/common.js";
-import { NIGHT_WINDOWS, WINDOW as GEN_WINDOW } from "./live.gen.js";
+import { NIGHT_WINDOWS, TIMEZONE, WINDOW as GEN_WINDOW } from "./live.gen.js";
 
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;
@@ -43,7 +43,8 @@ export const SLACK = MINUTE;
 // The cron's period: */2 in wrangler.toml's [env.production.triggers].
 export const STEP = 2 * MINUTE;
 
-export const NEW_YORK = "America/New_York";
+// New Hampshire's zone: src/lib/state_settings.json's, through live.gen.js.
+export const NEW_YORK = TIMEZONE;
 // YouTube's quota resets at midnight Pacific.
 export const PACIFIC = "America/Los_Angeles";
 

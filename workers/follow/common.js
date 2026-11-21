@@ -10,6 +10,7 @@
  * .js files are copied, unchanged, into a folder under functions/ whose files
  * export no onRequest handler, and the imports point there instead.
  */
+import { TIMEZONE } from "./site.gen.js";
 
 // ---- what can be followed -------------------------------------------------
 // The five kinds, and the ref each page and feed is keyed by. The bill and
@@ -143,9 +144,10 @@ export function clock(env) {
 export const isoSeconds = d => d.toISOString().replace(/\.\d{3}Z$/, "Z");
 
 // New Hampshire's clock. The IANA zone carries the daylight-saving rule, so
-// the rule is not written out here to go stale if the law changes.
+// the rule is not written out here to go stale if the law changes; the zone
+// is src/lib/state_settings.json's, through site.gen.js (follow_site.py).
 const NH = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York", hourCycle: "h23", weekday: "short",
+  timeZone: TIMEZONE, hourCycle: "h23", weekday: "short",
   year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
 });
 

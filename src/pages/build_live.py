@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-30.14
+# GRANITE_VERSION: 2026-10-30.15
 """
 Live Now's page and its schedule (the live layer's design, sections 1.2 and
 1.4), written by the night beside the Calendar and from the Calendar's own
@@ -71,7 +71,7 @@ HOME_LINE = re.compile(r'<p class="lv-home"[^>]*>.*?</p>', re.S)
 # clock, so a missed night never shows yesterday's meetings as today's, and
 # the home page asks nothing for it.
 HOME_JS = ('<script>(function(){var p=document.currentScript.parentNode,'
-           'd=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York"}).format(new Date());'
+           'd=new Intl.DateTimeFormat("en-CA",{timeZone:' + json.dumps(ST.TIMEZONE) + '}).format(new Date());'
            'if(p.getAttribute("data-day")!==d){var c=p.querySelector(".lv-count");if(c)c.remove();}})();'
            '</script>')
 FIND_WORDS = "live stream streaming watch video hearing now today"
@@ -84,24 +84,16 @@ HREF = re.compile(r'href="/?(committee/[A-Za-z0-9]+)(?:\.html)?(?:#[^"]*)?"')
 
 def nh_today():
     """New Hampshire's day: the stated one (build_date), or the clock's in
-    US Eastern time, worked out from the rule rather than from zoneinfo,
-    which needs the tzdata package on Windows. The machine's own date is not
-    it: a nightly started after 00:00 UTC (19:00 EST) is a day ahead, and
-    would write the next day's pages (the build review, 5 November 2026).
-    Daylight time runs from 02:00 local on the second Sunday of March (07:00
-    UTC) to 02:00 local on the first Sunday of November (06:00 UTC)."""
+    the state's zone, worked out by state_settings.utc_offset's rule rather
+    than from zoneinfo, which needs the tzdata package on Windows. The
+    machine's own date is not it: a nightly started after 00:00 UTC (19:00
+    EST) is a day ahead, and would write the next day's pages (the build
+    review, 5 November 2026)."""
     when = build_date.stated()
     if when:
         return when.date()
     u = build_date.utcnow()
-
-    def sunday(month, nth):
-        d = datetime.date(u.year, month, 1)
-        return d + datetime.timedelta(days=(6 - d.weekday()) % 7, weeks=nth - 1)
-    utc = datetime.timezone.utc
-    start = datetime.datetime.combine(sunday(3, 2), datetime.time(7), utc)
-    end = datetime.datetime.combine(sunday(11, 1), datetime.time(6), utc)
-    return (u + datetime.timedelta(hours=-4 if start <= u < end else -5)).date()
+    return (u + datetime.timedelta(hours=ST.utc_offset(u)[0])).date()
 
 
 def weekdays(today, n):

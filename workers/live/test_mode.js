@@ -44,6 +44,7 @@ import { open } from "./tds.js";
 import { MAX_ROLLCALLS, VERSION, addDays, q1, q2, q3, readBallots, readDocket, readSummary,
          readVersion } from "./sql.js";
 import { isoSeconds, nhClock } from "../follow/common.js";
+import { TIMEZONE } from "./live.gen.js";
 
 export const TEST_SITTINGS = ["2026-03-11", "2026-08-19"];
 export const TEST_HOURS = [10, 16];
@@ -191,7 +192,7 @@ export function termOf(year) {
 }
 
 const NH_SECONDS = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit",
+  timeZone: TIMEZONE, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit",
   hour: "2-digit", minute: "2-digit", second: "2-digit",
 });
 

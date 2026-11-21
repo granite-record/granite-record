@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-26.5
+# GRANITE_VERSION: 2026-10-26.6
 """
 What the live Worker (workers/live/) shares with the rest of this repository,
 written into workers/live/live.gen.js from where each value is kept.
@@ -40,6 +40,10 @@ written into workers/live/live.gen.js from where each value is kept.
                    and the live file's `bill` is then null, as the record's is.
     WINDOW         here: the Worker's day window (weekdays, New Hampshire
                    hours), which clock.js and a committee page's hook share.
+    TIMEZONE       src/lib/state_settings.json "timezone": the state's zone,
+                   which clock.js (NEW_YORK), merge.js and test_mode.js read
+                   New Hampshire's clock in (typed in each until 20
+                   November 2026).
 
 THE PATTERN WRITTEN WITH ITS STEM. A title's stem is the title without its
 date, in lower case, with "&" said as "and" and every run of other
@@ -75,6 +79,8 @@ import ast
 import json
 import re
 
+import state_settings as ST
+
 OUT = Path("workers/live/live.gen.js")
 COMMAND = "python3 src/pages/live_gen.py"
 
@@ -83,8 +89,9 @@ REFUSAL = Path("refusal.py")
 PROBE_DB = Path("src/fetch/gc_db/probe_db.py")
 ROLLCALLS_DB = Path("src/fetch/gc_db/fetch_rollcalls_db.py")
 DOCKET_ABBREV = Path("records/docket_abbrev.json")
+SETTINGS = Path("src/lib/state_settings.json")
 # Every file the written one is made from.
-SOURCES = (CHANNEL_INDEX, REFUSAL, PROBE_DB, ROLLCALLS_DB, DOCKET_ABBREV)
+SOURCES = (CHANNEL_INDEX, REFUSAL, PROBE_DB, ROLLCALLS_DB, DOCKET_ABBREV, SETTINGS)
 # An abbreviation is an outcome when its word says one.
 OUTCOME_WORD = re.compile(r"\b(?:Adopted|Failed|Lost)$")
 
@@ -283,6 +290,8 @@ def values(root=None):
                         "field read as a bill, as bill_number reads it", bill_number_rule()),
         "WINDOW": ("src/pages/live_gen.py WINDOW: the Worker's day window, weekdays, New Hampshire "
                    "hours [from, to); a committee page asks for streams only inside it", WINDOW),
+        "TIMEZONE": ('src/lib/state_settings.json "timezone": the state\'s zone, New Hampshire\'s '
+                     "clock in clock.js, merge.js and test_mode.js", ST.TIMEZONE),
     }
 
 

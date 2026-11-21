@@ -32,7 +32,7 @@
  * arrives. THE WORKER NEVER WORKS OUT WHETHER A MOTION CARRIED: a threshold
  * or a two-thirds vote is the night's (vote_passage.py).
  */
-import { BILL_NUMBER, DOCKET_OUTCOME } from "./live.gen.js";
+import { BILL_NUMBER, DOCKET_OUTCOME, TIMEZONE } from "./live.gen.js";
 import { nhToUtc, termOf } from "./test_mode.js";
 
 export const MISSES_TO_NOTE = 3;
@@ -251,7 +251,7 @@ export function attach(f) {
 // "14:12" in New Hampshire, for a note.
 function clockOf(iso) {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York", hourCycle: "h23", hour: "2-digit", minute: "2-digit",
+    timeZone: TIMEZONE, hourCycle: "h23", hour: "2-digit", minute: "2-digit",
   }).formatToParts(new Date(iso)).map(x => [x.type, x.value]));
   return `${String(Number(p.hour) % 24).padStart(2, "0")}:${p.minute}`;
 }
