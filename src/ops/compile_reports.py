@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.21
+# GRANITE_VERSION: 2026-09-12.22
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -558,7 +558,8 @@ def d1_execute(npx, db, sql):
     for attempt in (1, 2):
         r = subprocess.run([npx, "wrangler", "d1", "execute", db, "--remote", "--json",
                             "--command", sql], capture_output=True, text=True,
-                           encoding="utf-8", timeout=180)
+                           encoding="utf-8", timeout=180,
+                           stdin=subprocess.DEVNULL)  # never wait on a hidden question
         if r.returncode == 0:
             body = r.stdout[r.stdout.find("["):]
             return json.loads(body)[0]

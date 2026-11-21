@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 What the shared bench's contributors answered: pulled, screened, summed up,
 and -- only on the owner's word -- merged into review/checked.jsonl.
@@ -100,8 +100,13 @@ def wrangler(db, sql=None, file=None):
         raise SystemExit("npx is not on PATH; wrangler reads the database")
     if sql is not None:
         return CR.d1_execute(npx, db, sql)
+    # NO TERMINAL FOR WRANGLER (21 November 2026). The owner ran --owner-link in cmd
+    # and it sat until the timeout: wrangler (or npx) asked a question on the
+    # captured stdout and waited on her console for an answer she could not see.
+    # With stdin closed it runs as it does on GitHub and in an assistant's shell.
     r = subprocess.run([npx, "wrangler", "d1", "execute", db, "--remote", "--json", "--file", str(file)],
-                       capture_output=True, text=True, encoding="utf-8", timeout=300)
+                       capture_output=True, text=True, encoding="utf-8", timeout=300,
+                       stdin=subprocess.DEVNULL)
     if r.returncode != 0:
         raise RuntimeError("wrangler d1 execute failed: " + CR._said("\n".join(s for s in (r.stdout, r.stderr) if s)))
     return r.stdout
