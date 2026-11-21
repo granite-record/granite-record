@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.296
+# GRANITE_VERSION: 2026-09-04.297
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2461,13 +2461,13 @@ def front_end(out, has_mark, has_tags=None):
     return wrote
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="site")
-    a = ap.parse_args()
-    out = Path(a.out)
-    out.mkdir(parents=True, exist_ok=True)
-
+def brand_files_placed(out):
+    """The drawn files of assets/ put in the site folder `out`, the licensed ones
+    over the clipart and the emails' copy of the mark made from the header's.
+    Returns whether the home page's lockup and the header's mark are there, and
+    the one line said at the end of main where any of BRAND_FILES is missing
+    (`no_brand`, else empty; printed here where none is).
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # THE DRAWN FILES. brand/ holds the originals, build_brand.py derives
     # assets/, and this is the step that puts them beside the pages -- site/
     # is generated and gitignored, so anything left there by hand is gone on
@@ -2559,8 +2559,13 @@ def main():
                  f". No {HEADER_MARK} among them (build_brand.py draws it into "
                  "assets/licensed/ from the artist's drawing), so the header is "
                  "the wordmark alone"))
-    front_end(out, has_mark)
+    return has_lockup, has_mark, no_brand
 
+
+def headers_and_redirects(out):
+    """The host's two files, _headers (HEADERS) and _redirects (redirects_file),
+    written with LF line ends where either differs from what it should hold.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # LF, not the platform default: this file is parsed by Pages, not
     # by anything on this machine, and write_text on Windows would
     # give every line a carriage return Cloudflare never asked for.
@@ -2587,28 +2592,13 @@ def main():
         red.write_text(want, encoding="utf-8", newline="\n")
         print("  _redirects: a tab's address serves its record's page")
 
-    legs = json.loads((out / "legislators.json").read_text(encoding="utf-8")) \
-        if (out / "legislators.json").exists() else []
-    towns = json.loads((out / "towns.json").read_text(encoding="utf-8")) \
-        if (out / "towns.json").exists() else {}
 
-
-    # The "Your town" page was here. The finder it held is the top of the
-    # legislators page, built from the same towns.json by the same finder,
-    # so this page was a second address for one thing and a seventh item in
-    # the nav.
-    # Render the home page content at build time as well as in the browser.
-    # Fetching home.json works for a visitor with JavaScript, but a crawler --
-    # and a reader on a slow connection before the JSON arrives -- sees an empty
-    # page. Everything below is in the HTML as shipped; the script then replaces
-    # it with the identical content, so nothing is duplicated on screen.
-    H = json.loads((out / "home.json").read_text(encoding="utf-8")) \
-        if (out / "home.json").exists() else {}
-    S = H.get("status", {})
-    C = H.get("composition", {})
-    c = H.get("counts", {})
-    k = c.get("by_kind", {})
-
+def officials_pages(out, legs, C):
+    """The Officials page, officials.html, in each language it has: the roster in
+    both chambers (`legs`, the sitting members) with the seating charts of the
+    party composition `C` (home.json's), the vacancies, the other offices, the
+    members-elect and the towns finder; and the old legislators.html removed.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     esc = _home_esc
 
     def fd(d):
@@ -3138,6 +3128,13 @@ def main():
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(officials_html(lang), encoding="utf-8")
 
+
+def home_pages(out, H, S, has_lockup):
+    """The home page, index.html, in each language it has, from home.json (`H`, its
+    status `S`) and the key dates: Coming up, the status box, latest activity and
+    the recent session days, the guides' row the last full build put there kept;
+    and what the language tables and the key dates left unsaid, said.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # THE KEY DATES, worked out once for both languages and both of the
     # boxes that show them: Coming up, and the status box's next deadline.
     # SILENCE IS NOT SUCCESS: a box with no deadline says why, here.
@@ -3205,6 +3202,11 @@ def main():
     KD.unnamed()
     KD.unread()
 
+
+def about_pages(out, has_lockup):
+    """The About page in each language it is in, its figures counted once
+    (about_figures).
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # learn.html belongs to build_civics.py now: it is the way into eleven
     # topic pages rather than one page of its own, and two builders writing
     # the same address means whichever runs last wins. The old Learn prose,
@@ -3232,6 +3234,11 @@ def main():
                            "comes from, and how to report something that is wrong."), lang=lang),
             encoding="utf-8")
 
+
+def search_pages(out):
+    """The all-results page, search.html, in each language it is in, asking not to be
+    indexed.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # THE ALL-RESULTS PAGE. Served at /search -- Pages strips the extension --
     # and reached from the header panel's last row on every page of the site.
     # noindex, because what it holds depends entirely on a query string: there
@@ -3274,6 +3281,12 @@ def main():
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(_shell.clean_links(search_page), encoding="utf-8")
 
+
+def not_found_pages(out):
+    """The 404 pages, /404.html and one under each other language's folder, every
+    link absolute and asking not to be indexed. Returns the bill page the English
+    one offers as an example (not_found_example), or None.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # THERE WAS NO 404 PAGE. Cloudflare Pages treats a project with no
     # top-level 404.html as a single-page app: every address it cannot find
     # is answered with the home page and a 200. A mistyped bill -- or a bill
@@ -3306,6 +3319,52 @@ def main():
         pl = re.sub(r'<link rel="canonical"[^>]*>', '<meta name="robots" content="noindex">', pl)
         (out / lang).mkdir(parents=True, exist_ok=True)
         (out / lang / "404.html").write_text(_shell.clean_links(pl), encoding="utf-8")
+    return example404
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default="site")
+    a = ap.parse_args()
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+
+    has_lockup, has_mark, no_brand = brand_files_placed(out)
+    front_end(out, has_mark)
+
+    headers_and_redirects(out)
+
+    legs = json.loads((out / "legislators.json").read_text(encoding="utf-8")) \
+        if (out / "legislators.json").exists() else []
+    towns = json.loads((out / "towns.json").read_text(encoding="utf-8")) \
+        if (out / "towns.json").exists() else {}
+
+
+    # The "Your town" page was here. The finder it held is the top of the
+    # legislators page, built from the same towns.json by the same finder,
+    # so this page was a second address for one thing and a seventh item in
+    # the nav.
+    # Render the home page content at build time as well as in the browser.
+    # Fetching home.json works for a visitor with JavaScript, but a crawler --
+    # and a reader on a slow connection before the JSON arrives -- sees an empty
+    # page. Everything below is in the HTML as shipped; the script then replaces
+    # it with the identical content, so nothing is duplicated on screen.
+    H = json.loads((out / "home.json").read_text(encoding="utf-8")) \
+        if (out / "home.json").exists() else {}
+    S = H.get("status", {})
+    C = H.get("composition", {})
+    c = H.get("counts", {})
+    k = c.get("by_kind", {})
+
+    officials_pages(out, legs, C)
+
+    home_pages(out, H, S, has_lockup)
+
+    about_pages(out, has_lockup)
+
+    search_pages(out)
+
+    example404 = not_found_pages(out)
 
     print(f"wrote officials.html ({len(legs)} members), "
           f"about.html, search.html, 404.html -> {out}/  (learn.html: build_civics.py)")
