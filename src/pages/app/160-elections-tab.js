@@ -68,7 +68,19 @@ function electionCard(r){
     :r.st==="special"?`<p class="er-when">${esc(tr("race.special","Special election"))}, ${esc(dateWords(r.d))}${esc(tie)}</p>`
     :r.st==="special-primary"?`<p class="er-when">${esc(sballot)}, ${esc(dateWords(r.d))}</p>`
     :`<p class="er-when"><a href="${href}">${esc(dateWords(r.d))}</a></p>`;
-  return String(r.c).replace(/^<article\b[^>]*>/,m=>m+when);
+  return electionIncumbent(String(r.c),r.k).replace(/^<article\b[^>]*>/,m=>m+when);
+}
+// THE INCUMBENT CHIP (the owner, 21 November 2026, in place of the asterisk and its
+// line under the cards): build_elections.inc_chip writes it into the card in English,
+// beside the candidate's name; here its word and its title are the page's language's.
+// The race's chamber is the first letter of its key, as the card's own is. Only the
+// title and the word are put in: the chip itself stays the card's.
+function electionIncumbent(card,k){
+  const say=String(k||"").startsWith("S|")
+    ?tr("race.incumbent_s","Held a seat in the Senate on election day.")
+    :tr("race.incumbent_h","Held a seat in the House on election day.");
+  return card.replace(/(<span class="[^"]*\ber-incb" title=")[^"]*(">)[^<]*(?=<\/span>)/g,
+    (_m,a,b)=>a+esc(say)+b+esc(tr("race.incumbent","Incumbent")));
 }
 // UPCOMING ELECTIONS (the owner, 19 November 2026, "Yes to all 9" of the
 // specials and upcoming elections design, A3): m.up, the seat the member holds
@@ -96,9 +108,6 @@ function renderMemberElections(m){
   const rows=m.elections||[];
   if(!rows.length)return "";
   const prim=[...new Set(rows.filter(r=>r.st==="primary").map(r=>r.d.slice(0,4)))].join(", ");
-  // The incumbent's asterisk (the owner, 19 November 2026), said once under the cards.
-  const inc=["H","S"].filter(c=>rows.some(r=>r.c&&r.inc===c)).map(c=>`<p class="src er-incl">${
-    c==="H"?tr("race.inc_h","* held a seat in the House on election day."):tr("race.inc_s","* held a seat in the Senate on election day.")}</p>`).join("");
   const days=[...new Set(rows.filter(r=>!r.st).map(r=>r.d))];
   // The special elections, each its Secretary of State page.
   const sp=rows.filter(r=>r.st==="special"&&r.u);
@@ -115,7 +124,7 @@ function renderMemberElections(m){
   const stack=cyc.map(y=>`<h3 class="er-cycle">${esc(y)}</h3><div class="er-cards er-stack">${
     cards.filter(r=>(r.cy||r.d.slice(0,4))===y).map(electionCard).join("")}</div>`).join("");
   return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}${prim?" "+tr("race.intro_primary","A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; a candidate it nominated is marked Nominated."):""}${sp.length?" "+tr("race.intro_special","A special election is shown under the election cycle of the term whose seat it filled, by its date, with its primary under it."):""}</p>
-    ${electionUpcoming(m.up)}${stack}${inc}${plain.length?`
+    ${electionUpcoming(m.up)}${stack}${plain.length?`
     <table class="votes vfull"><thead><tr><th>${esc(tr("race.col_election","Election"))}</th>
       <th>${esc(tr("race.col_race","Race"))}</th><th>${esc(tr("race.col_result","Result"))}</th>
       <th>${esc(tr("race.col_votes","Votes"))}</th></tr></thead>

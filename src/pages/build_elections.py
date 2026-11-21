@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.19
+# GRANITE_VERSION: 2026-11-07.20
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -307,18 +307,18 @@ def bill_href(site, term, bill):
 
 # ------------------------------------------------------------------ drawing ---
 
-INC_WORDS = {"H": "held a seat in the House on election day",
-             "S": "held a seat in the Senate on election day"}
+INC_WORD = "Incumbent"
+INC_WORDS = {"H": "Held a seat in the House on election day.",
+             "S": "Held a seat in the Senate on election day."}
 
 
-def inc_mark(chamber):
-    """The asterisk after an incumbent's name, its words in its title."""
-    return f' <abbr class="er-inc" title="{INC_WORDS[chamber]}">*</abbr>'
-
-
-def inc_legend(chamber):
-    """The one line under a list of cards that marks any (the owner, 19 November 2026)."""
-    return f'<p class="src er-incl">* {INC_WORDS[chamber]}.</p>'
+def inc_chip(chamber):
+    """The Incumbent chip after an incumbent's name (the owner, 21 November 2026, in place
+    of the asterisk and its line under the cards of 19 November): the Elected chip's
+    shape, size and place, in a colour of its own that reads as no result (.er-incb),
+    what it means in its title. A member's Elections tab says both in the page's
+    language (app.js electionIncumbent: race.incumbent, race.incumbent_h and _s)."""
+    return f' <span class="chip er-incb" title="{INC_WORDS[chamber]}">{INC_WORD}</span>'
 
 
 def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=False, inc=frozenset(),
@@ -340,7 +340,7 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=Fal
 
     AN INCUMBENT (`inc`, same_name of each, build_member_elections.incumbents:
     a certain match who held a seat of the race's chamber on election day) has
-    an asterisk after the name.
+    the Incumbent chip after the name (inc_chip).
 
     A CHIP LINKS as a general's winner's does (chip_slug: the member
     members_elect linked), or, on a primary's card, by `links` ({same_name:
@@ -374,7 +374,7 @@ def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=Fal
         out.append(
             '<li class="er-row' + (" er-me" if mine and same_name(c["name"]) == mine else "")
             + '"><span class="er-who">' + C.pchip(chipm)
-            + (inc_mark(chamber) if same_name(c["name"]) in inc else "")
+            + (inc_chip(chamber) if same_name(c["name"]) in inc else "")
             + (' <span class="er-wi">write-in</span>' if c.get("write_in") else "")
             + (" " + C.chip("Elected") if won else "")
             + (" " + C.chip("Nominated") if most else "")
@@ -891,8 +891,8 @@ def not_on_file_words(results):
 
 def page_body(election, results, decided_races, report, hand, site, ballots, settled=False, inc=None):
     """The page. `inc` is {race key: the incumbents' same_name}
-    (build_member_elections.incumbents), each marked * on its card, with one
-    line under the tab's cards saying what the mark is."""
+    (build_member_elections.incumbents), each with the Incumbent chip on its
+    card (inc_chip), whose title says what it means."""
     races = results["races"]
     inc = {k: v - held_names(hand, k) for k, v in (inc or {}).items()}
     path = page_path(election)
@@ -945,12 +945,11 @@ def page_body(election, results, decided_races, report, hand, site, ballots, set
                        + '<div class="er-cards">' + "".join(
                            race_card(k, races[k], decided_races.get(k) or {}, results, tnotes,
                                      election, hand, inc=inc.get(k, frozenset()))
-                           for k in sorted(senate, key=BME.race_order)) + "</div>" + flat
-                       + (inc_legend("S") if any(inc.get(k) for k in senate) else "")))
+                           for k in sorted(senate, key=BME.race_order)) + "</div>" + flat))
     panels.append(("house", f'State House <span class="ofn">({len(house)})</span>',
                    margin_filter("house", house, races, election, hand) + find
                    + county_groups(house, races, decided_races, results, tnotes, election, hand, inc)
-                   + flat + (inc_legend("H") if any(inc.get(k) for k in house) else "")))
+                   + flat))
     if ballots:
         panels.append(("questions", f'Ballot Questions <span class="ofn">({len(ballots)})</span>',
                        ballot_block(ballots, site, results)))

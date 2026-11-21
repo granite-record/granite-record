@@ -25863,14 +25863,19 @@
    "es": "Cámara de Representantes",
    "state": "draft"
   },
-  "race.inc_h": {
-   "en": "* held a seat in the House on election day.",
-   "es": "* ocupaba un escaño en la Cámara de Representantes el día de la elección.",
+  "race.incumbent": {
+   "en": "Incumbent",
+   "es": "En el cargo",
    "state": "draft"
   },
-  "race.inc_s": {
-   "en": "* held a seat in the Senate on election day.",
-   "es": "* ocupaba un escaño en el Senado el día de la elección.",
+  "race.incumbent_h": {
+   "en": "Held a seat in the House on election day.",
+   "es": "Ocupaba un escaño en la Cámara de Representantes el día de la elección.",
+   "state": "draft"
+  },
+  "race.incumbent_s": {
+   "en": "Held a seat in the Senate on election day.",
+   "es": "Ocupaba un escaño en el Senado el día de la elección.",
    "state": "draft"
   },
   "race.intro": {

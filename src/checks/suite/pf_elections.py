@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.40
+# GRANITE_VERSION: 2026-11-16.41
 """
 preflight's checks of members-elect and election results.
 
@@ -1272,7 +1272,7 @@ def _elections_page(BE, BME):
                 got = {}
                 for row in rows:
                     name = re.sub(r"<[^>]+>", "", row.split('<span class="er-n">')[0])
-                    name = re.sub(r"\s*\([A-Z/]*\)\s*|\s*\*\s*|\s*write-in\s*|\s*Elected\s*|\s*Tied for the last seat\s*",
+                    name = re.sub(r"\s*\([A-Z/]*\)\s*|\s*Incumbent\s*|\s*write-in\s*|\s*Elected\s*|\s*Tied for the last seat\s*",
                                   " ", name).strip()
                     n = int(re.search(r'<span class="er-n">([\d,]+)', row).group(1).replace(",", ""))
                     got[name] = (n, "Elected</span>" in row, re.search(r'href="legislator/([^"]+?)(?:\.html)?"', row))
@@ -2631,8 +2631,8 @@ def _member_primaries_on_file(BMEL, BME):
     return "ok", f"Wade's one primary of 2024 and 2026 as the owner described it; {n} primary rows in those two years"
 
 
-@check("build", "a race card marks * each candidate who held a seat in the race's chamber on election day, "
-       "on a certain match only, and says once under the cards what the mark is",
+@check("build", "a race card marks Incumbent each candidate who held a seat in the race's chamber on election "
+       "day, on a certain match only, the chip's title saying what it means; no line under the cards",
        needs=("build_member_elections", "build_elections", "build_members_elect"))
 def _election_incumbents(BMEL, BE, BME):
     """The owner, 19 November 2026, on the made-up court of _mel_world. 2026's Senate 5: Ida Beck,
@@ -2641,8 +2641,9 @@ def _election_incumbents(BMEL, BE, BME):
     Olly Old (2001-2002). A former member whose last recorded day is in the first year of the
     term had left before the election, and is not marked; a sitting Representative running for
     the Senate is not marked there (the House is not the race's chamber); a namesake of a member
-    in another district is no match. The card draws the asterisk with its words; the page's
-    House tab says it once; the tab's cards in node say it once, by chamber."""
+    in another district is no match. The card draws the Incumbent chip with its words in its
+    title (the owner, 21 November 2026, in place of the asterisk); neither the page's House tab
+    nor the member's tab says it again under the cards."""
     sitting, former, districts, r24, r26 = _mel_world()
     former = former + [_mel_member("2005", "Gone", "Gil", "H", "Rockingham", "2", "former")]
     former[-1]["served"]["last"] = "6/1/2023"
@@ -2666,34 +2667,105 @@ def _election_incumbents(BMEL, BE, BME):
     assert got == {"S|5 2026": {"Ida Beck"}, "H1 2024": {"Bob Lowe"}, "H2 2024": set(), "S|6 2026": {"Joe Kay"},
                    "H4 2026": {"Nan Pike"}}, f"the incumbents: {got}"
     card = BE.race_card("S|5", r26["races"]["S|5"], {}, r26, {}, "2026-11-03", inc=got["S|5 2026"])
-    assert ('Ida Beck <span class="mtag">(R)</span></span> <abbr class="er-inc" title="held a seat in the Senate '
-            'on election day">*</abbr>') in card and card.count("er-inc") == 1, f"the Senate card: {card}"
+    assert ('Ida Beck <span class="mtag">(R)</span></span> <span class="chip er-incb" title="Held a seat in the '
+            'Senate on election day.">Incumbent</span>') in card and card.count("er-incb") == 1, f"the Senate card: {card}"
     body = BE.page_body(r24["election"], r24, {k: {"seats": r["seats"], "elected": [], "not_final": 0}
                                                for k, r in r24["races"].items()}, {}, {}, "site", [], True,
                         {"H|Rockingham|1": got["H1 2024"]})
     house = body.split('id="house"', 1)[1]
-    assert house.count('class="er-inc"') == 1 and house.count(
-        '<p class="src er-incl">* held a seat in the House on election day.</p>') == 1, (
-        "the House tab does not mark Bob Lowe once and say what the mark is once")
+    assert house.count('class="chip er-incb" title="Held a seat in the House on election day."') == 1 \
+        and "on election day." not in re.sub(r'title="[^"]*"', "", house) and "er-incl" not in body, (
+        "the House tab does not mark Bob Lowe once, or says what the mark is again under the cards")
     plain = BE.page_body(r24["election"], r24, {k: {"seats": r["seats"], "elected": [], "not_final": 0}
                                                 for k, r in r24["races"].items()}, {}, {}, "site", [], True)
-    assert "er-incl" not in plain and "er-inc" not in plain, "a page with nobody marked says what the mark is"
+    assert "er-incb" not in plain and "Incumbent" not in plain, "a page with nobody marked marks somebody"
     html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": [
         {"d": "2026-11-03", "k": "S|5", "a": "r-s-5", "r": "won", "v": 9000, "s": 1, "c": card, "inc": "S"},
         {"d": "2024-11-05", "k": "H|Rockingham|1", "a": "r-h-rockingham-1", "r": "lost", "v": 1500, "s": 1,
          "c": card, "inc": "H"}]}) + ")", names=("renderMemberElections",))
     if html is None:
         return "ok", "the marks held in Python; node, app.js or the stub is not here for the tab"
-    assert html.count("* held a seat in the Senate on election day.") == 1 and \
-        html.count("* held a seat in the House on election day.") == 1, f"the tab's legend: {html[-600:]}"
+    assert html.count('<span class="chip er-incb" title="Held a seat in the Senate on election day.">Incumbent'
+                      '</span>') == 1 and html.count('<span class="chip er-incb" title="Held a seat in the House on '
+                                                     'election day.">Incumbent</span>') == 1 \
+        and "er-incl" not in html and "on election day." not in re.sub(r'title="[^"]*"', "", html), (
+        f"the tab's Incumbent chips, each its race's chamber's, and no line under the cards: {html[-600:]}")
     return "ok", ("Beck and Lowe marked, Hart (a newcomer), Old, a member gone before the election, a "
-                  "namesake and a Representative in a Senate race not; the card's asterisk, the page's "
-                  "one line and the tab's one line a chamber")
+                  "namesake and a Representative in a Senate race not; the card's Incumbent chip with its "
+                  "title, the page and the tab saying it nowhere else, the tab's chip by its race's chamber")
+
+
+@check("build", "an incumbent is marked by an Incumbent chip beside the name, shaped and placed as the Elected "
+       "chip and coloured as no result, on the candidates `inc` names and nobody else; no asterisk and no "
+       "line under the cards is left anywhere; the member's tab says the chip in Spanish",
+       needs=("build_elections",))
+def _election_incumbent_chip(BE):
+    """The owner, 21 November 2026: "The asterisks could be better placed ... an incumbent chip like
+    the elected chip." On a made-up Senate race of three, Ida Beck (elected) and Rob Cole marked
+    incumbents and Al New not: each marked row has the chip straight after the name's chip and
+    before Elected, the chip is the site's one chip (class "chip") with a title of one sentence;
+    the same race with nobody marked has none. app.css gives .er-incb a colour and no shape or
+    size of its own, and no result's or party's family; the asterisk's code, class and words
+    are gone from the card, the tab, the stylesheet and the catalog. On a member's tab in node
+    the chip is the card's in English and "En el cargo", its title in Spanish, on a Spanish page
+    (window.GR_WORDS from es.json); the catalog's English is the card's own."""
+    def cand(name, votes, elected):
+        return {"name": name, "party": "r", "votes": votes, "write_in": False, "elected": elected}
+    race = {"seats": 1, "floterial": False, "towns": ["Alpha"], "scatter": 0,
+            "candidates": [cand("Ida Beck", 900, True), cand("Rob Cole", 800, False), cand("Al New", 10, False)]}
+    me = {"seats": 1, "elected": [{"n": "Ida Beck"}]}
+    doc = {"election": "2026-11-03", "races": {"S|5": race}}
+    card = BE.race_card("S|5", race, me, doc, {}, "2026-11-03", anchor=False, inc=frozenset({"Ida Beck", "Rob Cole"}))
+    rows = re.findall(r'<li class="er-row[^"]*"><span class="er-who">(.*?)</span><span class="er-n">', card, re.S)
+    chip = ' <span class="chip er-incb" title="Held a seat in the Senate on election day.">Incumbent</span>'
+    marked = [re.search(r'translate="no">([^<]+)', r).group(1).strip() for r in rows if "er-incb" in r]
+    assert marked == ["Ida Beck", "Rob Cole"] and card.count("er-incb") == 2, f"the marked rows: {marked}"
+    assert ('<span class="mtag">(R)</span></span>' + chip + ' <span class="chip">Elected</span>') in rows[0] \
+        and rows[1].endswith('<span class="mtag">(R)</span></span>' + chip), (
+        f"the chip is not straight after the name and before Elected: {rows[:2]}")
+    bare = BE.race_card("S|5", race, me, doc, {}, "2026-11-03", anchor=False)
+    assert "er-incb" not in bare and "Incumbent" not in bare, "a card with nobody marked marks somebody"
+    for c in (card, bare):
+        text = re.sub(r"<[^>]+>", "", c)
+        assert "*" not in text and "<abbr" not in c and "er-inc\"" not in c, f"an asterisk is left: {text}"
+    css = _source(Path("src/pages/app.css"))
+    rules = re.findall(r"([^{}]*\ber-incb\b[^{}]*)\{([^}]*)\}", css)
+    assert rules, "app.css draws no Incumbent chip"
+    for sel, body in rules:
+        assert not re.search(r"(?<![-\w])(padding|font-size|font|border-radius|border-width|height|display)\s*:", body), (
+            f"the Incumbent chip has a shape or size of its own, not the Elected chip's: {sel}{{{body}}}")
+        assert not re.search(r"\.(pass|fail|s-[a-z]+|pt-[A-Z]|er-mg)\b", sel), f"the chip takes a result's colour: {sel}"
+    assert "background:" in rules[0][1] and "color:" in rules[0][1], f"the chip has no colour of its own: {rules}"
+    tab = _source(Path("src/pages/app/160-elections-tab.js"))
+    be = _source(Path("src/pages/build_elections.py"))
+    es = json.loads(_source(Path("src/pages/lang/es.json")))["strings"]
+    for where, txt in (("app.css", css), ("160-elections-tab.js", tab), ("build_elections.py", be)):
+        for gone in ("er-incl", "er-inc\"", ".er-inc{", "inc_mark", "inc_legend", "race.inc_h", "race.inc_s",
+                     "* held a seat"):
+            assert gone not in txt, f"{where} still has the asterisk's {gone!r}"
+    assert not {"race.inc_h", "race.inc_s"} & set(es), "the catalog keeps the asterisk's words"
+    assert (es["race.incumbent"]["en"], es["race.incumbent_h"]["en"], es["race.incumbent_s"]["en"]) == (
+        BE.INC_WORD, BE.INC_WORDS["H"], BE.INC_WORDS["S"]), "the catalog's English is not the card's"
+    words = {k: es[k]["es"] for k in ("race.incumbent", "race.incumbent_h", "race.incumbent_s")}
+    row = {"d": "2026-11-03", "k": "S|5", "a": "r-s-5", "r": "won", "v": 900, "s": 1, "c": card, "inc": "S"}
+    got = _app_js("(()=>{const m={elections:[" + json.dumps(row) + "]};"
+                  "const en=scope.renderMemberElections(m);window.GR_WORDS=" + json.dumps(words) + ";"
+                  "const es=scope.renderMemberElections(m);delete window.GR_WORDS;return [en,es];})()",
+                  names=("renderMemberElections",))
+    if got is None:
+        return "ok", "the card, the stylesheet and the catalog held; node, app.js or the stub is not here for the tab"
+    en, sp = got
+    assert en.count(chip.strip()) == 2 and "er-incl" not in en, f"the English tab's chips: {en[:900]}"
+    want = (f'<span class="chip er-incb" title="{words["race.incumbent_s"]}">{words["race.incumbent"]}</span>')
+    assert sp.count(want) == 2 and "Incumbent<" not in sp, f"the Spanish tab's chips: {sp[:900]}"
+    return "ok", ("Beck and Cole marked straight after the name and before Elected, Al New and a card with "
+                  "nobody marked not; the chip the site's one chip in a colour of its own; no asterisk in the "
+                  f"card, the tab, app.css or the catalog; the tab's chip in English and as {words['race.incumbent']!r}")
 
 
 @check("build", "a candidate printed with a middle initial the roster lacks is the member only where the rest is "
        "certain -- the seat held, the party, no rival of the surname, one member; never on a special's card -- "
-       "and is then marked * and shown on their tab like any other",
+       "and is then marked Incumbent and shown on their tab like any other",
        needs=("build_member_elections", "build_lsrs"))
 def _election_middle_initial(BMEL, BL):
     """The owner, 20 November 2026, from the live site: Strafford 10's Democratic primary of 2026
@@ -2725,7 +2797,7 @@ def _election_middle_initial(BMEL, BL):
     doc = {"election": "2026-09-08", "general": "2026-11-03", "races": {"D|H|Rockingham|9": race}}
     rows, _rep = BMEL.primary_rows("2026-09-08", doc, roster)
     assert sorted(rows) == ["3001", "3002"] and rows["3001"][0]["v"] == 900, f"the primary's rows: {dict(rows)}"
-    assert rows["3001"][0]["c"].count('class="er-inc"') == 2, "Burton's card does not mark both incumbents"
+    assert rows["3001"][0]["c"].count('class="chip er-incb"') == 2, "Burton's card does not mark both incumbents"
 
     def who(name, key="H|Rockingham|9", party="d", others=()):
         r = primary(cand(name, 900, party), *[cand(o, 5) for o in others])

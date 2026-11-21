@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.15
+# GRANITE_VERSION: 2026-11-10.16
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -476,7 +476,8 @@ def held_on(member, chamber, day):
 
 def incumbents(key, race, election, roster, drawn=None, said=None):
     """The candidates of race `key` (same_name) who held a seat in its chamber
-    on election day (the owner, 19 November 2026: marked * on the card), each
+    on election day (the owner, 19 November 2026: marked on the card, by the
+    Incumbent chip since 21 November, build_elections.inc_chip), each
     by a certain match only (member_for) and held_on; a wrong mark is worse than
     none, so a candidate the rule cannot place is not marked."""
     chamber = key.split("|", 1)[0]
