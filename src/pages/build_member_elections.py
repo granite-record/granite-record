@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-10.16
+# GRANITE_VERSION: 2026-11-10.17
 """
 Each member's Elections tab: the general elections on file in which the member
 is recorded, newest first (the owner's design of 10 November 2026,
@@ -131,9 +131,11 @@ election's term.
 
 THE ORDER (the owner, 19 November 2026): strictly newest first, under a
 heading for each election cycle (app.js), a cycle's general and then its
-primary; one column of cards. A special is under the cycle of the term whose
-seat it fills, by its day (A5.4): the March 2026 special under 2024, above
-that cycle's general, its primary under it.
+primary. A special is under the cycle of the term whose seat it fills, by its
+day (A5.4): the March 2026 special under 2024, above that cycle's general,
+its primary after it. app.js draws each primary in a left column beside its
+general in a right one, a special primary beside its special (the owner, 21
+November 2026), and a tab with no primary as one column of cards.
 
 UPCOMING ELECTIONS, ONLY FOR A MEMBER WHO HAS FILED (the owner, 19 November
 2026: "Upcoming elections doesn't need to be included on members pages unless
@@ -856,7 +858,8 @@ def special_rows(specials, generals, roster, people=None):
 
 def sort_rows(rows):
     """Strictly newest first (the owner, 19 November 2026): a cycle's general,
-    then its primary under it; within one election, the Senate before the House."""
+    then its primary; within one election, the Senate before the House. (app.js
+    pairs them: electionPairs.)"""
     return sorted(rows, key=lambda r: (cycle_of(r), r["d"], r["k"].startswith("S|")), reverse=True)
 
 

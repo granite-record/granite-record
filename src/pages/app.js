@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.366
+// GRANITE_VERSION: 2026-09-07.367
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10523,6 +10523,25 @@ function electionUpcoming(u){
     +`<article class="er-race er-up"><div class="er-hd"><h4>${electionRace(u)}</h4></div>`
     +`<ul class="er-up-rows">${rows}</ul></article></div>`;
 }
+// A PRIMARY BESIDE ITS GENERAL (the owner, 21 November 2026: "group the primary and the
+// general election in two columns side by side so that the left is the primary and the
+// right is the general"). A cycle's rows, newest first, as pairs: each general with the
+// member's primary of the same race, each special election with its special primary;
+// a primary of no general on the tab, or a general of no primary, a pair of one. The
+// primary is always the left cell and the general the right, so a pair of one keeps its
+// card in its own column ("Keep the columns aligned down the page", her answer the same
+// day). On a phone the cells stack, the primary first (app.css, .er-pairs).
+function electionPairs(rows){
+  const pairs=[];
+  for(const r of rows){
+    const first=r.st==="primary"||r.st==="special-primary";
+    const kin=r.st==="special"||r.st==="special-primary"?"special":"general";
+    const mate=first&&pairs.find(p=>p.g&&!p.p&&p.kin===kin&&p.g.k===r.k);
+    if(mate)mate.p=r;
+    else pairs.push(first?{kin,p:r,g:null}:{kin,p:null,g:r});
+  }
+  return pairs;
+}
 function renderMemberElections(m){
   const rows=m.elections||[];
   if(!rows.length)return "";
@@ -10536,13 +10555,21 @@ function renderMemberElections(m){
     tr("race.year","{year} general election",{year:d.slice(0,4)}))}</a>`).join(", ");
   // A row with no card (a file written before the cards) keeps the table.
   const cards=rows.filter(r=>r.c), plain=rows.filter(r=>!r.c);
-  // ONE COLUMN, A HEADING FOR EACH ELECTION CYCLE (the owner, 19 November 2026): the
-  // rows come newest first (build_member_elections.sort_rows), a cycle's general and
-  // then its primary; a special is to carry its cycle in "cy".
+  // A HEADING FOR EACH ELECTION CYCLE (the owner, 19 November 2026): the rows come
+  // newest first (build_member_elections.sort_rows), a cycle's general and then its
+  // primary; a special carries its cycle in "cy". Under it each primary beside its
+  // general (electionPairs), a cell with no card left empty; a tab with no primary at
+  // all is one column the tab's full width, as it was.
   const cyc=[...new Set(cards.map(r=>r.cy||r.d.slice(0,4)))];
-  const stack=cyc.map(y=>`<h3 class="er-cycle">${esc(y)}</h3><div class="er-cards er-stack">${
-    cards.filter(r=>(r.cy||r.d.slice(0,4))===y).map(electionCard).join("")}</div>`).join("");
-  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}${prim?" "+tr("race.intro_primary","A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; a candidate it nominated is marked Nominated."):""}${sp.length?" "+tr("race.intro_special","A special election is shown under the election cycle of the term whose seat it filled, by its date, with its primary under it."):""}</p>
+  const two=cards.some(r=>r.st==="primary"||r.st==="special-primary");
+  const cell=r=>r?electionCard(r):`<div class="er-gap" aria-hidden="true"></div>`;
+  const stack=cyc.map(y=>{
+    const rs=cards.filter(r=>(r.cy||r.d.slice(0,4))===y);
+    return `<h3 class="er-cycle">${esc(y)}</h3>`+(two
+      ?`<div class="er-cards er-pairs">${electionPairs(rs).map(p=>cell(p.p)+cell(p.g)).join("")}</div>`
+      :`<div class="er-cards er-stack">${rs.map(electionCard).join("")}</div>`);
+  }).join("");
+  return `<p class="src">${tr("race.intro","The general elections on file in which this member is recorded, newest first, as the Secretary of State counted them. In a race for one seat a share is of every vote cast, write-ins included; in a race for more than one, where each voter could choose several, it is of all the votes cast for the candidates listed.")}${prim?" "+tr("race.intro_primary","A primary is shown on the member&rsquo;s own party&rsquo;s ballot, first, with that year&rsquo;s general election beside it; a candidate it nominated is marked Nominated."):""}${sp.length?" "+tr("race.intro_special","A special election is shown under the election cycle of the term whose seat it filled, by its date, with its primary first, beside it."):""}</p>
     ${electionUpcoming(m.up)}${stack}${plain.length?`
     <table class="votes vfull"><thead><tr><th>${esc(tr("race.col_election","Election"))}</th>
       <th>${esc(tr("race.col_race","Race"))}</th><th>${esc(tr("race.col_result","Result"))}</th>

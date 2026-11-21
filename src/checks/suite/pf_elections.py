@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.41
+# GRANITE_VERSION: 2026-11-16.42
 """
 preflight's checks of members-elect and election results.
 
@@ -2271,14 +2271,15 @@ def _primary_nominees_link(BMEL, BE):
                   "stranger not; a general's the same: its winners linked, its incumbent who lost not")
 
 
-@check("build", "a member's Elections tab is one column of race cards under a heading for each election "
-       "cycle, strictly newest first: a cycle's general, then its primary",
+@check("build", "a member's Elections tab has a heading for each election cycle, strictly newest first: a "
+       "cycle's general, then its primary; a tab with no primary is one column of race cards",
        needs=("build_member_elections",))
 def _member_elections_cycles(BMEL):
     """The owner, 19 November 2026 (twice: the order was corrected the same day). Three rows given
     in a muddle -- 2024's primary, 2026's general, 2024's general -- are sorted by sort_rows and
-    drawn by app.js: a heading "2026" over one stacked list holding 2026's general, a heading
-    "2024" over one holding 2024's general and then its primary; and app.css draws a stacked list
+    drawn by app.js: a heading "2026" over 2026's general, a heading "2024" over 2024's primary
+    and general (side by side since 21 November 2026: _member_elections_pairs). The same tab
+    without its primary is a stacked list under each heading, and app.css draws a stacked list
     in one column at every width (.er-cards.er-stack, which no later rule or media query
     undoes)."""
     def row(d, k, st=None):
@@ -2305,11 +2306,81 @@ def _member_elections_cycles(BMEL):
         assert ".er-stack" not in css[m.end():i], f"a media query changes the stacked list: {m.group(0)}"
     if html is None:
         return "ok", "the order and the one column held; node, app.js or the stub is not here for the tab"
-    got = re.findall(r'<h3 class="er-cycle">(\d{4})</h3><div class="er-cards er-stack">(.*?)</div>(?=<h3|<p|\s)', html, re.S)
+    got = re.findall(r'<h3 class="er-cycle">(\d{4})</h3><div class="er-cards er-pairs">(.*?)</div>(?=<h3|<p|\s)', html, re.S)
     assert [(y, re.findall(r"<h3>([\d-]+)</h3>", body)) for y, body in got] == [
-        ("2026", ["2026-11-03"]), ("2024", ["2024-11-05", "2024-09-10"])], f"the cycles: {got}"
-    assert html.count('class="er-cards"') == 0 and html.count("er-stack") == 2, "a list of cards is not stacked"
-    return "ok", "2026's general under 2026; 2024's general, then its primary, under 2024; one column at every width"
+        ("2026", ["2026-11-03"]), ("2024", ["2024-09-10", "2024-11-05"])], f"the cycles: {got}"
+    one = _app_js("scope.renderMemberElections(" + json.dumps({"elections": [r for r in rows if not r.get("st")]})
+                  + ")", names=("renderMemberElections",))
+    got = re.findall(r'<h3 class="er-cycle">(\d{4})</h3><div class="er-cards er-stack">(.*?)</div>(?=<h3|<p|\s)', one, re.S)
+    assert [(y, re.findall(r"<h3>([\d-]+)</h3>", body)) for y, body in got] == [
+        ("2026", ["2026-11-03"]), ("2024", ["2024-11-05"])], f"the cycles with no primary: {got}"
+    assert one.count('class="er-cards"') == 0 and one.count("er-stack") == 2 and "er-pairs" not in one, (
+        "a tab with no primary is not stacked")
+    return "ok", ("2026's general under 2026; 2024's primary and general under 2024; with no primary, each "
+                  "cycle a stacked list, one column at every width")
+
+
+@check("build", "a member's Elections tab draws each primary in the left column beside its general in the right, "
+       "a special primary beside its special, a cycle with one of the two keeping it in its own column; one "
+       "column on a phone, the primary first; a tab with no primary one column the full width",
+       needs=("build_member_elections",))
+def _member_elections_pairs(BMEL):
+    """The owner, 21 November 2026: "group the primary and the general election in two columns
+    side by side so that the left is the primary and the right is the general", and, of a cycle
+    with only one of the two, "Keep the columns aligned down the page." Made-up rows, sorted by
+    sort_rows and drawn by app.js: 2026's general alone (its primary not on file); under 2024
+    the special of March 2026 and its special primary, then 2024's general and its primary; 2022's
+    primary alone (lost) and a primary of another race the same year, which pairs with nothing.
+    Each cycle is one grid of cells read two by two: primary, general. A cell with no card is an
+    empty er-gap. app.css draws the grid in two columns, and in one on a phone with the empty
+    cells hidden, so the primary stands first. A tab with no primary is the one column it was."""
+    def row(d, k, st=None, cy=None, pp="D"):
+        r = {"d": d, "k": k, "a": "r-" + d, "r": "won", "v": 1, "s": 1,
+             "c": f'<article class="er-race"><div class="er-hd"><h3>{d} {k}</h3></div></article>'}
+        if st:
+            r.update(st=st, pp=pp)
+        if cy:
+            r["cy"] = cy
+        return r
+    rows = BMEL.sort_rows([
+        row("2024-09-10", "H|Strafford|15", "primary"), row("2026-11-03", "H|Strafford|21"),
+        row("2024-11-05", "H|Strafford|15"), row("2026-03-10", "H|Carroll|7", "special", "2024"),
+        row("2026-01-20", "H|Carroll|7", "special-primary", "2024"), row("2022-09-13", "H|Strafford|15", "primary"),
+        row("2022-11-08", "H|Strafford|9"), row("2020-09-08", "H|Strafford|15", "primary")])
+    html = _app_js("scope.renderMemberElections(" + json.dumps({"elections": rows}) + ")",
+                   names=("renderMemberElections",))
+    css = _source(Path("src/pages/app.css"))
+    two = re.findall(r"(?<![\w-])\.er-cards\.er-pairs\{([^}]*)\}", css)
+    assert two and "grid-template-columns:repeat(2,minmax(0,1fr))" in two[0].replace(" ", ""), (
+        f"app.css draws no two columns for a pair: {two}")
+    phone = re.search(r"@media \(max-width:45em\)\{\.er-cards\.er-pairs\{grid-template-columns:minmax\(0,1fr\)\}"
+                      r"\.er-gap\{display:none\}\}", css.replace(" {", "{"))
+    assert phone, "app.css does not draw a pair in one column on a phone, its empty cells hidden"
+    if html is None:
+        return "ok", "app.css's two columns and the phone's one held; node, app.js or the stub is not here for the tab"
+    blocks = re.findall(r'<h3 class="er-cycle">(\d{4})</h3><div class="er-cards er-pairs">(.*?)</div>(?=<h3 class|\s*<p)',
+                        html, re.S)
+
+    def cells(body):
+        return [m.group(1) or "-" for m in re.finditer(
+            r'<article class="er-race">(?:<p class="er-when">.*?</p>)?<div class="er-hd"><h3>([^<]+)</h3>|'
+            r'<div class="er-gap" aria-hidden="true">', body)]
+    got = [(y, cells(b)) for y, b in blocks]
+    want = [("2026", ["-", "2026-11-03 H|Strafford|21"]),
+            ("2024", ["2026-01-20 H|Carroll|7", "2026-03-10 H|Carroll|7",
+                      "2024-09-10 H|Strafford|15", "2024-11-05 H|Strafford|15"]),
+            ("2022", ["-", "2022-11-08 H|Strafford|9", "2022-09-13 H|Strafford|15", "-"]),
+            ("2020", ["2020-09-08 H|Strafford|15", "-"])]
+    assert got == want, f"the pairs, primary then general, cycle by cycle: {got}"
+    assert "er-stack" not in html and len(blocks) == 4, "a tab with a primary is still one column somewhere"
+    plain = [r for r in rows if not r.get("st", "").endswith("primary")]
+    one = _app_js("scope.renderMemberElections(" + json.dumps({"elections": plain}) + ")",
+                  names=("renderMemberElections",))
+    assert "er-pairs" not in one and "er-gap" not in one and one.count('<div class="er-cards er-stack">') == 3, (
+        f"a tab with no primary is not one column the full width: {one[:400]}")
+    return "ok", ("primary left and general right in every pair, a special primary beside its special, a lone "
+                  "general or primary in its own column with the other cell empty, a primary of another race "
+                  "unpaired; two columns, one on a phone with the empty cells hidden; no primary, one column")
 
 
 @check("build", "a member's Elections tab shows a special election and its primary under the cycle of the "
@@ -2407,9 +2478,11 @@ def _member_elections_specials(BMEL):
     under = html.split('<h3 class="er-cycle">2024</h3>', 1)
     assert "Special election, " in under[1] and "Special election, " not in under[0], (
         "the March 2026 special is not under the 2024 heading")
+    # In the page's order: the special primary in the left column beside its special
+    # (the owner, 21 November 2026; _member_elections_pairs).
     when = re.findall(r'<p class="er-when">(.*?)</p>', html)
-    assert when[1].startswith("Special election, ") and "held after the 2024 tie (House Resolution 6)" in when[1] \
-        and when[2].startswith("Special primary (Democratic), ") and "<a " not in when[1] + when[2], (
+    assert when[2].startswith("Special election, ") and "held after the 2024 tie (House Resolution 6)" in when[2] \
+        and when[1].startswith("Special primary (Democratic), ") and "<a " not in when[1] + when[2], (
         f"the specials' heads: {when}")
     assert "/elections/2026-03-10" not in html and "/elections/2026-01-20" not in html, "a special links an elections page"
     assert '<a href="https://example.org/sp/a">special election of ' in html and "A special election is shown" in html, (

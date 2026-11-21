@@ -2620,9 +2620,13 @@ rule, for a general's candidates and a primary's, also takes a name printed with
 a middle initial the roster lacks, or the other way round, where the rest is
 certain (`Roster.initial_match`, which reuses the bill requests'
 `build_lsrs.compatible`): the seat held, the party, no other candidate of the
-surname, one member; a special's candidates keep the letter-for-letter rule. The tab is one column of
-cards under a heading for each election cycle, strictly newest first: a cycle's
-general, then its primary under it (`sort_rows`, `cycle_of`). A special election
+surname, one member; a special's candidates keep the letter-for-letter rule. The tab
+has a heading for each election cycle, strictly newest first: a cycle's general,
+then its primary (`sort_rows`, `cycle_of`). Under it `app.js` draws two columns
+(`electionPairs`; the owner, 21 November 2026): each primary on the left beside its
+general of the same race on the right, a special primary beside its special, and a
+card with no partner in its own column, the other cell empty; one column on a phone,
+the primary first. A tab with no primary is one column of cards. A special election
 and its party primaries (`special_rows`, from `collected/specials.json`) carry
 in `cy` the cycle of the general that elected the term whose seat they fill, so
 the March 2026 special sits under 2024 above that cycle's general; each is
