@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.69
+// GRANITE_VERSION: 2026-09-16.71
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1569,7 +1569,10 @@ function menuMount(){
   // puts focus on its first link.
   const open=()=>{
     nav.classList.add("open");btn.setAttribute("aria-expanded","true");
-    const first=drop.querySelector("a[href]");
+    // The first link a reader can see: on a phone the tabs are folded away
+    // and the menu is every section's pages (.navall, chrome.menu_all).
+    const all=drop.querySelectorAll?[...drop.querySelectorAll("a[href]")]:[];
+    const first=all.find(a=>a.offsetParent!==null)||drop.querySelector("a[href]");
     if(first)first.focus();
   };
   btn.addEventListener("click",()=>{
@@ -1597,8 +1600,109 @@ function menuMount(){
   drop.addEventListener("click",e=>{if(e.target.closest("a"))shut();});
 }
 
+/* THE ROW FOLLOWS THE PAGE (the header rows, November 2026). The header's
+   second row and the phone menu mark the page a reader is on as the build
+   wrote it; on a page whose row items are parts of the page itself, which
+   one is current is the page's to say, and changes without a load:
+   - a hub's tabs (Laws, Officials, Resources: data-pane). The hub's own
+     script opens a panel -- from an address, a link inside another panel, a
+     member-elect tab handing over to Legislators on the day it retires --
+     and the row marks the tab it opened, whatever opened it;
+   - a heading on the page (Committees: data-hash), marked while the address
+     names it;
+   - the same page with a query (the bill requests are /bills?term=...),
+     marked when the address carries it. */
+function rowMount(){
+  const norm=p=>(p||"").replace(/\.html$/,"").replace(/\/index$/,"/").replace(/(.)\/$/,"$1");
+  const here=norm(location.pathname);
+  const mine=[...document.querySelectorAll(".subrow a,.nvpages a")].filter(a=>norm(a.pathname)===here);
+  if(!mine.length)return;
+  const light=pick=>mine.forEach(a=>{
+    if(pick(a))a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");
+  });
+  const bar=document.querySelector(".twntabs");
+  if(bar&&mine.some(a=>a.hasAttribute("data-pane"))){
+    const sync=()=>{
+      const t=bar.querySelector('[role="tab"][aria-selected="true"]');
+      if(t)light(a=>a.getAttribute("data-pane")===t.getAttribute("data-pane"));
+    };
+    sync();
+    new MutationObserver(sync).observe(bar,{subtree:true,attributes:true,attributeFilter:["aria-selected"]});
+    // A row item on its own hub is that hub's tab, so choosing it is
+    // pressing the tab: the panel opens and the address names it, as the
+    // tab's own click does, where following the link to the hub's bare
+    // address (its first tab, /officials) would load the page again.
+    mine.forEach(a=>{
+      const t=bar.querySelector('[role="tab"][data-pane="'+a.getAttribute("data-pane")+'"]');
+      if(t)a.addEventListener("click",e=>{
+        if(e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+        e.preventDefault();t.click();
+        // From the phone's menu, a reader may be far down the panel they
+        // were in: the one they chose starts at the top of the page.
+        const row=document.querySelector("nav.subnav");
+        if(row&&row.getBoundingClientRect().bottom<0)window.scrollTo(0,0);
+      });
+    });
+    return;
+  }
+  if(mine.some(a=>a.hasAttribute("data-hash"))){
+    const sync=()=>light(a=>a.getAttribute("data-hash")===location.hash);
+    sync();
+    addEventListener("hashchange",sync);
+    return;
+  }
+  const asked=mine.filter(a=>a.search&&a.search.length>1);
+  if(asked.length){
+    const q=new URLSearchParams(location.search);
+    const on=asked.find(a=>[...new URLSearchParams(a.search)].every(([k,v])=>q.get(k)===v));
+    if(on)light(a=>a===on);
+  }
+}
+
+/* THE FOOTER'S MAP FOLDS ON A PHONE (the owner, 20 November 2026: "on
+   phones the footer map folds by section"). chrome.site_map writes every
+   section open, under a heading that links the section; below 45em each
+   heading is a button instead, which opens and shuts its own list
+   (aria-expanded, aria-controls), and every list starts shut. From 45em the
+   map is open columns and the headings are links again. Without the script
+   every list is open at every width. */
+function smapMount(){
+  const map=document.querySelector("nav.smap");
+  if(!map||!window.matchMedia)return;
+  const mq=matchMedia("(max-width:45em)");
+  const cols=[...map.querySelectorAll(".smcol")].map(c=>({h:c.querySelector(".smh"),list:c.querySelector("ul")}))
+    .filter(c=>c.h&&c.list);
+  cols.forEach(c=>{c.link=c.h.innerHTML;});
+  const set=()=>cols.forEach(c=>{
+    if(mq.matches){
+      if(!c.btn){
+        c.btn=document.createElement("button");
+        c.btn.type="button";c.btn.className="smbtn";
+        c.btn.setAttribute("aria-expanded","false");
+        c.btn.setAttribute("aria-controls",c.list.id);
+        c.btn.textContent=c.h.textContent;
+        c.btn.addEventListener("click",()=>{
+          const on=c.btn.getAttribute("aria-expanded")!=="true";
+          c.btn.setAttribute("aria-expanded",String(on));
+          c.list.hidden=!on;
+        });
+      }
+      if(!c.h.contains(c.btn)){c.h.textContent="";c.h.appendChild(c.btn);}
+      c.list.hidden=c.btn.getAttribute("aria-expanded")!=="true";
+    }else{
+      if(c.btn&&c.h.contains(c.btn))c.h.innerHTML=c.link;
+      c.list.hidden=false;
+    }
+  });
+  set();
+  if(mq.addEventListener)mq.addEventListener("change",set);
+  else if(mq.addListener)mq.addListener(set);
+}
+
 findMount();
 menuMount();
+rowMount();
+smapMount();
 
 // THE SKIP LINK TAKES THE KEYBOARD WITH IT. Its target -- #results on a record
 // page, #main on the home page, About and the search page -- is a plain

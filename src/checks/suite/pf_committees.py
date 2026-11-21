@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.1
+# GRANITE_VERSION: 2026-11-16.2
 """
 preflight's checks of committees and study committees.
 
@@ -1975,8 +1975,11 @@ def _study_committees_listed(SC):
     assert sec.startswith('<!-- statstud --><details class="sfold ssfold" id="statstud"><summary>') \
         and "<span class=\"sflab\">Statutory and Study Committees</span> <span class=\"w4n\">3</span>" in sec, (
         "the section is not one shut fold that says how many: " + sec[:200])
+    # The former committees' heading, not its words: the header's row names
+    # them too, above everything (chrome.ROWS).
+    former = '<h2 id="archived">Former committees'
     assert t.index('<div class="ctwo">') < t.index("<!-- statstud -->") and (
-        "Former committees" not in t or t.index("<!-- statstud -->") < t.index("Former committees")), (
+        former not in t or t.index("<!-- statstud -->") < t.index(former)), (
         "the fold is not under the chambers' columns, above the former committees")
     groups = re.findall(r'<section class="ssgrp" data-class="(\w+)">', sec)
     assert groups == ["statutory", "study"], f"the classes are {groups}, not statutory then study"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.25
+# GRANITE_VERSION: 2026-11-16.29
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -6633,14 +6633,16 @@ def _links_clean():
 
 
 @check("frontend", "the signposts agree on the built site: the header lights the section a page's "
-       "trail begins at, a session day's Committees among them; About's What You Can Do Here links "
+       "trail begins at, a session day's Calendar among them; About's What You Can Do Here links "
        "pages and sections the build writes; a member's towns link their pages; no redirect stands "
        "over a page")
 def _signposts_agree():
     """The audit of 25 October 2026, S6 ("one place for each thing"), read
     off the fixture's built site. A session day lit Calendar in the header
     while its trail said Committees (the person chose Committees on 10
-    October); About's five lines of what a reader can do here named no page
+    October; the header rows she approved on 7 and 20 November put session
+    days in the Calendar's row, and the trail went with them); About's five
+    lines of what a reader can do here named no page
     to do it on; a member's towns were words beside a page for each; and a
     rule of build_pages.MOVED over a page the build writes would hide one or
     the other, as /town/berlin would."""
@@ -14557,6 +14559,9 @@ def _frame_written_once():
         bad += [f"{f.name} writes {what}" for k, what in own.items() if k in code]
     assert not bad, ("the frame is written outside chrome.py: " + "; ".join(bad[:6])
                      + ". Write it in chrome.py, or ask chrome for it")
+    # The pages that come and go judged against site/, as shell.template's
+    # are below, whatever site an earlier check judged them against.
+    CH.use_site(Path("site"))
     filled = CH.fill(t, "bills.html")
     assert "<!-- CHROME:" not in filled and CH.fill(filled, "bills.html") == filled, (
         "chrome.fill leaves a slot, or changes a template it has filled")
@@ -14576,9 +14581,12 @@ def _frame_written_once():
         html = re.sub(r'(href|src)="/?', r'\1="/', html)
         html = re.sub(r'href="/index"', 'href="/"', html)
         return re.sub(r">\s+<", "><", re.sub(r"\s+", " ", html)).strip()
-    nav, foot = plain(CH.nav()), plain(CH.FOOTER)
     shared, _base, _ran, _days = _fixture_site_shared()
     site = shared / "site"
+    # The row's pages that come and go as the fixture's builders judged them
+    # (chrome.row_facts), so the menu is the one they drew.
+    CH.use_site(site)
+    nav, foot = plain(CH.nav()), plain(CH.FOOTER)
     n = 0
     for f in sorted(site.rglob("*.html")):
         page = f.read_text(encoding="utf-8", errors="replace")
@@ -14598,7 +14606,8 @@ def _frame_written_once():
         got = re.findall(r'<nav class="top".*?</nav>', page, re.S)
         if len(got) != 1 or plain(got[0]) != want_nav:
             bad.append(f"{rel}: its header is not chrome's")
-        elif got[0].count(' aria-current="page"') > 1:
+        elif re.search(r'<div class="navtabs">.*?</div>', got[0], re.S).group(0).count(
+                ' aria-current="page"') > 1:
             bad.append(f"{rel}: its header marks more than one section as the one it is on")
         got = re.findall(r"<footer>.*?</footer>", page, re.S)
         if len(got) != 1 or plain(got[0]) != want_foot:
@@ -14614,6 +14623,517 @@ def _frame_written_once():
     return "ok", (f"bills.html has the {len(CH.SLOTS)} slots and no frame of its own, no builder "
                   f"writes one, and all {n} pages the fixture's builders wrote carry chrome's "
                   "header, footer, theme control and stylesheet once")
+
+
+# ---- the header's second row (the header rows, November 2026) ----------------
+# A row item whose heading the fixture cannot build, and why: it is built on
+# every real night, and on site/, where one is built, every row link must
+# resolve with no exceptions. (A row item whose PAGE a build may not write --
+# the elections, the former members, the calendars and journals, Live now --
+# is drawn only where it is written: chrome.row_facts, _row_comes_and_goes.)
+ROW_NEEDS_DATA = {
+    "committees#archived": "a former committee, and the fixture has none",
+}
+
+
+def _row_pages(site):
+    """[(path from the site, text)] of every page in `site` with a head."""
+    out = []
+    for f in sorted(site.rglob("*.html")):
+        t = f.read_text(encoding="utf-8", errors="replace")
+        if "<head" in t:
+            out.append((f.relative_to(site).as_posix(), t))
+    return out
+
+
+def _row_read(t):
+    """(the tabs marked, the row: [(href, attributes, label, marked)] or None,
+    the row's section) of one page's header."""
+    top = re.search(r'<nav class="top".*?</nav>', t, re.S)
+    tabs = re.search(r'<div class="navtabs">(.*?)</div>', top.group(0), re.S) if top else None
+    lit = re.findall(r'<a href="([^"]*)"[^>]*aria-current="page"', tabs.group(1)) if tabs else []
+    sub = re.search(r'<nav class="subnav"[^>]*data-section="([^"]*)".*?</nav>', t, re.S)
+    if not sub:
+        return lit, None, ""
+    items = [(m.group(1), m.group(2), m.group(3), 'aria-current="page"' in m.group(2))
+             for m in re.finditer(r'<a href="([^"]*)"([^>]*)>([^<]*)</a>', sub.group(0))]
+    return lit, items, sub.group(1)
+
+
+def _row_key(href):
+    """An address as the row's table names it, whoever wrote it: no root, no
+    language folder, no .html and no index -- "/es/officials#legislators",
+    "officials.html#legislators" and "/elections/" are "officials#legislators",
+    the same, and "elections"."""
+    h = re.sub(r"^/(es/)?", "", href)
+    for i, ch in enumerate(h):
+        if ch in "?#":
+            page, rest = h[:i], h[i:]
+            break
+    else:
+        page, rest = h, ""
+    page = page[:-5] if page.endswith(".html") else page
+    page = page[:-6] if page.endswith("/index") or page == "index" else page
+    return page.rstrip("/") + rest
+
+
+def _row_menu(t):
+    """[(href, attributes, inner)] of the phone menu's links (.navall)."""
+    m = re.search(r'<div class="navall">.*?</div></div></div>', t, re.S)
+    return re.findall(r'<a href="([^"]*)"([^>]*)>(.*?)</a>', m.group(0), re.S) if m else []
+
+
+# Every kind of record page the header rows' brief names, and the section
+# and item chrome.locate gives it.
+ROW_PLACES = {("/bill/2026/hb1.html", None): ("bills.html", "search"),
+              ("/votes.html", None): ("bills.html", "votes"),
+              ("/request/2027-0001.html", None): ("bills.html", "requests"),
+              ("/directory/bills-2025-2026.html", None): ("bills.html", "terms"),
+              ("/laws/91-a.html", None): ("laws.html", "statutes"),
+              ("/legislator/x.html", None): ("officials.html", "legislators"),
+              ("/legislator/x.html", "GR_FORMER"): ("officials.html", "former"),
+              ("/elections/index.html", None): ("officials.html", "elections"),
+              ("/elections/2026-11-03-general.html", None): ("officials.html", "elections"),
+              ("/town/concord.html", None): ("officials.html", "my-town"),
+              ("/committee/H43.html", None): ("committees.html", "house"),
+              ("/committee/S10.html", None): ("committees.html", "senate"),
+              ("/committee/s42.html", None): ("committees.html", "senate"),
+              ("/committee/ss1451.html", None): ("committees.html", "study"),
+              ("/session/H/2026-03-05.html", None): ("calendar.html", "sessions"),
+              ("/session/nobill/2025-2026.html", None): ("calendar.html", "sessions"),
+              ("/calendar/2026-W45.html", None): ("calendar.html", "week"),
+              ("/calendar/documents.html", None): ("calendar.html", "journals"),
+              ("/live.html", None): ("calendar.html", "live"),
+              ("/guides/passport.html", None): ("resources.html", "guides"),
+              ("/learn/the-courts.html", None): ("resources.html", "learn"),
+              ("/learn/glossary.html", None): ("resources.html", "glossary"),
+              ("/es/learn/glossary.html", None): ("resources.html", "glossary"),
+              ("/data.html", None): ("resources.html", "data"),
+              ("/api.html", None): ("resources.html", "data"),
+              ("/index.html", None): ("", ""), ("/about.html", None): ("", ""),
+              ("/404.html", None): ("", ""), ("/search.html", None): ("", "")}
+
+
+@check("frontend", "every page lights one section and at most one page of its row, the ones its "
+                   "address says, and the home page, About, /search and 404 none")
+def _row_lights():
+    """The header rows' first rule (the owner's approval of 7 November 2026,
+    and of option A, "Section rows", on 20 November): a reader is told where
+    they are once, at each level. Every page the fixture's builders wrote
+    marks exactly one of the six tabs and at most one item of the row under
+    them -- the section and the item chrome.locate gives the page's address
+    -- and the pages in no section (the home page, About, /search, 404) mark
+    no tab and draw no row. The row a page draws is its section's, the same
+    row on every page of that section but for the mark (a builder that
+    judged a page that comes and goes differently would draw a different
+    one). And chrome.locate itself, on the record pages the brief names
+    (ROW_PLACES)."""
+    import chrome as CH
+    import i18n
+    L = CH.locate
+    wrong = [f"{p}{' (' + g + ')' if g else ''} is {L(p, {g: True} if g else {})}, not {w}"
+             for (p, g), w in ROW_PLACES.items() if L(p, {g: True} if g else {}) != w]
+    assert not wrong, "chrome.locate: " + "; ".join(wrong)
+    member = CH.nav("officials.html", item="members-elect",
+                    facts={"requests": None, "elect_until": "2099-12-01"})
+    assert re.search(r'<nav class="subnav".*<a href="officials.html#members-elect"[^>]*aria-current="page"',
+                     member, re.S), (
+        "a member-elect's page (nav_item) does not mark Members-elect")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    site = shared / "site"
+    bad, rows, n = [], {}, 0
+    for rel, t in _row_pages(site):
+        n += 1
+        lang = re.search(r'<html lang="([a-z]+)"', t[:400])
+        lang = lang.group(1) if lang else "en"
+        sec, item = L("/" + rel, {"GR_FORMER": True} if "window.GR_FORMER=true" in t else {})
+        lit, items, drawn = _row_read(t)
+        if not sec:
+            if lit or items is not None:
+                bad.append(f"{rel} is in no section and marks {lit or 'a row'}")
+            continue
+
+        def norm(h):
+            return re.sub(r"\.html$", "", h.lstrip("/"))
+        if len(lit) != 1 or norm(lit[0]) != norm(i18n.href(lang, sec)):
+            bad.append(f"{rel} marks {lit or 'no tab'}, not {sec}")
+        if items is None or drawn != sec:
+            bad.append(f"{rel} draws {'no row' if items is None else drawn + chr(39) + 's row'}, not {sec}'s")
+            continue
+        marked = [lab for _h, _a, lab, on in items if on]
+        if len(marked) > 1:
+            bad.append(f"{rel} marks {len(marked)} items of its row: {marked}")
+        if item and not marked:
+            bad.append(f"{rel} marks no item of its row, where its address says {item}")
+        shape = tuple((h, re.sub(r'\s*aria-current="page"', "", a), lab) for h, a, lab, _on in items)
+        rows.setdefault((sec, lang), {}).setdefault(shape, []).append(rel)
+    for (sec, lang), shapes in rows.items():
+        if len(shapes) > 1:
+            bad.append(f"{sec} ({lang}) draws {len(shapes)} different rows: "
+                       + " / ".join(v[0] for v in shapes.values()))
+    assert n > 20, f"only {n} fixture pages with a head"
+    assert not bad, f"{len(bad)} faults: " + "; ".join(bad[:6])
+    return "ok", (f"chrome.locate places the {len(ROW_PLACES)} kinds of page the brief names, and all {n} "
+                  f"pages the fixture's builders wrote mark one tab and at most one item of their "
+                  f"section's one row, {len(rows)} rows across the sections and languages")
+
+
+@check("frontend", "every link in the header's row and the phone's menu answers: a page that was "
+                   "built, a tab its hub has, a heading its page has; and every item of chrome.ROWS is "
+                   "drawn, or waits on a page the build did not write")
+def _row_links_resolve():
+    """The header rows' second rule. Every address a row or the phone menu
+    gives -- on every page the fixture's builders wrote -- is a page in the
+    site; one with a #fragment names a tab of that hub (its tablist's
+    data-pane) or an element with that id; and a hub item's data-pane is a
+    tab on the hub, so the row can mark the tab the hub's script opened.
+    Each of the hubs' tabs is reachable from the row too: a tab the row
+    dropped would be a panel nobody could open. And every item of
+    chrome.ROWS is drawn somewhere on the site, unless the fact of
+    chrome.row_facts it waits on (COMES_AND_GOES) is off for this build --
+    an item drawn while its page is not written is the broken link above.
+    ROW_NEEDS_DATA names the one the fixture cannot build, and why; on
+    site/, where one is built, they answer like the rest."""
+    import chrome as CH
+    sites = [("the fixture's site", _fixture_site_shared()[0] / "site")]
+    if (Path("site") / "app.css").exists() and (Path("site") / "officials.html").exists():
+        sites.append(("site/", Path("site")))
+    said = []
+    for what, site in sites:
+        excused = set(ROW_NEEDS_DATA) if what != "site/" else set()
+        cache, bad, seen, drawn = {}, [], set(), set()
+
+        def page(p):
+            if p not in cache:
+                f = next((x for x in (site / f"{p}.html", site / p / "index.html", site / p)
+                          if x.is_file()), None)
+                cache[p] = f.read_text(encoding="utf-8", errors="replace") if f else None
+            return cache[p]
+        n = 0
+        for rel, t in _row_pages(site):
+            links = [(h, a) for h, a, _i in _row_menu(t)]
+            _lit, items, _sec = _row_read(t)
+            links += [(h, a) for h, a, _l, _o in (items or [])]
+            for href, attrs in links:
+                key = (href, attrs)
+                drawn.add(_row_key(href))
+                if key in seen:
+                    continue
+                seen.add(key)
+                n += 1
+                h = href.lstrip("/")
+                path, _, frag = h.partition("#")
+                path = path.split("?")[0] or "index"
+                path = path[:-5] if path.endswith(".html") else path
+                if (path + ("#" + frag if frag else "")) in excused or path in excused:
+                    continue
+                body = page(path)
+                if body is None:
+                    bad.append(f"{href} (on {rel}): no such page")
+                    continue
+                pane = re.search(r'data-pane="([^"]*)"', attrs)
+                if pane and f'role="tab" id="tab-{pane.group(1)}" data-pane="{pane.group(1)}"' not in body:
+                    bad.append(f"{href} (on {rel}): {path} has no tab {pane.group(1)}")
+                if frag and f'id="{frag}"' not in body:
+                    bad.append(f"{href} (on {rel}): {path} has no #{frag}")
+        for hub in CH.TAB_HUBS:
+            body = page(hub[:-5])
+            if body is None:
+                continue
+            bar = re.search(r'<div class="twntabs[^"]*"[^>]*role="tablist".*?</div>', body, re.S)
+            tabs = re.findall(r'role="tab" id="tab-[^"]*" data-pane="([^"]*)"', bar.group(0)) if bar else []
+            row = {i for i, _a in CH.ROWS[hub]}
+            gone = [x for x in tabs if x not in row]
+            if gone:
+                bad.append(f"{hub}'s tabs {gone} are in no row item: no reader could open them")
+        # EVERY ITEM OF THE TABLE, drawn or waiting on its page.
+        CH.use_site(site)
+        facts = CH.row_facts()
+        waiting = []
+        for sec, items in CH.ROWS.items():
+            for iid, addr in items:
+                wait = CH.COMES_AND_GOES.get((sec, iid))
+                if wait and not facts.get(wait):
+                    waiting.append(iid)
+                    continue
+                want = _row_key(addr.format(term=(facts.get("requests") or {}).get("term", "")))
+                if want not in drawn:
+                    bad.append(f"chrome.ROWS' {sec} {iid} ({want}) is drawn on no page")
+        assert not bad, f"{what}: {len(bad)} row links do not answer: " + "; ".join(bad[:6])
+        said.append(f"{n} on {what}" + (f" (the fixture builds no {', '.join(sorted(excused))})"
+                                        if excused else "")
+                    + (f", {len(waiting)} items waiting on their page ({', '.join(waiting)})"
+                       if waiting else ""))
+    return "ok", "every row and menu link answers: " + "; ".join(said)
+
+
+@check("frontend", "the hubs' in-page tab addresses still answer, now that the row is their tabs")
+def _row_tab_addresses():
+    """The in-page tabs of Laws, Officials and Resources became the header's
+    row (the header rows, November 2026), and every address they answered
+    must still answer: /laws#constitution, /officials#legislators,
+    #members-elect and the rest, /resources#learn. The hub keeps its
+    tablist, unseen (app.css), because its script (parts.TABS_JS, the Laws
+    page's constitution_tab.TABS_JS) is what opens a panel from an address
+    and on a hashchange; so each hub the fixture built still has that script
+    and a tab and a panel for every one of its row's items, the tablist is
+    hidden only on the three hubs and not on a town's page, and the row's
+    items carry the panel they open (data-pane) for find.js's rowMount to
+    follow. And rowMount is there, in the one script every page runs."""
+    import chrome as CH
+    import constitution_tab as LT
+    import parts as PT
+    site = _fixture_site_shared()[0] / "site"
+    bad = []
+    for hub in CH.TAB_HUBS:
+        f = site / hub
+        if not f.is_file():
+            bad.append(f"the fixture built no {hub}")
+            continue
+        t = f.read_text(encoding="utf-8")
+        script = (LT.TABS_JS if hub == "laws.html" else PT.TABS_JS).split("\n", 3)[2]
+        if script not in t:
+            bad.append(f"{hub} has lost the tab script that opens a panel from its address")
+        for iid, addr in CH.ROWS[hub]:
+            page, rest = CH._split(addr)
+            if page != hub:
+                continue
+            if iid == "members-elect" and f'data-pane="{iid}"' not in t:
+                continue  # the members-elect's tab is drawn only in its weeks
+            if f'data-pane="{iid}"' not in t or f'id="{iid}"' not in t:
+                bad.append(f"{hub}#{iid}: no tab or no panel answers it")
+            if rest and rest != f"#{iid}":
+                bad.append(f"{hub}: the row's {iid} goes to {rest}, not the tab's address #{iid}")
+    css = _source("src/pages/app.css")
+    hid = re.search(r"\n(\.twntabs\.oftabs[^{]*)\{display:none !important\}", css)
+    assert hid, "app.css no longer hides the three hubs' own tab strips, which the row replaced"
+    assert ".twntabs{" not in hid.group(1).replace(" ", "") and "town" not in hid.group(1), (
+        "app.css hides every tab strip, a town page's own among them")
+    js = _source("src/pages/find.js")
+    assert re.search(r"\nrowMount\(\);", js) and "data-pane" in js, (
+        "find.js no longer runs rowMount, so the row would not follow the hub's open tab")
+    assert not bad, "; ".join(bad)
+    return "ok", ("Laws, Officials and Resources each keep the script and a tab and panel for "
+                  "every item of their row, at the addresses they had; only their own strips "
+                  "are hidden; find.js follows the open tab")
+
+
+@check("frontend", "the row's items that come and go -- the bill requests, the members-elect, the "
+                   "elections, the former members, Live now, the calendars and journals -- are drawn "
+                   "only while their page is written, and Live now only while build_live.LINKED is on")
+def _row_comes_and_goes():
+    """Six of the row's items are drawn only where the run writes their page
+    (chrome.row_facts): the bill requests, named for their year; the
+    members-elect, who carry the day they take office (data-until) so a page
+    read after it hides them, as the hub's own tab does; the elections, while
+    there are results to build them from; the former members' list; the
+    calendars and journals; and Live now, only while the owner's switch is on
+    (build_live.LINKED; the owner, 20 November 2026: "drawn only while
+    LINKED is on"). Each is judged from a file every page builder runs after,
+    or from the source a later step builds from, so the row and the phone's
+    menu are one on every page, and none links a page the run did not write
+    -- check_site would call it broken and hold the night. Today LINKED is
+    off, so no page the fixture built links /live in its header. And every
+    row label has a Spanish draft in lang/es.json."""
+    import build_live
+    import chrome as CH
+    import i18n
+    none = {k: None for k in set(CH.COMES_AND_GOES.values())}
+    some = {"requests": {"term": "2027-requests", "year": "2027"}, "elect_until": "2099-12-01",
+            "elections": True, "former": True, "documents": True, "live": True}
+    off, on = CH.nav("bills.html", facts=none), CH.nav("bills.html", facts=some)
+    for href, words in (("bills.html?term=2027-requests", "2027 bill requests"),
+                        ("officials.html#members-elect", "Members-elect"),
+                        ("elections/index.html", "Elections"),
+                        ("directory/former-legislators.html", "Former members"),
+                        ("live.html", "Live now"),
+                        ("calendar/documents.html", "Calendars and journals")):
+        assert f'href="{href}"' not in off, f"{words} is drawn with no page for it"
+        assert re.search(rf'<a href="{re.escape(href)}"[^>]*>{words}</a>', on), (
+            f"{words} is not drawn at {href} where its page is written")
+    row = re.search(r'<nav class="subnav".*?</nav>', CH.nav("officials.html", facts=some), re.S).group(0)
+    assert re.search(r'href="officials.html#members-elect" data-elect data-until="2099-12-01"', row), (
+        "the members-elect's item does not carry the day they take office")
+    es = CH.nav("bills.html", lang="es", facts=some)
+    assert "Solicitudes de proyectos de ley de 2027" in es, "the Spanish row does not say the requests' year"
+    # LIVE NOW, BY THE OWNER'S SWITCH, as row_facts reads it.
+    site = _fixture_site_shared()[0] / "site"
+    CH.use_site(site)
+    facts = CH.row_facts()
+    import calendar_documents as CD
+    assert CH.DOCUMENTS_QUEUE == CD.QUEUE.as_posix(), (
+        f"chrome judges the calendars by {CH.DOCUMENTS_QUEUE}, calendar_documents reads {CD.QUEUE}")
+    assert CH.live_linked() is bool(build_live.LINKED), (
+        f"chrome reads LINKED as {CH.live_linked()} where build_live.LINKED is {build_live.LINKED}")
+    assert facts["live"] is bool(build_live.LINKED), (
+        f"row_facts says Live now is {facts['live']} where build_live.LINKED is {build_live.LINKED}")
+    live = [rel for rel, t in _row_pages(site)
+            if any(_row_key(h) == "live" for h in re.findall(r'<a href="([^"]*)"', CH.NAV_RE.search(t).group(0)))]
+    if not build_live.LINKED:
+        assert not live, f"LINKED is off and {len(live)} pages link Live now in the header: {live[:3]}"
+    # A members-elect file that will not read stops the builders that draw
+    # them, and leaves the header's item out: it stopped every page builder
+    # once (preflight's own request-card check, whose file is a fragment).
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / "members_elect.json").write_text('{"races": {}}', encoding="utf-8")
+        CH.use_site(d)
+        try:
+            broken = CH.row_facts()["elect_until"]
+        finally:
+            CH.use_site(site)
+    assert broken is None, f"a members-elect file that will not read drew the item until {broken}"
+    keys = re.findall(r'say\(lang, "(nav\.row\.[^"]+)"', _source("src/pages/chrome.py"))
+    cat = i18n.catalog("es").get("strings", {})
+    missing = [k for k in keys if k not in cat]
+    assert not missing, f"lang/es.json has no draft for {missing}"
+    assert len(keys) == sum(len(v) for v in CH.ROWS.values()), (
+        "chrome.row_words does not name every item of chrome.ROWS")
+    return "ok", (f"the six come and go with their pages, in the row and the menu; LINKED is "
+                  f"{'on' if build_live.LINKED else 'off'} and {len(live)} fixture pages link Live now; "
+                  f"all {len(keys)} row labels have a Spanish draft")
+
+
+@check("frontend", "on a page in another language the phone's menu and the footer's map mark a link to a "
+                   "page that is in English only \"(en inglés)\", and the row does not")
+def _row_marks_english():
+    """The owner, 20 November 2026: on Spanish pages, links to English-only
+    pages are marked "(en inglés)" in the footer map and the phone menu, not
+    in the row. Held on chrome's header in Spanish, with every page that
+    comes and goes drawn: each menu link to a page lang/es.json's pages
+    (i18n.PAGES) do not hold says "(en inglés)", in the catalog's own words
+    (guides.in_english), and carries hreflang="en"; each to a Spanish page
+    says neither; the row says neither, however its pages are; and an
+    English page marks nothing. The same of the footer's map (chrome.site_map),
+    in Spanish and in English. Then on every Spanish page the fixture built,
+    the menu and the map are marked so."""
+    import chrome as CH
+    import i18n
+    some = {"requests": {"term": "2027-requests", "year": "2027"}, "elect_until": "2099-12-01",
+            "elections": True, "former": True, "documents": True, "live": True}
+    word = "(" + i18n.say("es", "guides.in_english", "in English") + ")"
+    assert word == "(en inglés)", f"the catalog says {word}"
+
+    def faults(t, lang):
+        out, n = [], 0
+        smap = re.search(r'<nav class="smap".*?</nav>', t, re.S)
+        mapped = re.findall(r'<li[^>]*><a href="([^"]*)"([^>]*)>(.*?)</a></li>', smap.group(0), re.S) if smap else []
+        for href, attrs, inner in _row_menu(t) + mapped:
+            page = (CH._split(_row_key(href))[0] or "index") + ".html"
+            english = lang != "en" and not i18n.has(lang, page)
+            n += english
+            if english != (word in inner) or english != ('hreflang="en"' in attrs):
+                out.append(f"{href}: {'English only' if english else 'in ' + lang} and "
+                           f"{'marked' if word in inner else 'not marked'}")
+        _lit, items, _s = _row_read(t)
+        out += [f"the row's {h} is marked" for h, _a, lab, _o in (items or []) if word in lab]
+        return out, n
+    bad = []
+    for sec in ("bills.html", "officials.html", "resources.html"):
+        f, n = faults(CH.nav(sec, lang="es", facts=some), "es")
+        bad += f
+        assert n, f"the Spanish menu on {sec} names no English page"
+        bad += faults(CH.nav(sec, facts=some), "en")[0]
+    f, n = faults(CH.footer_html("es", facts=some), "es")
+    assert n, "the Spanish footer's map names no English page"
+    bad += f + faults(CH.footer_html("en", facts=some), "en")[0]
+    site = _fixture_site_shared()[0] / "site"
+    spanish = 0
+    for rel, t in _row_pages(site):
+        if not rel.startswith("es/"):
+            continue
+        spanish += 1
+        bad += [f"{rel}: {x}" for x in faults(t, "es")[0]]
+    assert spanish, "the fixture built no Spanish page"
+    assert not bad, f"{len(bad)} faults: " + "; ".join(bad[:6])
+    return "ok", (f"the Spanish menu and footer map mark every English-only page {word} with "
+                  f"hreflang=\"en\" and no Spanish one, the row none; so on all {spanish} Spanish pages "
+                  "the fixture built")
+
+
+@check("frontend", "the footer's map of the site is chrome.ROWS, as the header's row and the phone's menu are: "
+                   "every section, every page of its row, in the row's order and words")
+def _footer_map_one_table():
+    """The owner, 20 November 2026 (navigation option A, answer 4): a footer
+    site map on every page, drawn from the same table as the rows, so the
+    row, the phone's menu and the footer cannot come to disagree. Held, in
+    both languages and with every page that comes and goes drawn and with
+    none: chrome.footer_html's map has the six sections of NAV_TABS in their
+    order, each a heading over exactly the links row_items gives its row --
+    the same addresses, attributes and words, in the same order -- and the
+    phone's menu (chrome.menu_all) has the same; nothing in either is marked
+    as the page a reader is on, so the footer is one on every page; and the
+    map sits above the footer's three columns."""
+    import chrome as CH
+    some = {"requests": {"term": "2027-requests", "year": "2027"}, "elect_until": "2099-12-01",
+            "elections": True, "former": True, "documents": True, "live": True}
+    none = {k: None for k in set(CH.COMES_AND_GOES.values())}
+    n = 0
+    for lang in ("en", "es"):
+        for facts in (some, none):
+            foot = CH.footer_html(lang, facts=facts)
+            menu = CH.nav("bills.html", lang=lang, facts=facts)
+            smap = re.search(r'<nav class="smap"[^>]*>.*?</nav>', foot, re.S)
+            assert smap, "the footer has no map of the site"
+            assert foot.index('<nav class="smap"') < foot.index('<div class="fcols">'), (
+                "the map is not above the footer's columns")
+            heads = re.findall(r'<h2 class="smh" id="fm-([a-z]+)">', smap.group(0))
+            assert heads == [h[:-5] for h, _l, _g in CH.NAV_TABS], f"the map's sections are {heads}"
+            cols = re.findall(r'<div class="smcol">(.*?)</ul></div>', smap.group(0), re.S)
+            secs = re.findall(r'<div class="nvsec">(.*?)</div></div>', menu, re.S)
+            for (sec, _l, _g), col, msec in zip(CH.NAV_TABS, cols, secs):
+                want = [(h, extra) for _i, _label, h, extra, _en in CH.row_items(sec, lang, facts)]
+                # The members-elect's data-elect is the list item's, so that taking
+                # out what carries it leaves no empty item (chrome._elect_part).
+                got = [(h, li + a) for li, h, a in re.findall(
+                    r'<li([^>]*)><a href="([^"]*)"((?: [a-z-]+(?:="[^"]*")?)*?)(?: hreflang="en")?>', col)]
+                assert got == want, f"{lang}: the footer's {sec} is {got}, not the row's {want}"
+                labels = [lab for _i, lab, _h, _e, _en in CH.row_items(sec, lang, facts)]
+                said = [re.sub(r"\s*<span.*", "", x) for x in re.findall(r"<li[^>]*><a [^>]*>(.*?)</a></li>", col)]
+                assert said == labels, f"{lang}: the footer's {sec} says {said}, not {labels}"
+                in_menu = re.findall(r'<div class="nvpages">.*', msec, re.S)[0]
+                assert [h for h, _a in re.findall(r'<a href="([^"]*)"([^>]*)>', in_menu)] == [h for h, _e in want], (
+                    f"{lang}: the phone's menu and the footer differ on {sec}")
+                n += len(want)
+            assert 'aria-current' not in smap.group(0), "the footer's map marks a page as the one a reader is on"
+    return "ok", (f"the footer's map and the phone's menu are chrome.ROWS in both languages, with and "
+                  f"without the pages that come and go: {n} links compared, none marked current")
+
+
+@check("frontend", "Elections and Votes are one click from every page: the footer's map links both "
+                   "wherever their pages are written")
+def _elections_votes_one_click():
+    """The owner's ask of 20 November 2026 that started navigation option A:
+    Elections and the vote search were reachable only from inside a bill's or
+    a legislator's page. Now the footer, on every page, links Votes, and
+    Elections wherever the build writes it (chrome.row_facts: there are
+    results on file). Held on the fixture's every page -- it writes the votes
+    page and has no election results, so its footer links Votes and not
+    Elections -- and with the results there, on chrome's footer in both
+    languages; and on site/, where a build has written the elections pages,
+    on every page of it."""
+    import chrome as CH
+    some = {"requests": None, "elect_until": None, "elections": True, "former": True,
+            "documents": True, "live": False}
+    for lang in ("en", "es"):
+        foot = CH.footer_html(lang, facts=some)
+        keys = {_row_key(h) for h in re.findall(r'<a href="([^"]*)"', foot)}
+        assert {"votes", "elections"} <= keys, f"the {lang} footer links {sorted(keys)[:12]}"
+    said = []
+    sites = [("the fixture's site", _fixture_site_shared()[0] / "site")]
+    if (Path("site") / "elections" / "index.html").is_file() and (Path("site") / "votes.html").is_file():
+        sites.append(("site/", Path("site")))
+    for what, site in sites:
+        want = {"votes"} | ({"elections"} if (site / "elections" / "index.html").is_file() else set())
+        bad, n = [], 0
+        for rel, t in _row_pages(site):
+            n += 1
+            foot = re.search(r"<footer>.*?</footer>", t, re.S)
+            keys = {_row_key(h) for h in re.findall(r'<a href="([^"]*)"', foot.group(0))} if foot else set()
+            if not want <= keys:
+                bad.append(f"{rel} lacks {sorted(want - keys)}")
+        assert n > 20 and not bad, f"{what}: {len(bad)} of {n} pages: " + "; ".join(bad[:5])
+        said.append(f"all {n} pages of {what} link {' and '.join(sorted(want))} from the footer")
+    return "ok", "; ".join(said) + "; with results on file, chrome's footer links Elections too, in both languages"
 
 
 @check("frontend", "every page's footer says who makes the site and leads to About, which says it once")

@@ -76,7 +76,8 @@ frame of every page -- the header and its nav, the footer, the head's icons,
 fonts and theme script -- is `chrome.py`'s: `bills.html` carries a
 `<!-- CHROME:... -->` slot for each part, which `shell.template()` fills,
 and `build_pages.shell()` asks for the same four, so the nav is edited in
-one place. The `dom_stub.js` that `preflight` loads the front end against
+one place (and its second row and the footer's map in one table,
+`chrome.ROWS`). The `dom_stub.js` that `preflight` loads the front end against
 is in `tests/`. `src/README.md` has the tree and the rule
 for where a new file goes, and each folder's own README says what it holds:
 
@@ -1549,6 +1550,25 @@ is. **The seat map** listens for focus on the box round the chart, not on the
 which it clears the wordmark; below that it sits between its neighbours. The
 brand's side padding changes at the same width, and `preflight` holds the two
 numbers together.
+
+**The header's rows and the footer's map are one table** (the owner's navigation
+option A, "Section rows", 20 November 2026). `chrome.ROWS` lists each section's own
+pages, and three things draw it: `chrome.row` the second row under the six tabs, on
+any page that belongs to a section (its own `<nav>`, named for the section, the page
+a reader is on `aria-current="page"`); `chrome.menu_all` the phone's menu, every
+section with all its pages; and `chrome.site_map` the footer's map on every page,
+which folds by section on a phone (`find.js`, `smapMount`). `chrome.locate` says
+which section and item a page's address is in, and `shell.page` draws the whole
+header again for each record page from it. An item whose page a build may not write
+-- the bill requests, the members-elect, the elections, the former members, the
+calendars and journals, and Live now while `build_live.LINKED` is off -- is drawn
+only while it is written (`chrome.row_facts`, `COMES_AND_GOES`), so no page of a run
+links a page the run did not write. On a page in another language the menu and the
+map mark a link to an English-only page "(en inglés)"; the row does not. The in-page
+tabs of Laws, Officials and Resources are the row: their strips stay in the page,
+hidden, because their script opens a panel from an address, and `find.js`'s
+`rowMount` keeps the row's mark on the panel that is open. A new page joins a
+section by a line in `ROWS` and its words in `row_words` (and `lang/es.json`).
 
 ## What is structurally wrong
 

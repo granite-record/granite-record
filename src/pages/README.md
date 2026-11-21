@@ -350,8 +350,9 @@ The helpers the builders share:
   was too;
 - `shell`: the page every record's own address is, `bills.html` with one
   record open;
-- `chrome`: the frame every page shares -- the head, the header, the
-  footer and the closing scripts;
+- `chrome`: the frame every page shares -- the head, the header with its
+  second row of each section's pages (`ROWS`) and the phone's menu, the
+  footer with its map of the site, and the closing scripts;
 - `components`: what the builders draw a person, a committee, a chip, a
   date and a time with (the twin of `components.js`), and `WORDBOOK`;
 - `i18n`: the site in Spanish, and how a translation stays current;
@@ -393,7 +394,9 @@ The browser's files, copied into `site/` (scripts without their comments):
   its parts (below);
 - `app.css`: the one stylesheet;
 - `components.js`: the browser's components, loaded first on every page;
-- `find.js`: Find anything, from the header;
+- `find.js`: Find anything, from the header; the phone's menu, the row's
+  mark on a hub's open tab (`rowMount`), and the footer's map folding on a
+  phone (`smapMount`);
 - `print.js` and `print.css`: a bill's print sheet;
 - `map.js` and `map.css`: the district map;
 - `live.js` and `live.css`: Live Now;

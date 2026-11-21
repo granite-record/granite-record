@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.26
+# GRANITE_VERSION: 2026-11-16.27
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -9435,6 +9435,7 @@ def _elect_pages_link_own():
     absent = _elect_absent()
     if absent:
         return "skip", "not here: " + ", ".join(absent)
+    import chrome
     w, _o, doc, _said = _elect_built()
     ws = w / "site"
     want = {}
@@ -9496,7 +9497,10 @@ def _elect_pages_link_own():
         t = f.read_text(encoding="utf-8")
         line = re.findall(r'<p class="elline" data-elect data-until="2026-12-02">(.*?)</p>', t)
         g = re.findall(r"window\.GR_ELECT=(\{[^{}]*\});", t)
-        if line or g or "data-elect" in t:
+        # The header's row and menu and the footer's map carry the tab's own
+        # data-elect on every page (chrome.ROWS): the line is the page's own.
+        own = re.sub(r"<footer>.*?</footer>", "", chrome.NAV_RE.sub("", t), flags=re.S)
+        if line or g or "data-elect" in own:
             lines[f.stem] = (line, [json.loads(x) for x in g])
     if set(lines) != set(want):
         bad.append(f"the line is on {sorted(lines)}, not on {sorted(want)}")

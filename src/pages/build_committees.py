@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.71
+# GRANITE_VERSION: 2026-09-07.72
 """
 A page's worth of data for every committee.
 
@@ -1472,7 +1472,9 @@ def main():
         # drawn for both chambers, with or without a committee sitting
         # today, because this step cannot know on an empty site whether the
         # chamber's card will fill it.
-        cols.append(f"<section><h2>{word}</h2><div class=\"ccards\">"
+        # Each column is named in its address (#house, #senate), the header
+        # row's House and Senate (chrome.ROWS).
+        cols.append(f"<section id=\"{word.lower()}\"><h2>{word}</h2><div class=\"ccards\">"
                     + f"<!-- chamber:{ch} --><!-- /chamber:{ch} -->"
                     + "".join(_card(c) for c in
                               sorted(rows_, key=lambda x: x["name"]))
