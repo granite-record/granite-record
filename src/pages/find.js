@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.73
+// GRANITE_VERSION: 2026-09-16.74
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -2482,9 +2482,13 @@ function ytMount(){
   scrim.className="findscrim";scrim.hidden=true;
   const panel=document.createElement("div");
   panel.id="ytpanel";panel.className="findpanel ytpanel";panel.hidden=true;
-  panel.setAttribute("role","region");panel.setAttribute("aria-label",tr("yt.title","Your town"));
+  // THE PANEL IS MY TOWN (the owner, 21 November 2026: "My Town is fine"),
+  // the name the Officials page's tab had: its heading and the name a screen
+  // reader gives the region. The button that opens it says "Your town", or
+  // the town, as before.
+  panel.setAttribute("role","region");panel.setAttribute("aria-label",tr("yt.panel","My Town"));
   panel.innerHTML='<div class="findin"><div class="findgrab" aria-hidden="true"></div>'
-    +'<div class="yttop"><h2 class="ythead">'+tr("yt.title","Your town")+'</h2>'
+    +'<div class="yttop"><h2 class="ythead">'+tr("yt.panel","My Town")+'</h2>'
     +'<button type="button" class="findcancel ytclose" id="ytclose">'+tr("yt.close","Close")+'</button></div>'
     +'<div id="ytbody"><p class="ytnote">'+tr("yt.loading","Loading&hellip;")+'</p></div></div>';
   nav.parentNode.insertBefore(scrim,nav.nextSibling);

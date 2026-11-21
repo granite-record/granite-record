@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.34
+# GRANITE_VERSION: 2026-11-16.35
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -14374,6 +14374,81 @@ def _town_panel_where_you_vote():
     return "ok", ("Where you vote under the officials for a town, a ward, a town by ward and a place "
                   "with none on the list; no clerk's name, phone, email or title in any panel, and the "
                   "Learn pages' slot still names the clerk")
+
+
+_TOWN_PANEL_TITLE_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const words = JSON.parse(fs.readFileSync("./words.json", "utf8"));
+const create = document.createElement.bind(document);
+const made = [];
+function kept(tag) {
+  const e = create(tag || "div"), at = {};
+  e.setAttribute = (k, v) => { at[k] = String(v); };
+  e.getAttribute = k => (k in at ? at[k] : null);
+  made.push(e);
+  return e;
+}
+document.createElement = kept;
+document.getElementById = id => (id === "ytbtn" || id === "ovtown" || id === "navdrop" || id === "themer"
+  || id === "findbtn") ? null : create("div");
+const out = {};
+try { vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"}); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+const F = vm.runInThisContext("({ytMount})");
+for (const lang of ["en", "es"]) {
+  window.GR_WORDS = lang === "es" ? words : {};
+  window.GR_LANG = lang;
+  made.length = 0;
+  F.ytMount();
+  const panel = made.find(e => e.id === "ytpanel"), btn = made.find(e => e.id === "ytbtn");
+  out[lang] = {head: panel && panel.innerHTML, label: panel && panel.getAttribute("aria-label"),
+               button: btn && btn.innerHTML};
+}
+console.log("@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the town panel is titled My Town, its button still Your town")
+def _town_panel_title():
+    """The owner, 21 November 2026: "My Town is fine." The town panel the
+    header's button opens (find.js ytMount) is headed "My Town" -- the name
+    the Officials page's tab had until the panel took its place -- and a
+    screen reader names the region so; the button that opens it says "Your
+    town", or the town once one is saved, as before. In Spanish, "Mi
+    municipio", the word the site gave My Town, and the button "Su
+    municipio". Mounted in node in both languages, the Spanish words the
+    catalog's. Fails if the heading or the region's name goes back to "Your
+    town", or the button's word changes with it."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    import i18n
+    es = i18n.catalog("es")["strings"]
+    assert es.get("yt.panel", {}).get("en") == "My Town" and es["yt.panel"].get("es") == "Mi municipio", (
+        f"the catalog's yt.panel is {es.get('yt.panel')}, not My Town as Mi municipio")
+    words = {k: es[k]["es"] for k in ("yt.panel", "yt.title", "yt.close", "yt.loading", "set.label",
+                                      "set.title") if k in es}
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_with_components(_source("src/pages/find.js")), encoding="utf-8")
+        (root / "words.json").write_text(json.dumps(words, ensure_ascii=False), encoding="utf-8")
+        (root / "go.js").write_text(_TOWN_PANEL_TITLE_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    said = (r.stdout + r.stderr).strip()
+    assert r.returncode == 0 and "@@" in r.stdout, f"node go.js: {said[-300:]}"
+    got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    for lang, title, button in (("en", "My Town", "Your town"), ("es", "Mi municipio", "Su municipio")):
+        g = got[lang]
+        assert f'<h2 class="ythead">{title}</h2>' in (g["head"] or ""), (
+            f"the {lang} panel's heading is not {title!r}: {(g['head'] or '')[:200]}")
+        assert g["label"] == title, f"the {lang} panel's region is named {g['label']!r}, not {title!r}"
+        assert f'<span class="ytword">{button}</span>' in (g["button"] or ""), (
+            f"the {lang} button no longer says {button!r}")
+    return "ok", ("the panel is headed and named My Town (Mi municipio), and the button that opens it "
+                  "still says Your town (Su municipio)")
 
 
 # THE OFFICIALS OVERVIEW'S FIXTURES: two chambers as they sit, and a
