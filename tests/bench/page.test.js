@@ -5,6 +5,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import vm from "node:vm";
 import { SCRIPT, benchPage } from "../../workers/bench/page.js";
 
 const page = async () => (await benchPage().text());
@@ -31,11 +32,106 @@ test("the token leaves the address before anything else runs, so YouTube's playe
   // 17 November 2026 carrying the token after "#".
   const strip = SCRIPT.indexOf('history.replaceState(null,"",location.pathname+location.search)');
   assert.ok(strip > 0, "the address keeps the token");
-  for (const later of ["function api(", "function ytLoad(", "YT.Player(", "\nstart();"])
+  for (const later of ["Storage.", "function api(", "function ytLoad(", "YT.Player(", "\nstart();"])
     assert.ok(SCRIPT.indexOf(later) > strip, `${later} comes before the token leaves the address`);
-  assert.match(SCRIPT, /sessionStorage\.setItem\("bench",T\);else T=sessionStorage\.getItem\("bench"\)/,
-               "the token is kept for the tab alone, so a reload still works");
-  assert.doesNotMatch(SCRIPT, /localStorage|document\.cookie/, "kept nowhere longer than the tab");
+  assert.doesNotMatch(SCRIPT, /sessionStorage\.setItem|document\.cookie/,
+                      "the token is kept on the device (localStorage) and nowhere else");
+});
+
+// THE PAGE'S SCRIPT, RUN: in a context of its own, on a stub of the page's
+// elements, the address, both storages and fetch. Every token here is made up.
+const A = "A".repeat(40) + "aaa", B = "B".repeat(40) + "bbb";
+const QUIET = { queue: "topic", role: "contributor", queues: [], items: [], far: [], progress: null };
+
+function run({ hash = "", local = {}, session = {}, status = 200, data = QUIET, confirmed = true } = {}) {
+  const log = [], sent = [], els = {}, on = {};
+  const el = id => (els[id] ||= { id, hidden: id === "forget", innerHTML: "", textContent: "", value: "",
+    className: "", style: {}, dataset: {}, classList: { add() {}, remove() {} }, toggleAttribute() {},
+    setAttribute() {}, appendChild() {}, focus() {}, addEventListener() {} });
+  el("forget");  // in the markup, hidden, before the script runs
+  const storage = (name, m) => ({
+    getItem: k => { log.push(`${name}.get ${k}`); return k in m ? m[k] : null; },
+    setItem: (k, v) => { log.push(`${name}.set ${k}`); m[k] = String(v); },
+    removeItem: k => { log.push(`${name}.remove ${k}`); delete m[k]; },
+  });
+  const location = { hash, pathname: "/bench", search: "", origin: "https://example.test", reload() {} };
+  const ctx = vm.createContext({
+    location,
+    history: { replaceState: (s, t, url) => { log.push("strip " + url); location.hash = ""; } },
+    localStorage: storage("local", local), sessionStorage: storage("session", session),
+    document: { hidden: false, head: { appendChild() {} }, createElement: () => ({}), querySelectorAll: () => [],
+                getElementById: id => { log.push("element " + id); return el(id); },
+                addEventListener: (t, f) => { log.push("listen " + t); on[t] = f; } },
+    window: { addEventListener: t => log.push("listen " + t) }, navigator: {},
+    confirm: () => confirmed,
+    setInterval: () => { log.push("interval"); return 0; }, setTimeout: () => 0, clearTimeout() {},
+    fetch: (path, opts) => { log.push("fetch " + path); sent.push({ path, body: JSON.parse(opts.body) });
+      return Promise.resolve({ status, text: () => Promise.resolve(JSON.stringify(data)) }); },
+  });
+  vm.runInContext(SCRIPT, ctx);
+  const settle = () => new Promise(r => setImmediate(r));
+  const press = what => on.click({ target: { closest: () => ({ id: "", dataset: { do: what } }) } });
+  return { log, sent, els, location, local, session, settle, press };
+}
+
+test("the token is kept on the device: an address's wins, /bench alone reads it back, and a tab's moves over", async () => {
+  // A link opened: out of the address first, then kept, replacing what was kept before.
+  let p = run({ hash: "#" + A, local: { "gr.bench": B } });
+  await p.settle();
+  assert.equal(p.log[0], "strip /bench", `the first thing the page does is ${p.log[0]}, not take the token out of the address`);
+  assert.equal(p.location.hash, "");
+  assert.equal(p.local["gr.bench"], A, "the token in the address replaces the one kept on the device");
+  assert.deepEqual(p.sent.map(s => [s.path, s.body.t]), [["/api/bench/next", A]], "sent in the body alone");
+  assert.ok(p.sent.every(s => !s.path.includes(A)), "never in an address");
+  assert.equal(p.els.forget.hidden, false, "a link held shows the way to forget it");
+  // /bench alone, on a device that has opened the link once.
+  p = run({ local: { "gr.bench": A } });
+  await p.settle();
+  assert.deepEqual(p.sent.map(s => s.body.t), [A], "with no token in the address, the device's own is used");
+  assert.equal(p.local["gr.bench"], A);
+  // A tab that kept it before 21 November 2026, in sessionStorage.
+  p = run({ session: { bench: A } });
+  await p.settle();
+  assert.deepEqual(p.sent.map(s => s.body.t), [A], "the tab's token is used");
+  assert.equal(p.local["gr.bench"], A, "and moved to the device");
+  assert.ok(!("bench" in p.session), "and not left in the tab");
+  // Nothing in the address and nothing kept: no request, and the page says how to begin.
+  p = run();
+  await p.settle();
+  assert.equal(p.sent.length, 0);
+  assert.match(p.els.body.innerHTML, /This page needs a link/);
+  assert.match(p.els.body.innerHTML, /Open the private link you were sent once on this device, and this page will remember it\./);
+  assert.equal(p.els.forget.hidden, true, "nothing to forget");
+});
+
+test("a link the bench answers 404 is forgotten on the device; one it cannot reach is kept", async () => {
+  for (const start of [{ local: { "gr.bench": A } }, { hash: "#" + A }]) {
+    const p = run({ ...start, status: 404, data: { error: "not here" } });
+    await p.settle();
+    assert.ok(!("gr.bench" in p.local), `a 404 leaves the dead link on the device (${JSON.stringify(start)})`);
+    assert.match(p.els.body.innerHTML, /This page needs a link/);
+    assert.equal(p.els.forget.hidden, true);
+  }
+  const p = run({ local: { "gr.bench": A }, status: 503, data: null });
+  await p.settle();
+  assert.equal(p.local["gr.bench"], A, "a bench that cannot be reached is not a dead link");
+  assert.match(p.els.body.innerHTML, /cannot be reached/);
+});
+
+test("\"Forget this link on this device\" removes it and shows the page with no link", async () => {
+  const html = await page();
+  assert.match(html, /<p class="forget" id="forget" hidden><button type="button" data-do="forget">Forget this link on this device<\/button><\/p>/);
+  assert.match(html, /\.forget button\{min-height:44px;/, "a target of 44px");
+  let p = run({ local: { "gr.bench": A } });
+  await p.settle();
+  p.press("forget");
+  assert.ok(!("gr.bench" in p.local), "the forget control leaves the link on the device");
+  assert.match(p.els.body.innerHTML, /This page needs a link/);
+  assert.equal(p.els.forget.hidden, true);
+  p = run({ local: { "gr.bench": A }, confirmed: false });
+  await p.settle();
+  p.press("forget");
+  assert.equal(p.local["gr.bench"], A, "kept when the question is answered Cancel");
 });
 
 test("the keys: left No, down Not sure, right Yes, Z undo, N note, Space play, J and L ten seconds", () => {
