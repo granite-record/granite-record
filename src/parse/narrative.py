@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.116
+# GRANITE_VERSION: 2026-09-04.117
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -4462,10 +4462,13 @@ def cancel_marked(r, kind=None):
             or (kind in ROW_MEETINGS and bool(CANCEL_SPELLED.search(desc))))
 
 
-def build(bill, rows, introduction=None):
-    rows = sorted(stamps_in_reach(rows), key=lambda r: r["created"])
-    if CORRECTIONS:
-        SIBLINGS.extend(_sibling_rows(bill, rows))
+def events_of_rows(bill, rows):
+    """The bill's docket rows read into events, in the order entered: each row
+    classified (in its decade's vocabulary for a database-era bill, docket_vocab),
+    its day, year and note settled, and a row filed under another bill moved to
+    `elsewhere`, the bill's list of docket lines with a note of whose it is. Also
+    the rows' session and its term.
+    A step of build, lifted out of it as it stood (20 November 2026)."""
     # A DATABASE-ERA BILL IS READ IN ITS OWN DECADE'S VOCABULARY. The dump
     # covers 1989-2016, whose lines abbreviate almost everything and date
     # almost nothing; docket_vocab reads those and returns events in exactly
@@ -4599,6 +4602,14 @@ def build(bill, rows, introduction=None):
         # it takes the key off again.
         ev["_row"] = len(evs)
         evs.append(ev)
+    return session, term, evs, elsewhere
+
+
+def order_events(evs):
+    """The events put in the order they happened (day_order, hold_in_order), each
+    amendment given its chamber, and a hearing on a proposed non-germane
+    amendment or one held jointly told once.
+    A step of build, lifted out of it as it stood (20 November 2026)."""
     other_chambers_row(evs)
     evs.sort(key=day_order)
     hold_in_order(evs)
@@ -4624,6 +4635,14 @@ def build(bill, rows, introduction=None):
                         for y in amend_keys(e.get("num"))[:1])
                 for o in evs)
 
+
+def introduction_told(bill, evs, introduction, session):
+    """Whether the bill was introduced, by its rows and the House Journal's word
+    (`introduction`, or journal_introduction's): its withdrawals (`gone`),
+    whether the journal says it never was (`journal_out`), and `not_introduced`,
+    with what was entered ahead of an introduction that never came marked as
+    planned.
+    A step of build, lifted out of it as it stood (20 November 2026)."""
     # A BILL WITHDRAWN BEFORE THE DAY IT WAS TO BE INTRODUCED WAS NOT
     # INTRODUCED, AND WHAT WAS SCHEDULED FOR AFTER IT DID NOT HAPPEN. The
     # House's docket of 2009-2012 enters a bill weeks ahead -- "To Be
@@ -4742,6 +4761,17 @@ def build(bill, rows, introduction=None):
             if e["_type"] in ("to_be_introduced", "entered_introduced", "withdrawn",
                               "proposed") or e.get("_void"):
                 e["_pre"] = True
+    return gone, journal_out, not_introduced
+
+
+def meetings_not_told(bill, evs, term, gone, journal_out):
+    """The meetings the history does not tell marked so: one noticed for after its
+    chamber took the measure from the committee, one a later row cancelled or
+    moved (overtaken), one its own cancelled twin calls off, a recessed
+    hearing's next day after the report, and one the calendars dropped
+    (WHOLE_DAY). Returns the events, without the notices a withdrawal or the
+    journal's word undid.
+    A step of build, lifted out of it as it stood (20 November 2026)."""
     # AND A MEETING NOTICED BEFORE THE CHAMBER TOOK THE MEASURE FROM ITS
     # COMMITTEE, FOR A DAY AFTER IT DID. HA 1 of 2008: "Public Hearing:
     # 4/25/2008 9:00 AM LOB 206-208", entered on 8 April; on 23 April the
@@ -4842,6 +4872,18 @@ def build(bill, rows, introduction=None):
     if gone or journal_out:
         evs = [e for _i, e in sorted(enumerate(evs),
                                      key=lambda x: (x[1]["when"].date(), x[0]))]
+    return evs
+
+
+def build(bill, rows, introduction=None):
+    rows = sorted(stamps_in_reach(rows), key=lambda r: r["created"])
+    if CORRECTIONS:
+        SIBLINGS.extend(_sibling_rows(bill, rows))
+    session, term, evs, elsewhere = events_of_rows(bill, rows)
+    order_events(evs)
+
+    gone, journal_out, not_introduced = introduction_told(bill, evs, introduction, session)
+    evs = meetings_not_told(bill, evs, term, gone, journal_out)
 
     # Which committee held the bill when each thing happened. Only the referral
     # line names one, so it is carried forward until the next referral -- the
