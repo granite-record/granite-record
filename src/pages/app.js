@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.367
+// GRANITE_VERSION: 2026-09-07.368
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10498,7 +10498,7 @@ function electionIncumbent(card,k){
   const say=String(k||"").startsWith("S|")
     ?tr("race.incumbent_s","Held a seat in the Senate on election day.")
     :tr("race.incumbent_h","Held a seat in the House on election day.");
-  return card.replace(/(<span class="[^"]*\ber-incb" title=")[^"]*(">)[^<]*(?=<\/span>)/g,
+  return card.replace(/(class="[^"]*\ber-incb" title=")[^"]*(">)[^<]*/g,
     (_m,a,b)=>a+esc(say)+b+esc(tr("race.incumbent","Incumbent")));
 }
 // UPCOMING ELECTIONS (the owner, 19 November 2026, "Yes to all 9" of the

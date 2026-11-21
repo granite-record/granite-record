@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.20
+# GRANITE_VERSION: 2026-11-07.21
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -317,8 +317,9 @@ def inc_chip(chamber):
     of the asterisk and its line under the cards of 19 November): the Elected chip's
     shape, size and place, in a colour of its own that reads as no result (.er-incb),
     what it means in its title. A member's Elections tab says both in the page's
-    language (app.js electionIncumbent: race.incumbent, race.incumbent_h and _s)."""
-    return f' <span class="chip er-incb" title="{INC_WORDS[chamber]}">{INC_WORD}</span>'
+    language (app.js electionIncumbent: race.incumbent, race.incumbent_h and _s).
+    The chip is the one chip (components.chip); only its title is put in after."""
+    return " " + C.chip(INC_WORD, "er-incb").replace('">', f'" title="{E(INC_WORDS[chamber])}">', 1)
 
 
 def candidate_rows(race, elected_names, held=frozenset(), mine=None, primary=False, inc=frozenset(),
