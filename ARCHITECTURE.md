@@ -3283,6 +3283,23 @@ Each is described where it belongs; this is the list in one place.
   mostly the record's own dict, field by field with the comment that says why
   each is there; of `main`, the members' records and the pages' files after
   the bills. Item 5 says why length is a hazard there.
+- The long functions outside `build_site_v2.py` had their steps lifted
+  out the same way on 20 November 2026 (lines before and after):
+  `build_data.main` 1,569 and 430, `narrative.build` 1,270 and 179,
+  `build_pages.main` 854 and 52, `build_feeds.main` 845 and 626,
+  `build_committees.main` 677 and 520. What is left of `build_data.main`
+  is the order two checks read off its source (the database's measures,
+  the journals', the flags and whole titles, then `bills.json`), the two
+  fills that bind a name only where their file exists, and the frozen
+  term's run; of `narrative.build`, the record's own dict, field by field;
+  of the feeds' and committees' `main`, the parts that share twenty-odd
+  names of the function's state, where a lift would be a function of 20
+  to 30 parameters and the next cut is a design one. The story's loop in
+  `narrative.story_of_events` is one statement of 374 lines, and
+  `narrative.describe` (579) a dispatch whose every branch returns, so
+  neither can be cut by a lift. `build_pages.officials_pages` (534) is
+  mostly the Officials page's own nested functions, which a lift would
+  have to hand back as closures.
 - Five tools carry `--manifest default="verification_manifest.csv"`:
   `align_all`, `apply_markers`, `probe_alignment`, `transcribe_and_align`,
   `verify_batch`. Each opens whatever `--manifest` names, so run with no

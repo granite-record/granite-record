@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.39
+# GRANITE_VERSION: 2026-11-16.40
 """
 preflight's checks of the repository's guards: stamps, addresses, secrets, the scripts as scripts, the suite itself.
 
@@ -4427,3 +4427,161 @@ def _state_settings_one_place():
     assert not seen, ("a county list stands outside src/lib/state_settings.json; read ST.COUNTIES, "
                       "ST.COUNTY_ABBR or ST.COUNTY_CODE instead: " + ", ".join(seen))
     return "ok", f"{len(ST.COUNTIES)} counties and every key present; no second list in the code"
+
+
+# THE STATE'S ZONE WHERE IT IS STILL WRITTEN OUT (20 November 2026, finding 16): the site's own
+# JavaScript, which the build copies as it stands, and each with the setting's zone; and the
+# workflows' Windows zone, by the IANA zone it is.
+_ZONE_TWINS = {"src/pages/app.js": 1, "src/pages/app/100-bill-facts.js": 1, "src/pages/live.js": 1}
+_ZONE_WINDOWS = {"America/New_York": "Eastern Standard Time"}
+# The Worker files that read the zone from their folder's generated file, and from which.
+_ZONE_READERS = {"workers/follow/common.js": "./site.gen.js", "workers/live/clock.js": "./live.gen.js",
+                 "workers/live/merge.js": "./live.gen.js", "workers/live/test_mode.js": "./live.gen.js"}
+
+
+def _zone_py_faults(tree, zone, names, hours):
+    """[(line, what)] of a parsed Python file that writes the state's zone out: a string holding
+    the zone (a docstring aside), a string that is one of its short names, or a timedelta of one
+    of its hours from UTC, alone or chosen between two."""
+    docs = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant)}
+    out = []
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs:
+            if zone in n.value:
+                out.append((n.lineno, f"the zone {zone!r}"))
+            elif n.value in names:
+                out.append((n.lineno, f"the zone's name {n.value!r}"))
+        if isinstance(n, ast.Call) and (getattr(n.func, "attr", None) or getattr(n.func, "id", None)) == "timedelta":
+            for k in n.keywords:
+                if k.arg != "hours":
+                    continue
+                opts = [k.value.body, k.value.orelse] if isinstance(k.value, ast.IfExp) else [k.value]
+                try:
+                    vals = {abs(ast.literal_eval(v)) for v in opts}
+                except ValueError:
+                    continue
+                if vals & hours:
+                    out.append((n.lineno, f"timedelta(hours={ast.unparse(k.value)})"))
+    return out
+
+
+def _zone_js_literals(text, zone):
+    """(how many times a JavaScript file's code writes the state's zone, every timeZone it gives
+    as a literal but UTC), its comments left out."""
+    code = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    code = re.sub(r"(^|[^:\\])//.*$", r"\1", code, flags=re.M)
+    return code.count(json.dumps(zone)), [z for z in re.findall(r'timeZone\s*:\s*["\']([^"\']+)["\']', code)
+                                          if z != "UTC"]
+
+
+@check("files", "the state's time zone is read from the settings: no Python writes the zone, its hours "
+                "or its names out, the Workers take it from their generated files, and the site's "
+                "JavaScript and the workflows that still write it write the setting's",
+       needs=("state_settings", "refusal", "build_live", "build_date", "follow_site", "live_gen"))
+def _time_zone_from_the_settings(ST, R, BL, BD, FS, LG):
+    """NEW HAMPSHIRE'S ZONE, ONE PLACE (finding 16 of stage0-code.md, section 10 item 2). Until 20
+    November 2026 "America/New_York" was typed in four Worker files and build_live's home-page
+    script, and refusal.eastern and build_live.nh_today each wrote the US rule and Eastern's
+    hours (-4, -5, "EDT", "EST") out for themselves. state_settings.json's "timezone" and
+    "timezone_offsets" hold them now: utc_offset() is the one rule, which both call; the Workers
+    import TIMEZONE from site.gen.js and live.gen.js, which follow_site.py and live_gen.py write
+    from the setting (their own checks hold the files current); build_live's script writes
+    ST.TIMEZONE. Still written out, and held here to the setting: the site's JavaScript the
+    build copies as it stands (_ZONE_TWINS) and the workflows' `tzutil /s`, Windows's name for
+    the zone (_ZONE_WINDOWS). Words a reader sees ("Eastern") are not the zone and stay.
+
+    Held: no Python file outside state_settings.py, the suite and the tests writes the zone, its
+    short names or its hours; no JavaScript outside the tests writes the zone or a timeZone
+    literal but the twins, each the setting's and as many as named; each Worker reader imports
+    TIMEZONE from its generated file; and utc_offset, refusal.eastern and nh_today answer as the
+    rule written out did (kept below as it was), at every hour of 2024-2030 and every minute of
+    each change of clock. Planted, each must be refused."""
+    zone, offs = ST.TIMEZONE, ST.TIMEZONE_OFFSETS
+    names = {offs["standard"]["name"], offs["daylight"]["name"]}
+    hours = {abs(offs["standard"]["hours"]), abs(offs["daylight"]["hours"])}
+    assert names == {"EST", "EDT"} and hours == {4, 5} and zone == "America/New_York", (zone, offs)
+    bad = []
+    for f in _paths.code_files("*.py"):
+        rel = f.relative_to(_paths.ROOT).as_posix()
+        if _in_suite(f) or "tests" in f.relative_to(_paths.ROOT).parts or rel == "src/lib/state_settings.py":
+            continue
+        bad += [f"{rel}:{n} {what}" for n, what in _zone_py_faults(_parsed(f), zone, names, hours)]
+    assert not bad, ("the state's zone is written out in Python: " + "; ".join(bad[:6])
+                     + ". Read state_settings.TIMEZONE, or utc_offset() for its hours and name")
+    names_, text = _tracked()
+    assert names_ is not None, text
+    gens = {"workers/follow/site.gen.js": FS, "workers/live/live.gen.js": LG}
+    seen = {}
+    for rel in names_:
+        if not rel.endswith((".js", ".mjs")) or rel.startswith(("tests/", "src/checks/")) or rel not in text \
+                or rel in gens:
+            continue
+        n, given = _zone_js_literals(text[rel], zone)
+        if n or given:
+            seen[rel] = (n, given)
+    stray = {r: v for r, v in seen.items() if r not in _ZONE_TWINS}
+    assert not stray, ("JavaScript writes the state's zone itself: " + "; ".join(f"{r} {v}" for r, v in stray.items())
+                       + ". A Worker imports TIMEZONE from its folder's .gen.js")
+    for rel, count in _ZONE_TWINS.items():
+        n, given = seen.get(rel, (0, []))
+        assert n == count and given == [zone] * count, (
+            f"{rel} writes the zone {n} time(s), timeZone {given}, where _ZONE_TWINS says {count} of "
+            f"{zone!r}: the setting is {zone!r}")
+    for rel, gen in _ZONE_READERS.items():
+        code = _zone_js_literals(text.get(rel, ""), zone)
+        assert re.search(r'^import \{[^}]*\bTIMEZONE\b[^}]*\} from "' + re.escape(gen) + '";',
+                         text.get(rel, ""), re.M) and "TIMEZONE" in text.get(rel, "") and code == (0, []), (
+            f"{rel} does not take TIMEZONE from {gen}")
+    for rel, M in gens.items():
+        assert dict((k, v) for k, (_s, v) in M.values().items())["TIMEZONE"] == zone and \
+            f"export const TIMEZONE = {json.dumps(zone)};" in text.get(rel, ""), f"{rel}'s TIMEZONE is not the setting's"
+    flows = 0
+    for f in sorted((_paths.ROOT / ".github" / "workflows").glob("*.yml")):
+        for said in re.findall(r'tzutil\s+/s\s+"([^"]+)"', _source(f)):
+            flows += 1
+            assert said == _ZONE_WINDOWS.get(zone), (
+                f"{f.name} sets the runner's clock to {said!r}, and the setting's zone {zone!r} is "
+                f"{_ZONE_WINDOWS.get(zone)!r} on Windows")
+    # The rule, as refusal.eastern and build_live.nh_today wrote it until 20 November 2026.
+    import datetime as dt
+    utc = dt.timezone.utc
+
+    def written(t):
+        def sunday(month, nth):
+            d = dt.date(t.year, month, 1)
+            return d + dt.timedelta(days=(6 - d.weekday()) % 7, weeks=nth - 1)
+        on = dt.datetime.combine(sunday(3, 2), dt.time(7), utc)
+        off = dt.datetime.combine(sunday(11, 1), dt.time(6), utc)
+        return (-4, "EDT") if on <= t < off else (-5, "EST")
+    moments = [dt.datetime(2024, 1, 1, tzinfo=utc) + dt.timedelta(hours=h) for h in range(7 * 8784)]
+    for y in range(2024, 2031):
+        for m, nth in ((3, 2), (11, 1)):
+            d = dt.date(y, m, 1) + dt.timedelta(days=(6 - dt.date(y, m, 1).weekday()) % 7, weeks=nth - 1)
+            moments += [dt.datetime.combine(d, dt.time(4), utc) + dt.timedelta(minutes=k) for k in range(240)]
+    off = [t for t in moments if ST.utc_offset(t) != written(t)
+           or R.eastern(t) != ((t + dt.timedelta(hours=written(t)[0])).replace(tzinfo=None), written(t)[1])]
+    assert not off, f"utc_offset or refusal.eastern parts from the rule as written at {off[:3]}"
+    saved_env, real = os.environ.pop(BD.ENV, None), BD.utcnow
+    try:
+        for t, want in ((dt.datetime(2026, 3, 8, 4, 30, tzinfo=utc), "2026-03-07"),
+                        (dt.datetime(2026, 7, 1, 3, 30, tzinfo=utc), "2026-06-30"),
+                        (dt.datetime(2026, 7, 1, 4, 30, tzinfo=utc), "2026-07-01")):
+            BD.utcnow = lambda t=t: t
+            assert BL.nh_today().isoformat() == want, f"nh_today at {t} is {BL.nh_today()}, not {want}"
+    finally:
+        BD.utcnow = real
+        if saved_env is not None:
+            os.environ[BD.ENV] = saved_env
+    assert f"timeZone:{json.dumps(zone)}" in BL.HOME_JS, "build_live's home-page script names another zone"
+    for planted in ('x = "America/New_York"\n', 'h, z = (4, "EDT") if a else (5, "EST")\n',
+                    "d = u + timedelta(hours=-4 if a else -5)\n", "d = datetime.timedelta(hours=5)\n",
+                    'JS = \'{timeZone:"America/New_York"}\'\n'):
+        assert _zone_py_faults(ast.parse(planted), zone, names, hours), f"a zone written out was missed: {planted!r}"
+    assert not _zone_py_faults(ast.parse('"""America/New_York, in a docstring."""\nx = timedelta(hours=7)\n'),
+                               zone, names, hours)
+    assert _zone_js_literals('const f = {timeZone: "America/New_York"};', zone) == (1, [zone])
+    assert _zone_js_literals("// America/New_York\nconst NH = {timeZone: TIMEZONE};", zone) == (0, [])
+    return "ok", (f"no Python writes {zone} out; {len(_ZONE_READERS)} Worker files take it from the two "
+                  f"generated files; {len(_ZONE_TWINS)} page scripts and {flows} workflow lines hold the "
+                  f"setting's; utc_offset, refusal.eastern and nh_today answer as the rule did at "
+                  f"{len(moments):,} moments; each planted copy refused")

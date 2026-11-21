@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.72
+# GRANITE_VERSION: 2026-09-07.73
 """
 A page's worth of data for every committee.
 
@@ -941,6 +941,189 @@ def committee_recordings(days, carried, facts, code_of, pages):
                           reverse=True)
              for code, recs in out.items() if recs}, found)
 
+def archived_and_shared_said(out, index, span_of, archived):
+    """Each archived committee's record and page told so after the fact (the years
+    of its runs, and no feed named), and each page of a number the General Court
+    gave two committees given the other's code and years (shared_pages).
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    # The committee's own page says so as well. A reader who arrives at
+    # /committee/H05 from a search never sees this listing, and the page drew
+    # Education with 22 members as if it sat today. Written into the JSON the
+    # page draws, after the fact, because which committees are archived is
+    # only known once every committee's record has been read.
+    for c in archived:
+        f = out / f"{c['code']}.json"
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        # By run, not first to last: H47, the House's special committee on
+        # public employee pensions, sat in 2011-2012 and again in 2015-2016,
+        # and "2011 to 2016" said it sat through the two years between.
+        rec["archived"] = {"years": runs(c["span"])}
+        f.write_text(json.dumps(rec), encoding="utf-8")
+        # And its page stops naming a feed: shell.committee_followable, which
+        # build_feeds asks too, says an archived committee has none.
+        h = out / f"{c['code']}.html"
+        if h.exists():
+            h.write_text(h.read_text(encoding="utf-8").replace(
+                "\n" + feed_link(c["code"], c["name"]), ""), encoding="utf-8")
+    # A NUMBER THE GENERAL COURT GAVE TWO COMMITTEES. Its own records file the
+    # Senate's Development, Recreation and Environment of 1989-1990 under S03,
+    # the code they later gave the Senate's Appropriations, and the person
+    # decided on 25 September 2026 that the two are different committees,
+    # listed separately (committee_names.GAPS). So each has its own page, and
+    # each page says plainly that it shares the number and names the other,
+    # with the other's years: a reader who knows the code, or who came from a
+    # bill-status page printing APPROPRIATIONS over a 1989 bill, is told they
+    # are two committees rather than left to guess. Written after the fact,
+    # like `archived`, because the years are the other page's record.
+    for page, (gc, others) in shared_pages(CN.shared(), span_of, index).items():
+        f = out / f"{page}.json"
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        rec["same_code"] = {"code": gc, "others": others}
+        f.write_text(json.dumps(rec), encoding="utf-8")
+
+
+def committees_listing(a, site, live, past, archived, _card):
+    """committees.html: the sitting committees in two columns, House and Senate,
+    each headed by its chamber's slot; the study committees' slot; those with
+    nothing on record; and the former committees, most recent first.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    body = []
+    # THE TWO CHAMBERS SIDE BY SIDE. 25 House committees and 14 Senate ones
+    # in one column put the Senate below a screen and a half of scrolling,
+    # for a reader who very likely came looking for one of the 14. They are
+    # two independent lists and nothing is served by stacking them.
+    #
+    # The columns are a grid on the container rather than a width on each
+    # section, so they collapse to one on a narrow screen without either
+    # column knowing about the other.
+    cols = []
+    for ch, word in (("H", "House"), ("S", "Senate")):
+        rows_ = [c for c in live if c["chamber"] == ch]
+        # THE CHAMBER ITSELF FIRST (the person, 9 and 10 October 2026): its
+        # session days as a card like its committees', at the top of its
+        # column. build_full_sessions.py fills the slot after the session
+        # pages, whose term files it reads, are written -- so the column is
+        # drawn for both chambers, with or without a committee sitting
+        # today, because this step cannot know on an empty site whether the
+        # chamber's card will fill it.
+        # Each column is named in its address (#house, #senate), the header
+        # row's House and Senate (chrome.ROWS).
+        cols.append(f"<section id=\"{word.lower()}\"><h2>{word}</h2><div class=\"ccards\">"
+                    + f"<!-- chamber:{ch} --><!-- /chamber:{ch} -->"
+                    + "".join(_card(c) for c in
+                              sorted(rows_, key=lambda x: x["name"]))
+                    + "</div></section>")
+    if cols:
+        body.append('<div class="ctwo">' + "".join(cols) + "</div>")
+    # THE STATUTORY AND STUDY COMMITTEES (18 October 2026), folded under the
+    # chambers' own: build_study_committees.py, a later step, fills this slot
+    # between its two marks, as build_full_sessions fills the chambers' cards.
+    body.append(STUDY_SLOT)
+    if past:
+        # NOT "no longer meeting". House Rules is here with the Speaker as
+        # its chair and nine members; so is a special committee with a chair
+        # named on the General Court's own page today. What the site knows is
+        # that no bill was referred and no sitting day is on record -- which
+        # is a statement about this record, and true. Whether the committee
+        # meets is not something these files can say.
+        # No committee is named as an example here: which ones land in this
+        # list changes as bills are referred.
+        # .fill: the note takes the width the cards under it take (F9).
+        body.append('<h2>No bills or meetings on record</h2>'
+                    '<p class="src fill">These committees have a roster, and in '
+                    "some cases a chair, but no bill has been referred to them "
+                    "and no meeting of theirs is on record here."
+                    '</p><div class="ccards">'
+                    + "".join(_card(c) for c in
+                              sorted(past, key=lambda x: x["name"]))
+                    + "</div>")
+    if archived:
+        # At the bottom, in the same two columns, most recent first. The
+        # chamber labels are h2 like the columns above: the stylesheet styles
+        # `.clist h2` and nothing else, and an h3 drew at 18.7px over 14px
+        # labels. By the outline they belong under this section's heading; an
+        # h3 rule in app.css is the visuals session's to add, then these follow.
+        cols = []
+        for ch, word in (("H", "House"), ("S", "Senate")):
+            rows_ = sorted((c for c in archived if c["chamber"] == ch),
+                           key=lambda x: (x["span"][-1], x["name"]), reverse=True)
+            if rows_:
+                cols.append(f"<section><h2>{word}</h2><div class=\"ccards\">"
+                            + "".join(_card(c, dated=True) for c in rows_)
+                            + "</div></section>")
+        # "Former committees", as the search groups them and as each one's own
+        # page says (the person, 16 October 2026). The paragraph this
+        # replaced explained what the records cannot say -- renamed, divided,
+        # merged or ended -- and readers found that confusing.
+        body.append('<h2 id="archived">Former committees</h2>'
+                    '<p class="src fill">Committees that no longer meet, with the '
+                    "years of their record.</p>"
+                    '<div class="ctwo">' + "".join(cols) + "</div>")
+
+    page_html = S.page(
+        S.template(site), path="/committees.html", base=a.base,
+        title="Committees | Granite Record",
+        og_title="New Hampshire General Court committees",
+        og_image="og-committee.png", og_alt="Granite Record: committees and hearings",
+        description=("Every committee of the New Hampshire General Court: who "
+                     "sits on it, the bills referred to it, and what it did on "
+                     "each day it met."),
+        globals={"GR_STATIC": True}, og_type="website",
+        jsonld=LD.listing("New Hampshire General Court committees",
+                          "Every committee of the New Hampshire General Court.",
+                          a.base, S.canon("/committees.html")),
+        noscript="", skip_label="Skip to the committees",
+                  # No Cite on a hub (D23, 8 October 2026).
+                  nav_current="committees.html", sr_title="", cite=False)
+    # A plain listing rather than an app view: there is nothing to filter and
+    # 56 links do not need JavaScript to draw.
+    page_html = page_html.replace(
+        '<div id="results"></div>',
+        f'<div id="results"><div class="clist"><h1>Committees</h1>'
+        # What the page holds, in a reader's words (the person, 16 October
+        # 2026). The line this replaced set committees against bill search
+        # ("These answer what a committee did on a day") and read as a riddle.
+        '<p class="src">Every committee of the House and the Senate: who sits '
+        'on it, what it does, and the bills and meetings on its record.</p>'
+        + "".join(body) + "</div></div>", 1)
+    (site / "committees.html").write_text(S.clean_links(page_html), encoding="utf-8")
+    print("committees.html written")
+
+
+def committee_sitemap_said(a, site, out, index, urls, written, skipped):
+    """Refuses a run that wrote no committee page; merges the committee pages into
+    sitemap.xml (shell.sitemap_merge, the study committees' left to their step);
+    and says what was written.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    assert written, ("no committee page was written. That means no committee "
+                     "name in proceedings.csv matched data/committees.json, "
+                     "which is a parse problem rather than an empty session.")
+    # sitemap.xml is written by build_bill_pages.py, which runs first, and
+    # this adds to it rather than replacing it. THROUGH shell.sitemap_merge,
+    # AS THE OTHER BUILDERS ADD THEIRS (the sitemap audit, 16 October 2026):
+    # the test here was whether an address appeared anywhere in the file's
+    # text, which takes /committee/S03 as listed wherever /committee/S03-1989
+    # is, and nothing ever took out a committee this run no longer writes.
+    # Every committee's page is written on every run, so this run owns
+    # /committee whole; committees.html is a standing page and is not under it.
+    # EXCEPT THE STATUTORY AND STUDY COMMITTEES' PAGES (18 October 2026),
+    # /committee/ss<CommitteeID>, which build_study_committees.py writes after
+    # this step and owns: run alone, this would otherwise take them out.
+    added, dropped = S.sitemap_merge(site, a.base, urls, spare=STUDY_PAGES, owns="/committee")
+    if added or dropped:
+        print(f"sitemap.xml: {added} added, {dropped} no longer written taken out")
+
+    print(f"{written} committees -> {out}/")
+    if skipped:
+        print(f"  {len(skipped)} code(s) skipped as not a nameable committee: "
+              + ", ".join(skipped))
+    print(f"  {sum(i['n_members'] for i in index):,} seats, "
+          f"{sum(i['n_bills'] for i in index):,} bill referrals, "
+          f"{sum(i['n_sessions'] for i in index):,} sitting days")
+    lead_n = sum(1 for i in index if i["chair"])
+    print(f"  {lead_n} of {written} have a chair on file")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -1419,169 +1602,10 @@ def main():
     rows = [{**c, "span": span_of.get(c["code"], [])} for c in index]
     current_term = max((s[-1] for s in span_of.values() if s), default="")
     live, past, archived = listing_groups(rows, set(lead), current_term)
-    # The committee's own page says so as well. A reader who arrives at
-    # /committee/H05 from a search never sees this listing, and the page drew
-    # Education with 22 members as if it sat today. Written into the JSON the
-    # page draws, after the fact, because which committees are archived is
-    # only known once every committee's record has been read.
-    for c in archived:
-        f = out / f"{c['code']}.json"
-        rec = json.loads(f.read_text(encoding="utf-8"))
-        # By run, not first to last: H47, the House's special committee on
-        # public employee pensions, sat in 2011-2012 and again in 2015-2016,
-        # and "2011 to 2016" said it sat through the two years between.
-        rec["archived"] = {"years": runs(c["span"])}
-        f.write_text(json.dumps(rec), encoding="utf-8")
-        # And its page stops naming a feed: shell.committee_followable, which
-        # build_feeds asks too, says an archived committee has none.
-        h = out / f"{c['code']}.html"
-        if h.exists():
-            h.write_text(h.read_text(encoding="utf-8").replace(
-                "\n" + feed_link(c["code"], c["name"]), ""), encoding="utf-8")
-    # A NUMBER THE GENERAL COURT GAVE TWO COMMITTEES. Its own records file the
-    # Senate's Development, Recreation and Environment of 1989-1990 under S03,
-    # the code they later gave the Senate's Appropriations, and the person
-    # decided on 25 September 2026 that the two are different committees,
-    # listed separately (committee_names.GAPS). So each has its own page, and
-    # each page says plainly that it shares the number and names the other,
-    # with the other's years: a reader who knows the code, or who came from a
-    # bill-status page printing APPROPRIATIONS over a 1989 bill, is told they
-    # are two committees rather than left to guess. Written after the fact,
-    # like `archived`, because the years are the other page's record.
-    for page, (gc, others) in shared_pages(CN.shared(), span_of, index).items():
-        f = out / f"{page}.json"
-        rec = json.loads(f.read_text(encoding="utf-8"))
-        rec["same_code"] = {"code": gc, "others": others}
-        f.write_text(json.dumps(rec), encoding="utf-8")
-    body = []
-    # THE TWO CHAMBERS SIDE BY SIDE. 25 House committees and 14 Senate ones
-    # in one column put the Senate below a screen and a half of scrolling,
-    # for a reader who very likely came looking for one of the 14. They are
-    # two independent lists and nothing is served by stacking them.
-    #
-    # The columns are a grid on the container rather than a width on each
-    # section, so they collapse to one on a narrow screen without either
-    # column knowing about the other.
-    cols = []
-    for ch, word in (("H", "House"), ("S", "Senate")):
-        rows_ = [c for c in live if c["chamber"] == ch]
-        # THE CHAMBER ITSELF FIRST (the person, 9 and 10 October 2026): its
-        # session days as a card like its committees', at the top of its
-        # column. build_full_sessions.py fills the slot after the session
-        # pages, whose term files it reads, are written -- so the column is
-        # drawn for both chambers, with or without a committee sitting
-        # today, because this step cannot know on an empty site whether the
-        # chamber's card will fill it.
-        # Each column is named in its address (#house, #senate), the header
-        # row's House and Senate (chrome.ROWS).
-        cols.append(f"<section id=\"{word.lower()}\"><h2>{word}</h2><div class=\"ccards\">"
-                    + f"<!-- chamber:{ch} --><!-- /chamber:{ch} -->"
-                    + "".join(_card(c) for c in
-                              sorted(rows_, key=lambda x: x["name"]))
-                    + "</div></section>")
-    if cols:
-        body.append('<div class="ctwo">' + "".join(cols) + "</div>")
-    # THE STATUTORY AND STUDY COMMITTEES (18 October 2026), folded under the
-    # chambers' own: build_study_committees.py, a later step, fills this slot
-    # between its two marks, as build_full_sessions fills the chambers' cards.
-    body.append(STUDY_SLOT)
-    if past:
-        # NOT "no longer meeting". House Rules is here with the Speaker as
-        # its chair and nine members; so is a special committee with a chair
-        # named on the General Court's own page today. What the site knows is
-        # that no bill was referred and no sitting day is on record -- which
-        # is a statement about this record, and true. Whether the committee
-        # meets is not something these files can say.
-        # No committee is named as an example here: which ones land in this
-        # list changes as bills are referred.
-        # .fill: the note takes the width the cards under it take (F9).
-        body.append('<h2>No bills or meetings on record</h2>'
-                    '<p class="src fill">These committees have a roster, and in '
-                    "some cases a chair, but no bill has been referred to them "
-                    "and no meeting of theirs is on record here."
-                    '</p><div class="ccards">'
-                    + "".join(_card(c) for c in
-                              sorted(past, key=lambda x: x["name"]))
-                    + "</div>")
-    if archived:
-        # At the bottom, in the same two columns, most recent first. The
-        # chamber labels are h2 like the columns above: the stylesheet styles
-        # `.clist h2` and nothing else, and an h3 drew at 18.7px over 14px
-        # labels. By the outline they belong under this section's heading; an
-        # h3 rule in app.css is the visuals session's to add, then these follow.
-        cols = []
-        for ch, word in (("H", "House"), ("S", "Senate")):
-            rows_ = sorted((c for c in archived if c["chamber"] == ch),
-                           key=lambda x: (x["span"][-1], x["name"]), reverse=True)
-            if rows_:
-                cols.append(f"<section><h2>{word}</h2><div class=\"ccards\">"
-                            + "".join(_card(c, dated=True) for c in rows_)
-                            + "</div></section>")
-        # "Former committees", as the search groups them and as each one's own
-        # page says (the person, 16 October 2026). The paragraph this
-        # replaced explained what the records cannot say -- renamed, divided,
-        # merged or ended -- and readers found that confusing.
-        body.append('<h2 id="archived">Former committees</h2>'
-                    '<p class="src fill">Committees that no longer meet, with the '
-                    "years of their record.</p>"
-                    '<div class="ctwo">' + "".join(cols) + "</div>")
+    archived_and_shared_said(out, index, span_of, archived)
+    committees_listing(a, site, live, past, archived, _card)
 
-    page_html = S.page(
-        S.template(site), path="/committees.html", base=a.base,
-        title="Committees | Granite Record",
-        og_title="New Hampshire General Court committees",
-        og_image="og-committee.png", og_alt="Granite Record: committees and hearings",
-        description=("Every committee of the New Hampshire General Court: who "
-                     "sits on it, the bills referred to it, and what it did on "
-                     "each day it met."),
-        globals={"GR_STATIC": True}, og_type="website",
-        jsonld=LD.listing("New Hampshire General Court committees",
-                          "Every committee of the New Hampshire General Court.",
-                          a.base, S.canon("/committees.html")),
-        noscript="", skip_label="Skip to the committees",
-                  # No Cite on a hub (D23, 8 October 2026).
-                  nav_current="committees.html", sr_title="", cite=False)
-    # A plain listing rather than an app view: there is nothing to filter and
-    # 56 links do not need JavaScript to draw.
-    page_html = page_html.replace(
-        '<div id="results"></div>',
-        f'<div id="results"><div class="clist"><h1>Committees</h1>'
-        # What the page holds, in a reader's words (the person, 16 October
-        # 2026). The line this replaced set committees against bill search
-        # ("These answer what a committee did on a day") and read as a riddle.
-        '<p class="src">Every committee of the House and the Senate: who sits '
-        'on it, what it does, and the bills and meetings on its record.</p>'
-        + "".join(body) + "</div></div>", 1)
-    (site / "committees.html").write_text(S.clean_links(page_html), encoding="utf-8")
-    print("committees.html written")
-
-    assert written, ("no committee page was written. That means no committee "
-                     "name in proceedings.csv matched data/committees.json, "
-                     "which is a parse problem rather than an empty session.")
-    # sitemap.xml is written by build_bill_pages.py, which runs first, and
-    # this adds to it rather than replacing it. THROUGH shell.sitemap_merge,
-    # AS THE OTHER BUILDERS ADD THEIRS (the sitemap audit, 16 October 2026):
-    # the test here was whether an address appeared anywhere in the file's
-    # text, which takes /committee/S03 as listed wherever /committee/S03-1989
-    # is, and nothing ever took out a committee this run no longer writes.
-    # Every committee's page is written on every run, so this run owns
-    # /committee whole; committees.html is a standing page and is not under it.
-    # EXCEPT THE STATUTORY AND STUDY COMMITTEES' PAGES (18 October 2026),
-    # /committee/ss<CommitteeID>, which build_study_committees.py writes after
-    # this step and owns: run alone, this would otherwise take them out.
-    added, dropped = S.sitemap_merge(site, a.base, urls, spare=STUDY_PAGES, owns="/committee")
-    if added or dropped:
-        print(f"sitemap.xml: {added} added, {dropped} no longer written taken out")
-
-    print(f"{written} committees -> {out}/")
-    if skipped:
-        print(f"  {len(skipped)} code(s) skipped as not a nameable committee: "
-              + ", ".join(skipped))
-    print(f"  {sum(i['n_members'] for i in index):,} seats, "
-          f"{sum(i['n_bills'] for i in index):,} bill referrals, "
-          f"{sum(i['n_sessions'] for i in index):,} sitting days")
-    lead_n = sum(1 for i in index if i["chair"])
-    print(f"  {lead_n} of {written} have a chair on file")
+    committee_sitemap_said(a, site, out, index, urls, written, skipped)
     # The Videos tab's lists, said (SILENCE IS NOT SUCCESS).
     print(f"  {sum(len(v) for v in recordings.values()):,} recordings on {len(recordings)} "
           f"committee pages: {vfound['by_bills']:,} by their bills, {vfound['by_titles']:,} by "

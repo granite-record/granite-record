@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.19
+# GRANITE_VERSION: 2026-09-09.20
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
@@ -635,20 +635,15 @@ def next_window(now=None):
 def eastern(dt):
     """(wall-clock time, "EDT" or "EST") in New Hampshire for an aware time.
 
-    By hand, because Python on Windows has no time zone database here: daylight
-    time from 2 a.m. on the second Sunday of March (07:00 UTC) to 2 a.m. on
-    the first Sunday of November (06:00 UTC), the US rule since 2007.
+    By hand, because Python on Windows has no time zone database here: the
+    state's hours and the US rule since 2007, as state_settings.utc_offset
+    reads them from src/lib/state_settings.json.
     """
-    from datetime import date, datetime, timedelta, timezone
+    from datetime import timedelta
+    import state_settings as ST
     dt = _utc(dt)
-
-    def sunday(month, nth):
-        d = date(dt.year, month, 1)
-        return d + timedelta(days=(6 - d.weekday()) % 7 + 7 * (nth - 1))
-    on = datetime.combine(sunday(3, 2), datetime.min.time(), timezone.utc) + timedelta(hours=7)
-    off = datetime.combine(sunday(11, 1), datetime.min.time(), timezone.utc) + timedelta(hours=6)
-    hours, zone = (4, "EDT") if on <= dt < off else (5, "EST")
-    return (dt - timedelta(hours=hours)).replace(tzinfo=None), zone
+    hours, zone = ST.utc_offset(dt)
+    return (dt + timedelta(hours=hours)).replace(tzinfo=None), zone
 
 
 def _clock(dt, weekday=False):
