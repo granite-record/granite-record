@@ -25953,14 +25953,19 @@
    "es": "Cámara de Representantes",
    "state": "draft"
   },
-  "race.inc_h": {
-   "en": "* held a seat in the House on election day.",
-   "es": "* ocupaba un escaño en la Cámara de Representantes el día de la elección.",
+  "race.incumbent": {
+   "en": "Incumbent",
+   "es": "Titular",
    "state": "draft"
   },
-  "race.inc_s": {
-   "en": "* held a seat in the Senate on election day.",
-   "es": "* ocupaba un escaño en el Senado el día de la elección.",
+  "race.incumbent_h": {
+   "en": "Held a seat in the House on election day.",
+   "es": "Ocupaba un escaño en la Cámara de Representantes el día de la elección.",
+   "state": "draft"
+  },
+  "race.incumbent_s": {
+   "en": "Held a seat in the Senate on election day.",
+   "es": "Ocupaba un escaño en el Senado el día de la elección.",
    "state": "draft"
   },
   "race.intro": {
@@ -25969,13 +25974,13 @@
    "state": "draft"
   },
   "race.intro_primary": {
-   "en": "A primary is shown on the member&rsquo;s own party&rsquo;s ballot, under that year&rsquo;s general election; a candidate it nominated is marked Nominated.",
-   "es": "Una primaria se muestra en la papeleta del propio partido del miembro, debajo de las elecciones generales de ese año; quien resultó nominado/a se marca con Nominado/a.",
+   "en": "A primary is shown on the member&rsquo;s own party&rsquo;s ballot, first, with that year&rsquo;s general election beside it; a candidate it nominated is marked Nominated.",
+   "es": "Una primaria se muestra en la papeleta del propio partido del miembro, primero, con las elecciones generales de ese año a su lado; quien resultó nominado/a se marca con Nominado/a.",
    "state": "draft"
   },
   "race.intro_special": {
-   "en": "A special election is shown under the election cycle of the term whose seat it filled, by its date, with its primary under it.",
-   "es": "Una elección especial se muestra bajo el ciclo electoral del período cuyo escaño cubrió, por su fecha, con su primaria debajo.",
+   "en": "A special election is shown under the election cycle of the term whose seat it filled, by its date, with its primary first, beside it.",
+   "es": "Una elección especial se muestra bajo el ciclo electoral del período cuyo escaño cubrió, por su fecha, con su primaria primero, a su lado.",
    "state": "draft"
   },
   "race.lost": {

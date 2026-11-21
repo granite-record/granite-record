@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.414 */
+/* GRANITE_VERSION: 2026-09-07.415 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -10339,12 +10339,20 @@ text-wrap:balance}
 .er-c{font-weight:400;font-variant-numeric:tabular-nums}
 .er-filt .er-count{flex-basis:100%;margin:0;font-size:var(--t-ui);color:var(--ink-2)}
 .er-filt .er-count:empty{display:none}
-/* AN INCUMBENT'S ASTERISK after the name (build_elections.inc_mark), its words in its title
-   and in the one line under the cards (.er-incl). */
-.er-inc{text-decoration:none;font-weight:600;color:var(--ink);cursor:help}
+/* AN INCUMBENT'S CHIP after the name (build_elections.inc_chip; the owner, 21 November
+   2026, in place of the asterisk): the Elected chip's shape and size, on the wash with a
+   quiet bar, so it reads as a fact about the candidate and never as a result. What it
+   means is in its title. */
+.chip.er-incb{background:var(--wash);color:var(--ink-2);border-left-color:var(--rule-2);cursor:help}
 /* A MEMBER'S ELECTIONS TAB (the owner, 19 November 2026): one column of cards the
    tab's full width at every width, under a heading for each election cycle. */
 .er-cards.er-stack{grid-template-columns:minmax(0,1fr)}
+/* ...and where the tab has a primary (the owner, 21 November 2026), two columns: each
+   primary on the left beside its general on the right, the two cards of a pair the same
+   height so their rows compare across, an empty cell (.er-gap) keeping a lone card in
+   its own column. On a phone one column, the primary first, the empty cells gone. */
+.er-cards.er-pairs{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:45em){.er-cards.er-pairs{grid-template-columns:minmax(0,1fr)}.er-gap{display:none}}
 .er-cycle{margin:var(--sp-6) 0 var(--sp-2);font:600 var(--t-h3)/1.3 var(--serif)}
 /* A TOWN PAGE'S ELECTIONS TAB (the owner, 19 November 2026; town_elections.py): a card
    for each year, an election's heading in it, then the elections page's race cards,
