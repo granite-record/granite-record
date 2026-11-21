@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.71
+# GRANITE_VERSION: 2026-09-04.72
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1999,53 +1999,14 @@ def read_roster(folder, counties, report=None):
     return legs
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default=".")
-    ap.add_argument("--out", default="data")
-    ap.add_argument("--frozen", metavar="TERM", default="",
-                    help="build TERM alone from its frozen inputs (frozen/TERM/day/ and "
-                         "db/term/TERM/), writing only its bills and sponsors to --out")
-    ap.add_argument("--frozen-terms", action="store_true",
-                    help="build every frozen term older than the session's, each into "
-                         "<out>/frozen/<term>/, and nothing else")
-    a = ap.parse_args()
-    d, out = Path(a.dir), Path(a.out)
-    if a.frozen_terms:
-        return build_frozen_terms(d, out)
-    out.mkdir(parents=True, exist_ok=True)
-    report = []
-    # WHERE THE SESSION'S OWN FILES ARE. The fourteen the night installs are
-    # read from here, and for a frozen term from its freeze; everything else
-    # -- the database's past views, the roll calls of past years, the
-    # journals' withdrawn bills, the status pages, the corrections a person
-    # made -- from --dir and the working folder as ever.
-    frozen = a.frozen
-    sd = d / "frozen" / frozen / "day" if frozen else d
-    if frozen:
-        if not P.TERM_RE.match(frozen) or not (sd / "Docket.txt").exists():
-            sys.exit(f"no frozen day files for {frozen!r} at {sd}")
-        if P.session_term(sd) != frozen:
-            sys.exit(f"the frozen files at {sd} are {P.session_term(sd) or 'of no term'}'s, "
-                     f"not {frozen}'s")
-        print(f"THE FROZEN TERM {frozen}, from {sd} and {d / 'db' / 'term' / frozen}")
-    # ROWS OF A FINISHED TERM IN THE SESSION'S FILES ARE COUNTED AND LEFT OUT,
-    # NEVER MERGED (5 October 2026). The General Court's files do not all turn
-    # on one night, and a turned file can still carry the old term's last rows:
-    # on a copy, ten 2026 docket rows left in a 2027 Docket.txt made
-    # 2025-2026 "already built from session files", so the archive was
-    # skipped for the whole term and it shrank to 19 bills; their sponsors
-    # were filed under 2027-2028; and a docket holding 2025, 2026 and 2027
-    # together keyed the new term's stubs by number onto 2025's. A term frozen
-    # and older than the session's is built from its freeze alone
-    # (finished_builds), so its rows here are dropped as they are read, each
-    # file's count said. One rule for every place that would otherwise replace
-    # or skip a whole term on meeting one such row: senate_hearing_reports,
-    # fetch_testimony_db, narrative, build_proceedings and build_bill_versions
-    # keep it too. And an older term's rows beside the session's with NO
-    # freeze stop the run: that is a turn nobody froze, and building on would
-    # lose the term or mix the two.
-    import freeze_term
+def finished_terms_left_out(d, sd, frozen, freeze_term):
+    """The session's term (`sess`), the frozen terms older than it whose rows the
+    session's files are read without (`gone_terms`, none for a frozen term's own
+    run) and their years, and the counter and names of the rows left out
+    (`left_out`, `left_named`), which the readers below add to. Stops the run where
+    the session's files hold an older term nobody froze. `d` is --dir, `sd` where
+    the session's own files are, `freeze_term` the module main imported.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     sess = P.session_term(sd)
     gone_terms = [] if frozen else [t for t in freeze_term.frozen_terms(d) if sess and t < sess]
     gone_years = {y for t in gone_terms for y in freeze_term.term_years(t)}
@@ -2061,35 +2022,16 @@ def main():
                      f"and {P.term_of(_older[0])} is not frozen: a turn nobody froze. "
                      "python3 src/lib/freeze_term.py --session on the last files of that term, before the switch; "
                      "building on would lose the term or mix the two.")
+    return sess, gone_terms, gone_years, left_out, left_named
 
-    # ---------------------------------------------------------- counties ---
-    counties = {}
-    for r in rows(sd / "Counties.txt", 3):
-        counties[r[0]] = {"name": r[1], "abbr": r[2].rstrip(".")}
-    print(f"counties: {len(counties)}")
 
-    # ------------------------------------------------------- legislators ---
-    legs = read_roster(sd, counties, report)
-
-    # THE TERM'S OWN MEMBERS, ONCE THE ROSTER IS NOT ITS OWN (the review of 5
-    # October 2026). Organization Day seats the next House, and the General
-    # Court's roster may show it nights before its files show the next term:
-    # a database night takes it when tonight's Members.txt agrees, and an
-    # export whose legislators.txt turns first brings it as it comes. The term
-    # is still the session's then, and built from these files: on a copy with
-    # the next House installed, 1,392 of its bills drew sponsors with no party
-    # ("Former member #10578") and 477 tallied ballots under none. And
-    # LsrsOnly.txt lists sitting members only -- none of its 353 was off the
-    # roster on 5 October 2026, where LsrSponsors.txt kept 21 -- so it would
-    # lose every departed member's sponsorships with them. So while the
-    # session's own term is frozen and the installed roster is not its own
-    # (freeze_term.own_roster_terms), the term's sponsor files and its roster
-    # are the freeze's: its sponsors are read and named as they were before
-    # Organization Day, and the members who left are named on its ballots
-    # from that roster (below), as a finished term's are. Its docket and roll
-    # calls are still the installed ones, and the sitting roster
-    # (legislators.json) is the installed one. Before any of that, nothing
-    # here moves.
+def term_roster_files(d, sd, frozen, freeze_term, legs, sess):
+    """The terms whose own roster is frozen and not the installed one
+    (`roster_terms`) and those rosters (`term_rosters`, frozen_rosters); and while
+    the session's own term is one of them, the folder its sponsor files are read
+    from (`md`, else `sd`), the members it names over the sitting ones
+    (`term_legs`, else `legs`) and its roster alone (`sess_roster`, else empty).
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     roster_terms = [] if frozen else freeze_term.own_roster_terms(d)
     year_legs, term_rosters = {}, frozen_rosters(d, roster_terms)
     for _t, _roster in term_rosters:
@@ -2103,7 +2045,16 @@ def main():
         print(f"the installed roster is not {sess}'s: "
               f"{len(set(term_legs) - set(legs)):,} of its members hold no seat in it, and "
               f"its members and sponsor files are read from {md}")
+    return roster_terms, term_rosters, md, term_legs, sess_roster
 
+
+def towns_of_seats(sd, counties, legs, report):
+    """Each House seat's towns and wards, from site/districts.json where
+    parse_districts.py has written it and HouseDistricts.txt where not, and each
+    Senate seat's from data/senate_towns.json: put on every member of `legs` as
+    towns and town_seats, the House members no town matched said in `report`.
+    Returns {town: [seat]}, which towns.json is.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # ------------------------------------------------------------ towns ---
     # countyCode + district -> towns, and the reverse.
     towns, seats = defaultdict(list), defaultdict(list)
@@ -2209,14 +2160,17 @@ def main():
                              if have and dist_no > have[-1] else ""))
     report.append("Senate districts are not in HouseDistricts.txt, so town lookup "
                   "covers representatives only. Senate needs another source.")
+    return towns
 
-    # --------------------------------------------------------- subjects ---
-    subjects = {r[1]: {"id": r[0], "code": r[1], "name": r[2]}
-                for r in rows(sd / "SubjectCodes.txt", 3)}
-    committees = {r[0]: {"code": r[0], "name": r[1], "abbr": r[2]}
-                  for r in rows(sd / "Committees.txt", 3)}
-    print(f"subjects: {len(subjects)}   committees: {len(committees)}")
 
+def session_bills(d, sd, frozen, sess, subjects, committees, gone_years, left_out, left_named,
+                  report):
+    """The session's bills, {bill: record}, from LSRs.txt, with a stub for every bill
+    the docket names and LSRs.txt does not (titled from bill_titles.json's slice of
+    the term or a roll call), filled from db/Legislation.psv where a record has no
+    committee or subject, and given their current referrals; and {(year, lsr):
+    bill}. Rows of a finished term are counted in `left_out` and `left_named`.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
     # ------------------------------------------------------------ bills ---
     bills, by_lsr = {}, {}
     for r in rows(sd / "LSRs.txt"):
@@ -2366,6 +2320,102 @@ def main():
     if unmapped:
         report.append(f"{unmapped} bills carry a subject code that is not in "
                       "SubjectCodes.txt")
+    return bills, by_lsr
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dir", default=".")
+    ap.add_argument("--out", default="data")
+    ap.add_argument("--frozen", metavar="TERM", default="",
+                    help="build TERM alone from its frozen inputs (frozen/TERM/day/ and "
+                         "db/term/TERM/), writing only its bills and sponsors to --out")
+    ap.add_argument("--frozen-terms", action="store_true",
+                    help="build every frozen term older than the session's, each into "
+                         "<out>/frozen/<term>/, and nothing else")
+    a = ap.parse_args()
+    d, out = Path(a.dir), Path(a.out)
+    if a.frozen_terms:
+        return build_frozen_terms(d, out)
+    out.mkdir(parents=True, exist_ok=True)
+    report = []
+    # WHERE THE SESSION'S OWN FILES ARE. The fourteen the night installs are
+    # read from here, and for a frozen term from its freeze; everything else
+    # -- the database's past views, the roll calls of past years, the
+    # journals' withdrawn bills, the status pages, the corrections a person
+    # made -- from --dir and the working folder as ever.
+    frozen = a.frozen
+    sd = d / "frozen" / frozen / "day" if frozen else d
+    if frozen:
+        if not P.TERM_RE.match(frozen) or not (sd / "Docket.txt").exists():
+            sys.exit(f"no frozen day files for {frozen!r} at {sd}")
+        if P.session_term(sd) != frozen:
+            sys.exit(f"the frozen files at {sd} are {P.session_term(sd) or 'of no term'}'s, "
+                     f"not {frozen}'s")
+        print(f"THE FROZEN TERM {frozen}, from {sd} and {d / 'db' / 'term' / frozen}")
+    # ROWS OF A FINISHED TERM IN THE SESSION'S FILES ARE COUNTED AND LEFT OUT,
+    # NEVER MERGED (5 October 2026). The General Court's files do not all turn
+    # on one night, and a turned file can still carry the old term's last rows:
+    # on a copy, ten 2026 docket rows left in a 2027 Docket.txt made
+    # 2025-2026 "already built from session files", so the archive was
+    # skipped for the whole term and it shrank to 19 bills; their sponsors
+    # were filed under 2027-2028; and a docket holding 2025, 2026 and 2027
+    # together keyed the new term's stubs by number onto 2025's. A term frozen
+    # and older than the session's is built from its freeze alone
+    # (finished_builds), so its rows here are dropped as they are read, each
+    # file's count said. One rule for every place that would otherwise replace
+    # or skip a whole term on meeting one such row: senate_hearing_reports,
+    # fetch_testimony_db, narrative, build_proceedings and build_bill_versions
+    # keep it too. And an older term's rows beside the session's with NO
+    # freeze stop the run: that is a turn nobody froze, and building on would
+    # lose the term or mix the two.
+    import freeze_term
+    sess, gone_terms, gone_years, left_out, left_named = finished_terms_left_out(d, sd, frozen,
+                                                                                 freeze_term)
+
+    # ---------------------------------------------------------- counties ---
+    counties = {}
+    for r in rows(sd / "Counties.txt", 3):
+        counties[r[0]] = {"name": r[1], "abbr": r[2].rstrip(".")}
+    print(f"counties: {len(counties)}")
+
+    # ------------------------------------------------------- legislators ---
+    legs = read_roster(sd, counties, report)
+
+    # THE TERM'S OWN MEMBERS, ONCE THE ROSTER IS NOT ITS OWN (the review of 5
+    # October 2026). Organization Day seats the next House, and the General
+    # Court's roster may show it nights before its files show the next term:
+    # a database night takes it when tonight's Members.txt agrees, and an
+    # export whose legislators.txt turns first brings it as it comes. The term
+    # is still the session's then, and built from these files: on a copy with
+    # the next House installed, 1,392 of its bills drew sponsors with no party
+    # ("Former member #10578") and 477 tallied ballots under none. And
+    # LsrsOnly.txt lists sitting members only -- none of its 353 was off the
+    # roster on 5 October 2026, where LsrSponsors.txt kept 21 -- so it would
+    # lose every departed member's sponsorships with them. So while the
+    # session's own term is frozen and the installed roster is not its own
+    # (freeze_term.own_roster_terms), the term's sponsor files and its roster
+    # are the freeze's: its sponsors are read and named as they were before
+    # Organization Day, and the members who left are named on its ballots
+    # from that roster (below), as a finished term's are. Its docket and roll
+    # calls are still the installed ones, and the sitting roster
+    # (legislators.json) is the installed one. Before any of that, nothing
+    # here moves.
+    roster_terms, term_rosters, md, term_legs, sess_roster = term_roster_files(d, sd, frozen,
+                                                                               freeze_term, legs,
+                                                                               sess)
+
+    towns = towns_of_seats(sd, counties, legs, report)
+
+    # --------------------------------------------------------- subjects ---
+    subjects = {r[1]: {"id": r[0], "code": r[1], "name": r[2]}
+                for r in rows(sd / "SubjectCodes.txt", 3)}
+    committees = {r[0]: {"code": r[0], "name": r[1], "abbr": r[2]}
+                  for r in rows(sd / "Committees.txt", 3)}
+    print(f"subjects: {len(subjects)}   committees: {len(committees)}")
+
+    bills, by_lsr = session_bills(d, sd, frozen, sess, subjects, committees, gone_years, left_out,
+                                  left_named, report)
 
     # --------------------------------------------------------- sponsors ---
     # LsrsOnly.txt is the better sponsor source. It states "Prime" or "Sponsor"
