@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.53
+# GRANITE_VERSION: 2026-09-04.54
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -538,6 +538,259 @@ def feed(title, desc, link, self_link, items, base):
             + f'<atom:link href="{escape(self_link)}" rel="self" '
             'type="application/rss+xml"/>\n'
             f"{body}</channel>\n</rss>\n")
+
+
+def legislator_feeds(a, site, base, fd, bills_page, sponsored, followable, lists, written, find,
+                     bill_url, page_of, path_of, fc_list, newest):
+    """One feed per followable legislator, feed/legislator/<id>.xml: every vote
+    (named by its motion) and every sponsorship, newest first, nothing rated;
+    each member's key listed in `followable` and their items in `lists` for the
+    changes files, and each file in `written`. Returns the roster read
+    (legislators.json), the feeds written, the ballots with no day, and the
+    members whose feed has no item.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    # ---- one feed per legislator ------------------------------------------
+    # Every vote and every sponsorship, in order, with nothing rated or
+    # selected. The whole point of the site is that it does not keep a
+    # scorecard, and a feed that ranked or summarised would be one.
+    #
+    # A vote is on the MOTION, not the bill. Voting yes on Inexpedient to
+    # Legislate is a vote to kill it, so the motion is named in the title of
+    # every item rather than left to the description, where a reader scanning
+    # headlines would never see it.
+    nleg = 0
+    undated = 0
+    empty = []
+    lp = site / "legislators.json"
+    # Each roll call's outcome and tally, for the ballots the changes files
+    # set beside them (build_site_v2.write_rollcall_index).
+    try:
+        rc_index = json.loads((site / "rollcalls_index.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        rc_index = {}
+    roster = json.loads(lp.read_text(encoding="utf-8")) if lp.exists() else []
+    if lp.exists():
+        (fd / "legislator").mkdir(parents=True, exist_ok=True)
+        for m in roster:
+            mid = str(m.get("id") or "")
+            # THE TEST THE MEMBER'S PAGE NAMES ITS FEED ON. build_legislator_pages
+            # runs before this and has no file to look for, so both ask
+            # shell.member_followable. This once wrote a feed wherever the
+            # items below came to something, and no page named one.
+            if not S.member_followable(m):
+                continue
+            who = m.get("display") or m.get("name") or f"Member #{mid}"
+            items, mine = [], {}
+            vp = site / "legislators" / f"{mid}.json"
+            if vp.exists():
+                rec = json.loads(vp.read_text(encoding="utf-8"))
+                # Newest first by the day cast, before the cut: the file's own
+                # order is not a promise this feed can lean on. Stable, so one
+                # day's roll calls keep the order the file gives them.
+                votes = sorted(rec.get("votes") or [],
+                               key=lambda v: iso_day(v.get("d")), reverse=True)
+                for v in votes[:a.per_feed]:
+                    day = iso_day(v.get("d"))
+                    undated += not day
+                    bb = find(v.get("b"), day)
+                    # A ROLL CALL THE CLERK FILED UNDER NO BILL is still a vote
+                    # the member cast, and it needs a name of its own.
+                    # RollCallSummary leaves the bill column empty for a motion
+                    # the chamber makes about itself: 2026-H-290 "Affirm The
+                    # Report" and 2026-H-291 "Remove From Table", both on the
+                    # afternoon of 21 May 2026, and 2026-H-329 "Affirm The
+                    # Report" on 19 August. All three sit inside the sixty
+                    # items this feed carries for every one of the 382 sitting
+                    # House members, so 1,146 titles opened on the em dash with
+                    # nothing in front of it, reading "yes on Affirm The
+                    # Report" after a leading space and a dash -- and in a
+                    # reader that shows titles only, that is the whole item.
+                    # The roll call's key says which chamber took it; say that.
+                    seat = chamber_of(v.get("k"))
+                    named = bool(bb) or bool((v.get("b") or "").strip())
+                    if bb:
+                        label = bb["n"]
+                    elif named:
+                        label = v["b"]
+                    else:
+                        label = f"{seat} floor vote" if seat else "Floor vote"
+                    how = VOTE_WORD.get(v.get("v"), v.get("v") or "")
+                    q = v.get("q") or "the motion"
+                    # Joined from the parts there are. With no bill there is no
+                    # title either, and the description used to open on a blank
+                    # line for all 1,146 of them.
+                    note = ("The vote is on the motion, not the bill." if named
+                            else "The record files this roll call under no"
+                                 " bill: it is a motion of the"
+                                 f" {seat or 'chamber'} itself.")
+                    items.append((
+                        f"{label} \u2014 {how} on {q}",
+                        bill_url(bb) if bb else bills_page,
+                        "\n\n".join(x for x in (
+                            (bb or {}).get("title", ""),
+                            f"{who} voted {how} on {q}.", note) if x),
+                        day,
+                        # The roll call's own key, so two ballots cast on one
+                        # bill on one day are two items. See vote_guid.
+                        vote_guid(mid, v, q)))
+                    rc = rc_index.get(v.get("k") or "") or {}
+                    # The ballot and the motion in the site's words (17 October
+                    # 2026): "On OTPA: voted Not Voting/Excused" was the roll
+                    # call's codes. The feed's own title is left as it was.
+                    asked = rc.get("q") or q
+                    it = FC.item(items[-1][4], day, "vote", items[-1][0], path_of(items[-1][1]),
+                                 (bb or {}).get("term") or P.term_on(day), milestone=True,
+                                 vote=FC.vote_detail(
+                                     ballot_word(v.get("v")),
+                                     motion=PA.motion_words(asked, (bb or {}).get("id") or "",
+                                                            {"House": "H", "Senate": "S"}.get(seat, ""))
+                                     or asked,
+                                     result=("passed" if rc.get("p") else "failed") if rc else "",
+                                     tally=f"{rc['y']}-{rc['n']}" if rc.get("y") is not None
+                                     and rc.get("n") is not None else "",
+                                     bill=label, title=(bb or {}).get("title", "")))
+                    if it:
+                        mine[it["guid"]] = it
+            for bb, burl, prime, filed in sponsored.get(mid, []):
+                role = "prime sponsor" if prime else "co-sponsor"
+                items.append((
+                    f"{bb['n']} \u2014 {role}",
+                    burl,
+                    f"{bb.get('title', '')}\n\n{who} is the {role} of this bill.",
+                    filed, f"sponsor:{mid}:{bb['id']}"))
+                it = FC.item(items[-1][4], (filed or "")[:10], "sponsor", items[-1][0],
+                             path_of(burl), bb.get("term") or "")
+                if it:
+                    mine[it["guid"]] = it
+            key = f"member:{mid}"
+            # THE ROSTER'S OWN SORT NAME AND CHAMBER, with the label and the
+            # page: member_entry, which a member listed for email alone takes
+            # too (A MEMBER WHO SITS ON UNDER ANOTHER NUMBER, below).
+            followable[key] = member_entry(m, who, page_of(m))
+            lists[key] = fc_list(newest(items), mine)
+            if not items:
+                # The roster counts a vote or a sponsorship that neither the
+                # member's file nor any bill page carries: a site built in
+                # pieces. Written anyway, because the member's page names it,
+                # and counted below rather than passed over.
+                empty.append(mid)
+            self_l = f"{base}/feed/legislator/{mid}.xml"
+            written.append(fd / "legislator" / f"{mid}.xml")
+            (fd / "legislator" / f"{mid}.xml").write_text(
+                feed(f"{who} \u2014 Granite Record",
+                     f"Every recorded vote and sponsorship for {who}, newest "
+                     "first. Nothing is rated, scored or selected.",
+                     base + S.canon("/officials.html"), self_l, newest(items), base),
+                encoding="utf-8")
+            nleg += 1
+    return roster, nleg, undated, empty
+
+
+def members_moved_said(site, current, led, roster, followable, lists, hints, page_of):
+    """A member listed last night who still sits listed again; a member who sits
+    on under a new number given a key their follows move to (`hints`); and the
+    members elected to another seat (`elected`). Returns the lines that say so
+    (`moved_said`) and `elected`.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    # A MEMBER WHO SITS ON UNDER ANOTHER NUMBER (above continuations): a
+    # member listed last night who still sits stays listed; a member who left
+    # the roster and sits on under a new key is told where, and the new key
+    # is listed for their follow to move to; and where the members-elect file
+    # is drawn, the ledger is told whom it elects to another seat.
+    before = set((led or {}).get("followable") or {})
+    sitting = [m for m in roster if str(m.get("id") or "") and not m.get("former")]
+    moved_said = []
+    kept = []
+    for m in sitting:
+        key = f"member:{m['id']}"
+        if key in before and key not in followable:
+            followable[key] = member_entry(m, m.get("display") or m.get("name") or key,
+                                           page_of(m))
+            lists[key] = []
+            kept.append(key)
+    if kept:
+        moved_said.append(f"  {len(kept):,} sitting legislators listed last night with nothing on "
+                          f"record to feed are listed again, for email: {kept[:5]}")
+    gone = sorted(k for k in before if FC.kind_of_key(k) == "member" and k not in followable)
+    moves, doubts = continuations(gone, sitting, remembered(led), before)
+    for x, m in sorted(moves.items()):
+        y = f"member:{m['id']}"
+        if y not in followable:
+            followable[y] = member_entry(m, m.get("display") or m.get("name") or y, page_of(m))
+            lists[y] = []
+        hints[x] = {"becomes": y, "name": plain_name(m), "where": seat_words(m)}
+    if moves:
+        moved_said.append(f"  {len(moves):,} followed legislators sit on under a new number, "
+                          "and their follows move there: "
+                          + "; ".join(f"{x} -> member:{m['id']} ({seat_words(m)})"
+                                      for x, m in sorted(moves.items())))
+    moved_said += doubts
+    elect_doc = BME.for_pages(site)
+    if elect_doc:
+        elected = elected_elsewhere(elect_doc, followable, sitting)
+    else:
+        elected = {k: v for k, v in remembered(led).items()
+                   if k in followable and v["term"] >= current}
+    if elected:
+        moved_said.append(f"  {len(elected):,} followed legislators elected to another seat are "
+                          "remembered for the night the roster turns: "
+                          + ", ".join(f"{k} ({v['seat']})" for k, v in sorted(elected.items())))
+    return moved_said, elected
+
+
+def request_follows(site, followable, hints):
+    """Next session's bill requests made followable, lsr:<number>, while each is
+    filed and not withdrawn; one introduced as a followable bill, or withdrawn,
+    given the hint its follow ends with instead.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    # BILL REQUESTS, FOLLOWED UNTIL THEY ARE BILLS (the person, 22 October
+    # 2026: "email following for LSRs should ping when the legislation has
+    # been drafted and then convert that into following the bill version").
+    # Next session's requests (build_lsrs.py, site/idx/<year>-requests.json)
+    # are followable as lsr:<number> while each is filed and not withdrawn --
+    # and, once introduced, until its bill is followable itself, so the
+    # follow always has somewhere to go. The night one leaves, its ending
+    # names the bill it became (hints "becomes"), and the sender moves the
+    # follow onto that bill; a withdrawn one ends as withdrawn.
+    reqs = {}
+    try:
+        meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
+        rterm = str(((meta.get("requests") or {}).get("term")) or "")
+        if rterm:
+            reqs = {"term": rterm, "rows": json.loads(
+                (site / "idx" / f"{rterm}.json").read_text(encoding="utf-8"))}
+    except (OSError, ValueError):
+        reqs = {}
+    nreq = 0
+    for r in reqs.get("rows") or []:
+        num = str(r.get("n") or "").replace("LSR", "").strip()
+        key = f"lsr:{num}"
+        if not FC.key_ok(key):
+            continue
+        intro = str(r.get("introduced") or "")
+        m = re.match(r"^([A-Z]+) (\d+)$", intro)
+        becomes = f"bill:{r.get('year') or num[:4]}/{m.group(1)}{m.group(2)}" if m else ""
+        if r.get("withdrawn"):
+            hints[key] = {"withdrawn": True}
+            continue
+        if becomes and becomes in followable:
+            # AND WHERE ITS TEXT IS, once the night has read it (the owner, 17
+            # November 2026: "maybe include a link that says View the text
+            # that shows the granite record tab once we've imported the
+            # text"): its page's Bill Text tab, which the ending links.
+            import build_request_pages as RP
+            text = RP.text_address(r)
+            hints[key] = {"becomes": becomes, "bill": intro, **({"text": text} if text else {})}
+            continue
+        followable[key] = {"label": FC.line(f"LSR {num}", 120),
+                           "title": FC.line(r.get("title") or "", 300),
+                           "now": FC.line(r.get("status") or "Filed as a request", 120),
+                           "url": f"/bills?term={reqs['term']}&q=LSR%20{num}"}
+        if not followable[key]["title"]:
+            del followable[key]["title"]
+        nreq += 1
+    if reqs:
+        print(f"  {nreq:,} bill requests followable until they are bills")
 
 
 def main():
@@ -1087,140 +1340,9 @@ def main():
                  f"{base}/", f"{base}/feed/hearings.xml", items, base),
             encoding="utf-8")
 
-    # ---- one feed per legislator ------------------------------------------
-    # Every vote and every sponsorship, in order, with nothing rated or
-    # selected. The whole point of the site is that it does not keep a
-    # scorecard, and a feed that ranked or summarised would be one.
-    #
-    # A vote is on the MOTION, not the bill. Voting yes on Inexpedient to
-    # Legislate is a vote to kill it, so the motion is named in the title of
-    # every item rather than left to the description, where a reader scanning
-    # headlines would never see it.
-    nleg = 0
-    undated = 0
-    empty = []
-    lp = site / "legislators.json"
-    # Each roll call's outcome and tally, for the ballots the changes files
-    # set beside them (build_site_v2.write_rollcall_index).
-    try:
-        rc_index = json.loads((site / "rollcalls_index.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        rc_index = {}
-    roster = json.loads(lp.read_text(encoding="utf-8")) if lp.exists() else []
-    if lp.exists():
-        (fd / "legislator").mkdir(parents=True, exist_ok=True)
-        for m in roster:
-            mid = str(m.get("id") or "")
-            # THE TEST THE MEMBER'S PAGE NAMES ITS FEED ON. build_legislator_pages
-            # runs before this and has no file to look for, so both ask
-            # shell.member_followable. This once wrote a feed wherever the
-            # items below came to something, and no page named one.
-            if not S.member_followable(m):
-                continue
-            who = m.get("display") or m.get("name") or f"Member #{mid}"
-            items, mine = [], {}
-            vp = site / "legislators" / f"{mid}.json"
-            if vp.exists():
-                rec = json.loads(vp.read_text(encoding="utf-8"))
-                # Newest first by the day cast, before the cut: the file's own
-                # order is not a promise this feed can lean on. Stable, so one
-                # day's roll calls keep the order the file gives them.
-                votes = sorted(rec.get("votes") or [],
-                               key=lambda v: iso_day(v.get("d")), reverse=True)
-                for v in votes[:a.per_feed]:
-                    day = iso_day(v.get("d"))
-                    undated += not day
-                    bb = find(v.get("b"), day)
-                    # A ROLL CALL THE CLERK FILED UNDER NO BILL is still a vote
-                    # the member cast, and it needs a name of its own.
-                    # RollCallSummary leaves the bill column empty for a motion
-                    # the chamber makes about itself: 2026-H-290 "Affirm The
-                    # Report" and 2026-H-291 "Remove From Table", both on the
-                    # afternoon of 21 May 2026, and 2026-H-329 "Affirm The
-                    # Report" on 19 August. All three sit inside the sixty
-                    # items this feed carries for every one of the 382 sitting
-                    # House members, so 1,146 titles opened on the em dash with
-                    # nothing in front of it, reading "yes on Affirm The
-                    # Report" after a leading space and a dash -- and in a
-                    # reader that shows titles only, that is the whole item.
-                    # The roll call's key says which chamber took it; say that.
-                    seat = chamber_of(v.get("k"))
-                    named = bool(bb) or bool((v.get("b") or "").strip())
-                    if bb:
-                        label = bb["n"]
-                    elif named:
-                        label = v["b"]
-                    else:
-                        label = f"{seat} floor vote" if seat else "Floor vote"
-                    how = VOTE_WORD.get(v.get("v"), v.get("v") or "")
-                    q = v.get("q") or "the motion"
-                    # Joined from the parts there are. With no bill there is no
-                    # title either, and the description used to open on a blank
-                    # line for all 1,146 of them.
-                    note = ("The vote is on the motion, not the bill." if named
-                            else "The record files this roll call under no"
-                                 " bill: it is a motion of the"
-                                 f" {seat or 'chamber'} itself.")
-                    items.append((
-                        f"{label} \u2014 {how} on {q}",
-                        bill_url(bb) if bb else bills_page,
-                        "\n\n".join(x for x in (
-                            (bb or {}).get("title", ""),
-                            f"{who} voted {how} on {q}.", note) if x),
-                        day,
-                        # The roll call's own key, so two ballots cast on one
-                        # bill on one day are two items. See vote_guid.
-                        vote_guid(mid, v, q)))
-                    rc = rc_index.get(v.get("k") or "") or {}
-                    # The ballot and the motion in the site's words (17 October
-                    # 2026): "On OTPA: voted Not Voting/Excused" was the roll
-                    # call's codes. The feed's own title is left as it was.
-                    asked = rc.get("q") or q
-                    it = FC.item(items[-1][4], day, "vote", items[-1][0], path_of(items[-1][1]),
-                                 (bb or {}).get("term") or P.term_on(day), milestone=True,
-                                 vote=FC.vote_detail(
-                                     ballot_word(v.get("v")),
-                                     motion=PA.motion_words(asked, (bb or {}).get("id") or "",
-                                                            {"House": "H", "Senate": "S"}.get(seat, ""))
-                                     or asked,
-                                     result=("passed" if rc.get("p") else "failed") if rc else "",
-                                     tally=f"{rc['y']}-{rc['n']}" if rc.get("y") is not None
-                                     and rc.get("n") is not None else "",
-                                     bill=label, title=(bb or {}).get("title", "")))
-                    if it:
-                        mine[it["guid"]] = it
-            for bb, burl, prime, filed in sponsored.get(mid, []):
-                role = "prime sponsor" if prime else "co-sponsor"
-                items.append((
-                    f"{bb['n']} \u2014 {role}",
-                    burl,
-                    f"{bb.get('title', '')}\n\n{who} is the {role} of this bill.",
-                    filed, f"sponsor:{mid}:{bb['id']}"))
-                it = FC.item(items[-1][4], (filed or "")[:10], "sponsor", items[-1][0],
-                             path_of(burl), bb.get("term") or "")
-                if it:
-                    mine[it["guid"]] = it
-            key = f"member:{mid}"
-            # THE ROSTER'S OWN SORT NAME AND CHAMBER, with the label and the
-            # page: member_entry, which a member listed for email alone takes
-            # too (A MEMBER WHO SITS ON UNDER ANOTHER NUMBER, below).
-            followable[key] = member_entry(m, who, page_of(m))
-            lists[key] = fc_list(newest(items), mine)
-            if not items:
-                # The roster counts a vote or a sponsorship that neither the
-                # member's file nor any bill page carries: a site built in
-                # pieces. Written anyway, because the member's page names it,
-                # and counted below rather than passed over.
-                empty.append(mid)
-            self_l = f"{base}/feed/legislator/{mid}.xml"
-            written.append(fd / "legislator" / f"{mid}.xml")
-            (fd / "legislator" / f"{mid}.xml").write_text(
-                feed(f"{who} \u2014 Granite Record",
-                     f"Every recorded vote and sponsorship for {who}, newest "
-                     "first. Nothing is rated, scored or selected.",
-                     base + S.canon("/officials.html"), self_l, newest(items), base),
-                encoding="utf-8")
-            nleg += 1
+    roster, nleg, undated, empty = legislator_feeds(
+        a, site, base, fd, bills_page, sponsored, followable, lists, written, find, bill_url,
+        page_of, path_of, fc_list, newest)
 
     pruned, notes = 0, []
     for sub in ("bill", "committee", "topic", "legislator"):
@@ -1229,98 +1351,10 @@ def main():
         if note:
             notes.append(note)
 
-    # A MEMBER WHO SITS ON UNDER ANOTHER NUMBER (above continuations): a
-    # member listed last night who still sits stays listed; a member who left
-    # the roster and sits on under a new key is told where, and the new key
-    # is listed for their follow to move to; and where the members-elect file
-    # is drawn, the ledger is told whom it elects to another seat.
-    before = set((led or {}).get("followable") or {})
-    sitting = [m for m in roster if str(m.get("id") or "") and not m.get("former")]
-    moved_said = []
-    kept = []
-    for m in sitting:
-        key = f"member:{m['id']}"
-        if key in before and key not in followable:
-            followable[key] = member_entry(m, m.get("display") or m.get("name") or key,
-                                           page_of(m))
-            lists[key] = []
-            kept.append(key)
-    if kept:
-        moved_said.append(f"  {len(kept):,} sitting legislators listed last night with nothing on "
-                          f"record to feed are listed again, for email: {kept[:5]}")
-    gone = sorted(k for k in before if FC.kind_of_key(k) == "member" and k not in followable)
-    moves, doubts = continuations(gone, sitting, remembered(led), before)
-    for x, m in sorted(moves.items()):
-        y = f"member:{m['id']}"
-        if y not in followable:
-            followable[y] = member_entry(m, m.get("display") or m.get("name") or y, page_of(m))
-            lists[y] = []
-        hints[x] = {"becomes": y, "name": plain_name(m), "where": seat_words(m)}
-    if moves:
-        moved_said.append(f"  {len(moves):,} followed legislators sit on under a new number, "
-                          "and their follows move there: "
-                          + "; ".join(f"{x} -> member:{m['id']} ({seat_words(m)})"
-                                      for x, m in sorted(moves.items())))
-    moved_said += doubts
-    elect_doc = BME.for_pages(site)
-    if elect_doc:
-        elected = elected_elsewhere(elect_doc, followable, sitting)
-    else:
-        elected = {k: v for k, v in remembered(led).items()
-                   if k in followable and v["term"] >= current}
-    if elected:
-        moved_said.append(f"  {len(elected):,} followed legislators elected to another seat are "
-                          "remembered for the night the roster turns: "
-                          + ", ".join(f"{k} ({v['seat']})" for k, v in sorted(elected.items())))
+    moved_said, elected = members_moved_said(site, current, led, roster, followable, lists, hints,
+                                             page_of)
 
-    # BILL REQUESTS, FOLLOWED UNTIL THEY ARE BILLS (the person, 22 October
-    # 2026: "email following for LSRs should ping when the legislation has
-    # been drafted and then convert that into following the bill version").
-    # Next session's requests (build_lsrs.py, site/idx/<year>-requests.json)
-    # are followable as lsr:<number> while each is filed and not withdrawn --
-    # and, once introduced, until its bill is followable itself, so the
-    # follow always has somewhere to go. The night one leaves, its ending
-    # names the bill it became (hints "becomes"), and the sender moves the
-    # follow onto that bill; a withdrawn one ends as withdrawn.
-    reqs = {}
-    try:
-        meta = json.loads((site / "meta.json").read_text(encoding="utf-8"))
-        rterm = str(((meta.get("requests") or {}).get("term")) or "")
-        if rterm:
-            reqs = {"term": rterm, "rows": json.loads(
-                (site / "idx" / f"{rterm}.json").read_text(encoding="utf-8"))}
-    except (OSError, ValueError):
-        reqs = {}
-    nreq = 0
-    for r in reqs.get("rows") or []:
-        num = str(r.get("n") or "").replace("LSR", "").strip()
-        key = f"lsr:{num}"
-        if not FC.key_ok(key):
-            continue
-        intro = str(r.get("introduced") or "")
-        m = re.match(r"^([A-Z]+) (\d+)$", intro)
-        becomes = f"bill:{r.get('year') or num[:4]}/{m.group(1)}{m.group(2)}" if m else ""
-        if r.get("withdrawn"):
-            hints[key] = {"withdrawn": True}
-            continue
-        if becomes and becomes in followable:
-            # AND WHERE ITS TEXT IS, once the night has read it (the owner, 17
-            # November 2026: "maybe include a link that says View the text
-            # that shows the granite record tab once we've imported the
-            # text"): its page's Bill Text tab, which the ending links.
-            import build_request_pages as RP
-            text = RP.text_address(r)
-            hints[key] = {"becomes": becomes, "bill": intro, **({"text": text} if text else {})}
-            continue
-        followable[key] = {"label": FC.line(f"LSR {num}", 120),
-                           "title": FC.line(r.get("title") or "", 300),
-                           "now": FC.line(r.get("status") or "Filed as a request", 120),
-                           "url": f"/bills?term={reqs['term']}&q=LSR%20{num}"}
-        if not followable[key]["title"]:
-            del followable[key]["title"]
-        nreq += 1
-    if reqs:
-        print(f"  {nreq:,} bill requests followable until they are bills")
+    request_follows(site, followable, hints)
 
     # The changes files, from the items every feed above was written with.
     # A key the sender would refuse is left out and named, not sent.
