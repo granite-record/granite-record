@@ -25099,8 +25099,8 @@
    "state": "draft"
   },
   "of.ov.house_only": {
-   "en": "State House races only",
-   "es": "Solo las contiendas de la Cámara de Representantes estatal",
+   "en": "House races only",
+   "es": "Solo las contiendas de la Cámara de Representantes",
    "state": "draft"
   },
   "of.ov.incoming": {

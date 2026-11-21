@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.413 */
+/* GRANITE_VERSION: 2026-09-07.414 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1564,7 +1564,7 @@ line-height:1.1}
      ground, and with no ground printed it is white on white. */
   nav.top,.skip,.calskip,.searchrow,.ftoggle,.vpage .vtoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
-  .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
+  .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,.ovtown,.ovgo,
   .followmail .followfreq,.webinar,.testify,.trrep,.trpill,.trbox,nav.subnav,nav.smap{display:none !important}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-20.1
+# GRANITE_VERSION: 2026-11-20.2
 """
 The Officials overview: the page the Officials section opens on (the owner's
 choice of draft A, 21 November 2026; the mock is the helpers' draft-a.html).
@@ -453,7 +453,7 @@ def elections(items, lang="en"):
         f'<a href="elections/{E(day)}-general.html" hreflang="en">'
         + I.say(lang, "of.ov.general", "{year} general election", year=day[:4])
         + "<span>" + E(date_words(day, "full", lang))
-        + ("" if senate else ". " + I.say(lang, "of.ov.house_only", "State House races only"))
+        + ("" if senate else ". " + I.say(lang, "of.ov.house_only", "House races only"))
         + "</span></a>" for day, senate in items)
     return section("ele", I.say(lang, "nav.row.officials.elections", "Elections"), "elections/index.html",
                    "<p>" + I.say(lang, "of.ov.elections_lead", "Official results of each general "
