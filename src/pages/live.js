@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-30.20
+// GRANITE_VERSION: 2026-10-30.21
 /* LIVE NOW, IN THE BROWSER (the live layer's design, sections 1.4, 2.6 and
    4.1). Loaded by /live after components.js, whose clock(), esc() and tr()
    it draws with, so a time reads "10:02 AM" as every page's does and every
@@ -563,7 +563,6 @@ function getJSON(fetchImpl, url) {
     return r && r.ok ? r.json() : null;
   }).catch(function () { return null; });
 }
-function each(el, sel, f) { Array.prototype.slice.call((el && el.querySelectorAll && el.querySelectorAll(sel)) || []).forEach(f); }
 
 // ---- the morning page: the day's dated address, filled as votes are read --------
 /* global voteHead, voteChip, billCard */
