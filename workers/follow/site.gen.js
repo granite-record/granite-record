@@ -24,3 +24,5 @@ export const CHIP_WORDS = {"short": {"In committee": "In Committee", "Retained i
 export const MARK_FILE = {"path": "/mail-mark.png", "width": 41, "height": 64};
 // src/pages/app.css, light :root and dark :root[data-theme="dark"]: the manage page's colours, --brick-soft from --st-done-bg.
 export const PAGE_PALETTE = {"light": {"paper": "#E9EAEC", "surface": "#FBFBFC", "wash": "#DFE1E4", "ink": "#1C2126", "ink-2": "#4A5259", "rule": "#D3D6DA", "edge": "#767E86", "pine": "#14514C", "pine-soft": "#DFEBEA", "on-pine": "#FFFFFF", "brick": "#9E2B25", "brick-soft": "#FAE7E5"}, "dark": {"paper": "#171B1C", "surface": "#21282A", "wash": "#2C3436", "ink": "#E6E9E8", "ink-2": "#A7B0B0", "rule": "#3D4547", "edge": "#7C8687", "pine": "#7FB9B1", "pine-soft": "#1B302E", "on-pine": "#0F1414", "brick": "#E4877E", "brick-soft": "#43211F"}};
+// src/lib/state_settings.json "timezone": the state's zone, New Hampshire's clock in common.js.
+export const TIMEZONE = "America/New_York";

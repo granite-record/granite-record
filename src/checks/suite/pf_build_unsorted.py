@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of build checks with no module under test, for a person to sort.
 
@@ -2644,6 +2644,10 @@ def _lane_daily():
         # bootstrap looks for above it.
         for f in ("refusal.py", "_paths.py"):
             shutil.copy(_paths.locate(f), root / f)
+        # And the state's settings, whose zone refusal.eastern reads (state_settings.utc_offset).
+        (root / "src" / "lib").mkdir(parents=True)
+        for f in ("state_settings.py", "state_settings.json"):
+            shutil.copy(_paths.ROOT / "src" / "lib" / f, root / "src" / "lib" / f)
         (root / "watchers").mkdir()
         (root / "archive").mkdir()
         # A step GitHub's window stops part way: its own clock moves into the
@@ -3519,6 +3523,7 @@ def _live_tests():
     held = {"workers/live/index.js", "workers/live/clock.js", "workers/live/youtube.js",
             "workers/live/store.js", "workers/live/tds.js", "workers/live/sql.js",
             "workers/live/test_mode.js", "workers/live/live.gen.js", "workers/follow/common.js",
+            "workers/follow/site.gen.js",
             "tests/live/no_network.js", "tests/live/clock.test.js", "tests/live/sql.test.js",
             "tests/live/store.test.js", "tests/live/tds.test.js", "tests/live/youtube.test.js",
             "tests/live/fake_r2.js", "tests/live/fake_youtube.js", "tests/live/fake_tds.js",

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-11.9
+# GRANITE_VERSION: 2026-11-11.10
 """
 The state's facts, read from src/lib/state_settings.json.
 
     import state_settings as ST
     ST.COUNTIES          # ("Belknap", "Carroll", ...), in the order the file lists them
     ST.TIMEZONE          # "America/New_York"
+    ST.utc_offset(t)     # (-4, "EDT") for an aware time in summer, by TIMEZONE_OFFSETS
     ST.get("legislature", "name")
     ST.PARTY["D"]["plural"], ST.party_letters("r&d")   # "Democrats", ("R", "D")
 
@@ -33,6 +34,7 @@ REQUIRED = {
     "county_abbreviations": (),
     "county_codes": (),
     "timezone": (),
+    "timezone_offsets": ("standard", "daylight"),
     "term": ("length_years", "first_year_parity", "organization_day", "key", "label"),
     "bill_prefixes": ("house", "senate"),
     "source_hosts": ("legislature", "secretary_of_state"),
@@ -68,6 +70,8 @@ COUNTY_NUMBER = dict(SETTINGS.get("county_numbers") or {})
 # Every spelling of a county a roster uses, lower case, to its name.
 COUNTY_LOOKUP = {**{c.lower(): c for c in COUNTIES}, **{a.lower(): c for c, a in COUNTY_ABBR.items()}}
 TIMEZONE = SETTINGS["timezone"]
+# The zone's hours from UTC and short names, standard and daylight, for utc_offset().
+TIMEZONE_OFFSETS = SETTINGS["timezone_offsets"]
 TERM = SETTINGS["term"]
 BILL_PREFIXES = {k: tuple(v) for k, v in SETTINGS["bill_prefixes"].items()}
 SOURCE_HOSTS = SETTINGS["source_hosts"]
@@ -132,3 +136,23 @@ def party_letters(printed, table=None):
         if look[part] not in out:
             out.append(look[part])
     return tuple(out)
+
+
+def utc_offset(when):
+    """(hours from UTC, short name) of the state's zone at `when`, an aware time: (-4, "EDT")
+    in summer and (-5, "EST") in winter here, from TIMEZONE_OFFSETS by the US rule since 2007
+    -- daylight time from 2 a.m. standard time on the second Sunday of March to 2 a.m.
+    daylight time on the first Sunday of November. For code that cannot ask a zone database
+    (Python on Windows has none): refusal.eastern and build_live.nh_today, which each wrote
+    the rule and New Hampshire's hours out for themselves until 20 November 2026."""
+    import datetime as _dt
+    std, dst = TIMEZONE_OFFSETS["standard"], TIMEZONE_OFFSETS["daylight"]
+
+    def sunday(month, nth):
+        d = _dt.date(when.year, month, 1)
+        return d + _dt.timedelta(days=(6 - d.weekday()) % 7, weeks=nth - 1)
+    utc = _dt.timezone.utc
+    start = _dt.datetime.combine(sunday(3, 2), _dt.time(2 - std["hours"]), utc)
+    end = _dt.datetime.combine(sunday(11, 1), _dt.time(2 - dst["hours"]), utc)
+    on = dst if start <= when < end else std
+    return on["hours"], on["name"]

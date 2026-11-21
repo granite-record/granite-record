@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.25
+# GRANITE_VERSION: 2026-11-16.26
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -7370,7 +7370,8 @@ def _follow_site_current(FS):
     # under preflight --changed (check_select.py reads this file's strings).
     sources = ("src/pages/app.css", "src/pages/app.js", "src/pages/words/chips.json",
                "src/pages/words/study_report.json", "src/pages/words/follow_beta.json",
-               "src/pages/words/meeting_kinds.json", "src/pages/build_brand.py")
+               "src/pages/words/meeting_kinds.json", "src/pages/build_brand.py",
+               "src/lib/state_settings.json")
     assert sorted(sources) == sorted(p.as_posix() for p in FS.SOURCES), (
         f"follow_site.py reads {sorted(p.as_posix() for p in FS.SOURCES)}, and this check names "
         f"{sorted(sources)}: name each here, so preflight --changed runs this when one moves")

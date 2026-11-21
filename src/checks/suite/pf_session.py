@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 preflight's checks of session days and their pages, and the journals.
 
@@ -8833,7 +8833,8 @@ def _live_layer(LG, LS, DF, FP, RF):
     # What live.gen.js is written from, by path here as in live_gen.py, so that
     # a change to either reaches this check under preflight --changed.
     sources = ("src/fetch/youtube/fetch_channel_index.py", "refusal.py", "src/fetch/gc_db/probe_db.py",
-               "src/fetch/gc_db/fetch_rollcalls_db.py", "records/docket_abbrev.json")
+               "src/fetch/gc_db/fetch_rollcalls_db.py", "records/docket_abbrev.json",
+               "src/lib/state_settings.json")
     assert sorted(sources) == sorted(p.as_posix() for p in LG.SOURCES), (
         f"live_gen.py reads {sorted(p.as_posix() for p in LG.SOURCES)}, and this check names "
         f"{sorted(sources)}: name each here, so preflight --changed runs this when one moves")

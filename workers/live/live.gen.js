@@ -22,3 +22,5 @@ export const DOCKET_OUTCOME = {"AA": "Amendment Adopted", "AF": "Amendment Faile
 export const BILL_NUMBER = {"pattern": "^(?:(?:SS)?(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR|SJR)|HA|HCO)\\d+$", "flags_off": "(?:-(?:FN|LOCAL|L|A))+$"};
 // src/pages/live_gen.py WINDOW: the Worker's day window, weekdays, New Hampshire hours [from, to); a committee page asks for streams only inside it.
 export const WINDOW = {"from": 7, "to": 20};
+// src/lib/state_settings.json "timezone": the state's zone, New Hampshire's clock in clock.js, merge.js and test_mode.js.
+export const TIMEZONE = "America/New_York";

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.5
+# GRANITE_VERSION: 2026-10-23.6
 """
 The site's colours and words the email sender draws with, written into
 workers/follow/site.gen.js from the files the site itself draws them from.
@@ -38,6 +38,10 @@ that mail.js imports:
                     an email's "Now" says "In Committee" where the site's
                     chip does, not the record's "In committee" (the email
                     pass, 29 October 2026)
+    TIMEZONE        src/lib/state_settings.json "timezone": the state's zone,
+                    which common.js's nhClock (and through it the follow
+                    Functions and the live Worker) reads New Hampshire's
+                    clock in (typed there until 20 November 2026)
 
 What is the email's own and not the site's stays in mail.js: the white
 ground, the mark's empty alt, every other sentence. What is the manage page's own
@@ -77,6 +81,8 @@ import argparse
 import json
 import re
 
+import state_settings as ST
+
 OUT = Path("workers/follow/site.gen.js")
 COMMAND = "python3 src/pages/follow_site.py"
 
@@ -87,8 +93,9 @@ STUDY = Path("src/pages/words/study_report.json")
 BETA = Path("src/pages/words/follow_beta.json")
 KINDS = Path("src/pages/words/meeting_kinds.json")
 BRAND = Path("src/pages/build_brand.py")    # imported, for the mark
+SETTINGS = Path("src/lib/state_settings.json")
 # Every file the written one is made from.
-SOURCES = (APP_CSS, APP_JS, CHIPS, STUDY, BETA, KINDS, BRAND)
+SOURCES = (APP_CSS, APP_JS, CHIPS, STUDY, BETA, KINDS, BRAND, SETTINGS)
 
 HEX = re.compile(r"#[0-9A-Fa-f]{6}")
 
@@ -244,6 +251,8 @@ def values(root=None):
                          {theme: {page: _page_ink(toks, css, label) for page, css in PAGE_TOKENS.items()}
                           for theme, toks, label in (("light", tokens, "light :root"),
                                                      ("dark", dark, DARK))}),
+        "TIMEZONE": ('src/lib/state_settings.json "timezone": the state\'s zone, New Hampshire\'s '
+                     "clock in common.js", ST.TIMEZONE),
     }
 
 
