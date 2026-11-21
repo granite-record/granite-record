@@ -28937,6 +28937,11 @@
    "es": "La lista de la Secretaría de Estado no tiene un lugar de votación registrado para {place}. El secretario de su municipio o ciudad se lo puede decir.",
    "state": "draft"
   },
+  "yt.no_poll_here": {
+   "en": "The Secretary of State&rsquo;s list has no polling place recorded for {place}.",
+   "es": "La lista de la Secretaría de Estado no tiene un lugar de votación registrado para {place}.",
+   "state": "draft"
+  },
   "yt.no_senator": {
    "en": "No sitting senator on file.",
    "es": "No hay ningún senador en funciones registrado.",

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.72
+// GRANITE_VERSION: 2026-09-16.73
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1800,13 +1800,19 @@ function ytPeople(p){
     return `<li><span class="mchip p-${_fesc(w[1]||"X")}" translate="no"><a href="/legislator/${_fesc(s)}">${_fesc(w[0])}</a></span></li>`;
   }).join("")+"</ul>";
 }
-function ytVote(p){
+// `panel`: the town panel's (the owner, 21 November 2026: "The pop up can
+// keep the clerk out but where you vote can stay"): where the place votes,
+// and no clerk -- neither the clerk's row nor the note's sending a reader
+// to them. The Learn pages' slot draws it whole.
+function ytVote(p,panel){
   const out=[];
   if(p.poll)out.push(`<p class="ytpoll"><span class="ytlbl">${tr("yt.where_vote","Where you vote")}</span>${_fesc(p.poll)}${p.hours?`<span class="ythrs">${tr("yt.polls_open","Polls open {hours}",{hours:_fesc(p.hours)})}</span>`:""}</p>`);
   if(p.wards)out.push(`<p class="ytlbl">${tr("yt.by_ward","{town} votes in {n} places, by ward",{town:_fesc(p.t),n:p.wards.length})}</p><ul class="ytwards">`
     +p.wards.map(w=>`<li><b>${tr("yt.ward","Ward {n}",{n:_fesc(w[0])})}</b> ${_fesc(w[1])}${w[2]?` <span class="ythrs">${_fesc(w[2])}</span>`:""}</li>`).join("")+"</ul>");
-  if(!p.poll&&!p.wards)out.push(`<p class="ytnote">${tr("yt.no_poll","The Secretary of State&rsquo;s list has no polling place recorded for {place}. The clerk is who to ask.",{place:_fesc(p.n)})}</p>`);
-  if(p.clerk)out.push(`<p class="ytclerk"><span class="ytlbl">${p.c?tr("yt.city_clerk","City clerk"):tr("yt.town_clerk","Town clerk")}</span>${_fesc(p.clerk)}`
+  if(!p.poll&&!p.wards)out.push(`<p class="ytnote">${panel
+    ?tr("yt.no_poll_here","The Secretary of State&rsquo;s list has no polling place recorded for {place}.",{place:_fesc(p.n)})
+    :tr("yt.no_poll","The Secretary of State&rsquo;s list has no polling place recorded for {place}. The clerk is who to ask.",{place:_fesc(p.n)})}</p>`);
+  if(p.clerk&&!panel)out.push(`<p class="ytclerk"><span class="ytlbl">${p.c?tr("yt.city_clerk","City clerk"):tr("yt.town_clerk","Town clerk")}</span>${_fesc(p.clerk)}`
     +(p.phone?` &middot; <a href="tel:${_fesc(p.phone.replace(/[^0-9+]/g,""))}">${_fesc(p.phone)}</a>`:"")
     +(p.email?` &middot; <a href="mailto:${_fesc(p.email)}">${_fesc(p.email)}</a>`:"")+"</p>");
   if(p.when)out.push(`<p class="ytwhen">${_fesc(p.when)}</p>`);
@@ -2266,9 +2272,12 @@ function ytDraw(){
   let h="";
   if(p&&!panel.dataset.changing){
     // THE SHORT LIST OF THE TOWN'S OFFICIALS, THEN ITS PAGE (the owner's
-    // choice of draft A, 21 November 2026), for everything else -- how to
-    // vote, the clerk, the town's own officials -- which the page has.
-    h+=`<div class="ytnow">`+ytSeats(p)
+    // choice of draft A, 21 November 2026), for everything else -- the
+    // clerk, the town's own officials -- which the page has. And where the
+    // place votes, under the list (her word of the same day: "The pop up can
+    // keep the clerk out but where you vote can stay"), from places.json as
+    // the panel drew it before, with no clerk (ytVote's panel).
+    h+=`<div class="ytnow">`+ytSeats(p)+`<div class="ytvote">${ytVote(p,true)}</div>`
       +`<div class="ytfoot"><a class="ytgo" href="${_fesc(p.u)}">${tr("yt.open_page","Open {place}&rsquo;s page",{place:_fesc(p.n)})}</a>`
       +'<button type="button" class="ytbtn2" id="ytchange">'+tr("yt.choose_another","Choose another town")+'</button>'
       +'<button type="button" class="ytbtn2 ytquiet" id="ytforget">'+tr("yt.forget","Forget it")+'</button>'

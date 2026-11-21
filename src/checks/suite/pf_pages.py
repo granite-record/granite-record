@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.33
+# GRANITE_VERSION: 2026-11-16.34
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -14262,6 +14262,118 @@ def _legislators_search():
                   "all words together, the Senate over the House under their names; a committee "
                   "match says it; the reader's senator and rep are marked; Search lists the "
                   "chambers apart as the roster's chips; Return opens the member's page")
+
+
+_TOWN_PANEL_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const D = JSON.parse(fs.readFileSync("./places.json", "utf8"));
+let saved = "";
+globalThis.localStorage = {getItem(k){ return k === "gr-town" ? saved : null; }, setItem(){}, removeItem(){}};
+let F;
+try { vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+      F = vm.runInThisContext("({YT, ytDraw, ytVote})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+F.YT.data = D; F.YT.by = {}; D.places.forEach(p => { F.YT.by[p.s] = p; });
+const out = document.createElement("div"), panel = document.createElement("div");
+panel.dataset = {};
+panel.querySelector = s => s === "#ytbody" ? out : null;
+out.querySelector = () => null;
+document.getElementById = id => id === "ytpanel" ? panel : document.createElement("div");
+const o = {panel: {}, slot: {}};
+for (const p of D.places) {
+  saved = p.s; F.ytDraw(); o.panel[p.s] = out.innerHTML; o.slot[p.s] = F.ytVote(p);
+}
+console.log("@@" + JSON.stringify(o));
+"""
+
+# FOUR PLACES FOR THE TOWN PANEL: a town that votes in one place, a city's
+# ward, a town that votes by ward, and a place with no polling place on the
+# Secretary of State's list; each with its clerk, whom the panel leaves out.
+_TOWN_PANEL_PLACES = {
+    "places": [
+        {"s": "jackson", "n": "Jackson", "t": "Jackson", "u": "/town/jackson", "co": "Carroll",
+         "h": [["Carroll", "2", 0]], "sd": 3, "ec": 1, "cd": 1, "m": [],
+         "poll": "Whitney Community Center", "hours": "8:00 AM - 7:00 PM",
+         "clerk": "Kay Clerkson", "phone": "603-555-0101", "email": "clerk@jackson.example",
+         "when": "Last election: November 3, 2026"},
+        {"s": "concord-ward-4", "n": "Concord Ward 4", "t": "Concord", "u": "/town/concord-ward-4",
+         "co": "Merrimack", "h": [["Merrimack", "16", 0]], "sd": 15, "ec": 2, "cd": 2, "m": [], "c": 1,
+         "w": "4", "poll": "Green Street Community Center", "hours": "7:00 AM - 7:00 PM",
+         "clerk": "Jan Wardclerk", "phone": "603-555-0102"},
+        {"s": "derry", "n": "Derry", "t": "Derry", "u": "/town/derry", "co": "Rockingham",
+         "h": [["Rockingham", "25", 0]], "sd": 19, "ec": 3, "cd": 1, "m": [],
+         "wards": [["1", "West Running Brook School", "7:00 AM - 8:00 PM"],
+                   ["2", "Gilbert H. Hood School", "7:00 AM - 8:00 PM"]],
+         "clerk": "Tina Townclerk", "email": "clerk@derry.example"},
+        {"s": "nopoll", "n": "Nopoll", "t": "Nopoll", "u": "/town/nopoll", "co": "Coos",
+         "h": [["Coos", "1", 0]], "sd": 1, "ec": 1, "cd": 2, "m": [], "clerk": "Ned Noclerk"}],
+    "people": {}, "offices": {}}
+
+
+def _town_panel_drawn(places=None):
+    """{"panel": {slug: html}, "slot": {slug: html}}: find.js's town panel
+    (ytDraw) for each place of `places` (_TOWN_PANEL_PLACES by default) saved
+    in turn, and the Learn pages' "vote" slot's ytVote of it, drawn in node
+    with components.js first as every page loads it. None without node."""
+    if not shutil.which("node"):
+        return None
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_with_components(_source("src/pages/find.js")), encoding="utf-8")
+        (root / "places.json").write_text(json.dumps(places or _TOWN_PANEL_PLACES), encoding="utf-8")
+        (root / "go.js").write_text(_TOWN_PANEL_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8",
+                 timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    said = (r.stdout + r.stderr).strip()
+    assert r.returncode == 0 and "@@" in r.stdout, f"node go.js: {said[-300:]}"
+    return json.loads(r.stdout.rsplit("@@", 1)[1])
+
+
+@check("frontend", "the town panel says where the place votes, under its officials, and leaves the "
+       "clerk out")
+def _town_panel_where_you_vote():
+    """The owner, 21 November 2026: "The pop up can keep the clerk out but
+    where you vote can stay." The town panel (find.js ytDraw) had dropped
+    how to vote with the clerk when it became the short list of a town's
+    officials; "Where you vote" comes back under the list, from places.json
+    as the panel drew it before (ytVote, with `panel`), and the clerk stays
+    on the town's page. Drawn in node for four places: a town voting in one
+    place says "Where you vote", the place and its hours, and the day of the
+    last election; a city's ward its own polling place; a town voting by
+    ward each ward's; a place with none on the list says so without sending
+    the reader to the clerk. In none is the clerk's name, phone, email or
+    the words "Town clerk" or "City clerk"; and the Learn pages' slot, which
+    draws ytVote whole, still names the clerk. Fails if the vote leaves the
+    panel again or the clerk comes into it."""
+    got = _town_panel_drawn()
+    if got is None:
+        return "skip", "node is not installed"
+    pan, slot = got["panel"], got["slot"]
+    for s, want in (("jackson", ["Where you vote", "Whitney Community Center",
+                                 "Polls open 8:00 AM - 7:00 PM", "Last election: November 3, 2026"]),
+                    ("concord-ward-4", ["Where you vote", "Green Street Community Center"]),
+                    ("derry", ["Derry votes in 2 places, by ward", "<b>Ward 1</b> West Running Brook School",
+                               "<b>Ward 2</b> Gilbert H. Hood School"]),
+                    ("nopoll", ["has no polling place recorded for Nopoll."])):
+        h = pan[s]
+        assert '<div class="ytvote">' in h, f"{s}'s panel has no Where you vote"
+        vote = h[h.index('<div class="ytvote">'):]
+        for w in want:
+            assert w in vote, f"{s}'s panel does not say {w!r} where it says where to vote"
+        assert h.index('class="ytgrid"') < h.index('<div class="ytvote">') < h.index('class="ytfoot"'), (
+            f"{s}'s Where you vote is not between its officials and the way to its page")
+    for s, p in ((p["s"], p) for p in _TOWN_PANEL_PLACES["places"]):
+        for w in [p["clerk"], p.get("phone"), p.get("email"), "Town clerk", "City clerk",
+                  "The clerk is who to ask", "ytclerk"]:
+            assert not w or w not in pan[s], f"{s}'s panel names the clerk ({w!r})"
+        assert p["clerk"] in slot[s], f"the Learn pages' vote slot no longer names {s}'s clerk"
+    return "ok", ("Where you vote under the officials for a town, a ward, a town by ward and a place "
+                  "with none on the list; no clerk's name, phone, email or title in any panel, and the "
+                  "Learn pages' slot still names the clerk")
 
 
 # THE OFFICIALS OVERVIEW'S FIXTURES: two chambers as they sit, and a
