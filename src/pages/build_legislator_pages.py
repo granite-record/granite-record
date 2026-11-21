@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.48
+# GRANITE_VERSION: 2026-09-04.49
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -249,7 +249,6 @@ def heading(m):
     nothing says why they left. The honorific is the record's own, the office
     they last held under it. A name with no honorific ("Member #377204") is
     left as it is, and the page's line under it keeps saying "Former member".
-    app.js's formerName heads the page the same way.
     """
     who = m.get("display_full") or m.get("display") or m.get("name") or ""
     return f"Former {who}" if m.get("former") and re.match(r"(Rep|Sen)\. ", who) else who

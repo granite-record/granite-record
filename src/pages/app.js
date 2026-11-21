@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.371
+// GRANITE_VERSION: 2026-09-07.372
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -9730,19 +9730,6 @@ function servedYears(m){
   return a===b?a:`${a} to ${b}`;
 }
 
-/* "FORMER REP." IN THE NAME ITSELF, as the person settled it in September: a
-   legislator who has left is written "Former Rep. David Smith" -- the word
-   joins the honorific, never a chip, badge or pill beside it -- on their own
-   page and in search results (find.json), and nowhere else. The honorific is
-   the record's own, the office they last held under it. A name the record
-   gives no honorific ("Member #377204") is left as it is, and the line under
-   it keeps saying "Former member". build_legislator_pages.heading() writes
-   the page's title and link card the same way. */
-function formerName(m){
-  const who=m.display_full||m.display||m.name||"";
-  return /^(Rep|Sen)\. /.test(who)?"Former "+who:"";
-}
-
 /* THE TITLE IN FULL AT THE TOP OF THE PAGE (the person, 9 October 2026:
    "Member pages should list their title along with their name at the top
    like Senator Sharon Carson or Representative James Spillane"). The
@@ -9984,14 +9971,6 @@ function voteRing(r,i){
 // How many are drawn before the reader asks for more. The old table stopped
 // dead at 600 with a line saying so and no way to see the 481 after it.
 const VOTES_SHOWN=200;
-
-// A bill number as a reader types it, "HB 1442" or "hb1442", for the search,
-// and as the bill's own page titles it, "HB 282-FN": pasted from that page it
-// found none of a member's 591 votes (the audit of 25 October 2026, S1). FN,
-// A and LOCAL (SUFFIX_TERM) say what a bill carries and are no part of the
-// number a vote is filed under.
-const billFold=s=>String(s||"").toUpperCase().replace(/(?:-(?:FN|A|LOCAL|L))+\s*$/,"")
-  .replace(/[^A-Z0-9]/g,"");
 
 // THE VOTES PAGE'S ADDRESS for a member's votes or a bill's (votesAddr, below,
 // reads it back): the member's page name, the search as typed, the term.
