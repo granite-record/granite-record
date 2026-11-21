@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.31
+# GRANITE_VERSION: 2026-11-16.32
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -2074,6 +2074,7 @@ _SUFFIX_READERS = (
     ("src/towns/town_boards.py", "SUFFIX"),
     ("src/ops/election_week.py", None),
     ("src/parse/parse_sos_offices.py", None),
+    ("src/parse/officers.py", None),
 )
 
 

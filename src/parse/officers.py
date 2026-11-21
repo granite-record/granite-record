@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.5
+# GRANITE_VERSION: 2026-10-09.6
 """
 Who held the chair's offices, and on which days, from the record on disk.
 
@@ -78,6 +78,7 @@ import re
 
 import build_cache
 import journal_days as JD
+import names as NM
 import proceedings as P
 # The one reader of corrections/officials.json (23 October 2026): every page
 # reads the file through it, and so does this, for its legislative_officers.
@@ -223,10 +224,23 @@ def _clean_name(n):
     return re.sub(r"\s+", " ", n or "").strip().strip(",.;:").replace("’", "'")
 
 
+def _words(name):
+    """The words of a name, a trailing Jr., Sr. or numeral left off (names.SUFFIXES):
+    "Andrew Christie Jr." and "Christie, Jr." are Christie's. Until 20 November 2026
+    the suffix was taken for the surname, so a Jr. officer was "jr", named no member,
+    and two Jr. officers of a chamber were one."""
+    words = _clean_name(name).split()
+    if len(words) > 1 and words[-1].strip(".,").lower() in NM.SUFFIXES:
+        words = words[:-1]
+        words[-1] = words[-1].rstrip(",")
+    return words
+
+
 def surname(name):
     """"steven smith" -> "smith"; "D.Whalley" -> "whalley"; "O'Brien" ->
-    "o'brien". The last word, which for these offices is the surname."""
-    words = _clean_name(name).split()
+    "o'brien"; "Andrew Christie Jr." -> "christie". The last word but a
+    suffix, which for these offices is the surname."""
+    words = _words(name)
     if not words:
         return ""
     last = words[-1]
@@ -236,8 +250,9 @@ def surname(name):
 
 
 def given(name):
-    """The first word of the name that is not an initial, or ""."""
-    words = _clean_name(name).split()[:-1]
+    """The first word of the name that is not an initial, or "" (a suffix
+    is not a word of the name: _words)."""
+    words = _words(name)[:-1]
     for w in words:
         if len(w.rstrip(".")) > 1:
             return w.lower()

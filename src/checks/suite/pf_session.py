@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of session days and their pages, and the journals.
 
@@ -7440,6 +7440,39 @@ def _officers_from_the_record(OF):
     return "ok", ("Speaker Packard and President Carson from 4 December 2024; on 8 May 2025 "
                   "\"Deputy Speaker Steven Smith\"; on 10 April 2025 \"Rep. Kofalt, in the "
                   "chair\", and \"Speaker Pro Tempore Kofalt\" with a person's entry")
+
+
+@check("session", "an officer's Jr., Sr. or numeral is no surname: a Jr. officer is named as "
+                  "their member, and two Jr. officers are two people", needs=("officers",))
+def _officers_suffix_is_not_a_surname(OF):
+    """officers.surname() took the last word for the surname, so "Rep. Andrew Christie Jr." was
+    "jr" (the refactor's round four, 20 November 2026): same_person() then took any two Jr.
+    officers for one, and resolve() named no member for a Jr. officer, whose ballots sort them
+    "Christie, Andrew, Jr.". The suffix is left off now (names.SUFFIXES, through _words). Measured
+    on everything on file that day: no journal or calendar names an officer with a suffix, so no
+    tenure, member or chair heading moved; this holds the rule for the first that does. The names
+    without a suffix answer as before."""
+    for name, want in (("Rep. Andrew Christie Jr.", "christie"), ("Andrew Christie, Jr.", "christie"),
+                       ("Joseph Depalma IV", "depalma"), ("John E. Tholl Jr", "tholl"),
+                       ("Steven Smith", "smith"), ("D.Whalley", "whalley"), ("O'Brien", "o'brien"),
+                       ("Kofalt", "kofalt"), ("Jr.", "jr"), ("", "")):
+        assert OF.surname(name) == want, f"surname({name!r}) is {OF.surname(name)!r}, not {want!r}"
+    assert OF.given("Christie Jr.") == "" and OF.given("Andrew Christie Jr.") == "andrew", (
+        OF.given("Christie Jr."), OF.given("Andrew Christie Jr."))
+    assert OF.same_person("Andrew Christie Jr.", "Christie") and OF.same_person("Christie Jr.", "Andrew Christie")
+    assert not OF.same_person("Andrew Christie Jr.", "John Tholl Jr."), "two Jr. officers taken for one"
+    sp = {"body": "H", "title": "Speaker", "name": "Sherman Packard", "from": "2024-12-04",
+          "to": "2026-12-02", "kind": "elected"}
+    ds = {"body": "H", "title": "Deputy Speaker", "name": "Andrew Christie Jr.", "from": "2024-12-04",
+          "to": "2026-12-02", "kind": "term"}
+    assert OF.chair_label("Speaker Christie Jr.", "2025-05-08", [sp, ds]) == "Deputy Speaker Christie Jr.", (
+        OF.chair_label("Speaker Christie Jr.", "2025-05-08", [sp, ds]))
+    assert OF.chair_label("Speaker Tholl Jr.", "2025-05-08", [sp, ds]) == "Rep. Tholl Jr., in the chair"
+    rows, missed = OF.resolve([ds], {("H", "2025-2026"): {"5": "Christie, Andrew, Jr.",
+                                                        "6": "Tholl, John E., Jr.", "7": "Depalma IV, Joseph"}})
+    assert [r["member_id"] for r in rows] == ["5"] and not missed, (rows, missed)
+    return "ok", ("\"Andrew Christie Jr.\" is Christie: the Deputy Speaker's turn headed by the office, "
+                  "named as member 5 and not Tholl Jr.; names without a suffix as before")
 
 
 @check("data", "no House sitting heads anyone but that day's Speaker \"Speaker\", and "
