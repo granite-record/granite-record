@@ -25968,6 +25968,21 @@
    "es": "Republicanos",
    "state": "draft"
   },
+  "race.card_floterial": {
+   "en": "{county} District {n} (floterial)",
+   "es": "{county}, distrito {n} (flotante)",
+   "state": "draft"
+  },
+  "race.card_house": {
+   "en": "{county} District {n}",
+   "es": "{county}, distrito {n}",
+   "state": "draft"
+  },
+  "race.card_senate": {
+   "en": "Senate District {n}",
+   "es": "Distrito {n} del Senado",
+   "state": "draft"
+  },
   "race.col_election": {
    "en": "Election",
    "es": "Elección",
@@ -25996,6 +26011,66 @@
   "race.floterial": {
    "en": "floterial",
    "es": "flotante",
+   "state": "draft"
+  },
+  "race.foot_held": {
+   "en": "A winner of this race is not shown here yet.",
+   "es": "Un ganador de esta contienda todavía no se muestra aquí.",
+   "state": "draft"
+  },
+  "race.foot_multi": {
+   "en": "Each voter could choose up to {seats}, so a share is of all the votes cast for the candidates listed; each bar is scaled to the most votes in the race.",
+   "es": "Cada votante podía elegir hasta {seats}, así que cada porcentaje es de todos los votos emitidos por los candidatos de la lista; cada barra está a escala del mayor número de votos de la contienda.",
+   "state": "draft"
+  },
+  "race.foot_other": {
+   "en": "{n} candidates of another party, with {votes} votes, are not shown.",
+   "es": "{n} candidatos de otro partido, con {votes} votos, no se muestran.",
+   "state": "draft"
+  },
+  "race.foot_other_one": {
+   "en": "{n} candidate of another party, with {votes} votes, is not shown.",
+   "es": "{n} candidato de otro partido, con {votes} votos, no se muestra.",
+   "state": "draft"
+  },
+  "race.foot_other_one_v1": {
+   "en": "{n} candidate of another party, with {votes} vote, is not shown.",
+   "es": "{n} candidato de otro partido, con {votes} voto, no se muestra.",
+   "state": "draft"
+  },
+  "race.foot_other_v1": {
+   "en": "{n} candidates of another party, with {votes} vote, are not shown.",
+   "es": "{n} candidatos de otro partido, con {votes} voto, no se muestran.",
+   "state": "draft"
+  },
+  "race.foot_scatter": {
+   "en": "{n} scattered write-in votes are not shown.",
+   "es": "{n} votos por escrito dispersos no se muestran.",
+   "state": "draft"
+  },
+  "race.foot_scatter_one": {
+   "en": "{n} scattered write-in vote is not shown.",
+   "es": "{n} voto por escrito disperso no se muestra.",
+   "state": "draft"
+  },
+  "race.foot_unopp": {
+   "en": "Unopposed: a share is of all the votes cast, the write-ins included.",
+   "es": "Sin oposición: cada porcentaje es de todos los votos emitidos, incluidos los votos por escrito.",
+   "state": "draft"
+  },
+  "race.foot_unopp_n": {
+   "en": "Unopposed: a share is of all the votes cast, the write-ins included; each voter could choose up to {seats}.",
+   "es": "Sin oposición: cada porcentaje es de todos los votos emitidos, incluidos los votos por escrito; cada votante podía elegir hasta {seats}.",
+   "state": "draft"
+  },
+  "race.gap": {
+   "en": "<b>{n} votes</b>, {points} points",
+   "es": "<b>{n} votos</b>, {points} puntos",
+   "state": "draft"
+  },
+  "race.gap_one": {
+   "en": "<b>{n} vote</b>, {points} points",
+   "es": "<b>{n} voto</b>, {points} puntos",
    "state": "draft"
   },
   "race.house": {
@@ -26038,9 +26113,69 @@
    "es": "No elegido/a",
    "state": "draft"
   },
+  "race.mg_over": {
+   "en": "{label} over {party}",
+   "es": "{label} sobre {party}",
+   "state": "draft"
+  },
+  "race.mg_tied": {
+   "en": "Tied",
+   "es": "Empate",
+   "state": "draft"
+  },
+  "race.nominated": {
+   "en": "Nominated",
+   "es": "Nominado/a",
+   "state": "draft"
+  },
+  "race.note_total": {
+   "en": "The Secretary of State&rsquo;s file prints {printed} as {name}&rsquo;s total, but its own town counts add up to {sum}, the count shown here: the file&rsquo;s total leaves out {diff}.",
+   "es": "El archivo de la Secretaría de Estado da {printed} como total de {name}, pero sus propios recuentos por municipio suman {sum}, la cifra que se muestra aquí: al total del archivo le faltan {diff}.",
+   "state": "draft"
+  },
   "race.omitted": {
    "en": "A race this member lost appears only where the name and the district match the record exactly, or but for a middle initial; any other is left off.",
    "es": "Una contienda que este miembro perdió aparece solo cuando el nombre y el distrito coinciden exactamente con el registro, o salvo por una inicial del segundo nombre; las demás se omiten.",
+   "state": "draft"
+  },
+  "race.out_gap_first": {
+   "en": "The gap between the first two is {gap}.",
+   "es": "La diferencia entre los dos primeros es de {gap}.",
+   "state": "draft"
+  },
+  "race.out_gap_last": {
+   "en": "The gap at the last seat is {gap}.",
+   "es": "La diferencia en el último escaño es de {gap}.",
+   "state": "draft"
+  },
+  "race.out_last": {
+   "en": "The last seat by {gap}. {n} votes moved from the last winner to the first out would have changed the result.",
+   "es": "El último escaño, por {gap}. {n} votos pasados del último ganador al primero que quedó fuera habrían cambiado el resultado.",
+   "state": "draft"
+  },
+  "race.out_last_one": {
+   "en": "The last seat by {gap}. {n} vote moved from the last winner to the first out would have changed the result.",
+   "es": "El último escaño, por {gap}. {n} voto pasado del último ganador al primero que quedó fuera habría cambiado el resultado.",
+   "state": "draft"
+  },
+  "race.out_most": {
+   "en": "Most votes by {gap}.",
+   "es": "Más votos, por {gap}.",
+   "state": "draft"
+  },
+  "race.out_most_n": {
+   "en": "The last of the {seats} places with the most votes by {gap}.",
+   "es": "El último de los {seats} puestos con más votos, por {gap}.",
+   "state": "draft"
+  },
+  "race.out_won": {
+   "en": "Won by {gap}. {n} voters choosing the other way would have changed the result.",
+   "es": "Ganó por {gap}. {n} votantes que hubieran elegido lo contrario habrían cambiado el resultado.",
+   "state": "draft"
+  },
+  "race.out_won_one": {
+   "en": "Won by {gap}. {n} voter choosing the other way would have changed the result.",
+   "es": "Ganó por {gap}. {n} votante que hubiera elegido lo contrario habría cambiado el resultado.",
    "state": "draft"
   },
   "race.place": {
@@ -26138,6 +26273,11 @@
    "es": "Empate por el último escaño",
    "state": "draft"
   },
+  "race.unopposed": {
+   "en": "Unopposed",
+   "es": "Sin oposición",
+   "state": "draft"
+  },
   "race.up_amended": {
    "en": "{law}, as amended by {act}, from {date}",
    "es": "{law}, modificado por {act}, desde el {date}",
@@ -26156,6 +26296,16 @@
   "race.won": {
    "en": "Elected",
    "es": "Elegido/a",
+   "state": "draft"
+  },
+  "race.write_in": {
+   "en": "write-in",
+   "es": "por escrito",
+   "state": "draft"
+  },
+  "race.write_ins": {
+   "en": "Write-ins",
+   "es": "Votos por escrito",
    "state": "draft"
   },
   "race.year": {

@@ -2651,7 +2651,14 @@ in the term sitting that day by the roster's seat or the seats their bills print
 (`entities.printed_tenures`); a former member whose last recorded day is before
 the election's year had left. A candidate the rule cannot place is not marked.
 The chip's title says what it means; on a member's tab `app.js` says its word
-and title in the page's language (`electionIncumbent`).
+and title in the page's language (`electionIncumbent`), and every other word the
+card writes -- its chips (Elected, Nominated, the margin's Unopposed, Tied and
+"over"), its heading and seats, a write-in, the line under the rows and its notes
+-- through `electionWords` (the owner, 21 November 2026: "Spanish pages can have
+those terms translated"), which finds each by its English, the catalog's, where
+`race_card` writes it. The card itself is written in English; an English page's
+is the card. preflight's `_election_card_spanish` builds cards that between them
+write every word a card can and holds that no English is left on a Spanish one.
 
 A town or ward page has an Elections tab (the owner, 19 November 2026;
 `src/pages/town_elections.py`, called once by `build_town_pages.main`): a card
