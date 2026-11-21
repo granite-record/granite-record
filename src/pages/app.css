@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.411 */
+/* GRANITE_VERSION: 2026-09-07.414 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1564,7 +1564,7 @@ line-height:1.1}
      ground, and with no ground printed it is white on white. */
   nav.top,.skip,.calskip,.searchrow,.ftoggle,.vpage .vtoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
-  .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
+  .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,.ovtown,.ovgo,
   .followmail .followfreq,.webinar,.testify,.trrep,.trpill,.trbox,nav.subnav,nav.smap{display:none !important}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar
@@ -2073,31 +2073,27 @@ background:var(--surface);padding:var(--sp-5) var(--sp-6);margin:var(--sp-6) 0}
 color:var(--pine);margin:0 0 var(--sp-3)}
 .yt .ytppl{margin:0 0 var(--sp-4)}
 .yt .ytmeta{margin:var(--sp-3) 0 0;font-size:var(--t-sm)}
-/* THE MY TOWN CARD (the person's choice A, 14 October 2026; find.js
-   ytSeats): the town, then a card a seat -- the State House, the State
-   Senate, the Executive Council, the US House -- each with who holds it. */
-.yt.ytcard{border:1px solid var(--rule);border-top:4px solid var(--pine);background:var(--surface);
-  padding:var(--sp-6);margin:0 0 var(--sp-7)}
-.ytcard .ytstop{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-4);flex-wrap:wrap;
-  margin:0 0 var(--sp-5)}
-.ytcard .ytname{font:600 var(--t-h2)/1.2 var(--serif);color:var(--ink);margin:0}
-.ytcard .ytsub{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-2) 0 0}
-.ytcard .ytacts{display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap}
-.ytcard .ytgo{font-size:var(--t-sm);font-weight:600;color:var(--on-pine);background:var(--pine);
-  border-radius:var(--r-in);padding:var(--sp-2) var(--sp-4);text-decoration:none}
-.ytcard .ytgo:hover{filter:brightness(1.12)}
-.ytcard .ytgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:var(--sp-4)}
-.ytcard .ytseat{border:1px solid var(--rule);border-radius:var(--r-in);background:var(--paper);
-  padding:var(--sp-4)}
-.ytcard .ytoff{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
-  color:var(--ink-2);margin:0 0 var(--sp-3)}
-.ytcard .ytoff span{display:block;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink);
-  font-size:var(--t-sm);margin-top:2px}
-.ytcard .ytppl{margin:0;flex-direction:column;align-items:flex-start;gap:var(--sp-2)}
-.ytcard .ytnote{font-size:var(--t-sm);color:var(--ink-2);margin:0}
-.ytcard .ytppl li{max-width:100%}
-.ytcard .mchip{max-width:100%;white-space:normal}
-@media (max-width:45em){.yt.ytcard{padding:var(--sp-5) var(--sp-4)}}
+/* THE TOWN'S OFFICIALS IN THE TOWN PANEL (find.js ytSeats; the owner's
+   choice of draft A of the Officials overview, 21 November 2026, and the My
+   Town card's until then): the town and its county, then a row a seat, two
+   to a line where there is room, each under a hairline, its office over who
+   holds it; then the way to the town's page. */
+.ytnow .ytstop{margin:0 0 var(--sp-4)}
+.ytnow .ytname{font:600 var(--t-h2)/1.2 var(--serif);color:var(--ink);margin:0}
+.ytnow .ytsub{font-size:var(--t-sm);font-weight:400;color:var(--ink-2);margin:var(--sp-2) 0 0}
+.ytnow .ytgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(16rem,1fr));column-gap:var(--sp-8)}
+.ytnow .ytseat{border-top:1px solid var(--rule);padding:var(--sp-5) 0}
+.ytnow .ytoff{font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink);margin:0 0 var(--sp-3)}
+.ytnow .ytoff span{font-weight:400;color:var(--ink-2);margin-left:var(--sp-3)}
+.ytnow .ytppl li{max-width:100%}
+.ytnow .mchip{max-width:100%;white-space:normal;margin:0}
+.ytnow .ytnote{margin:0}
+.ytfoot{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-5);margin-top:var(--sp-4);
+  padding-top:var(--sp-5);border-top:1px solid var(--rule)}
+.ytfoot .ytnote{flex-basis:100%;margin:0}
+.ytgo{display:inline-flex;align-items:center;min-height:44px;padding:0 var(--sp-6);font-weight:600;
+  color:var(--on-pine);background:var(--pine);border-radius:var(--r-in);text-decoration:none}
+.ytgo:hover{filter:brightness(1.12);color:var(--on-pine)}
 @media print{.setbtn,.navset,.ytpanel,.yt{display:none !important}}
 /* ==== /YOUR TOWN, SHARED ================================================== */
 
@@ -10003,6 +9999,99 @@ font-size:var(--t-h3);font-weight:600;line-height:1.3;margin:0 0 var(--sp-4)}
    office as its role, in a row. */
 :where(body.pg) .ofpres{margin:0 0 var(--sp-9)}
 :where(body.pg) .ofchips{display:flex;flex-wrap:wrap;align-items:center}
+/* THE OVERVIEW (officials_overview; the owner's choice of draft A, 21
+   November 2026): "Find your town" at the top, then the blocks in a grid --
+   the Legislature over two columns with the map beside it, then a column
+   each for the branches -- ruled rather than boxed, each under a serif
+   heading that links its tab. Two columns below 1100px, one on a phone,
+   where the map goes last. */
+:where(body.pg) .ovtown{max-width:36rem;margin:0 0 var(--sp-9);padding:var(--sp-5) var(--sp-6);
+background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out)}
+:where(body.pg) .ovtl{display:block;font:600 var(--t-h3)/1.3 var(--serif);margin:0 0 var(--sp-4);color:var(--ink)}
+:where(body.pg) .ovtform{margin:0}
+:where(body.pg) .ovtrow{display:flex;gap:var(--sp-4)}
+:where(body.pg) .ovtbox{position:relative;flex:1 1 0;min-width:0}
+:where(body.pg) .ovgo{flex:0 0 auto;white-space:nowrap;min-height:44px;padding:0 var(--sp-6);
+border-radius:var(--r-in);background:var(--pine);color:var(--on-pine);font-weight:600}
+:where(body.pg) .ovgo:hover{filter:brightness(1.12)}
+:where(body.pg) .ovgo:disabled{opacity:.5;cursor:default}
+:where(body.pg) .ovyours{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-6)}
+:where(body.pg) .ovyours[hidden]{display:none}
+:where(body.pg) .ovyours b{font-size:var(--t-ui)}
+:where(body.pg) .ovgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:var(--sp-10);
+grid-template-areas:"leg leg map" "exe fed map" "jud cty age" "ele ele ele"}
+:where(body.pg) .ovsec{border-top:2px solid var(--ink);padding:var(--sp-5) 0 var(--sp-9);min-width:0}
+:where(body.pg) .ovsec > h2{font:600 var(--t-h2)/1.25 var(--serif);margin:0 0 var(--sp-5)}
+:where(body.pg) .ovsec > h2 a{color:var(--ink);text-decoration:none}
+:where(body.pg) .ovsec > h2 a:hover{color:var(--pine);text-decoration:underline}
+:where(body.pg) .ovsec h3{font:600 var(--t-h3)/1.3 var(--serif);margin:var(--sp-7) 0 var(--sp-4);color:var(--ink)}
+:where(body.pg) .ovsec > h2 + h3,:where(body.pg) .ovsec > h2 + div > h3:first-child{margin-top:0}
+:where(body.pg) .ovsec p{margin:0}
+:where(body.pg) .ovleg{grid-area:leg}:where(body.pg) .ovmap{grid-area:map}:where(body.pg) .ovexe{grid-area:exe}
+:where(body.pg) .ovfed{grid-area:fed}:where(body.pg) .ovjud{grid-area:jud}:where(body.pg) .ovcty{grid-area:cty}
+:where(body.pg) .ovage{grid-area:age}:where(body.pg) .ovele{grid-area:ele}
+:where(body.pg) .ovch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:var(--sp-5) var(--sp-9)}
+:where(body.pg) .ovch .comp{margin:0}
+:where(body.pg) .ovch .comp > .pbar2{height:22px}
+:where(body.pg) .ovinh{margin-top:0 !important}
+:where(body.pg) .ovwhen{margin:0 0 var(--sp-5) !important}
+/* The chambers as they sit, while the incoming legislature leads: under a
+   hairline, smaller -- a thin bar and the one short line a chamber, without
+   the legend. The same block draws them at full size once the incoming one
+   is hidden, by the build or by the reader's clock on the day. */
+:where(body.pg) .ovleg .ovnowh{font:600 var(--t-ui)/1.3 var(--sans);margin:var(--sp-7) 0 var(--sp-4) !important;
+padding-top:var(--sp-5);border-top:1px solid var(--rule-2)}
+:where(body.pg) .ovincoming:not([hidden]) ~ .ovsitting .compline,
+:where(body.pg) .ovincoming:not([hidden]) ~ .ovsitting .plegend{display:none}
+:where(body.pg) .ovincoming:not([hidden]) ~ .ovsitting .compshort{display:block;font-size:var(--t-sm);
+color:var(--ink-2);margin:0 0 var(--sp-3)}
+:where(body.pg) .ovincoming:not([hidden]) ~ .ovsitting .ovch .comp > .pbar2{height:8px}
+:where(body.pg) .ovincoming:not([hidden]) ~ .ovsitting .comp{display:flex;flex-direction:column}
+:where(body.pg) .ovincoming:not([hidden]) ~ .ovsitting .compshort{order:-1}
+:where(body.pg) .compnow{margin:var(--sp-5) 0 0}
+:where(body.pg) .compnowl{margin:0 0 var(--sp-3) !important;font-size:var(--t-sm);color:var(--ink-2)}
+:where(body.pg) .compnowl b{color:var(--ink);font-weight:600;margin-right:var(--sp-2)}
+:where(body.pg) .compnowl .csb{white-space:nowrap}
+:where(body.pg) .pbar2.pbarthin{height:8px}
+:where(body.pg) .ovpeople{display:flex;flex-wrap:wrap;gap:var(--sp-4) var(--sp-5)}
+:where(body.pg) .ovpeople .mchip{margin:0}
+:where(body.pg) .ovlist{list-style:none;margin:0;padding:0;display:grid;gap:var(--sp-4)}
+:where(body.pg) .ovlist li{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-5);margin:0}
+:where(body.pg) .ovlist .mchip{margin:0}
+:where(body.pg) .ovlist .k{color:var(--ink-2);font-size:var(--t-sm)}
+/* An office's successor, under the holder they follow. */
+:where(body.pg) .ovlist .ovnext{padding-left:var(--sp-7)}
+:where(body.pg) .ovnote{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-4) 0 0 !important}
+:where(body.pg) .ovmore{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-8);margin:var(--sp-6) 0 0 !important;font-weight:600}
+:where(body.pg) .ovcols{list-style:none;margin:var(--sp-5) 0 0;padding:0;columns:2;column-gap:var(--sp-7)}
+:where(body.pg) .ovcols li{break-inside:avoid;padding:var(--sp-2) 0;margin:0;font-size:var(--t-sm);line-height:1.35}
+:where(body.pg) .ovcty .compline h3{margin:var(--sp-6) 0 0}
+:where(body.pg) .ovyears{display:flex;flex-wrap:wrap;gap:var(--sp-4) var(--sp-5);margin-top:var(--sp-5)}
+:where(body.pg) .ovyears a{display:inline-flex;flex-direction:column;justify-content:center;min-height:52px;
+padding:var(--sp-3) var(--sp-6);background:var(--surface);border:1px solid var(--edge);border-left:3px solid var(--pine);
+border-radius:var(--r-in);color:var(--ink);text-decoration:none;font-weight:600}
+:where(body.pg) .ovyears a span{font-weight:400;font-size:var(--t-sm);color:var(--ink-2)}
+:where(body.pg) .ovyears a:hover{border-color:var(--pine)}
+:where(body.pg) .ovmap .ofmapbox{margin-top:var(--sp-4)}
+/* The map in a column a third of the page wide: its key, the map and its
+   panel one over the other, as map.css stacks them on a phone. */
+:where(body.pg) .ovmap .gm .gmstage{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;
+grid-template-areas:"key" "map" "panel"}
+@media (max-width:68.75em){
+  :where(body.pg) .ovgrid{grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-template-areas:"leg leg" "exe map" "fed map" "jud cty" "age ele"}
+}
+@media (max-width:45em){
+  :where(body.pg) .ovtown{max-width:none;padding:var(--sp-5)}
+  :where(body.pg) .ovtrow{flex-wrap:wrap}
+  :where(body.pg) .ovtbox{flex-basis:100%}
+  :where(body.pg) .ovgo{flex:1 1 auto}
+  :where(body.pg) .ovgrid{grid-template-columns:minmax(0,1fr);
+  grid-template-areas:"leg" "exe" "fed" "jud" "cty" "age" "ele" "map"}
+  :where(body.pg) .ovch{grid-template-columns:minmax(0,1fr);gap:var(--sp-6)}
+  :where(body.pg) .ovch .comp > .pbar2{height:16px}
+  :where(body.pg) .ovsec{padding-bottom:var(--sp-8)}
+}
 /* An office: its heading in a margin of its own beside the people from
    60em (W4, C7), over them below; a hairline above each but the first. */
 :where(body.pg) .ofsec{border-top:1px solid var(--rule);padding:var(--sp-7) 0 0;

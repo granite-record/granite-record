@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.71
+// GRANITE_VERSION: 2026-09-16.72
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1763,7 +1763,7 @@ document.addEventListener("click",function(e){
    the town's own page prints, so the header cannot name a different
    district, member or polling place from that page. Fetched the first time
    it is needed -- on a page with a town saved, or when the panel opens. */
-const YT={key:"gr-town",data:null,loading:null};
+const YT={key:"gr-town",data:null,loading:null,ask:"",open:null};
 function ytGet(){try{return localStorage.getItem(YT.key)||"";}catch(e){return "";}}
 function ytSave(s){
   try{s?localStorage.setItem(YT.key,s):localStorage.removeItem(YT.key);}catch(e){}
@@ -1850,12 +1850,19 @@ function ytMark(p){
 // THE LEARN PAGES' SLOTS: <div class="yt" data-yt="reps|vote|county|town">,
 // written by the builders where an example from the reader's own town
 // belongs. With no town saved, each offers the picker.
-// THE MY TOWN TAB'S CARD (the person's choice A, 14 October 2026): with a
-// town saved, the tab opens on who represents it -- each seat and who holds
-// it -- and the search below it becomes "Look Up Another Town". With none,
-// the card is not drawn and the tab is the search, as before.
+// THE TOWN'S OFFICIALS, IN THE TOWN PANEL (the owner's choice of draft A of
+// the Officials overview, 21 November 2026; until then the My Town tab's
+// card, the person's choice A of 14 October 2026): with a town saved, the
+// panel opens on who represents it -- each seat and who holds it, its State
+// House district and any floterial over it each a row of its own, then the
+// State Senate, the Executive Council, the US House, the US Senate and the
+// Governor -- and then the way to the town's own page.
+// One person, one chip: the name, and the party and district in the chip's
+// tag, which app.css keeps whole (.mtag), as the roster draws it.
 function ytChip(name,party,href,out){
-  const a=href?`<a href="${_fesc(href)}"${out?' target="_blank" rel="noopener"':""}>${_fesc(name)}</a>`:_fesc(name);
+  const s=String(name||""),i=s.lastIndexOf(" (");
+  const nm=i>0&&s.endsWith(")")?`${_fesc(s.slice(0,i))} <span class="mtag">${_fesc(s.slice(i+1))}</span>`:_fesc(s);
+  const a=href?`<a href="${_fesc(href)}"${out?' target="_blank" rel="noopener"':""}>${nm}</a>`:nm;
   return `<li><span class="mchip p-${_fesc(party||"X")}" translate="no">${a}</span></li>`;
 }
 /* WHO NOVEMBER'S ELECTION SENT, IN THE CARD (the person's decisions of 16
@@ -1867,9 +1874,10 @@ function ytChip(name,party,href,out){
    reader's clock. The House seat can be two districts, a floterial over a
    town's own, so where it is each race says which. Outside those weeks
    there is no "e" and the card is what it was. */
-function ytElect(p,chamber){
+function ytElect(p,chamber,only){
   const E=typeof electBlock==="function"&&YT.data&&YT.data.elect||null;
-  const keys=E?(p.e||[]).filter(k=>k.charAt(0)===chamber&&E.races&&E.races[k]):[];
+  const keys=E?(p.e||[]).filter(k=>k.charAt(0)===chamber&&E.races&&E.races[k]
+    &&(only==null||k===only)):[];
   if(!keys.length)return ["",""];
   const say=k=>{const x=(p.h||[]).find(h=>"H|"+h[0]+"|"+h[1]===k);
     return x?`${x[0]} ${x[1]}${x[2]?" ("+tr("yt.floterial","floterial")+")":""}`:k;};
@@ -1877,42 +1885,63 @@ function ytElect(p,chamber){
     electBlock(keys.map(k=>[keys.length>1?say(k):"",E.races[k]]),E.election,E.takes_office,null,
       typeof window!=="undefined"?window.GR_LANG:undefined)];
 }
+// A House member's district, read off their page's address as the roster
+// writes it ("anita-burroughs-carr-2": Carroll 2), so each of a town's House
+// districts lists its own members; the Senate's are "-sd-N".
+function ytInDistrict(s,h){
+  const m=/-([a-z]+)-(\d+)$/.exec(String(s));
+  return !!m&&m[1]!=="sd"&&m[2]===String(h[1])&&_ynorm(h[0]).replace(/ /g,"").startsWith(m[1]);
+}
 function ytSeats(p){
   // In the page's language (tr; the Your Town card in Spanish, 25 October
   // 2026), the people's, places' and districts' names as the record has them.
   const ppl=(YT.data&&YT.data.people)||{},off=(YT.data&&YT.data.offices)||{};
   const reps=(p.m||[]).filter(s=>!/-sd-\d+$/.test(s)),sens=(p.m||[]).filter(s=>/-sd-\d+$/.test(s));
   const who=list=>`<ul class="ytppl">${list.map(s=>{const w=ppl[s]||[s,""];return ytChip(w[0],w[1],"/legislator/"+s);}).join("")}</ul>`;
-  const h=(p.h||[]).map(x=>`${x[0]} ${x[1]}${x[2]?" ("+tr("yt.floterial","floterial")+")":""}`);
-  const seat=(office,where,body)=>`<div class="ytseat"><p class="ytoff">${office}<span>${_fesc(where)}</span></p>${body}</div>`;
+  const seat=(office,where,body,race)=>`<div class="ytseat"${race?` data-race="${_fesc(race)}"`:""}><p class="ytoff">${office}${where?`<span>${_fesc(where)}</span>`:""}</p>${body}</div>`;
   const named=(k,d)=>{const o=(off[k]||{})[String(d)];
-    return o&&o[0]?`<ul class="ytppl">${ytChip(o[0],o[1],o[2],true)}</ul>`:`<p class="ytnote">${tr("yt.not_on_file","Not on file.")}</p>`;};
-  const eh=ytElect(p,"H"),es=ytElect(p,"S");
+    return o&&o[0]?`<ul class="ytppl">${ytChip(o[1]&&/^[A-Z]$/.test(o[1])?`${o[0]} (${o[1]})`:o[0],o[1],o[2],true)}</ul>`:`<p class="ytnote">${tr("yt.not_on_file","Not on file.")}</p>`;};
+  const all=k=>{const o=off[k]||{},ks=Object.keys(o).sort();
+    return ks.length?`<ul class="ytppl">${ks.map(d=>ytChip(o[d][1]&&/^[A-Z]$/.test(o[d][1])?`${o[d][0]} (${o[d][1]})`:o[d][0],o[d][1],o[d][2],true)).join("")}</ul>`:"";};
   const district=d=>tr("yt.district","District {d}",{d});
+  const hs=p.h||[];
+  // Each House district a row: its own members, and any member the address
+  // cannot place under the first, so nobody is left out.
+  const placed=new Set();
+  const by=hs.map(h=>{const ms=reps.filter(s=>ytInDistrict(s,h));ms.forEach(s=>placed.add(s));return ms;});
+  if(by.length)by[0]=by[0].concat(reps.filter(s=>!placed.has(s)));
   const seats=[];
-  if(h.length)seats.push(seat(tr("yt.seat_house","State House"),h.length>1?h.slice(0,-1).join(", ")+" "+tr("yt.and","and")+" "+h[h.length-1]:h[0],
-    eh[0]+(reps.length?who(reps):`<p class="ytnote">${tr("yt.no_member","No sitting member on file.")}</p>`)+eh[1]));
-  if(p.sd)seats.push(seat(tr("yt.seat_senate","State Senate"),district(p.sd),
-    es[0]+(sens.length?who(sens):`<p class="ytnote">${tr("yt.no_senator","No sitting senator on file.")}</p>`)+es[1]));
+  hs.forEach((h,i)=>{
+    const race="H|"+h[0]+"|"+h[1],eh=ytElect(p,"H",race);
+    seats.push(seat(tr("yt.seat_house","State House"),
+      `${h[0]} ${h[1]}${h[2]?" ("+tr("yt.floterial","floterial")+")":""}`,
+      eh[0]+(by[i].length?who(by[i]):`<p class="ytnote">${tr("yt.no_member","No sitting member on file.")}</p>`)+eh[1],
+      race));
+  });
+  if(p.sd){const es=ytElect(p,"S");
+    seats.push(seat(tr("yt.seat_senate","State Senate"),district(p.sd),
+      es[0]+(sens.length?who(sens):`<p class="ytnote">${tr("yt.no_senator","No sitting senator on file.")}</p>`)+es[1],
+      "S|"+p.sd));}
   if(p.ec)seats.push(seat(tr("yt.seat_council","Executive Council"),district(p.ec),named("ec",p.ec)));
   if(p.cd)seats.push(seat(tr("yt.seat_us_house","US House"),district(p.cd),named("cd",p.cd)));
-  const sub=[p.co?tr("yt.county","{county} County",{county:p.co}):"",
-    p.poll?tr("yt.votes_at","votes at {place}",{place:p.poll.split(/\s+\d/)[0]}):""].filter(Boolean).join(" \u00b7 ");
-  return `<div class="ytstop"><div><p class="ythead2">${tr("yt.your_town","Your Town")}</p><p class="ytname">${_fesc(p.n)}</p>`
-    +(sub?`<p class="ytsub">${_fesc(sub)}</p>`:"")+`</div><div class="ytacts">`
-    +`<button type="button" class="ytopen">${tr("yt.change","Change town")}</button>`
-    +`<a class="ytgo" href="${_fesc(p.u)}">${tr("yt.page_go","{place}&rsquo;s page &rarr;",{place:_fesc(p.n)})}</a></div></div>`
+  const us=all("us"),gov=all("gov");
+  if(us)seats.push(seat(tr("yt.seat_us_senate","US Senate"),"",us));
+  if(gov)seats.push(seat(tr("yt.seat_governor","Governor"),"",gov));
+  return `<div class="ytstop"><h3 class="ytname">${_fesc(p.n)}</h3>`
+    +(p.co?`<p class="ytsub">${tr("yt.in_county","In {county} County.",{county:_fesc(p.co)})}</p>`:"")+`</div>`
     +`<div class="ytgrid">${seats.join("")}</div>`;
 }
 function ytSlots(p){
-  const fh=document.getElementById("of-find");
-  if(fh)fh.textContent=p?tr("yt.look_another","Look Up Another Town"):tr("yt.find_town","Find Your Town");
+  // The Officials overview's box: the town's name and the way to its
+  // officials once there is one, the box to find it while there is none.
+  const fb=document.getElementById("ovtown");
+  if(fb){
+    const form=fb.querySelector("form"),yours=fb.querySelector(".ovyours");
+    if(yours){const b=yours.querySelector("b");if(b)b.textContent=p?tr("yt.yours","Your town: {place}",{place:p.n}):"";yours.hidden=!p;}
+    if(form)form.hidden=!!p;
+  }
   document.querySelectorAll(".yt[data-yt]").forEach(el=>{
     const k=el.dataset.yt;
-    if(k==="seats"){
-      if(!p){el.hidden=true;el.innerHTML="";return;}
-      el.innerHTML=ytSeats(p);el.hidden=false;return;
-    }
     // In the page's language (tr; the Learn pages in Spanish, 25 October
     // 2026), the place's and the people's names as the record has them.
     if(!p){
@@ -2139,35 +2168,46 @@ function yaFile(k){
     .then(d=>d&&Array.isArray(d.r)&&Array.isArray(d.t)?d:null,()=>null);
   return YA.files[k];
 }
-// The box, its list and its status line made a combobox; pick(choice) is
-// told what was chosen.
-function yaCombo(inp,list,say,pick){
+// THE SITE'S COMBOBOX, ONE COPY IN THIS FILE (the owner, 21 November 2026:
+// "Make the dropdown for the town search use the same format as other
+// dropdowns on the site like filters and searchbars"). The box `inp`, its
+// list and its status line, wired as WAI-ARIA's pattern with a listbox, the
+// way app.js's filterCombo wires the bill and law filters: the arrow keys
+// move through the options, wrapping, aria-activedescendant naming the one
+// they are on and that one aria-selected; Enter takes it; Escape closes the
+// list and only the list; Tab and leaving the box close it; a press on an
+// option keeps the focus in the box and goes no further than the list.
+// `o.rows(text)` gives the options, or a promise of them; `o.opt(row, i, id,
+// on)` draws one; `o.said(n)` is the status line's words; `o.pick(row)` is
+// told what was chosen. The address box draws its own options (yaCombo); the
+// Officials overview's town box draws the filters' (.qoffers, ytFindMount).
+function comboWire(inp,list,say,o){
   const lid=list.id||"ytalist";
-  let rows=[],act=-1,seq=0;
+  let rows=[],act=-1,seq=0,timer=0;
   const draw=()=>{
-    list.innerHTML=rows.map((r,i)=>`<li role="option" class="ytaopt" id="${lid}-${i}" data-i="${i}" aria-selected="${i===act}">${_fesc(r.label)}</li>`).join("");
+    list.innerHTML=rows.map((r,i)=>o.opt(r,i,`${lid}-${i}`,i===act)).join("");
     list.hidden=!rows.length;
     inp.setAttribute("aria-expanded",rows.length?"true":"false");
     if(act>=0){inp.setAttribute("aria-activedescendant",`${lid}-${act}`);
-      const o=document.getElementById(`${lid}-${act}`);if(o&&o.scrollIntoView)o.scrollIntoView({block:"nearest"});}
+      const on=document.getElementById(`${lid}-${act}`);if(on&&on.scrollIntoView)on.scrollIntoView({block:"nearest"});}
     else inp.removeAttribute("aria-activedescendant");
   };
   const shut=()=>{seq++;say.textContent="";if(rows.length||act>=0){rows=[];act=-1;draw();}};
   const update=()=>{
-    const q=yaQuery(inp.value),my=++seq;
-    if(!q||!q.key){rows=[];act=-1;draw();say.textContent="";return;}
-    yaFile(q.key).then(d=>{
+    const my=++seq;
+    const done=r=>{
       if(my!==seq)return;
-      rows=d&&q.chars>=3?yaSuggest(d,q,YA.most):[];act=-1;draw();
-      say.textContent=!rows.length?"":rows.length===1?tr("yt.sugg_one","1 address suggested")
-        :tr("yt.sugg_n","{n} addresses suggested",{n:rows.length});
-    });
+      rows=r||[];act=-1;draw();
+      say.textContent=rows.length?o.said(rows.length):"";
+    };
+    const got=o.rows(inp.value);
+    if(got&&typeof got.then==="function")got.then(done);else done(got);
   };
   const choose=i=>{
     const r=rows[i];if(!r)return;
-    inp.value=r.label;shut();pick(r);
+    shut();o.pick(r);
   };
-  inp.addEventListener("input",()=>{clearTimeout(YA.timer);YA.timer=setTimeout(update,120);});
+  inp.addEventListener("input",()=>{clearTimeout(timer);timer=setTimeout(update,o.wait==null?120:o.wait);});
   inp.addEventListener("keydown",e=>{
     if(e.key==="ArrowDown"||e.key==="ArrowUp"){
       e.preventDefault();
@@ -2190,10 +2230,24 @@ function yaCombo(inp,list,say,pick){
   // whose handler takes a click on nothing in the panel as one outside it
   // and shuts the panel (the browser test found it, 24 October 2026).
   list.addEventListener("click",e=>{
-    const o=e.target&&e.target.closest&&e.target.closest("[data-i]");
-    if(!o)return;
-    e.stopPropagation();choose(+o.getAttribute("data-i"));
+    const on=e.target&&e.target.closest&&e.target.closest("[data-i]");
+    if(!on)return;
+    e.stopPropagation();choose(+on.getAttribute("data-i"));
   });
+  return {update,shut,rows:()=>rows,active:()=>act};
+}
+// The address box, its list and its status line made a combobox; pick(choice)
+// is told what was chosen.
+function yaCombo(inp,list,say,pick){
+  return comboWire(inp,list,say,{
+    rows:v=>{
+      const q=yaQuery(v);
+      if(!q||!q.key)return [];
+      return yaFile(q.key).then(d=>d&&q.chars>=3?yaSuggest(d,q,YA.most):[]);
+    },
+    opt:(r,i,id,on)=>`<li role="option" class="ytaopt" id="${id}" data-i="${i}" aria-selected="${on}">${_fesc(r.label)}</li>`,
+    said:n=>n===1?tr("yt.sugg_one","1 address suggested"):tr("yt.sugg_n","{n} addresses suggested",{n}),
+    pick:r=>{inp.value=r.label;pick(r);}});
 }
 
 function ytRows(q){
@@ -2211,12 +2265,14 @@ function ytDraw(){
   const herep=here&&YT.by&&YT.by[here];
   let h="";
   if(p&&!panel.dataset.changing){
-    h+=`<div class="ytnow"><p class="ytplace"><a href="${_fesc(p.u)}">${_fesc(p.n)}</a></p>`
-      +`<p class="ytdist">${p.co?_fesc(p.co)+" County. ":""}${ytDistricts(p).map(_fesc).join(" &middot; ")}</p>`
-      +`<h3 class="ytsub">${tr("yt.legislators","Your state legislators")}</h3>`+ytPeople(p)
-      +`<h3 class="ytsub">${tr("yt.voting","Voting")}</h3>`+ytVote(p)
-      +'<p class="ytacts"><button type="button" class="ytbtn2" id="ytchange">'+tr("yt.change","Change town")+'</button>'
-      +'<button type="button" class="ytbtn2 ytquiet" id="ytforget">'+tr("yt.forget","Forget it")+'</button></p></div>';
+    // THE SHORT LIST OF THE TOWN'S OFFICIALS, THEN ITS PAGE (the owner's
+    // choice of draft A, 21 November 2026), for everything else -- how to
+    // vote, the clerk, the town's own officials -- which the page has.
+    h+=`<div class="ytnow">`+ytSeats(p)
+      +`<div class="ytfoot"><a class="ytgo" href="${_fesc(p.u)}">${tr("yt.open_page","Open {place}&rsquo;s page",{place:_fesc(p.n)})}</a>`
+      +'<button type="button" class="ytbtn2" id="ytchange">'+tr("yt.choose_another","Choose another town")+'</button>'
+      +'<button type="button" class="ytbtn2 ytquiet" id="ytforget">'+tr("yt.forget","Forget it")+'</button>'
+      +`<p class="ytnote">${tr("yt.marked","Your representatives are marked on Legislators.")}</p></div></div>`;
   }else{
     h+=(herep&&herep.s!==ytGet()?`<p class="ytthis"><button type="button" class="ytbtn2" data-pick="${_fesc(herep.s)}">${tr("yt.use_this","Use {place}, this page&rsquo;s town",{place:_fesc(herep.n)})}</button></p>`:"")
       +'<div class="findbox"><label for="ytq" class="ytlbl2">'+tr("yt.box","Your town, or your city and ward")+'</label>'
@@ -2259,6 +2315,9 @@ function ytDraw(){
         ?(rows.length===1?tr("yt.one_place","1 place"):tr("yt.n_places","{n} places",{n:rows.length})):"";
     };
     q.addEventListener("input",list);
+    // A town asked for by the address (?town=, #my-town) or typed in the
+    // Officials overview's box: in the box, its places listed.
+    if(YT.ask){q.value=YT.ask;list();}
     q.addEventListener("keydown",e=>{
       if(e.key==="Enter"){const b=out.querySelector(".ytrow");if(b){e.preventDefault();b.click();}}
     });
@@ -2438,9 +2497,11 @@ function ytMount(){
     document.documentElement.classList.add("findopen");
     btn.setAttribute("aria-expanded","true");
     ytLoad().then(()=>{ytDraw();
-      const f=panel.querySelector("#ytq")||panel.querySelector(".ytplace a");if(f)f.focus();
+      YT.ask="";
+      const f=panel.querySelector("#ytq")||panel.querySelector(".ytgo");if(f)f.focus();
     },()=>{panel.querySelector("#ytbody").innerHTML='<p class="ytnote">'+tr("yt.no_list","The list of towns did not load. Try again in a moment.")+'</p>';});
   };
+  YT.open=open;
   btn.addEventListener("click",()=>{panel.hidden?open():shut();});
   panel.querySelector("#ytclose").addEventListener("click",()=>{shut();home().focus();});
   scrim.addEventListener("click",shut);
@@ -2449,7 +2510,7 @@ function ytMount(){
     const t=e.target.closest("button");if(!t)return;
     e.stopPropagation();
     if(t.dataset.pick){delete panel.dataset.changing;ytSave(t.dataset.pick);
-      const a=panel.querySelector(".ytplace a");if(a)a.focus();}
+      const a=panel.querySelector(".ytgo");if(a)a.focus();}
     else if(t.id==="ytchange"){panel.dataset.changing="1";ytDraw();const q=panel.querySelector("#ytq");if(q)q.focus();}
     else if(t.id==="ytback"){delete panel.dataset.changing;ytDraw();}
     else if(t.id==="ytforget"){delete panel.dataset.changing;ytSave("");const q=panel.querySelector("#ytq");if(q)q.focus();}
@@ -2466,6 +2527,73 @@ function ytMount(){
   // Another tab that changes it changes it here.
   addEventListener("storage",e=>{if(e.key===YT.key)ytApply();});
   ytApply();
+  ytFindMount();
+}
+/* THE OFFICIALS OVERVIEW'S "FIND YOUR TOWN" (the owner's choice of draft A,
+   21 November 2026): a box at the top of the overview whose list is the
+   site's own (the owner: "Make the dropdown for the town search use the same
+   format as other dropdowns on the site like filters and searchbars"): the
+   bill filters' list, .qoffers and .qoffer, wired by comboWire, as the
+   address box is. Its places are ytRows', the panel's own list; choosing one
+   saves it, as the panel does, and opens the panel on its officials. Show
+   my officials, or Return with no place chosen, takes the one place the box
+   names, or opens the panel with what was typed in its box. And an address
+   that asks for a town -- ?town= and ?q= from the site search and the old
+   /town/<city> pages, #my-town and #towns from the old tab (GR_TOWN_ASK,
+   build_pages' OFFICIALS_HASH_JS) -- opens the panel with it typed in. */
+function ytFindMount(){
+  const box=document.getElementById("ovtown");
+  if(!box||!YT.open||box.dataset.on)return;
+  box.dataset.on="1";
+  const form=box.querySelector("form"),inp=box.querySelector("#ovq");
+  if(!form||!inp)return;
+  const list=document.createElement("ul");
+  list.id="ovq-offers";list.className="qoffers";list.hidden=true;
+  list.setAttribute("role","listbox");list.setAttribute("aria-label",tr("yt.places","Towns and wards"));
+  const say=document.createElement("span");
+  say.className="sr";say.setAttribute("role","status");
+  inp.setAttribute("role","combobox");inp.setAttribute("aria-autocomplete","list");
+  inp.setAttribute("aria-expanded","false");inp.setAttribute("aria-controls",list.id);
+  inp.parentNode.appendChild(list);inp.parentNode.appendChild(say);
+  const show=s=>{ytSave(s);YT.open(false);};
+  const combo=comboWire(inp,list,say,{
+    rows:v=>v.trim()?ytLoad().then(()=>ytRows(v),()=>[]):[],
+    opt:(r,i,id,on)=>`<li role="option" class="qoffer" id="${id}" data-i="${i}" aria-selected="${on}">`
+      +`<span>${_fesc(r.n)}</span>${r.co?`<span class="c">${tr("yt.county","{county} County",{county:_fesc(r.co)})}</span>`:""}</li>`,
+    said:n=>n===1?tr("yt.one_place","1 place"):tr("yt.n_places","{n} places",{n}),
+    pick:r=>{inp.value="";show(r.s);},
+    wait:80});
+  form.addEventListener("submit",e=>{
+    e.preventDefault();
+    const v=inp.value.trim();
+    ytLoad().then(()=>{
+      const n=_ynorm(v),one=n?YT.data.places.filter(p=>_ynorm(p.n)===n):[];
+      combo.shut();
+      if(one.length===1){inp.value="";show(one[0].s);return;}
+      YT.ask=v;YT.open(true);
+    },()=>{YT.ask=v;YT.open(true);});
+  });
+  box.addEventListener("click",e=>{
+    const t=e.target.closest&&e.target.closest("[data-ytshow]");
+    if(t){e.preventDefault();e.stopPropagation();YT.open(false);}
+  });
+  inp.disabled=false;
+  const go=form.querySelector("button");if(go)go.disabled=false;
+  const ask=()=>{
+    const pr=new URLSearchParams(location.search);
+    const v=(pr.get("town")||pr.get("q")||"").trim();
+    if(v){
+      // And the tab names the town (the cohesion audit of 30 October 2026,
+      // B-4): only a town of the list, never a search's words.
+      ytLoad().then(()=>{
+        const t=YT.data.places.find(p=>_ynorm(p.t)===_ynorm(pr.get("town")||""));
+        if(t&&document.title.indexOf(t.t+" \u2014 ")!==0)document.title=t.t+" \u2014 "+document.title;
+      },()=>{});
+    }
+    if(v||window.GR_TOWN_ASK){window.GR_TOWN_ASK=0;YT.ask=v;YT.open(!!v);}
+  };
+  ask();
+  addEventListener("hashchange",()=>{if(window.GR_TOWN_ASK){window.GR_TOWN_ASK=0;YT.ask="";YT.open(false);}});
 }
 ytMount();
 langNotice();

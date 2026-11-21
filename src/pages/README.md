@@ -18,7 +18,7 @@ stylesheet, linked by every page: a new component's rules go anywhere in it
 and reach the record pages and the five pages `build_pages.py` writes alike. The district map is a module of its own: `map.js` and `map.css`,
 which `build_district_map.py` copies (`map.js` without its comments) beside `/district_map.json`, the one
 file the map draws, and which a page mounts with `GRMap.mount()`: the
-Officials page's My Town tab and every town page's Map tab.
+Officials overview's map and every town page's Map tab.
 
 The hubs (Polish 3, 10 October 2026). The Officials page, `/officials`
 (`/legislators` answers with a 301 to it), is `build_pages.py`'s, in six
@@ -288,6 +288,10 @@ The hubs and the sections:
   function, and is a library some builders import;
 - `officials_tabs`: the Officials page's tabs that are not the legislators',
   which `build_pages` draws;
+- `officials_overview`: the Officials overview, the page the section opens
+  on -- the Legislature's seat bars (the incoming legislature's while there
+  are members-elect), the map and a block a branch -- which `build_pages`
+  draws first;
 - `build_calendar`: the General Court's week, a page a week;
 - `build_session_pages`: a page for every day the House or the Senate sat;
 - `build_full_sessions`: the House and the Senate as committees of the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.28
+# GRANITE_VERSION: 2026-10-10.29
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -140,8 +140,10 @@ def data_words(off=None):
         if t not in ("Justice", "Chief Justice"):
             add("title", re.sub(r"Justice", "Justices", t, count=1), "judicial superior_court")
     for r in (off.get("department_heads") or {}).get("departments") or []:
+        # Every department by name, headed or not: the Officials overview's
+        # State agencies lists them all (officials_overview.agencies).
+        add("dept", r.get("department"), "department_heads")
         if (r.get("name") or "").strip():
-            add("dept", r.get("department"), "department_heads")
             add("title", r.get("title"), "department_heads")
     for _k, t in COUNTY_OFFICES:
         add("office", t, "officials_tabs.COUNTY_OFFICES")
@@ -330,7 +332,9 @@ def source_link(url):
 
 
 def find_town(lang="en"):
-    """The "Find your town" link to the Officials page's My Town tab, in `lang`."""
+    """The "Find your town" link, in `lang`: the Officials page's old My Town
+    address, which opens the Overview with the town panel over it (21
+    November 2026; build_pages.OFFICIALS_HASH_JS)."""
     return ('<a href="officials.html#my-town">' + I.say(lang, "off.find_town", "Find your town")
             + "</a>.")
 
@@ -865,69 +869,142 @@ def elect_kind_line(won_keys, by_id, lang="en"):
                              for kind in STATUSES if n.get(kind))
 
 
-def elect_totals(races, lang="en", by_id=None):
+# ONE CHAMBER'S SEATS, COUNTED ONCE, for every bar that draws the members-
+# elect: the Members-Elect tab's (elect_totals) and the Officials overview's
+# (officials_overview), so the two cannot come to count a chamber apart.
+def elect_chamber(races, ch, lang="en"):
+    """{"seats", "won", "nf", "left", "groups"} of chamber `ch` ("S" or "H")
+    in the members-elect file's races, or None where it has none. `groups`
+    is [(code, n, words, class)]: the parties largest first, as the
+    roster's; then the cross-nominations, each by its letters; then no party
+    printed; then the seats not final ("nf") and any with nobody on file
+    ("none")."""
+    sen = ch == "S"
+    rs = [r for k, r in (races or {}).items() if bool(KEY_RE.match(k).group(3)) == sen]
+    if not rs:
+        return None
+    seats = sum(r.get("seats") or 0 for r in rs)
+    won = [e for r in rs for e in r.get("elected") or []]
+    nf = sum(r.get("not_final") or 0 for r in rs)
+    left = max(seats - len(won) - nf, 0)
+    one, more = {}, {}
+    for e in won:
+        p = str(e.get("p") or "")
+        (one if len(p) <= 1 else more)[p] = (one if len(p) <= 1 else more).get(p, 0) + 1
+    groups = ([(p, n, elect_party_words(p, n, lang), "seg-" + p)
+               for p, n in sorted(one.items(), key=lambda kv: (-kv[1], kv[0])) if p]
+              + [(p, n, p, "seg-X") for p, n in sorted(more.items())]
+              + ([("", one[""], elect_party_words("", one[""], lang), "seg-X")]
+                 if one.get("") else []))
+    if nf:
+        groups.append(("nf", nf, I.say(lang, "elect.nf_short", "Not final"), "seg-NF"))
+    if left:
+        groups.append(("none", left, I.say(lang, "elect.none_short", "No one on file"), "seg-V"))
+    return {"seats": seats, "won": won, "nf": nf, "left": left, "groups": groups}
+
+
+def sitting_groups(x, lang="en"):
+    """The same groups for a chamber as it sits, from home.json's composition
+    (`x`, one chamber's): each party as the roster counts it, then the seats
+    vacant ("V")."""
+    from parts import party_word
+    if not x:
+        return []
+    out = [(str(pp.get("code") or ""), pp.get("n") or 0,
+            party_word(pp.get("name") or "", lang, plural=(pp.get("n") or 0) != 1),
+            "seg-" + str(pp.get("code") or "X"))
+           for pp in x.get("parties") or [] if pp.get("n")]
+    if x.get("vacant"):
+        out.append(("V", x["vacant"], I.say(lang, "comp.vacant", "Vacant"), "seg-V"))
+    return out
+
+
+def _bit(p, n, w, lang="en"):
+    """One count of a chamber's short line: a party's letter for the eye and
+    its name for a screen reader; a cross-nomination's letters, which are its
+    name here; and the rest in words."""
+    if p == "nf":
+        return I.say(lang, "elect.n_not_final", "{n} not final", n=n)
+    if p == "none":
+        return I.say(lang, "elect.n_none", "{n} with no one on file", n=n)
+    if p == "V":
+        return (I.say(lang, "comp.n_vacant_one", "{n} vacant", n=n) if n == 1
+                else I.say(lang, "comp.n_vacant", "{n} vacant", n=n))
+    if not p:
+        return f"{n} {E(w).lower()}"
+    if len(p) > 1:
+        return f"{n} {E(p)}"
+    return f'{n} <span aria-hidden="true">{E(p)}</span><span class="sr">{E(w)}</span>'
+
+
+def short_counts(groups, lang="en"):
+    """The counts of `groups` on one line, each whole (.csb): a line too long
+    for a phone breaks between two of them, never inside one."""
+    return " &middot; ".join(f'<span class="csb">{_bit(p, n, w, lang)}</span>'
+                             for p, n, w, _c in groups)
+
+
+def bar_segs(groups, seats):
+    """The bar's segments, each as wide as its share of the seats."""
+    return "".join(f'<span class="pseg {c}" style="width:{100 * n / (seats or 1):.4f}%" '
+                   f'title="{E(w)}: {n}"></span>' for _p, n, w, c in groups)
+
+
+def comp_block(name, said, groups, seats, lang="en", after=""):
+    """One chamber's bar, as build_pages.static_bar draws the roster's, in its
+    classes: its name and what the count says, the bar, its legend, and the
+    one short line a phone shows (the walk of 8 November 2026: a chart on a
+    phone as well), then `after`."""
+    legend = "".join(f'<span><span class="pdot {c}"></span>{E(w)} <b>{n}</b></span>'
+                     for _p, n, w, c in groups)
+    return (f'<div class="comp"><div class="compline"><b>{E(name)}</b>'
+            f'<span class="statemeta">{said}</span></div><div class="pbar2">{bar_segs(groups, seats)}</div>'
+            f'<div class="plegend">{legend}</div>'
+            f'<p class="compshort"><b>{E(name)}</b> {short_counts(groups, lang)}</p>' + after + "</div>")
+
+
+def sitting_compare(x, lang="en", label=None):
+    """WHO SITS NOW, SMALL, beside a bar of the members-elect (the owner, 21
+    November 2026): `label` ("Serving now" unless given) and the chamber's
+    sitting members by party on one line, over a thin bar of the same
+    seats, so the incoming chamber can be read against the one it follows.
+    "" without a composition."""
+    groups = sitting_groups(x, lang)
+    if not groups:
+        return ""
+    label = I.say(lang, "elect.serving", "Serving now") if label is None else label
+    return (f'<div class="compnow"><p class="compnowl"><b>{E(label)}</b> '
+            f'{short_counts(groups, lang)}</p>'
+            f'<div class="pbar2 pbarthin" aria-hidden="true">{bar_segs(groups, x.get("seats"))}</div></div>')
+
+
+def elect_totals(races, lang="en", by_id=None, sitting=None):
     """THE SEATS AT THE TOP (the owner's walk of 7 November 2026, C): the
     Legislators tab's "Who holds the seats", for the members-elect -- each
     chamber's members-elect by party, the cross-nominated apart and a
     letter each ("R/D"), then the seats not final, then any with nobody on
     file -- as a bar on a wide screen and as one short line on a phone
     ("House 279 D &middot; 99 R &middot; 19 not final"). Drawn as
-    build_pages.static_bar draws the roster's, in its classes."""
+    build_pages.static_bar draws the roster's, in its classes.
+
+    AND WHO SITS NOW, SMALLER, UNDER EACH (the owner, 21 November 2026:
+    "keep the currently serving legislators on the members elect page"):
+    `sitting` is home.json's composition ({"S": ..., "H": ...}), and each
+    chamber's bar is followed by its sitting members by party on a thin bar
+    of their own (sitting_compare), so the two can be read against each
+    other. Nothing is drawn for it without one."""
     out = []
     for ch, sen in (("S", True), ("H", False)):
-        rs = [r for k, r in races.items() if bool(KEY_RE.match(k).group(3)) == sen]
-        if not rs:
+        got = elect_chamber(races, ch, lang)
+        if not got:
             continue
-        seats = sum(r.get("seats") or 0 for r in rs)
-        won = [e for r in rs for e in r.get("elected") or []]
-        nf = sum(r.get("not_final") or 0 for r in rs)
-        left = max(seats - len(won) - nf, 0)
-        one, more = {}, {}
-        for e in won:
-            p = str(e.get("p") or "")
-            (one if len(p) <= 1 else more)[p] = (one if len(p) <= 1 else more).get(p, 0) + 1
-        # The parties largest first, as the roster's; then the
-        # cross-nominations, each by its letters; then no party printed.
-        groups = ([(p, n, elect_party_words(p, n, lang), "seg-" + p)
-                   for p, n in sorted(one.items(), key=lambda kv: (-kv[1], kv[0])) if p]
-                  + [(p, n, p, "seg-X") for p, n in sorted(more.items())]
-                  + ([("", one[""], elect_party_words("", one[""], lang), "seg-X")]
-                     if one.get("") else []))
-        if nf:
-            groups.append(("nf", nf, I.say(lang, "elect.nf_short", "Not final"), "seg-NF"))
-        if left:
-            groups.append(("none", left, I.say(lang, "elect.none_short", "No one on file"), "seg-V"))
+        seats, won, nf, groups = got["seats"], got["won"], got["nf"], got["groups"]
         name = (I.say(lang, "comp.senate", "Senate") if sen else I.say(lang, "comp.house", "House"))
-        segs = "".join(f'<span class="pseg {c}" style="width:{100 * n / (seats or 1):.4f}%" '
-                       f'title="{E(w)}: {n}"></span>' for _p, n, w, c in groups)
-        legend = "".join(f'<span><span class="pdot {c}"></span>{E(w)} <b>{n}</b></span>'
-                         for _p, n, w, c in groups)
         said = (I.say(lang, "elect.won_nf", "{won} of {seats} seats elected, {nf} not final",
                       won=len(won), seats=seats, nf=nf) if nf else
                 I.say(lang, "elect.won", "{won} of {seats} seats elected", won=len(won), seats=seats))
-        # On a phone, a party's letter for the eye and its name for a screen
-        # reader; a cross-nomination's letters, which are its name here; and
-        # the rest in words.
-        def bit(p, n, w):
-            if p == "nf":
-                return I.say(lang, "elect.n_not_final", "{n} not final", n=n)
-            if p == "none":
-                return I.say(lang, "elect.n_none", "{n} with no one on file", n=n)
-            if not p:
-                return f"{n} {E(w).lower()}"
-            if len(p) > 1:
-                return f"{n} {E(p)}"
-            return f'{n} <span aria-hidden="true">{E(p)}</span><span class="sr">{E(w)}</span>'
-        # Each count whole on its line, as build_pages.short_bar's: on a
-        # narrow phone the House's can take two lines, breaking between counts.
-        # The line is the block's last part, under the bar: a phone shows the
-        # bar and the line, a wider screen the bar, its line and its legend
-        # (the walk of 8 November 2026: a chart on a phone as well).
-        short = " &middot; ".join(f'<span class="csb">{bit(p, n, w)}</span>' for p, n, w, _c in groups)
-        out.append(f'<div class="comp"><div class="compline"><b>{E(name)}</b>'
-                   f'<span class="statemeta">{said}</span></div><div class="pbar2">{segs}</div>'
-                   f'<div class="plegend">{legend}</div>'
-                   f'<p class="compshort"><b>{E(name)}</b> {short}</p></div>')
+        out.append(comp_block(name, said, groups, seats, lang,
+                              sitting_compare((sitting or {}).get(ch), lang)))
     if not out:
         return ""
     # The kinds, one line a chamber, under the bars (the walk of dry run 8).
@@ -1033,7 +1110,7 @@ def elect_nf_count(rows, lang="en"):
             + I.say(lang, "elect.nf_named", "Who won the seats lists them, and By county.") + "</p>")
 
 
-def members_elect(elect, today, lang="en", people=None, towns=None):
+def members_elect(elect, today, lang="en", people=None, towns=None, sitting=None):
     """THE MEMBERS-ELECT TAB (the person's decisions of 16 October 2026):
     who November's election sent to the General Court, for the weeks before
     they sit -- the approved sentence; then each chamber's seats by party
@@ -1048,7 +1125,9 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
     now" here. Over the lists a search box and three filters (status, party,
     chamber: elect_controls), written hidden for the script to show, over
     items that carry what they read; `towns` ({race key: [towns]}) lets a
-    town's name find its members-elect. `people`, the sitting and former members, gives a linked
+    town's name find its members-elect. `sitting`, home.json's composition,
+    draws who sits now, smaller, under each chamber's totals (elect_totals).
+    `people`, the sitting and former members, gives a linked
     member's surname for the order, the chamber they sit or sat in for
     their word, and the county the Legislators tab lists each Senate
     district under; nothing of theirs is drawn. No contact detail: a
@@ -1197,7 +1276,7 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
 </div>
 </section>"""
     return (f'<div class="elpane" data-elect{until_attrs(takes, today)}>' + intro
-            + elect_totals(races, lang, by_id)
+            + elect_totals(races, lang, by_id, sitting)
             + elect_controls([(k, e) for k, r in races.items() for e in r.get("elected") or []],
                              by_id, lang, races, towns)
             + views + ELECT_FILTER_JS + "</div>")
