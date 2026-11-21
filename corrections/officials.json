@@ -71,6 +71,7 @@
     "office": "Governor of New Hampshire",
     "scope": "statewide",
     "name": "Kelly Ayotte",
+    "reelected": {"name": "Kelly Ayotte", "party": "R", "election": "2026-11-03", "votes": 324846, "votes_cast": 631978, "source_url": "https://www.sos.nh.gov/2026-general-election-results", "source": "records/sources/2026-ge-governor-summary.xlsx (the Secretary of State's 2026 general election results)", "read": "2026-11-21"},
     "party": "R",
     "phone": "(603) 271-2121",
     "email": "GovernorAyotte@governor.nh.gov",
@@ -108,6 +109,7 @@
       },
       "2": {
         "name": "Karen Liot Hill",
+        "reelected": {"name": "Karen Liot Hill", "party": "D", "election": "2026-11-03", "votes": 81364, "votes_cast": 125665, "source_url": "https://www.sos.nh.gov/2026-general-election-results", "source": "records/sources/2026-ge-executive-council-2.xlsx (the Secretary of State's 2026 general election results)", "read": "2026-11-21"},
         "party": "D",
         "phone": "",
         "official_url": "https://www.council.nh.gov/district-2"
@@ -191,6 +193,7 @@
       },
       "2": {
         "name": "Maggie Goodlander",
+        "reelected": {"name": "Maggie Goodlander", "party": "D", "election": "2026-11-03", "votes": 187657, "votes_cast": 318014, "source_url": "https://www.sos.nh.gov/2026-general-election-results", "source": "records/sources/2026-ge-congressional-district-2.xlsx (the Secretary of State's 2026 general election results)", "read": "2026-11-21"},
         "party": "D",
         "phone": "(603) 226-1002",
         "phone_dc": "(202) 225-5206",
