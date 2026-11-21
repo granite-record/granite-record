@@ -67,7 +67,7 @@ fetch(DATA("build.json")).then(r=>r.json()).then(B=>{
 // 404s. The bill page had the same trap.
 window.DATA=window.DATA||((f)=>new URL(f, location.origin+"/").href);
 fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
-  const c=H.counts||{}, k=c.by_kind||{}, S=H.status||{};
+  const S=H.status||{};
 
   // Title case, and a colon after each label. The Python copy below says the
   // same.

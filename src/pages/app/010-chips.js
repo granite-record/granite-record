@@ -21,15 +21,6 @@ const statusUpToTheVoters=d=>"the General Court's own status page for this "
   +"amendment, which stops at the second chamber's vote; whether the voters "
   +"ratified it is read from "+(d.status_source==="General Court docket"
     ?"its docket's referendum line":"the count on the Votes tab");
-// WHAT THE SHORTHAND STANDS FOR. A citation is printed the way the General
-// Court prints it -- "HJ 1, page 32" is what a reader would quote -- but HJ
-// and SC are insider shorthand, and this site exists to make the record
-// findable. The Learn section explains the same four at
-// civics.py's "Reading the shorthand" table; this is the one place a reader
-// meets them without having gone looking.
-const CITE_OF={HJ:"House Journal",SJ:"Senate Journal",
-  HC:"House Calendar",SC:"Senate Calendar"};
-const citeSource=lab=>CITE_OF[(String(lab).match(/^([A-Z]{2})\b/)||[])[1]]||"";
 
 const PARTY_NAME={R:"Republican",D:"Democrat",I:"Independent",L:"Libertarian",
   X:"Party not on file"};

@@ -72,5 +72,5 @@ that gave another answer kept its own and is named here.
 | A term worked out from a date, elsewhere in `app.js` | `app.js` (stage0-code.md, section 10, item 8, counted four places on 15 November) | only `sittingTerm` is held (above) |
 
 `app.js`'s `formerName` was the twin of `build_legislator_pages.heading`;
-nothing calls it (stage0-code.md, section 3), so it is dead code, not a twin,
-and goes with the rest of the dead JavaScript in a later step.
+nothing called it (stage0-code.md, section 3), and it was removed with the
+rest of the dead JavaScript on 21 November 2026, so `heading` has no twin.

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.368
+// GRANITE_VERSION: 2026-09-07.372
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -22,15 +22,6 @@ const statusUpToTheVoters=d=>"the General Court's own status page for this "
   +"amendment, which stops at the second chamber's vote; whether the voters "
   +"ratified it is read from "+(d.status_source==="General Court docket"
     ?"its docket's referendum line":"the count on the Votes tab");
-// WHAT THE SHORTHAND STANDS FOR. A citation is printed the way the General
-// Court prints it -- "HJ 1, page 32" is what a reader would quote -- but HJ
-// and SC are insider shorthand, and this site exists to make the record
-// findable. The Learn section explains the same four at
-// civics.py's "Reading the shorthand" table; this is the one place a reader
-// meets them without having gone looking.
-const CITE_OF={HJ:"House Journal",SJ:"Senate Journal",
-  HC:"House Calendar",SC:"Senate Calendar"};
-const citeSource=lab=>CITE_OF[(String(lab).match(/^([A-Z]{2})\b/)||[])[1]]||"";
 
 const PARTY_NAME={R:"Republican",D:"Democrat",I:"Independent",L:"Libertarian",
   X:"Party not on file"};
@@ -1517,7 +1508,6 @@ function nearMap(X){
   });
   return X.near=m;
 }
-const indexHas=term=>!!SIDX[term];
 // The keys a word is filed under: itself, its singular, and itself with the
 // endings a title match allows. build_search_index.py's word_keys() is this.
 function wordKeys(alt){
@@ -3319,21 +3309,11 @@ function hasRsa(){
   if(!(k in HAS_RSA))HAS_RSA[k]=IDX.some(b=>b.rsa&&b.rsa.length&&inTermOf(b));
   return HAS_RSA[k];
 }
-// On a phone the filter column stacks ABOVE the results, and an open
-// Committee group is 340 pixels of it -- so the first bill sat past a
-// screen and a half of filters on a 375-wide screen. Someone arriving on
-// a phone came for the bills; the filters are one tap away either way.
-// 861px, which is where .shell actually becomes two columns. It was 721,
-// so between those two widths the panel stacked ABOVE the results with its
-// longest group open -- fourteen committees before the first bill.
-const wideEnough=typeof matchMedia==="function"
-  && matchMedia("(min-width:53.8125em)").matches;
 // 5a (the person, 9 October 2026, item 2): STATUS AND BILL TYPE OPEN,
 // COMMITTEE CLOSED, at every width -- inside the Filters panel below 960px as
 // well, so a reader who opens it sees the categories at once (round two's
 // question 8a, as recommended). Both are short and shown whole, and Status
 // answers the commonest question; the committee list is the long one.
-// wideEnough is kept for what else asks how wide the window is.
 // STATUS ALONE SINCE 12 OCTOBER 2026 (the person: "Just have the status
 // filter open by default rather than status and bill type"). Bill Type is
 // folded with the rest, one tap away.
@@ -9750,19 +9730,6 @@ function servedYears(m){
   return a===b?a:`${a} to ${b}`;
 }
 
-/* "FORMER REP." IN THE NAME ITSELF, as the person settled it in September: a
-   legislator who has left is written "Former Rep. David Smith" -- the word
-   joins the honorific, never a chip, badge or pill beside it -- on their own
-   page and in search results (find.json), and nowhere else. The honorific is
-   the record's own, the office they last held under it. A name the record
-   gives no honorific ("Member #377204") is left as it is, and the line under
-   it keeps saying "Former member". build_legislator_pages.heading() writes
-   the page's title and link card the same way. */
-function formerName(m){
-  const who=m.display_full||m.display||m.name||"";
-  return /^(Rep|Sen)\. /.test(who)?"Former "+who:"";
-}
-
 /* THE TITLE IN FULL AT THE TOP OF THE PAGE (the person, 9 October 2026:
    "Member pages should list their title along with their name at the top
    like Senator Sharon Carson or Representative James Spillane"). The
@@ -10004,14 +9971,6 @@ function voteRing(r,i){
 // How many are drawn before the reader asks for more. The old table stopped
 // dead at 600 with a line saying so and no way to see the 481 after it.
 const VOTES_SHOWN=200;
-
-// A bill number as a reader types it, "HB 1442" or "hb1442", for the search,
-// and as the bill's own page titles it, "HB 282-FN": pasted from that page it
-// found none of a member's 591 votes (the audit of 25 October 2026, S1). FN,
-// A and LOCAL (SUFFIX_TERM) say what a bill carries and are no part of the
-// number a vote is filed under.
-const billFold=s=>String(s||"").toUpperCase().replace(/(?:-(?:FN|A|LOCAL|L))+\s*$/,"")
-  .replace(/[^A-Z0-9]/g,"");
 
 // THE VOTES PAGE'S ADDRESS for a member's votes or a bill's (votesAddr, below,
 // reads it back): the member's page name, the search as typed, the term.
