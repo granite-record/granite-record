@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.37
+# GRANITE_VERSION: 2026-11-16.38
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -14130,7 +14130,8 @@ function kept(tag) {
 const made = [];
 document.createElement = t => { const e = kept(t); made.push(e); return e; };
 const box = kept(), form = kept("form"), inp = kept("input"), go = kept("button"), res = kept(), out = kept();
-box.dataset = {};
+// The parties as a Spanish page's box carries them (build_pages.legislator_box).
+box.dataset = {parties: JSON.stringify({Democrat: "Demócrata", Republican: "Republicano"})};
 box.querySelector = s => s === "form" ? form : s === "#lsq" ? inp : null;
 form.querySelector = () => go;
 inp.disabled = true; go.disabled = true; res.hidden = true;
@@ -14152,7 +14153,7 @@ const ticks = async () => { for (let i = 0; i < 30; i++) await new Promise(r => 
   const o = {mount: {enabled: !inp.disabled && !go.disabled, role: inp.getAttribute("role"),
     listClass: list && list.className, controls: inp.getAttribute("aria-controls")}, typed: {}};
   for (const q of ["abbot", "brook", "rock", "merrimack", "democrat", "judiciary", "merrimack dem",
-                   "education", "zzz"]) {
+                   "education", "zzz", "republicano merrimack"]) {
     inp.value = q; inp.fire("input"); await ticks();
     o.typed[q] = list.innerHTML;
   }
@@ -14189,7 +14190,9 @@ def _legislators_search():
     enabled, a combobox of a .qoffers list; "abbot" finds by name, "rock" by
     county as well as by name (Rockwell, a name, before the county's), and
     "democrat", "judiciary" and "merrimack dem" (every word must match) by
-    party, committee and both; in every list each chamber is under its name,
+    party, committee and both, and "republicano merrimack" by the party's
+    name in the page's language, which the box carries (data-parties, from
+    party_word); in every list each chamber is under its name,
     the Senate's heading and members wholly before the House's, so no
     alphabet runs across both; a member found by a committee says the
     committee; the reader's saved town's members say "Your senator" and
@@ -14227,7 +14230,8 @@ def _legislators_search():
             "merrimack": ["Cal Cole", "Dee Dunn"],
             "democrat": ["Bea Brook", "Cal Cole", "Eve East"],
             "judiciary": ["Ann Abbot", "Cal Cole", "Eve East"],
-            "merrimack dem": ["Cal Cole"], "education": ["Bea Brook", "Dee Dunn"], "zzz": []}
+            "merrimack dem": ["Cal Cole"], "education": ["Bea Brook", "Dee Dunn"], "zzz": [],
+            "republicano merrimack": ["Dee Dunn"]}
     for q, w in want.items():
         assert names(t[q]) == w, f"{q!r} suggested {names(t[q])}, not {w}"
     for q in ("rock", "democrat", "judiciary", "education"):
@@ -14240,8 +14244,8 @@ def _legislators_search():
     assert heads(t["merrimack"]) == ["House"], f"Merrimack's heads are {heads(t['merrimack'])}"
     assert '<span class="c">Judiciary · District 22</span>' in t["judiciary"], (
         "a member found by a committee does not say the committee")
-    assert '<span class="c">Republican · District 22</span>' in t["abbot"], (
-        "a member found by name does not say the party and the district")
+    assert '<span class="c">Republicano · District 22</span>' in t["abbot"], (
+        "a member found by name does not say the party, in the page's words, and the district")
     assert '<b>Ann Abbot</b><span class="lsmine">Your senator</span>' in t["abbot"] \
         and '<b>Eve East</b><span class="lsmine">Your rep</span>' in t["judiciary"] \
         and "lsmine" not in t["brook"], "the reader's own representatives are not marked, or another is"

@@ -71,13 +71,16 @@ function roster(){
 const LS_MOST=10;     // a screen of suggestions, then "Show all"
 const lsFold=s=>String(s||"").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g,"")
   .replace(/[^a-z0-9]+/g," ").trim();
-const PW={R:tr("party.r","Republican"),D:tr("party.d","Democrat"),
-          I:tr("party.i","Independent"),L:tr("party.l","Libertarian")};
+// A party's name in the page's language, as the roster says it: the build
+// writes each party the roster holds into the box's data-parties
+// (build_pages.legislator_box, from parts.party_word, the one table), so this
+// script keeps no table of its own. Read when the box is mounted.
+let PW={};
 function lsHay(m){
   const name=lsFold(m.plain), last=lsFold(m.name);
   const words=s=>lsFold(s).split(" ").filter(Boolean);
   return {name, last, own:new Set([...words(m.plain),...words(m.name)]),
-    rest:[m.county,m.dlabel,"district "+(m.district||""),m.party,PW[m.p]||""]
+    rest:[m.county,m.dlabel,"district "+(m.district||""),m.party,PW[m.party]||""]
       .flatMap(words),
     cmte:m.committees.map(c=>[c,words(c)])};
 }
@@ -138,6 +141,7 @@ function lsMount(){
   const box=document.getElementById("lsbox");
   if(!box||typeof comboWire!=="function"||box.dataset.on)return;
   box.dataset.on="1";
+  try{PW=JSON.parse(box.dataset.parties||"{}")||{};}catch(e){PW={};}
   const form=box.querySelector("form"),inp=box.querySelector("#lsq");
   if(!form||!inp)return;
   const list=document.createElement("ul");
@@ -163,7 +167,7 @@ function lsMount(){
       +`<li role="option" class="qoffer${r.all!=null?" lsall":""}" id="${id}" data-i="${i}" aria-selected="${on}">`
       +(r.all!=null?`<b>${tr("lf.ls_all","Show all {n}",{n:r.n})}</b>`
         :`<span><b>${esc(r.m.plain)}</b>${lsMine(r.m)}</span>`
-        +`<span class="c">${esc([r.by||PW[r.m.p]||r.m.party,r.m.where].filter(Boolean).join(" · "))}</span>`)+"</li>",
+        +`<span class="c">${esc([r.by||PW[r.m.party]||r.m.party,r.m.where].filter(Boolean).join(" · "))}</span>`)+"</li>",
     said:()=>found===1?tr("lf.n_member","{n} member",{n:1}):tr("lf.n_members","{n} members",{n:found}),
     pick:r=>{
       if(r.all!=null){lsAll(r.all);return;}
