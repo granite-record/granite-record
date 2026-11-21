@@ -2379,12 +2379,15 @@ components, `elect_now`, `elect_race`, `elect_block` and `elect_line`, in
 `data-elect`: under each district's race on a town page's Representatives
 tab and its Senate card, with "Serving now" over the sitting members; in
 `places.json`, as `elect` (the races) and `e` on each place (its own race
-keys), which `find.js` draws in the My Town card; as the Officials page's
+keys), which `find.js` draws in the town panel's list of a town's officials
+(the My Town card until 21 November 2026); as the Officials page's
 Members-Elect tab, laid out as the Legislators tab is (the Senate and then
 the House, by last name or by county), each member-elect the person chip with
 one word beside it -- Returning, Incumbent, New chamber, New or Prior service
 not on record, the status `build_members_elect.elect_status` gives (below) --
-and each chamber's totals at the top; as one
+and each chamber's totals at the top, with the chamber as it sits
+smaller under each, and on the Officials overview, whose Legislature
+leads with the incoming chambers until the day they sit; as one
 line on the page of each member the file links, which `app.js` draws from
 `GR_ELECT` only for that member (a former member elected again is re-headed
 there too, below); and in the district map's panel, from

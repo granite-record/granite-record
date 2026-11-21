@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.298
+# GRANITE_VERSION: 2026-09-04.299
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2981,8 +2981,14 @@ def main():
     # without JavaScript every panel is on the page under its own heading;
     # with it, a panel's id is its address (/officials#federal), and the old
     # page's #towns opens My Town, as the old #statewide opens Executive
-    # Branch (OFFICIALS_HASH_JS).
+    # Branch (OFFICIALS_HASH_JS). Since 21 November 2026 the Overview is
+    # first in My Town's place, and #towns and #my-town open it with the
+    # town panel over it (below).
     import officials_tabs as OT
+    # THE OVERVIEW, FIRST (the owner's choice of draft A, 21 November 2026):
+    # the page the section opens on, in My Town's place, which became the
+    # town panel (find.js) that its "Find your town" box opens.
+    import officials_overview as OV
     # Through the file's one reader, which puts a successor in office on the
     # day the file gives (build_members_elect.read_officials, 23 October 2026).
     from build_members_elect import read_officials
@@ -3030,6 +3036,10 @@ def main():
                        races_on_file(json.loads((out / "districts.json").read_text(encoding="utf-8")))[0].items()}
     elect_attrs = (f" data-elect{until_attrs(elect['takes_office'], today)}"
                    if elect else "")
+    # The general elections on file, for the overview's Elections block: the
+    # results files build_elections makes a page of each of, beside the site
+    # folder as chrome.row_facts finds them.
+    ov_elections = OV.elections_on_file(out.resolve().parent / "collected")
     # THE OLD ADDRESS GOES. /legislators is a 301 to /officials (decision
     # 127, MOVED). A legislators.html left in the folder by an earlier build
     # would be published beside the redirect, so it goes.
@@ -3040,25 +3050,9 @@ def main():
     def officials_html(lang):
         """The Officials page in `lang`."""
         of_panes = [
-            ("my-town", say(lang, "of.tab.town", "My Town"), None, f"""<div class="yt ytcard" data-yt="seats" hidden></div>
-<section class="ofpart" aria-labelledby="of-find">
-<h3 id="of-find">{say(lang, "of.find", "Find Your Town")}</h3>
-<p class="src fill">{say(lang, "of.find_how", "Type a town to see who represents it, or a name, county,\nparty or committee to find a member.")}</p>
-<div class="lfind">
-  <label for="lq" class="sr">{say(lang, "of.find_label", "Your town, or a legislator&rsquo;s name")}</label>
-  <input id="lq" type="search" autocomplete="off"
-    placeholder="{say(lang, "of.find_ph", "Your town or a legislator")}" disabled>
-  <p class="count" id="lcount">{say(lang, "of.loading", "Loading&hellip;")}</p>
-  <p class="sr" id="lsay" role="status"></p>
-  <div class="lmatch" id="lmatch"></div>
-</div>
-</section>
-<section class="ofpart ofmap" aria-labelledby="of-map">
-<h3 id="of-map">{say(lang, "of.map", "The Map")}</h3>
-<p class="src fill">{say(lang, "of.map_how", "Choose a district to see who represents it. Zoom in for\na city&rsquo;s wards.")}</p>
-<div class="ofmapbox" id="ofmap"></div>
-<noscript><p class="note">{say(lang, "of.map_noscript", "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns\">every town and\nward</a>.")}</p></noscript>
-</section>"""),
+            ("overview", say(lang, "of.tab.overview", "Overview"), None,
+             OV.overview(lang, comp=C, elect=elect, officers=officers, legs=legs, off=off,
+                         today=today, facts=chrome.row_facts(), elections_list=ov_elections)),
             # WHO HOLDS THE SEATS AT THE TOP (the owner's walk of 7 November
             # 2026, C): under the presiding officers and over the roster, as
             # the Members-Elect tab's totals are over its lists; on a phone,

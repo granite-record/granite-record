@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.30
+# GRANITE_VERSION: 2026-11-16.31
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -8806,12 +8806,9 @@ def _review_of_audit_fixes(BP):
         bad.append("the home page's activity list has its bullets and indent again below 1180px")
 
     # ---- read: the pages' own markup -----------------------------------
-    pages = _source(_paths.locate("build_pages.py"))
-    if '<p class="sr" id="lsay" role="status"></p>' not in pages \
-            or 'document.getElementById("lsay")' not in BP.LEGFIND_JS \
-            or "say.textContent=text" not in BP.LEGFIND_JS:
-        bad.append("the roster's finder no longer says what it found: #lsay, role=\"status\", "
-                   "and the script that writes the count into it")
+    # The roster's finder, which said what it found in #lsay, went with My
+    # Town (21 November 2026); the town box that took its place says how many
+    # places match in its own status line (_town_finder_words).
     exports = _source(_paths.locate("build_exports.py"))
     cov = re.search(r'<div class="covwrap"([^>]*)>', exports)
     if not cov or 'data-scrollstop="1"' not in cov.group(1) or 'role="region"' not in cov.group(1) \
@@ -13809,26 +13806,29 @@ def _home_finder_suggests_towns():
                   "no finder of towns beside it")
 
 
-@check("frontend", "the Officials page is six tabs, My Town, Legislators, Federal Delegation, "
+@check("frontend", "the Officials page is six tabs, Overview, Legislators, Federal Delegation, "
                    "Executive Branch, Judicial Branch and County Officials, drawn as the town "
                    "pages' tabs are")
 def _legislators_page_tabs():
     """The person's feedback of 9 October 2026, item 4, and decision 127: the
-    Legislators page is Officials, in tabs -- My Town (the town finder and
-    the district map), Legislators (the roster), Federal Delegation, Executive
-    Branch (Statewide Officials until the person's approval of 17 October
-    2026, which also added Judicial Branch beside it) and County Officials --
-    the strip and the switching script the town pages' (F5, 7 October 2026),
-    as the page's two tabs were.
+    Legislators page is Officials, in tabs -- Legislators (the roster),
+    Federal Delegation, Executive Branch (Statewide Officials until the
+    person's approval of 17 October 2026, which also added Judicial Branch
+    beside it) and County Officials -- the strip and the switching script the
+    town pages' (F5, 7 October 2026), as the page's two tabs were. And since
+    the owner's choice of draft A, 21 November 2026, the Overview first, in
+    the place of My Town, which became the town panel its "Find your town"
+    box opens (find.js).
 
     Read off the fixture's built page: one strip, written hidden for the
-    script to show, with the five in that order, each panel under its own
-    heading; the finder and then the map in My Town; the roster, who holds
-    the seats and the vacancies in Legislators; the people of the other three
-    from corrections/officials.json; the old page's #towns sent to #my-town
-    before the script reads the address; the town pages' switching script
-    after the panels; and the strip's rules in app.css, once, so this page
-    draws it as a town page does."""
+    script to show, with the six in that order, each panel under its own
+    heading; the Overview's town box and the map in the Overview, and no
+    finder of its own anywhere (#lq went with My Town); the roster, who
+    holds the seats and the vacancies in Legislators; the people of the
+    other three from corrections/officials.json; the old page's #towns and
+    #my-town sent to #overview before the script reads the address; the
+    town pages' switching script after the panels; and the strip's rules in
+    app.css, once, so this page draws it as a town page does."""
     import build_town_pages as BT
     import build_pages as BP
     import html as _html
@@ -13842,7 +13842,7 @@ def _legislators_page_tabs():
         "the strip is not written hidden for the script to show, naming Legislators as the tab "
         "a retired tab's address opens")
     tabs = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="([a-z-]+)"[^>]*>([^<]+)', strips[0])
-    want = [("my-town", "My Town"), ("legislators", "Legislators"),
+    want = [("overview", "Overview"), ("legislators", "Legislators"),
             ("federal", "Federal Delegation"), ("executive", "Executive Branch"),
             ("judicial", "Judicial Branch"), ("counties", "County Officials")]
     # SEVEN TABS ON ONE LINE (the owner, 7 November 2026): the tab says the
@@ -13860,12 +13860,12 @@ def _legislators_page_tabs():
         panes[pid] = page[i:starts[k + 1][0] if k + 1 < len(starts) else len(page)]
         name = dict(want)[pid]
         assert f'<h2 class="twnph">{name}</h2>' in panes[pid], f"the {name} panel has no heading"
-    towns, legs = panes["my-town"], panes["legislators"]
-    assert 'id="lq"' in towns and 'id="lmatch"' in towns and 'id="roster"' not in towns, (
-        "My Town is not the finder")
-    assert towns.index('id="lmatch"') < towns.index('id="ofmap"'), (
-        "My Town does not hold the map under the finder")
-    assert 'id="roster"' in legs and 'id="lq"' not in legs, "the Legislators panel does not hold the roster"
+    ov, legs = panes["overview"], panes["legislators"]
+    assert 'id="ovtown"' in ov and 'id="ofmap"' in ov and 'id="roster"' not in ov, (
+        "the Overview does not hold the town box and the map")
+    assert 'id="lq"' not in page and 'id="lmatch"' not in page and "<datalist" not in page, (
+        "the page still carries My Town's finder, or a native datalist for the town box")
+    assert 'id="roster"' in legs, "the Legislators panel does not hold the roster"
     if 'class="comp-wrap' in page:
         assert 'class="comp-wrap comp-top"' in legs, "who holds the seats is outside the Legislators panel"
     # The other tabs' offices are officials.json's people, each the one
@@ -13898,47 +13898,12 @@ def _legislators_page_tabs():
             assert f'<span class="mchip p-X" translate="no">{_html.escape(sheriff)}</span>' in county, (
                 f"the sheriff {sheriff} carries a party, or is not a chip")
     assert BP.OFFICIALS_HASH_JS in page and page.index(BP.OFFICIALS_HASH_JS) < page.index(
-        BT.TABS_JS), "the old page's #towns is not sent to #my-town before the tabs read it"
+        BT.TABS_JS), "the old page's #towns is not sent to #overview before the tabs read it"
     tabs_js = BT.TABS_JS
     assert tabs_js in page and page.index(tabs_js) > starts[-1][0], (
         "the town pages' switching script is not after the panels")
     assert page.count('id="out"') == 1, "the county listing's #out is on the page twice"
-    # THE INSTRUCTION IS THE TOWNS TAB'S (the look of 7 October 2026): "Type a
-    # town ... or a name" describes the box, and it sat over both tabs.
-    lead = re.search(r'<p class="lead">(.*?)</p>', page, re.S)
-    assert lead and "Type a town" not in lead.group(1) and "Type a town" in towns, (
-        "the finder's instruction is not in the My Town panel, over its box")
-    # THE TOWNS TAB IS THE LIVE SITE'S FINDER (the person, 7 October 2026: "I
-    # didn't want the change to the town ordering to also make it 5 columns
-    # wide", and asked how it should list them, "Like the live site"): the
-    # box, and under it the list in its 260px window, one column, scrolling
-    # inside itself -- and nothing below the finder, where the district map is
-    # to come. For an afternoon the tab ran every town down the page in
-    # columns; nothing in the script or either stylesheet does that now.
-    # AND THE MAP UNDER IT (Polish 3): the finder's own box holds the box and
-    # its list and nothing else, and the map is the next part of the panel.
-    rest = re.sub(r"<!--.*?-->", "", towns.split('<div class="lfind">', 1)[1], flags=re.S)
-    rest = rest.split("</section>", 1)[0]
-    assert re.fullmatch(r'\s*(?:<label [^>]*>[^<]*</label>|<input [^>]*>|<p [^>]*>[^<]*</p>'
-                        r'|<div class="lmatch" id="lmatch"></div>|\s)*</div>\s*', rest), (
-        "the finder holds something after its box and its list")
-    assert '.classList.toggle("all"' not in page, (
-        "the finder marks its list as the whole list of towns, for columns down the page")
     css = (site / "app.css").read_text(encoding="utf-8")
-    for sheet, text in (("the published app.css", css),
-                        ("app.css", _source("src/pages/app.css"))):
-        rules = [(sel.strip(), body) for sel, body in re.findall(
-            r"([^{}]*)\{([^{}]*)\}", re.sub(r"/\*.*?\*/", "", text, flags=re.S))]
-        win = [body for sel, body in rules if sel == ":where(body.pg) .lmatch"]
-        assert len(win) == 1 and "max-height:260px" in win[0] and "overflow-y:auto" in win[0], (
-            f"{sheet} does not hold the finder's list in its 260px window")
-        # By its class, its id or an attribute naming either (the review of 7
-        # October 2026: a rule on #lmatch passed while this read the class).
-        lifted = [sel for sel, body in rules
-                  if re.search(r"\.lmatch\b|#lmatch\b|\[(?:id|class)[~|^$*]?=\W?lmatch", sel)
-                  and sel != ":where(body.pg) .lmatch"
-                  and re.search(r"max-height|overflow|columns|column-(?:count|width)", body)]
-        assert not lifted, f"{sheet} lifts or widens the finder's window: {lifted}"
     # And the roster's three arrangements are a view switch, not a second row
     # of underlined tabs under the page's own.
     assert re.search(r"\.rtabs \[role=tab\]\{[^}]*border:1px solid var\(--edge\)", css) \
@@ -13950,83 +13915,171 @@ def _legislators_page_tabs():
         assert rule in css, f"the published app.css has no {rule}"
     app = _source("src/pages/app.css")
     assert app.count(".twntabs{display:flex") == 1, "app.css draws the strip twice"
-    return "ok", ("My Town, Legislators, Federal Delegation, Executive Branch, Judicial Branch "
+    return "ok", ("Overview, Legislators, Federal Delegation, Executive Branch, Judicial Branch "
                   "and County Officials, each a panel under its own heading, switched by the "
-                  "town pages' script and drawn by the same rules as a town's; My Town "
-                  "the finder over its 260px window and the map under it; the officials as "
+                  "town pages' script and drawn by the same rules as a town's; the Overview "
+                  "the town box and the map, and no finder of its own; the officials as "
                   "person chips")
 
 
-# The Officials page's town finder (build_pages.LEGFIND_JS) in node against
-# dom_stub.js, over a few towns and no members: opened as /officials?town=X,
-# then typed into.
-_TOWN_FINDER_JS = r"""
+# THE OFFICIALS OVERVIEW'S TOWN BOX (find.js ytFindMount) in node against
+# dom_stub.js, over a few places: the box made a combobox by comboWire, the
+# one wiring the address box has too, drawing the bill filters' list
+# (.qoffers, .qoffer); typed into, arrowed, chosen; and the page opened as
+# /officials?town=X and as #my-town.
+_TOWN_BOX_JS = r"""
 require("./stub.js");
-const fs = require("fs");
-const D = {"Andover": {"0": {}}, "Dover": {"1": {}, "2": {}}, "Concord": {"1": {}, "2": {}, "3": {}},
-           "Durham": {"0": {}}, "Hampton": {"0": {}}, "New Hampton": {"0": {}}};
-globalThis.fetch = async (u) => ({ok: true, status: 200,
-  json: async () => String(u).endsWith("districts.json") ? D : []});
-globalThis.dispatchEvent = () => {};
+const fs = require("fs"), vm = require("vm");
+const P = {places: [
+  {s: "andover", n: "Andover", t: "Andover", co: "Merrimack", u: "/town/andover"},
+  {s: "dover-ward-1", n: "Dover Ward 1", t: "Dover", co: "Strafford", u: "/town/dover-ward-1"},
+  {s: "dover-ward-2", n: "Dover Ward 2", t: "Dover", co: "Strafford", u: "/town/dover-ward-2"},
+  {s: "concord-ward-1", n: "Concord Ward 1", t: "Concord", co: "Merrimack", u: "/town/concord-ward-1"},
+  {s: "concord-ward-2", n: "Concord Ward 2", t: "Concord", co: "Merrimack", u: "/town/concord-ward-2"},
+  {s: "durham", n: "Durham", t: "Durham", co: "Strafford", u: "/town/durham"},
+  {s: "jackson", n: "Jackson", t: "Jackson", co: "Carroll", u: "/town/jackson"}],
+  people: {}, offices: {}};
+globalThis.fetch = async u => ({ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(P))});
+globalThis.dispatchEvent = () => true;
 globalThis.CustomEvent = globalThis.CustomEvent || class { constructor(t, o) { this.detail = o && o.detail; } };
-location.search = process.argv[2] || "";
-const box = document.getElementById("lq"), out = document.getElementById("lmatch");
-const ticks = async (n) => { for (let i = 0; i < n; i++) await new Promise(r => setImmediate(r)); };
-(0, eval)(fs.readFileSync("./finder.js", "utf8"));
+const saved = [];
+globalThis.localStorage = {getItem(){ return saved.length ? saved[saved.length - 1] : null; },
+  setItem(k, v){ saved.push(v); }, removeItem(){ saved.push(null); }};
+const create = document.createElement.bind(document);
+function kept(tag) {
+  const e = create(tag || "div"), at = {};
+  e.setAttribute = (k, v) => { at[k] = String(v); };
+  e.getAttribute = k => (k in at ? at[k] : null);
+  e.removeAttribute = k => { delete at[k]; };
+  e.attrs = at;
+  return e;
+}
+const made = [];
+let F;
+try { vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+      F = vm.runInThisContext("({YT, ytRows, ytLoad, ytFindMount, comboWire, yaCombo})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+document.createElement = t => { const e = kept(t); made.push(e); return e; };
+const ticks = async () => { for (let i = 0; i < 30; i++) await new Promise(r => setImmediate(r)); };
+async function page(search, ask) {
+  const box = kept(), form = kept("form"), inp = kept("input"), go = kept("button");
+  box.dataset = {};
+  box.querySelector = s => s === "form" ? form : s === "#ovq" ? inp : null;
+  form.querySelector = () => go;
+  inp.disabled = true; go.disabled = true;
+  const byId = {ovtown: box};
+  document.getElementById = id => byId[id] || create("div");
+  location.search = search || "";
+  window.GR_TOWN_ASK = ask ? 1 : 0;
+  const opened = [];
+  F.YT.open = change => opened.push([change, F.YT.ask]);
+  made.length = 0;
+  F.ytFindMount();
+  await ticks();
+  const list = made.find(e => e.tagName === "ul");
+  return {box, form, inp, go, list, opened};
+}
 (async () => {
-  await ticks(20);
-  const res = {opened: out.innerHTML, typed: {}};
-  for (const q of ["dover", "hampton", "ham", "concord"]) {
-    box.value = q; box.fire("input"); res.typed[q] = out.innerHTML;
-  }
-  console.log(JSON.stringify(res));
+  await F.ytLoad();
+  const out = {rows: {}};
+  for (const q of ["dover", "ham", "con"]) out.rows[q] = F.ytRows(q).map(p => p.n);
+  const g = await page("");
+  const inp = g.inp, list = g.list;
+  out.mount = {role: inp.getAttribute("role"), auto: inp.getAttribute("aria-autocomplete"),
+    controls: inp.getAttribute("aria-controls"), expanded: inp.getAttribute("aria-expanded"),
+    enabled: !inp.disabled && !g.go.disabled, listRole: list && list.getAttribute("role"),
+    listClass: list && list.className, listId: list && list.id, opened: g.opened.length};
+  inp.value = "con"; inp.fire("input"); await ticks();
+  out.typed = {html: list.innerHTML, hidden: list.hidden, expanded: inp.getAttribute("aria-expanded")};
+  const key = k => { const e = {key: k, prevented: 0, preventDefault(){ this.prevented++; },
+    stopPropagation(){}}; (inp._on.keydown || []).forEach(f => f(e)); return e; };
+  key("ArrowDown");
+  out.down = {active: inp.getAttribute("aria-activedescendant"), html: list.innerHTML};
+  const en = key("Enter"); await ticks();
+  out.enter = {prevented: en.prevented, saved: saved.slice(-1)[0], opened: g.opened.slice(-1)[0] || null,
+    hidden: list.hidden, expanded: inp.getAttribute("aria-expanded")};
+  const asked = await page("?town=Concord");
+  out.town = asked.opened;
+  const hashed = await page("", true);
+  out.hash = hashed.opened;
+  console.log("@@" + JSON.stringify(out));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
 """
 
 
-@check("frontend", "the Officials page's town finder matches a town from the start of a word, so "
-       "Dover is not Andover, and a city named in its address opens its wards",
-       needs=("build_pages",))
-def _town_finder_words(BP):
-    """The audit of 25 October 2026, M4: the town finder listed any town
-    whose name held the letters typed, so "Dover" still listed Andover, and
-    "ham" Durham. It matches from the start of a word now -- "Hampton" still
-    lists Hampton and New Hampton, and "ham" them and not Durham -- and a
-    city named in the address,
-    /officials?town=Concord, which the site search's one row for a city opens
-    (find.json), arrives with its wards open, since a ward is what the reader
-    came for. LEGFIND_JS, run in node over six towns."""
+@check("frontend", "the Officials overview's town box is the site's own suggestion list -- the "
+       "filters' .qoffers, wired by the combobox the address box uses -- and a town asked for "
+       "by the address opens the town panel")
+def _town_finder_words():
+    """The owner, 21 November 2026, on draft A of the Officials overview:
+    "Make the dropdown for the town search use the same format as other
+    dropdowns on the site like filters and searchbars." The draft's native
+    datalist is gone; find.js's ytFindMount makes the box a combobox with
+    comboWire -- the one wiring of this file, which the address box's
+    yaCombo uses too -- drawing the bill and law filters' list, .qoffers
+    with .qoffer options (app.js filterCombo's markup). Run in node over
+    seven places: the box is role=combobox, aria-autocomplete=list,
+    controlling a listbox of class qoffers, and enabled once mounted;
+    "con" lists Concord's wards as role=option .qoffer rows and opens it;
+    ArrowDown names the first in aria-activedescendant and marks it
+    aria-selected; Enter saves that place (gr-town) and opens the town
+    panel on its officials, and shuts the list. The places are the panel's
+    own (ytRows), matched from the start of a word, so "dover" is not
+    Andover and "ham" not Durham (the audit of 25 October 2026, M4). And
+    /officials?town=Concord -- where the site search's row for a city and
+    the old /town/<city> pages lead -- opens the panel with Concord typed in
+    its box, its wards listed; #my-town, the old tab, opens it as well
+    (GR_TOWN_ASK, OFFICIALS_HASH_JS). Fails if the box goes back to a
+    datalist or a list of its own, or the address stops asking."""
     if not shutil.which("node"):
         return "skip", "node is not installed"
-    m = re.search(r"<script>(.*?)</script>", BP.LEGFIND_JS, re.S)
-    assert m, "build_pages.LEGFIND_JS carries no <script>"
+    src = _source("src/pages/find.js")
+    mount = src[src.index("function ytFindMount("):]
+    mount = mount[:mount.index("\n}") + 2]
+    assert "comboWire(inp,list,say," in mount and 'list.className="qoffers"' in mount \
+        and 'class="qoffer"' in mount and "datalist" not in mount, (
+            "the town box is not the site's suggestion list: comboWire drawing .qoffers/.qoffer")
+    ya = src[src.index("function yaCombo("):src.index("function ytRows(")]
+    assert "return comboWire(inp,list,say,{" in ya, (
+        "the address box no longer goes through comboWire, so the two boxes are two lists")
+    assert ".qoffers{" in _source("src/pages/app.css") and 'list.className="qoffers"' in _source(
+        "src/pages/app.js"), "the filters' list is no longer .qoffers in app.js and app.css"
     root = Path(tempfile.mkdtemp())
     try:
         (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
-        (root / "finder.js").write_text(_with_components(m.group(1)), encoding="utf-8")
-        (root / "go.js").write_text(_TOWN_FINDER_JS, encoding="utf-8")
-        got = {}
-        for name, arg in (("town", "?town=Concord"), ("none", "")):
-            r = _run(["node", "go.js", arg], cwd=root, capture_output=True, text=True, timeout=60)
-            said = (r.stdout + r.stderr).strip()
-            last = (said.splitlines() or ["no output"])[-1]
-            assert r.returncode == 0 and last.startswith("{"), f"node go.js {arg}: {last[:300]}"
-            got[name] = json.loads(last)
+        (root / "find.js").write_text(_with_components(src), encoding="utf-8")
+        (root / "go.js").write_text(_TOWN_BOX_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    towns = lambda h: re.findall(r"<b>([^<]+)</b>", h)  # noqa: E731
-    t = got["none"]["typed"]
-    assert towns(t["dover"]) == ["Dover"] and "Durham" not in towns(t["ham"]) \
-        and towns(t["hampton"]) == ["Hampton", "New Hampton"], (
-        f"the town finder lists {towns(t['dover'])} for 'dover', {towns(t['ham'])} for 'ham' and "
-        f"{towns(t['hampton'])} for 'hampton': a town is matched from the start of a word")
-    opened = got["town"]["opened"]
-    assert all(f'href="town/concord-ward-{w}"' in opened for w in (1, 2, 3)) \
-        and "town/concord-ward-" not in got["none"]["typed"]["concord"], (
-        "/officials?town=Concord does not arrive with Concord's wards open, or a city typed "
-        f"opens them unasked: {opened[:300]!r}")
-    return "ok", ("'dover' lists Dover alone, 'hampton' Hampton and New Hampton, 'ham' not Durham; "
-                  "/officials?town=Concord opens its wards")
+    said = (r.stdout + r.stderr).strip()
+    assert r.returncode == 0 and "@@" in r.stdout, f"node go.js: {said[-300:]}"
+    got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    rows = got["rows"]
+    assert rows["dover"] == ["Dover Ward 1", "Dover Ward 2"] and "Durham" not in rows["ham"], (
+        f"the places for 'dover' are {rows['dover']} and for 'ham' {rows['ham']}: a place is matched "
+        "from the start of a word")
+    m = got["mount"]
+    assert m == {"role": "combobox", "auto": "list", "controls": "ovq-offers", "expanded": "false",
+                 "enabled": True, "listRole": "listbox", "listClass": "qoffers", "listId": "ovq-offers",
+                 "opened": 0}, f"the town box as mounted: {m}"
+    ty = got["typed"]
+    opts = re.findall(r'<li role="option" class="qoffer" id="ovq-offers-(\d)" data-i="\d" '
+                      r'aria-selected="(true|false)"><span>([^<]+)</span>', ty["html"])
+    assert [o[2] for o in opts] == ["Concord Ward 1", "Concord Ward 2"] and not ty["hidden"] \
+        and ty["expanded"] == "true", f"typing 'con' drew {ty}"
+    d = got["down"]
+    assert d["active"] == "ovq-offers-0" and 'id="ovq-offers-0" data-i="0" aria-selected="true"' in d["html"], (
+        f"ArrowDown did not move to the first place: {d['active']}")
+    e = got["enter"]
+    assert e["prevented"] and e.get("saved") == "concord-ward-1" and e["opened"] == [False, ""] \
+        and e["hidden"] and e["expanded"] == "false", f"Enter on a place: {e}"
+    assert got["town"] == [[True, "Concord"]], (
+        f"/officials?town=Concord opened the panel as {got['town']}, not with Concord in its box")
+    assert got["hash"] == [[False, ""]], f"#my-town opened the panel as {got['hash']}"
+    return "ok", ("the town box is a combobox of the filters' .qoffers list through comboWire, as the "
+                  "address box is; 'con' lists Concord's wards, ArrowDown and Enter choose and open the "
+                  "panel; 'dover' is not Andover; ?town=Concord and #my-town open the panel")
 
 
 # THE OFFICIALS OVERVIEW'S FIXTURES: two chambers as they sit, and a
@@ -14044,6 +14097,150 @@ _OV_ELECT = {"election": "2026-11-03", "takes_office": "2026-12-02",
                        "H|Merrimack|4": {"seats": 3, "elected": [{"n": "C. Winner", "p": "D"},
                                                                   {"n": "D. Winner", "p": "D"}],
                                          "not_final": 1}}}
+
+
+@check("frontend", "the Officials overview leads with the incoming legislature, its day said, and "
+       "the sitting one smaller under it, from the election to the day it takes office, and with "
+       "the sitting legislature alone outside those weeks", needs=("officials_overview",))
+def _officials_overview_switch(OV):
+    """The owner, 21 November 2026: "The overview can switch to showing the
+    new legislature numbers after election results come in ... but make it
+    clear that it's the incoming class of legislators", and "There should be
+    a smaller summary of the previous legislative distribution compared to
+    the incoming classes numbers". officials_overview.leads_incoming decides
+    from the members-elect file and the build's day alone; the Legislature
+    block is drawn here for a file whose legislature takes office on 2
+    December 2026, on each side of that day, and with no file and a file of
+    no races. In the window: the block "The incoming legislature", "Elected
+    November 3, 2026; takes office December 2, 2026.", carrying data-elect
+    and data-until for that day, the incoming chambers' bars (2 of 2 and 2
+    of 3 seats elected), then "Serving until then", retiring the same way,
+    over the chambers as they sit; with every element carrying data-elect
+    taken out, the block is the one drawn with no file at all (so the page
+    is, as _elect_pages_never_sitting holds every page to), and app.css
+    draws the sitting chambers small -- a thin bar, the short line, no
+    legend -- only while the incoming block is shown. A link to
+    Members-elect in the window. The day itself and after, with no file or
+    no races: the chambers as they sit on full bars ("24 of 24 seats
+    filled", "382 of 400 seats filled, 18 vacant") and nothing of the
+    incoming."""
+    import re as _re
+    legs = [{"chamber": "H"}] * 3
+
+    def leg(today, elect):
+        return OV.legislature(_OV_COMP, elect, [], legs, today, "en", {"former": True})
+
+    def text(h):
+        import html as _h
+        return " ".join(_h.unescape(_re.sub(r"<[^>]+>", " ", h)).split())
+    inside = leg("2026-11-20", _OV_ELECT)
+    assert OV.leads_incoming(_OV_ELECT, "2026-11-20") and not OV.leads_incoming(_OV_ELECT, "2026-12-02") \
+        and not OV.leads_incoming(None, "2026-11-20") \
+        and not OV.leads_incoming({**_OV_ELECT, "races": {}}, "2026-11-20"), (
+            "leads_incoming does not follow the file and the day")
+    assert '<div class="ovincoming" data-elect data-until="2026-12-02">' in inside, (
+        "the incoming block is not drawn, or not retired on the day they take office")
+    words = text(inside)
+    assert "The incoming legislature Elected November 3, 2026; takes office December 2, 2026." in words, (
+        f"the incoming legislature is not headed as such with its days: {words[:200]!r}")
+    from pf_shared import _elect_strip
+    i_in = inside.find("2 of 2 seats elected")
+    i_until = inside.find('<h3 class="ovnowh" data-elect data-until="2026-12-02">Serving until then</h3>')
+    i_sit = inside.find('<div class="ovsitting">')
+    assert "2 of 3 seats elected, 1 not final" in inside and -1 < i_in < i_until < i_sit, (
+        "the incoming chambers do not lead, over \"Serving until then\" and the chambers as they sit")
+    assert _elect_strip(inside) == leg("2026-11-20", None), (
+        "with the members-elect taken out, the block is not the one drawn without them")
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S).replace("\r\n", "\n")
+    small = ":where(body.pg) .ovincoming:not([hidden]) ~ .ovsitting"
+    assert f"{small} .ovch .comp > .pbar2{{height:8px}}" in css \
+        and f"{small} .compline,\n{small} .plegend{{display:none}}" in css \
+        and f"{small} .compshort{{display:block" in css, (
+            "app.css does not draw the sitting chambers small while the incoming ones lead")
+    assert 'href="officials.html#members-elect"' in inside, "no way to the members-elect in the window"
+    for day, elect in (("2026-12-02", _OV_ELECT), ("2026-12-09", _OV_ELECT), ("2026-11-20", None),
+                       ("2026-11-20", {**_OV_ELECT, "races": {}})):
+        out = leg(day, elect)
+        assert "ovincoming" not in out and "incoming" not in text(out).lower() \
+            and "members-elect" not in out, f"{day}: the incoming legislature is drawn outside its weeks"
+        assert "24 of 24 seats filled" in out and "382 of 400 seats filled, 18 vacant" in out \
+            and out.count('<div class="comp">') == 2 and '<div class="ovsitting">' in out, (
+                f"{day}: the sitting chambers do not lead on full bars")
+    return "ok", ("in the window the incoming chambers lead under \"The incoming legislature\" with "
+                  "its two days, retiring on 2 December, and the sitting ones follow, small while it "
+                  "shows and otherwise the block drawn without the file; "
+                  "on the day, after it, with no file and with no races, the sitting chambers lead "
+                  "and nothing of the incoming is drawn")
+
+
+@check("frontend", "the Officials overview names an office's successor as \"<office>-elect\" with "
+       "the day they take office, and a holder re-elected as re-elected, and makes up neither",
+       needs=("officials_overview",))
+def _officials_overview_elect_labels(OV):
+    """The owner, 21 November 2026: "Governor-elect makes sense along with
+    Executive Councilor-elect." Over a fixture of the hand file's shape, with
+    the re-elected records and without them: a council district whose record
+    has an `elect` draws its holder and, under them, the successor's chip
+    with "Executive Councilor-elect; takes office January 6, 2027", carrying
+    data-until for that day; a US House district's, "US Representative-elect";
+    a Governor's with an elect, "Governor-elect". A record whose
+    `reelected` names its holder says "Re-elected November 3, 2026" beside
+    them; one naming somebody else, or with no day, says nothing; and the
+    Governor's re-election is never drawn as a Governor-elect. Without the
+    key, nothing is said of a re-election at all."""
+    import copy
+
+    def text(h):
+        import html as _h
+        return " ".join(_h.unescape(re.sub(r"<[^>]+>", " ", h)).split())
+    again = {"election": "2026-11-03", "votes": 1, "votes_cast": 2, "source_url": "https://x",
+             "source": "x", "read": "2026-11-21"}
+    off = {"governor": {"name": "K. Holder", "party": "R", "reelected": {**again, "name": "K. Holder", "party": "R"}},
+           "council": {"districts": {
+               "1": {"name": "J. Kenney", "party": "R",
+                     "elect": {"name": "L. Bay", "party": "D", "takes_office": "2027-01-06"}},
+               "2": {"name": "K. Hill", "party": "D", "reelected": {**again, "name": "K. Hill", "party": "D"}},
+               "3": {"name": "J. Stevens", "party": "R", "reelected": {**again, "name": "Somebody Else"}},
+               "4": {"name": "J. Stephen", "party": "R", "reelected": {**again, "name": "J. Stephen",
+                                                                       "election": ""}},
+               "5": {"name": "D. Wheeler", "party": "R",
+                     "elect": {"name": "D. Wheeler", "party": "R", "takes_office": "2027-01-06"}}}},
+           "us_house": {"districts": {
+               "1": {"name": "C. Pappas", "party": "D",
+                     "elect": {"name": "S. Shaheen", "party": "D", "takes_office": "2027-01-03"}},
+               "2": {"name": "M. Goodlander", "party": "D",
+                     "reelected": {**again, "name": "M. Goodlander", "party": "D"}}}}}
+    with_ = OV.executive(off, "en") + OV.federal(off, "en")
+    w = text(with_)
+    assert "L. Bay (D) Executive Councilor-elect; takes office January 6, 2027" in w \
+        and '<li class="ovnext" data-until="2027-01-06">' in with_, (
+            "the council's successor is not drawn as Executive Councilor-elect with the day, retiring then")
+    assert "S. Shaheen (D) US Representative-elect; takes office January 3, 2027" in w, (
+        "the US House's successor is not drawn as US Representative-elect")
+    assert "K. Holder (R) Re-elected November 3, 2026" in w and "K. Hill (D) District 2 · Re-elected November 3, 2026" in w \
+        and "M. Goodlander (D) District 2 · Re-elected November 3, 2026" in w, (
+            "a holder re-elected is not said to be")
+    assert w.count("Re-elected") == 3 and "Governor-elect" not in w and w.count("-elect;") == 2, (
+        f"a re-election naming somebody else, or with no day, or a successor who is the holder, "
+        f"said something; or a Governor-elect was made up: {w[:400]!r}")
+    bare = copy.deepcopy(off)
+    for rec in [bare["governor"], *bare["council"]["districts"].values(),
+                *bare["us_house"]["districts"].values()]:
+        rec.pop("reelected", None)
+    b = text(OV.executive(bare, "en") + OV.federal(bare, "en"))
+    assert "Re-elected" not in b and "Governor-elect" not in b and "Executive Councilor-elect" in b, (
+        "without the reelected key the overview says something of a re-election")
+    bare["governor"]["elect"] = {"name": "N. Successor", "party": "D", "takes_office": "2027-01-07"}
+    g = text(OV.executive(bare, "en"))
+    assert "N. Successor (D) Governor-elect; takes office January 7, 2027" in g, (
+        "a Governor's successor on file is not drawn as Governor-elect")
+    es = text(OV.executive(off, "es"))
+    assert "Consejero/a Ejecutivo/a electo/a" in es and "Reelegido/a el 3 de noviembre de 2026" in es, (
+        "the Spanish overview does not say the successor's and the re-election's words")
+    return "ok", ("Executive Councilor-elect, US Representative-elect and Governor-elect with their "
+                  "days where the record has an elect; Re-elected November 3, 2026 beside three "
+                  "holders, nothing for a re-election naming another or with no day, and nothing "
+                  "without the key; the same in Spanish")
 
 
 @check("frontend", "the Members-elect tab draws who sits now, smaller, under each chamber's "
@@ -14072,6 +14269,32 @@ def _members_elect_sitting_compare(OT):
     return "ok", "\"Serving now\" and the sitting counts on a thin bar under the Senate's and the House's"
 
 
+@check("frontend", "the Officials row opens on the Overview, its first item, in My Town's place")
+def _officials_row_overview_first():
+    """The owner's choice of draft A, 21 November 2026: Overview is the first
+    item of the Officials row (chrome.ROWS), at officials.html, naming the
+    page's first panel; My Town is no item of the row any more, and its old
+    addresses (#my-town, #towns) open the Overview with the town panel over
+    it (_executive_branch_renamed runs the alias). A town's page is the
+    Overview's in the row, as it was My Town's."""
+    import chrome
+    rows = chrome.ROWS["officials.html"]
+    assert rows[0] == ("overview", "officials.html") and all(i != "my-town" for i, _a in rows), (
+        f"the Officials row starts {rows[:2]}")
+    items = chrome.row_items("officials.html", "en", {"elect_until": None, "elections": True,
+                                                      "former": True})
+    assert items[0][:3] == ("overview", "Overview", "officials.html") and 'data-pane="overview"' in items[0][3], (
+        f"the row's first item is {items[0][:4]}")
+    assert chrome.locate("/town/concord.html") == ("officials.html", "overview") \
+        and chrome.locate("/officials.html") == ("officials.html", "overview"), (
+            "a town's page or the Officials page is not under the Overview")
+    shared, _base, _ran, _days = _fixture_site_shared()
+    page = (shared / "site" / "officials.html").read_text(encoding="utf-8")
+    first = re.search(r'<div class="twnpane" id="([a-z-]+)" role="tabpanel"', page)
+    assert first and first.group(1) == "overview", "the Officials page's first panel is not the Overview"
+    return "ok", "Overview first in the row, at officials.html, naming the first panel; no My Town"
+
+
 @check("frontend", "the Statewide Officials tab is Executive Branch, /officials#statewide still "
                    "opens it, and it says the legislature elects two of its officers")
 def _executive_branch_renamed():
@@ -14083,7 +14306,8 @@ def _executive_branch_renamed():
     Part Second, Article 67 by its number. And the old address still opens
     the tab: build_pages.OFFICIALS_HASH_JS, run in node against a stub
     location, rewrites #statewide to #executive at load and on a hashchange
-    (and #towns to #my-town, as before), and leaves a live address alone.
+    (and #towns and #my-town to #overview, where the town panel opens since
+    My Town became it, 21 November 2026), and leaves a live address alone.
     Fails if the tab is named back, the line goes, or the alias does."""
     import build_pages as BP
     import officials_tabs as OT
@@ -14122,11 +14346,11 @@ def _executive_branch_renamed():
         shutil.rmtree(root, ignore_errors=True)
     assert r.returncode == 0, f"the alias script does not run: {(r.stderr or r.stdout)[-200:]}"
     got = json.loads(r.stdout.strip().splitlines()[-1])
-    assert got == ["#executive", "#my-town", "#executive", "#federal"], (
+    assert got == ["#executive", "#overview", "#executive", "#federal"], (
         f"the old addresses go to {got}: #statewide at load, then #towns, #statewide and "
         "#federal on a hashchange")
     return "ok", ("#executive, labelled Executive Branch, under the note citing Part Second, "
-                  "Article 67; #statewide opens it at load and on a hashchange, #towns My Town")
+                  "Article 67; #statewide opens it at load and on a hashchange, #towns the Overview")
 
 
 @check("frontend", "the vacancy list says \"District\" and how a seat is filled, from RSA 661:8")
@@ -14737,7 +14961,7 @@ ROW_PLACES = {("/bill/2026/hb1.html", None): ("bills.html", "search"),
               ("/legislator/x.html", "GR_FORMER"): ("officials.html", "former"),
               ("/elections/index.html", None): ("officials.html", "elections"),
               ("/elections/2026-11-03-general.html", None): ("officials.html", "elections"),
-              ("/town/concord.html", None): ("officials.html", "my-town"),
+              ("/town/concord.html", None): ("officials.html", "overview"),
               ("/committee/H43.html", None): ("committees.html", "house"),
               ("/committee/S10.html", None): ("committees.html", "senate"),
               ("/committee/s42.html", None): ("committees.html", "senate"),

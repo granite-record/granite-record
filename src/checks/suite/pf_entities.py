@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.31
+# GRANITE_VERSION: 2026-11-16.32
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -1603,8 +1603,6 @@ _PARTY_COPIES = (
     ("src/pages/app.js", "PARTY_NAME", "js", "name"),
     ("src/pages/app.js", "PARTY_WORD", "js", "name"),
     ("src/pages/app.js", "PARTY_COLOR", "js", "ink"),
-    # The roster finder's script (LEGFIND_JS), in its own file since 20 November 2026.
-    ("src/pages/inline/build_pages.legfind.js", "PW", "js", "name"),
     ("src/pages/map.js", "PARTY", "js", "adjective"),
     ("src/pages/map.js", "NOUN", "js", "name, plural"),
     ("workers/follow/mail.js", "PARTY_WORDS", "js", "name, plural"),

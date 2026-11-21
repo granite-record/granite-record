@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.27
+# GRANITE_VERSION: 2026-11-16.28
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -9486,9 +9486,10 @@ def _elect_pages_link_own():
         bad.append(f"officials.html draws Pat Newell {len(tab)} times on the neutral chip with both "
                    "letters and his district, NEW beside it, not once in each of the tab's two views")
     # Members-Elect beside Legislators (the owner's walk of 8 November 2026):
-    # My Town, Legislators, Members-Elect, then the rest.
+    # The Overview (My Town until 21 November 2026), Legislators,
+    # Members-Elect, then the rest.
     strip = re.findall(r'role="tab" id="tab-([a-z-]+)" data-pane="\1"', sources["officials.html"])
-    if strip[:3] != ["my-town", "legislators", "members-elect"]:
+    if strip[:3] != ["overview", "legislators", "members-elect"]:
         bad.append(f"officials.html's tabs run {strip}: Members-Elect is not right of Legislators")
     words = {"H|Rockingham|13": "Rockingham district 13", "H|Rockingham|6": "Rockingham district 6",
              "S|24": "Senate District 24"}

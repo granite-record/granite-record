@@ -23397,59 +23397,9 @@
    "es": "{a} y {b}",
    "state": "draft"
   },
-  "lf.count": {
-   "en": "{t} towns and cities, {m} sitting members",
-   "es": "{t} municipios y ciudades, {m} miembros en funciones",
-   "state": "draft"
-  },
   "lf.house": {
    "en": "House",
    "es": "Cámara",
-   "state": "draft"
-  },
-  "lf.match": {
-   "en": "{what} match",
-   "es": "Coinciden: {what}",
-   "state": "draft"
-  },
-  "lf.matches": {
-   "en": "{what} matches",
-   "es": "Coincide: {what}",
-   "state": "draft"
-  },
-  "lf.members": {
-   "en": "Members",
-   "es": "Miembros",
-   "state": "draft"
-  },
-  "lf.more": {
-   "en": "and {n} more members &mdash; type another letter or two.",
-   "es": "y {n} miembros más &mdash; escriba una o dos letras más.",
-   "state": "draft"
-  },
-  "lf.n_member": {
-   "en": "{n} member",
-   "es": "{n} miembro",
-   "state": "draft"
-  },
-  "lf.n_members": {
-   "en": "{n} members",
-   "es": "{n} miembros",
-   "state": "draft"
-  },
-  "lf.n_town": {
-   "en": "{n} town",
-   "es": "{n} municipio",
-   "state": "draft"
-  },
-  "lf.n_towns": {
-   "en": "{n} towns",
-   "es": "{n} municipios",
-   "state": "draft"
-  },
-  "lf.none": {
-   "en": "Nothing matches that. Towns and wards, member names, counties, parties and committees are all searched.",
-   "es": "Nada coincide con eso. Se buscan municipios y barrios electorales, nombres de miembros, condados, partidos y comités.",
    "state": "draft"
   },
   "lf.not_on_file": {
@@ -23457,24 +23407,9 @@
    "es": "Sin registro",
    "state": "draft"
   },
-  "lf.nothing": {
-   "en": "Nothing matches that.",
-   "es": "Nada coincide con eso.",
-   "state": "draft"
-  },
   "lf.senate": {
    "en": "Senate",
    "es": "Senado",
-   "state": "draft"
-  },
-  "lf.towns": {
-   "en": "Towns",
-   "es": "Municipios",
-   "state": "draft"
-  },
-  "lf.ward": {
-   "en": "Ward {w}",
-   "es": "Barrio electoral {w}",
    "state": "draft"
   },
   "lf.wards": {
@@ -24098,9 +24033,9 @@
    "es": "Miembros electos",
    "state": "draft"
   },
-  "nav.row.officials.my-town": {
-   "en": "My Town",
-   "es": "Mi municipio",
+  "nav.row.officials.overview": {
+   "en": "Overview",
+   "es": "Resumen",
    "state": "draft"
   },
   "nav.row.resources.data": {
@@ -25058,34 +24993,9 @@
    "es": "Quién representa a su municipio, desde el Capitolio estatal hasta el Congreso; cada miembro de la Cámara de Representantes y el Senado de New Hampshire, con su distrito, su partido, los proyectos de ley que patrocinó y cada voto registrado que emitió; y los funcionarios electos del estado y de los condados.",
    "state": "draft"
   },
-  "of.find": {
-   "en": "Find Your Town",
-   "es": "Busque su municipio",
-   "state": "draft"
-  },
-  "of.find_how": {
-   "en": "Type a town to see who represents it, or a name, county,\nparty or committee to find a member.",
-   "es": "Escriba un municipio para ver quién lo representa, o un nombre, un condado, un partido o un comité para encontrar a un miembro.",
-   "state": "draft"
-  },
-  "of.find_label": {
-   "en": "Your town, or a legislator&rsquo;s name",
-   "es": "Su municipio, o el nombre de un legislador",
-   "state": "draft"
-  },
-  "of.find_ph": {
-   "en": "Your town or a legislator",
-   "es": "Su municipio o un legislador",
-   "state": "draft"
-  },
   "of.lead": {
    "en": "Everyone who represents your town, from your select board to\nCongress; the {n} sitting members of the New Hampshire House and\nSenate; and the state&rsquo;s other officials.",
    "es": "Todas las personas que representan a su municipio, desde la junta de concejales hasta el Congreso; los {n} miembros en funciones de la Cámara de Representantes y el Senado de New Hampshire; y los demás funcionarios del estado.",
-   "state": "draft"
-  },
-  "of.loading": {
-   "en": "Loading&hellip;",
-   "es": "Cargando&hellip;",
    "state": "draft"
   },
   "of.map": {
@@ -25093,14 +25003,184 @@
    "es": "El mapa",
    "state": "draft"
   },
-  "of.map_how": {
-   "en": "Choose a district to see who represents it. Zoom in for\na city&rsquo;s wards.",
-   "es": "Elija un distrito para ver quién lo representa. Acerque el mapa para ver los barrios electorales de una ciudad.",
-   "state": "draft"
-  },
   "of.map_noscript": {
    "en": "The map needs JavaScript. Every town&rsquo;s districts\nare on its own page, listed in <a href=\"/directory/towns\">every town and\nward</a>.",
    "es": "El mapa necesita JavaScript. Los distritos de cada municipio están en su propia página, en la lista de <a href=\"/directory/towns\">todos los municipios y barrios electorales</a>.",
+   "state": "draft"
+  },
+  "of.ov.agencies": {
+   "en": "State agencies",
+   "es": "Agencias estatales",
+   "state": "draft"
+  },
+  "of.ov.agencies_lead": {
+   "en": "The executive departments; who heads each is under Executive.",
+   "es": "Los departamentos ejecutivos; quién dirige cada uno figura en Ejecutivo.",
+   "state": "draft"
+  },
+  "of.ov.all_in": {
+   "en": "All {n} in {tab}",
+   "es": "Los {n} de {tab}",
+   "state": "draft"
+  },
+  "of.ov.all_legislators": {
+   "en": "All {n} legislators",
+   "es": "Los {n} legisladores",
+   "state": "draft"
+  },
+  "of.ov.both_parties": {
+   "en": "Both parties&rsquo; nominations",
+   "es": "Nominación de ambos partidos",
+   "state": "draft"
+  },
+  "of.ov.change": {
+   "en": "Change",
+   "es": "Cambiar",
+   "state": "draft"
+  },
+  "of.ov.commissioners": {
+   "en": "County commissioners",
+   "es": "Comisionados de condado",
+   "state": "draft"
+  },
+  "of.ov.county_lead": {
+   "en": "{c} counties, {n} elected officers.",
+   "es": "{c} condados, {n} funcionarios electos.",
+   "state": "draft"
+  },
+  "of.ov.county_next": {
+   "en": "{n} county offices change hands on {day}.",
+   "es": "{n} cargos de condado cambian de titular el {day}.",
+   "state": "draft"
+  },
+  "of.ov.county_next_one": {
+   "en": "1 county office changes hands on {day}.",
+   "es": "1 cargo de condado cambia de titular el {day}.",
+   "state": "draft"
+  },
+  "of.ov.elect.council": {
+   "en": "Executive Councilor-elect",
+   "es": "Consejero/a Ejecutivo/a electo/a",
+   "state": "draft"
+  },
+  "of.ov.elect.governor": {
+   "en": "Governor-elect",
+   "es": "Gobernador/a electo/a",
+   "state": "draft"
+  },
+  "of.ov.elect.us_house": {
+   "en": "US Representative-elect",
+   "es": "Representante de EE. UU. electo/a",
+   "state": "draft"
+  },
+  "of.ov.elect.us_senate": {
+   "en": "US Senator-elect",
+   "es": "Senador/a de EE. UU. electo/a",
+   "state": "draft"
+  },
+  "of.ov.elect_takes": {
+   "en": "{office}; takes office {day}",
+   "es": "{office}; asume el cargo el {day}",
+   "state": "draft"
+  },
+  "of.ov.elections_lead": {
+   "en": "Official results of each general election on file, race by race, from the Secretary of State.",
+   "es": "Resultados oficiales de cada elección general disponible, contienda por contienda, de la Secretaría de Estado.",
+   "state": "draft"
+  },
+  "of.ov.federal": {
+   "en": "Federal delegation",
+   "es": "Delegación federal",
+   "state": "draft"
+  },
+  "of.ov.general": {
+   "en": "{year} general election",
+   "es": "Elección general de {year}",
+   "state": "draft"
+  },
+  "of.ov.house_only": {
+   "en": "State House races only",
+   "es": "Solo las contiendas de la Cámara de Representantes estatal",
+   "state": "draft"
+  },
+  "of.ov.incoming": {
+   "en": "The incoming legislature",
+   "es": "La legislatura entrante",
+   "state": "draft"
+  },
+  "of.ov.incoming_takes": {
+   "en": "Takes office {takes}.",
+   "es": "Asume el cargo el {takes}.",
+   "state": "draft"
+  },
+  "of.ov.incoming_when": {
+   "en": "Elected {election}; takes office {takes}.",
+   "es": "Elegida el {election}; asume el cargo el {takes}.",
+   "state": "draft"
+  },
+  "of.ov.justices": {
+   "en": "{n} justices",
+   "es": "{n} jueces",
+   "state": "draft"
+  },
+  "of.ov.legislature": {
+   "en": "Legislature",
+   "es": "Legislatura",
+   "state": "draft"
+  },
+  "of.ov.map_how": {
+   "en": "Choose a district to see who represents it.",
+   "es": "Elija un distrito para ver quién lo representa.",
+   "state": "draft"
+  },
+  "of.ov.other_justices": {
+   "en": "and {n} other justices",
+   "es": "y {n} jueces más",
+   "state": "draft"
+  },
+  "of.ov.other_justices_one": {
+   "en": "and 1 other justice",
+   "es": "y 1 juez más",
+   "state": "draft"
+  },
+  "of.ov.other_officers": {
+   "en": "Other state officers",
+   "es": "Otros funcionarios estatales",
+   "state": "draft"
+  },
+  "of.ov.phones": {
+   "en": "Phone numbers and offices",
+   "es": "Teléfonos y oficinas",
+   "state": "draft"
+  },
+  "of.ov.reelected": {
+   "en": "Re-elected {day}",
+   "es": "Reelegido/a el {day}",
+   "state": "draft"
+  },
+  "of.ov.roster_day": {
+   "en": "As the Secretary of State&rsquo;s county roster of {day} lists them.",
+   "es": "Según la lista de funcionarios de condado de la Secretaría de Estado del {day}.",
+   "state": "draft"
+  },
+  "of.ov.show": {
+   "en": "Show my officials",
+   "es": "Ver mis funcionarios",
+   "state": "draft"
+  },
+  "of.ov.sitting_until": {
+   "en": "Serving until then",
+   "es": "En funciones hasta entonces",
+   "state": "draft"
+  },
+  "of.ov.town_noscript": {
+   "en": "Every town and ward has a page, listed in <a href=\"directory/towns.html\">every town and ward</a>.",
+   "es": "Cada municipio y barrio electoral tiene su página, en la <a href=\"directory/towns.html\">lista de municipios y barrios electorales</a>.",
+   "state": "draft"
+  },
+  "of.ov.town_ph": {
+   "en": "Your town or city",
+   "es": "Su municipio o ciudad",
    "state": "draft"
   },
   "of.page_title": {
@@ -25138,9 +25218,9 @@
    "es": "Legisladores",
    "state": "draft"
   },
-  "of.tab.town": {
-   "en": "My Town",
-   "es": "Mi municipio",
+  "of.tab.overview": {
+   "en": "Overview",
+   "es": "Resumen",
    "state": "draft"
   },
   "of.tab_short.counties": {

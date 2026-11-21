@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.10
+# GRANITE_VERSION: 2026-11-16.11
 """
 preflight's checks of Learn, the guides, civics and the numbers pages.
 
@@ -3526,7 +3526,7 @@ def _spanish_officials(i18n, BP, OT, seating):
         bad.append("its <h1> is not the catalog's of.title")
     # Four tabs say their short names, and their panels the whole ones (the
     # owner, 7 November 2026; _officials_tabs_fit_and_retire).
-    for key in ("of.tab.town", "of.tab.legislators", "of.tab_short.executive",
+    for key in ("of.tab.overview", "of.tab.legislators", "of.tab_short.executive",
                 "of.tab_short.judicial", "of.tab_short.counties", "of.tab_short.federal"):
         if not re.search(r'role="tab"[^>]*>' + re.escape(strings[key]["es"]) + r"[ <]", main):
             bad.append(f"no tab labelled {strings[key]['es']!r} ({key})")

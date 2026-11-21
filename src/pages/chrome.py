@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.15
+# GRANITE_VERSION: 2026-10-23.16
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -127,9 +127,11 @@ ROWS = {
                   ("constitution", "laws.html#constitution")),
     # The tabs Officials has today, in the order of the hub the owner asked
     # for on 7 November (Legislative, Executive, Judicial, Federal, County),
-    # My Town first because it is still the tab the page opens on; and
-    # Elections, whose own trail says Officials (the owner, 20 November).
-    "officials.html": (("my-town", "officials.html"),
+    # the Overview first, the page the section opens on, in My Town's place
+    # (the owner's choice of draft A, 21 November 2026: My Town is the town
+    # panel now, opened from the Overview and the header); and Elections,
+    # whose own trail says Officials (the owner, 20 November).
+    "officials.html": (("overview", "officials.html"),
                        ("legislators", "officials.html#legislators"),
                        ("members-elect", "officials.html#members-elect"),
                        ("executive", "officials.html#executive"),
@@ -181,7 +183,7 @@ def row_words(lang="en", year=""):
         ("bills.html", "terms"): say(lang, "nav.row.bills.terms", "Every term"),
         ("laws.html", "statutes"): say(lang, "nav.row.laws.statutes", "Statutes (RSA)"),
         ("laws.html", "constitution"): say(lang, "nav.row.laws.constitution", "Constitution"),
-        ("officials.html", "my-town"): say(lang, "nav.row.officials.my-town", "My Town"),
+        ("officials.html", "overview"): say(lang, "nav.row.officials.overview", "Overview"),
         ("officials.html", "legislators"): say(lang, "nav.row.officials.legislators", "Legislators"),
         ("officials.html", "members-elect"): say(lang, "nav.row.officials.members-elect",
                                                  "Members-elect"),
@@ -393,19 +395,21 @@ def locate(path, g=None):
             return "officials.html", "former"
         if rest.startswith("sessions-"):
             return "calendar.html", "sessions"
-        return "officials.html", "my-town"  # every town and ward
+        return "officials.html", "overview"  # every town and ward
     if top == "laws":
         return "laws.html", "statutes"
     if top in ("officials", "legislators"):
-        return "officials.html", "my-town"
+        return "officials.html", "overview"
     if top == "elections":
         return "officials.html", "elections"
     if top == "legislator":
         if g.get("GR_FORMER"):
             return "officials.html", "former"
         return "officials.html", "legislators"
+    # A town's page is found from the Overview's "Find your town" (My Town,
+    # until 21 November 2026, when it became the town panel).
     if top == "town":
-        return "officials.html", "my-town"
+        return "officials.html", "overview"
     if top == "calendar":
         return "calendar.html", "journals" if rest.startswith("documents") else "week"
     if top == "session":
