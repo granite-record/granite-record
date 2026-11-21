@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.370
+// GRANITE_VERSION: 2026-09-07.371
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -3309,21 +3309,11 @@ function hasRsa(){
   if(!(k in HAS_RSA))HAS_RSA[k]=IDX.some(b=>b.rsa&&b.rsa.length&&inTermOf(b));
   return HAS_RSA[k];
 }
-// On a phone the filter column stacks ABOVE the results, and an open
-// Committee group is 340 pixels of it -- so the first bill sat past a
-// screen and a half of filters on a 375-wide screen. Someone arriving on
-// a phone came for the bills; the filters are one tap away either way.
-// 861px, which is where .shell actually becomes two columns. It was 721,
-// so between those two widths the panel stacked ABOVE the results with its
-// longest group open -- fourteen committees before the first bill.
-const wideEnough=typeof matchMedia==="function"
-  && matchMedia("(min-width:53.8125em)").matches;
 // 5a (the person, 9 October 2026, item 2): STATUS AND BILL TYPE OPEN,
 // COMMITTEE CLOSED, at every width -- inside the Filters panel below 960px as
 // well, so a reader who opens it sees the categories at once (round two's
 // question 8a, as recommended). Both are short and shown whole, and Status
 // answers the commonest question; the committee list is the long one.
-// wideEnough is kept for what else asks how wide the window is.
 // STATUS ALONE SINCE 12 OCTOBER 2026 (the person: "Just have the status
 // filter open by default rather than status and bill type"). Bill Type is
 // folded with the rest, one tap away.
