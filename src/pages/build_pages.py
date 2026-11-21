@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.301
+# GRANITE_VERSION: 2026-09-04.303
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -2730,6 +2730,29 @@ def officials_pages(out, legs, C):
                    if x["vacant"] > 1 else "") + "</div>"
                 for x in v) + "</div></details>")
 
+    def legislator_box(lang="en"):
+        """The Legislators tab's search box (the owner, 21 November 2026:
+        "The legislators tab should get its own search box"): a member found
+        by name, county, party or committee, in the site's own suggestion
+        list, which build_pages.legfind.js mounts (lsMount) and which lists
+        every match under it, the Senate apart from the House. The town box's
+        look (.ovtown), with an id of its own. Disabled until the script has
+        mounted it; without the script the roster below is the way in.
+        Each party the roster holds is written into data-parties in the page's
+        language (party_word), so a reader can find a party by its name in
+        that language and the script keeps no party table of its own."""
+        parties = {p: party_word(p, lang) for p in sorted({m.get("party") for m in legs if m.get("party")})}
+        return ('<div class="ovtown lsbox" id="lsbox" data-parties="'
+                + esc(json.dumps(parties, ensure_ascii=False, separators=(",", ":"))) + '">'
+                '<form class="ovtform" role="search" action="officials.html#legislators">'
+                '<label for="lsq" class="ovtl">' + say(lang, "of.ls.find", "Find a legislator") + "</label>"
+                '<div class="ovtrow"><div class="ovtbox">'
+                '<input id="lsq" type="search" autocomplete="off" placeholder="'
+                + say(lang, "of.ls.ph", "Name, county, party or committee") + '" disabled></div>'
+                '<button type="submit" class="ovgo" disabled>' + say(lang, "search.go", "Search")
+                + "</button></div></form></div>"
+                '<div class="lsres" id="lsres" hidden></div>')
+
     def roster_section(legs, lang="en"):
         """The roster, three ways, and the House floor as a chart.
 
@@ -3048,7 +3071,7 @@ def officials_pages(out, legs, C):
             # each chamber's bar and its one short line (short_bar), without
             # the legend and the thresholds (the walk of 8 November 2026).
             ("legislators", say(lang, "of.tab.legislators", "Legislators"), len(legs),
-             OT.presiding(officers, legs, today, lang)
+             legislator_box(lang) + OT.presiding(officers, legs, today, lang)
              + (('<div class="comp-wrap comp-top"><h2>' + say(lang, "of.who_holds", "Who holds the seats")
                  + "</h2>" + static_bar("S", lang) + static_bar("H", lang) + vacancies_box(lang)
                  + "</div>") if C else "")

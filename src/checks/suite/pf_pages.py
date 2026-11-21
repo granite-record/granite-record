@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.32
+# GRANITE_VERSION: 2026-11-16.38
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -13867,6 +13867,12 @@ def _legislators_page_tabs():
     assert 'id="lq"' not in page and 'id="lmatch"' not in page and "<datalist" not in page, (
         "the page still carries My Town's finder, or a native datalist for the town box")
     assert 'id="roster"' in legs, "the Legislators panel does not hold the roster"
+    # ITS OWN SEARCH BOX, FIRST (the owner, 21 November 2026: "The legislators
+    # tab should get its own search box"), over the roster, disabled until
+    # legfind.js mounts it (_legislators_search runs it).
+    assert 'id="lsbox"' in legs and 'id="lsq"' in legs and 'id="lsres"' in legs \
+        and legs.index('id="lsbox"') < legs.index('id="roster"'), (
+            "the Legislators panel has no search box of its own over the roster")
     if 'class="comp-wrap' in page:
         assert 'class="comp-wrap comp-top"' in legs, "who holds the seats is outside the Legislators panel"
     # The other tabs' offices are officials.json's people, each the one
@@ -14081,6 +14087,474 @@ def _town_finder_words():
     return "ok", ("the town box is a combobox of the filters' .qoffers list through comboWire, as the "
                   "address box is; 'con' lists Concord's wards, ArrowDown and Enter choose and open the "
                   "panel; 'dover' is not Andover; ?town=Concord and #my-town open the panel")
+
+
+_LEG_SEARCH_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const L = [
+  {slug: "ann-abbot-sd-22", name: "Abbot, Ann", chamber: "S", party: "Republican", county: "Rockingham",
+   district: "22", district_label: "SD22", display_plain: "Sen. Ann Abbot", display_full: "Sen. Ann Abbot (R - SD22)",
+   committees: ["Judiciary"], sort: "abbot, ann"},
+  {slug: "bea-brook-sd-4", name: "Brook, Bea", chamber: "S", party: "Democrat", county: "Strafford",
+   district: "4", district_label: "SD4", display_plain: "Sen. Bea Brook", display_full: "Sen. Bea Brook (D - SD4)",
+   committees: ["Education"], sort: "brook, bea"},
+  {slug: "cal-cole-merr-4", name: "Cole, Cal", chamber: "H", party: "Democrat", county: "Merrimack",
+   district: "4", district_label: "Merr 4", display_plain: "Rep. Cal Cole", display_full: "Rep. Cal Cole (D - Merr 4)",
+   committees: ["Judiciary"], sort: "cole, cal"},
+  {slug: "dee-dunn-merr-4", name: "Dunn, Dee", chamber: "H", party: "Republican", county: "Merrimack",
+   district: "4", district_label: "Merr 4", display_plain: "Rep. Dee Dunn", display_full: "Rep. Dee Dunn (R - Merr 4)",
+   committees: ["Education"], sort: "dunn, dee"},
+  {slug: "sam-rockwell-hills-3", name: "Rockwell, Sam", chamber: "H", party: "Republican", county: "Hillsborough",
+   district: "3", district_label: "Hills 3", display_plain: "Rep. Sam Rockwell", display_full: "Rep. Sam Rockwell (R - Hills 3)",
+   committees: ["Finance"], sort: "rockwell, sam"},
+  {slug: "eve-east-rock-9", name: "East, Eve", chamber: "H", party: "Democrat", county: "Rockingham",
+   district: "9", district_label: "Rock 9", display_plain: "Rep. Eve East", display_full: "Rep. Eve East (D - Rock 9)",
+   committees: ["Judiciary"], sort: "east, eve"}];
+// Eleven representatives of Coos, one more than the list shows at once.
+for (let i = 1; i <= 11; i++) L.push({slug: `coos-rep-${i}-coos-${i}`, name: `Coosrep${i}, Pat`, chamber: "H",
+  party: "Republican", county: "Coos", district: String(i), district_label: `Coos ${i}`,
+  display_plain: `Rep. Pat Coosrep${i}`, display_full: `Rep. Pat Coosrep${i} (R - Coos ${i})`,
+  committees: ["Finance"], sort: `coosrep${String(i).padStart(2, "0")}, pat`});
+globalThis.fetch = async u => ({ok: true, status: 200, json: async () => JSON.parse(JSON.stringify(L))});
+globalThis.dispatchEvent = () => true;
+globalThis.localStorage = {getItem(k){ return k === "gr-town" ? "salem" : null; }, setItem(){}, removeItem(){}};
+const create = document.createElement.bind(document);
+function kept(tag) {
+  const e = create(tag || "div"), at = {};
+  e.setAttribute = (k, v) => { at[k] = String(v); };
+  e.getAttribute = k => (k in at ? at[k] : null);
+  e.removeAttribute = k => { delete at[k]; };
+  return e;
+}
+const made = [];
+document.createElement = t => { const e = kept(t); made.push(e); return e; };
+const box = kept(), form = kept("form"), inp = kept("input"), go = kept("button"), res = kept(), out = kept();
+// The parties as a Spanish page's box carries them (build_pages.legislator_box).
+box.dataset = {parties: JSON.stringify({Democrat: "Demócrata", Republican: "Republicano"})};
+box.querySelector = s => s === "form" ? form : s === "#lsq" ? inp : null;
+form.querySelector = () => go;
+inp.disabled = true; go.disabled = true; res.hidden = true;
+const byId = {lsbox: box, lsres: res, out};
+document.getElementById = id => byId[id] || create("div");
+const docOn = {};
+document.addEventListener = (t, f) => { (docOn[t] = docOn[t] || []).push(f); };
+globalThis.location.href = "https://x/officials";
+try {
+  vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+  const Y = vm.runInThisContext("YT");
+  Y.by = {salem: {s: "salem", m: ["ann-abbot-sd-22", "eve-east-rock-9"]}};
+  vm.runInThisContext(fs.readFileSync("./legfind.js", "utf8"), {filename: "legfind.js"});
+} catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+const ticks = async () => { for (let i = 0; i < 30; i++) await new Promise(r => setImmediate(r)); };
+(async () => {
+  await ticks();
+  const list = made.find(e => e.tagName === "ul");
+  const o = {mount: {enabled: !inp.disabled && !go.disabled, role: inp.getAttribute("role"),
+    listClass: list && list.className, controls: inp.getAttribute("aria-controls")}, typed: {}};
+  for (const q of ["abbot", "brook", "rock", "merrimack", "democrat", "judiciary", "merrimack dem",
+                   "education", "zzz", "republicano merrimack"]) {
+    inp.value = q; inp.fire("input"); await ticks();
+    o.typed[q] = list.innerHTML;
+  }
+  inp.value = "judiciary"; inp.fire("input"); await ticks();
+  form.fire("submit"); await ticks();
+  o.all = {html: res.innerHTML, hidden: res.hidden, list: list.hidden};
+  inp.value = "coos"; inp.fire("input"); await ticks();
+  o.coos = list.innerHTML;
+  const k2 = {key: "ArrowUp", prevented: 0, preventDefault(){}, stopPropagation(){}};
+  (inp._on.keydown || []).forEach(f => f(k2));
+  (inp._on.keydown || []).forEach(f => f({key: "Enter", preventDefault(){}, stopPropagation(){}}));
+  await ticks();
+  o.coosAll = res.innerHTML;
+  inp.value = "abbot"; inp.fire("input"); await ticks();
+  const key = k => { const e = {key: k, prevented: 0, preventDefault(){ this.prevented++; }, stopPropagation(){}};
+    (inp._on.keydown || []).forEach(f => f(e)); return e; };
+  key("ArrowDown"); key("Enter"); await ticks();
+  o.went = location.href;
+  console.log("@@" + JSON.stringify(o));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "the Legislators tab's search box finds a member by name, county, party or "
+       "committee in the site's suggestion list, the Senate apart from the House, and marks the "
+       "reader's own")
+def _legislators_search():
+    """The owner, 21 November 2026: "The legislators tab should get its own
+    search box." My Town's box found a member by name, county, party or
+    committee and went with it; build_pages.legfind.js's lsMount is that
+    search on the Legislators tab, mounted by find.js's comboWire into the
+    filters' .qoffers list (as the town box is). Run in node over six
+    members, two senators and four representatives: the box is mounted and
+    enabled, a combobox of a .qoffers list; "abbot" finds by name, "rock" by
+    county as well as by name (Rockwell, a name, before the county's), and
+    "democrat", "judiciary" and "merrimack dem" (every word must match) by
+    party, committee and both, and "republicano merrimack" by the party's
+    name in the page's language, which the box carries (data-parties, from
+    party_word); in every list each chamber is under its name,
+    the Senate's heading and members wholly before the House's, so no
+    alphabet runs across both; a member found by a committee says the
+    committee; the reader's saved town's members say "Your senator" and
+    "Your rep"; Search lists every match under the box, the Senate's then
+    the House's, each the roster's chip linking the member's page; eleven
+    matches show ten and a "Show all 11" row, which lists them all; and
+    ArrowDown and Return on a suggestion open that member's page. Fails if
+    a kind of search stops finding, the chambers mix, or the mark goes."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_with_components(_source("src/pages/find.js")), encoding="utf-8")
+        (root / "legfind.js").write_text(_source("src/pages/inline/build_pages.legfind.js"), encoding="utf-8")
+        (root / "go.js").write_text(_LEG_SEARCH_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    said = (r.stdout + r.stderr).strip()
+    assert r.returncode == 0 and "@@" in r.stdout, f"node go.js: {said[-300:]}"
+    got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    assert got["mount"] == {"enabled": True, "role": "combobox", "listClass": "qoffers",
+                            "controls": "lsq-offers"}, f"the box as mounted: {got['mount']}"
+
+    def names(html):
+        return re.findall(r'class="qoffer"[^>]*><span><b>([^<]+)</b>', html)
+
+    def heads(html):
+        return re.findall(r'<li role="presentation" class="qgroup">([^<]+)</li>', html)
+
+    t = got["typed"]
+    want = {"abbot": ["Ann Abbot"], "brook": ["Bea Brook"],
+            "rock": ["Ann Abbot", "Sam Rockwell", "Eve East"],
+            "merrimack": ["Cal Cole", "Dee Dunn"],
+            "democrat": ["Bea Brook", "Cal Cole", "Eve East"],
+            "judiciary": ["Ann Abbot", "Cal Cole", "Eve East"],
+            "merrimack dem": ["Cal Cole"], "education": ["Bea Brook", "Dee Dunn"], "zzz": [],
+            "republicano merrimack": ["Dee Dunn"]}
+    for q, w in want.items():
+        assert names(t[q]) == w, f"{q!r} suggested {names(t[q])}, not {w}"
+    for q in ("rock", "democrat", "judiciary", "education"):
+        h = t[q]
+        assert heads(h) == ["Senate", "House"] and h.index(">Senate<") < h.index(">House<"), (
+            f"{q!r}: the list's chambers are {heads(h)}, not the Senate over the House")
+        assert all(h.index(f"<b>{n}</b>") > h.index(">House<") for n in names(h)
+                   if n in ("Cal Cole", "Dee Dunn", "Sam Rockwell", "Eve East")), (
+            f"{q!r}: a representative is listed under the Senate")
+    assert heads(t["merrimack"]) == ["House"], f"Merrimack's heads are {heads(t['merrimack'])}"
+    assert '<span class="c">Judiciary · District 22</span>' in t["judiciary"], (
+        "a member found by a committee does not say the committee")
+    assert '<span class="c">Republicano · District 22</span>' in t["abbot"], (
+        "a member found by name does not say the party, in the page's words, and the district")
+    assert '<b>Ann Abbot</b><span class="lsmine">Your senator</span>' in t["abbot"] \
+        and '<b>Eve East</b><span class="lsmine">Your rep</span>' in t["judiciary"] \
+        and "lsmine" not in t["brook"], "the reader's own representatives are not marked, or another is"
+    a = got["all"]
+    assert not a["hidden"] and a["list"] and "3 members match" in a["html"], f"Search listed {a}"
+    hs = re.findall(r"<h3>(Senate|House) &mdash; (\d+)</h3>", a["html"])
+    assert hs == [("Senate", "1"), ("House", "2")], f"the list under the box is headed {hs}"
+    links = re.findall(r'<span class="mchip p-([A-Z])" translate="no"><a href="legislator/([^"]+)">', a["html"])
+    assert links == [("R", "ann-abbot-sd-22"), ("D", "cal-cole-merr-4"), ("D", "eve-east-rock-9")], (
+        f"the list under the box is not the roster's chips, Senate first: {links}")
+    assert got["went"].endswith("/legislator/ann-abbot-sd-22"), f"Return on a suggestion went to {got['went']}"
+    coos = got["coos"]
+    assert len(names(coos)) == 10 and coos.count('role="option"') == 11 and "<b>Show all 11</b>" in coos, (
+        "eleven matches do not show ten and a Show all 11 row")
+    assert got["coosAll"].count('class="mem"') == 11 and "11 members match" in got["coosAll"], (
+        "choosing Show all does not list every match under the box")
+    return "ok", ("the box is a combobox of .qoffers; it finds by name, county, party, committee and "
+                  "all words together, the Senate over the House under their names; a committee "
+                  "match says it; the reader's senator and rep are marked; Search lists the "
+                  "chambers apart as the roster's chips; Return opens the member's page")
+
+
+_TOWN_PANEL_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const D = JSON.parse(fs.readFileSync("./places.json", "utf8"));
+if (fs.existsSync("./words.json")) {
+  window.GR_WORDS = JSON.parse(fs.readFileSync("./words.json", "utf8")); window.GR_LANG = "es"; }
+let saved = "";
+globalThis.localStorage = {getItem(k){ return k === "gr-town" ? saved : null; }, setItem(){}, removeItem(){}};
+let F;
+try { vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"});
+      F = vm.runInThisContext("({YT, ytDraw, ytVote})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+F.YT.data = D; F.YT.by = {}; D.places.forEach(p => { F.YT.by[p.s] = p; });
+const out = document.createElement("div"), panel = document.createElement("div");
+panel.dataset = {};
+panel.querySelector = s => s === "#ytbody" ? out : null;
+out.querySelector = () => null;
+document.getElementById = id => id === "ytpanel" ? panel : document.createElement("div");
+const o = {panel: {}, slot: {}};
+for (const p of D.places) {
+  saved = p.s; F.ytDraw(); o.panel[p.s] = out.innerHTML; o.slot[p.s] = F.ytVote(p);
+}
+console.log("@@" + JSON.stringify(o));
+"""
+
+# FOUR PLACES FOR THE TOWN PANEL: a town that votes in one place, a city's
+# ward, a town that votes by ward, and a place with no polling place on the
+# Secretary of State's list; each with its clerk, whom the panel leaves out.
+_TOWN_PANEL_PLACES = {
+    "places": [
+        {"s": "jackson", "n": "Jackson", "t": "Jackson", "u": "/town/jackson", "co": "Carroll",
+         "h": [["Carroll", "2", 0]], "sd": 3, "ec": 1, "cd": 1, "m": [],
+         "poll": "Whitney Community Center", "hours": "8:00 AM - 7:00 PM",
+         "clerk": "Kay Clerkson", "phone": "603-555-0101", "email": "clerk@jackson.example",
+         "when": "Last election: November 3, 2026"},
+        {"s": "concord-ward-4", "n": "Concord Ward 4", "t": "Concord", "u": "/town/concord-ward-4",
+         "co": "Merrimack", "h": [["Merrimack", "16", 0]], "sd": 15, "ec": 2, "cd": 2, "m": [], "c": 1,
+         "w": "4", "poll": "Green Street Community Center", "hours": "7:00 AM - 7:00 PM",
+         "clerk": "Jan Wardclerk", "phone": "603-555-0102"},
+        {"s": "derry", "n": "Derry", "t": "Derry", "u": "/town/derry", "co": "Rockingham",
+         "h": [["Rockingham", "25", 0]], "sd": 19, "ec": 3, "cd": 1, "m": [],
+         "wards": [["1", "West Running Brook School", "7:00 AM - 8:00 PM"],
+                   ["2", "Gilbert H. Hood School", "7:00 AM - 8:00 PM"]],
+         "clerk": "Tina Townclerk", "email": "clerk@derry.example"},
+        {"s": "nopoll", "n": "Nopoll", "t": "Nopoll", "u": "/town/nopoll", "co": "Coos",
+         "h": [["Coos", "1", 0]], "sd": 1, "ec": 1, "cd": 2, "m": [], "clerk": "Ned Noclerk"}],
+    "people": {}, "offices": {}}
+
+
+def _town_panel_drawn(places=None, words=None):
+    """{"panel": {slug: html}, "slot": {slug: html}}: find.js's town panel
+    (ytDraw) for each place of `places` (_TOWN_PANEL_PLACES by default) saved
+    in turn, and the Learn pages' "vote" slot's ytVote of it, drawn in node
+    with components.js first as every page loads it; in Spanish, with
+    `words` its GR_WORDS, where they are given. None without node."""
+    if not shutil.which("node"):
+        return None
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_with_components(_source("src/pages/find.js")), encoding="utf-8")
+        (root / "places.json").write_text(json.dumps(places or _TOWN_PANEL_PLACES), encoding="utf-8")
+        if words:
+            (root / "words.json").write_text(json.dumps(words, ensure_ascii=False), encoding="utf-8")
+        (root / "go.js").write_text(_TOWN_PANEL_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8",
+                 timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    said = (r.stdout + r.stderr).strip()
+    assert r.returncode == 0 and "@@" in r.stdout, f"node go.js: {said[-300:]}"
+    return json.loads(r.stdout.rsplit("@@", 1)[1])
+
+
+@check("frontend", "the town panel says where the place votes, under its officials, and leaves the "
+       "clerk out")
+def _town_panel_where_you_vote():
+    """The owner, 21 November 2026: "The pop up can keep the clerk out but
+    where you vote can stay." The town panel (find.js ytDraw) had dropped
+    how to vote with the clerk when it became the short list of a town's
+    officials; "Where you vote" comes back under the list, from places.json
+    as the panel drew it before (ytVote, with `panel`), and the clerk stays
+    on the town's page. Drawn in node for four places: a town voting in one
+    place says "Where you vote", the place and its hours, and the day of the
+    last election; a city's ward its own polling place; a town voting by
+    ward each ward's; a place with none on the list says so without sending
+    the reader to the clerk. In none is the clerk's name, phone, email or
+    the words "Town clerk" or "City clerk"; and the Learn pages' slot, which
+    draws ytVote whole, still names the clerk. Fails if the vote leaves the
+    panel again or the clerk comes into it."""
+    got = _town_panel_drawn()
+    if got is None:
+        return "skip", "node is not installed"
+    pan, slot = got["panel"], got["slot"]
+    for s, want in (("jackson", ["Where you vote", "Whitney Community Center",
+                                 "Polls open 8:00 AM - 7:00 PM", "Last election: November 3, 2026"]),
+                    ("concord-ward-4", ["Where you vote", "Green Street Community Center"]),
+                    ("derry", ["Derry votes in 2 places, by ward", "<b>Ward 1</b> West Running Brook School",
+                               "<b>Ward 2</b> Gilbert H. Hood School"]),
+                    ("nopoll", ["has no polling place recorded for Nopoll."])):
+        h = pan[s]
+        assert '<div class="ytvote">' in h, f"{s}'s panel has no Where you vote"
+        vote = h[h.index('<div class="ytvote">'):]
+        for w in want:
+            assert w in vote, f"{s}'s panel does not say {w!r} where it says where to vote"
+        assert h.index('class="ytgrid"') < h.index('<div class="ytvote">') < h.index('class="ytfoot"'), (
+            f"{s}'s Where you vote is not between its officials and the way to its page")
+    for s, p in ((p["s"], p) for p in _TOWN_PANEL_PLACES["places"]):
+        for w in [p["clerk"], p.get("phone"), p.get("email"), "Town clerk", "City clerk",
+                  "The clerk is who to ask", "ytclerk"]:
+            assert not w or w not in pan[s], f"{s}'s panel names the clerk ({w!r})"
+        assert p["clerk"] in slot[s], f"the Learn pages' vote slot no longer names {s}'s clerk"
+    return "ok", ("Where you vote under the officials for a town, a ward, a town by ward and a place "
+                  "with none on the list; no clerk's name, phone, email or title in any panel, and the "
+                  "Learn pages' slot still names the clerk")
+
+
+@check("frontend", "the town panel names an office's successor and a re-elected holder as the "
+       "overview does, for the Executive Council, the US House, the US Senate and the Governor",
+       needs=("officials_overview",))
+def _town_panel_elect_lines(OV):
+    """The owner, 21 November 2026: "Elect and re-elected is fine." The town
+    panel (find.js ytSeats) draws, for the Executive Council, the US House,
+    the US Senate and the Governor, what the Officials overview draws of them:
+    a successor not yet in office under the holder, "<office>-elect; takes
+    office <day>", gone from that day by the reader's clock, and a holder the
+    hand file says was re-elected, "Re-elected <day>" -- from the same
+    reading of the record, officials_overview.office_facts, which
+    build_town_pages.panel_offices puts into places.json's offices, and in
+    the overview's own words (of.ov.*).
+
+    Over a hand file of ten offices: panel_offices gives a fourth item only
+    to the six whose record says so -- not to a re-election naming somebody
+    else or with no day, nor to a successor who is the holder -- and the
+    panel, drawn in node for two places in English and in Spanish (the
+    catalog's words), says beside or under each holder exactly the words
+    office_next gives the overview for that record, each successor's row
+    carrying data-until on their day. Fails if a line leaves the panel, says
+    other words than the overview, or appears where the record says none."""
+    import build_town_pages as BT
+    import html as _h
+    import i18n
+
+    def text(h):
+        return " ".join(_h.unescape(re.sub(r"<[^>]+>", " ", h)).split())
+    again = {"election": "2026-11-03", "votes": 1, "votes_cast": 2, "source_url": "https://x"}
+    off = {"governor": {"name": "G. Next", "party": "R",
+                        "elect": {"name": "G. Elect", "party": "D", "takes_office": "2027-01-07"}},
+           "council": {"districts": {
+               "1": {"name": "J. Kenney", "party": "R", "official_url": "https://c/1",
+                     "elect": {"name": "L. Bay", "party": "D", "takes_office": "2027-01-06"}},
+               "2": {"name": "K. Hill", "party": "D", "reelected": {**again, "name": "K. Hill"}},
+               "3": {"name": "J. Stevens", "party": "R", "reelected": {**again, "name": "Somebody Else"}},
+               "4": {"name": "J. Stephen", "party": "R", "reelected": {**again, "name": "J. Stephen",
+                                                                       "election": ""}},
+               "5": {"name": "D. Wheeler", "party": "R",
+                     "elect": {"name": "D. Wheeler", "party": "R", "takes_office": "2027-01-06"}}}},
+           "us_house": {"districts": {
+               "1": {"name": "C. Pappas", "party": "D",
+                     "elect": {"name": "S. Shaheen", "party": "D", "takes_office": "2027-01-03"}},
+               "2": {"name": "M. Goodlander", "party": "D", "reelected": {**again, "name": "M. Goodlander"}}}},
+           "us_senate": {"seats": [
+               {"name": "J. Shaheen", "party": "D",
+                "elect": {"name": "C. Pappas", "party": "D", "takes_office": "2027-01-03"}},
+               {"name": "M. Hassan", "party": "D"}]}}
+    offices = BT.panel_offices(off)
+    fourth = {(k, d): v[3] for k, o in offices.items() for d, v in o.items() if len(v) > 3}
+    assert fourth == {("ec", "1"): {"e": ["L. Bay", "D", "2027-01-06"]}, ("ec", "2"): {"r": "2026-11-03"},
+                      ("cd", "1"): {"e": ["S. Shaheen", "D", "2027-01-03"]}, ("cd", "2"): {"r": "2026-11-03"},
+                      ("us", "0"): {"e": ["C. Pappas", "D", "2027-01-03"]},
+                      ("gov", "0"): {"e": ["G. Elect", "D", "2027-01-07"]}}, (
+        f"places.json's offices say who holds them next as {fourth}")
+    recs = {("ec", d): (r, "council") for d, r in off["council"]["districts"].items()}
+    recs.update({("cd", d): (r, "us_house") for d, r in off["us_house"]["districts"].items()})
+    recs.update({("us", str(i)): (r, "us_senate") for i, r in enumerate(off["us_senate"]["seats"])})
+    recs[("gov", "0")] = (off["governor"], "governor")
+    places = {"places": [
+        {"s": "one", "n": "One", "t": "One", "u": "/town/one", "h": [], "ec": 1, "cd": 1, "m": []},
+        {"s": "two", "n": "Two", "t": "Two", "u": "/town/two", "h": [], "ec": 2, "cd": 2, "m": []}],
+        "people": {}, "offices": offices}
+    es = i18n.catalog("es")["strings"]
+    words = {k: v["es"] for k, v in es.items() if k.startswith(("of.ov.", "yt.")) and v.get("es")}
+    drawn = {"en": _town_panel_drawn(places), "es": _town_panel_drawn(places, words)}
+    if drawn["en"] is None:
+        return "skip", "node is not installed"
+    for lang in ("en", "es"):
+        pan = drawn[lang]["panel"]
+        for slug, ec, cd in (("one", "1", "1"), ("two", "2", "2")):
+            h = pan[slug]
+            for key in (("ec", ec), ("cd", cd), ("us", "0"), ("us", "1"), ("gov", "0")):
+                rec, office = recs[key]
+                beside, row = OV.office_next(rec, office, lang)
+                if beside:
+                    assert f'<span class="ytk">{beside}</span>' in h, (
+                        f"{lang}: {slug}'s panel does not say {text(beside)!r} beside {rec['name']}")
+                if row:
+                    want = text(row[row.index('<span class="k">'):])
+                    took = rec["elect"]["takes_office"]
+                    rows = re.findall(r'<li class="ytnext" data-until="' + took + r'">(.*?)</li>', h)
+                    assert any(text(r).startswith(rec["elect"]["name"]) and text(r).endswith(want)
+                               for r in rows), (
+                        f"{lang}: {slug}'s panel does not draw {rec['elect']['name']} under "
+                        f"{rec['name']} as {want!r}, retiring on {took}")
+        one = text(pan["one"])
+        assert one.count("-elect" if lang == "en" else "electo") >= 4, f"{lang}: {one[:300]!r}"
+    t = text(drawn["en"]["panel"]["two"])
+    assert "Re-elected" in t and t.count("Re-elected") == 2, (
+        f"Two's panel says Re-elected other than for its council member and its representative: {t[:300]!r}")
+    return "ok", ("panel_offices carries a successor or a re-election only where the record names one; "
+                  "the panel says each in the overview's words, in English and in Spanish, for the "
+                  "Council, the US House, the US Senate and the Governor, a successor's row retiring on "
+                  "their day")
+
+
+_TOWN_PANEL_TITLE_JS = r"""
+require("./stub.js");
+const fs = require("fs"), vm = require("vm");
+const words = JSON.parse(fs.readFileSync("./words.json", "utf8"));
+const create = document.createElement.bind(document);
+const made = [];
+function kept(tag) {
+  const e = create(tag || "div"), at = {};
+  e.setAttribute = (k, v) => { at[k] = String(v); };
+  e.getAttribute = k => (k in at ? at[k] : null);
+  made.push(e);
+  return e;
+}
+document.createElement = kept;
+document.getElementById = id => (id === "ytbtn" || id === "ovtown" || id === "navdrop" || id === "themer"
+  || id === "findbtn") ? null : create("div");
+const out = {};
+try { vm.runInThisContext(fs.readFileSync("./find.js", "utf8"), {filename: "find.js"}); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+const F = vm.runInThisContext("({ytMount})");
+for (const lang of ["en", "es"]) {
+  window.GR_WORDS = lang === "es" ? words : {};
+  window.GR_LANG = lang;
+  made.length = 0;
+  F.ytMount();
+  const panel = made.find(e => e.id === "ytpanel"), btn = made.find(e => e.id === "ytbtn");
+  out[lang] = {head: panel && panel.innerHTML, label: panel && panel.getAttribute("aria-label"),
+               button: btn && btn.innerHTML};
+}
+console.log("@@" + JSON.stringify(out));
+"""
+
+
+@check("frontend", "the town panel is titled My Town, its button still Your town")
+def _town_panel_title():
+    """The owner, 21 November 2026: "My Town is fine." The town panel the
+    header's button opens (find.js ytMount) is headed "My Town" -- the name
+    the Officials page's tab had until the panel took its place -- and a
+    screen reader names the region so; the button that opens it says "Your
+    town", or the town once one is saved, as before. In Spanish, "Mi
+    municipio", the word the site gave My Town, and the button "Su
+    municipio". Mounted in node in both languages, the Spanish words the
+    catalog's. Fails if the heading or the region's name goes back to "Your
+    town", or the button's word changes with it."""
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    import i18n
+    es = i18n.catalog("es")["strings"]
+    assert es.get("yt.panel", {}).get("en") == "My Town" and es["yt.panel"].get("es") == "Mi municipio", (
+        f"the catalog's yt.panel is {es.get('yt.panel')}, not My Town as Mi municipio")
+    words = {k: es[k]["es"] for k in ("yt.panel", "yt.title", "yt.close", "yt.loading", "set.label",
+                                      "set.title") if k in es}
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "find.js").write_text(_with_components(_source("src/pages/find.js")), encoding="utf-8")
+        (root / "words.json").write_text(json.dumps(words, ensure_ascii=False), encoding="utf-8")
+        (root / "go.js").write_text(_TOWN_PANEL_TITLE_JS, encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, encoding="utf-8", timeout=60)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    said = (r.stdout + r.stderr).strip()
+    assert r.returncode == 0 and "@@" in r.stdout, f"node go.js: {said[-300:]}"
+    got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    for lang, title, button in (("en", "My Town", "Your town"), ("es", "Mi municipio", "Su municipio")):
+        g = got[lang]
+        assert f'<h2 class="ythead">{title}</h2>' in (g["head"] or ""), (
+            f"the {lang} panel's heading is not {title!r}: {(g['head'] or '')[:200]}")
+        assert g["label"] == title, f"the {lang} panel's region is named {g['label']!r}, not {title!r}"
+        assert f'<span class="ytword">{button}</span>' in (g["button"] or ""), (
+            f"the {lang} button no longer says {button!r}")
+    return "ok", ("the panel is headed and named My Town (Mi municipio), and the button that opens it "
+                  "still says Your town (Su municipio)")
 
 
 # THE OFFICIALS OVERVIEW'S FIXTURES: two chambers as they sit, and a

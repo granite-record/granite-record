@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.42
+# GRANITE_VERSION: 2026-11-16.43
 """
 preflight's checks of members-elect and election results.
 
@@ -2834,6 +2834,134 @@ def _election_incumbent_chip(BE):
     return "ok", ("Beck and Cole marked straight after the name and before Elected, Al New and a card with "
                   "nobody marked not; the chip the site's one chip in a colour of its own; no asterisk in the "
                   f"card, the tab, app.css or the catalog; the tab's chip in English and as {words['race.incumbent']!r}")
+
+
+def _race_cards_every_word(BE):
+    """[(key, card)]: build_elections.race_card over made-up races that between them
+    write every word a card can -- each chip, a floterial's, a Senate's and a House
+    district's name, the seats one and many, Unopposed and Recounted under the name, a
+    write-in and the write-ins' row, each line under the rows (won and the last seat,
+    each in one vote and in more, the gap not final at one seat and at the last, a
+    primary's most votes at one place and more), a result not final with a recount, no
+    member-elect for one seat and for more, a file's total that is not its towns', and
+    each footnote (unopposed, of one seat and of more, many seats, a winner held back,
+    scattered write-ins one and more, candidates of another party in their four forms)."""
+    def c(name, votes, elected=False, party="r", write_in=False, nominated=None):
+        r = {"name": name, "party": party, "votes": votes, "write_in": write_in, "elected": elected}
+        if nominated is not None:
+            r["nominated"] = nominated
+        return r
+
+    def race(seats, cands, towns=("Alpha",), **kw):
+        return {"seats": seats, "floterial": False, "towns": list(towns), "scatter": 0,
+                "candidates": cands, **kw}
+    day = "2026-11-03"
+    src = {"_source": [{"file": "x/2026-house-merrimack.xlsx"}, {"file": "x/2026-state-senate.xlsx"}]}
+    won = lambda *ns: {"elected": [{"n": BE.same_name(n)} for n in ns]}
+    cards = []
+
+    def card(key, r, me, tnotes=None, hand=None, primary="", **kw):
+        cards.append((key, BE.race_card(key, r, {"seats": r["seats"], **me}, src, tnotes or {}, day, hand,
+                                        anchor=False, primary=primary, **kw)))
+    card("H|Merrimack|4", race(3, [c("Ann Ash", 3000, True), c("Bob Birch", 2900, True), c("Cy Cedar", 2800, True),
+                                   c("Di Dogwood", 2700, write_in=True)], ("Alpha", "Beta"),
+                               floterial=True, scatter=12),
+         won("Ann Ash", "Bob Birch", "Cy Cedar"),
+         tnotes={("2026-house-merrimack.xlsx", "Ann Ash"): ("3,000", "3,010", "Gamma")})
+    card("S|5", race(1, [c("Eve Elm", 101, True), c("Fay Fir", 100)], scatter=1), won("Eve Elm"),
+         inc=frozenset({BE.same_name("Eve Elm")}))
+    card("S|6", race(1, [c("Gus Gum", 300, True, "d"), c("Hal Holly", 100)], scatter=3), won("Gus Gum"))
+    card("H|Merrimack|5", race(2, [c("Ike Ivy", 500, True), c("Jo Juniper", 498, True), c("Kit Kapok", 497)]),
+         won("Ike Ivy", "Jo Juniper"))
+    card("H|Merrimack|6", race(1, [c("Lu Larch", 400), c("Mo Maple", 380)]), {"elected": [], "not_final": 1,
+                                                                            "recount": True})
+    card("H|Merrimack|7", race(2, [c("Ned Nut", 400, True), c("Oz Oak", 380), c("Pat Pine", 300)]),
+         {"elected": [{"n": BE.same_name("Ned Nut")}], "not_final": 1})
+    card("H|Merrimack|8", race(2, [c("Quin Quince", 400), c("Ray Rowan", 380), c("Sal Sumac", 300)]),
+         {"elected": []})
+    card("H|Merrimack|9", race(1, [c("Tim Teak", 400), c("Uma Upas", 380)]), {"elected": []})
+    card("H|Merrimack|10", race(2, [c("Val Vine", 900, True), c("Wes Willow", 850, True)], scatter=40),
+         won("Val Vine", "Wes Willow"))
+    card("H|Merrimack|11", race(1, [c("Xi Yew", 900, True)], scatter=5), won("Xi Yew"))
+    card("H|Merrimack|12", race(1, [c("Yo Yucca", 500, None), c("Zed Zelkova", 500, None)]), {"elected": []})
+    card("H|Merrimack|13", race(1, [c("Al Alder", 700, True), c("Bo Beech", 600)], recounted=True), won("Al Alder"))
+    card("H|Merrimack|14", race(1, [c("Cal Cork", 700, True), c("Dot Date", 600)]), won("Cal Cork"),
+         hand={"held": {"H|Merrimack|14": ["Cal Cork"]}})
+    card("H|Merrimack|15", race(1, [c("Ed Ebony", 700, True)]), won("Ed Ebony"),
+         hand={"held": {"H|Merrimack|15": ["Ed Ebony"]}})
+    for key, seats, rows, votes in (("H|Merrimack|16", 1, 1, 50), ("H|Merrimack|17", 2, 2, 1),
+                                    ("H|Merrimack|18", 1, 1, 1), ("H|Merrimack|19", 2, 3, 99)):
+        cands = [c("Fe Fig", 300, nominated=True), c("Gil Ginkgo", 250, nominated=seats > 1),
+                 c("Hu Hazel", 100, nominated=False)]
+        card(key, race(seats, cands, other_votes=votes, other_rows=rows), {}, primary="R")
+    return cards
+
+
+# English that must not be left on a card a Spanish page draws: each chip's, footnote's
+# and line's words (names and towns of _race_cards_every_word are chosen to hold none).
+_CARD_ENGLISH = re.compile(r"\b(Elected|Nominated|Unopposed|Tied|Recounted|Result not final|recount|"
+                           r"write-ins?|Write-ins|seats?|votes?|voters?|points|Won by|Most votes|gap|"
+                           r"Each voter|scattered|candidates?|another party|not shown|Senate|District|"
+                           r"floterial|No member-elect|Secretary of State|over|places|winner)\b")
+
+
+@check("frontend", "a race card on a Spanish page says every chip and note in Spanish -- Elected, "
+       "Nominated, the margin's Unopposed and Tied, the seats, the lines and the footnotes -- and an "
+       "English page's card is the card", needs=("build_elections",))
+def _election_card_spanish(BE):
+    """The owner, 21 November 2026: "Spanish pages can have those terms translated." The
+    race card is written in English by build_elections.race_card, for the elections pages
+    and a member's Elections tab alike; on the tab app.js's electionWords says each of its
+    words in the page's language through tr() and es.json -- as electionIncumbent had said
+    Incumbent ("Titular") alone -- matched where the card writes it.
+
+    Over _race_cards_every_word's cards, which between them write every word a card can,
+    drawn by renderMemberElections in node: in English the tab carries each card as it
+    came, byte for byte; on a Spanish page (window.GR_WORDS, the catalog's Spanish, as
+    the build ships it) no English word of a chip, a heading, the line under it, a row,
+    a line under the rows, a note or a footnote is left in any card's text
+    (_CARD_ENGLISH), Elected, Nominated and the margin's Unopposed are the catalog's
+    words in a chip, and Incumbent stays "Titular". Every key the tab asks for is in the
+    catalog, its English the tab's. Fails if the card writes a word the tab cannot
+    translate, or a translation is missing from the catalog."""
+    import html as _h
+    import i18n
+    cards = _race_cards_every_word(BE)
+    es = i18n.catalog("es")["strings"]
+    tab = _source("src/pages/app/160-elections-tab.js")
+    asked = i18n.tr_calls(tab)
+    lost = [(k, en) for k, en in asked if (es.get(k) or {}).get("en") != en or not (es.get(k) or {}).get("es")]
+    assert not lost, f"the tab asks for words the catalog has not in that English, or not in Spanish: {lost}"
+    words = {k: es[k]["es"] for k, _en in asked}
+    rows = [{"d": "2026-11-03", "k": k, "a": "r", "r": "won", "v": 1, "s": 1, "c": cd} for k, cd in cards]
+    got = _app_js("(()=>{const m={elections:" + json.dumps(rows) + "};"
+                  "const cards=r=>r.map(x=>scope.electionCard(x));"
+                  "const en=cards(m.elections);window.GR_WORDS=" + json.dumps(words, ensure_ascii=False) + ";"
+                  "window.GR_LANG='es';const es=cards(m.elections);delete window.GR_WORDS;delete window.GR_LANG;"
+                  "return [en,es];})()", names=("electionCard",))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    en, sp = got
+    for (key, card), e in zip(cards, en):
+        assert card[card.index(">") + 1:] in e, f"the English tab changed {key}'s card"
+    left = {}
+    for (key, card), s in zip(cards, sp):
+        text = " ".join(_h.unescape(re.sub(r"<[^>]+>", " ", s.split('<p class="er-when">', 1)[0]
+                                                      + s.split("</p>", 1)[1])).split())
+        for title in re.findall(r'title="([^"]*)"', s):
+            text += " " + _h.unescape(title)
+        bad = sorted(set(_CARD_ENGLISH.findall(text)))
+        if bad:
+            left[key] = (bad, text[:300])
+    assert not left, f"English left on a Spanish card: {left}"
+    joined = "".join(sp)
+    for k in ("race.won", "race.nominated", "race.unopposed", "race.mg_tied", "race.incumbent"):
+        assert re.search(r'<span class="chip[^"]*"[^>]*>' + re.escape(es[k]["es"]) + "</span>", joined), (
+            f"no chip says {k} as {es[k]['es']!r}")
+    assert es["race.incumbent"]["es"] == "Titular", "Incumbent is no longer Titular"
+    return "ok", (f"{len(cards)} cards writing every word a card can: the English tab draws each as it came; "
+                  f"the Spanish leaves no English chip, heading, line or footnote, and {len(asked)} words "
+                  "the tab asks for are all in the catalog")
 
 
 @check("build", "a candidate printed with a middle initial the roster lacks is the member only where the rest is "

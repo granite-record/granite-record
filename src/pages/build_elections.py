@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.21
+# GRANITE_VERSION: 2026-11-07.22
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -479,7 +479,12 @@ def race_card(key, race, me, results, tnotes, election, hand=None, h="h3", mine=
     tab (build_member_elections.primary_rows): its leaders Nominated, its
     label with no letter, each nominee who is a member linked to their page
     (`links`, candidate_rows); the race's "other_votes", the votes for
-    candidates of another party the tab leaves off, are said in the note."""
+    candidates of another party the tab leaves off, are said in the note.
+
+    IN ENGLISH, AND SAID IN THE PAGE'S LANGUAGE ON THE TAB (the owner, 21 November
+    2026): app.js's electionWords finds each word this writes by its English, the
+    catalog's (es.json's race.* keys), where this writes it. A word changed or added
+    here is one the tab must be given too; _election_card_spanish fails until it is."""
     elected_names = {e["n"]: e for e in me.get("elected") or []}
     held = held_names(hand or {}, key)
     towns = race.get("towns") or []

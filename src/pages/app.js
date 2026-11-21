@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.372
+// GRANITE_VERSION: 2026-09-07.373
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10446,7 +10446,7 @@ function electionCard(r){
     :r.st==="special"?`<p class="er-when">${esc(tr("race.special","Special election"))}, ${esc(dateWords(r.d))}${esc(tie)}</p>`
     :r.st==="special-primary"?`<p class="er-when">${esc(sballot)}, ${esc(dateWords(r.d))}</p>`
     :`<p class="er-when"><a href="${href}">${esc(dateWords(r.d))}</a></p>`;
-  return electionIncumbent(String(r.c),r.k).replace(/^<article\b[^>]*>/,m=>m+when);
+  return electionWords(electionIncumbent(String(r.c),r.k)).replace(/^<article\b[^>]*>/,m=>m+when);
 }
 // THE INCUMBENT CHIP (the owner, 21 November 2026, in place of the asterisk and its
 // line under the cards): build_elections.inc_chip writes it into the card in English,
@@ -10459,6 +10459,108 @@ function electionIncumbent(card,k){
     :tr("race.incumbent_h","Held a seat in the House on election day.");
   return card.replace(/(class="[^"]*\ber-incb" title=")[^"]*(">)[^<]*/g,
     (_m,a,b)=>a+esc(say)+b+esc(tr("race.incumbent","Incumbent")));
+}
+// THE CARD IN THE PAGE'S LANGUAGE (the owner, 21 November 2026: "Spanish pages can have
+// those terms translated"). build_elections.race_card writes the card in English, for the
+// elections pages and this tab alike; here every word it writes is said in the page's
+// language, through tr() and es.json as the rest of the tab: the chips (Elected,
+// Nominated, Tied for the last seat and the margin's Unopposed, Tied and "over"; the
+// Incumbent chip is electionIncumbent's), the race's name and its seats, a write-in, the
+// line under the rows, and the notes and footnotes under the card. Each is matched where
+// the card writes it -- a chip's whole word, the heading's, an item of the line under the
+// heading, a sentence of a paragraph under the rows -- by its English, the catalog's
+// English, the {name}s in it standing for what the card put there. In English tr gives
+// back the English with the same values, so the card is the card that came.
+// The words are written out here as tr() calls, so the build ships them to a page in
+// another language and preflight reads every one; electionWordTable is called with a
+// function of its own in tr's place to read the English and the keys back.
+function electionWordTable(tr){
+  return {
+    chip:[tr("race.won","Elected"),tr("race.nominated","Nominated"),tr("race.tie","Tied for the last seat"),
+      tr("race.unopposed","Unopposed"),tr("race.mg_tied","Tied"),tr("race.mg_over","{label} over {party}"),
+      tr("race.recounted","Recounted"),tr("elect.not_final","Result not final")],
+    name:[tr("race.card_senate","Senate District {n}"),tr("race.card_house","{county} District {n}"),
+      tr("race.card_floterial","{county} District {n} (floterial)")],
+    meta:[tr("race.seat_one","{n} seat"),tr("race.seat_many","{n} seats"),tr("race.unopposed","Unopposed"),
+      tr("race.recounted","Recounted")],
+    row:[tr("race.write_in","write-in"),tr("race.write_ins","Write-ins")],
+    line:[tr("race.gap_one","<b>{n} vote</b>, {points} points"),tr("race.gap","<b>{n} votes</b>, {points} points"),
+      tr("race.out_most","Most votes by {gap}."),
+      tr("race.out_most_n","The last of the {seats} places with the most votes by {gap}."),
+      tr("race.out_gap_first","The gap between the first two is {gap}."),
+      tr("race.out_gap_last","The gap at the last seat is {gap}."),
+      tr("race.out_won_one","Won by {gap}. {n} voter choosing the other way would have changed the result."),
+      tr("race.out_won","Won by {gap}. {n} voters choosing the other way would have changed the result."),
+      tr("race.out_last_one","The last seat by {gap}. {n} vote moved from the last winner to the first out would have changed the result."),
+      tr("race.out_last","The last seat by {gap}. {n} votes moved from the last winner to the first out would have changed the result."),
+      tr("elect.not_final","Result not final"),tr("elect.recount","&mdash; a recount was requested"),
+      tr("elect.none_one","No member-elect on file for {n} seat."),tr("elect.none","No member-elect on file for {n} seats."),
+      tr("race.note_total","The Secretary of State&rsquo;s file prints {printed} as {name}&rsquo;s total, but its own town counts add up to {sum}, the count shown here: the file&rsquo;s total leaves out {diff}."),
+      tr("race.foot_unopp","Unopposed: a share is of all the votes cast, the write-ins included."),
+      tr("race.foot_unopp_n","Unopposed: a share is of all the votes cast, the write-ins included; each voter could choose up to {seats}."),
+      tr("race.foot_multi","Each voter could choose up to {seats}, so a share is of all the votes cast for the candidates listed; each bar is scaled to the most votes in the race."),
+      tr("race.foot_held","A winner of this race is not shown here yet."),
+      tr("race.foot_scatter_one","{n} scattered write-in vote is not shown."),
+      tr("race.foot_scatter","{n} scattered write-in votes are not shown."),
+      tr("race.foot_other_one_v1","{n} candidate of another party, with {votes} vote, is not shown."),
+      tr("race.foot_other_one","{n} candidate of another party, with {votes} votes, is not shown."),
+      tr("race.foot_other_v1","{n} candidates of another party, with {votes} vote, are not shown."),
+      tr("race.foot_other","{n} candidates of another party, with {votes} votes, are not shown.")]};
+}
+// Each English as a pattern: its words as they are, each {name} a capture -- a number
+// where it leads a sentence, so the match starts at the sentence and not before it --
+// longest words first, so "Senate District {n}" is tried before "{county} District {n}".
+let ELECTION_WORDS=null;
+function electionWordPatterns(){
+  if(ELECTION_WORDS)return ELECTION_WORDS;
+  const table=electionWordTable((key,en)=>({key,en}));
+  const lit=en=>en.replace(/\{[a-z_]+\}/g,"").length;
+  const make=(w,whole)=>{
+    const names=[];
+    const parts=w.en.split(/(\{[a-z_]+\})/);
+    const src=parts.map((x,i)=>{
+      const m=/^\{([a-z_]+)\}$/.exec(x);
+      if(!m)return x.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+      names.push(m[1]);
+      return !whole&&i===1&&parts[0]===""?"([0-9][0-9,]*)":m[1]==="n"?"([0-9][0-9,]*)":"(.+?)";
+    }).join("");
+    return {key:w.key,en:w.en,names,re:new RegExp(whole?"^"+src+"$":src,whole?"":"g")};
+  };
+  ELECTION_WORDS={};
+  for(const k of Object.keys(table)){
+    const whole=k!=="line";
+    ELECTION_WORDS[k]=table[k].slice().sort((a,b)=>lit(b.en)-lit(a.en)).map(w=>make(w,whole));
+  }
+  return ELECTION_WORDS;
+}
+function electionSay(w,m){
+  const v={};w.names.forEach((n,i)=>{v[n]=m[i+1];});
+  return tr(w.key,w.en,v);
+}
+// A whole text in the page's language, or as it came where no English of `kind` is it.
+function electionWhole(kind,s){
+  for(const w of electionWordPatterns()[kind]){const m=w.re.exec(s);if(m)return electionSay(w,m);}
+  return s;
+}
+// Every sentence of `kind` in a paragraph, in the page's language.
+function electionLine(s){
+  return electionWordPatterns().line.reduce((t,w)=>t.replace(w.re,(...m)=>electionSay(w,m)),s);
+}
+function electionWords(card){
+  if(!window.GR_WORDS)return card;
+  // Matched from the class on, as electionIncumbent matches its chip: a pattern holding
+  // an opening tag reads to _bills_html as a tag the script leaves open, and one holding
+  // the chip's class written out as a chip written by hand (_chips_one_shape).
+  return String(card)
+    .replace(/(class=")(chip(?: [^"]*)?)(">)([^<]+)/g,(_m,a,c,b,s)=>a+c+b+electionWhole("chip",s))
+    .replace(/(class="er-hd"><(h[34])>)([^<]+)/g,(_m,a,_h,s)=>a+electionWhole("name",s))
+    .replace(/(class="er-meta">)(.*?)(?=<\/p>)/g,(_m,a,s)=>a+s.split(" &middot; ").map(x=>{
+      const bold=/^<b>(.*)<\/b>$/.exec(x);
+      return bold?"<b>"+electionWhole("meta",bold[1])+"</b>":electionWhole("meta",x);
+    }).join(" &middot; "))
+    .replace(/(class="er-wi">)([^<]+)/g,(_m,a,s)=>a+electionWhole("row",s))
+    .replace(/(class="er-row er-wirow">)<(span class="er-who">)([^<]+)/g,(_m,a,b,s)=>a+"<"+b+electionWhole("row",s))
+    .replace(/(class="(?:er-out|er-note|er-foot|elnf|elnone)">)(.*?)(?=<\/p>)/g,(_m,a,s)=>a+electionLine(s));
 }
 // UPCOMING ELECTIONS (the owner, 19 November 2026, "Yes to all 9" of the
 // specials and upcoming elections design, A3): m.up, the seat the member holds

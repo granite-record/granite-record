@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.63
+# GRANITE_VERSION: 2026-09-09.64
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -81,6 +81,7 @@ from slugs import town_slug as slug
 # And the one reader of corrections/officials.json, which puts each office's
 # successor in office on the day the file gives (23 October 2026).
 from build_members_elect import for_pages as members_elect, race_order, read_officials
+from officials_overview import office_facts
 # The parser's test for an e-mail address, so that what it accepts from a
 # threaded cell and what a page links are the same test.
 from parse_officials import EMAIL_OK
@@ -1515,6 +1516,46 @@ def build(town, ward, wards, dist, legs, off, base, tmpl, elect=None, elections=
                      + (MAP_JS if 'id="twnmap"' in "".join(body) else "") + "</div>", 1)
 
 
+def panel_offices(off):
+    """places.json's "offices": the offices a town elects that are not
+    legislators, each {seat: [name, party letter, official_url]} as the town
+    pages name them (the officials hand file, read through read_officials).
+
+    THE TWO A TOWN ELECTS BY DISTRICT, the Executive Council ("ec") and the
+    US House ("cd"): the My Town tab's card said who holds each seat (the
+    person's choice A, 14 October 2026). AND THE TWO EVERY TOWN SHARES, the
+    US Senate's two seats ("us") and the Governor ("gov"), which the town
+    panel lists after them (the owner's choice of draft A of the Officials
+    overview, 21 November 2026), keyed the same way so the panel reads all
+    four alike.
+
+    WHO HOLDS IT NEXT, AS THE OVERVIEW SAYS IT (the owner, 21 November 2026:
+    "Elect and re-elected is fine"): where officials_overview.office_facts
+    finds the record names a re-election of the holder or a successor not yet
+    in office, a fourth item, {"r": the re-election's day} and {"e": [name,
+    party letter, the day they take office]}, which find.js ytSeats draws as
+    the overview does. An office whose record says neither is the three it
+    was."""
+    def row(v):
+        r = [v.get("name") or "", str(v.get("party") or "")[:1].upper(), v.get("official_url") or ""]
+        got = office_facts(v)
+        nxt = {}
+        if got.get("reelected"):
+            nxt["r"] = got["reelected"]
+        if got.get("elect"):
+            e = got["elect"]
+            nxt["e"] = [e["name"], str(e["party"] or "")[:1].upper(), e["takes_office"]]
+        return r + [nxt] if nxt else r
+    offices = {k: {d: row(v) for d, v in (off.get(src, {}).get("districts") or {}).items()
+                   if (v.get("name") or "").strip()}
+               for k, src in (("ec", "council"), ("cd", "us_house"))}
+    offices["us"] = {str(i): row(x) for i, x in enumerate((off.get("us_senate") or {}).get("seats") or [])
+                     if (x.get("name") or "").strip()}
+    gov = off.get("governor") or {}
+    offices["gov"] = {"0": row(gov)} if (gov.get("name") or "").strip() else {}
+    return offices
+
+
 def place_record(town, ward, wards, dist, legs, loc, elect=None):
     """One row of places.json: what "your town" carries round the site.
 
@@ -1870,27 +1911,7 @@ def main():
                           str(x.get("party_code") or x.get("party") or "")[:1].upper()]
               for x in legs if x.get("slug")
               and any(x["slug"] in p["m"] for p in places)}
-    # THE TWO OFFICES A TOWN ELECTS THAT ARE NOT LEGISLATORS, by district, as
-    # the town pages name them (corrections/officials.json): the My Town tab's
-    # card says who holds each seat (the person's choice A, 14 October 2026).
-    offices = {k: {d: [v.get("name") or "", str(v.get("party") or "")[:1].upper(),
-                       v.get("official_url") or ""]
-                   for d, v in (off.get(src, {}).get("districts") or {}).items()
-                   if (v.get("name") or "").strip()}
-               for k, src in (("ec", "council"), ("cd", "us_house"))}
-    # AND THE TWO EVERY TOWN SHARES, the US Senate's two seats and the
-    # Governor, which the town panel lists after them (the owner's choice of
-    # draft A of the Officials overview, 21 November 2026), keyed the same
-    # way so the panel reads all four alike.
-    offices["us"] = {str(i): [s.get("name") or "", str(s.get("party") or "")[:1].upper(),
-                              s.get("official_url") or ""]
-                     for i, s in enumerate((off.get("us_senate") or {}).get("seats") or [])
-                     if (s.get("name") or "").strip()}
-    gov = off.get("governor") or {}
-    offices["gov"] = ({"0": [gov["name"], str(gov.get("party") or "")[:1].upper(),
-                             gov.get("official_url") or ""]}
-                      if (gov.get("name") or "").strip() else {})
-    doc = {"places": places, "people": people, "offices": offices}
+    doc = {"places": places, "people": people, "offices": panel_offices(off)}
     # THE MEMBERS-ELECT OF THE RACES A PLACE NAMES IN "e", each race once,
     # with the file's two days, for the My Town card (find.js). Only while
     # there is a file: without one places.json is what it was.

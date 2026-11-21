@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.29
+# GRANITE_VERSION: 2026-11-16.31
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -157,6 +157,15 @@ def _class_collisions():
         # from the reader's own town belongs, and find.js fills it (the My
         # Town card, 14 October 2026).
         "yt",
+        # The site's one suggestion list, an offer of it (app.js filterCombo's
+        # .qoffers): find.js's town box, and the Legislators tab's search on
+        # the Officials page (build_pages.legfind.js; the owner, 21 November
+        # 2026), draw the same list.
+        "qoffer",
+        # The race card's parts (build_elections.race_card draws them): a member's
+        # Elections tab (app.js electionWords) finds them by class to say the card's
+        # words in the page's language (the owner, 21 November 2026).
+        "er-meta", "er-row", "er-who", "er-wi", "er-wirow",
         # the header and the footer, written once in bills.html for the record
         # pages and again in build_pages.shell() for the static ones
         "brand", "navdrop", "navmenu", "navtabs", "top", "in", "skip", "sr",

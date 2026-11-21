@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.415 */
+/* GRANITE_VERSION: 2026-09-07.420 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -2086,8 +2086,17 @@ color:var(--pine);margin:0 0 var(--sp-3)}
 .ytnow .ytoff{font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink);margin:0 0 var(--sp-3)}
 .ytnow .ytoff span{font-weight:400;color:var(--ink-2);margin-left:var(--sp-3)}
 .ytnow .ytppl li{max-width:100%}
+/* Who holds an office next (find.js ytHolder): the re-election under the
+   holder's chip, the successor a line of their own under them. */
+.ytnow .ytppl li > .ytk{display:block;margin-top:var(--sp-1);font-size:var(--t-sm);color:var(--ink-2)}
+.ytnow .ytppl .ytnext{flex-basis:100%;padding-left:var(--sp-5)}
 .ytnow .mchip{max-width:100%;white-space:normal;margin:0}
 .ytnow .ytnote{margin:0}
+/* Where the place votes, under its officials (find.js ytVote's panel; the
+   owner, 21 November 2026), under a hairline as a seat is, the clerk left
+   to the town's page. */
+.ytnow .ytvote{border-top:1px solid var(--rule);padding:var(--sp-5) 0 var(--sp-2)}
+.ytnow .ytvote .ytwhen{margin-top:var(--sp-2)}
 .ytfoot{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-5);margin-top:var(--sp-4);
   padding-top:var(--sp-5);border-top:1px solid var(--rule)}
 .ytfoot .ytnote{flex-basis:100%;margin:0}
@@ -10018,6 +10027,22 @@ border-radius:var(--r-in);background:var(--pine);color:var(--on-pine);font-weigh
 :where(body.pg) .ovyours{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-6)}
 :where(body.pg) .ovyours[hidden]{display:none}
 :where(body.pg) .ovyours b{font-size:var(--t-ui)}
+/* THE LEGISLATORS TAB'S SEARCH (build_pages.legislator_box, legfind.js
+   lsMount; the owner, 21 November 2026): the town box's look, its list the
+   filters' .qoffers with each chamber under its name (.qgroup), and every
+   match under it on the roster's grid, the reader's own marked in the list
+   as ytMark marks a linked chip. */
+:where(body.pg) .lsbox{margin-bottom:var(--sp-6)}
+:where(body.pg) .qgroup{padding:var(--sp-3) var(--sp-5) var(--sp-1);font:600 var(--t-label)/1.3 var(--sans);
+letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);list-style:none}
+:where(body.pg) .lsmine{display:inline-block;margin-left:.375rem;padding:0 .375rem;border-radius:999px;white-space:nowrap;
+font:600 var(--t-sm)/1.5 var(--sans);letter-spacing:.02em;background:var(--pine-soft);color:var(--pine);vertical-align:.08em}
+:where(body.pg) .lsres{margin:0 0 var(--sp-9)}
+:where(body.pg) .lsres[hidden]{display:none}
+:where(body.pg) .lsres h3{font:600 var(--t-h3)/1.3 var(--serif);margin:var(--sp-6) 0 var(--sp-3)}
+:where(body.pg) .lsnote{margin:0;font-size:var(--t-ui)}
+:where(body.pg) .lsnote .link{min-height:44px;margin-left:var(--sp-3);padding:0 var(--sp-2);border:0;background:none;
+font:inherit;color:var(--pine);text-decoration:underline;cursor:pointer}
 :where(body.pg) .ovgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:var(--sp-10);
 grid-template-areas:"leg leg map" "exe fed map" "jud cty age" "ele ele ele"}
 :where(body.pg) .ovsec{border-top:2px solid var(--ink);padding:var(--sp-5) 0 var(--sp-9);min-width:0}

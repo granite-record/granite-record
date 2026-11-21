@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.72
+// GRANITE_VERSION: 2026-09-16.76
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -1800,13 +1800,19 @@ function ytPeople(p){
     return `<li><span class="mchip p-${_fesc(w[1]||"X")}" translate="no"><a href="/legislator/${_fesc(s)}">${_fesc(w[0])}</a></span></li>`;
   }).join("")+"</ul>";
 }
-function ytVote(p){
+// `panel`: the town panel's (the owner, 21 November 2026: "The pop up can
+// keep the clerk out but where you vote can stay"): where the place votes,
+// and no clerk -- neither the clerk's row nor the note's sending a reader
+// to them. The Learn pages' slot draws it whole.
+function ytVote(p,panel){
   const out=[];
   if(p.poll)out.push(`<p class="ytpoll"><span class="ytlbl">${tr("yt.where_vote","Where you vote")}</span>${_fesc(p.poll)}${p.hours?`<span class="ythrs">${tr("yt.polls_open","Polls open {hours}",{hours:_fesc(p.hours)})}</span>`:""}</p>`);
   if(p.wards)out.push(`<p class="ytlbl">${tr("yt.by_ward","{town} votes in {n} places, by ward",{town:_fesc(p.t),n:p.wards.length})}</p><ul class="ytwards">`
     +p.wards.map(w=>`<li><b>${tr("yt.ward","Ward {n}",{n:_fesc(w[0])})}</b> ${_fesc(w[1])}${w[2]?` <span class="ythrs">${_fesc(w[2])}</span>`:""}</li>`).join("")+"</ul>");
-  if(!p.poll&&!p.wards)out.push(`<p class="ytnote">${tr("yt.no_poll","The Secretary of State&rsquo;s list has no polling place recorded for {place}. The clerk is who to ask.",{place:_fesc(p.n)})}</p>`);
-  if(p.clerk)out.push(`<p class="ytclerk"><span class="ytlbl">${p.c?tr("yt.city_clerk","City clerk"):tr("yt.town_clerk","Town clerk")}</span>${_fesc(p.clerk)}`
+  if(!p.poll&&!p.wards)out.push(`<p class="ytnote">${panel
+    ?tr("yt.no_poll_here","The Secretary of State&rsquo;s list has no polling place recorded for {place}.",{place:_fesc(p.n)})
+    :tr("yt.no_poll","The Secretary of State&rsquo;s list has no polling place recorded for {place}. The clerk is who to ask.",{place:_fesc(p.n)})}</p>`);
+  if(p.clerk&&!panel)out.push(`<p class="ytclerk"><span class="ytlbl">${p.c?tr("yt.city_clerk","City clerk"):tr("yt.town_clerk","Town clerk")}</span>${_fesc(p.clerk)}`
     +(p.phone?` &middot; <a href="tel:${_fesc(p.phone.replace(/[^0-9+]/g,""))}">${_fesc(p.phone)}</a>`:"")
     +(p.email?` &middot; <a href="mailto:${_fesc(p.email)}">${_fesc(p.email)}</a>`:"")+"</p>");
   if(p.when)out.push(`<p class="ytwhen">${_fesc(p.when)}</p>`);
@@ -1859,11 +1865,39 @@ function ytMark(p){
 // Governor -- and then the way to the town's own page.
 // One person, one chip: the name, and the party and district in the chip's
 // tag, which app.css keeps whole (.mtag), as the roster draws it.
-function ytChip(name,party,href,out){
+// `after` is markup after the chip in its item, `attrs` the item's own.
+function ytChip(name,party,href,out,after,attrs){
   const s=String(name||""),i=s.lastIndexOf(" (");
   const nm=i>0&&s.endsWith(")")?`${_fesc(s.slice(0,i))} <span class="mtag">${_fesc(s.slice(i+1))}</span>`:_fesc(s);
   const a=href?`<a href="${_fesc(href)}"${out?' target="_blank" rel="noopener"':""}>${nm}</a>`:nm;
-  return `<li><span class="mchip p-${_fesc(party||"X")}" translate="no">${a}</span></li>`;
+  return `<li${attrs||""}><span class="mchip p-${_fesc(party||"X")}" translate="no">${a}</span>${after||""}</li>`;
+}
+/* WHO HOLDS AN OFFICE NEXT, AS THE OVERVIEW SAYS IT (the owner, 21 November
+   2026: "Elect and re-elected is fine"). An office of places.json's
+   "offices" -- the Executive Council ("ec"), the US House ("cd"), the US
+   Senate ("us") and the Governor ("gov") -- is [name, party, its site] and,
+   where the hand file says so (build_town_pages.panel_offices, from
+   officials_overview.office_facts), a fourth item: "r", the day the holder
+   was re-elected, said beside them, and "e", the successor not yet in office,
+   [name, party, the day they take office], drawn under the holder as
+   "<office>-elect; takes office <day>" and gone from that day by the
+   reader's clock (untilAttrs). The overview's words, through the same keys. */
+function ytElectTitle(k){
+  if(k==="gov")return tr("of.ov.elect.governor","Governor-elect");
+  if(k==="ec")return tr("of.ov.elect.council","Executive Councilor-elect");
+  if(k==="us")return tr("of.ov.elect.us_senate","US Senator-elect");
+  return tr("of.ov.elect.us_house","US Representative-elect");
+}
+function ytHolder(k,o){
+  const lang=typeof window!=="undefined"?window.GR_LANG:undefined, f=o[3]||{};
+  const label=(n,p)=>p&&/^[A-Z]$/.test(p)?`${n} (${p})`:n;
+  const again=f.r?`<span class="ytk">${tr("of.ov.reelected","Re-elected {day}",{day:_fesc(dateWords(f.r,"full",lang))})}</span>`:"";
+  let h=ytChip(label(o[0],o[1]),o[1],o[2],true,again);
+  if(f.e&&f.e[0])h+=ytChip(label(f.e[0],f.e[1]),f.e[1],"",false,
+    `<span class="ytk">${tr("of.ov.elect_takes","{office}; takes office {day}",
+      {office:_fesc(ytElectTitle(k)),day:_fesc(dateWords(f.e[2],"full",lang))})}</span>`,
+    ` class="ytnext"${untilAttrs(f.e[2],null)}`);
+  return h;
 }
 /* WHO NOVEMBER'S ELECTION SENT, IN THE CARD (the person's decisions of 16
    October 2026): between the election and Organization Day a place's "e"
@@ -1900,9 +1934,9 @@ function ytSeats(p){
   const who=list=>`<ul class="ytppl">${list.map(s=>{const w=ppl[s]||[s,""];return ytChip(w[0],w[1],"/legislator/"+s);}).join("")}</ul>`;
   const seat=(office,where,body,race)=>`<div class="ytseat"${race?` data-race="${_fesc(race)}"`:""}><p class="ytoff">${office}${where?`<span>${_fesc(where)}</span>`:""}</p>${body}</div>`;
   const named=(k,d)=>{const o=(off[k]||{})[String(d)];
-    return o&&o[0]?`<ul class="ytppl">${ytChip(o[1]&&/^[A-Z]$/.test(o[1])?`${o[0]} (${o[1]})`:o[0],o[1],o[2],true)}</ul>`:`<p class="ytnote">${tr("yt.not_on_file","Not on file.")}</p>`;};
+    return o&&o[0]?`<ul class="ytppl">${ytHolder(k,o)}</ul>`:`<p class="ytnote">${tr("yt.not_on_file","Not on file.")}</p>`;};
   const all=k=>{const o=off[k]||{},ks=Object.keys(o).sort();
-    return ks.length?`<ul class="ytppl">${ks.map(d=>ytChip(o[d][1]&&/^[A-Z]$/.test(o[d][1])?`${o[d][0]} (${o[d][1]})`:o[d][0],o[d][1],o[d][2],true)).join("")}</ul>`:"";};
+    return ks.length?`<ul class="ytppl">${ks.map(d=>ytHolder(k,o[d])).join("")}</ul>`:"";};
   const district=d=>tr("yt.district","District {d}",{d});
   const hs=p.h||[];
   // Each House district a row: its own members, and any member the address
@@ -2266,9 +2300,12 @@ function ytDraw(){
   let h="";
   if(p&&!panel.dataset.changing){
     // THE SHORT LIST OF THE TOWN'S OFFICIALS, THEN ITS PAGE (the owner's
-    // choice of draft A, 21 November 2026), for everything else -- how to
-    // vote, the clerk, the town's own officials -- which the page has.
-    h+=`<div class="ytnow">`+ytSeats(p)
+    // choice of draft A, 21 November 2026), for everything else -- the
+    // clerk, the town's own officials -- which the page has. And where the
+    // place votes, under the list (her word of the same day: "The pop up can
+    // keep the clerk out but where you vote can stay"), from places.json as
+    // the panel drew it before, with no clerk (ytVote's panel).
+    h+=`<div class="ytnow">`+ytSeats(p)+`<div class="ytvote">${ytVote(p,true)}</div>`
       +`<div class="ytfoot"><a class="ytgo" href="${_fesc(p.u)}">${tr("yt.open_page","Open {place}&rsquo;s page",{place:_fesc(p.n)})}</a>`
       +'<button type="button" class="ytbtn2" id="ytchange">'+tr("yt.choose_another","Choose another town")+'</button>'
       +'<button type="button" class="ytbtn2 ytquiet" id="ytforget">'+tr("yt.forget","Forget it")+'</button>'
@@ -2473,9 +2510,13 @@ function ytMount(){
   scrim.className="findscrim";scrim.hidden=true;
   const panel=document.createElement("div");
   panel.id="ytpanel";panel.className="findpanel ytpanel";panel.hidden=true;
-  panel.setAttribute("role","region");panel.setAttribute("aria-label",tr("yt.title","Your town"));
+  // THE PANEL IS MY TOWN (the owner, 21 November 2026: "My Town is fine"),
+  // the name the Officials page's tab had: its heading and the name a screen
+  // reader gives the region. The button that opens it says "Your town", or
+  // the town, as before.
+  panel.setAttribute("role","region");panel.setAttribute("aria-label",tr("yt.panel","My Town"));
   panel.innerHTML='<div class="findin"><div class="findgrab" aria-hidden="true"></div>'
-    +'<div class="yttop"><h2 class="ythead">'+tr("yt.title","Your town")+'</h2>'
+    +'<div class="yttop"><h2 class="ythead">'+tr("yt.panel","My Town")+'</h2>'
     +'<button type="button" class="findcancel ytclose" id="ytclose">'+tr("yt.close","Close")+'</button></div>'
     +'<div id="ytbody"><p class="ytnote">'+tr("yt.loading","Loading&hellip;")+'</p></div></div>';
   nav.parentNode.insertBefore(scrim,nav.nextSibling);
