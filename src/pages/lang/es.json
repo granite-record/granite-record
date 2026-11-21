@@ -23402,6 +23402,46 @@
    "es": "Cámara",
    "state": "draft"
   },
+  "lf.ls_all": {
+   "en": "Show all {n}",
+   "es": "Mostrar los {n}",
+   "state": "draft"
+  },
+  "lf.ls_clear": {
+   "en": "Clear",
+   "es": "Borrar",
+   "state": "draft"
+  },
+  "lf.ls_list": {
+   "en": "Members",
+   "es": "Miembros",
+   "state": "draft"
+  },
+  "lf.ls_many": {
+   "en": "{n} members match &ldquo;{q}&rdquo;.",
+   "es": "{n} miembros coinciden con &ldquo;{q}&rdquo;.",
+   "state": "draft"
+  },
+  "lf.ls_none": {
+   "en": "No sitting member matches that. Names, counties, parties and committees are searched.",
+   "es": "Ningún miembro en funciones coincide con eso. Se buscan nombres, condados, partidos y comités.",
+   "state": "draft"
+  },
+  "lf.ls_one": {
+   "en": "1 member matches &ldquo;{q}&rdquo;.",
+   "es": "1 miembro coincide con &ldquo;{q}&rdquo;.",
+   "state": "draft"
+  },
+  "lf.n_member": {
+   "en": "{n} member",
+   "es": "{n} miembro",
+   "state": "draft"
+  },
+  "lf.n_members": {
+   "en": "{n} members",
+   "es": "{n} miembros",
+   "state": "draft"
+  },
   "lf.not_on_file": {
    "en": "Not on file",
    "es": "Sin registro",
@@ -24996,6 +25036,16 @@
   "of.lead": {
    "en": "Everyone who represents your town, from your select board to\nCongress; the {n} sitting members of the New Hampshire House and\nSenate; and the state&rsquo;s other officials.",
    "es": "Todas las personas que representan a su municipio, desde la junta de concejales hasta el Congreso; los {n} miembros en funciones de la Cámara de Representantes y el Senado de New Hampshire; y los demás funcionarios del estado.",
+   "state": "draft"
+  },
+  "of.ls.find": {
+   "en": "Find a legislator",
+   "es": "Busque un legislador",
+   "state": "draft"
+  },
+  "of.ls.ph": {
+   "en": "Name, county, party or committee",
+   "es": "Nombre, condado, partido o comité",
    "state": "draft"
   },
   "of.map": {
