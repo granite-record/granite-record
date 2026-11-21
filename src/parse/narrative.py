@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.117
+# GRANITE_VERSION: 2026-09-04.118
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -4875,16 +4875,12 @@ def meetings_not_told(bill, evs, term, gone, journal_out):
     return evs
 
 
-def build(bill, rows, introduction=None):
-    rows = sorted(stamps_in_reach(rows), key=lambda r: r["created"])
-    if CORRECTIONS:
-        SIBLINGS.extend(_sibling_rows(bill, rows))
-    session, term, evs, elsewhere = events_of_rows(bill, rows)
-    order_events(evs)
-
-    gone, journal_out, not_introduced = introduction_told(bill, evs, introduction, session)
-    evs = meetings_not_told(bill, evs, term, gone, journal_out)
-
+def committee_of_each_event(evs, term):
+    """Each event given the committee that held the bill when it happened, carried
+    forward from the last referral; a passage that sends the bill on given the
+    referral its row's reader left off; and a committee's name the database cut
+    at a row's end finished by the row it goes on in.
+    A step of build, lifted out of it as it stood (20 November 2026)."""
     # Which committee held the bill when each thing happened. Only the referral
     # line names one, so it is carried forward until the next referral -- the
     # rule stage_of already uses to label a stage, applied to every event so a
@@ -4967,6 +4963,12 @@ def build(bill, rows, introduction=None):
                     ev["_as_written"] = {**said, key: whole}
                     break
 
+
+def referrals_waived_and_pending(evs, term):
+    """A referral the committee's chair waived told as one, with the referral it
+    waives; a motion to pass adopted and then tabled told as the motion, and the
+    order it left pending told where a later sitting carried it.
+    A step of build, lifted out of it as it stood (20 November 2026)."""
     # A REFERRAL THE COMMITTEE'S CHAIR WAIVED IS TOLD AS ONE (5 October 2026).
     # "Referred to Finance" and, that afternoon, "Referral Waived by Committee
     # Chair per House Rule 47(f)" (HB 1574 of 2026): the history said "the bill
@@ -5085,36 +5087,12 @@ def build(bill, rows, introduction=None):
             e["_type"] = "ot3rdg"
             waiting.pop(e["body"])
 
-    sentences, notes, unknown = [], [], []
-    # A note is said once per bill, however many rows repeat the action.
-    used_notes = set()
-    last_cmte = {}
-    # {chamber: (the moment the row that sent the bill on was entered, the
-    # committee that had it before, the stage that committee's work is told
-    # in)}, for a row entered ahead of that one.
-    moved = {}
-    # {chamber: when the other chamber's introduction of the bill was entered}
-    crossed = {}
-    # {chamber: [(the amendments a committee's report carried, when it was
-    # entered)]}, for the amendment the floor then votes on.
-    carried_by = {}
-    for e in evs:
-        if e["_type"] == "report" and not e["cancelled"] and e.get("amend"):
-            carried_by.setdefault(e["body"], []).append(
-                (amend_keys(e["amend"]), e["_entered"]))
-    stages = []   # [{"label": ..., "text": ...}] in the order they happened
-    recorded_votes = 0
-    unrecorded_votes = 0
 
-    seen_intro = False
-    # The consent calendar is explained once a bill, beside its first placing,
-    # in the same words whatever happened after it: the note is the rule
-    # (CC_THEN), and this bill's removal is said where a row records one
-    # (CONSENT_OFF_NOTE). It was a set of the chambers that took the bill off,
-    # read before the loop so that the note beside the placing could leave its
-    # second sentence out there -- which made the note only as true as the
-    # reading of every removal, and it was not.
-    cc_explained = False
+def amendments_decided_and_overrides(evs):
+    """An amendment announced on one row marked decided by the row that decides it,
+    or given what the other rows say of it (_fate); and a law made over a veto
+    marked with the chambers that overrode it.
+    A step of build, lifted out of it as it stood (20 November 2026)."""
     # An amendment announced on one row and decided on another is told once,
     # by the row that decides it (amendment_outcome). "Not Voted On" decides
     # nothing when another row does: SB 535 of 2016's 2016-1160s is "Not
@@ -5189,6 +5167,45 @@ def build(bill, rows, introduction=None):
         for e in evs:
             if e["_type"] == "unsigned_law":
                 e["_overridden"] = overrode
+
+
+def story_of_events(bill, evs, term):
+    """The history told: each event's sentence (describe), in crossing order,
+    gathered into the stages it happened in, with the notes said once a bill and
+    the rows read as nothing (`unknown`); and how many floor votes were recorded
+    and how many were voice or division votes.
+    A step of build, lifted out of it as it stood (20 November 2026)."""
+    sentences, notes, unknown = [], [], []
+    # A note is said once per bill, however many rows repeat the action.
+    used_notes = set()
+    last_cmte = {}
+    # {chamber: (the moment the row that sent the bill on was entered, the
+    # committee that had it before, the stage that committee's work is told
+    # in)}, for a row entered ahead of that one.
+    moved = {}
+    # {chamber: when the other chamber's introduction of the bill was entered}
+    crossed = {}
+    # {chamber: [(the amendments a committee's report carried, when it was
+    # entered)]}, for the amendment the floor then votes on.
+    carried_by = {}
+    for e in evs:
+        if e["_type"] == "report" and not e["cancelled"] and e.get("amend"):
+            carried_by.setdefault(e["body"], []).append(
+                (amend_keys(e["amend"]), e["_entered"]))
+    stages = []   # [{"label": ..., "text": ...}] in the order they happened
+    recorded_votes = 0
+    unrecorded_votes = 0
+
+    seen_intro = False
+    # The consent calendar is explained once a bill, beside its first placing,
+    # in the same words whatever happened after it: the note is the rule
+    # (CC_THEN), and this bill's removal is said where a row records one
+    # (CONSENT_OFF_NOTE). It was a set of the chambers that took the bill off,
+    # read before the loop so that the note beside the placing could leave its
+    # second sentence out there -- which made the note only as true as the
+    # reading of every removal, and it was not.
+    cc_explained = False
+    amendments_decided_and_overrides(evs)
     told_on_line = set()
     # {chamber: [the floor and amendment sentences told so far]} (told_again).
     told_floor = defaultdict(list)
@@ -5566,7 +5583,14 @@ def build(bill, rows, introduction=None):
                 else:
                     stages.append({"key": key, "sentences": [said], "notes": [],
                                    "label": stage_label(key)})
+    return stages, notes, unknown, recorded_votes, unrecorded_votes
 
+
+def votes_and_meetings_said(evs, stages, recorded_votes, unrecorded_votes):
+    """What the record's last fields are made from: the note where no floor vote was
+    recorded, the stages collapsed (`staged`), the meetings a later row cancelled
+    or moved (`voided`), and the days a meeting was told with no sitting.
+    A step of build, lifted out of it as it stood (20 November 2026)."""
     # Not a note on the summary. This is about the votes, and the Votes tab
     # is where somebody goes to look for them.
     vote_note = ""
@@ -5613,6 +5637,27 @@ def build(bill, rows, introduction=None):
                            if e.get("_corrected") and e.get("date_as_recorded")
                            and e["_type"] in ROW_MEETINGS
                            and _day_of(e["date_as_recorded"]) not in told_on})
+    return vote_note, staged, voided, no_sitting
+
+
+def build(bill, rows, introduction=None):
+    rows = sorted(stamps_in_reach(rows), key=lambda r: r["created"])
+    if CORRECTIONS:
+        SIBLINGS.extend(_sibling_rows(bill, rows))
+    session, term, evs, elsewhere = events_of_rows(bill, rows)
+    order_events(evs)
+
+    gone, journal_out, not_introduced = introduction_told(bill, evs, introduction, session)
+    evs = meetings_not_told(bill, evs, term, gone, journal_out)
+
+    committee_of_each_event(evs, term)
+
+    referrals_waived_and_pending(evs, term)
+
+    stages, notes, unknown, recorded_votes, unrecorded_votes = story_of_events(bill, evs, term)
+
+    vote_note, staged, voided, no_sitting = votes_and_meetings_said(
+        evs, stages, recorded_votes, unrecorded_votes)
     return {
         "bill": bill,
         "narrative": " ".join(x["text"] for x in staged),
