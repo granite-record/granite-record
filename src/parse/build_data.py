@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.73
+# GRANITE_VERSION: 2026-09-04.74
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -2867,6 +2867,463 @@ def name_departed_sponsors(d, counties, former, sponsors, departed, lo_bills, pl
     return _former_label
 
 
+def ballots_of_members(d, sd, gone_years, left_out, legs, term_rosters, former, _former_label,
+                       ballot_fix):
+    """Every member's ballot, as member_votes.json holds them: RollCallHistory joined
+    to RollCallSummary on (year, body, number), the session's files and the past
+    years' (rows_all), each ballot dated and filed under its bill as
+    rollcall_parser says and named by ballot_member, or from `former` and
+    _former_label for a member who left; an empty id given the one a ballot
+    correction names. With the counts check_and_date_ballots reports.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    # Keyed (year, body, number): a vote sequence number restarts each session,
+    # so the year is what keeps 2025's roll call 112 apart from 2026's. That was
+    # already true before past years were readable, which is why adding them
+    # needed nothing here beyond the extra files.
+    summary = {}
+    for r in rows_all(sd, "RollCallSummary", archive=d, finished=gone_years, left=left_out):
+        if len(r) < 13:
+            continue
+        summary[(r[0], r[1], r[2])] = {
+            # The day a person put right, where one did (rollcall_parser.
+            # roll_call_when), so each ballot is dated as rollcalls.json is.
+            "year": r[0], "body": r[1], "number": r[2],
+            "datetime": RP.roll_call_when(r[0], r[1], r[2], r[3]),
+            # The bill as data/bills.json keys it, so each ballot reaches its
+            # bill's page: "SB 406" upper-cased and left spaced linked no
+            # member's vote to SB 406. rollcall_parser.bill_number says which
+            # seven. A field that names no bill is upper-cased as it was. A
+            # roll call on a measure whose number another record of the term
+            # holds goes under the name rollcall_parser.OTHER_MEASURE gives
+            # it, so no member's ballot on 2009's SR 1 links 2010's.
+            "bill": RP.roll_call_bill(r[0], r[1], r[2], r[4]) or r[4].upper(),
+            "yea": int(r[5] or 0), "nay": int(r[6] or 0),
+            "question": r[11], "title": r[12],
+        }
+    print(f"roll call summaries: {len(summary):,}")
+    # A roll call a person showed is filed under the wrong bill
+    # (corrections/rollcall_corrections.json), said here as rollcall_parser
+    # says it, so the ballots and the bill's page are seen to move together.
+    # Not "in no file read": a run of the frozen terms reads only theirs.
+    RP.refiled_report(complete=False)
+    RP.misdated_report(complete=False)
+
+    member_votes, vote_kinds, hist_bodies = [], Counter(), Counter()
+    vnums, unmatched_votes, no_person = set(), 0, Counter()
+    ballot_fixed = Counter()
+    for r in rows_all(sd, "RollCallHistory", 8, archive=d, finished=gone_years, left=left_out):
+        key = (r[0], r[1], r[2])
+        hist_bodies[r[1]] += 1
+        vnums.add(int(r[2]) if r[2].isdigit() else -1)
+        s = summary.get(key)
+        if not s:
+            unmatched_votes += 1
+            continue
+        # Field 4 is the roster's PersonID, joined in on the Employeeno in
+        # field 3. Three members of the 2023-2024 House have no legislators
+        # row at all, so that join comes back empty for all 1,470 of their
+        # votes -- and a blank id put the three of them under a single
+        # "Member #" row, merging three people's votes into one. The
+        # Employeeno is the only identifier the record holds for them, and
+        # the two spaces do not overlap: PersonIDs run 48-10904, Employeenos
+        # are six digits.
+        mid = r[4].strip() or r[3].strip()
+        if not mid and key in ballot_fix:
+            # ONLY when the id is already empty. That makes the correction
+            # self-limiting: if the General Court ever fills the id in, this
+            # stops firing rather than adding a second ballot for the same
+            # person in the same roll call, and the count below says so.
+            mid = str(ballot_fix[key].get("member_id") or "").strip()
+            ballot_fixed[key] += 1
+        if not r[4].strip() and mid:
+            no_person[mid] += 1
+        # A MEMBER WHO SITS ON, on a ballot of a term whose own roster is
+        # frozen and is not the installed one: the party and seat of that
+        # roster, the ones they voted under, and not the ones Organization
+        # Day gave them (the review of 5 October 2026). A member who left is
+        # named from `former`, as above, in the shape former_roster reads.
+        # Not on a ballot of Organization Day, which the next House cast
+        # (proceedings.vote_term): the roster installed is theirs. And a
+        # ballot of an older term, from the nearest frozen roster after it
+        # (ballot_member, 19 November 2026).
+        m = ballot_member(mid, r[0], s["datetime"], legs, term_rosters, former)
+        vote_kinds[r[6]] += 1
+        member_votes.append({
+            # 420 members cast votes but only 406 are in legislators.txt: the
+            # file holds current members, and people resign or die mid-term.
+            # Their votes are still part of the record.
+            "member_id": mid,
+            "name": (m["name"] if m else
+                     former.get(mid, {}).get("name", f"Member #{mid}")),
+            "party": (m["party_code"] if m else
+                      (former.get(mid, {}).get("party") or "X")[:1].upper()),
+            "label": (m["label"] if m else _former_label(mid)),
+            "year": r[0], "body": r[1], "vote_number": r[2],
+            "bill": s["bill"], "question": s["question"],
+            "date": s["datetime"].split(" ")[0],
+            # An unmapped database code reached the site as a bare digit:
+            # 411 ballots read "5" and 156 read "7". See
+            # rollcall_parser.vote_word, which is the one place that
+            # decides what a ballot is called. A declared conflict of
+            # interest reads "No vote recorded" like an empty ballot and is
+            # not one -- the member was in the room -- so rollcall_parser.
+            # ballot flags it, on those few hundred rows only.
+            **RP.ballot(r[6]),
+        })
+    print(f"member votes: {len(member_votes):,}")
+    return member_votes, ballot_fixed, vote_kinds, hist_bodies, vnums, unmatched_votes, no_person
+
+
+def check_and_date_ballots(legs, member_votes, ballot_fix, ballot_fixed, vote_kinds, hist_bodies,
+                           vnums, unmatched_votes, no_person, report):
+    """The ballot corrections held to the ballots they made (one that names an id
+    casting no other ballot, or matched nothing, is warned of); each ballot
+    relabelled with the seat that term's bills printed (date_ballot_seats); and
+    what the ballots' reading found said in `report`.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    if ballot_fix:
+        _named = sum(ballot_fixed.values())
+        print(f"  {_named} ballot(s) with an empty member id given the member "
+              f"the journal names, from {len(ballot_fixed)} roll call(s)")
+        # An id that casts this ONE ballot and no other is the signature of a
+        # correction written in the wrong id space. The General Court numbers
+        # people twice -- PersonID in field 4, Employeeno in field 3 -- and the
+        # raw row shows both, so it is easy to copy the wrong one; doing that
+        # does not fail, it silently mints a second person holding a single
+        # vote while their real record sits beside it. That happened to both of
+        # the first two entries and was caught by eye, which is not a method.
+        _counts = Counter(v["member_id"] for v in member_votes)
+        for _k, _v in ballot_fix.items():
+            _id = str(_v.get("member_id") or "").strip()
+            if ballot_fixed.get(_k) and _counts.get(_id, 0) <= ballot_fixed[_k]:
+                print(f"  WARNING: ballot correction {'|'.join(_k)} names id "
+                      f"{_id}, which casts no other ballot. Check it is the id "
+                      f"data/member_votes.json uses (the PersonID where the "
+                      f"record fills one) and not the Employeeno beside it.")
+
+        _stale = sorted(k for k in ballot_fix if k not in ballot_fixed)
+        if _stale:
+            # Either the source filled the id in -- in which case the entry is
+            # done and should be removed -- or the roll call moved and it is now
+            # pointing at nothing. Both need a person; neither is silent.
+            print(f"  WARNING: {len(_stale)} ballot correction(s) matched no "
+                  f"empty-id ballot: {', '.join('|'.join(k) for k in _stale)}. "
+                  f"Either the record now carries the id, or the roll call key "
+                  f"has changed.")
+
+    _dated = date_ballot_seats(member_votes, legs)
+    if _dated:
+        print(f"  {_dated:,} ballots relabelled with the seat that term's bills "
+              f"printed, not the one the roster holds now")
+    print(f"  vote values: {dict(vote_kinds)}")
+    report.append(f"RollCallHistory field 2 ranges {min(vnums) if vnums else 0}"
+                  f"\u2013{max(vnums) if vnums else 0}, and joins to RollCallSummary "
+                  f"on (year, body, number). Chambers present: {dict(hist_bodies)}.")
+    if unmatched_votes:
+        report.append(f"{unmatched_votes:,} history rows had no matching summary row "
+                      "(likely roll calls from a session the summary file no longer covers)")
+
+    if no_person:
+        report.append(
+            f"{len(no_person)} member(s) voting in the 2023-2024 House have no "
+            "row in the legislators table, so the record carries an Employeeno "
+            "for them and no name, party or district: "
+            + ", ".join(f"#{k} ({v:,} votes)" for k, v in sorted(no_person.items()))
+            + ". They are kept apart by that number rather than merged.")
+
+
+def ballots_left_out_said(out, frozen, member_votes, gone_terms, left_out, left_named, report):
+    """The ballots per member said in `report`; and the rows of finished terms left
+    out of the session's files, printed and, but for a frozen term's run, written
+    to LEFT_OUT beside the data (removed where there are none).
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    per_member = Counter(v["member_id"] for v in member_votes)
+    if per_member:
+        n = sorted(per_member.values())
+        report.append(f"votes per member: median {n[len(n)//2]}, "
+                      f"min {n[0]}, max {n[-1]}, members covered {len(per_member)}")
+
+    # Only what was counted: a file read with nothing left out is no line
+    # (the LsrsOnly count's += 0 made every ordinary night say "rows of  left
+    # out ...: LsrsOnly.txt 0").
+    left_out = +left_out
+    if left_out:
+        print(f"  rows of {', '.join(gone_terms)} left out of the session's files, the "
+              "term being built from its freeze: "
+              + ", ".join(f"{k} {v:,}" for k, v in sorted(left_out.items())))
+    # AND SAID WHERE THE NIGHT READS IT (the review of 5 October 2026): the
+    # count reached this log and nothing else, so a real late correction to a
+    # finished term -- a chapter number entered in December -- would have been
+    # dropped with nobody told. LEFT_OUT, beside the data, holds the rows and
+    # the bills they name, and the nightly puts them on the run's page; a
+    # night with none removes it, so last night's never reads as tonight's.
+    if not frozen:
+        _lo = out / LEFT_OUT
+        if left_out:
+            _lo.write_text(json.dumps({"terms": gone_terms, "rows": dict(sorted(left_out.items())),
+                                       "bills": sorted(left_named)}, indent=1), encoding="utf-8")
+        else:
+            _lo.unlink(missing_ok=True)
+
+
+def archived_terms(bills, committees):
+    """The bills by term, {term: {bill: record}}: the session's `bills` under their
+    own term, and every term of archive_bills.json the session's files do not
+    cover, each bill given its committee of referral from the term's own docket
+    (_pick_committee); a bill with no filing year left out and said. Also what
+    the later steps read: the dockets' referrals and first chambers (`refs`,
+    `began`), the committee names the tables know (`known`) and the names the
+    clerks used (`in_use`).
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    # {term: {bill: record}}. A bill number is unique within a term and not
+    # across terms, and this is the file every other per-bill lookup is driven
+    # from -- the loop in build_site_v2.build_bills iterates it. Keyed on the
+    # bill alone, adding an archived term would put two different bills under
+    # one key at the very top of the pipeline.
+    # The committee of referral for every archived bill, from the docket
+    # already on this disk. No network: each archived term's own docket, the
+    # file its history is narrated from (referrals.term_dockets). Empty if
+    # those files are absent, in which case nothing below changes.
+    #
+    # Every archived term's docket, not only the database dump: the dump
+    # stops part way through 2016, so 2016-2024 took the search page's LAST
+    # committee in ONE chamber. referrals.from_dockets says what that cost.
+    # Each bill's rows are chosen by the archive record's own LSR, because a
+    # resolution's number can carry two measures in one term.
+    ap_ = Path("archive_bills.json")
+    try:
+        arch = json.loads(ap_.read_text(encoding="utf-8")) if ap_.exists() else {}
+    except ValueError:
+        arch = {}
+    try:
+        import referrals
+        refs, began = referrals.read_dockets(lsr_of={
+            (t, b): r.get("lsr", "") for t, bb in arch.items()
+            for b, r in bb.items()})
+    except Exception as e:                       # a missing docket is not a failure
+        print(f"  archive: no docket referrals ({e})")
+        refs, began = {}, {}
+    # The names the clerks were using, per term and chamber: any the docket
+    # gives as the first referral of three or more bills. _same_committee
+    # says why a longer stored name must not replace one of these.
+    _used = Counter((t, body, referrals._key(c)) for (t, _b), bodies in refs.items()
+                    for body, c in bodies.items())
+    in_use = defaultdict(set)
+    for (t, body, k), n in _used.items():
+        if n >= 3:
+            in_use[(t, body)].add(k)
+    # The committee names the tables know, reduced the way referrals._key
+    # reduces them so that "Ways & Means" and "Ways and Means" are one name.
+    # _pick_committee says what this is for.
+    try:
+        known = {referrals._key(c["name"]) for c in committees.values()
+                 if c.get("name")}
+    except Exception:
+        known = set()
+    by_term = defaultdict(dict)
+    for bid, rec in bills.items():
+        by_term[P.term_of(str(rec.get("lsr_year") or ""))][bid] = rec
+
+    # Archived terms, from fetch_archive_bills.py. The General Court's own
+    # search answers a past session year with every bill of it -- title,
+    # statuses, committee, hearing, text link -- for two requests, which is
+    # where the 2023-2024 term comes from. It has no docket and no sponsors,
+    # and this does not pretend otherwise: those fields are simply absent, and
+    # the page says so rather than showing the CURRENT term's.
+    #
+    # A term the current session files already cover is left alone. The live
+    # data is better than a search-results page in every respect.
+    # (archive_bills.json was read above, for the referrals.)
+    if ap_.exists():
+        added = 0
+        for term, byb in arch.items():
+            if term in by_term:
+                print(f"  archive: {term} is already built from session files, "
+                      "left alone")
+                continue
+            for bid, r in byb.items():
+                num = re.match(r"([A-Z]+)(\d+)", bid)
+                cm, ch = r.get("committee") or "", r.get("committee_chamber")
+                if _placeholder(cm):
+                    # NOT A COMMITTEE OF REFERRAL, and treated as absent so
+                    # the docket's own answer below is used instead. See
+                    # _placeholder for what these are and why they are here.
+                    cm = ""
+                # The search page gave a committee for 1999 onward and none at
+                # all before it, so five terms and 8,525 bills had no committee
+                # of any kind. The docket has it: the clerk writes the referral
+                # into the description of the introduction line.
+                # referrals.from_dockets reads it for every archived term,
+                # 1989-2024, from the docket each term's history is narrated
+                # from, and _pick_committee lets it win -- except where the two
+                # are one committee under two spellings -- because the search
+                # page's value is the LAST committee in one chamber, and the
+                # docket's is the FIRST in each, or the committee a vacate
+                # moved the bill to.
+                ref = refs.get((term, bid), {})
+                by_term[term][bid] = {
+                    "bill": bid,
+                    "lsr": f"{r.get('year','')}-{r.get('lsr','')}",
+                    "lsr_year": r.get("year", ""), "lsr_num": r.get("lsr", ""),
+                    "title": r.get("title", ""),
+                    # A CACR's number does not say which chamber it began
+                    # in, and the search page files every one under the
+                    # House; its own docket's first row says.
+                    "chamber": ((began.get((term, bid)) if bid.startswith("CACR")
+                                 else "") or r.get("body", "")),
+                    "subject_code": "", "subject": "",
+                    "house_committee": _pick_committee(
+                        cm if ch == "House" else "", ref.get("H", ""), known,
+                        in_use.get((term, "H"), ())),
+                    "senate_committee": _pick_committee(
+                        cm if ch == "Senate" else "", ref.get("S", ""), known,
+                        in_use.get((term, "S"), ())),
+                    "hearing": hearing_in_term(r.get("last_hearing", ""),
+                                               term),
+                    "hearing_room": "",
+                    "designation": (f"{num.group(1)} {num.group(2)}"
+                                    if num else bid),
+                    "text_pdf": r.get("text_pdf", ""),
+                    # The statuses travel with the bill because an archived
+                    # term has no bill_status.json of its own, and the flat one
+                    # belongs to a different term.
+                    "gen_status": r.get("gen_status", ""),
+                    "house_status": r.get("house_status", ""),
+                    "senate_status": r.get("senate_status", ""),
+                    "archived": True,
+                }
+                added += 1
+        if added:
+            print(f"  archive: {added:,} bills added from {ap_}")
+        if refs:
+            filled = sum(1 for bs in by_term.values() for b in bs.values()
+                         if b.get("archived")
+                         and (b.get("house_committee") or b.get("senate_committee")))
+            print(f"  archive: {filled:,} archived bills carry a committee "
+                  f"({len(refs):,} referrals read from the docket)")
+    stray = by_term.pop("", None)
+    if stray:
+        print(f"  {len(stray):,} bills have no filing year and are left out of "
+              f"bills.json: {sorted(stray)[:5]}")
+    return by_term, refs, began, known, in_use
+
+
+def finished_terms_in(d, out, frozen, by_term):
+    """The newest term (`current_term`); and every finished term's bills from its
+    own build (finished_builds, none for a frozen term's run), in place of what
+    the session's files gave it, marked archived, the terms then put in the
+    file's order. Returns `by_term` (a new map where there are finished terms),
+    `current_term` and `finished`.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    # The newest term the pipeline holds, which is the one the current
+    # session's own files describe.
+    current_term = max(by_term) if by_term else ""
+    # THE FINISHED TERMS, FROM THEIR OWN BUILDS (5 October 2026): each frozen
+    # term older than the session's, as build_frozen_terms built it from its
+    # freeze a step before this run, whole, in place of anything the
+    # session's files still say of it. Last, so that nothing above -- the
+    # archive, the past views, the journals, the committee names -- touches
+    # a term that was built entire, as the session once built it.
+    finished = {} if frozen else finished_builds(d, out)
+    for _t, (_fb, _fs) in finished.items():
+        _was = len(by_term.get(_t) or {})
+        # MARKED ARCHIVED, AS EVERY FINISHED TERM IS (the person's decision of
+        # 5 October 2026): the page then says what the term's record holds in
+        # the coverage note the older terms carry, in place of the current
+        # term's session_over note, and the term keeps its full per-bill
+        # pages and every field it was built with. Nothing else of the
+        # record changes.
+        by_term[_t] = {b: {**r, "archived": True} for b, r in _fb.items()}
+        print(f"  {_t}: {len(_fb):,} bills from its frozen inputs"
+              + (f", in place of {_was:,} the session's files still gave it" if _was else ""))
+    if finished:
+        # The session's term first, then the finished ones newest first, then
+        # the archive as it was: the order the file had while the session's
+        # term was the newest.
+        _order = ([current_term] + sorted(finished, reverse=True)
+                  + [t for t in by_term if t != current_term and t not in finished])
+        by_term = defaultdict(dict, {t: by_term[t] for t in _order if t in by_term})
+    return by_term, current_term, finished
+
+
+def journal_and_finished_sponsors(d, sess, current_term, by_term, sp_by_term, journal_added,
+                                  member_votes, legs, term_legs, finished):
+    """The sponsors by term, `sp_by_term`, given the House Journal's for the
+    withdrawn bills that have none, the memorial and honoring resolutions' from
+    their journal lines (add_resolution_sponsors), and each finished term's own
+    build's, the terms then put in the file's order.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    # The withdrawn bills' sponsors, as the House Journal printed them, and
+    # only where the bill has none from another source.
+    if journal_added:
+        import text_sponsors as TS
+        _sat = TS.Sat(member_votes)
+        _jn = _jr = _jt = 0
+        for _t, _byb in journal_added.items():
+            _slice = sp_by_term.setdefault(_t, {})
+            for _b, _rec in _byb.items():
+                if _slice.get(_b):
+                    continue
+                # The session's term's own roster where it is frozen and not
+                # the installed one (term_legs, above): HB 476's sponsor read
+                # Rock 53 on the rehearsal once the next House moved her.
+                _rows = journal_sponsor_rows(
+                    (_rec.get("journal") or {}).get("sponsors"), _t, _sat,
+                    term_legs if _t == sess else legs, current_term)
+                if _rows:
+                    _slice[_b] = _rows
+                    _jn += 1
+                    _jt += len(_rows)
+                    _jr += sum(1 for r in _rows if r.get("member_id"))
+        print(f"  sponsors.json: {_jn} bill(s) took their sponsors from "
+              f"the House Journal, {_jr} of {_jt} names placed on a member")
+    # Memorial and honoring resolutions whose journal line names who offered them.
+    if (d / RESOLUTION_SPONSORS).exists() or by_term:
+        import text_sponsors as TS
+        add_resolution_sponsors(sp_by_term, by_term, d / RESOLUTION_SPONSORS,
+                                TS.Sat(member_votes), legs, term_legs, sess, current_term)
+    # A finished term's sponsors are its own build's, every list as it was.
+    for _t, (_fb, _fs) in finished.items():
+        sp_by_term[_t] = _fs
+    if finished:
+        sp_by_term = {t: sp_by_term[t] for t in
+                      [current_term] + sorted(finished, reverse=True)
+                      + [t for t in sp_by_term if t != current_term and t not in finished]
+                      if t in sp_by_term}
+    return sp_by_term
+
+
+def things_to_check_said(out, bills, sponsors, report):
+    """The run's last words: where it wrote, the report's THINGS TO CHECK, in ASCII
+    for the console, and a spot check of one bill's sponsors.
+    A step of main, lifted out of it as it stood (20 November 2026)."""
+    print(f"\nwritten to {out}/")
+    print("\n" + "=" * 70)
+    print("THINGS TO CHECK")
+    print("=" * 70)
+    for r in report:
+        # The Windows console is cp1252, so bullets and dashes arrive as noise.
+        # Console output is ASCII; the JSON keeps the real characters.
+        print("  - " + r.replace("\u2014", "--").replace("\u2013", "-")
+                        .replace("\u2019", "'").replace("\u201c", '"')
+                        .replace("\u201d", '"'))
+
+    # A concrete spot check beats any amount of schema inference. Of a bill
+    # the session's files hold: on a night whose sponsor files alone name the
+    # next term, every sponsor's bill is another term's, and this stopped the
+    # build on a KeyError after everything was written (the rehearsal of the
+    # review, 5 October 2026).
+    sample = next((b for b in sponsors if sponsors[b] and b in bills), None)
+    if sample:
+        print(f"\nSpot check \u2014 {sample}: {bills[sample]['title'][:64]}")
+        print(f"  subject: {bills[sample]['subject'] or '(none)'}")
+        print(f"  House committee: {bills[sample]['house_committee'] or '(none)'}")
+        for s in sponsors[sample][:6]:
+            src = s.get("role") or f"flag={s.get('flag', '-')}"
+            print(f"  {'PRIME' if s.get('prime') else '     '} {s['label']}  {src}")
+        print("\n  Confirm the PRIME line matches the prime sponsor on gencourt.")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=".")
@@ -3118,101 +3575,15 @@ def main():
     _former_label = name_departed_sponsors(d, counties, former, sponsors, departed, lo_bills,
                                            placed, seated, report)
 
-    # Keyed (year, body, number): a vote sequence number restarts each session,
-    # so the year is what keeps 2025's roll call 112 apart from 2026's. That was
-    # already true before past years were readable, which is why adding them
-    # needed nothing here beyond the extra files.
-    summary = {}
-    for r in rows_all(sd, "RollCallSummary", archive=d, finished=gone_years, left=left_out):
-        if len(r) < 13:
-            continue
-        summary[(r[0], r[1], r[2])] = {
-            # The day a person put right, where one did (rollcall_parser.
-            # roll_call_when), so each ballot is dated as rollcalls.json is.
-            "year": r[0], "body": r[1], "number": r[2],
-            "datetime": RP.roll_call_when(r[0], r[1], r[2], r[3]),
-            # The bill as data/bills.json keys it, so each ballot reaches its
-            # bill's page: "SB 406" upper-cased and left spaced linked no
-            # member's vote to SB 406. rollcall_parser.bill_number says which
-            # seven. A field that names no bill is upper-cased as it was. A
-            # roll call on a measure whose number another record of the term
-            # holds goes under the name rollcall_parser.OTHER_MEASURE gives
-            # it, so no member's ballot on 2009's SR 1 links 2010's.
-            "bill": RP.roll_call_bill(r[0], r[1], r[2], r[4]) or r[4].upper(),
-            "yea": int(r[5] or 0), "nay": int(r[6] or 0),
-            "question": r[11], "title": r[12],
-        }
-    print(f"roll call summaries: {len(summary):,}")
-    # A roll call a person showed is filed under the wrong bill
-    # (corrections/rollcall_corrections.json), said here as rollcall_parser
-    # says it, so the ballots and the bill's page are seen to move together.
-    # Not "in no file read": a run of the frozen terms reads only theirs.
-    RP.refiled_report(complete=False)
-    RP.misdated_report(complete=False)
-
-    member_votes, vote_kinds, hist_bodies = [], Counter(), Counter()
-    vnums, unmatched_votes, no_person = set(), 0, Counter()
-    ballot_fixed = Counter()
-    for r in rows_all(sd, "RollCallHistory", 8, archive=d, finished=gone_years, left=left_out):
-        key = (r[0], r[1], r[2])
-        hist_bodies[r[1]] += 1
-        vnums.add(int(r[2]) if r[2].isdigit() else -1)
-        s = summary.get(key)
-        if not s:
-            unmatched_votes += 1
-            continue
-        # Field 4 is the roster's PersonID, joined in on the Employeeno in
-        # field 3. Three members of the 2023-2024 House have no legislators
-        # row at all, so that join comes back empty for all 1,470 of their
-        # votes -- and a blank id put the three of them under a single
-        # "Member #" row, merging three people's votes into one. The
-        # Employeeno is the only identifier the record holds for them, and
-        # the two spaces do not overlap: PersonIDs run 48-10904, Employeenos
-        # are six digits.
-        mid = r[4].strip() or r[3].strip()
-        if not mid and key in ballot_fix:
-            # ONLY when the id is already empty. That makes the correction
-            # self-limiting: if the General Court ever fills the id in, this
-            # stops firing rather than adding a second ballot for the same
-            # person in the same roll call, and the count below says so.
-            mid = str(ballot_fix[key].get("member_id") or "").strip()
-            ballot_fixed[key] += 1
-        if not r[4].strip() and mid:
-            no_person[mid] += 1
-        # A MEMBER WHO SITS ON, on a ballot of a term whose own roster is
-        # frozen and is not the installed one: the party and seat of that
-        # roster, the ones they voted under, and not the ones Organization
-        # Day gave them (the review of 5 October 2026). A member who left is
-        # named from `former`, as above, in the shape former_roster reads.
-        # Not on a ballot of Organization Day, which the next House cast
-        # (proceedings.vote_term): the roster installed is theirs. And a
-        # ballot of an older term, from the nearest frozen roster after it
-        # (ballot_member, 19 November 2026).
-        m = ballot_member(mid, r[0], s["datetime"], legs, term_rosters, former)
-        vote_kinds[r[6]] += 1
-        member_votes.append({
-            # 420 members cast votes but only 406 are in legislators.txt: the
-            # file holds current members, and people resign or die mid-term.
-            # Their votes are still part of the record.
-            "member_id": mid,
-            "name": (m["name"] if m else
-                     former.get(mid, {}).get("name", f"Member #{mid}")),
-            "party": (m["party_code"] if m else
-                      (former.get(mid, {}).get("party") or "X")[:1].upper()),
-            "label": (m["label"] if m else _former_label(mid)),
-            "year": r[0], "body": r[1], "vote_number": r[2],
-            "bill": s["bill"], "question": s["question"],
-            "date": s["datetime"].split(" ")[0],
-            # An unmapped database code reached the site as a bare digit:
-            # 411 ballots read "5" and 156 read "7". See
-            # rollcall_parser.vote_word, which is the one place that
-            # decides what a ballot is called. A declared conflict of
-            # interest reads "No vote recorded" like an empty ballot and is
-            # not one -- the member was in the room -- so rollcall_parser.
-            # ballot flags it, on those few hundred rows only.
-            **RP.ballot(r[6]),
-        })
-    print(f"member votes: {len(member_votes):,}")
+    member_votes, ballot_fixed, vote_kinds, hist_bodies, vnums, unmatched_votes, no_person = ballots_of_members(d,
+                                                                                                                sd,
+                                                                                                                gone_years,
+                                                                                                                left_out,
+                                                                                                                legs,
+                                                                                                                term_rosters,
+                                                                                                                former,
+                                                                                                                _former_label,
+                                                                                                                ballot_fix)
 
     # A correction that reaches no ballot has stopped working -- the id space
     # changed under it, or the defect it answered was fixed upstream and the
@@ -3228,87 +3599,14 @@ def main():
                   f"outlived their defect: {', '.join(_dead[:8])}"
                   f"{' ...' if len(_dead) > 8 else ''}")
 
-    if ballot_fix:
-        _named = sum(ballot_fixed.values())
-        print(f"  {_named} ballot(s) with an empty member id given the member "
-              f"the journal names, from {len(ballot_fixed)} roll call(s)")
-        # An id that casts this ONE ballot and no other is the signature of a
-        # correction written in the wrong id space. The General Court numbers
-        # people twice -- PersonID in field 4, Employeeno in field 3 -- and the
-        # raw row shows both, so it is easy to copy the wrong one; doing that
-        # does not fail, it silently mints a second person holding a single
-        # vote while their real record sits beside it. That happened to both of
-        # the first two entries and was caught by eye, which is not a method.
-        _counts = Counter(v["member_id"] for v in member_votes)
-        for _k, _v in ballot_fix.items():
-            _id = str(_v.get("member_id") or "").strip()
-            if ballot_fixed.get(_k) and _counts.get(_id, 0) <= ballot_fixed[_k]:
-                print(f"  WARNING: ballot correction {'|'.join(_k)} names id "
-                      f"{_id}, which casts no other ballot. Check it is the id "
-                      f"data/member_votes.json uses (the PersonID where the "
-                      f"record fills one) and not the Employeeno beside it.")
-
-        _stale = sorted(k for k in ballot_fix if k not in ballot_fixed)
-        if _stale:
-            # Either the source filled the id in -- in which case the entry is
-            # done and should be removed -- or the roll call moved and it is now
-            # pointing at nothing. Both need a person; neither is silent.
-            print(f"  WARNING: {len(_stale)} ballot correction(s) matched no "
-                  f"empty-id ballot: {', '.join('|'.join(k) for k in _stale)}. "
-                  f"Either the record now carries the id, or the roll call key "
-                  f"has changed.")
-
-    _dated = date_ballot_seats(member_votes, legs)
-    if _dated:
-        print(f"  {_dated:,} ballots relabelled with the seat that term's bills "
-              f"printed, not the one the roster holds now")
-    print(f"  vote values: {dict(vote_kinds)}")
-    report.append(f"RollCallHistory field 2 ranges {min(vnums) if vnums else 0}"
-                  f"\u2013{max(vnums) if vnums else 0}, and joins to RollCallSummary "
-                  f"on (year, body, number). Chambers present: {dict(hist_bodies)}.")
-    if unmatched_votes:
-        report.append(f"{unmatched_votes:,} history rows had no matching summary row "
-                      "(likely roll calls from a session the summary file no longer covers)")
-
-    if no_person:
-        report.append(
-            f"{len(no_person)} member(s) voting in the 2023-2024 House have no "
-            "row in the legislators table, so the record carries an Employeeno "
-            "for them and no name, party or district: "
-            + ", ".join(f"#{k} ({v:,} votes)" for k, v in sorted(no_person.items()))
-            + ". They are kept apart by that number rather than merged.")
+    check_and_date_ballots(legs, member_votes, ballot_fix, ballot_fixed, vote_kinds, hist_bodies,
+                           vnums, unmatched_votes, no_person, report)
     former = {v["member_id"] for v in member_votes if v["party"] == "X"}
     if former:
         report.append(f"{len(former)} members cast votes but are not in the current "
                       "roster; names resolved from former_members.json. They are "
                       "displayed no differently from anyone else.")
-    per_member = Counter(v["member_id"] for v in member_votes)
-    if per_member:
-        n = sorted(per_member.values())
-        report.append(f"votes per member: median {n[len(n)//2]}, "
-                      f"min {n[0]}, max {n[-1]}, members covered {len(per_member)}")
-
-    # Only what was counted: a file read with nothing left out is no line
-    # (the LsrsOnly count's += 0 made every ordinary night say "rows of  left
-    # out ...: LsrsOnly.txt 0").
-    left_out = +left_out
-    if left_out:
-        print(f"  rows of {', '.join(gone_terms)} left out of the session's files, the "
-              "term being built from its freeze: "
-              + ", ".join(f"{k} {v:,}" for k, v in sorted(left_out.items())))
-    # AND SAID WHERE THE NIGHT READS IT (the review of 5 October 2026): the
-    # count reached this log and nothing else, so a real late correction to a
-    # finished term -- a chapter number entered in December -- would have been
-    # dropped with nobody told. LEFT_OUT, beside the data, holds the rows and
-    # the bills they name, and the nightly puts them on the run's page; a
-    # night with none removes it, so last night's never reads as tonight's.
-    if not frozen:
-        _lo = out / LEFT_OUT
-        if left_out:
-            _lo.write_text(json.dumps({"terms": gone_terms, "rows": dict(sorted(left_out.items())),
-                                       "bills": sorted(left_named)}, indent=1), encoding="utf-8")
-        else:
-            _lo.unlink(missing_ok=True)
+    ballots_left_out_said(out, frozen, member_votes, gone_terms, left_out, left_named, report)
     # ------------------------------------------------------------ write ---
     # A frozen term's run writes its own term's bills and sponsors (below),
     # and its roster as it was frozen, which narrate_archive tells the term's
@@ -3331,136 +3629,7 @@ def main():
     if not frozen:
         (out / "member_votes.json").write_text(json.dumps(member_votes), encoding="utf-8")
         (out / "towns.json").write_text(json.dumps(towns, indent=2), encoding="utf-8")
-    # {term: {bill: record}}. A bill number is unique within a term and not
-    # across terms, and this is the file every other per-bill lookup is driven
-    # from -- the loop in build_site_v2.build_bills iterates it. Keyed on the
-    # bill alone, adding an archived term would put two different bills under
-    # one key at the very top of the pipeline.
-    # The committee of referral for every archived bill, from the docket
-    # already on this disk. No network: each archived term's own docket, the
-    # file its history is narrated from (referrals.term_dockets). Empty if
-    # those files are absent, in which case nothing below changes.
-    #
-    # Every archived term's docket, not only the database dump: the dump
-    # stops part way through 2016, so 2016-2024 took the search page's LAST
-    # committee in ONE chamber. referrals.from_dockets says what that cost.
-    # Each bill's rows are chosen by the archive record's own LSR, because a
-    # resolution's number can carry two measures in one term.
-    ap_ = Path("archive_bills.json")
-    try:
-        arch = json.loads(ap_.read_text(encoding="utf-8")) if ap_.exists() else {}
-    except ValueError:
-        arch = {}
-    try:
-        import referrals
-        refs, began = referrals.read_dockets(lsr_of={
-            (t, b): r.get("lsr", "") for t, bb in arch.items()
-            for b, r in bb.items()})
-    except Exception as e:                       # a missing docket is not a failure
-        print(f"  archive: no docket referrals ({e})")
-        refs, began = {}, {}
-    # The names the clerks were using, per term and chamber: any the docket
-    # gives as the first referral of three or more bills. _same_committee
-    # says why a longer stored name must not replace one of these.
-    _used = Counter((t, body, referrals._key(c)) for (t, _b), bodies in refs.items()
-                    for body, c in bodies.items())
-    in_use = defaultdict(set)
-    for (t, body, k), n in _used.items():
-        if n >= 3:
-            in_use[(t, body)].add(k)
-    # The committee names the tables know, reduced the way referrals._key
-    # reduces them so that "Ways & Means" and "Ways and Means" are one name.
-    # _pick_committee says what this is for.
-    try:
-        known = {referrals._key(c["name"]) for c in committees.values()
-                 if c.get("name")}
-    except Exception:
-        known = set()
-    by_term = defaultdict(dict)
-    for bid, rec in bills.items():
-        by_term[P.term_of(str(rec.get("lsr_year") or ""))][bid] = rec
-
-    # Archived terms, from fetch_archive_bills.py. The General Court's own
-    # search answers a past session year with every bill of it -- title,
-    # statuses, committee, hearing, text link -- for two requests, which is
-    # where the 2023-2024 term comes from. It has no docket and no sponsors,
-    # and this does not pretend otherwise: those fields are simply absent, and
-    # the page says so rather than showing the CURRENT term's.
-    #
-    # A term the current session files already cover is left alone. The live
-    # data is better than a search-results page in every respect.
-    # (archive_bills.json was read above, for the referrals.)
-    if ap_.exists():
-        added = 0
-        for term, byb in arch.items():
-            if term in by_term:
-                print(f"  archive: {term} is already built from session files, "
-                      "left alone")
-                continue
-            for bid, r in byb.items():
-                num = re.match(r"([A-Z]+)(\d+)", bid)
-                cm, ch = r.get("committee") or "", r.get("committee_chamber")
-                if _placeholder(cm):
-                    # NOT A COMMITTEE OF REFERRAL, and treated as absent so
-                    # the docket's own answer below is used instead. See
-                    # _placeholder for what these are and why they are here.
-                    cm = ""
-                # The search page gave a committee for 1999 onward and none at
-                # all before it, so five terms and 8,525 bills had no committee
-                # of any kind. The docket has it: the clerk writes the referral
-                # into the description of the introduction line.
-                # referrals.from_dockets reads it for every archived term,
-                # 1989-2024, from the docket each term's history is narrated
-                # from, and _pick_committee lets it win -- except where the two
-                # are one committee under two spellings -- because the search
-                # page's value is the LAST committee in one chamber, and the
-                # docket's is the FIRST in each, or the committee a vacate
-                # moved the bill to.
-                ref = refs.get((term, bid), {})
-                by_term[term][bid] = {
-                    "bill": bid,
-                    "lsr": f"{r.get('year','')}-{r.get('lsr','')}",
-                    "lsr_year": r.get("year", ""), "lsr_num": r.get("lsr", ""),
-                    "title": r.get("title", ""),
-                    # A CACR's number does not say which chamber it began
-                    # in, and the search page files every one under the
-                    # House; its own docket's first row says.
-                    "chamber": ((began.get((term, bid)) if bid.startswith("CACR")
-                                 else "") or r.get("body", "")),
-                    "subject_code": "", "subject": "",
-                    "house_committee": _pick_committee(
-                        cm if ch == "House" else "", ref.get("H", ""), known,
-                        in_use.get((term, "H"), ())),
-                    "senate_committee": _pick_committee(
-                        cm if ch == "Senate" else "", ref.get("S", ""), known,
-                        in_use.get((term, "S"), ())),
-                    "hearing": hearing_in_term(r.get("last_hearing", ""),
-                                               term),
-                    "hearing_room": "",
-                    "designation": (f"{num.group(1)} {num.group(2)}"
-                                    if num else bid),
-                    "text_pdf": r.get("text_pdf", ""),
-                    # The statuses travel with the bill because an archived
-                    # term has no bill_status.json of its own, and the flat one
-                    # belongs to a different term.
-                    "gen_status": r.get("gen_status", ""),
-                    "house_status": r.get("house_status", ""),
-                    "senate_status": r.get("senate_status", ""),
-                    "archived": True,
-                }
-                added += 1
-        if added:
-            print(f"  archive: {added:,} bills added from {ap_}")
-        if refs:
-            filled = sum(1 for bs in by_term.values() for b in bs.values()
-                         if b.get("archived")
-                         and (b.get("house_committee") or b.get("senate_committee")))
-            print(f"  archive: {filled:,} archived bills carry a committee "
-                  f"({len(refs):,} referrals read from the docket)")
-    stray = by_term.pop("", None)
-    if stray:
-        print(f"  {len(stray):,} bills have no filing year and are left out of "
-              f"bills.json: {sorted(stray)[:5]}")
+    by_term, refs, began, known, in_use = archived_terms(bills, committees)
     # The term the session's own files describe, known here because nothing
     # below may add to it or change it but the House's own withdrawn bills.
     _session_term = max(by_term) if by_term else ""
@@ -3538,34 +3707,7 @@ def main():
         print(f"  committee names: {sum(moved.values()):,} bill-chamber "
               f"labels under {len(moved)} spellings written as the "
               "committee's name at the time")
-    # The newest term the pipeline holds, which is the one the current
-    # session's own files describe.
-    current_term = max(by_term) if by_term else ""
-    # THE FINISHED TERMS, FROM THEIR OWN BUILDS (5 October 2026): each frozen
-    # term older than the session's, as build_frozen_terms built it from its
-    # freeze a step before this run, whole, in place of anything the
-    # session's files still say of it. Last, so that nothing above -- the
-    # archive, the past views, the journals, the committee names -- touches
-    # a term that was built entire, as the session once built it.
-    finished = {} if frozen else finished_builds(d, out)
-    for _t, (_fb, _fs) in finished.items():
-        _was = len(by_term.get(_t) or {})
-        # MARKED ARCHIVED, AS EVERY FINISHED TERM IS (the person's decision of
-        # 5 October 2026): the page then says what the term's record holds in
-        # the coverage note the older terms carry, in place of the current
-        # term's session_over note, and the term keeps its full per-bill
-        # pages and every field it was built with. Nothing else of the
-        # record changes.
-        by_term[_t] = {b: {**r, "archived": True} for b, r in _fb.items()}
-        print(f"  {_t}: {len(_fb):,} bills from its frozen inputs"
-              + (f", in place of {_was:,} the session's files still gave it" if _was else ""))
-    if finished:
-        # The session's term first, then the finished ones newest first, then
-        # the archive as it was: the order the file had while the session's
-        # term was the newest.
-        _order = ([current_term] + sorted(finished, reverse=True)
-                  + [t for t in by_term if t != current_term and t not in finished])
-        by_term = defaultdict(dict, {t: by_term[t] for t in _order if t in by_term})
+    by_term, current_term, finished = finished_terms_in(d, out, frozen, by_term)
     # {term: {bill: [sponsor]}}, for the reason bills.json is: HB100 of 2023
     # and HB100 of 2025 have different sponsors, and a flat file gives the
     # second to the first without saying so.
@@ -3599,43 +3741,9 @@ def main():
                 sp_by_term.setdefault(_t, {}).update(_rows)
                 print(f"  sponsors.json {_t}: {len(_rows):,} from the status "
                       "pages")
-    # The withdrawn bills' sponsors, as the House Journal printed them, and
-    # only where the bill has none from another source.
-    if journal_added:
-        import text_sponsors as TS
-        _sat = TS.Sat(member_votes)
-        _jn = _jr = _jt = 0
-        for _t, _byb in journal_added.items():
-            _slice = sp_by_term.setdefault(_t, {})
-            for _b, _rec in _byb.items():
-                if _slice.get(_b):
-                    continue
-                # The session's term's own roster where it is frozen and not
-                # the installed one (term_legs, above): HB 476's sponsor read
-                # Rock 53 on the rehearsal once the next House moved her.
-                _rows = journal_sponsor_rows(
-                    (_rec.get("journal") or {}).get("sponsors"), _t, _sat,
-                    term_legs if _t == sess else legs, current_term)
-                if _rows:
-                    _slice[_b] = _rows
-                    _jn += 1
-                    _jt += len(_rows)
-                    _jr += sum(1 for r in _rows if r.get("member_id"))
-        print(f"  sponsors.json: {_jn} bill(s) took their sponsors from "
-              f"the House Journal, {_jr} of {_jt} names placed on a member")
-    # Memorial and honoring resolutions whose journal line names who offered them.
-    if (d / RESOLUTION_SPONSORS).exists() or by_term:
-        import text_sponsors as TS
-        add_resolution_sponsors(sp_by_term, by_term, d / RESOLUTION_SPONSORS,
-                                TS.Sat(member_votes), legs, term_legs, sess, current_term)
-    # A finished term's sponsors are its own build's, every list as it was.
-    for _t, (_fb, _fs) in finished.items():
-        sp_by_term[_t] = _fs
-    if finished:
-        sp_by_term = {t: sp_by_term[t] for t in
-                      [current_term] + sorted(finished, reverse=True)
-                      + [t for t in sp_by_term if t != current_term and t not in finished]
-                      if t in sp_by_term}
+    sp_by_term = journal_and_finished_sponsors(d, sess, current_term, by_term, sp_by_term,
+                                               journal_added, member_votes, legs, term_legs,
+                                               finished)
     if frozen:
         # THE FROZEN TERM'S RUN WRITES ITS TERM AND NOTHING ELSE, with what it
         # was built from, which the session's run checks before it takes it.
@@ -3661,31 +3769,7 @@ def main():
     (out / "subjects.json").write_text(json.dumps(subjects, indent=2), encoding="utf-8")
     (out / "committees.json").write_text(json.dumps(committees, indent=2), encoding="utf-8")
 
-    print(f"\nwritten to {out}/")
-    print("\n" + "=" * 70)
-    print("THINGS TO CHECK")
-    print("=" * 70)
-    for r in report:
-        # The Windows console is cp1252, so bullets and dashes arrive as noise.
-        # Console output is ASCII; the JSON keeps the real characters.
-        print("  - " + r.replace("\u2014", "--").replace("\u2013", "-")
-                        .replace("\u2019", "'").replace("\u201c", '"')
-                        .replace("\u201d", '"'))
-
-    # A concrete spot check beats any amount of schema inference. Of a bill
-    # the session's files hold: on a night whose sponsor files alone name the
-    # next term, every sponsor's bill is another term's, and this stopped the
-    # build on a KeyError after everything was written (the rehearsal of the
-    # review, 5 October 2026).
-    sample = next((b for b in sponsors if sponsors[b] and b in bills), None)
-    if sample:
-        print(f"\nSpot check \u2014 {sample}: {bills[sample]['title'][:64]}")
-        print(f"  subject: {bills[sample]['subject'] or '(none)'}")
-        print(f"  House committee: {bills[sample]['house_committee'] or '(none)'}")
-        for s in sponsors[sample][:6]:
-            src = s.get("role") or f"flag={s.get('flag', '-')}"
-            print(f"  {'PRIME' if s.get('prime') else '     '} {s['label']}  {src}")
-        print("\n  Confirm the PRIME line matches the prime sponsor on gencourt.")
+    things_to_check_said(out, bills, sponsors, report)
 
 
 if __name__ == "__main__":
