@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of build checks with no module under test, for a person to sort.
 
@@ -4859,17 +4859,19 @@ def _elect_pages_words():
     seats = 0
     if card is not None:
         for p in pw["places"]:
-            for chunk in card["with"][p["s"]].split('<div class="ytseat">')[1:]:
-                office = re.match(r'<p class="ytoff">([^<]*)', chunk)
-                ch = {"State House": "H", "State Senate": "S"}.get(office.group(1) if office else "")
+            # Each House district a seat of its own since the town panel's
+            # list (21 November 2026), carrying its race, as the Senate's does.
+            for chunk in re.split(r'<div class="ytseat"', card["with"][p["s"]])[1:]:
+                office = re.match(r'(?: data-race="([^"]*)")?><p class="ytoff">([^<]*)', chunk)
+                ch = {"State House": "H", "State Senate": "S"}.get(office.group(2) if office else "")
                 if not ch:
                     continue
-                want = int(any(k.startswith(ch + "|") for k in p.get("e") or []))
+                want = int((office.group(1) or "") in (p.get("e") or []))
                 got = (chunk.count('<div class="elect" data-elect'),
                        chunk.count('<p class="elnow" data-elect'), len(yt_order.findall(chunk)))
                 seats += want
                 if got != (want, want, want):
-                    bad.append(f"the My Town card for {p['s']}, {office.group(1)}: blocks, "
+                    bad.append(f"the My Town card for {p['s']}, {office.group(2)}: blocks, "
                                f"\"Serving now\" and the two in order {got}, not {want} each")
         if not seats:
             bad.append("the My Town card draws no House or Senate seat with members-elect")

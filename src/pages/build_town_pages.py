@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.62
+# GRANITE_VERSION: 2026-09-09.63
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1878,6 +1878,18 @@ def main():
                    for d, v in (off.get(src, {}).get("districts") or {}).items()
                    if (v.get("name") or "").strip()}
                for k, src in (("ec", "council"), ("cd", "us_house"))}
+    # AND THE TWO EVERY TOWN SHARES, the US Senate's two seats and the
+    # Governor, which the town panel lists after them (the owner's choice of
+    # draft A of the Officials overview, 21 November 2026), keyed the same
+    # way so the panel reads all four alike.
+    offices["us"] = {str(i): [s.get("name") or "", str(s.get("party") or "")[:1].upper(),
+                              s.get("official_url") or ""]
+                     for i, s in enumerate((off.get("us_senate") or {}).get("seats") or [])
+                     if (s.get("name") or "").strip()}
+    gov = off.get("governor") or {}
+    offices["gov"] = ({"0": [gov["name"], str(gov.get("party") or "")[:1].upper(),
+                             gov.get("official_url") or ""]}
+                      if (gov.get("name") or "").strip() else {})
     doc = {"places": places, "people": people, "offices": offices}
     # THE MEMBERS-ELECT OF THE RACES A PLACE NAMES IN "e", each race once,
     # with the file's two days, for the My Town card (find.js). Only while

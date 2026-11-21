@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.411 */
+/* GRANITE_VERSION: 2026-09-07.412 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -1564,7 +1564,7 @@ line-height:1.1}
      ground, and with no ground printed it is white on white. */
   nav.top,.skip,.calskip,.searchrow,.ftoggle,.vpage .vtoggle,.backto,.pageacts,.findpanel,
   .findscrim,details.report,.pshare,.sharestate,.player iframe,.fbk,
-  .ytcard .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
+  .ytgo,.ytpanel .ytaform button[type=submit],.followmail .followsend,
   .followmail .followfreq,.webinar,.testify,.trrep,.trpill,.trbox,nav.subnav,nav.smap{display:none !important}
   /* A STATUTE ON PAPER IS THE STATUTE (the polish of 12 October 2026): a
      chapter page prints its sections in one column, without the sidebar
@@ -2073,31 +2073,27 @@ background:var(--surface);padding:var(--sp-5) var(--sp-6);margin:var(--sp-6) 0}
 color:var(--pine);margin:0 0 var(--sp-3)}
 .yt .ytppl{margin:0 0 var(--sp-4)}
 .yt .ytmeta{margin:var(--sp-3) 0 0;font-size:var(--t-sm)}
-/* THE MY TOWN CARD (the person's choice A, 14 October 2026; find.js
-   ytSeats): the town, then a card a seat -- the State House, the State
-   Senate, the Executive Council, the US House -- each with who holds it. */
-.yt.ytcard{border:1px solid var(--rule);border-top:4px solid var(--pine);background:var(--surface);
-  padding:var(--sp-6);margin:0 0 var(--sp-7)}
-.ytcard .ytstop{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-4);flex-wrap:wrap;
-  margin:0 0 var(--sp-5)}
-.ytcard .ytname{font:600 var(--t-h2)/1.2 var(--serif);color:var(--ink);margin:0}
-.ytcard .ytsub{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-2) 0 0}
-.ytcard .ytacts{display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap}
-.ytcard .ytgo{font-size:var(--t-sm);font-weight:600;color:var(--on-pine);background:var(--pine);
-  border-radius:var(--r-in);padding:var(--sp-2) var(--sp-4);text-decoration:none}
-.ytcard .ytgo:hover{filter:brightness(1.12)}
-.ytcard .ytgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:var(--sp-4)}
-.ytcard .ytseat{border:1px solid var(--rule);border-radius:var(--r-in);background:var(--paper);
-  padding:var(--sp-4)}
-.ytcard .ytoff{font:600 var(--t-label)/1.3 var(--sans);letter-spacing:.06em;text-transform:uppercase;
-  color:var(--ink-2);margin:0 0 var(--sp-3)}
-.ytcard .ytoff span{display:block;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink);
-  font-size:var(--t-sm);margin-top:2px}
-.ytcard .ytppl{margin:0;flex-direction:column;align-items:flex-start;gap:var(--sp-2)}
-.ytcard .ytnote{font-size:var(--t-sm);color:var(--ink-2);margin:0}
-.ytcard .ytppl li{max-width:100%}
-.ytcard .mchip{max-width:100%;white-space:normal}
-@media (max-width:45em){.yt.ytcard{padding:var(--sp-5) var(--sp-4)}}
+/* THE TOWN'S OFFICIALS IN THE TOWN PANEL (find.js ytSeats; the owner's
+   choice of draft A of the Officials overview, 21 November 2026, and the My
+   Town card's until then): the town and its county, then a row a seat, two
+   to a line where there is room, each under a hairline, its office over who
+   holds it; then the way to the town's page. */
+.ytnow .ytstop{margin:0 0 var(--sp-4)}
+.ytnow .ytname{font:600 var(--t-h2)/1.2 var(--serif);color:var(--ink);margin:0}
+.ytnow .ytsub{font-size:var(--t-sm);font-weight:400;color:var(--ink-2);margin:var(--sp-2) 0 0}
+.ytnow .ytgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(16rem,1fr));column-gap:var(--sp-8)}
+.ytnow .ytseat{border-top:1px solid var(--rule);padding:var(--sp-5) 0}
+.ytnow .ytoff{font:600 var(--t-ui)/1.3 var(--sans);color:var(--ink);margin:0 0 var(--sp-3)}
+.ytnow .ytoff span{font-weight:400;color:var(--ink-2);margin-left:var(--sp-3)}
+.ytnow .ytppl li{max-width:100%}
+.ytnow .mchip{max-width:100%;white-space:normal;margin:0}
+.ytnow .ytnote{margin:0}
+.ytfoot{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-5);margin-top:var(--sp-4);
+  padding-top:var(--sp-5);border-top:1px solid var(--rule)}
+.ytfoot .ytnote{flex-basis:100%;margin:0}
+.ytgo{display:inline-flex;align-items:center;min-height:44px;padding:0 var(--sp-6);font-weight:600;
+  color:var(--on-pine);background:var(--pine);border-radius:var(--r-in);text-decoration:none}
+.ytgo:hover{filter:brightness(1.12);color:var(--on-pine)}
 @media print{.setbtn,.navset,.ytpanel,.yt{display:none !important}}
 /* ==== /YOUR TOWN, SHARED ================================================== */
 

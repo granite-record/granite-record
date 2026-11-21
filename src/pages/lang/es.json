@@ -28642,11 +28642,6 @@
    "es": "{town} vota en {n} lugares, por barrio electoral",
    "state": "draft"
   },
-  "yt.change": {
-   "en": "Change town",
-   "es": "Cambiar de municipio",
-   "state": "draft"
-  },
   "yt.change_town": {
    "en": "Change your town",
    "es": "Cambiar de municipio",
@@ -28655,6 +28650,11 @@
   "yt.choose": {
    "en": "Choose your town",
    "es": "Elija su municipio",
+   "state": "draft"
+  },
+  "yt.choose_another": {
+   "en": "Choose another town",
+   "es": "Elegir otro municipio",
    "state": "draft"
   },
   "yt.choose_see": {
@@ -28702,11 +28702,6 @@
    "es": "Todos los escaños, con los datos de contacto de cada persona, están en {link}.",
    "state": "draft"
   },
-  "yt.find_town": {
-   "en": "Find Your Town",
-   "es": "Busque su municipio",
-   "state": "draft"
-  },
   "yt.floterial": {
    "en": "floterial",
    "es": "flotante",
@@ -28720,6 +28715,11 @@
   "yt.forget": {
    "en": "Forget it",
    "es": "Olvidarlo",
+   "state": "draft"
+  },
+  "yt.in_county": {
+   "en": "In {county} County.",
+   "es": "En el condado de {county}.",
    "state": "draft"
   },
   "yt.in_town": {
@@ -28742,19 +28742,9 @@
    "es": "Mantener {place}",
    "state": "draft"
   },
-  "yt.legislators": {
-   "en": "Your state legislators",
-   "es": "Sus legisladores estatales",
-   "state": "draft"
-  },
   "yt.loading": {
    "en": "Loading&hellip;",
    "es": "Cargando…",
-   "state": "draft"
-  },
-  "yt.look_another": {
-   "en": "Look Up Another Town",
-   "es": "Buscar otro municipio",
    "state": "draft"
   },
   "yt.look_up": {
@@ -28770,6 +28760,11 @@
   "yt.make_mine": {
    "en": "Make {place} my town",
    "es": "Hacer de {place} mi municipio",
+   "state": "draft"
+  },
+  "yt.marked": {
+   "en": "Your representatives are marked on Legislators.",
+   "es": "Sus representantes aparecen marcados en Legisladores.",
    "state": "draft"
   },
   "yt.matched": {
@@ -28822,14 +28817,19 @@
    "es": "1 lugar",
    "state": "draft"
   },
-  "yt.page_go": {
-   "en": "{place}&rsquo;s page &rarr;",
-   "es": "La página de {place} &rarr;",
+  "yt.open_page": {
+   "en": "Open {place}&rsquo;s page",
+   "es": "Abrir la página de {place}",
    "state": "draft"
   },
   "yt.page_of": {
    "en": "{place}&rsquo;s page",
    "es": "la página de {place}",
+   "state": "draft"
+  },
+  "yt.places": {
+   "en": "Towns and wards",
+   "es": "Municipios y barrios electorales",
    "state": "draft"
   },
   "yt.polls_open": {
@@ -28852,6 +28852,11 @@
    "es": "Consejo Ejecutivo",
    "state": "draft"
   },
+  "yt.seat_governor": {
+   "en": "Governor",
+   "es": "Gobernador",
+   "state": "draft"
+  },
   "yt.seat_house": {
    "en": "State House",
    "es": "Cámara de Representantes estatal",
@@ -28865,6 +28870,11 @@
   "yt.seat_us_house": {
    "en": "US House",
    "es": "Cámara de Representantes de EE. UU.",
+   "state": "draft"
+  },
+  "yt.seat_us_senate": {
+   "en": "US Senate",
+   "es": "Senado de EE. UU.",
    "state": "draft"
   },
   "yt.senate_d": {
@@ -28913,16 +28923,6 @@
    "es": "Usar {place}, el municipio de esta página",
    "state": "draft"
   },
-  "yt.votes_at": {
-   "en": "votes at {place}",
-   "es": "vota en {place}",
-   "state": "draft"
-  },
-  "yt.voting": {
-   "en": "Voting",
-   "es": "Votación",
-   "state": "draft"
-  },
   "yt.ward": {
    "en": "Ward {n}",
    "es": "Barrio electoral {n}",
@@ -28946,11 +28946,6 @@
   "yt.your_senator": {
    "en": "Your senator",
    "es": "Su senador",
-   "state": "draft"
-  },
-  "yt.your_town": {
-   "en": "Your Town",
-   "es": "Su municipio",
    "state": "draft"
   },
   "yt.yours": {
