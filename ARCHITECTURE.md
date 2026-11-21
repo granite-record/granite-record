@@ -2634,14 +2634,17 @@ elections pages, the scattered write-ins are a row of their own ("Write-ins")
 and every share is of all the votes cast with them; a contested card keeps them
 in its note.
 
-Every race card, on the elections pages and the tab, marks * a candidate who held
-a seat in the race's chamber on election day (`build_member_elections.incumbents`):
+Every race card, on the elections pages and the tab, marks with an Incumbent chip
+beside the name (`build_elections.inc_chip`, the owner, 21 November 2026, in place
+of an asterisk) a candidate who held a seat in the race's chamber on election day
+(`build_member_elections.incumbents`):
 the member is found as the tab finds one (the page's own link for a winner, the
 owner's hand-file match, else `Roster.certain`), and held a seat of that chamber
 in the term sitting that day by the roster's seat or the seats their bills print
 (`entities.printed_tenures`); a former member whose last recorded day is before
 the election's year had left. A candidate the rule cannot place is not marked.
-One line under the cards says what the mark is.
+The chip's title says what it means; on a member's tab `app.js` says its word
+and title in the page's language (`electionIncumbent`).
 
 A town or ward page has an Elections tab (the owner, 19 November 2026;
 `src/pages/town_elections.py`, called once by `build_town_pages.main`): a card
