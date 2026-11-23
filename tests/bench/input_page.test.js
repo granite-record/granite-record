@@ -303,6 +303,38 @@ test("an entry with one answer saves with its words; Back keeps what she typed; 
   assert.doesNotMatch(p.els.inputbody.innerHTML, /row-map-dots/, "Back shows the list without it");
 });
 
+test("an answered entry she changed and left says so as well: her note added to, or her one answer's note emptied", async () => {
+  const p = await onTab();
+  // The reviewers' own case: an answered entry reopened, two lines added to her note, Escape. Its
+  // row must not read as though the addition were saved.
+  p.click({ ask: "map-dots" });
+  p.type("Too faint on a phone.\nAnd on a computer.");
+  p.key("Escape");
+  await p.settle();
+  assert.match(p.els.inputbody.innerHTML,
+               /data-ask="map-dots"><b>Map dots<\/b><span class="st">Answered 22 Nov: Needs changes &middot; not saved yet<\/span>/);
+  // Put back as she saved it, it holds nothing.
+  p.click({ ask: "map-dots" });
+  p.type("Too faint on a phone.");
+  p.key("Escape");
+  await p.settle();
+  assert.match(p.els.inputbody.innerHTML, /data-ask="map-dots"><b>Map dots<\/b><span class="st">Answered 22 Nov: Needs changes<\/span>/);
+  // An entry with one answer, answered, whose note she then empties and leaves: held too, though
+  // its one answer is chosen for her and the note is empty.
+  p.click({ ask: "a-note" });
+  p.type("A thought.");
+  p.click({ do: "asksave" });
+  await p.settle();
+  await p.settle();
+  assert.match(p.els.inputbody.innerHTML, /data-ask="a-note"><b>Anything else<\/b><span class="st">Answered 23 Nov<\/span>/);
+  p.click({ ask: "a-note" });
+  p.type("");
+  p.key("Escape");
+  await p.settle();
+  assert.match(p.els.inputbody.innerHTML,
+               /data-ask="a-note"><b>Anything else<\/b><span class="st">Answered 23 Nov &middot; not saved yet<\/span>/);
+});
+
 test("an entry changed while it was open is drawn again from the list sent back, her note kept, to choose again", async () => {
   const fewer = LIST.map(k => (k.key === "nav-rows" ? { ...k, card: card({ answers: { yes: "Looks right", no: "Needs changes" } }) } : k));
   const p = await onTab({ answer: () => ({ status: 400, data: { why: "bad", asks: fewer, waiting: 2 } }) });
