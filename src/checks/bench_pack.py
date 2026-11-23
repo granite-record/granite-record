@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 A pack for the shared bench: what its contributors are asked next, as SQL to
 load into its database with one wrangler command.
@@ -543,7 +543,8 @@ def asks_from(data, name="the list"):
         if key in seen:
             no(f"{at}, field 'key'", "is an earlier entry's too")
         seen.add(key)
-        if e.get("section") not in labels:
+        # Text before it is looked up: a list or an object would raise TypeError, naming nothing.
+        if not isinstance(e.get("section"), str) or e["section"] not in labels:
             no(f"{at}, field 'section'", f"{e.get('section')!r} is not one of the sections ({', '.join(labels)})")
         title = text(e.get("title"), 1, 90, f"{at}, field 'title'")
         what = e.get("what", "")
@@ -569,7 +570,7 @@ def asks_from(data, name="the list"):
         for k, words in answers.items():
             text(words, 1, 32, f"{at}, field 'answers', {k}")
         rec = e.get("recommended")
-        if rec is not None and rec not in answers:
+        if rec is not None and (not isinstance(rec, str) or rec not in answers):
             no(f"{at}, field 'recommended'", f"{rec!r} is not one of its own answers ({', '.join(answers)})")
         added = e.get("added")
         try:

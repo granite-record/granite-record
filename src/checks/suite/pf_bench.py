@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.18
+# GRANITE_VERSION: 2026-11-16.19
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -649,6 +649,8 @@ _ASK_BROKEN = [
     # The store refuses a key ending in a line break (store.js ASK_KEY.test), so the pack does.
     ("a key ending in a line break", lambda d: d["asks"][0].update(key="votes-layout\n"), "entry 1, field 'key'"),
     ("a section no entry may name", lambda d: d["asks"][0].update(section="later"), f"{_ASK_E1}, field 'section'"),
+    ("a section as a list", lambda d: d["asks"][0].update(section=["design"]), f"{_ASK_E1}, field 'section'"),
+    ("a section as an object", lambda d: d["asks"][0].update(section={"id": "design"}), f"{_ASK_E1}, field 'section'"),
     ("a title empty", lambda d: d["asks"][0].update(title=" "), f"{_ASK_E1}, field 'title'"),
     ("a title of 91", lambda d: d["asks"][0].update(title="x" * 91), f"{_ASK_E1}, field 'title'"),
     ("a title of HTML", lambda d: d["asks"][0].update(title="<img src=x onerror=alert(1)>"), f"{_ASK_E1}, field 'title'"),
@@ -685,6 +687,9 @@ _ASK_BROKEN = [
     ("an answer with no words", lambda d: d["asks"][0].update(answers={"yes": ""}), f"{_ASK_E1}, field 'answers', yes"),
     ("a recommendation it does not offer", lambda d: d["asks"][2].update(recommended="unsure"),
      "entry 3 (map-dots), field 'recommended'"),
+    ("a recommendation as a list", lambda d: d["asks"][0].update(recommended=["yes"]), f"{_ASK_E1}, field 'recommended'"),
+    ("a recommendation as an object", lambda d: d["asks"][0].update(recommended={"yes": 1}),
+     f"{_ASK_E1}, field 'recommended'"),
     ("a day in words", lambda d: d["asks"][0].update(added="23 November 2026"), f"{_ASK_E1}, field 'added'"),
     ("a day that is not", lambda d: d["asks"][0].update(added="2026-02-30"), f"{_ASK_E1}, field 'added'"),
     ("a field an entry has not", lambda d: d["asks"][0].update(recomended="yes"), f"{_ASK_E1}, field 'recomended'"),
@@ -719,8 +724,9 @@ def _bench_asks_pack(BP):
     on a fixture of the format (S/helpers/bench-input/ASKS_FORMAT.md, format 1). Held: the list
     read, each entry's order its section's place and then the list's, its card the entry with its
     section's label and `what`'s CRLF made a line break; each rule of the format broken once and
-    refused, the refusal naming the entry and the field (_ASK_BROKEN, 48 of them: a key, a
-    withdrawn key, a section's id or the moment ending in a line break among them), and 400
+    refused, the refusal naming the entry and the field (_ASK_BROKEN, 52 of them: a key, a
+    withdrawn key, a section's id or the moment ending in a line break among them, and a list or
+    an object where a section or a recommendation is named), and 400
     entries taken; the page's LINK_RULE (workers/bench/page.js) the same text as the pack's, and
     the two engines agreeing on every address of _ASK_URLS (tests/bench/apply_asks.js --rule);
     a pack of items with the list carrying its count in its header beside its keys line, the
