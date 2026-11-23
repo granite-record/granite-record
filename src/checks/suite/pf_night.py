@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.19
+# GRANITE_VERSION: 2026-11-16.20
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -16260,38 +16260,94 @@ def _slowest_reaches_the_job_log(NI):
 
 
 @check("pipeline", "a failed step shows GitHub's log what failed first: preflight's \"What is broken:\" "
-       "block and its [ FAIL ] line, never a check that passed, in twelve lines and the last six, as before",
+       "block in whole entries and its [ FAIL ] line, no line of a check that passed, was skipped or "
+       "failed as expected, in twelve lines and the last six, as before",
        needs=("nightly",))
 def _failure_lines_lead_with_what_failed(NI):
     """WHAT FAILED FIRST (nightly.failure_lines). The weekly of 23 November
     2026 stopped on one failed check, and GitHub's log named none of it: the
     twelve lines kept were the first to say FAIL, ERROR, STOPPED, NOT,
-    Traceback or refused, and checks that passed say "refused". Held on a
-    short log in that shape, as run() logs a step: fourteen passing lines that
-    say refused, a skipped one and an expected failure that do too, one FAIL
-    with its words, the summary and the "What is broken:" block. The lines
-    kept open on the block and then the [ FAIL ] line, and none is the line of
-    a check that did not fail. The size is held where it can be passed: a step
-    with no block that says failing on more than twelve lines, its [ERROR ]
-    and [ FAIL ] lines after thirteen others, and ends on seven more, keeps
-    exactly twelve, those two first, and then its last six, as before. A step
-    that crashed keeps its Traceback and its last lines, as before, without
-    the passing line above them."""
+    Traceback or refused, and checks that passed say "refused". Held on logs
+    in the shape pf_runner.main prints, as run() logs a step; the lines of
+    main that make that shape (the block's heading, a status line, the words
+    under it, the closing lists' headings) are read off main itself, so a
+    change there fails here rather than let a skipped check back in:
+
+    - today's: fourteen passing lines that say refused, a skipped check, an
+      expected failure and a passing one whose words say failing too, one
+      FAIL, the summary, the block and the closing lists. The lines kept open
+      on the block and the [ FAIL ] line, and none is a line of a check that
+      did not fail: a status line, the words under one, an entry in the lists;
+    - fourteen failed, an [ERROR ] first, two with the same words and the
+      fifth in three lines: the block's first four entries whole, both of
+      those words kept, the fifth left out whole, then the [ERROR ] and the
+      first [ FAIL ] lines, twelve, then the step's last six outside the
+      block and the lists, so never a name without its words nor words
+      without their name;
+    - a step with no block that says failing on more than twelve lines, its
+      [ERROR ] and [ FAIL ] lines after thirteen others, and ends on seven
+      more: exactly twelve, those two first, and then its last six, as before;
+    - a step that crashed keeps its Traceback and its last lines, as before,
+      without the passing line above them."""
+    import inspect
+    runner = inspect.getsource(main)
+    for said in ['print("\\nWhat is broken:")', 'print(f"  [{mark}] {c[\'name\']}")',
+                 'print(f"           {line}")'] + [f'print("\\n{h}' for h in NI.CLOSING_LISTS]:
+        assert said in runner, f"pf_runner.main no longer says {said}, the shape failure_lines reads"
     name = "the next election's dates are on every week of the Calendar, each with its law"
     found = "the Calendar's week of 2026-W47 (en): 'By law: RSA 655:14.' does not cite 'RSA 655:14, as amended'"
+    skipped, expected = "a refused key is said", "a refused report is said"
+    quiet = ["NOT here: no key on this machine", "FAILED until the report form lands",
+             "NOT asked: the fetch was refused"]     # the words under the skip, the xfail and a verbose ok
     out = (["FRONTEND"] + [f"  [  ok  ] a short copy of table {i} is refused, NOT taken" for i in range(14)]
-           + [f"  [ FAIL ] {name}", f"           {found}", "  [ skip ] a refused key: no key here",
-              "  [xfail ] a refused report is said", "           expected to fail until x", "",
-              "=" * 74, "14 passed, 1 failed, 1 skipped, 1 expected to fail", "", "What is broken:",
-              f"  frontend/{name}", f"    {found[:150]}", "",
+           + [f"  [ FAIL ] {name}", f"           {found}", f"  [ skip ] {skipped}", f"           {quiet[0]}",
+              f"  [xfail ] {expected}", f"           {quiet[1]}", "  [  ok  ] a verbose check",
+              f"           {quiet[2]}", "", "=" * 74, "15 passed, 1 failed, 1 skipped, 1 expected to fail",
+              "", "What is broken:", f"  frontend/{name}", f"    {found[:150]}", "",
               "Each of these is independent, so fix them in any order. Nothing",
-              "here touched the site or the data files.", "=" * 74])
+              "here touched the site or the data files.", "",
+              "Skipped, mostly because the file is not in this folder:", f"  frontend/{skipped}: {quiet[0]}",
+              "", "Expected to fail, each until the change it names lands (its findings are above):",
+              f"  frontend/{expected}", f"    {quiet[1]}", "=" * 74])
     passed = re.compile(r"\s*\[(?:  ok  | skip |xfail )\]")
     got = NI.failure_lines(["  " + o for o in out])
     want = ["  What is broken:", f"    frontend/{name}", f"      {found}", f"    [ FAIL ] {name}"]
     assert got[:4] == want, f"GitHub's log would open on {got[:4]}, not on what failed: {want}"
-    assert not [ln for ln in got if passed.match(ln)], (
-        f"GitHub's log would show a check that did not fail: {[ln for ln in got if passed.match(ln)][:2]}")
+    quieter = [ln for ln in got if passed.match(ln) or skipped in ln or expected in ln
+               or any(q in ln for q in quiet)]
+    assert not quieter, f"GitHub's log would show a line of a check that did not fail: {quieter[:2]}"
+    # Fourteen failed, an [ERROR ] first, two with the same words and the fifth in three
+    # lines, two of them at the names' own indent: the block in whole entries, as many as
+    # fit in twelve, then the failed checks' own lines, and nothing of the block past them.
+    bad = [("a check that raised", "OSError: the disk is full")] + [
+        (f"the rows of table {i} are whole", "assertion failed" if i in (2, 3)
+         else "3 rows are missing:\n  row 4\n  row 5" if i == 4 else f"row {i} is missing")
+        for i in range(1, 14)]
+    ran = ["FRONTEND"] + [x for i, (n, w) in enumerate(bad)
+                          for x in [f"  [{'ERROR ' if i == 0 else ' FAIL '}] {n}"]
+                          + [f"           {line}" for line in w.splitlines()]]
+    ends = ["0 passed, 14 failed, 1 skipped", "slowest 10 of 15 checks, of 9 s in all (1 s of it compiling "
+            "and loading preflight.py): _a 1.0 s", "the map of what each check read and ran: "
+            "logs/check-map-code.json.gz (15 checks, 9 files, 9 functions)",
+            "Each of these is independent, so fix them in any order. Nothing",
+            "here touched the site or the data files.", "=" * 74]
+    block = ["What is broken:"] + [x for n, w in bad
+                                   for x in [f"  frontend/{n}"] + f"    {w[:150]}".splitlines()]
+    many = ["  " + o for o in ran + [f"  [ skip ] {skipped}", f"           {quiet[0]}", "", "=" * 74]
+            + ends[:3] + [""] + block + ["", *ends[3:5], "",
+                                         "Skipped, mostly because the file is not in this folder:",
+                                         f"  frontend/{skipped}: {quiet[0]}", ends[5]]]
+    got = NI.failure_lines(many)
+    block = ["  " + b for b in block]
+    assert got[:9] == block[:9], (
+        f"GitHub's log would open on {got[:9]}, not on the block's first four entries, each whole")
+    assert got[9:12] == [f"    [{'ERROR ' if i == 0 else ' FAIL '}] {bad[i][0]}" for i in range(3)], (
+        f"the tenth to twelfth lines kept are {got[9:12]}, not the [ERROR ] line and the first [ FAIL ] lines: "
+        "the fifth entry, which does not fit, is left out whole")
+    assert got[12:] == ["  " + e for e in ends], (
+        f"after the twelve, GitHub's log would show {got[12:]}, not the step's last six outside the block")
+    quieter = [ln for ln in got if ln in block[9:] or skipped in ln or quiet[0] in ln]
+    assert not quieter, f"GitHub's log would show {quieter[:2]}: part of an entry, or a check that did not fail"
     # The size, on a log that goes past both limits: no block, thirteen lines that say refused
     # ahead of an [ERROR ] and a [ FAIL ] check, and a Traceback of seven lines after them.
     long = (["  FRONTEND"] + [f"    the fetch was refused on request {i}" for i in range(13)]
@@ -16313,9 +16369,11 @@ def _failure_lines_lead_with_what_failed(NI):
     assert "  Traceback (most recent call last):" in got and got[-1] == "  OSError: the disk is full" \
         and not [ln for ln in got if passed.match(ln)], f"a step that crashed shows {got}"
     return "ok", ("a failed preflight step's lines in GitHub's log open on \"What is broken:\" and its "
-                  "[ FAIL ] line, with no check that passed, was skipped or failed as expected; a step "
-                  "that says failing on more than twelve lines keeps twelve, its [ERROR ] and [ FAIL ] "
-                  "lines first, and its last six, as before; a crash keeps its Traceback and its last line")
+                  "[ FAIL ] line, with no line of a check that passed, was skipped or failed as expected; "
+                  "fourteen failed keep the block's first four entries whole, then the failed checks' own "
+                  "lines and the step's last six outside the block; a step that says failing on more "
+                  "than twelve lines keeps twelve, its [ERROR ] and [ FAIL ] lines first, and its last "
+                  "six, as before; a crash keeps its Traceback and its last line")
 
 
 @check("build", "a time of day is read as 24 hours or given back as it came, and the build's day is New "

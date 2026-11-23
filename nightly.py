@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.108
+# GRANITE_VERSION: 2026-09-04.109
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1507,22 +1507,55 @@ def slowest_said(args, lines):
 # WHAT FAILED FIRST (23 November 2026). The weekly of 23 November stopped on
 # one failed check and GitHub's log named none: the twelve lines kept were
 # checks that passed and say "refused". Preflight's own "What is broken:" block
-# and its [ FAIL ] and [ERROR ] lines come first now, then the other lines that
-# say failing, twelve in all, then the step's last few, as before; never the
-# line of a check that passed, was skipped or failed as expected.
-# preflight's _failure_lines_lead_with_what_failed holds it.
+# comes first now, in whole entries (a failed check's name, as its [ FAIL ] or
+# [ERROR ] line gives it, with every line under it), then those [ FAIL ] and
+# [ERROR ] lines, then the other lines that say failing, twelve in all, then
+# the step's last few outside the block, as before. Never one of preflight's
+# lines of a check that passed, was skipped or failed as expected: its status
+# line, the words under it, its entry in the closing lists.
+# preflight's _failure_lines_lead_with_what_failed holds it, with the shapes
+# pf_runner.main prints.
 CHECK_FAILED = re.compile(r"\s*\[(?: FAIL |ERROR ?)\]")
-CHECK_DID_NOT_FAIL = re.compile(r"\s*\[(?:  ok  | skip |xfail )\]")
+CHECK_DID_NOT_FAIL = re.compile(r"(\s*)\[(?:  ok  | skip |xfail )\]")
+CLOSING_LISTS = ("Skipped, mostly because", "Expected to fail, each until")
 
 
-def failure_lines(lines, tail=6):
+def _without_passing(lines):
+    """`lines` less preflight's lines of each check that did not fail: its
+    status line, the words under it (they start under its name, nine past the
+    status line's indent) and its entry in the closing lists, which run from
+    their heading to a blank line or a rule."""
+    out, under, listed = [], None, False
+    for ln in lines:
+        said, bare = CHECK_DID_NOT_FAIL.match(ln), ln.strip()
+        if said:
+            under = " " * (len(said.group(1)) + 9)
+        elif not (under and (ln.startswith(under) or not bare)):
+            under = None
+            listed = bare.startswith(CLOSING_LISTS) or (listed and bare and set(bare) != {"="})
+            if not listed:
+                out.append(ln)
+    return out
+
+
+def failure_lines(lines, tail=6, cap=12):
     """What a failed step said about failing, for a log that shows no more."""
-    lines = [ln for ln in lines if not CHECK_DID_NOT_FAIL.match(ln)]
+    lines = _without_passing(lines)
     at = next((i for i, ln in enumerate(lines) if ln.strip() == "What is broken:"), len(lines))
     end = next((i for i in range(at, len(lines)) if not lines[i].strip()), len(lines))
-    hits = list(dict.fromkeys(lines[at:end] + [ln for ln in lines if CHECK_FAILED.match(ln)] + [
-        ln for ln in lines if re.search(r"\b(FAIL\w*|ERROR|STOPPED|NOT|Traceback|[Rr]efused)\b", ln)]))[:12]
-    last = [ln for ln in lines if ln.strip()][-tail:]
+    block, hits, rest = lines[at + 1:end], lines[at:at + 1], lines[:at] + lines[end:]
+    failed = {ln.split("] ", 1)[-1] for ln in rest if CHECK_FAILED.match(ln)}
+    names = [i for i, ln in enumerate(block) if not i or ln.strip().partition("/")[2] in failed]
+    for a, b in zip(names, names[1:] + [len(block)]):
+        if len(hits) > 1 and len(hits) + b - a > cap:     # entries whole, the first cut if it must be
+            break
+        hits += block[a:b]
+    hits = hits[:cap]
+    for ln in [ln for ln in rest if CHECK_FAILED.match(ln)] + [
+            ln for ln in rest if re.search(r"\b(FAIL\w*|ERROR|STOPPED|NOT|Traceback|[Rr]efused)\b", ln)]:
+        if len(hits) < cap and ln not in hits:
+            hits.append(ln)
+    last = [ln for ln in rest if ln.strip()][-tail:]
     return hits + [ln for ln in last if ln not in hits]
 
 
