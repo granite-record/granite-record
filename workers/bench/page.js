@@ -40,7 +40,7 @@
  */
 
 import { pageResponse } from "./common.js";
-import { PAGE_PALETTE } from "../follow/site.gen.js";
+import { PAGE_PALETTE, TIMEZONE } from "../follow/site.gen.js";
 
 export function nonce() {
   let s = "";
@@ -307,6 +307,13 @@ return (h?h+":"+(m<10?"0":"")+m:m)+":"+(s<10?"0":"")+s;}
 function num(n){return Number(n||0).toLocaleString("en-US");}
 var MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function day(d){var m=/^(\d{4})-(\d\d)-(\d\d)/.exec(d||"");return m?(+m[3])+" "+MONTHS[+m[2]-1]:"";}
+// THE DAY OF A MOMENT, as the state's own clock has it (src/lib/state_settings.json "timezone"):
+// her answers are kept by their moment in UTC (store.js iso()), so an evening's answer is
+// already the next day by its first ten characters.
+var ZONE=${JSON.stringify(TIMEZONE)};
+function zoneDay(t){var d=new Date(t),p={};if(!t||isNaN(d))return "";
+try{new Intl.DateTimeFormat("en-US",{timeZone:ZONE,month:"numeric",day:"numeric"}).formatToParts(d)
+.forEach(function(x){p[x.type]=x.value;});}catch(e){return day(t);}return p.day&&p.month?p.day+" "+MONTHS[p.month-1]:day(t);}
 var ICON={no:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
 yes:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 unsure:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.2 7.4a2.9 2.9 0 1 1 4.1 2.6c-.8.4-1.3 1-1.3 1.9v.4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><circle cx="10" cy="15.6" r="1.25" fill="currentColor"/></svg>',
@@ -553,7 +560,7 @@ return Object.keys(a).filter(function(x){return x==="yes"||x==="no"||x==="unsure
 function wordsOf(c,x){var a=(c&&c.answers)||{};return typeof a[x]==="string"&&a[x]?a[x]:SAID[x]||String(x||"");}
 function rowId(key){return "row-"+key;}
 // A row's state, as text (drawn through esc()): "Waiting", or her latest answer's day and words.
-function stateOf(k){var a=k.answer;if(!a)return "Waiting";var when=day(a.at);return "Answered "+when+": "+wordsOf(k.card,a.answer);}
+function stateOf(k){var a=k.answer;if(!a)return "Waiting";var when=zoneDay(a.at);return "Answered "+when+": "+wordsOf(k.card,a.answer);}
 function paras(s){return String(s==null?"":s).split(/\n[ \t]*\n/).map(function(p){return p.trim();}).filter(Boolean)
 .map(function(p){return "<p>"+esc(p)+"</p>";}).join("");}
 function asksGot(d){S.asks=Array.isArray(d.asks)?d.asks:[];if(S.view)S.view.asks=d.waiting;}

@@ -12,6 +12,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import vm from "node:vm";
 import { LINK_RULE, SCRIPT, benchPage } from "../../workers/bench/page.js";
+import { TIMEZONE } from "../../workers/follow/site.gen.js";
 
 const TOKEN = "C".repeat(40) + "ccc";
 const OWNER = { role: "owner", state: "active", queue: "mix", queues: [], items: [], progress: null, far: [], asks: 3 };
@@ -118,6 +119,17 @@ test("the list: by section in the list's order, a waiting row and a quieter answ
   assert.match(h, /class="ask done" id="row-map-dots" data-ask="map-dots"><b>Map dots<\/b><span class="st">Answered 22 Nov: Needs changes<\/span>/);
   assert.equal(p.els.inputhead.hidden, false, "the line saying what this is, at the top of the list");
   assert.equal(p.els.inputn.textContent, "2", "the count as the list says it");
+});
+
+test("her answer's day is the state's clock's: an evening's answer is not dated the next day", async () => {
+  // 20:30 on 23 November by the state's clock (site.gen.js TIMEZONE, America/New_York) is
+  // 01:30 on the 24th in UTC.
+  assert.ok(SCRIPT.includes(`var ZONE=${JSON.stringify(TIMEZONE)};`), "the zone is the site's own setting");
+  const late = { answer: "yes", note: "", at: "2026-11-24T01:30:00.000Z" };
+  const p = await onTab({ asks: [{ key: "late-one", card: card({ title: "Late" }), answer: late }] });
+  assert.match(p.els.inputbody.innerHTML, /<b>Late<\/b><span class="st">Answered 23 Nov: Looks right<\/span>/);
+  p.click({ ask: "late-one" });
+  assert.match(p.els.inputbody.innerHTML, /<p class="was">Answered 23 Nov: Looks right<\/p>/);
 });
 
 test("an entry: what, where to look in a new tab, the question, its own answers, the note and Save", async () => {
