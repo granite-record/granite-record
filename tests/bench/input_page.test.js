@@ -224,6 +224,10 @@ test("saving: an answer is required, then sent with her note, and the list comes
 test("an entry with one answer saves with its words; Back keeps what she typed; a refusal says why", async () => {
   let p = await onTab();
   p.click({ ask: "a-note" });
+  p.key("Escape");
+  assert.match(p.els.inputbody.innerHTML, /data-ask="a-note"><b>Anything else<\/b><span class="st">Waiting<\/span>/,
+               "opened and left with nothing typed, it holds nothing of hers");
+  p.click({ ask: "a-note" });
   assert.doesNotMatch(p.els.inputbody.innerHTML, /class="picks"/, "no choice to make");
   assert.match(p.els.inputbody.innerHTML, /data-do="asksave">Save the note<\/button>/);
   p.type("A thought.");
@@ -241,6 +245,11 @@ test("an entry with one answer saves with its words; Back keeps what she typed; 
   p.click({ pick: "unsure" });
   p.type("Half a thought");
   p.key("Escape");
+  // Kept in this page alone, so its row says it is not saved.
+  assert.match(p.els.inputbody.innerHTML,
+               /data-ask="nav-rows"><b>Navigation in two rows<\/b><span class="st">Waiting &middot; not saved yet<\/span>/);
+  assert.match(p.els.inputbody.innerHTML, /data-ask="a-note"><b>Anything else<\/b><span class="st">Answered 23 Nov<\/span>/,
+               "an entry reopened and left as saved holds nothing");
   p.click({ ask: "nav-rows" });
   assert.match(p.els.inputbody.innerHTML, /data-pick="unsure" aria-pressed="true">/);
   assert.equal(p.els.asknote.value, "Half a thought");

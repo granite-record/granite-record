@@ -564,6 +564,10 @@ function rowId(key){return "row-"+key;}
 // that button's words say what it does, not what she said.
 function stateOf(k){var a=k.answer;if(!a)return "Waiting";var when=zoneDay(a.at);
 return "Answered "+when+(picksOf(k.card).length===1?"":": "+wordsOf(k.card,a.answer));}
+// A choice or a note she left by Back, Escape or a tab and has not saved: kept in this page alone
+// (S.drafts), so a reload or a closed tab loses it, and its row says so. A one-answer entry not
+// answered yet holds nothing of hers until she types a note.
+function held(k){var d=S.drafts[k.key];return !!d&&(picksOf(k.card).length>1||!!k.answer||!!d.note);}
 function paras(s){return String(s==null?"":s).split(/\n[ \t]*\n/).map(function(p){return p.trim();}).filter(Boolean)
 .map(function(p){return "<p>"+esc(p)+"</p>";}).join("");}
 function asksGot(d){S.asks=Array.isArray(d.asks)?d.asks:[];if(S.view)S.view.asks=d.waiting;}
@@ -577,7 +581,7 @@ if(!L.length)h='<p class="prose">Nothing is waiting on your word just now.</p>';
 L.forEach(function(k){var c=k.card||{};if(!open||c.section!==sec){if(open)h+="</ul></section>";open=true;sec=c.section;
 h+='<section class="asks"><h2>'+esc(c.section)+"</h2><ul>";}
 h+='<li><button type="button" class="ask '+(k.answer?"done":"wait")+'" id="'+esc(rowId(k.key))+'" data-ask="'+esc(k.key)+'"><b>'+
-esc(c.title)+'</b><span class="st">'+esc(stateOf(k))+"</span></button></li>";});
+esc(c.title)+'</b><span class="st">'+esc(stateOf(k))+(held(k)?" &middot; not saved yet":"")+"</span></button></li>";});
 if(open)h+="</ul></section>";$("inputbody").innerHTML=h;}
 function drawEntry(){var k=askOf(S.ask);if(!k){S.ask=null;return drawInput();}$("inputhead").hidden=true;
 var c=k.card||{},a=k.answer,x=picksOf(c),one=x.length===1,d=S.drafts[k.key],where=Array.isArray(c.where)?c.where:[];
