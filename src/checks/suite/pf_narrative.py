@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of a bill's history as the site tells it (narrative.py).
 
@@ -13559,8 +13559,12 @@ def _election_dates_on_calendar_and_hub(KD, BC, BE):
         days = [r[0] for r in rows]
         if days != ["2028-03-11", "2028-06-14", "2028-11-08"]:
             bad.append(f"{where}: the rows retire on {days}")
-        if lang == "en" and [r[1] for r in rows] != ["March 3–10, 2028", "June 13, 2028", "November 7, 2028"]:
-            bad.append(f"{where}: the days are {[r[1] for r in rows]}")
+        # The days as each language says them: a Spanish row's day was held only by the day it
+        # retires on, so one drawn as June 20 that retired on June 14 passed.
+        shown = {"en": ["March 3–10, 2028", "June 13, 2028", "November 7, 2028"],
+                 "es": ["3–10 de marzo de 2028", "13 de junio de 2028", "7 de noviembre de 2028"]}[lang]
+        if [r[1] for r in rows] != shown:
+            bad.append(f"{where}: the days are {[r[1] for r in rows]}, not {shown}")
         for (_u, _d, _n, src), cite in zip(rows, cites):
             if flat(cite) not in flat(src):
                 bad.append(f"{where}: {src!r} does not cite {cite!r}")
