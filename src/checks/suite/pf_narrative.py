@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of a bill's history as the site tells it (narrative.py).
 
@@ -13537,9 +13537,17 @@ def _election_dates_on_calendar_and_hub(KD, BC, BE):
     nd = KD.next_deadline(KD.events(date(2028, 3, 1)), "2028-03-01")
     if nd and nd[1].rule == "filing":
         bad.append("the status box names the candidates' filing period as the legislature's next deadline")
-    cites = ("RSA 655:14</a>, as amended by 2026, 44:4, from January 1, 2028",
-             "RSA 653:8</a>, as amended by 2026, 44:1, from January 1, 2028", "RSA 653:7")
-    flat = lambda s: re.sub(r"<a [^>]*>", "", s)  # noqa: E731
+    # A row's law is read as its text, every tag out of both sides. The section is a link only
+    # where the build's own db/NH_RSA.psv holds it (key_dates._law), and the act after it never
+    # is: a reading that took out "<a ...>" and kept "</a>" passed where there is no table and
+    # failed on the weekly of 23 November 2026, whose machine has the table.
+    import html as _html
+    cites = ("RSA 655:14, as amended by 2026, 44:4, from January 1, 2028",
+             "RSA 653:8, as amended by 2026, 44:1, from January 1, 2028", "RSA 653:7")
+    flat = lambda s: _html.unescape(re.sub(r"<[^>]+>", "", s))  # noqa: E731
+    for drawn in ('By law, x: <a href="/laws/655#s14">RSA 655:14</a>, as amended by 2026, 44:4, from '
+                  "January 1, 2028.", "By law, x: RSA 655:14, as amended by 2026, 44:4, from January 1, 2028."):
+        assert flat(cites[0]) in flat(drawn), f"a row drawn {drawn!r} is not read as citing {cites[0]!r}"
 
     def holds(page, where, lang="en"):
         box = re.search(r'<section class="kdnext"[^>]*>(.*?)</section>', page, re.S)
@@ -13554,7 +13562,7 @@ def _election_dates_on_calendar_and_hub(KD, BC, BE):
         if lang == "en" and [r[1] for r in rows] != ["March 3–10, 2028", "June 13, 2028", "November 7, 2028"]:
             bad.append(f"{where}: the days are {[r[1] for r in rows]}")
         for (_u, _d, _n, src), cite in zip(rows, cites):
-            if cite.replace("</a>", "") not in flat(src):
+            if flat(cite) not in flat(src):
                 bad.append(f"{where}: {src!r} does not cite {cite!r}")
         if lang == "es" and "Período de inscripción para la primaria estatal" not in box.group(1):
             bad.append(f"{where}: the filing period is not named in Spanish")
