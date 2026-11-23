@@ -112,6 +112,10 @@ test("the tab is her link's alone, with the number waiting beside its name", asy
   const html = await benchPage().text();
   assert.match(html, /<button type="button" id="inputtab" data-tab="input">Your input<span class="n" id="inputn" aria-hidden="true" hidden><\/span><\/button><\/nav>/);
   assert.match(html, /Only you see your answers and notes here; they reach the laptop when you pull them, and never become part of Granite Record’s open data\./);
+  // In dark mode the note box's scrollbar and resize grip are drawn dark too, and nothing else's
+  // scheme changes: a color-scheme on :root would restyle the Judge tab's player and select.
+  assert.match(html, /@media \(prefers-color-scheme:dark\)\{#asknote\{color-scheme:dark\}\}/);
+  assert.equal([...html.matchAll(/[{;]\s*color-scheme\s*:/g)].length, 1, "the note box's alone");
 });
 
 test("the list: by section in the list's order, a waiting row and a quieter answered one", async () => {

@@ -248,6 +248,7 @@ font:600 16px/1.2 var(--sans);padding:8px 10px;display:flex;flex-direction:colum
 .notelabel span{font-weight:500;color:var(--ink-2)}
 #asknote{display:block;width:100%;min-height:120px;padding:10px;border:1px solid var(--edge);border-radius:var(--r-in);
 background:var(--surface);font:16px/1.5 var(--sans);resize:vertical}
+@media (prefers-color-scheme:dark){#asknote{color-scheme:dark}}
 .count{display:block;min-height:18px;margin-top:4px;color:var(--ink-2);font-size:13px;text-align:right}
 .saverow{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin:10px 0 0}
 .saverow .btn{min-height:48px;padding:0 20px;font-size:16px}
