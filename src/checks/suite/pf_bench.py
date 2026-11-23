@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -962,6 +962,128 @@ def _bench_pull(PL, BP, BL, RV):
                   "--approve appended Sam's 3 as link:sam234 once (not the calibration answer) and marked "
                   "them merged, never the preview's, hers as hand; a withdrawal honoured; the owner's "
                   "link sent as a hash")
+
+
+@check("build", "the pull of her answers on the Your input tab: each appended once to "
+                "private/asks/answers.jsonl in the list's format, printed, and only then marked pulled; "
+                "nothing else written, and review/checked.jsonl never touched",
+       needs=("bench_pull", "bench_pack"))
+def _bench_asks_pull(PL, BP):
+    """bench_pull.py --asks (23 November 2026), run as the owner runs it but with the database
+    answered in node: the list of _asks_fixture loaded by a pack into a database made before its
+    tables, her answers given through the store (one of them withdrawn after, one a note of two
+    lines), and bench_pull's own ASKS_PULL query reading them (tests/bench/apply_asks.js
+    --query), so the query is held to the schema. wrangler is never run: its one function is
+    stood in for, and each call it is given kept with what answers.jsonl held at that moment.
+    Held, in a folder with nothing else in it: one line each, in the order given, with the
+    format's fields alone -- the entry's title and the words of the button she chose, her note
+    whole, the database's name; the title, the words and each line of the note printed; the
+    answers marked pulled by id in one statement made only after the file held them all; no
+    file written but private/asks/answers.jsonl, and no review/ made; a second pull of the same
+    rows appending nothing twice, the preview's appending its own; a database that will not
+    mark them saying so, the lines kept; nothing to pull saying that; and --asks beside
+    --approve refused."""
+    import contextlib
+    import copy
+    import os
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not on PATH, so no answer could be given through the bench's store"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-askpull-"))
+    here, calls = os.getcwd(), []
+    saved = (PL.wrangler, sys.argv[:])
+    try:
+        pack = tmp / "list.sql"
+        pack.write_text(BP.asks_only_sql(BP.asks_from(copy.deepcopy(_asks_fixture())), "2026-11-23-asks",
+                                         "graniterecord-bench", pack, "2026-11-23T18:00:00Z", "asks.json"),
+                        encoding="utf-8")
+        withdraw = tmp / "withdraw.sql"
+        withdraw.write_text("UPDATE asks SET state = 'withdrawn' WHERE key = 'map-dots';\n", encoding="utf-8")
+        pulled = tmp / "pulled.sql"
+        pulled.write_text("UPDATE ask_answers SET pulled = 1 WHERE key = 'run-pack';\n", encoding="utf-8")
+        (tmp / "answers.json").write_text(json.dumps([
+            [0, "nav-section-rows", "no", "The second row wraps on my phone.\nOtherwise fine."],
+            [0, "map-dots", "yes", ""], [0, "anything-else", "yes", "Ask me about the map, too."],
+            [1, "votes-layout", "unsure", "Let us talk on Friday."], [1, "run-pack", "yes", "Pulled before."]]),
+            encoding="utf-8")
+        (tmp / "pull.sql").write_text(PL.ASKS_PULL, encoding="utf-8")
+        r = _run([node, "--disable-warning=ExperimentalWarning", str(_paths.ROOT / "tests/bench/apply_asks.js"),
+                  "--query", str(tmp / "pull.sql"), str(tmp / "answers.json"), str(pack), str(withdraw), str(pulled)],
+                 capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
+        rows = json.loads(r.stdout.strip().splitlines()[-1])["rows"]
+        assert [x["key"] for x in rows] == ["nav-section-rows", "map-dots", "anything-else", "votes-layout"], (
+            "the pull's query did not read her answers not pulled yet, and those alone", rows)
+        (tmp / "run").mkdir()
+        (tmp / "run" / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
+        out_file = tmp / "run" / "private" / "asks" / "answers.jsonl"
+        fail = []
+
+        def fake(db, sql=None, file=None):
+            held = out_file.read_text(encoding="utf-8").splitlines() if out_file.is_file() else []
+            calls.append((db, sql, file, len(held)))
+            if fail:
+                raise RuntimeError("wrangler d1 execute failed: 7500")
+            return {"results": []}
+        PL.wrangler = fake
+        os.chdir(tmp / "run")
+
+        def run(*args):
+            sys.argv = ["bench_pull.py", "--rows", "rows.json", *args]
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                try:
+                    code = PL.main()
+                except SystemExit as e:
+                    code = str(e)
+            return code, out.getvalue()
+
+        code, said = run("--asks")
+        lines = [json.loads(x) for x in out_file.read_text(encoding="utf-8").splitlines()]
+        assert code == 0 and [d["key"] for d in lines] == [x["key"] for x in rows], (code, said, lines)
+        assert all(list(d) == ["id", "key", "title", "answer", "words", "note", "at", "db"] for d in lines), lines[0]
+        first = lines[0]
+        assert first["title"] == "Navigation: each section's pages in a second row" and first["words"] == "Needs changes" \
+            and first["note"] == "The second row wraps on my phone.\nOtherwise fine." and \
+            first["db"] == "graniterecord-bench" and first["answer"] == "no" and \
+            re.match(r"^2026-11-23T18:00:\d\d\.\d{3}Z$", first["at"]), first
+        assert [d["words"] for d in lines] == ["Needs changes", "Looks right", "Save the note", "Let’s discuss"], lines
+        assert lines[1]["title"] == "Map dots", "an entry withdrawn since lost its title"
+        for words in ("Navigation: each section's pages in a second row: Needs changes", "    Otherwise fine.",
+                      "Anything else: Save the note", "    Ask me about the map, too."):
+            assert words in said, (words, said)
+        ids = sorted(x["id"] for x in rows)
+        assert calls == [("graniterecord-bench", "UPDATE ask_answers SET pulled = 1 WHERE pulled = 0 AND id IN ("
+                          + ", ".join(map(str, ids)) + ");", None, 4)], calls
+        made = sorted(p.relative_to(tmp / "run").as_posix() for p in (tmp / "run").rglob("*") if p.is_file())
+        assert made == ["private/asks/answers.jsonl", "rows.json"], f"the pull wrote {made}"
+        code, said = run("--asks")
+        assert code == 0 and len(out_file.read_text(encoding="utf-8").splitlines()) == 4 and \
+            "each in private/asks/answers.jsonl already" in said, "a second pull appended its lines again"
+        code, said = run("--asks", "--preview")
+        again = [json.loads(x) for x in out_file.read_text(encoding="utf-8").splitlines()]
+        assert len(again) == 8 and {d["db"] for d in again[4:]} == {"graniterecord-bench-preview"}, again
+        fail.append(1)
+        out_file.unlink()
+        code, said = run("--asks")
+        assert code == 1 and "NOT yet marked pulled" in said and \
+            len(out_file.read_text(encoding="utf-8").splitlines()) == 4, (code, said)
+        fail.clear()
+        (tmp / "run" / "rows.json").write_text("[]", encoding="utf-8")
+        code, said = run("--asks")
+        assert code == 0 and "No answer of yours" in said, said
+        code, said = run("--asks", "--approve", "sam")
+        assert isinstance(code, str) and "alone" in code, code
+        assert not (tmp / "run" / "review").exists() and not (tmp / "run" / "reports").exists(), (
+            "a pull of her answers wrote in review/ or reports/")
+    finally:
+        os.chdir(here)
+        PL.wrangler, sys.argv = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("4 answers given through the store and read by bench_pull's own query: each appended once to "
+                  "private/asks/answers.jsonl in the format's fields, printed, and only then marked pulled in one "
+                  "statement; nothing else written and no review/; a second pull appended none twice, the "
+                  "preview's its own; a mark that failed said so and kept the lines")
 
 
 # ---- what keeps the bench off, unlisted, and keeping nothing ---------------------------

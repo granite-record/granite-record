@@ -7,6 +7,8 @@
 // that writes the list and the JavaScript that serves it are held to each other.
 //   node tests/bench/apply_asks.js <answers.json> <pack.sql> [<pack.sql> ...]
 // answers.json: [[the pack it follows (0 for the first), key, answer, note], ...]
+// With --query <query.sql>, the rows that query reads at the end too ("rows"): _bench_asks_pull
+// gives it bench_pull.py's own ASKS_PULL, so the pull is held to what the store really keeps.
 // And with --rule <cases.json>: whether the page's LINK_RULE takes each address, one line.
 
 import { readFileSync } from "node:fs";
@@ -20,6 +22,8 @@ if (args[0] === "--rule") {
   console.log(JSON.stringify(JSON.parse(readFileSync(args[1], "utf8")).map(u => rule.test(u))));
   process.exit(0);
 }
+let query = null;
+if (args.includes("--query")) query = readFileSync(args.splice(args.indexOf("--query"), 2)[1], "utf8");
 const [answersFile, ...packs] = args;
 const answers = JSON.parse(readFileSync(answersFile, "utf8"));
 const d1 = benchBeforeAsks();
@@ -39,4 +43,5 @@ for (const [i, f] of packs.entries()) {
 }
 console.log(JSON.stringify({ before, steps, columns: { asks: d1.columns("asks"), ask_answers: d1.columns("ask_answers") },
                              answers: d1.rows("ask_answers").map(r => [r.key, r.answer, r.note]),
-                             items: d1.rows("items").length }));
+                             items: d1.rows("items").length,
+                             ...(query ? { rows: d1.sql.prepare(query).all().map(r => ({ ...r })) } : {}) }));

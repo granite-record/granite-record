@@ -958,6 +958,12 @@ run by the owner on the laptop after every note has passed
     python3 src/checks/bench_pull.py
     python3 src/checks/bench_pull.py --approve <name or id>
 
+The owner's link has a tab of its own, Your input (23 November 2026): the
+list of what waits on her word, which the manager keeps in
+`private/asks/asks.json` and `bench_pack.py --asks` loads into two tables
+apart from the judgments; her answers come back with `bench_pull.py --asks`
+to `private/asks/answers.jsonl`, never to the ledger.
+
 `workers/bench/README.md` has the routes, the limits and the commands.
 
 ## Topics as tags, switched off until the registry is in force (17 November 2026)

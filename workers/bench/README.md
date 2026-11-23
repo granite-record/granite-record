@@ -124,7 +124,14 @@ them, each entry (a revised one keeps its key and her answers) and each
 withdrawal; she runs the wrangler command it prints. `--asks` beside a draw
 puts the list in that pack instead. Two tables of their own, `asks` and
 `ask_answers`, keep the list and her answers: nothing else here reads them,
-and her notes never reach `review/checked.jsonl` or the open data.
+and her notes never reach `review/checked.jsonl` or the open data. Her
+answers come back to the laptop with
+
+    python3 src/checks/bench_pull.py --asks            # or with --preview
+
+which appends each answer not pulled yet to `private/asks/answers.jsonl`
+once (the entry's title, the words of the button she chose, her note),
+prints them, and only then marks them pulled.
 
 ## The database
 

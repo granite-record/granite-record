@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 What the shared bench's contributors answered: pulled, screened, summed up,
 and -- only on the owner's word -- merged into review/checked.jsonl.
@@ -12,6 +12,7 @@ and -- only on the owner's word -- merged into review/checked.jsonl.
     python3 src/checks/bench_pull.py --owner-link       # make your own link (its address shown once)
     python3 src/checks/bench_pull.py --preview ...      # the preview's database instead of production's
     python3 src/checks/bench_pull.py --rows FILE ...    # rows from a JSON file: no network
+    python3 src/checks/bench_pull.py --asks             # your answers on the Your input tab, to the laptop
 
 RUN ONLY BY THE OWNER, ON THE LAPTOP. It reads and writes the bench's
 database with `wrangler d1 execute` (compile_reports.d1_execute's way, the
@@ -45,6 +46,16 @@ the link off on the Links page as well, if it should answer no more.
 WHAT --owner-link DOES. Makes the owner's own link -- the one that opens the
 Links tab, whose answers are hers -- turning off any earlier one, and prints
 its address once: only its SHA-256 is kept.
+
+WHAT --asks DOES (23 November 2026). Reads her answers on the Your input tab
+not pulled yet (ask_answers), appends each once to private/asks/answers.jsonl
+-- made if missing; one line an answer, in the order she gave them, with the
+entry's title and the words of the button she chose (the list's format,
+S/helpers/bench-input/ASKS_FORMAT.md) -- prints them, and only then marks them
+pulled in the database. A line already in the file (its database and id) is
+not appended twice, so a pull that could not mark them can simply be run
+again. It never reads or writes review/checked.jsonl: her answers there are
+notes to the manager, not judgments, and never part of the open data.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -81,6 +92,10 @@ PULL = ("SELECT j.id, j.kind, j.key, j.link, j.verdict, j.fields, j.note, j.hidd
         "j.state, l.name, l.role, i.shown, i.pack, c.hers FROM judgments j JOIN links l ON l.id = j.link "
         "LEFT JOIN items i ON i.kind = j.kind AND i.key = j.key LEFT JOIN calib c ON c.kind = j.kind "
         "AND c.key = j.key AND j.calib = 1 WHERE j.state = 'kept' ORDER BY j.id LIMIT 20000")
+# Her answers on the Your input tab not pulled yet, each with the entry as it was drawn.
+ASKS_PULL = ("SELECT x.id, x.key, x.answer, x.note, x.hidden, x.at, a.card FROM ask_answers x "
+             "LEFT JOIN asks a ON a.key = x.key WHERE x.pulled = 0 ORDER BY x.id LIMIT 5000")
+ASKS_OUT = Path("private") / "asks" / "answers.jsonl"
 
 
 def sql_value(v):
@@ -298,6 +313,79 @@ def find_link(rows, name):
     return hits[0]
 
 
+# ---- her answers on the Your input tab -----------------------------------------------------
+
+def asks_lines(rows, db):
+    """The lines her answers become in answers.jsonl, in the order she gave them: the list's
+    format's line, the entry's title and the words of the button she chose among them."""
+    out = []
+    for r in sorted(rows, key=lambda x: int(x["id"])):
+        try:
+            card = json.loads(r.get("card") or "{}")
+        except ValueError:
+            card = {}
+        offered = card.get("answers") if isinstance(card, dict) and isinstance(card.get("answers"), dict) else {}
+        title = card.get("title") if isinstance(card, dict) else None
+        out.append({"id": int(r["id"]), "key": str(r["key"]), "title": str(title or r["key"]),
+                    "answer": str(r["answer"]), "words": str(offered.get(r["answer"]) or SIDE.get(r["answer"], r["answer"])),
+                    "note": str(r.get("note") or ""), "at": str(r["at"]), "db": db})
+    return out
+
+
+def append_asks(lines, path=None):
+    """Each of `lines` not in answers.jsonl yet, by its database and id, appended in order, the
+    file made where it is not; the lines appended."""
+    path = Path(path) if path else ASKS_OUT
+    have = set()
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(d, dict):
+                have.add((d.get("db"), d.get("id")))
+    new = [d for d in lines if (d["db"], d["id"]) not in have]
+    if new:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8", newline="\n") as fh:
+            for d in new:
+                fh.write(json.dumps(d, ensure_ascii=False) + "\n")
+    return new
+
+
+def pull_asks(a, db):
+    """--asks: her answers not pulled yet, appended to private/asks/answers.jsonl once each,
+    printed, and only then marked pulled; review/checked.jsonl is never read or written."""
+    if a.rows:
+        rows = json.loads(Path(a.rows).read_text(encoding="utf-8"))
+        rows = rows if isinstance(rows, list) else rows.get("results", [])
+    else:
+        rows = wrangler(db, sql=ASKS_PULL)["results"]
+    lines = asks_lines(rows, db)
+    if not lines:
+        print(f"No answer of yours on the Your input tab waits to be pulled from {db}.")
+        return 0
+    new = append_asks(lines)
+    print(f"{len(lines)} answer(s) of yours on the Your input tab, from {db}; "
+          + (f"{len(new)} appended to {ASKS_OUT.as_posix()}" if new else f"each in {ASKS_OUT.as_posix()} already") + ":")
+    for d in lines:
+        print(f"- {d['title']}: {d['words']} ({local_moment(d['at']).replace('T', ' ')[:16]})")
+        for line in d["note"].splitlines():
+            print(f"    {line}")
+    ids = sorted({d["id"] for d in lines})
+    try:
+        for i in range(0, len(ids), 400):
+            wrangler(db, sql="UPDATE ask_answers SET pulled = 1 WHERE pulled = 0 AND id IN ("
+                     + ", ".join(str(int(x)) for x in ids[i:i + 400]) + ");")
+    except (RuntimeError, SystemExit, subprocess.SubprocessError) as e:
+        print(f"They are in {ASKS_OUT.as_posix()} and NOT yet marked pulled in {db} ({e}). Run --asks again: "
+              "it appends none of them twice.")
+        return 1
+    print(f"Marked pulled in {db}.")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description="The shared bench's answers: pull, look, and merge on your word.")
     ap.add_argument("--preview", action="store_true", help="the preview's database instead of production's")
@@ -306,9 +394,15 @@ def main():
     ap.add_argument("--show", metavar="ROW", type=int, help="print one held note's words")
     ap.add_argument("--owner-link", action="store_true", help="make your own link; its address is shown once")
     ap.add_argument("--rows", metavar="FILE", help="answers from a JSON file instead of the database")
+    ap.add_argument("--asks", action="store_true",
+                    help="your answers on the Your input tab: to private/asks/answers.jsonl, then marked pulled")
     a = ap.parse_args()
     which = "preview" if a.preview else "production"
     db = DB[which]
+    if a.asks:
+        if a.approve or a.withdraw or a.show is not None or a.owner_link:
+            raise SystemExit("--asks pulls your answers on the Your input tab alone: run the others on their own")
+        return pull_asks(a, db)
     import review
 
     if a.withdraw:
