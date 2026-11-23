@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.18
+# GRANITE_VERSION: 2026-11-16.19
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -16260,7 +16260,7 @@ def _slowest_reaches_the_job_log(NI):
 
 
 @check("pipeline", "a failed step shows GitHub's log what failed first: preflight's \"What is broken:\" "
-       "block and its [ FAIL ] line, never a check that passed, in no more lines than before",
+       "block and its [ FAIL ] line, never a check that passed, in twelve lines and the last six, as before",
        needs=("nightly",))
 def _failure_lines_lead_with_what_failed(NI):
     """WHAT FAILED FIRST (nightly.failure_lines). The weekly of 23 November
@@ -16270,10 +16270,13 @@ def _failure_lines_lead_with_what_failed(NI):
     short log in that shape, as run() logs a step: fourteen passing lines that
     say refused, a skipped one and an expected failure that do too, one FAIL
     with its words, the summary and the "What is broken:" block. The lines
-    kept open on the block and then the [ FAIL ] line, none is the line of a
-    check that did not fail, and there are no more than twelve and the last
-    six, as before; a step that crashed keeps its Traceback and its last
-    lines, as before, without the passing line above them."""
+    kept open on the block and then the [ FAIL ] line, and none is the line of
+    a check that did not fail. The size is held where it can be passed: a step
+    with no block that says failing on more than twelve lines, its [ERROR ]
+    and [ FAIL ] lines after thirteen others, and ends on seven more, keeps
+    exactly twelve, those two first, and then its last six, as before. A step
+    that crashed keeps its Traceback and its last lines, as before, without
+    the passing line above them."""
     name = "the next election's dates are on every week of the Calendar, each with its law"
     found = "the Calendar's week of 2026-W47 (en): 'By law: RSA 655:14.' does not cite 'RSA 655:14, as amended'"
     out = (["FRONTEND"] + [f"  [  ok  ] a short copy of table {i} is refused, NOT taken" for i in range(14)]
@@ -16289,15 +16292,30 @@ def _failure_lines_lead_with_what_failed(NI):
     assert got[:4] == want, f"GitHub's log would open on {got[:4]}, not on what failed: {want}"
     assert not [ln for ln in got if passed.match(ln)], (
         f"GitHub's log would show a check that did not fail: {[ln for ln in got if passed.match(ln)][:2]}")
-    assert len(got) <= 12 + 6, f"{len(got)} lines kept, more than the twelve and the last six"
+    # The size, on a log that goes past both limits: no block, thirteen lines that say refused
+    # ahead of an [ERROR ] and a [ FAIL ] check, and a Traceback of seven lines after them.
+    long = (["  FRONTEND"] + [f"    the fetch was refused on request {i}" for i in range(13)]
+            + ["    [  ok  ] the fetch that printed them stops when refused", "    [ERROR ] a check that raised",
+               "             OSError: the disk is full", "    [ FAIL ] a check of the rows",
+               "             row 3 is missing", "  Traceback (most recent call last):"]
+            + [f'    File "pf_runner.py", line {950 + i}, in main' for i in range(6)]
+            + ["  MemoryError: out of memory"])
+    got = NI.failure_lines(long)
+    first = ["    [ERROR ] a check that raised", "    [ FAIL ] a check of the rows"] + [
+        f"    the fetch was refused on request {i}" for i in range(10)]
+    assert got[:12] == first, (
+        f"GitHub's log would keep {got[:3]}... first, not the failed checks and ten more: {first[:3]}...")
+    assert got[12:] == long[-6:], (
+        f"{len(got)} lines kept, not twelve and the step's last six: {got[12:14]}... after the twelfth")
     crashed = ["  [  ok  ] a refused key warns", "  Traceback (most recent call last):",
                '    File "x.py", line 1, in <module>', "  OSError: the disk is full"]
     got = NI.failure_lines(crashed)
     assert "  Traceback (most recent call last):" in got and got[-1] == "  OSError: the disk is full" \
         and not [ln for ln in got if passed.match(ln)], f"a step that crashed shows {got}"
     return "ok", ("a failed preflight step's lines in GitHub's log open on \"What is broken:\" and its "
-                  "[ FAIL ] line, with no check that passed, was skipped or failed as expected, in no "
-                  "more than eighteen lines; a crash keeps its Traceback and its last line")
+                  "[ FAIL ] line, with no check that passed, was skipped or failed as expected; a step "
+                  "that says failing on more than twelve lines keeps twelve, its [ERROR ] and [ FAIL ] "
+                  "lines first, and its last six, as before; a crash keeps its Traceback and its last line")
 
 
 @check("build", "a time of day is read as 24 hours or given back as it came, and the build's day is New "
