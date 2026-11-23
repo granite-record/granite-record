@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.17
+# GRANITE_VERSION: 2026-11-16.18
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -639,11 +639,15 @@ _ASK_BROKEN = [
     ("its format", lambda d: d.update(format=2), "field 'format'"),
     ("a field the format has not", lambda d: d.update(extra=1), "field 'extra'"),
     ("its moment", lambda d: d.update(updated="yesterday"), "field 'updated'"),
+    ("its moment ending in a line break", lambda d: d.update(updated="2026-11-23T18:00:00Z\n"), "field 'updated'"),
     ("no sections", lambda d: d.update(sections=[]), "field 'sections'"),
     ("a section's id twice", lambda d: d["sections"].append({"id": "notes", "label": "Again"}), "section 6, field 'id'"),
+    ("a section's id ending in a line break", lambda d: d["sections"][0].update(id="release\n"), "section 1, field 'id'"),
     ("a section's label as markup", lambda d: d["sections"][0].update(label="<b>Release</b>"), "section 1, field 'label'"),
     ("a key", lambda d: d["asks"][0].update(key="Votes_Layout"), "entry 1 (Votes_Layout), field 'key'"),
     ("a key twice", lambda d: d["asks"][1].update(key="votes-layout"), "entry 2 (votes-layout), field 'key'"),
+    # The store refuses a key ending in a line break (store.js ASK_KEY.test), so the pack does.
+    ("a key ending in a line break", lambda d: d["asks"][0].update(key="votes-layout\n"), "entry 1, field 'key'"),
     ("a section no entry may name", lambda d: d["asks"][0].update(section="later"), f"{_ASK_E1}, field 'section'"),
     ("a title empty", lambda d: d["asks"][0].update(title=" "), f"{_ASK_E1}, field 'title'"),
     ("a title of 91", lambda d: d["asks"][0].update(title="x" * 91), f"{_ASK_E1}, field 'title'"),
@@ -685,6 +689,7 @@ _ASK_BROKEN = [
     ("a day that is not", lambda d: d["asks"][0].update(added="2026-02-30"), f"{_ASK_E1}, field 'added'"),
     ("a field an entry has not", lambda d: d["asks"][0].update(recomended="yes"), f"{_ASK_E1}, field 'recomended'"),
     ("a withdrawn key that is no key", lambda d: d.update(withdrawn=["Old key"]), "field 'withdrawn', key 1"),
+    ("a withdrawn key ending in a line break", lambda d: d.update(withdrawn=["an-old-key\n"]), "field 'withdrawn', key 1"),
     ("a key both withdrawn and asked", lambda d: d.update(withdrawn=["map-dots"]), "field 'withdrawn', key 1"),
     ("401 entries", lambda d: d.update(asks=[{**d["asks"][4], "key": f"entry-{i:03d}"} for i in range(401)]),
      "field 'asks'"),
@@ -714,7 +719,8 @@ def _bench_asks_pack(BP):
     on a fixture of the format (S/helpers/bench-input/ASKS_FORMAT.md, format 1). Held: the list
     read, each entry's order its section's place and then the list's, its card the entry with its
     section's label and `what`'s CRLF made a line break; each rule of the format broken once and
-    refused, the refusal naming the entry and the field (_ASK_BROKEN, 44 of them), and 400
+    refused, the refusal naming the entry and the field (_ASK_BROKEN, 48 of them: a key, a
+    withdrawn key, a section's id or the moment ending in a line break among them), and 400
     entries taken; the page's LINK_RULE (workers/bench/page.js) the same text as the pack's, and
     the two engines agreeing on every address of _ASK_URLS (tests/bench/apply_asks.js --rule);
     a pack of items with the list carrying its count in its header beside its keys line, the

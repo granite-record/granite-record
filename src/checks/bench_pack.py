@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 A pack for the shared bench: what its contributors are asked next, as SQL to
 load into its database with one wrangler command.
@@ -455,8 +455,11 @@ def packed_keys(folder):
 
 ASKS_FORMAT = 1
 ASKS_MOST = 400
+# Matched whole (fullmatch), as the store's twin is (store.js ASK_KEY.test): Python's "$" also
+# matches before a final line break, so match() took "nav-rows\n", which the bench then refused.
 ASK_KEY = re.compile(r"^[a-z0-9][a-z0-9-]{2,59}$")
 SECTION_ID = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
+MOMENT = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d(:\d\d(\.\d+)?)?Z$")
 ASK_ANSWERS = ("yes", "no", "unsure")
 ASK_FIELDS = {"key", "section", "title", "what", "where", "question", "answers", "recommended", "added"}
 ASK_SPAN = 1000          # an entry's order: its section's place x 1,000 + its place in the list
@@ -505,8 +508,7 @@ def asks_from(data, name="the list"):
         no(f"field {extra[0]!r}", "is not one the format has")
     if data.get("format") != ASKS_FORMAT:
         no("field 'format'", f"is {data.get('format')!r}, and this reads format {ASKS_FORMAT}")
-    if "updated" in data and not (isinstance(data["updated"], str)
-                                  and re.match(r"^\d{4}-\d\d-\d\dT\d\d:\d\d(:\d\d(\.\d+)?)?Z$", data["updated"])):
+    if "updated" in data and not (isinstance(data["updated"], str) and MOMENT.fullmatch(data["updated"])):
         no("field 'updated'", "is not a moment such as 2026-11-23T18:00:00Z")
     sections = data.get("sections")
     if not isinstance(sections, list) or not sections:
@@ -516,7 +518,7 @@ def asks_from(data, name="the list"):
         at = f"section {i + 1}"
         if not isinstance(s, dict) or set(s) != {"id", "label"}:
             no(at, 'is not {"id", "label"}')
-        if not isinstance(s["id"], str) or not SECTION_ID.match(s["id"]):
+        if not isinstance(s["id"], str) or not SECTION_ID.fullmatch(s["id"]):
             no(f"{at}, field 'id'", "is not 1 to 40 of a-z, 0-9 and -")
         if s["id"] in labels:
             no(f"{at}, field 'id'", f"{s['id']!r} is given to an earlier section too")
@@ -530,13 +532,13 @@ def asks_from(data, name="the list"):
     rows, seen = [], set()
     for i, e in enumerate(asks):
         key = e.get("key") if isinstance(e, dict) else None
-        at = f"entry {i + 1}" + (f" ({key})" if isinstance(key, str) and key else "")
+        at = f"entry {i + 1}" + (f" ({key})" if isinstance(key, str) and key and key.isprintable() else "")
         if not isinstance(e, dict):
             no(at, "is not an object")
         extra = sorted(set(e) - ASK_FIELDS)
         if extra:
             no(f"{at}, field {extra[0]!r}", "is not one an entry has")
-        if not isinstance(key, str) or not ASK_KEY.match(key):
+        if not isinstance(key, str) or not ASK_KEY.fullmatch(key):
             no(f"{at}, field 'key'", "is not 3 to 60 of a-z, 0-9 and -, beginning with a letter or digit")
         if key in seen:
             no(f"{at}, field 'key'", "is an earlier entry's too")
@@ -586,7 +588,7 @@ def asks_from(data, name="the list"):
     gone = []
     for k, key in enumerate(withdrawn):
         at = f"field 'withdrawn', key {k + 1}"
-        if not isinstance(key, str) or not ASK_KEY.match(key):
+        if not isinstance(key, str) or not ASK_KEY.fullmatch(key):
             no(at, f"{key!r} is not a key")
         if key in seen:
             no(at, f"{key!r} is asked in the list as well")
