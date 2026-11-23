@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 What the shared bench's contributors answered: pulled, screened, summed up,
 and -- only on the owner's word -- merged into review/checked.jsonl.
@@ -341,11 +341,12 @@ def asks_lines(rows, db):
 
 def held_answers(path=None):
     """{(db, id): {(key, at)}}: the answers answers.jsonl holds, by their database and id, each
-    with its entry's key and the moment she gave it; a line that does not read is passed over."""
+    with its entry's key and the moment she gave it; a line that does not read is passed over,
+    a torn one ending inside a character among them."""
     path = Path(path) if path else ASKS_OUT
     have = {}
     if path.exists():
-        for line in path.read_text(encoding="utf-8").splitlines():
+        for line in path.read_bytes().decode("utf-8", errors="replace").splitlines():
             try:
                 d = json.loads(line)
             except ValueError:
@@ -366,15 +367,32 @@ def clashes(lines, have):
     return [d for d in lines if (d["db"], d["id"]) in have and not in_file(d, have)]
 
 
+def ends_torn(path):
+    """Whether the file's last line has no line break after it: a write cut off mid-line."""
+    try:
+        with open(path, "rb") as fh:
+            if not fh.seek(0, 2):
+                return False
+            fh.seek(-1, 2)
+            return fh.read(1) != b"\n"
+    except FileNotFoundError:
+        return False
+
+
 def append_asks(lines, path=None):
     """Each of `lines` the file does not hold yet (in_file) appended in order, the file made
-    where it is not; the lines appended."""
+    where it is not; the lines appended. A TORN LAST LINE (a pull killed, or a disk full,
+    mid-line) is ended first, so the next answer starts a line of its own: glued to the
+    fragment, it would read as no answer at all."""
     path = Path(path) if path else ASKS_OUT
     have = held_answers(path)
     new = [d for d in lines if not in_file(d, have)]
     if new:
         path.parent.mkdir(parents=True, exist_ok=True)
+        torn = ends_torn(path)
         with path.open("a", encoding="utf-8", newline="\n") as fh:
+            if torn:
+                fh.write("\n")
             for d in new:
                 fh.write(json.dumps(d, ensure_ascii=False) + "\n")
     return new

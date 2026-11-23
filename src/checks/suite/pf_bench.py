@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -1066,8 +1066,9 @@ def _bench_asks_pull(PL, BP):
     preview's appending its own; --rows a look, appending and marking nothing and asking no
     database, the statement it would send printed; an id the file holds for another answer
     (the database's answers numbered again) stopping the pull with nothing written or marked;
-    an answer the file does not hold after appending left unmarked; a database that will not
-    mark them saying so, the lines kept; a note with an emoji printed to a cp1252 console and
+    an answer the file does not hold after appending left unmarked; a torn last line (cut off
+    inside a character) ended first, each answer after it a line that reads, all marked; a
+    database that will not mark them saying so, the lines kept; a note with an emoji printed to a cp1252 console and
     marked pulled after it; nothing to pull saying that; and --asks beside --approve refused."""
     import contextlib
     import copy
@@ -1108,7 +1109,7 @@ def _bench_asks_pull(PL, BP):
         # wrangler, stood in for: ASKS_PULL answered with the rows the store kept (served[0]), and
         # every statement kept with what answers.jsonl held when it was sent.
         def fake(db, sql=None, file=None):
-            held = out_file.read_text(encoding="utf-8").splitlines() if out_file.is_file() else []
+            held = out_file.read_bytes().decode("utf-8", "replace").splitlines() if out_file.is_file() else []
             calls.append((db, sql, file, len(held)))
             if sql == PL.ASKS_PULL:
                 return {"results": copy.deepcopy(served[0])}
@@ -1178,6 +1179,19 @@ def _bench_asks_pull(PL, BP):
         short = "UPDATE ask_answers SET pulled = 1 WHERE pulled = 0 AND id IN (" + ", ".join(map(str, ids[:-1])) + ");"
         assert code == 1 and calls[-1][1] == short and f"id {ids[-1]}" in said and "NOT marked" in said, (
             code, said, calls[-1])
+        # A torn last line (a pull cut off mid-line, and mid-character): ended first, so each
+        # answer appended after it is a line of its own that reads, and all four are marked.
+        out_file.write_bytes(out_file.read_bytes().splitlines(keepends=True)[0]
+                             + b'{"id": 99, "key": "map-dots", "note": "caf\xc3')
+        code, said = run("--asks")
+        kept = out_file.read_bytes().decode("utf-8", "replace").splitlines()
+        read = []
+        for x in kept:
+            try:
+                read.append(json.loads(x)["id"])
+            except ValueError:
+                pass
+        assert code == 0 and len(kept) == 5 and read == ids and calls[-1][1] == mark, (code, said, kept, calls[-1])
         fail.append(1)
         out_file.unlink()
         code, said = run("--asks")
