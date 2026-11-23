@@ -14,8 +14,8 @@ a route, as `workers/follow/`'s does.
 - `schema.sql` -- the tables, and what each column keeps.
 - `store.js` -- every database call: a link found by its token's hash, an
   item claimed in one statement and held, an answer kept with its item marked
-  judged in one batch, undo, the daily cap, calibration, how far along, and
-  the owner's Links page.
+  judged in one batch, undo, the daily cap, calibration, how far along, the
+  owner's Links page, and her Your input list.
 - `common.js` -- the switch, the address and origin rules, reading a body,
   answering (the page's own rules for scripts and frames among them) and the
   log, which is a code and a count and nothing else.
@@ -100,6 +100,31 @@ link's answers to `review/checked.jsonl` through `review.record`, as
 `"by": "link:<id>"` (hers as `"hand"`), each once, and marks them merged;
 only production's. `--withdraw <id>` is one appended line every reader
 honours. `--owner-link` makes her own link, shown once.
+
+## Your input
+
+The owner's own tab (23 November 2026), beside Judge and Links and shown to
+her link alone: what waits on her word -- a change in the update waiting
+for her, a design waiting for her choice, a decision, a step only she can
+take -- grouped by section, with the number waiting beside the tab's name.
+An entry shows what it is, where to look, the question and the entry's own
+answers; she chooses one, adds a note of up to 2,000 characters if she
+likes, and saves. Her latest answer is shown, and every one is kept. A
+contributor's link sees no tab, is told nothing of the list, and is answered
+404 by `/api/bench/asks`.
+
+The list is the manager's, kept in `private/asks/asks.json` (never in the
+repository), and is loaded by a pack:
+
+    python3 src/checks/bench_pack.py --asks private/asks/asks.json --only-asks --preview
+
+which refuses a list that breaks a rule of its format, naming the entry and
+the field, and otherwise writes the list's two tables where a database lacks
+them, each entry (a revised one keeps its key and her answers) and each
+withdrawal; she runs the wrangler command it prints. `--asks` beside a draw
+puts the list in that pack instead. Two tables of their own, `asks` and
+`ask_answers`, keep the list and her answers: nothing else here reads them,
+and her notes never reach `review/checked.jsonl` or the open data.
 
 ## The database
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.10
+# GRANITE_VERSION: 2026-11-16.11
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -557,6 +557,282 @@ def _bench_pack_grows(BP, BL, RV):
                   f"drawing only what they name; two packs from main() in a tree with no review/, the second "
                   f"numbered from {BP.PACK_BASE:,} and served after the first, group by group "
                   f"({sum(len(v) for v in served.values())} items); --refresh wrote the one pool drawn into --pools")
+
+
+# ---- the owner's list: her Your input tab ----------------------------------------------
+
+def _asks_fixture():
+    """A list in its format (format 1): five sections, entries in an order that is not the
+    sections', one with three links, one with a single answer, a tab and a CRLF in `what`, and a
+    withdrawn key."""
+    return {"format": 1, "updated": "2026-11-23T18:00:00Z",
+            "sections": [{"id": "release", "label": "In the update waiting for your word"},
+                         {"id": "design", "label": "Designs waiting for your choice"},
+                         {"id": "decision", "label": "Decisions"},
+                         {"id": "yours", "label": "Steps only you can take"},
+                         {"id": "notes", "label": "Anything else"}],
+            "asks": [
+                {"key": "votes-layout", "section": "design", "title": "The votes search: which layout?",
+                 "what": "Two layouts.\r\n\r\nA keeps the filters on the left;\tB puts them on top.",
+                 "where": [{"label": "The two layouts", "url": "https://claude.ai/artifact/Nz3CTJA3nsPhKry2pwms4j"}],
+                 "question": "Go with layout A?", "answers": {"yes": "Go with A", "no": "Something else",
+                                                              "unsure": "Let’s discuss"},
+                 "recommended": "yes", "added": "2026-11-22"},
+                {"key": "nav-section-rows", "section": "release",
+                 "title": "Navigation: each section's pages in a second row",
+                 "what": "Each section's pages now sit in a second row.\n\nOn a phone the row scrolls.",
+                 "where": [{"label": "The home page on the preview", "url": "https://dry-run.graniterecord.pages.dev/"},
+                           {"label": "A bill on the preview",
+                            "url": "https://dry-run.graniterecord.pages.dev/bill/2026/hb1#votes"},
+                           {"label": "The site as it is", "url": "https://graniterecord.org/"}],
+                 "question": "Does the new navigation read right on a computer and on a phone?",
+                 "answers": {"yes": "Looks right", "no": "Needs changes", "unsure": "Let’s discuss"},
+                 "recommended": "yes", "added": "2026-11-23"},
+                {"key": "map-dots", "section": "release", "title": "Map dots", "question": "Do the dots read right?",
+                 "answers": {"yes": "Looks right", "no": "Needs changes"}, "recommended": None, "added": "2026-11-23"},
+                {"key": "run-pack", "section": "yours", "title": "Load the list on the preview",
+                 "what": "At the cmd prompt:\npython3 src/checks/bench_pack.py --asks private/asks/asks.json --only-asks",
+                 "question": "Done?", "answers": {"yes": "Done", "no": "Not yet"}, "added": "2026-11-23"},
+                {"key": "anything-else", "section": "notes", "title": "Anything else",
+                 "question": "Anything the list has missed?", "answers": {"yes": "Save the note"}, "added": "2026-11-23"}],
+            "withdrawn": ["an-old-key"]}
+
+
+_ASK_E1 = "entry 1 (votes-layout)"
+
+
+def _ask_link(url, label="A link"):
+    return lambda d: d["asks"][0].update(where=[{"label": label, "url": url}])
+
+
+# Each rule of the list's format broken once: (what is broken, how, where the refusal must say it is).
+_ASK_BROKEN = [
+    ("its format", lambda d: d.update(format=2), "field 'format'"),
+    ("a field the format has not", lambda d: d.update(extra=1), "field 'extra'"),
+    ("its moment", lambda d: d.update(updated="yesterday"), "field 'updated'"),
+    ("no sections", lambda d: d.update(sections=[]), "field 'sections'"),
+    ("a section's id twice", lambda d: d["sections"].append({"id": "notes", "label": "Again"}), "section 6, field 'id'"),
+    ("a section's label as markup", lambda d: d["sections"][0].update(label="<b>Release</b>"), "section 1, field 'label'"),
+    ("a key", lambda d: d["asks"][0].update(key="Votes_Layout"), "entry 1 (Votes_Layout), field 'key'"),
+    ("a key twice", lambda d: d["asks"][1].update(key="votes-layout"), "entry 2 (votes-layout), field 'key'"),
+    ("a section no entry may name", lambda d: d["asks"][0].update(section="later"), f"{_ASK_E1}, field 'section'"),
+    ("a title empty", lambda d: d["asks"][0].update(title=" "), f"{_ASK_E1}, field 'title'"),
+    ("a title of 91", lambda d: d["asks"][0].update(title="x" * 91), f"{_ASK_E1}, field 'title'"),
+    ("a title of HTML", lambda d: d["asks"][0].update(title="<img src=x onerror=alert(1)>"), f"{_ASK_E1}, field 'title'"),
+    ("a title of two lines", lambda d: d["asks"][0].update(title="one\ntwo"), f"{_ASK_E1}, field 'title'"),
+    ("what of 1,501", lambda d: d["asks"][0].update(what="x" * 1501), f"{_ASK_E1}, field 'what'"),
+    ("what in bold", lambda d: d["asks"][0].update(what="It is **bold**."), f"{_ASK_E1}, field 'what'"),
+    ("what with a Markdown link", lambda d: d["asks"][0].update(what="See [this](https://claude.ai/x)."),
+     f"{_ASK_E1}, field 'what'"),
+    ("what with a heading", lambda d: d["asks"][0].update(what="Intro\n# Heading"), f"{_ASK_E1}, field 'what'"),
+    ("what with code", lambda d: d["asks"][0].update(what="Run `this`."), f"{_ASK_E1}, field 'what'"),
+    ("what with an entity", lambda d: d["asks"][0].update(what="a &amp; b"), f"{_ASK_E1}, field 'what'"),
+    ("what with a control character", lambda d: d["asks"][0].update(what="a\x07b"), f"{_ASK_E1}, field 'what'"),
+    ("a question empty", lambda d: d["asks"][0].update(question=""), f"{_ASK_E1}, field 'question'"),
+    ("a question of 201", lambda d: d["asks"][0].update(question="x" * 201), f"{_ASK_E1}, field 'question'"),
+    ("seven links", lambda d: d["asks"][0].update(where=[{"label": "x", "url": "https://claude.ai/"}] * 7),
+     f"{_ASK_E1}, field 'where'"),
+    ("a link with no label", _ask_link("https://claude.ai/", ""), f"{_ASK_E1}, field 'where', link 1, its label"),
+    ("a link's label of 61", _ask_link("https://claude.ai/", "x" * 61), f"{_ASK_E1}, field 'where', link 1, its label"),
+    ("http", _ask_link("http://graniterecord.org/"), f"{_ASK_E1}, field 'where', link 1, its url"),
+    ("javascript:", _ask_link("javascript:alert(1)"), f"{_ASK_E1}, field 'where', link 1, its url"),
+    ("data:", _ask_link("data:text/html,x"), f"{_ASK_E1}, field 'where', link 1, its url"),
+    ("another host", _ask_link("https://example.org/"), f"{_ASK_E1}, field 'where', link 1, its url"),
+    ("a host ending as ours", _ask_link("https://graniterecord.org.example.org/"),
+     f"{_ASK_E1}, field 'where', link 1, its url"),
+    ("user:password@", _ask_link("https://user:pw@claude.ai/"), f"{_ASK_E1}, field 'where', link 1, its url"),
+    ("a port", _ask_link("https://claude.ai:8443/"), f"{_ASK_E1}, field 'where', link 1, its url"),
+    ("pages.dev, not a subdomain of it", _ask_link("https://graniterecord.pages.dev/"),
+     f"{_ASK_E1}, field 'where', link 1, its url"),
+    ("no answers", lambda d: d["asks"][0].update(answers={}), f"{_ASK_E1}, field 'answers'"),
+    ("an answer the format has not", lambda d: d["asks"][0].update(answers={"partly": "Partly"}),
+     f"{_ASK_E1}, field 'answers'"),
+    ("an answer's words of 33", lambda d: d["asks"][0].update(answers={"yes": "x" * 33}),
+     f"{_ASK_E1}, field 'answers', yes"),
+    ("an answer with no words", lambda d: d["asks"][0].update(answers={"yes": ""}), f"{_ASK_E1}, field 'answers', yes"),
+    ("a recommendation it does not offer", lambda d: d["asks"][2].update(recommended="unsure"),
+     "entry 3 (map-dots), field 'recommended'"),
+    ("a day in words", lambda d: d["asks"][0].update(added="23 November 2026"), f"{_ASK_E1}, field 'added'"),
+    ("a day that is not", lambda d: d["asks"][0].update(added="2026-02-30"), f"{_ASK_E1}, field 'added'"),
+    ("a field an entry has not", lambda d: d["asks"][0].update(recomended="yes"), f"{_ASK_E1}, field 'recomended'"),
+    ("a withdrawn key that is no key", lambda d: d.update(withdrawn=["Old key"]), "field 'withdrawn', key 1"),
+    ("a key both withdrawn and asked", lambda d: d.update(withdrawn=["map-dots"]), "field 'withdrawn', key 1"),
+    ("401 entries", lambda d: d.update(asks=[{**d["asks"][4], "key": f"entry-{i:03d}"} for i in range(401)]),
+     "field 'asks'"),
+]
+
+# Addresses for the link rule's two halves: (address, whether the format takes it).
+_ASK_URLS = [
+    ("https://graniterecord.org", True), ("https://graniterecord.org/", True),
+    ("https://graniterecord.org/bill/2026/hb1?x=1#votes", True), ("https://dry-run.graniterecord.pages.dev/", True),
+    ("https://a.b-c.graniterecord.pages.dev/x", True), ("https://claude.ai/artifact/Nz3CTJA3nsPhKry2pwms4j", True),
+    ("http://graniterecord.org/", False), ("https://graniterecord.pages.dev/", False), ("https://claude.ai:443/", False),
+    ("https://user:pw@claude.ai/", False), ("https://claude.ai.example.org/", False), ("https://Claude.ai/", False),
+    ("https://www.graniterecord.org/", False), ("https://-x.graniterecord.pages.dev/", False),
+    ("javascript:alert(1)", False), ("data:text/html,x", False), ("//claude.ai/", False), ("https://claude.ai/ x", False),
+    ("https://claude.ai/\"><b>", False), ("https://claude.ai\\@example.org/", False), ("https://claude.ai/\n", False),
+    (" https://claude.ai/", False), ("https://claude.ai?x", False),
+]
+
+
+@check("build", "the owner's list for her Your input tab: every rule of its format refused once, naming the "
+                "entry and the field; the page's link rule is the pack's; and the packs that carry it load into "
+                "a database made before its tables, a revised entry keeping her answers and a withdrawn one hidden",
+       needs=("bench_pack",))
+def _bench_asks_pack(BP):
+    """THE OWNER'S LIST (the owner, 23 November 2026: "a separate category for me giving feedback
+    on new features or visual changes that need my input"), bench_pack.py --asks and --only-asks,
+    on a fixture of the format (S/helpers/bench-input/ASKS_FORMAT.md, format 1). Held: the list
+    read, each entry's order its section's place and then the list's, its card the entry with its
+    section's label and `what`'s CRLF made a line break; each rule of the format broken once and
+    refused, the refusal naming the entry and the field (_ASK_BROKEN, 44 of them), and 400
+    entries taken; the page's LINK_RULE (workers/bench/page.js) the same text as the pack's, and
+    the two engines agreeing on every address of _ASK_URLS (tests/bench/apply_asks.js --rule);
+    a pack of items with the list carrying its count in its header beside its keys line, the
+    schema's two CREATE TABLE statements and then the entries; a pack of the list alone with no
+    keys line, so no later pack of items counts it; the three loaded one after another in node
+    into a database made before the list's tables, as the owner loads them, with her answers
+    between them: the list served in order, a revised entry's new words with her answers kept,
+    a withdrawn one hidden and asked again open, the tables made with the schema's columns, and
+    every answer kept; and main() --only-asks in an empty folder, reading no pools, ledger or
+    data, and refusing a broken list or no list."""
+    import contextlib
+    import copy
+    import os
+    base = _asks_fixture()
+    got = BP.asks_from(copy.deepcopy(base), "asks.json")
+    assert [(r["key"], r["ord"]) for r in got["rows"]] == [
+        ("votes-layout", 1000), ("nav-section-rows", 1), ("map-dots", 2), ("run-pack", 3003),
+        ("anything-else", 4004)], got["rows"]
+    first = got["rows"][0]["card"]
+    assert first == {"section": "Designs waiting for your choice", "title": "The votes search: which layout?",
+                     "what": "Two layouts.\n\nA keeps the filters on the left;\tB puts them on top.",
+                     "where": base["asks"][0]["where"], "question": "Go with layout A?",
+                     "answers": base["asks"][0]["answers"], "recommended": "yes", "added": "2026-11-22"}, first
+    assert got["withdrawn"] == ["an-old-key"] and len(got["sections"]) == 5
+    bare = copy.deepcopy(base)
+    for k in ("updated", "withdrawn"):
+        bare.pop(k)
+    assert BP.asks_from(bare)["withdrawn"] == []
+    assert len(BP.asks_from({**copy.deepcopy(base), "asks": [{**base["asks"][4], "key": f"entry-{i:03d}"}
+                                                              for i in range(400)]})["rows"]) == 400
+    for what, how, where in _ASK_BROKEN:
+        d = copy.deepcopy(base)
+        how(d)
+        try:
+            BP.asks_from(d, "asks.json")
+        except SystemExit as e:
+            assert str(e).startswith(f"asks.json: {where}: "), (what, str(e))
+        else:
+            raise AssertionError(f"a list with {what} was taken")
+    page = _source(_paths.ROOT / "workers" / "bench" / "page.js")
+    m = re.search(r"export const LINK_RULE = String\.raw`([^`]*)`;", page)
+    assert m and m.group(1) == BP.LINK_RULE, "the page's link rule is not the pack's: change both, in one commit"
+    py = [bool(BP.LINK.fullmatch(u)) for u, _ok in _ASK_URLS]
+    assert py == [ok for _u, ok in _ASK_URLS], [u for (u, ok), p in zip(_ASK_URLS, py) if ok != p]
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    tmp = Path(tempfile.mkdtemp(prefix="gr-asks-"))
+    here = os.getcwd()
+    saved = sys.argv[:]
+    try:
+        revised = copy.deepcopy(base)
+        revised["asks"][1]["title"] = "Navigation: a second row for each section"
+        revised["asks"][2:3] = [{"key": "new-one", "section": "decision", "title": "A new question",
+                                 "question": "Yes or no?", "answers": {"yes": "Yes", "no": "No"}, "added": "2026-11-24"}]
+        revised["withdrawn"] = ["an-old-key", "map-dots"]
+        again = copy.deepcopy(base)
+        again["withdrawn"] = []
+        pools, ledger, info = _grow_fixture()
+        pack = BP.draw(pools, ledger, info, (), seed=7, groups=1, as_of="2026-11-23T10:00:00Z")
+        p1, p2, p3 = tmp / "2026-11-23.sql", tmp / "2026-11-23-asks.sql", tmp / "2026-11-24-asks.sql"
+        p1.write_text(BP.to_sql(pack, p1.stem, "graniterecord-bench-preview", p1, 7, "a fixture", got), encoding="utf-8")
+        p2.write_text(BP.asks_only_sql(BP.asks_from(revised), p2.stem, "graniterecord-bench-preview", p2,
+                                       "2026-11-23T19:00:00Z", "asks.json"), encoding="utf-8")
+        p3.write_text(BP.asks_only_sql(BP.asks_from(again), p3.stem, "graniterecord-bench-preview", p3,
+                                       "2026-11-24T19:00:00Z", "asks.json"), encoding="utf-8")
+        head1 = p1.read_text(encoding="utf-8").splitlines()[:12]
+        head2 = p2.read_text(encoding="utf-8").splitlines()[:12]
+        assert "-- 5 asks for the owner's Your input tab, and 1 withdrawn." in head1 and \
+            any(x.startswith("-- keys: ") for x in head1), head1
+        assert "-- 5 asks for the owner's Your input tab, and 2 withdrawn." in head2 and \
+            not any(x.startswith("-- keys: ") for x in head2), head2
+        assert [p for p, _k in BP.pack_files(tmp)] == [p1], "a pack of the list alone counts as a pack of items"
+        sql1 = p1.read_text(encoding="utf-8")
+        assert sql1.count("CREATE TABLE IF NOT EXISTS") == 2 and \
+            sql1.index("CREATE TABLE IF NOT EXISTS asks") > sql1.rindex("INSERT OR IGNORE INTO items") and \
+            sql1.index("CREATE TABLE IF NOT EXISTS ask_answers") < sql1.index("INSERT INTO asks"), (
+                "the list's tables are not made before its entries, after the pack's items")
+        assert "-- 0 asks for the owner's Your input tab: her list is left as it is." in \
+            BP.to_sql(pack, "x", "db", p1, 7, "").splitlines()[:12], "a pack without the list says nothing of it"
+        cases = tmp / "cases.json"
+        cases.write_text(json.dumps([u for u, _ok in _ASK_URLS]), encoding="utf-8")
+        answers = tmp / "answers.json"
+        answers.write_text(json.dumps([[0, "nav-section-rows", "no", "It wraps."], [0, "map-dots", "yes", ""],
+                                       [1, "nav-section-rows", "yes", "Fine now."]]), encoding="utf-8")
+
+        # main(), in a folder holding the list and nothing else: no pools, no ledger, no data.
+        (tmp / "run").mkdir()
+        (tmp / "run" / "list.json").write_text(json.dumps(base), encoding="utf-8")
+        os.chdir(tmp / "run")
+
+        def run(*args):
+            sys.argv = ["bench_pack.py", "--preview", "--out", "packs", *args]
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    code = BP.main()
+                except SystemExit as e:
+                    code = str(e)
+            return code, out.getvalue()
+
+        code, said = run("--asks", "list.json", "--only-asks")
+        made = sorted(p.name for p in (tmp / "run" / "packs").glob("*.sql"))
+        assert code == 0 and len(made) == 1 and made[0].endswith("-asks.sql") and "5 asks" in said, (code, said, made)
+        assert BP.pack_files("packs") == [] and sorted(p.name for p in (tmp / "run").iterdir()) == ["list.json", "packs"], (
+            "a pack of the list alone read or wrote something but the list and its pack")
+        bad = copy.deepcopy(base)
+        bad["asks"][1]["where"][0]["url"] = "http://graniterecord.org/"
+        (tmp / "run" / "bad.json").write_text(json.dumps(bad), encoding="utf-8")
+        for args, words in ((("--asks", "bad.json", "--only-asks"), "bad.json: entry 2 (nav-section-rows), field 'where'"),
+                            (("--only-asks",), "--asks FILE"), (("--asks", "none.json", "--only-asks"), "no such file")):
+            code, _said = run(*args)
+            assert isinstance(code, str) and words in code, (args, code)
+        assert len(list((tmp / "run" / "packs").glob("*.sql"))) == 1, "a refused list wrote a pack"
+        if not node:
+            return "skip", "node is not on PATH: the list was read and written, and not served"
+        rule = _run([node, "--disable-warning=ExperimentalWarning", str(_paths.ROOT / "tests/bench/apply_asks.js"),
+                     "--rule", str(cases)], capture_output=True, text=True, timeout=120)
+        assert rule.returncode == 0, (rule.stdout + rule.stderr)[-600:]
+        js = json.loads(rule.stdout.strip().splitlines()[-1])
+        r = _run([node, "--disable-warning=ExperimentalWarning", str(_paths.ROOT / "tests/bench/apply_asks.js"),
+                  str(answers), str(p1), str(p2), str(p3)], capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
+        served = json.loads(r.stdout.strip().splitlines()[-1])
+    finally:
+        os.chdir(here)
+        sys.argv = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert js == py, [u for (u, _ok), a, b in zip(_ASK_URLS, js, py) if a != b]
+    assert "asks" not in served["before"] and "ask_answers" not in served["before"], served["before"]
+    s1, s2, s3 = served["steps"]
+    assert [x["key"] for x in s1["list"]] == ["nav-section-rows", "map-dots", "votes-layout", "run-pack",
+                                              "anything-else"] and s1["waiting"] == 3 and \
+        all(x["ok"] for x in s1["said"]) and s1["list"][2]["section"] == "Designs waiting for your choice", s1
+    assert [x["key"] for x in s2["list"]] == ["nav-section-rows", "votes-layout", "new-one", "run-pack",
+                                              "anything-else"], s2
+    nav = s2["list"][0]
+    assert nav["title"] == "Navigation: a second row for each section" and nav["answer"] == "yes" and \
+        nav["note"] == "Fine now.", nav
+    back = next(x for x in s3["list"] if x["key"] == "map-dots")
+    assert back["answer"] == "yes" and s3["list"][0]["title"] == base["asks"][1]["title"], s3
+    assert served["columns"] == {t: BENCH_COLUMNS[t] for t in ("asks", "ask_answers")}, served["columns"]
+    assert served["answers"] == [["nav-section-rows", "no", "It wraps."], ["map-dots", "yes", ""],
+                                 ["nav-section-rows", "yes", "Fine now."]] and served["items"] == len(pack["items"]), served
+    return "ok", (f"{len(_ASK_BROKEN)} broken lists refused, each naming its entry and field, and 400 entries taken; "
+                  f"the page's link rule the pack's, the two agreeing on {len(_ASK_URLS)} addresses; three packs "
+                  "loaded into a database made before the list's tables, in order, a revised entry keeping her "
+                  "answers and a withdrawn one hidden, then asked again; --only-asks read nothing but the list")
 
 
 # ---- the merge ----------------------------------------------------------------------
