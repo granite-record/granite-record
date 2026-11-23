@@ -78,6 +78,10 @@ owner's own judgments for calibration. It writes
 `reports/bench/packs/<preview|production>/<date>.sql` and prints the one
 wrangler command that loads it; the owner runs that.
 
+A later pack is served after every earlier one: its items and groups are
+numbered from a million times the packs already in that folder (`ord`), and
+calibration keeps its own order.
+
 ## What was answered: the merge
 
 `python3 src/checks/bench_pull.py` (the owner's, on the laptop) pulls every

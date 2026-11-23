@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.3
 """
 A pack for the shared bench: what its contributors are asked next, as SQL to
 load into its database with one wrangler command.
@@ -39,6 +39,14 @@ WHAT A PACK HOLDS (the design of 17 November 2026, approved):
   earlier pack for the same database holds (read off their "-- keys:"
   lines), so nothing is asked twice.
 
+  A LATER PACK FOLLOWS THE EARLIER ONES (23 November 2026). The bench serves
+  an item by its order (store.js claimOne, ORDER BY ord), and every pack
+  numbered its own from 0, so a second pack's items came between the first's.
+  Now each item's and group's order starts from PACK_BASE times the number of
+  earlier packs for that database (the folder's packs, read as packed_keys
+  reads them), so a new pack is served after everything loaded before it,
+  group by group. A calibration item's order is its own, as before.
+
   CALIBRATION: every item the owner judged herself that a contributor's card
   can show (a timing graded against a published time, a placed topic, a
   tag's single-bill sample), with which way she went, built from what she
@@ -76,6 +84,11 @@ SEED = 20261117
 PER = {"timing": 50, "topic": 50, "tag": 30}
 QUEUES = {"timing": "Hearing times", "topic": "Topics", "tag": "Tags"}
 ORDER = ["timing", "topic", "tag"]
+# A pack's items are numbered from this times the earlier packs for its database, so a
+# later pack is served after every earlier one; within a pack, a group's items from
+# 1,000 times its place among its queue's groups.
+PACK_BASE = 1_000_000
+GROUP_SPAN = 1000
 # The ledger's kinds each queue's keys are judged under.
 JUDGED_AS = {"timing": ("timestamp", "older", "late"), "topic": ("topic",), "tag": ("tag",)}
 CLAIMS = {"yes": "correct", "no": "wrong", "unsure": "unsure"}
@@ -171,14 +184,16 @@ def _sample(rng_key, candidates, n):
     return random.Random(rng_key).sample(pop, min(n, len(pop)))
 
 
-def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of=""):
+def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of="", base=0):
     """The pack, as rows: {"queues", "groups", "items", "calib", "elsewhere", "keys"}.
 
-    pools   {"timestamp": [...], "topic": [...], "tag": [...]}, review.py's items
-    ledger  the ledger's lines (bench_ledger.read)
-    info    title(term, bill) and analysis(term, bill), each "" when unknown,
-            and options() the better topic's list
-    packed  ("kind\\tkey") of earlier packs for the same database
+    pools      {"timestamp": [...], "topic": [...], "tag": [...]}, review.py's items
+    ledger     the ledger's lines (bench_ledger.read)
+    info       title(term, bill) and analysis(term, bill), each "" when unknown,
+               and options() the better topic's list
+    packed     ("kind\\tkey") of earlier packs for the same database
+    base       where the pack's items and groups are numbered from: PACK_BASE
+               times the earlier packs for its database (pack_files)
     """
     per = {**PER, **(per or {})}
     lines = BL.judgments(ledger)
@@ -238,10 +253,13 @@ def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of=""
 
     for q in ORDER:
         for gi, (grp, label, rows) in enumerate(plans[q]):
-            out["groups"].append({"grp": grp, "queue": q, "label": label, "ord": gi})
+            if len(rows) > GROUP_SPAN or (gi + 1) * GROUP_SPAN > PACK_BASE:
+                raise SystemExit(f"{QUEUES[q]}: {len(plans[q])} groups of up to {len(rows)} items do not fit "
+                                 f"one pack's numbering ({PACK_BASE:,} places, {GROUP_SPAN:,} a group)")
+            out["groups"].append({"grp": grp, "queue": q, "label": label, "ord": base + gi})
             for i, (kind, it, card) in enumerate(rows):
                 out["items"].append({"kind": kind, "key": it["key"], "queue": q, "grp": grp,
-                                     "ord": gi * 1000 + i, "card": card, "shown": it})
+                                     "ord": base + gi * GROUP_SPAN + i, "card": card, "shown": it})
                 out["keys"].append(f"{kind}\t{it['key']}")
 
     # CALIBRATION: what the owner judged and a contributor's card can show.
@@ -334,14 +352,21 @@ def to_sql(pack, name, db, path, seed, sources):
     return "\n".join(out) + "\n"
 
 
+def pack_files(folder):
+    """[(path, keys)] of every earlier pack in `folder`, in the order of their names: each
+    .sql file whose first lines carry its "-- keys:" line, with the "kind\\tkey" it holds."""
+    out = []
+    for p in sorted(Path(folder).glob("*.sql")):
+        keys = [json.loads(line[len("-- keys: "):]) for line in p.read_text(encoding="utf-8").splitlines()[:12]
+                if line.startswith("-- keys: ")]
+        if keys:
+            out.append((p, [k for ks in keys for k in ks]))
+    return out
+
+
 def packed_keys(folder):
     """("kind\\tkey") of every earlier pack in `folder`, read off its "-- keys:" line."""
-    keys = set()
-    for p in sorted(Path(folder).glob("*.sql")):
-        for line in p.read_text(encoding="utf-8").splitlines()[:12]:
-            if line.startswith("-- keys: "):
-                keys.update(json.loads(line[len("-- keys: "):]))
-    return keys
+    return {k for _p, keys in pack_files(folder) for k in keys}
 
 
 # ---- the data on disk ----------------------------------------------------------------
@@ -415,8 +440,12 @@ def main():
     db = DB[which]
     folder = Path(a.out) if a.out else OUT / which
     pools = {k: read_pool(k, a.refresh) for k in ("timestamp", "topic", "tag")}
+    ledger = BL.read(BL.LEDGER)
+    earlier = pack_files(folder) if folder.is_dir() else []
+    base = len(earlier) * PACK_BASE
     as_of = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    pack = draw(pools, BL.read(BL.LEDGER), Info("."), packed_keys(folder), a.seed, a.groups, as_of=as_of)
+    pack = draw(pools, ledger, Info("."), {k for _p, keys in earlier for k in keys}, a.seed, a.groups,
+                as_of=as_of, base=base)
     folder.mkdir(parents=True, exist_ok=True)
     day = as_of[:10]
     path = folder / f"{day}.sql"
@@ -425,9 +454,11 @@ def main():
         path = folder / f"{day}-{n}.sql"
         n += 1
     sources = ", ".join(f"review/.pool-{k}.json ({len(v):,})" for k, v in pools.items()) + \
-        f", the ledger ({len(BL.read(BL.LEDGER)):,} lines)"
+        f", the ledger ({len(ledger):,} lines)"
     path.write_text(to_sql(pack, path.stem, db, path, a.seed, sources), encoding="utf-8", newline="\n")
     print(f"{path.as_posix()}: {len(pack['items'])} items for {db}")
+    print(f"  served after the items of the {len(earlier)} earlier pack(s) in {folder.as_posix()}"
+          if earlier else f"  the first pack in {folder.as_posix()}")
     for r in pack["groups"]:
         n = sum(1 for x in pack["items"] if x["grp"] == r["grp"])
         print(f"  {QUEUES[r['queue']]:14} {r['label']:40} {n:3}")
