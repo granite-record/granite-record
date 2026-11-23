@@ -495,7 +495,10 @@ $("card").addEventListener("touchend",function(e){if(sx===null)return;var dx=e.c
 if(Math.abs(dx)>SWIPE&&Math.abs(dx)>2*Math.abs(dy))answer(dx>0?"yes":"no");},{passive:true});
 // The open page keeps what it holds: every two minutes, and when it is looked at again.
 setInterval(function(){if(S.item&&!document.hidden)api("/api/bench/hold",{});},HOLD_EVERY);
-document.addEventListener("visibilitychange",function(){if(!document.hidden&&S.item)api("/api/bench/hold",{});});
+// And her list is read again when she comes back to it (an entry open aside, which the list
+// would be drawn over), so a list loaded since, or an entry withdrawn, is the one she sees.
+document.addEventListener("visibilitychange",function(){if(document.hidden)return;if(S.item)api("/api/bench/hold",{});
+if(S.tab==="input"&&!S.ask&&S.view&&S.view.role==="owner")asksList();});
 // Another link opened in this tab changes only what follows "#", which loads nothing: read it afresh.
 window.addEventListener("hashchange",function(){if(location.hash)location.reload();});
 

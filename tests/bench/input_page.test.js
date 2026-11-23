@@ -80,7 +80,8 @@ function run({ view = OWNER, asks = LIST, answer = null } = {}) {
   const click = dataset => on.click({ target: { closest: () => ({ id: "", dataset }) } });
   const key = k => on.keydown({ key: k, target: { matches: () => true }, preventDefault() {} });
   const type = text => { els.asknote.value = text; on.input({ target: { id: "asknote" } }); };
-  return { sent, els, settle, click, key, type, state, hist, sysBack };
+  const visible = () => on.visibilitychange();   // the page looked at again (document.hidden stays false)
+  return { sent, els, settle, click, key, type, state, hist, sysBack, visible };
 }
 
 async function onTab(opts) {
@@ -356,6 +357,36 @@ test("an entry opened is a step in the browser's history: a phone's Back returns
   assert.deepEqual(steps(), [null]);
   assert.equal(p.els.judge.hidden, false, "and the Judge tab stays open");
   assert.equal(p.els.input.hidden, true);
+});
+
+test("her list is read again when she comes back to the page, but not over an entry she has open", async () => {
+  const p = await onTab();
+  const lists = () => p.sent.filter(s => s.path === "/api/bench/asks" && s.body.action === "list").length;
+  const before = lists();
+  // Loaded since: a new entry, and Map dots withdrawn.
+  p.state.asks = [...p.state.asks.filter(k => k.key !== "map-dots"), { key: "new-one", card: card({ title: "A new one" }), answer: null }];
+  p.visible();
+  await p.settle();
+  assert.equal(lists(), before + 1);
+  assert.match(p.els.inputbody.innerHTML, /id="row-new-one"/);
+  assert.doesNotMatch(p.els.inputbody.innerHTML, /id="row-map-dots"/);
+  p.click({ ask: "nav-rows" });
+  p.visible();
+  await p.settle();
+  assert.equal(lists(), before + 1, "not while an entry is open");
+  assert.match(p.els.inputbody.innerHTML, /id="asktitle"/);
+  p.key("Escape");
+  await p.settle();
+  p.click({ tab: "judge" });
+  await p.settle();
+  p.visible();
+  await p.settle();
+  assert.equal(lists(), before + 1, "nor on the Judge tab");
+  const sam = run({ view: SAM });
+  await sam.settle();
+  sam.visible();
+  await sam.settle();
+  assert.ok(sam.sent.every(s => s.path !== "/api/bench/asks"), "and a contributor's page never asks for it");
 });
 
 test("on her tab no key judges anything, and the Judge tab's keys are where they were", async () => {
