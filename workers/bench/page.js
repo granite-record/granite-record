@@ -617,8 +617,11 @@ if(r.status===200){delete S.drafts[k.key];S.ask=null;drawInput();draw();toast("S
 var row=$(rowId(k.key));if(row&&row.focus)row.focus();return;}
 // WITHDRAWN WHILE IT WAS OPEN: she stays in the entry, and what she typed with her, to copy.
 if(r.status===409){drawTop();$("askmsg").textContent="Not saved: this one is no longer on the list. Your note is still here to copy.";return;}
+// CHANGED WHILE IT WAS OPEN, so the answer she chose is not one it offers now: drawn again from
+// the list the bench sent back, her note kept, for her to choose again.
+if(r.data&&r.data.why==="bad"){drawTop();drawEntry();var p0=$("pick0");if(p0&&p0.focus)p0.focus();
+$("askmsg").textContent="Not saved: this entry changed while it was open. Choose again.";return;}
 $("askmsg").textContent=r.data&&r.data.why==="long"?"Not saved: a note is 2,000 characters at most.":
-r.data&&r.data.why==="bad"?"Not saved: that answer is not one this entry offers.":
 r.status===429?"Not saved. Try again in a moment.":"Not saved: the bench could not be reached. Try again.";});};go(0);}
 document.addEventListener("input",function(e){if(e.target&&e.target.id==="asknote"){askKeep();askCount();}});
 start();})();`;

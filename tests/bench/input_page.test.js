@@ -272,6 +272,26 @@ test("an entry with one answer saves with its words; Back keeps what she typed; 
   assert.doesNotMatch(p.els.inputbody.innerHTML, /row-map-dots/, "Back shows the list without it");
 });
 
+test("an entry changed while it was open is drawn again from the list sent back, her note kept, to choose again", async () => {
+  const fewer = LIST.map(k => (k.key === "nav-rows" ? { ...k, card: card({ answers: { yes: "Looks right", no: "Needs changes" } }) } : k));
+  const p = await onTab({ answer: () => ({ status: 400, data: { why: "bad", asks: fewer, waiting: 2 } }) });
+  p.click({ ask: "nav-rows" });
+  p.click({ pick: "unsure" });
+  p.type("Talk on Friday?");
+  p.click({ do: "asksave" });
+  await p.settle();
+  const h = p.els.inputbody.innerHTML;
+  assert.equal(p.els.askmsg.textContent, "Not saved: this entry changed while it was open. Choose again.");
+  assert.deepEqual([...h.matchAll(/data-pick="(\w+)" aria-pressed="(\w+)"/g)].map(m => [m[1], m[2]]),
+                   [["yes", "false"], ["no", "false"]], "drawn again with the answers it offers now, none chosen");
+  assert.ok(p.els.pick0.focused, "the first of them takes the focus");
+  assert.equal(p.els.asknote.value, "Talk on Friday?");
+  p.click({ pick: "no" });
+  p.click({ do: "asksave" });
+  await p.settle();
+  assert.deepEqual(p.sent.at(-1).body, { t: TOKEN, action: "answer", key: "nav-rows", answer: "no", note: "Talk on Friday?" });
+});
+
 test("on her tab no key judges anything, and the Judge tab's keys are where they were", async () => {
   const p = await onTab();
   p.click({ ask: "nav-rows" });
