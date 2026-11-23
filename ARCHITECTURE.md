@@ -960,9 +960,12 @@ run by the owner on the laptop after every note has passed
 
 The owner's link has a tab of its own, Your input (23 November 2026): the
 list of what waits on her word, which the manager keeps in
-`private/asks/asks.json` and `bench_pack.py --asks` loads into two tables
-apart from the judgments; her answers come back with `bench_pull.py --asks`
-to `private/asks/answers.jsonl`, never to the ledger.
+`private/asks/asks.json` and the pack loads into two tables apart from the
+judgments; her answers come back to `private/asks/answers.jsonl`, never to
+the ledger:
+
+    python3 src/checks/bench_pack.py --asks private/asks/asks.json --only-asks
+    python3 src/checks/bench_pull.py --asks
 
 `workers/bench/README.md` has the routes, the limits and the commands.
 
