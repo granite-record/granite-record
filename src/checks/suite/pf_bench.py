@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.15
+# GRANITE_VERSION: 2026-11-16.16
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -973,7 +973,8 @@ def _bench_pull(PL, BP, BL, RV):
         def run(*args):
             sys.argv = ["bench_pull.py", "--rows", "rows.json", *args]
             out = io.StringIO()
-            with contextlib.redirect_stdout(out):
+            # stderr too, so that main() making its streams UTF-8 never touches this process's own
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
                 try:
                     code = PL.main()
                 except SystemExit as e:
@@ -1066,8 +1067,8 @@ def _bench_asks_pull(PL, BP):
     database, the statement it would send printed; an id the file holds for another answer
     (the database's answers numbered again) stopping the pull with nothing written or marked;
     an answer the file does not hold after appending left unmarked; a database that will not
-    mark them saying so, the lines kept; nothing to pull saying that; and --asks beside
-    --approve refused."""
+    mark them saying so, the lines kept; a note with an emoji printed to a cp1252 console and
+    marked pulled after it; nothing to pull saying that; and --asks beside --approve refused."""
     import contextlib
     import copy
     import os
@@ -1117,15 +1118,15 @@ def _bench_asks_pull(PL, BP):
         PL.wrangler = fake
         os.chdir(tmp / "run")
 
-        def run(*args):
+        def run(*args, console=None):
             sys.argv = ["bench_pull.py", *args]
-            out = io.StringIO()
-            with contextlib.redirect_stdout(out):
+            out = console or io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
                 try:
                     code = PL.main()
                 except SystemExit as e:
                     code = str(e)
-            return code, out.getvalue()
+            return code, (out.getvalue() if console is None else "")
 
         ids = sorted(x["id"] for x in rows)
         mark = "UPDATE ask_answers SET pulled = 1 WHERE pulled = 0 AND id IN (" + ", ".join(map(str, ids)) + ");"
@@ -1183,6 +1184,17 @@ def _bench_asks_pull(PL, BP):
         assert code == 1 and "NOT yet marked pulled" in said and \
             len(out_file.read_text(encoding="utf-8").splitlines()) == 4, (code, said)
         fail.clear()
+        # A note with a character a cp1252 console has not (an emoji) prints, and is marked pulled
+        # after it: main() writes to its console as UTF-8.
+        out_file.unlink()
+        served[0] = [{**rows[0], "note": "Too faint \U0001F44E on a phone"}]
+        console = io.TextIOWrapper(io.BytesIO(), encoding="cp1252", errors="strict")
+        code, _said = run("--asks", console=console)
+        console.flush()
+        printed = console.buffer.getvalue().decode("utf-8")
+        one = f"UPDATE ask_answers SET pulled = 1 WHERE pulled = 0 AND id IN ({rows[0]['id']});"
+        assert code == 0 and "    Too faint \U0001F44E on a phone" in printed and calls[-1][1] == one, (
+            code, printed, calls[-1])
         served[0] = []
         code, said = run("--asks")
         assert code == 0 and "No answer of yours" in said, said
@@ -1198,7 +1210,8 @@ def _bench_asks_pull(PL, BP):
                   "private/asks/answers.jsonl in the format's fields, printed, and only then marked pulled in one "
                   "statement, each only once the file held it; nothing else written and no review/; a second pull "
                   "appended none twice, the preview's its own; --rows a look that wrote and marked nothing; an id "
-                  "numbered again stopped the pull; a mark that failed said so and kept the lines")
+                  "numbered again stopped the pull; a mark that failed said so and kept the lines; a note with "
+                  "an emoji printed to a cp1252 console and marked after")
 
 
 # ---- what keeps the bench off, unlisted, and keeping nothing ---------------------------

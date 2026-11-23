@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 What the shared bench's contributors answered: pulled, screened, summed up,
 and -- only on the owner's word -- merged into review/checked.jsonl.
@@ -454,6 +454,15 @@ def pull_asks(a, db):
 
 
 def main():
+    # ANY CHARACTER PRINTS (23 November 2026). A note can hold any character and the Windows
+    # console, or a pipe, is cp1252: a note with an emoji in it raised UnicodeEncodeError
+    # between appending her answers and marking them pulled, so none was ever marked and every
+    # later pull stopped on the same one. compile_reports.main does the same for --show.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
     ap = argparse.ArgumentParser(description="The shared bench's answers: pull, look, and merge on your word.")
     ap.add_argument("--preview", action="store_true", help="the preview's database instead of production's")
     ap.add_argument("--approve", metavar="LINK", help="merge this link's answers (its name, its id, or me)")
