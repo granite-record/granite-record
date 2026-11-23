@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.48
+# GRANITE_VERSION: 2026-11-16.49
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -8074,7 +8074,14 @@ def _legislation_fetch(FL):
     again on every run, and the firewall's block page saved as a bill. None
     of it can be tested against the real server without being the problem
     it guards against, so a fake server stands in: no request leaves here.
+
+    What each run tells the person is read here, not left in preflight's own
+    log: on the weekly of 23 November 2026 this check passed, and its fake
+    run's "Stopping; refusal.py holds it." stood among the lines GitHub's
+    public log showed of the failed step, as if the General Court had
+    refused a fetch that never ran.
     """
+    import contextlib
     import http.client
     import io
     import urllib.error
@@ -8146,16 +8153,27 @@ def _legislation_fetch(FL):
         # request asks 2019's bill.
         class B(A):
             budget, newest_first = 1, True
+
+        def ran(*a):
+            """FL.run's status and what it said, which stays out of preflight's log."""
+            said = io.StringIO()
+            with contextlib.redirect_stdout(said):
+                rc = FL.run(*a)
+            return rc, said.getvalue()
         FL.urlopen = server([page("19-0041")])
-        FL.run(B, {2018: ["HB40"], 2019: ["HB41"]},
-               {(2018, "HB40"): {"lsr_year": "2018", "lsr_num": "40"},
-                (2019, "HB41"): {"lsr_year": "2019", "lsr_num": "41"}}, 2)
+        rc, said = ran(B, {2018: ["HB40"], 2019: ["HB41"]},
+                       {(2018, "HB40"): {"lsr_year": "2018", "lsr_num": "40"},
+                        (2019, "HB41"): {"lsr_year": "2019", "lsr_num": "41"}}, 2)
         assert "/2019/HB0041" in asked[-1], f"newest first asked {asked[-1]}"
+        assert rc == 0 and "budget of 1 reached" in said, (
+            f"a run that met its budget gave {rc} and said {said!r}")
         by = {(2019, f"HB{i}"): {"lsr_year": "2019", "lsr_num": str(i)}
               for i in range(20, 26)}
         FL.urlopen = server([http.client.RemoteDisconnected("x")] * 2)
-        rc = FL.run(A, {2019: [f"HB{i}" for i in range(20, 26)]}, by, 6)
+        rc, said = ran(A, {2019: [f"HB{i}" for i in range(20, 26)]}, by, 6)
         assert rc == 2, f"two dropped connections gave status {rc}, not 2"
+        assert "2 dropped connections" in said and "refusal.py holds it" in said, (
+            f"two dropped connections said {said!r}")
         assert refusal.MARK.exists(), "the refusal was not recorded"
         # And with a refusal on file, nothing more is asked -- and the record
         # is left as it is, not overwritten with this run's name.
@@ -8201,10 +8219,13 @@ def _legislation_fetch(FL):
         FL.urlopen = server([page("19-0001"), page("19-0002")])
         by = {(2019, f"HB{i}"): {"lsr_year": "2019", "lsr_num": "700"}
               for i in range(40, 44)}
-        rc = FL.run(A, {2019: [f"HB{i}" for i in range(40, 44)]}, by, 4)
+        rc, said = ran(A, {2019: [f"HB{i}" for i in range(40, 44)]}, by, 4)
         assert rc == 3, f"two wrong bills gave status {rc}, not 3"
+        assert said.count("WRONG BILL: 2019 HB4") == 2 and "Stopping for a person to look" in said, (
+            f"two wrong bills said {said!r}")
         return "ok", ("right bill saved, wrong bill refused, 404 asked once, "
-                      "dropped/403/block page stop it, floor resolutions skipped")
+                      "dropped/403/block page stop it, floor resolutions skipped; each run says why "
+                      "it stopped, and none of it reaches preflight's log")
     finally:
         os.chdir(saved[0])
         FL.urlopen, FL.time.sleep = saved[1], saved[2]
