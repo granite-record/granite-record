@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -798,6 +798,9 @@ BENCH_COLUMNS = {
     "calib_holds": ["link", "kind", "key", "held_until"],
     "judgments": ["id", "kind", "key", "link", "verdict", "fields", "note", "hidden", "side", "at", "calib", "state"],
     "link_days": ["link", "day", "n"],
+    # The owner's Your input tab (23 November 2026): her list, and her answers to it.
+    "asks": ["key", "section", "ord", "card", "pack", "state", "added_on"],
+    "ask_answers": ["id", "key", "link", "answer", "note", "hidden", "at", "pulled"],
 }
 _PERSON = re.compile(r"(^|_)(ip|email|e_?mail|mail|address|addr|cookie|agent|device|browser|referr?er|"
                      r"session|phone|token|user|person|who)(_|$)")

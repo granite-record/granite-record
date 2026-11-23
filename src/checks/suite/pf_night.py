@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -4414,7 +4414,7 @@ def _night_functions_probe(NI):
                                  url, {"/api/follow/count": (404, T, "", "Not found\n"),
                                        "/api/report": (404, H, "", "<html>")}))
     warned = NI.functions_warned(bad)
-    assert bad["failed"] == 2 and "2 of the site's 15 Functions did not answer" in bad["line"] and \
+    assert bad["failed"] == 2 and "2 of the site's 16 Functions did not answer" in bad["line"] and \
         "/api/report the site's own not-found page" in bad["line"] and \
         [k for k, _s in warned] == [NI.KIND_FUNCTIONS] and "The deploy stands" in warned[0][1] and \
         NI.warning_reasons(warned, [], ()) == [] and \
@@ -4432,7 +4432,7 @@ def _night_functions_probe(NI):
                                   ask=fake)
     finally:
         NI.wrangler_bindings = real_bindings
-    assert bare["failed"] == 0 and full["failed"] == len(own404) == 14, (
+    assert bare["failed"] == 0 and full["failed"] == len(own404) == 15, (
         "the probes do not follow what wrangler.toml binds in the environment: "
         f"{bare['line']} | {full['line']}")
 

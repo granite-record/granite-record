@@ -11,10 +11,14 @@ import { onRequest as judgeFn } from "../../functions/api/bench/judge.js";
 import { onRequest as undoFn } from "../../functions/api/bench/undo.js";
 import { onRequest as holdFn } from "../../functions/api/bench/hold.js";
 import { onRequest as linksFn } from "../../functions/api/bench/links.js";
+import { onRequest as asksFn } from "../../functions/api/bench/asks.js";
 import { SITE, T0, addLink, loadPack, makeBench } from "./world.js";
 
 const ROUTES = { "/bench": page, "/api/bench/next": nextFn, "/api/bench/judge": judgeFn,
-                 "/api/bench/undo": undoFn, "/api/bench/hold": holdFn, "/api/bench/links": linksFn };
+                 "/api/bench/undo": undoFn, "/api/bench/hold": holdFn, "/api/bench/links": linksFn,
+                 "/api/bench/asks": asksFn };
+// The body a route takes: 4 KiB, but the owner's answer with its note of 2,000 characters.
+const BODY_MOST = path => (path === "/api/bench/asks" ? 8192 : 4096);
 const API = Object.keys(ROUTES).filter(p => p.startsWith("/api/"));
 
 function captureConsole() {
@@ -100,8 +104,9 @@ test("a wrong token, a link turned off, a body too long or not JSON: one read at
       assert.equal(r.status, 404, `${path}: a wrong token`);
       assert.equal(w.d1.prepared.length - before, 1, `${path}: one statement for a wrong token`);
       assert.equal((await w.call(path, { t: "short" })).status, 404);
-      assert.equal((await w.call(path, null, { raw: JSON.stringify({ t: w.owner.token, x: "y".repeat(5000) }) })).status,
-                   404, `${path}: a body over 4 KiB`);
+      assert.equal((await w.call(path, null, { raw: JSON.stringify({ t: w.owner.token,
+                                                                       x: "y".repeat(BODY_MOST(path) + 900) }) })).status,
+                   404, `${path}: a body over ${BODY_MOST(path) / 1024} KiB`);
       assert.equal((await w.call(path, { t: w.owner.token }, { type: "text/plain" })).status, 404, `${path}: not JSON`);
     }
   } finally { w.close(); }

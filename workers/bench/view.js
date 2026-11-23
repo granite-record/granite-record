@@ -7,9 +7,14 @@
  * AN ITEM REACHES THE PAGE AS { ref, queue, card }. Not its key, which says
  * of a tag how the rule attached it; not its kind; not whether it is a
  * calibration item. The page answers by `ref` (store.js readRef).
+ *
+ * THE OWNER'S VIEW ALONE also says how many entries of her Your input tab
+ * wait on her word (`asks`, a number; null before the pack that makes its
+ * tables), for the number beside the tab's name. A contributor's view carries
+ * nothing of it, not even the name.
  */
 
-import { farAlong, next, progress, queueLabels } from "./store.js";
+import { askWaiting, farAlong, next, progress, queueLabels } from "./store.js";
 
 export const forPage = it => ({ ref: it.ref, queue: it.queue, card: it.card });
 
@@ -25,6 +30,7 @@ export async function view(db, link, chosen, now, first = null) {
     role: link.role, state: link.state, queue: chosen && chosen !== "mix" ? chosen : "mix",
     queues: await queueLabels(db, link), items: items.map(forPage),
     progress: p ? { label: p.label, goal: p.goal, done: p.done } : null, far: await farAlong(db),
+    ...(link.role === "owner" ? { asks: await askWaiting(db) } : {}),
   };
 }
 

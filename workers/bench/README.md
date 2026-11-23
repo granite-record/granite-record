@@ -37,11 +37,13 @@ environment, and only at its own address on the site's own names:
 | `POST /api/bench/undo` | the latest answer back, while not merged |
 | `POST /api/bench/hold` | the open page's items held ten more minutes |
 | `POST /api/bench/links` | the owner's Links tab: list, make, pause, resume, take back, turn off |
+| `POST /api/bench/asks` | the owner's Your input tab: her list, and her answer to one entry |
 
-Each post is JSON of at most 4 KiB from the site's own page (its Origin,
-and Sec-Fetch-Site where the browser sends it), carrying the token from
-after "#" in the link. A wrong token, or a link turned off, is one indexed
-read and the same 404 as no bench at all.
+Each post is JSON of at most 4 KiB (8 KiB to `/api/bench/asks`, for a note
+of 2,000 characters) from the site's own page (its Origin, and
+Sec-Fetch-Site where the browser sends it), carrying the token from after
+"#" in the link. A wrong token, or a link turned off, is one indexed read
+and the same 404 as no bench at all.
 
 ## What it keeps
 
