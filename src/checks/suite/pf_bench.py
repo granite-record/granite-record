@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.14
+# GRANITE_VERSION: 2026-11-16.15
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -1055,13 +1055,17 @@ def _bench_asks_pull(PL, BP):
     tables, her answers given through the store (one of them withdrawn after, one a note of two
     lines), and bench_pull's own ASKS_PULL query reading them (tests/bench/apply_asks.js
     --query), so the query is held to the schema. wrangler is never run: its one function is
-    stood in for, and each call it is given kept with what answers.jsonl held at that moment.
-    Held, in a folder with nothing else in it: one line each, in the order given, with the
-    format's fields alone -- the entry's title and the words of the button she chose, her note
-    whole, the database's name; the title, the words and each line of the note printed; the
-    answers marked pulled by id in one statement made only after the file held them all; no
-    file written but private/asks/answers.jsonl, and no review/ made; a second pull of the same
-    rows appending nothing twice, the preview's appending its own; a database that will not
+    stood in for, answering ASKS_PULL with those rows, and each call it is given kept with what
+    answers.jsonl held at that moment. Held, in a folder with nothing else in it: one line
+    each, in the order given, with the format's fields alone -- the entry's title and the words
+    of the button she chose, her note whole, the database's name; the title, the words and
+    each line of the note printed; the answers marked pulled by id in one statement made only
+    after the file held them all; no file written but private/asks/answers.jsonl, and no
+    review/ made; a second pull of the same rows appending nothing twice and marking them, the
+    preview's appending its own; --rows a look, appending and marking nothing and asking no
+    database, the statement it would send printed; an id the file holds for another answer
+    (the database's answers numbered again) stopping the pull with nothing written or marked;
+    an answer the file does not hold after appending left unmarked; a database that will not
     mark them saying so, the lines kept; nothing to pull saying that; and --asks beside
     --approve refused."""
     import contextlib
@@ -1098,11 +1102,15 @@ def _bench_asks_pull(PL, BP):
         (tmp / "run").mkdir()
         (tmp / "run" / "rows.json").write_text(json.dumps(rows), encoding="utf-8")
         out_file = tmp / "run" / "private" / "asks" / "answers.jsonl"
-        fail = []
+        fail, served = [], [rows]
 
+        # wrangler, stood in for: ASKS_PULL answered with the rows the store kept (served[0]), and
+        # every statement kept with what answers.jsonl held when it was sent.
         def fake(db, sql=None, file=None):
             held = out_file.read_text(encoding="utf-8").splitlines() if out_file.is_file() else []
             calls.append((db, sql, file, len(held)))
+            if sql == PL.ASKS_PULL:
+                return {"results": copy.deepcopy(served[0])}
             if fail:
                 raise RuntimeError("wrangler d1 execute failed: 7500")
             return {"results": []}
@@ -1110,7 +1118,7 @@ def _bench_asks_pull(PL, BP):
         os.chdir(tmp / "run")
 
         def run(*args):
-            sys.argv = ["bench_pull.py", "--rows", "rows.json", *args]
+            sys.argv = ["bench_pull.py", *args]
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
                 try:
@@ -1119,6 +1127,8 @@ def _bench_asks_pull(PL, BP):
                     code = str(e)
             return code, out.getvalue()
 
+        ids = sorted(x["id"] for x in rows)
+        mark = "UPDATE ask_answers SET pulled = 1 WHERE pulled = 0 AND id IN (" + ", ".join(map(str, ids)) + ");"
         code, said = run("--asks")
         lines = [json.loads(x) for x in out_file.read_text(encoding="utf-8").splitlines()]
         assert code == 0 and [d["key"] for d in lines] == [x["key"] for x in rows], (code, said, lines)
@@ -1133,24 +1143,47 @@ def _bench_asks_pull(PL, BP):
         for words in ("Navigation: each section's pages in a second row: Needs changes", "    Otherwise fine.",
                       "Anything else: Save the note", "    Ask me about the map, too."):
             assert words in said, (words, said)
-        ids = sorted(x["id"] for x in rows)
-        assert calls == [("graniterecord-bench", "UPDATE ask_answers SET pulled = 1 WHERE pulled = 0 AND id IN ("
-                          + ", ".join(map(str, ids)) + ");", None, 4)], calls
+        assert calls == [("graniterecord-bench", PL.ASKS_PULL, None, 0), ("graniterecord-bench", mark, None, 4)], calls
         made = sorted(p.relative_to(tmp / "run").as_posix() for p in (tmp / "run").rglob("*") if p.is_file())
         assert made == ["private/asks/answers.jsonl", "rows.json"], f"the pull wrote {made}"
         code, said = run("--asks")
         assert code == 0 and len(out_file.read_text(encoding="utf-8").splitlines()) == 4 and \
-            "each in private/asks/answers.jsonl already" in said, "a second pull appended its lines again"
+            "each in private/asks/answers.jsonl already" in said and calls[-1][1] == mark, (
+                "a second pull appended its lines again, or did not mark them", said, calls[-1])
         code, said = run("--asks", "--preview")
         again = [json.loads(x) for x in out_file.read_text(encoding="utf-8").splitlines()]
         assert len(again) == 8 and {d["db"] for d in again[4:]} == {"graniterecord-bench-preview"}, again
+        # --rows is a look: nothing appended, nothing marked, no wrangler at all, and the statement
+        # the pull would send printed.
+        before, n = out_file.read_bytes(), len(calls)
+        code, said = run("--asks", "--rows", "rows.json")
+        assert code == 0 and len(calls) == n and out_file.read_bytes() == before and "  " + mark in said and \
+            "nothing appended, and nothing marked pulled" in said, (code, said, calls[n:])
+        # The database's answers numbered again (made again, say): an id the file holds for another
+        # answer stops the pull before anything is written, and nothing is marked pulled.
+        served[0] = [{**rows[0], "key": "votes-layout", "at": "2026-11-25T09:00:00.000Z"}] + rows[1:]
+        code, said = run("--asks")
+        assert code == 1 and "numbered again" in said and out_file.read_bytes() == before and \
+            [c[1] for c in calls[n:]] == [PL.ASKS_PULL], (code, said, calls[n:])
+        # An answer whose line the file does not hold after appending is not marked pulled.
+        served[0] = rows
+        out_file.unlink()
+        whole = PL.append_asks
+        PL.append_asks = lambda got, path=None: whole(got[:-1], path)
+        try:
+            code, said = run("--asks")
+        finally:
+            PL.append_asks = whole
+        short = "UPDATE ask_answers SET pulled = 1 WHERE pulled = 0 AND id IN (" + ", ".join(map(str, ids[:-1])) + ");"
+        assert code == 1 and calls[-1][1] == short and f"id {ids[-1]}" in said and "NOT marked" in said, (
+            code, said, calls[-1])
         fail.append(1)
         out_file.unlink()
         code, said = run("--asks")
         assert code == 1 and "NOT yet marked pulled" in said and \
             len(out_file.read_text(encoding="utf-8").splitlines()) == 4, (code, said)
         fail.clear()
-        (tmp / "run" / "rows.json").write_text("[]", encoding="utf-8")
+        served[0] = []
         code, said = run("--asks")
         assert code == 0 and "No answer of yours" in said, said
         code, said = run("--asks", "--approve", "sam")
@@ -1163,8 +1196,9 @@ def _bench_asks_pull(PL, BP):
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("4 answers given through the store and read by bench_pull's own query: each appended once to "
                   "private/asks/answers.jsonl in the format's fields, printed, and only then marked pulled in one "
-                  "statement; nothing else written and no review/; a second pull appended none twice, the "
-                  "preview's its own; a mark that failed said so and kept the lines")
+                  "statement, each only once the file held it; nothing else written and no review/; a second pull "
+                  "appended none twice, the preview's its own; --rows a look that wrote and marked nothing; an id "
+                  "numbered again stopped the pull; a mark that failed said so and kept the lines")
 
 
 # ---- what keeps the bench off, unlisted, and keeping nothing ---------------------------

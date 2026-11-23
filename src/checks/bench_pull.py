@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 What the shared bench's contributors answered: pulled, screened, summed up,
 and -- only on the owner's word -- merged into review/checked.jsonl.
@@ -11,8 +11,9 @@ and -- only on the owner's word -- merged into review/checked.jsonl.
     python3 src/checks/bench_pull.py --show 123         # one held note's words, for you to read
     python3 src/checks/bench_pull.py --owner-link       # make your own link (its address shown once)
     python3 src/checks/bench_pull.py --preview ...      # the preview's database instead of production's
-    python3 src/checks/bench_pull.py --rows FILE ...    # rows from a JSON file: no network
+    python3 src/checks/bench_pull.py --rows FILE ...    # rows from a JSON file in place of the database's
     python3 src/checks/bench_pull.py --asks             # your answers on the Your input tab, to the laptop
+    python3 src/checks/bench_pull.py --asks --rows FILE # ... a look at answers in a file: nothing written
 
 RUN ONLY BY THE OWNER, ON THE LAPTOP. It reads and writes the bench's
 database with `wrangler d1 execute` (compile_reports.d1_execute's way, the
@@ -52,10 +53,16 @@ not pulled yet (ask_answers), appends each once to private/asks/answers.jsonl
 -- made if missing; one line an answer, in the order she gave them, with the
 entry's title and the words of the button she chose (the list's format,
 S/helpers/bench-input/ASKS_FORMAT.md) -- prints them, and only then marks them
-pulled in the database. A line already in the file (its database and id) is
-not appended twice, so a pull that could not mark them can simply be run
-again. It never reads or writes review/checked.jsonl: her answers there are
-notes to the manager, not judgments, and never part of the open data.
+pulled in the database, each only once the file holds its line. A line
+already in the file (its database, id, entry and moment, all four) is not
+appended twice, so a pull that could not mark them can simply be run again;
+an answer whose database and id the file holds for another answer stops the
+pull before anything is written, since the database's answers were numbered
+again and marking it pulled would keep it from the laptop. With --rows the
+answers come from a file and the pull is a look: nothing is appended or
+marked, and the statements it would send are printed. It never reads or
+writes review/checked.jsonl: her answers there are notes to the manager, not
+judgments, and never part of the open data.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -332,11 +339,11 @@ def asks_lines(rows, db):
     return out
 
 
-def append_asks(lines, path=None):
-    """Each of `lines` not in answers.jsonl yet, by its database and id, appended in order, the
-    file made where it is not; the lines appended."""
+def held_answers(path=None):
+    """{(db, id): {(key, at)}}: the answers answers.jsonl holds, by their database and id, each
+    with its entry's key and the moment she gave it; a line that does not read is passed over."""
     path = Path(path) if path else ASKS_OUT
-    have = set()
+    have = {}
     if path.exists():
         for line in path.read_text(encoding="utf-8").splitlines():
             try:
@@ -344,8 +351,27 @@ def append_asks(lines, path=None):
             except ValueError:
                 continue
             if isinstance(d, dict):
-                have.add((d.get("db"), d.get("id")))
-    new = [d for d in lines if (d["db"], d["id"]) not in have]
+                have.setdefault((d.get("db"), d.get("id")), set()).add((d.get("key"), d.get("at")))
+    return have
+
+
+def in_file(d, have):
+    """Whether answers.jsonl holds this answer: its database, id, key and moment, all four."""
+    return (d["key"], d["at"]) in have.get((d["db"], d["id"]), ())
+
+
+def clashes(lines, have):
+    """The lines whose database and id the file holds for another answer (another key or
+    moment): the database's answers numbered again, as a database made again numbers them."""
+    return [d for d in lines if (d["db"], d["id"]) in have and not in_file(d, have)]
+
+
+def append_asks(lines, path=None):
+    """Each of `lines` the file does not hold yet (in_file) appended in order, the file made
+    where it is not; the lines appended."""
+    path = Path(path) if path else ASKS_OUT
+    have = held_answers(path)
+    new = [d for d in lines if not in_file(d, have)]
     if new:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8", newline="\n") as fh:
@@ -354,9 +380,27 @@ def append_asks(lines, path=None):
     return new
 
 
+def mark_sql(ids):
+    """The statements that mark answers pulled, 400 ids to one."""
+    ids = sorted(int(x) for x in ids)
+    return ["UPDATE ask_answers SET pulled = 1 WHERE pulled = 0 AND id IN ("
+            + ", ".join(str(x) for x in ids[i:i + 400]) + ");" for i in range(0, len(ids), 400)]
+
+
+def said(d):
+    """An answer as the pull prints it: the entry's title, her button's words, when, her note."""
+    out = [f"- {d['title']}: {d['words']} ({local_moment(d['at']).replace('T', ' ')[:16]})"]
+    return out + [f"    {line}" for line in d["note"].splitlines()]
+
+
 def pull_asks(a, db):
     """--asks: her answers not pulled yet, appended to private/asks/answers.jsonl once each,
-    printed, and only then marked pulled; review/checked.jsonl is never read or written."""
+    printed, and only then marked pulled -- each only once the file holds its line, all four of
+    its database, id, key and moment. An answer whose database and id the file holds for
+    another answer stops the pull before anything is written: the database's answers were
+    numbered again, and marking hers pulled would keep them from the laptop. --rows reads them
+    from a file instead, and is a look: nothing appended, nothing marked, the statements the
+    pull would send printed. review/checked.jsonl is never read or written."""
     if a.rows:
         rows = json.loads(Path(a.rows).read_text(encoding="utf-8"))
         rows = rows if isinstance(rows, list) else rows.get("results", [])
@@ -366,21 +410,44 @@ def pull_asks(a, db):
     if not lines:
         print(f"No answer of yours on the Your input tab waits to be pulled from {db}.")
         return 0
+    have = held_answers()
+    clash = clashes(lines, have)
+    if a.rows:
+        new = [d for d in lines if not in_file(d, have)]
+        print(f"{len(lines)} answer(s) read from {a.rows}, for {db}; {len(new)} not in {ASKS_OUT.as_posix()} yet"
+              + (f", {len(clash)} of them numbered as other answers there are" if clash else "") + ":")
+        for d in lines:
+            print("\n".join(said(d)))
+        print(f"--rows is a look: nothing appended, and nothing marked pulled in {db}. With the database, the "
+              "pull would then send:")
+        for s in mark_sql({d["id"] for d in lines}):
+            print("  " + s)
+        return 0
+    if clash:
+        print(f"Nothing appended and nothing marked pulled in {db}: {ASKS_OUT.as_posix()} already holds "
+              + ", ".join(f"id {d['id']}" for d in clash[:6]) + (" and more" if len(clash) > 6 else "")
+              + f" of {db} for other answers, so the database's answers were numbered again (was it made "
+              "again?). Move the file aside and run --asks again; your answers wait in the database meanwhile.")
+        return 1
     new = append_asks(lines)
     print(f"{len(lines)} answer(s) of yours on the Your input tab, from {db}; "
           + (f"{len(new)} appended to {ASKS_OUT.as_posix()}" if new else f"each in {ASKS_OUT.as_posix()} already") + ":")
     for d in lines:
-        print(f"- {d['title']}: {d['words']} ({local_moment(d['at']).replace('T', ' ')[:16]})")
-        for line in d["note"].splitlines():
-            print(f"    {line}")
-    ids = sorted({d["id"] for d in lines})
+        print("\n".join(said(d)))
+    have = held_answers()
+    ids = {d["id"] for d in lines if in_file(d, have)}
+    lost = sorted({d["id"] for d in lines} - ids)
     try:
-        for i in range(0, len(ids), 400):
-            wrangler(db, sql="UPDATE ask_answers SET pulled = 1 WHERE pulled = 0 AND id IN ("
-                     + ", ".join(str(int(x)) for x in ids[i:i + 400]) + ");")
+        for s in mark_sql(ids):
+            wrangler(db, sql=s)
     except (RuntimeError, SystemExit, subprocess.SubprocessError) as e:
         print(f"They are in {ASKS_OUT.as_posix()} and NOT yet marked pulled in {db} ({e}). Run --asks again: "
               "it appends none of them twice.")
+        return 1
+    if lost:
+        print(f"NOT marked pulled in {db}: {', '.join(f'id {x}' for x in lost)}, which {ASKS_OUT.as_posix()} does "
+              "not hold after appending" + (f" (the other {len(ids)} are marked)" if ids else "")
+              + ". Run --asks again.")
         return 1
     print(f"Marked pulled in {db}.")
     return 0
@@ -393,7 +460,8 @@ def main():
     ap.add_argument("--withdraw", metavar="ID", help="take a link's merged lines out of every reader")
     ap.add_argument("--show", metavar="ROW", type=int, help="print one held note's words")
     ap.add_argument("--owner-link", action="store_true", help="make your own link; its address is shown once")
-    ap.add_argument("--rows", metavar="FILE", help="answers from a JSON file instead of the database")
+    ap.add_argument("--rows", metavar="FILE", help="answers from a JSON file instead of the database "
+                                                   "(with --asks, a look: nothing written or marked)")
     ap.add_argument("--asks", action="store_true",
                     help="your answers on the Your input tab: to private/asks/answers.jsonl, then marked pulled")
     a = ap.parse_args()

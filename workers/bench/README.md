@@ -131,7 +131,10 @@ answers come back to the laptop with
 
 which appends each answer not pulled yet to `private/asks/answers.jsonl`
 once (the entry's title, the words of the button she chose, her note),
-prints them, and only then marks them pulled.
+prints them, and only then marks them pulled, each once the file holds it.
+An answer numbered as one the file already holds for another (a database
+made again) stops the pull with nothing written; `--rows FILE` reads answers
+from a file instead and is a look: nothing appended, nothing marked.
 
 ## The database
 
