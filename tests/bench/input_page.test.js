@@ -5,7 +5,8 @@
 // refuses never drawn as one; an answer required, sent with its note, and the list back with
 // the row answered; her latest answer and note shown again; Escape for Back, keeping what she
 // typed; the quiet count; and a contributor's page with no tab, asking nothing of it. Every
-// token here is made up.
+// token and every link here is made up: a claude.ai artifact's is one letter over and over,
+// and preflight's _no_artifact_links refuses any other in a tracked file.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -18,7 +19,7 @@ const SAM = { role: "contributor", state: "active", queue: "mix", queues: [], it
 const card = (o = {}) => ({ section: "In the update waiting for your word", title: "Navigation in two rows",
   what: "Each section's pages now sit in a second row.\n\nOn a phone the row scrolls.\nSwipe it.",
   where: [{ label: "The home page on the preview", url: "https://dry-run.graniterecord.pages.dev/" },
-          { label: "The design you approved", url: "https://claude.ai/artifact/Nz3CTJA3nsPhKry2pwms4j" }],
+          { label: "The design you approved", url: "https://claude.ai/artifact/AAAAAAAAAAAAAAAAAAAAAA" }],
   question: "Does the new navigation read right on a computer and on a phone?",
   answers: { yes: "Looks right", no: "Needs changes", unsure: "Let’s discuss" }, recommended: "yes", added: "2026-11-23",
   ...o });
@@ -130,7 +131,7 @@ test("an entry: what, where to look in a new tab, the question, its own answers,
   assert.match(h, /<div class="what"><p>Each section&#39;s pages now sit in a second row\.<\/p><p>On a phone the row scrolls\.\nSwipe it\.<\/p><\/div>/,
                "paragraphs at the blank lines");
   assert.match(h, /<a href="https:\/\/dry-run\.graniterecord\.pages\.dev\/" target="_blank" rel="noopener noreferrer">The home page on the preview<\/a>/);
-  assert.match(h, /<a href="https:\/\/claude\.ai\/artifact\/Nz3CTJA3nsPhKry2pwms4j" target="_blank" rel="noopener noreferrer">/);
+  assert.match(h, /<a href="https:\/\/claude\.ai\/artifact\/AAAAAAAAAAAAAAAAAAAAAA" target="_blank" rel="noopener noreferrer">/);
   assert.match(h, /<p class="q">Does the new navigation read right on a computer and on a phone\?<\/p>/);
   assert.deepEqual([...h.matchAll(/data-pick="(\w+)" aria-pressed="(\w+)">([^<]*)(<small>Recommended<\/small>)?/g)]
     .map(m => [m[1], m[2], m[3], !!m[4]]),

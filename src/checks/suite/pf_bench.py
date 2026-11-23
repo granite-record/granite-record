@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.12
+# GRANITE_VERSION: 2026-11-16.13
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -574,7 +574,7 @@ def _asks_fixture():
             "asks": [
                 {"key": "votes-layout", "section": "design", "title": "The votes search: which layout?",
                  "what": "Two layouts.\r\n\r\nA keeps the filters on the left;\tB puts them on top.",
-                 "where": [{"label": "The two layouts", "url": "https://claude.ai/artifact/Nz3CTJA3nsPhKry2pwms4j"}],
+                 "where": [{"label": "The two layouts", "url": "https://claude.ai/artifact/AAAAAAAAAAAAAAAAAAAAAA"}],
                  "question": "Go with layout A?", "answers": {"yes": "Go with A", "no": "Something else",
                                                               "unsure": "Let’s discuss"},
                  "recommended": "yes", "added": "2026-11-22"},
@@ -665,7 +665,7 @@ _ASK_BROKEN = [
 _ASK_URLS = [
     ("https://graniterecord.org", True), ("https://graniterecord.org/", True),
     ("https://graniterecord.org/bill/2026/hb1?x=1#votes", True), ("https://dry-run.graniterecord.pages.dev/", True),
-    ("https://a.b-c.graniterecord.pages.dev/x", True), ("https://claude.ai/artifact/Nz3CTJA3nsPhKry2pwms4j", True),
+    ("https://a.b-c.graniterecord.pages.dev/x", True), ("https://claude.ai/artifact/AAAAAAAAAAAAAAAAAAAAAA", True),
     ("http://graniterecord.org/", False), ("https://graniterecord.pages.dev/", False), ("https://claude.ai:443/", False),
     ("https://user:pw@claude.ai/", False), ("https://claude.ai.example.org/", False), ("https://Claude.ai/", False),
     ("https://www.graniterecord.org/", False), ("https://-x.graniterecord.pages.dev/", False),
@@ -833,6 +833,58 @@ def _bench_asks_pack(BP):
                   f"the page's link rule the pack's, the two agreeing on {len(_ASK_URLS)} addresses; three packs "
                   "loaded into a database made before the list's tables, in order, a revised entry keeping her "
                   "answers and a withdrawn one hidden, then asked again; --only-asks read nothing but the list")
+
+
+# A claude.ai artifact's address, as a link (/artifact/<id>, /code/artifact/<uuid>) or written
+# escaped in a pattern or JSON (claude\.ai\/artifact\/<id>), the host in any case.
+_ARTIFACT = re.compile(r"claude\\?\.ai\\?/(?:code\\?/)?artifact\\?/([A-Za-z0-9_-]+)", re.I)
+
+
+def _real_artifacts(text):
+    """The ids of the claude.ai artifacts `text` names that are not made up. A made-up id is one
+    character over and over (a uuid's dashes aside), which no real one is."""
+    return [m.group(1) for m in _ARTIFACT.finditer(text) if len(set(m.group(1).replace("-", ""))) != 1]
+
+
+@check("files", "no tracked file names one of the owner's claude.ai artifacts: her designs, and the list "
+                "that links them, stay out of the public repository, and a test's artifact is made up")
+def _no_artifact_links():
+    """THE OWNER'S LINKS STAY HERS (23 November 2026). Her designs are claude.ai artifacts, and the
+    list of what waits on her word links them (private/asks/asks.json, never in the repository).
+    One of those links went into the tests of the Your input tab, copied from the list format's
+    example: committed to a public repository, it would point anyone reading the tests at her
+    private design, and stay in the history once pushed. Held over every tracked file (git grep,
+    as it stands in the working tree): an artifact named there, as a link or escaped in a
+    pattern, has a made-up id -- one character over and over, as the tests' AAAA... is. The
+    failure names the file and line, never the id, since the night's log is public."""
+    real = "q7Lm2Zr9TwXc4BvN8kPd1s"     # the shape of a real id, made up, and joined here at run time
+    for text, n in ((f"https://claude.ai/artifact/{real}", 1), (f"https:\\/\\/claude\\.ai\\/artifact\\/{real}", 1),
+                    (f"https://Claude.AI/artifact/{real}?x=1", 1),
+                    ("https://claude.ai/code/artifact/" + "1b4e28ba-2fa1-11d2-883f-0016d3cca427", 1),
+                    ("https://claude.ai/artifact/AAAAAAAAAAAAAAAAAAAAAA", 0),
+                    ("https://claude.ai/code/artifact/" + "00000000-0000-0000-0000-000000000000", 0),
+                    ("https://claude.ai/artifact/<id>", 0), ("https://claude.ai/x?y=1", 0), ("a GitHub artifact", 0)):
+        assert len(_real_artifacts(text)) == n, f"the reader of an artifact's link reads {text!r} wrongly"
+    try:
+        r = _run(["git", "grep", "-I", "-n", "-F", "-i", "-e", "artifact"], cwd=str(_paths.ROOT),
+                 capture_output=True, text=True, timeout=120)
+    except OSError as e:
+        return "skip", f"git would not search the tracked files ({e})"
+    if r.returncode not in (0, 1):
+        return "skip", "git would not search the tracked files: " + (r.stderr or "").strip()[:200]
+    lines = [ln for ln in (r.stdout or "").splitlines() if ln.strip()]
+    bad, named = [], 0
+    for ln in lines:
+        where, _, text = ln.partition(":")
+        num, _, text = text.partition(":")
+        named += len(_ARTIFACT.findall(text))
+        if _real_artifacts(text):
+            bad.append(f"{where}:{num}")
+    assert not bad, ("a claude.ai artifact of the owner's is named in a tracked file, and the repository is public: "
+                     + ", ".join(bad[:12]) + ". Give a test a made-up id (one letter over and over, as "
+                     "AAAAAAAAAAAAAAAAAAAAAA), and keep her links in private/asks/asks.json")
+    return "ok", (f"{len(lines)} tracked line(s) say artifact, with {named} claude.ai artifact link(s) among them, "
+                  "every one made up")
 
 
 # ---- the merge ----------------------------------------------------------------------
