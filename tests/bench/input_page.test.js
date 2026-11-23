@@ -230,6 +230,12 @@ test("an entry with one answer saves with its words; Back keeps what she typed; 
   p.click({ do: "asksave" });
   await p.settle();
   assert.deepEqual(p.sent.at(-1).body, { t: TOKEN, action: "answer", key: "a-note", answer: "yes", note: "A thought." });
+  // Its button's words say what it does, not what she said: never "Saved: Save the note".
+  assert.equal(p.els.toastwords.textContent, "Saved.");
+  assert.match(p.els.inputbody.innerHTML, /data-ask="a-note"><b>Anything else<\/b><span class="st">Answered 23 Nov<\/span>/);
+  p.click({ ask: "a-note" });
+  assert.match(p.els.inputbody.innerHTML, /<p class="was">Answered 23 Nov<\/p>/);
+  p.key("Escape");
   // Back, with a choice and a note not saved, and in again: both still there.
   p.click({ ask: "nav-rows" });
   p.click({ pick: "unsure" });

@@ -559,8 +559,11 @@ function picksOf(c){var a=c&&c.answers&&typeof c.answers==="object"?c.answers:{}
 return Object.keys(a).filter(function(x){return x==="yes"||x==="no"||x==="unsure";});}
 function wordsOf(c,x){var a=(c&&c.answers)||{};return typeof a[x]==="string"&&a[x]?a[x]:SAID[x]||String(x||"");}
 function rowId(key){return "row-"+key;}
-// A row's state, as text (drawn through esc()): "Waiting", or her latest answer's day and words.
-function stateOf(k){var a=k.answer;if(!a)return "Waiting";var when=zoneDay(a.at);return "Answered "+when+": "+wordsOf(k.card,a.answer);}
+// A row's state, as text (drawn through esc()): "Waiting", or her latest answer's day and words;
+// an entry offering one answer alone ("Save the note") is just "Answered" and the day, since
+// that button's words say what it does, not what she said.
+function stateOf(k){var a=k.answer;if(!a)return "Waiting";var when=zoneDay(a.at);
+return "Answered "+when+(picksOf(k.card).length===1?"":": "+wordsOf(k.card,a.answer));}
 function paras(s){return String(s==null?"":s).split(/\n[ \t]*\n/).map(function(p){return p.trim();}).filter(Boolean)
 .map(function(p){return "<p>"+esc(p)+"</p>";}).join("");}
 function asksGot(d){S.asks=Array.isArray(d.asks)?d.asks:[];if(S.view)S.view.asks=d.waiting;}
@@ -613,7 +616,7 @@ S.busy=true;$("askmsg").textContent="";
 var go=function(tries){api("/api/bench/asks",{action:"answer",key:k.key,answer:pick,note:note}).then(function(r){
 if(r.status===429&&r.data&&r.data.why==="fast"&&tries<2)return setTimeout(function(){go(tries+1);},1100);
 S.busy=false;if(r.status===404)return lost();if(r.data&&Array.isArray(r.data.asks))asksGot(r.data);
-if(r.status===200){delete S.drafts[k.key];S.ask=null;drawInput();draw();toast("Saved: "+wordsOf(c,pick),false);
+if(r.status===200){delete S.drafts[k.key];S.ask=null;drawInput();draw();toast(x.length===1?"Saved.":"Saved: "+wordsOf(c,pick),false);
 var row=$(rowId(k.key));if(row&&row.focus)row.focus();return;}
 // WITHDRAWN WHILE IT WAS OPEN: she stays in the entry, and what she typed with her, to copy.
 if(r.status===409){drawTop();$("askmsg").textContent="Not saved: this one is no longer on the list. Your note is still here to copy.";return;}
