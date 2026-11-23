@@ -33,7 +33,12 @@ const LIST = [
 ];
 
 function run({ view = OWNER, asks = LIST, answer = null } = {}) {
-  const sent = [], els = {}, on = {};
+  const sent = [], els = {}, on = {}, win = {};
+  // The browser's history, as far as the page uses it: its steps, and Back, which the browser
+  // answers later with a popstate (history.back), or at once for the Back gesture (sysBack).
+  const hist = { entries: [null], get state() { return this.entries.at(-1); } };
+  const popped = () => win.popstate && win.popstate({ state: hist.state });
+  const sysBack = () => { if (hist.entries.length > 1) hist.entries.pop(); popped(); };
   const el = id => (els[id] ||= { id, hidden: id === "forget", innerHTML: "", textContent: "", value: "", className: "",
     style: {}, dataset: {}, attrs: {}, focused: 0, classList: { add() {}, remove() {} },
     toggleAttribute(k, v) { if (v) this.attrs[k] = ""; else delete this.attrs[k]; },
@@ -56,10 +61,12 @@ function run({ view = OWNER, asks = LIST, answer = null } = {}) {
   };
   const ctx = vm.createContext({
     location: { hash: "", pathname: "/bench", search: "", origin: "https://example.test", reload() {} },
-    history: { replaceState() {} }, localStorage: storage(store), sessionStorage: storage({}),
+    history: { get state() { return hist.state; }, replaceState() {}, pushState: s => { hist.entries.push(s); },
+               back: () => { if (hist.entries.length > 1) { hist.entries.pop(); setImmediate(popped); } } },
+    localStorage: storage(store), sessionStorage: storage({}),
     document: { hidden: false, head: { appendChild() {} }, createElement: () => ({}), querySelectorAll: () => [],
                 getElementById: id => el(id), addEventListener: (t, f) => { on[t] = f; } },
-    window: { addEventListener() {} }, navigator: {}, confirm: () => true,
+    window: { addEventListener: (t, f) => { win[t] = f; } }, navigator: {}, confirm: () => true,
     setInterval: () => 0, setTimeout: () => 0, clearTimeout() {},
     fetch: (path, opts) => {
       const body = JSON.parse(opts.body);
@@ -73,7 +80,7 @@ function run({ view = OWNER, asks = LIST, answer = null } = {}) {
   const click = dataset => on.click({ target: { closest: () => ({ id: "", dataset }) } });
   const key = k => on.keydown({ key: k, target: { matches: () => true }, preventDefault() {} });
   const type = text => { els.asknote.value = text; on.input({ target: { id: "asknote" } }); };
-  return { sent, els, settle, click, key, type, state };
+  return { sent, els, settle, click, key, type, state, hist, sysBack };
 }
 
 async function onTab(opts) {
@@ -225,6 +232,7 @@ test("an entry with one answer saves with its words; Back keeps what she typed; 
   let p = await onTab();
   p.click({ ask: "a-note" });
   p.key("Escape");
+  await p.settle();   // the browser takes the entry's step back before her next tap
   assert.match(p.els.inputbody.innerHTML, /data-ask="a-note"><b>Anything else<\/b><span class="st">Waiting<\/span>/,
                "opened and left with nothing typed, it holds nothing of hers");
   p.click({ ask: "a-note" });
@@ -240,11 +248,13 @@ test("an entry with one answer saves with its words; Back keeps what she typed; 
   p.click({ ask: "a-note" });
   assert.match(p.els.inputbody.innerHTML, /<p class="was">Answered 23 Nov<\/p>/);
   p.key("Escape");
+  await p.settle();
   // Back, with a choice and a note not saved, and in again: both still there.
   p.click({ ask: "nav-rows" });
   p.click({ pick: "unsure" });
   p.type("Half a thought");
   p.key("Escape");
+  await p.settle();
   // Kept in this page alone, so its row says it is not saved.
   assert.match(p.els.inputbody.innerHTML,
                /data-ask="nav-rows"><b>Navigation in two rows<\/b><span class="st">Waiting &middot; not saved yet<\/span>/);
@@ -273,6 +283,7 @@ test("an entry with one answer saves with its words; Back keeps what she typed; 
   assert.equal(p.els.askmsg.textContent, "Not saved: a note is 2,000 characters at most.");
   assert.match(p.els.inputbody.innerHTML, /id="asktitle"/, "still in the entry");
   p.key("Escape");
+  await p.settle();
   p.click({ ask: "map-dots" });
   p.click({ pick: "yes" });
   p.type("Three paragraphs of thought.");
@@ -305,6 +316,46 @@ test("an entry changed while it was open is drawn again from the list sent back,
   p.click({ do: "asksave" });
   await p.settle();
   assert.deepEqual(p.sent.at(-1).body, { t: TOKEN, action: "answer", key: "nav-rows", answer: "no", note: "Talk on Friday?" });
+});
+
+test("an entry opened is a step in the browser's history: a phone's Back returns to the list, keeping what she typed", async () => {
+  const p = await onTab();
+  const steps = () => p.hist.entries.map(s => (s ? s.ask : null));   // the page's own objects, from its realm
+  p.click({ ask: "nav-rows" });
+  assert.deepEqual(steps(), [null, "nav-rows"], "opening an entry adds one step");
+  p.click({ pick: "no" });
+  p.type("Half typed");
+  p.sysBack();
+  assert.match(p.els.inputbody.innerHTML, /id="row-nav-rows"/, "the Back gesture returns to the list, not away from the bench");
+  assert.ok(p.els["row-nav-rows"].focused, "the row it came from takes the focus");
+  p.click({ ask: "nav-rows" });
+  assert.equal(p.els.asknote.value, "Half typed", "and what she typed is kept");
+  // The page's own Back, and Escape, draw the list at once and take that step back, so none is
+  // left behind.
+  p.click({ do: "askback" });
+  assert.match(p.els.inputbody.innerHTML, /id="row-nav-rows"/);
+  await p.settle();
+  assert.deepEqual(steps(), [null]);
+  assert.match(p.els.inputbody.innerHTML, /id="row-nav-rows"/, "and the popstate that follows changes nothing");
+  p.click({ ask: "nav-rows" });
+  p.key("Escape");
+  await p.settle();
+  assert.deepEqual(steps(), [null]);
+  assert.match(p.els.inputbody.innerHTML, /id="row-nav-rows"/);
+  // So do a save and a tab left with an entry open, and the popstate that follows does nothing more.
+  p.click({ ask: "nav-rows" });
+  p.click({ pick: "yes" });
+  p.click({ do: "asksave" });
+  await p.settle();
+  await p.settle();
+  assert.deepEqual(steps(), [null]);
+  assert.match(p.els.inputbody.innerHTML, /id="row-nav-rows"[^>]*><b>Navigation in two rows<\/b><span class="st">Answered 23 Nov: Looks right/);
+  p.click({ ask: "map-dots" });
+  p.click({ tab: "judge" });
+  await p.settle();
+  assert.deepEqual(steps(), [null]);
+  assert.equal(p.els.judge.hidden, false, "and the Judge tab stays open");
+  assert.equal(p.els.input.hidden, true);
 });
 
 test("on her tab no key judges anything, and the Judge tab's keys are where they were", async () => {

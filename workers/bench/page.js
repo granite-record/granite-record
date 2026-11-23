@@ -29,8 +29,9 @@
  * Your input tab (23 November 2026): what waits on her word, from the list the
  * manager keeps, grouped by section with the number waiting beside the tab's
  * name; an entry opened shows what it is, where to look, the question, her
- * answers in the entry's own words and a note, and Save; Back (or Escape)
- * returns to the list. A contributor's page is as it was: no tab, and no word
+ * answers in the entry's own words and a note, and Save; Back (or Escape, or
+ * the browser's own Back: an entry opened is a step in its history) returns
+ * to the list. A contributor's page is as it was: no tab, and no word
  * of the list in anything the bench tells it.
  *
  * Light and dark in the site's palette (site.gen.js PAGE_PALETTE, read from
@@ -468,13 +469,13 @@ if(!t)return;if(t.id==="undo")return undo();if(t.dataset.a)return answer(t.datas
 if(t.dataset.tab)return tab(t.dataset.tab);if(t.dataset.link)return linkAct(t.dataset.link,t.dataset.id,t.dataset.answer);
 if(t.dataset.ask)return askOpen(t.dataset.ask);if(t.dataset.pick)return askPick(t.dataset.pick);
 var d=t.dataset.do,st=step();if(d==="retry")return start();
-if(d==="askback")return askBack();if(d==="asksave")return askSave();if(d==="askretry")return asksList();
+if(d==="askback")return leave();if(d==="asksave")return askSave();if(d==="askretry")return asksList();
 if(d==="forget"){if(!confirm("${FORGET_ASK}"))return;forget();return needs();}if(d==="note")return openNote();
 if(d==="play"&&st)return play(st.at);if(d==="back")return nudge(-10);if(d==="fwd")return nudge(10);});
 $("kind").addEventListener("change",function(){S.queue=this.value;start();});
 document.addEventListener("keydown",function(e){
 // On her Your input tab no key judges anything: Escape is Back, from the note box too.
-if(S.tab==="input"){if(e.key==="Escape"&&S.ask){e.preventDefault();askBack();}return;}
+if(S.tab==="input"){if(e.key==="Escape"&&S.ask){e.preventDefault();leave();}return;}
 if(e.target.matches&&e.target.matches("input,select,textarea")){if(e.key==="Escape"){if(S.mode==="better")answer("back");else if(S.note){S.note=false;draw();}}return;}
 if(e.ctrlKey||e.metaKey||e.altKey||S.tab!=="judge"||!S.item)return;var k=e.key,st=step(),hit=true;
 if(k==="ArrowRight")answer(S.mode==="mark"?"mark":S.mode==="better"?"saveno":"yes");
@@ -499,8 +500,9 @@ document.addEventListener("visibilitychange",function(){if(!document.hidden&&S.i
 window.addEventListener("hashchange",function(){if(location.hash)location.reload();});
 
 // ---- the owner's Links tab ---------------------------------------------------------
-function tab(t){if(S.tab==="input"&&S.ask)askKeep();S.tab=t;if(t==="links")return links({action:"list"});
-if(t==="input"){S.ask=null;drawInput();draw();return asksList();}draw();}
+function tab(t){var open=S.tab==="input"&&S.ask;if(open)askKeep();S.tab=t;if(t==="input")S.ask=null;if(open)histBack();
+if(t==="links")return links({action:"list"});
+if(t==="input"){drawInput();draw();return asksList();}draw();}
 function links(body){return api("/api/bench/links",body).then(function(r){if(r.status===404){lost();return r;}
 if(!r.data){$("linksbody").innerHTML='<p class="lede">The links cannot be read just now. Try again in a minute.</p>';draw();return r;}
 if(r.data.links)S.links=r.data.links;if(r.data.made)S.made=r.data.made;if(r.data.answers)S.open[body.id]=r.data.answers;
@@ -583,7 +585,7 @@ h+='<section class="asks"><h2>'+esc(c.section)+"</h2><ul>";}
 h+='<li><button type="button" class="ask '+(k.answer?"done":"wait")+'" id="'+esc(rowId(k.key))+'" data-ask="'+esc(k.key)+'"><b>'+
 esc(c.title)+'</b><span class="st">'+esc(stateOf(k))+(held(k)?" &middot; not saved yet":"")+"</span></button></li>";});
 if(open)h+="</ul></section>";$("inputbody").innerHTML=h;}
-function drawEntry(){var k=askOf(S.ask);if(!k){S.ask=null;return drawInput();}$("inputhead").hidden=true;
+function drawEntry(){var k=askOf(S.ask);if(!k){S.ask=null;histBack();return drawInput();}$("inputhead").hidden=true;
 var c=k.card||{},a=k.answer,x=picksOf(c),one=x.length===1,d=S.drafts[k.key],where=Array.isArray(c.where)?c.where:[];
 var what=paras(c.what);S.pick=one?x[0]:d?d.pick:a&&x.indexOf(a.answer)>=0?a.answer:"";
 $("inputbody").innerHTML='<p><button type="button" class="back" data-do="askback">&larr; Back to the list</button></p>'+
@@ -602,7 +604,17 @@ esc(wordsOf(c,y))+(c.recommended===y?"<small>Recommended</small>":"")+"</button>
 '<div class="saverow"><button type="button" class="btn primary" data-do="asksave">'+(one?esc(wordsOf(c,x[0])):"Save")+"</button>"+
 '<span class="askmsg" id="askmsg" role="status"></span></div></article>';
 $("asknote").value=d?d.note:a?a.note||"":"";askCount();}
-function askOpen(key){if(!askOf(key))return;S.ask=key;drawEntry();if(window.scrollTo)window.scrollTo(0,0);$("asktitle").focus();}
+function askOpen(key){if(!askOf(key))return;S.ask=key;histStep(key);drawEntry();if(window.scrollTo)window.scrollTo(0,0);$("asktitle").focus();}
+// AN ENTRY OPENED IS A STEP IN THE BROWSER'S HISTORY, so that a phone's Back gesture, the
+// browser's Back and a mouse's back button return to the list, as the page's Back and Escape
+// do, rather than leaving the bench and what she typed. Leaving the entry any other way (the
+// page's Back, Escape, a save, a tab) draws what follows at once and takes the step back too,
+// and the popstate that follows finds nothing open.
+function stepped(){try{return !!(history.state&&history.state.ask);}catch(e){return false;}}
+function histStep(key){try{history.pushState({ask:key},"");}catch(e){}}
+function histBack(){if(stepped())history.back();}
+function leave(){var was=stepped();askBack();if(was)history.back();}
+window.addEventListener("popstate",function(){if(S.tab==="input"&&S.ask)askBack();});
 // What she has chosen and typed, kept while the page is open, unless it is what she saved.
 function askKeep(){var n=$("asknote"),k=askOf(S.ask);if(!k||!n)return;var a=k.answer;
 if(a?a.answer===S.pick&&(a.note||"")===n.value:!S.pick&&!n.value){delete S.drafts[k.key];return;}
@@ -620,7 +632,7 @@ S.busy=true;$("askmsg").textContent="";
 var go=function(tries){api("/api/bench/asks",{action:"answer",key:k.key,answer:pick,note:note}).then(function(r){
 if(r.status===429&&r.data&&r.data.why==="fast"&&tries<2)return setTimeout(function(){go(tries+1);},1100);
 S.busy=false;if(r.status===404)return lost();if(r.data&&Array.isArray(r.data.asks))asksGot(r.data);
-if(r.status===200){delete S.drafts[k.key];S.ask=null;drawInput();draw();toast(x.length===1?"Saved.":"Saved: "+wordsOf(c,pick),false);
+if(r.status===200){delete S.drafts[k.key];S.ask=null;histBack();drawInput();draw();toast(x.length===1?"Saved.":"Saved: "+wordsOf(c,pick),false);
 var row=$(rowId(k.key));if(row&&row.focus)row.focus();return;}
 // WITHDRAWN WHILE IT WAS OPEN: she stays in the entry, and what she typed with her, to copy.
 if(r.status===409){drawTop();$("askmsg").textContent="Not saved: this one is no longer on the list. Your note is still here to copy.";return;}
