@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 A pack for the shared bench: what its contributors are asked next, as SQL to
 load into its database with one wrangler command.
@@ -10,6 +10,8 @@ load into its database with one wrangler command.
     python3 src/checks/bench_pack.py --refresh --tags reports/tags.draft.json --preview
                                                            # ... the tags from a draft registry
     python3 src/checks/bench_pack.py --groups 3 --seed 7   # more groups; another draw
+    python3 src/checks/bench_pack.py --queues tag,topic --groups-of tag=all
+                                                           # only those queues; every tag
 
 Writes reports/bench/packs/<preview|production>/<date>.sql and prints the
 wrangler command that loads it. Asks nobody and runs nothing: the owner loads
@@ -38,6 +40,11 @@ WHAT A PACK HOLDS (the design of 17 November 2026, approved):
   every key already in the ledger, whoever judged it, and every key an
   earlier pack for the same database holds (read off their "-- keys:"
   lines), so nothing is asked twice.
+
+  WHICH QUEUES, HOW MANY GROUPS: two groups of each queue unless --groups
+  says otherwise, and --groups-of QUEUE=N (a number, or all) for one queue;
+  --queues draws only the queues it names, reads only their pools and writes
+  only their rows, and leaves the others in the database as they are.
 
   A LATER PACK FOLLOWS THE EARLIER ONES (23 November 2026). The bench serves
   an item by its order (store.js claimOne, ORDER BY ord), and every pack
@@ -84,6 +91,8 @@ SEED = 20261117
 PER = {"timing": 50, "topic": 50, "tag": 30}
 QUEUES = {"timing": "Hearing times", "topic": "Topics", "tag": "Tags"}
 ORDER = ["timing", "topic", "tag"]
+# The pool each queue is drawn from (review.py's kinds).
+POOL_OF = {"timing": "timestamp", "topic": "topic", "tag": "tag"}
 # A pack's items are numbered from this times the earlier packs for its database, so a
 # later pack is served after every earlier one; within a pack, a group's items from
 # 1,000 times its place among its queue's groups.
@@ -184,7 +193,8 @@ def _sample(rng_key, candidates, n):
     return random.Random(rng_key).sample(pop, min(n, len(pop)))
 
 
-def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of="", base=0):
+def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of="", queues=None,
+         groups_of=None, base=0):
     """The pack, as rows: {"queues", "groups", "items", "calib", "elsewhere", "keys"}.
 
     pools      {"timestamp": [...], "topic": [...], "tag": [...]}, review.py's items
@@ -192,10 +202,16 @@ def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of=""
     info       title(term, bill) and analysis(term, bill), each "" when unknown,
                and options() the better topic's list
     packed     ("kind\\tkey") of earlier packs for the same database
+    groups     how many groups of each queue; groups_of {queue: n, or None for all}
+               for one queue
+    queues     the queues drawn (default every one): a queue left out has no row,
+               no group, no item and no calibration item in the pack
     base       where the pack's items and groups are numbered from: PACK_BASE
                times the earlier packs for its database (pack_files)
     """
     per = {**PER, **(per or {})}
+    want = [q for q in ORDER if queues is None or q in queues]
+    many = {q: (groups_of or {}).get(q, groups) for q in ORDER}
     lines = BL.judgments(ledger)
     judged = {}
     for d in lines:
@@ -209,6 +225,8 @@ def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of=""
     tag_pool = pools.get("tag") or []
     pool_of = {"timing": timing_pool, "topic": topic_pool, "tag": tag_pool}
     for i, q in enumerate(ORDER):
+        if q not in want:
+            continue
         keys = {it["key"] for it in pool_of[q]}
         out["queues"].append({"queue": q, "label": QUEUES[q], "pool": len(keys),
                               "judged": len(keys & done[q]), "as_of": as_of,
@@ -220,33 +238,33 @@ def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of=""
     # Each queue's groups, in their order: (group id, label, [(kind, item, card)]).
     plans = {q: [] for q in ORDER}
     by_year = {}
-    for it in timing_pool:
+    for it in timing_pool if "timing" in want else ():
         if it.get("start") is None or not it.get("video_id"):
             continue
         if fresh("timing", it, timing_kind(it)):
             by_year.setdefault(str(it.get("date") or "")[:4], []).append(it)
-    for year in sorted((y for y in by_year if y), reverse=True)[:groups]:
+    for year in sorted((y for y in by_year if y), reverse=True)[:many["timing"]]:
         got = _sample(f"{seed}|timing|{year}", by_year[year], per["timing"])
         plans["timing"].append((f"timing|{year}", f"{year} recordings",
                                 [(timing_kind(it), it, moment_card(
                                     it, info.title(bill_term(it.get("year")), it.get("bill")))) for it in got]))
     by_term = {}
-    for it in topic_pool:
+    for it in topic_pool if "topic" in want else ():
         if (it.get("topic") or "Miscellaneous") == "Miscellaneous":
             continue
         if fresh("topic", it, "topic"):
             by_term.setdefault(str(it.get("term") or ""), []).append(it)
-    for term in sorted((t for t in by_term if t), reverse=True)[:groups]:
+    for term in sorted((t for t in by_term if t), reverse=True)[:many["topic"]]:
         got = _sample(f"{seed}|topic|{term}", by_term[term], per["topic"])
         plans["topic"].append((f"topic|{term}", f"Bills of {term}",
                                [("topic", it, topic_card(it, info.analysis(term, it.get("bill")))) for it in got]))
     by_tag = {}
-    for it in tag_pool:
+    for it in tag_pool if "tag" in want else ():
         if it.get("sample") not in ("title", "other", "miss"):
             continue
         if fresh("tag", it, "tag"):
             by_tag.setdefault(it.get("tag"), []).append(it)
-    for tid in sorted(by_tag, key=lambda t: min(x.get("order", 0) for x in by_tag[t]))[:groups]:
+    for tid in sorted(by_tag, key=lambda t: min(x.get("order", 0) for x in by_tag[t]))[:many["tag"]]:
         got = _sample(f"{seed}|tag|{tid}", by_tag[tid], per["tag"])
         plans["tag"].append((f"tag|{tid}", str(got[0].get("tag_name") or tid),
                              [("tag", it, tag_card(it)) for it in got]))
@@ -262,7 +280,9 @@ def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of=""
                                      "ord": base + gi * GROUP_SPAN + i, "card": card, "shown": it})
                 out["keys"].append(f"{kind}\t{it['key']}")
 
-    # CALIBRATION: what the owner judged and a contributor's card can show.
+    # CALIBRATION: what the owner judged and a contributor's card can show. Shuffled as
+    # one list whatever is drawn, so a calibration item's order is the same in a pack
+    # of some queues as in a pack of all three; a card is made only for a queue drawn.
     mine = {}
     for d in lines:
         if BL.who(d) == "hand":
@@ -273,22 +293,29 @@ def draw(pools, ledger, info, packed=(), seed=SEED, groups=2, per=None, as_of=""
         if kind in ("timestamp", "older"):
             if verdict not in ("correct", "wrong") or shown.get("start") is None or not shown.get("video_id"):
                 continue
-            card = moment_card(shown, info.title(bill_term(shown.get("year")), shown.get("bill")))
             q = "timing"
         elif kind == "topic":
             if verdict not in ("correct", "wrong") or (shown.get("topic") or "Miscellaneous") == "Miscellaneous":
                 continue
-            card, q = topic_card(shown, info.analysis(shown.get("term"), shown.get("bill"))), "topic"
+            q = "topic"
         elif kind == "tag":
             if verdict not in ("yes", "partly", "no") or shown.get("sample") not in ("title", "other", "miss"):
                 continue
-            card, q = tag_card(shown), "tag"
+            q = "tag"
         else:
             continue
-        cal.append({"kind": kind, "key": key, "queue": q, "card": card,
+        cal.append({"kind": kind, "key": key, "queue": q, "shown": shown,
                     "hers": "yes" if verdict in ("correct", "yes", "partly") else "no"})
     for i, c in enumerate(_sample(f"{seed}|calib", cal, len(cal))):
-        out["calib"].append({**c, "ord": i})
+        if c["queue"] not in want:
+            continue
+        shown = c.pop("shown")
+        card = (moment_card(shown, info.title(bill_term(shown.get("year")), shown.get("bill")))
+                if c["queue"] == "timing" else
+                topic_card(shown, info.analysis(shown.get("term"), shown.get("bill")))
+                if c["queue"] == "topic" else tag_card(shown))
+        out["calib"].append({"kind": c["kind"], "key": c["key"], "queue": c["queue"], "card": card,
+                             "hers": c["hers"], "ord": i})
 
     # Packed before, judged on the laptop since: asked no more.
     for k in sorted(packed):
@@ -423,29 +450,69 @@ class Info:
         return review.topic_options()
 
 
+def queues_named(text):
+    """The queues --queues names (comma-separated), in the pack's order; every one when
+    it names none."""
+    if text is None:
+        return list(ORDER)
+    got = [x.strip() for x in str(text).split(",") if x.strip()]
+    bad = [x for x in got if x not in ORDER]
+    if bad or not got:
+        raise SystemExit(f"--queues {text!r}: name one or more of {', '.join(ORDER)}, with commas between")
+    return [q for q in ORDER if q in got]
+
+
+def groups_named(given, queues):
+    """{queue: n, or None for all} from --groups-of QUEUE=N, each a queue drawn and N a
+    number of groups or "all"."""
+    out = {}
+    for s in given or ():
+        q, sep, n = str(s).partition("=")
+        q, n = q.strip(), n.strip()
+        if not sep or q not in ORDER:
+            raise SystemExit(f"--groups-of {s!r}: write QUEUE=N, QUEUE one of {', '.join(ORDER)}")
+        if q not in queues:
+            raise SystemExit(f"--groups-of {s!r}: {q} is not drawn (--queues {','.join(queues)})")
+        if n == "all":
+            out[q] = None
+        elif n.isdigit() and int(n) > 0:
+            out[q] = int(n)
+        else:
+            raise SystemExit(f"--groups-of {s!r}: N is a number of groups, 1 or more, or all")
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description="A pack for the shared bench, as SQL for wrangler to load.")
     ap.add_argument("--preview", action="store_true", help="a pack for the preview's database")
     ap.add_argument("--groups", type=int, default=2, help="groups of each queue (default 2)")
+    ap.add_argument("--groups-of", action="append", default=[], metavar="QUEUE=N",
+                    help="groups of one queue, N a number or all, in place of --groups for it (again for another)")
+    ap.add_argument("--queues", default=None, metavar="Q,Q",
+                    help="draw only these queues, of timing, topic, tag (default all three)")
     ap.add_argument("--seed", type=int, default=SEED)
-    ap.add_argument("--refresh", action="store_true", help="draw review.py's three pools again first")
+    ap.add_argument("--refresh", action="store_true", help="draw review.py's pools again first")
     ap.add_argument("--tags", help="the tag registry to draw tags from (a draft in reports/), as "
                                    "review.py --tags takes it, where corrections/tags.json is not")
     ap.add_argument("--out", default=None, help="the folder for packs (default reports/bench/packs/<db>)")
     a = ap.parse_args()
+    if a.groups < 1:
+        raise SystemExit("--groups is a number of groups, 1 or more")
+    queues = queues_named(a.queues)
+    groups_of = groups_named(a.groups_of, queues)
     if a.tags:
         import os
         os.environ["GRANITE_TAGS"] = a.tags
     which = "preview" if a.preview else "production"
     db = DB[which]
     folder = Path(a.out) if a.out else OUT / which
-    pools = {k: read_pool(k, a.refresh) for k in ("timestamp", "topic", "tag")}
+    pools = {POOL_OF[q]: read_pool(POOL_OF[q], a.refresh) for q in queues}
     ledger = BL.read(BL.LEDGER)
     earlier = pack_files(folder) if folder.is_dir() else []
     base = len(earlier) * PACK_BASE
     as_of = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     pack = draw(pools, ledger, Info("."), {k for _p, keys in earlier for k in keys}, a.seed, a.groups,
-                as_of=as_of, base=base)
+                as_of=as_of, queues=queues, groups_of=groups_of, base=base)
     folder.mkdir(parents=True, exist_ok=True)
     day = as_of[:10]
     path = folder / f"{day}.sql"

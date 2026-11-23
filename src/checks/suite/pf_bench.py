@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -435,24 +435,28 @@ def _grow_fixture():
 
 
 @check("build", "a later pack follows the earlier ones: its items and groups numbered after every earlier "
-                "pack for its database, and served after them, group by group",
+                "pack for its database and served after them, group by group; --queues and --groups-of draw "
+                "only what they name",
        needs=("bench_pack", "bench_ledger", "review"))
 def _bench_pack_grows(BP, BL, RV):
     """PACKS THAT CAN GROW (the owner, 23 November 2026: "add more entries for the tag and topics
     on the bench"). The bench serves an open item by its order (store.js claimOne, ORDER BY ord)
     and every pack numbered its own from 0, so a second pack's items came between the first's.
-    Held, on draw(): with no base, numbered from 0 as before; a base moves every item and group
-    by it and no calibration item; a group continued in a later pack is numbered after it; a
-    group too big for a pack's numbering is refused. And on main(), run twice: the second pack
-    numbered from PACK_BASE because the folder holds one before it, and both, loaded into the
-    bench's schema in node (tests/bench/apply_pack.js), served pack by pack and group by
-    group."""
+    Held, on draw(): the defaults are today's (every queue, --groups each, numbered from 0); a
+    base moves every item and group by it and no calibration item; a group continued in a later
+    pack is numbered after it; --queues gives each queue drawn what a pack of all three gives it
+    and the others nothing, calibration included; --groups-of all draws every group of one
+    queue; a group too big for a pack's numbering is refused. And on main(), run twice: the
+    second pack numbered from PACK_BASE because the folder holds one before it, both loaded into
+    the bench's schema in node (tests/bench/apply_pack.js) and served pack by pack and group by
+    group; a queue not drawn has no row in the pack; and a --queues or --groups-of the pack
+    cannot use is refused."""
     import contextlib
     import os
     pools, ledger, info = _grow_fixture()
     at = "2026-11-23T10:00:00Z"
     full = BP.draw(pools, ledger, info, (), seed=7, as_of=at)
-    assert BP.draw(pools, ledger, info, (), seed=7, as_of=at, base=0) == full
+    assert BP.draw(pools, ledger, info, (), seed=7, as_of=at, queues=list(BP.ORDER), groups_of={}, base=0) == full
     assert [(g["queue"], g["ord"]) for g in full["groups"]] == [
         ("timing", 0), ("timing", 1), ("topic", 0), ("topic", 1), ("tag", 0), ("tag", 1)], full["groups"]
     assert min(r["ord"] for r in full["items"]) == 0 and max(r["ord"] for r in full["items"]) < BP.GROUP_SPAN * 2
@@ -464,6 +468,17 @@ def _bench_pack_grows(BP, BL, RV):
     rest = BP.draw(pools, ledger, info, set(half["keys"]), seed=7, as_of=at, groups=1, base=BP.PACK_BASE)
     cont = [r for r in rest["items"] if r["grp"] == "tag|medicaid"]
     assert len(cont) == 1 and cont[0]["ord"] >= BP.PACK_BASE > max(r["ord"] for r in half["items"]), cont
+    some = BP.draw(pools, ledger, info, (), seed=7, as_of=at, queues=["topic", "tag"])
+    assert some["queues"] == [r for r in full["queues"] if r["queue"] != "timing"] and \
+        some["groups"] == [g for g in full["groups"] if g["queue"] != "timing"] and \
+        some["items"] == [r for r in full["items"] if r["queue"] != "timing"] and \
+        some["calib"] == [c for c in full["calib"] if c["queue"] != "timing"] and \
+        some["keys"] == [k for k in full["keys"] if not k.startswith(("timestamp\t", "older\t"))], (
+            "--queues changed what the queues drawn are given, or drew a queue it does not name")
+    every = BP.draw(pools, ledger, info, (), seed=7, as_of=at, groups=1, groups_of={"tag": None})
+    assert [(g["queue"], g["label"]) for g in every["groups"]] == [
+        ("timing", "2026 recordings"), ("topic", "Bills of 2023-2024"), ("tag", "Medicaid"), ("tag", "Housing"),
+        ("tag", "Veterans"), ("tag", "Water")], every["groups"]
     big = {"tag": [{**pools["tag"][1], "key": f"tag|medicaid|other|2025-2026/SB{1000 + i}"}
                    for i in range(BP.GROUP_SPAN + 1)]}
     try:
@@ -498,9 +513,16 @@ def _bench_pack_grows(BP, BL, RV):
         code, said = run("--groups", "1")
         assert code == 0 and "the first pack in packs" in said, (code, said)
         (p1, _k1), = BP.pack_files("packs")
-        code, said = run()
+        code, said = run("--queues", "tag,topic", "--groups-of", "tag=all")
         assert code == 0 and "served after the items of the 1 earlier pack(s)" in said, (code, said)
         p2 = next(p for p, _k in BP.pack_files("packs") if p != p1)
+        sql2 = p2.read_text(encoding="utf-8")
+        assert "VALUES ('timing'" not in sql2 and "VALUES ('topic'" in sql2 and "'timestamp', 'V" not in sql2, (
+            "a queue --queues does not name was written into the pack")
+        for args, words in ((("--queues", "nope"), "--queues"), (("--groups-of", "tag=0"), "--groups-of"),
+                            (("--queues", "tag", "--groups-of", "topic=2"), "not drawn")):
+            code, _said = run(*args)
+            assert isinstance(code, str) and words in code, (args, code)
         if not node:
             return "skip", "node is not on PATH: the two packs were drawn and written, and not served"
         r = _run([node, "--disable-warning=ExperimentalWarning", str(_paths.ROOT / "tests/bench/apply_pack.js"),
@@ -512,15 +534,16 @@ def _bench_pack_grows(BP, BL, RV):
         BP.Info, sys.argv = saved
         shutil.rmtree(tmp, ignore_errors=True)
     served = got["served"]
-    want = {"timing": [p1.stem] * 6 + [p2.stem] * 6, "topic": [p1.stem] * 4 + [p2.stem] * 6,
-            "tag": [p1.stem] * 3 + [p2.stem] * 4}
+    want = {"timing": [p1.stem] * 6, "topic": [p1.stem] * 4 + [p2.stem] * 6, "tag": [p1.stem] * 3 + [p2.stem] * 6}
     assert {q: [p for p, _g in v] for q, v in served.items()} == want, served
     for q, v in served.items():
         runs = [g for i, (_p, g) in enumerate(v) if i == 0 or v[i - 1][1] != g]
         assert len(runs) == len(set(runs)), f"{q}: a group's items were not served together: {runs}"
-    return "ok", (f"draw() numbered from 0 with no base, a base moving items and groups alone; two packs from "
-                  f"main(), the second numbered from {BP.PACK_BASE:,} and served after the first, group by "
-                  f"group ({sum(len(v) for v in served.values())} items)")
+    assert [x[0] for x in got["queues"]] == ["timing", "topic", "tag"], got["queues"]
+    return "ok", (f"draw()'s defaults as before, a base moving items and groups alone, --queues and --groups-of "
+                  f"drawing only what they name; two packs from main(), the second numbered from "
+                  f"{BP.PACK_BASE:,} and served after the first, group by group "
+                  f"({sum(len(v) for v in served.values())} items)")
 
 
 # ---- the merge ----------------------------------------------------------------------

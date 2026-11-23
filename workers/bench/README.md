@@ -80,7 +80,9 @@ wrangler command that loads it; the owner runs that.
 
 A later pack is served after every earlier one: its items and groups are
 numbered from a million times the packs already in that folder (`ord`), and
-calibration keeps its own order.
+calibration keeps its own order. `--queues tag,topic` draws only those
+queues, and `--groups-of tag=all` (or a number) sets one queue's groups in
+place of `--groups`.
 
 ## What was answered: the merge
 
