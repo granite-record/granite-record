@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.107
+# GRANITE_VERSION: 2026-09-04.108
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -6004,8 +6004,10 @@ def site_manifest(site, out, walk=None):
 # day stated (cold_build), and compares the two file for file (cold_compare),
 # less the files that carry a time of day or are the build's account of itself
 # (TREE_LEFT_OUT and TREE_LEFT_OUT_UNDER, which the night's own tree hash
-# leaves out too) and the changes files, written against the first-seen ledger
-# the night moved on (COLD_LEFT_OUT_UNDER). A difference is a warning in the
+# leaves out too), the changes files, written against the first-seen ledger
+# the night moved on (COLD_LEFT_OUT_UNDER), and the data API's files that carry
+# the build's moment or are written against its own ledger (COLD_LEFT_OUT,
+# COLD_LEFT_OUT_UNDER). A difference is a warning in the
 # weekly's verdict, naming the first files that differ, for the morning triage;
 # it holds no night, and the weekly's own fetches are as they were. The night itself
 # states no day: its pages are published, and a stated moment is read as UTC
@@ -6089,15 +6091,28 @@ def shadow_said(site):
 # ... and the changes files the email sender reads (follow_changes.py), which
 # are written against the first-seen ledger: the night moves the ledger on
 # itself once its build is accepted (keep_first_seen), so a build after it
-# decides what is new against a later one than the night's build did.
-COLD_LEFT_OUT_UNDER = TREE_LEFT_OUT_UNDER + ("changes/",)
+# decides what is new against a later one than the night's build did. And the
+# data API's change feed (api_records.py), written against archive/api-hashes.json,
+# which the night moves on the same way (keep_api_hashes): each night's file
+# carries the moment of the build that wrote that night, tonight's own and, for
+# a night no accepted build wrote (16 November 2026, before the feed began),
+# whichever build writes it.
+COLD_LEFT_OUT_UNDER = TREE_LEFT_OUT_UNDER + ("changes/", "api/changes/")
+# ... and the data API's two files that carry the build's own moment, as
+# data/manifest.json does: api/index.json ("built", api_records' clock in UTC)
+# and data/schema.json ("created", the manifest's "generated", the local clock).
+# A cold build states the night's day, so both say its midnight; the night's are
+# the clock's, moments apart and in two zones, which no stated moment gives back.
+# The weekly of 23 November 2026 differed from the night in these four files
+# alone. preflight's _cold_build_leaves_out_the_api_moments holds the two lists.
+COLD_LEFT_OUT = {"api/index.json", "data/schema.json"}
 
 
 def cold_left_out(rel):
     """Whether a file of the site is left out of the cold build's comparison:
     one that carries a time of day, is the build's own account of itself, or
-    is written against the ledger the night moved on."""
-    return rel in TREE_LEFT_OUT or rel.startswith(COLD_LEFT_OUT_UNDER)
+    is written against a ledger the night moved on."""
+    return rel in TREE_LEFT_OUT or rel in COLD_LEFT_OUT or rel.startswith(COLD_LEFT_OUT_UNDER)
 
 
 def cold_compare(night, cold):

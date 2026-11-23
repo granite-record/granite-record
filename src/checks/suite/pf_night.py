@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.17
+# GRANITE_VERSION: 2026-11-16.18
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -13051,6 +13051,76 @@ def _weekly_cold_build_compares(NI):
                   "not compared with no list or another night's, failed on a failed build; the same, "
                   "a difference naming its first files, the files that carry a time left out, other "
                   "code a note; the week's results and warnings carry it, clean and exit untouched")
+
+
+@check("workflows", "the cold build leaves out what the data API writes with the build's own moment -- "
+       "api/index.json, data/schema.json and every night's file under api/changes/ -- and compares "
+       "every other file of api/ and data/", needs=("nightly", "api_records", "api_schema"))
+def _cold_build_leaves_out_the_api_moments(NI, AR, AS):
+    """THE WEEKLY OF 23 NOVEMBER 2026: its cold build differed from the night's in 4 of 66,271
+    files, api/changes/2026-11-16.json and 2026-11-23.json, api/index.json and data/schema.json,
+    each by the build's moment. A cold build states the night's day, so its moments are that
+    day's midnight; the night's are the clock's (api_records' "built" in UTC, the manifest's
+    "generated", schema.json's "created", on the local clock). And each night's file of the change
+    feed carries the moment of the build that wrote that night: tonight's, and for a night no
+    accepted build wrote (the 16th, before the feed began), whichever build writes it.
+
+    Held: nightly.cold_left_out leaves those four out, and the rest of api/changes/, as it does
+    changes/ and data/manifest.json, and leaves in every other file of api/ and data/ (a row file,
+    a record's file, the bill files, the CSVs); cold_compare of two builds differing in those
+    alone is the same, and in one more file names that one. With api_records' and api_schema's own
+    code, a night that read a ledger from the 17th and a cold build that read the one it left,
+    each with its own moment: the eight change files differ in 16 and 23 November alone, and
+    there in "built" alone, the night's list coming back whole; the index in "built" alone; and
+    schema.json in "created" alone."""
+    out = ["api/index.json", "data/schema.json", "api/changes/2026-11-16.json", "api/changes/2026-11-23.json",
+           "api/changes/2026-11-19.json", "changes/2026-11-23.json", "changes/current.json",
+           "data/manifest.json", "build.json", "feed/all.xml"]
+    kept = ["api/bills/2025-2026/index.json", "api/bills/2025-2026/HB1.json", "api/members/index.json",
+            "api/members/100.json", "api/laws/index.json", "api/rollcalls/2025-2026.json",
+            "api/requests/2027/index.json", "api/changes.json", "data/bills-2025-2026.jsonl.gz",
+            "data/bill-texts-2025-2026.jsonl.gz", "data/bills.csv", "data/people.json", "index.html"]
+    assert [x for x in out if not NI.cold_left_out(x)] == [], (
+        f"the cold build compares {[x for x in out if not NI.cold_left_out(x)]}, which carry the build's moment")
+    assert [x for x in kept if NI.cold_left_out(x)] == [], (
+        f"the cold build leaves out {[x for x in kept if NI.cold_left_out(x)]}, which carry no moment")
+    night = {x: "1" * 64 for x in out + kept}
+    got = NI.cold_compare(night, dict(night, **{x: "2" * 64 for x in out}))
+    assert not (got["changed"] or got["added"] or got["removed"]) and got["compared"] == len(kept), got
+    got = NI.cold_compare(night, dict(night, **{x: "2" * 64 for x in out + ["api/bills/2025-2026/HB1.json"]}))
+    assert got["changed"] == ["api/bills/2025-2026/HB1.json"], got
+
+    def less(obj, key):
+        return {k: v for k, v in obj.items() if k != key}
+    tonight, night_at, cold_at = "2026-11-23", "2026-11-23T08:55:32Z", "2026-11-23T00:00:00Z"
+    empty = {k: [] for k in AR.KINDS}
+    days = [f"2026-11-{d}" for d in range(17, 23)]
+    hashes = {k: {} for k in AR.KINDS + (AR.BALLOTS,)}
+    hashes["bills"] = {"2025-2026/HB1": "a" * 16}
+    read = {"format": AR.LEDGER_FORMAT, "date": days[-1], "built": f"{days[-1]}T09:00:00Z",
+            "hashes": dict(hashes, bills={"2025-2026/HB1": "b" * 16}),
+            "nights": {d: {"built": f"{d}T09:00:00Z", "changed": empty, "removed": empty} for d in days}}
+    left, _found = AR.decide(read, hashes, tonight=tonight, built=night_at)
+    by_night = AR.change_files(left, tonight, night_at)
+    again, _found = AR.decide(left, hashes, tonight=tonight, built=cold_at)
+    by_cold = AR.change_files(again, tonight, cold_at)
+    differ = sorted(n for n in by_night if by_night[n] != by_cold[n])
+    assert differ == ["2026-11-16.json", "2026-11-23.json"] and \
+        all(less(by_night[n], "built") == less(by_cold[n], "built") for n in differ) and \
+        by_cold["2026-11-23.json"]["changed"]["bills"] == ["2025-2026/HB1"], (
+            f"a night and a cold build of its folder write the change files apart in {differ}, and not "
+            f"in their moment alone: {[(by_night[n], by_cold[n]) for n in differ][:1]}")
+    import types
+    o = types.SimpleNamespace(count={})
+    a, b = (AR.index_file(o, base="https://graniterecord.org", built=m, sitting="2025-2026", year="2027",
+                          terms=["2025-2026"], rc_terms=["2025-2026"], nights=[n[:-5] for n in by_night])
+            for m in (night_at, cold_at))
+    assert a != b and less(a, "built") == less(b, "built"), "api/index.json differs in more than its moment"
+    a, b = (AS.package([], [], "https://graniterecord.org/data/", m) for m in ("2026-11-23T03:54:27", cold_at[:-1]))
+    assert a != b and less(a, "created") == less(b, "created"), "data/schema.json differs in more than its moment"
+    return "ok", (f"api/index.json, data/schema.json and api/changes/ left out, with changes/ and the rest, and "
+                  f"{len(kept)} other files of api/ and data/ compared; two builds of one folder a moment "
+                  "apart write those three in their moment alone, the night's list of changes kept")
 
 
 @check("workflows", "the publish job tells the publish check of a publish and of a publish that "

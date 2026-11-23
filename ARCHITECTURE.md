@@ -283,7 +283,8 @@ again from the folder as the last night left it, set aside before its own
 fetches, with no build cache and that night's day stated, and compares every
 file with that night's build, whose sha256 list the night keeps as a state
 file (`archive/night-site.json.gz`, `nightly.NIGHT_SITE`; never a dry run's or
-a New term run's), less the files that carry a time and the changes files: a
+a New term run's), less the files that carry a time (`api/index.json` and
+`data/schema.json` too) and the changes files (`api/changes/` too): a
 difference is a warning in the week's verdict, naming the first files, and
 holds no night. Since 19 November 2026 it also measures the private bucket,
 read only, by top-level prefix (`cloud.py bucket-size`): files, bytes, the
