@@ -247,7 +247,8 @@ test("an entry with one answer saves with its words; Back keeps what she typed; 
   assert.equal(p.els.askcount.textContent, "1 character left");
   p.type("x".repeat(2000));
   assert.equal(p.els.askcount.textContent, "No characters left");
-  // Refused: a note too long stays in the entry and says so; an entry withdrawn goes back to the list.
+  // Refused: a note too long stays in the entry and says so; so does an entry withdrawn while it
+  // was open, her note still in the box to copy, and Back then shows the list without it.
   p = await onTab({ answer: body => body.key === "nav-rows" ? { status: 400, data: { why: "long", asks: LIST } }
                                                            : { status: 409, data: { why: "gone", asks: LIST.slice(0, 1) } } });
   p.click({ ask: "nav-rows" });
@@ -259,10 +260,16 @@ test("an entry with one answer saves with its words; Back keeps what she typed; 
   p.key("Escape");
   p.click({ ask: "map-dots" });
   p.click({ pick: "yes" });
+  p.type("Three paragraphs of thought.");
   p.click({ do: "asksave" });
   await p.settle();
-  assert.equal(p.els.toastwords.textContent, "Not saved: that one is no longer on the list.");
-  assert.doesNotMatch(p.els.inputbody.innerHTML, /row-map-dots/, "and the list without it");
+  assert.equal(p.els.askmsg.textContent, "Not saved: this one is no longer on the list. Your note is still here to copy.");
+  assert.match(p.els.inputbody.innerHTML, /id="asktitle"[^>]*>Map dots</, "still in the entry");
+  assert.match(p.els.inputbody.innerHTML, /<textarea id="asknote"/, "and its note box");
+  assert.equal(p.els.asknote.value, "Three paragraphs of thought.");
+  p.key("Escape");
+  assert.match(p.els.inputbody.innerHTML, /row-nav-rows/);
+  assert.doesNotMatch(p.els.inputbody.innerHTML, /row-map-dots/, "Back shows the list without it");
 });
 
 test("on her tab no key judges anything, and the Judge tab's keys are where they were", async () => {

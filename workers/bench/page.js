@@ -613,9 +613,10 @@ S.busy=true;$("askmsg").textContent="";
 var go=function(tries){api("/api/bench/asks",{action:"answer",key:k.key,answer:pick,note:note}).then(function(r){
 if(r.status===429&&r.data&&r.data.why==="fast"&&tries<2)return setTimeout(function(){go(tries+1);},1100);
 S.busy=false;if(r.status===404)return lost();if(r.data&&Array.isArray(r.data.asks))asksGot(r.data);
-if(r.status===200||r.status===409){delete S.drafts[k.key];S.ask=null;drawInput();draw();
-toast(r.status===200?"Saved: "+wordsOf(c,pick):"Not saved: that one is no longer on the list.",false);
+if(r.status===200){delete S.drafts[k.key];S.ask=null;drawInput();draw();toast("Saved: "+wordsOf(c,pick),false);
 var row=$(rowId(k.key));if(row&&row.focus)row.focus();return;}
+// WITHDRAWN WHILE IT WAS OPEN: she stays in the entry, and what she typed with her, to copy.
+if(r.status===409){drawTop();$("askmsg").textContent="Not saved: this one is no longer on the list. Your note is still here to copy.";return;}
 $("askmsg").textContent=r.data&&r.data.why==="long"?"Not saved: a note is 2,000 characters at most.":
 r.data&&r.data.why==="bad"?"Not saved: that answer is not one this entry offers.":
 r.status===429?"Not saved. Try again in a moment.":"Not saved: the bench could not be reached. Try again.";});};go(0);}
