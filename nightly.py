@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.106
+# GRANITE_VERSION: 2026-09-04.107
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1504,10 +1504,24 @@ def slowest_said(args, lines):
     return [ln for ln in lines if SLOWEST_LINE.fullmatch(ln.strip())]
 
 
+# WHAT FAILED FIRST (23 November 2026). The weekly of 23 November stopped on
+# one failed check and GitHub's log named none: the twelve lines kept were
+# checks that passed and say "refused". Preflight's own "What is broken:" block
+# and its [ FAIL ] and [ERROR ] lines come first now, then the other lines that
+# say failing, twelve in all, then the step's last few, as before; never the
+# line of a check that passed, was skipped or failed as expected.
+# preflight's _failure_lines_lead_with_what_failed holds it.
+CHECK_FAILED = re.compile(r"\s*\[(?: FAIL |ERROR ?)\]")
+CHECK_DID_NOT_FAIL = re.compile(r"\s*\[(?:  ok  | skip |xfail )\]")
+
+
 def failure_lines(lines, tail=6):
     """What a failed step said about failing, for a log that shows no more."""
-    hits = [ln for ln in lines if re.search(
-        r"\b(FAIL\w*|ERROR|STOPPED|NOT|Traceback|[Rr]efused)\b", ln)][:12]
+    lines = [ln for ln in lines if not CHECK_DID_NOT_FAIL.match(ln)]
+    at = next((i for i, ln in enumerate(lines) if ln.strip() == "What is broken:"), len(lines))
+    end = next((i for i in range(at, len(lines)) if not lines[i].strip()), len(lines))
+    hits = list(dict.fromkeys(lines[at:end] + [ln for ln in lines if CHECK_FAILED.match(ln)] + [
+        ln for ln in lines if re.search(r"\b(FAIL\w*|ERROR|STOPPED|NOT|Traceback|[Rr]efused)\b", ln)]))[:12]
     last = [ln for ln in lines if ln.strip()][-tail:]
     return hits + [ln for ln in last if ln not in hits]
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.16
+# GRANITE_VERSION: 2026-11-16.17
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -16187,6 +16187,47 @@ def _slowest_reaches_the_job_log(NI):
         NI.WATCH["step"] = saved[3]
     return "ok", ("a preflight step's slowest line, and that alone, reaches GitHub's log; once "
                   "from a failed one; never from another step, nor in another shape")
+
+
+@check("pipeline", "a failed step shows GitHub's log what failed first: preflight's \"What is broken:\" "
+       "block and its [ FAIL ] line, never a check that passed, in no more lines than before",
+       needs=("nightly",))
+def _failure_lines_lead_with_what_failed(NI):
+    """WHAT FAILED FIRST (nightly.failure_lines). The weekly of 23 November
+    2026 stopped on one failed check, and GitHub's log named none of it: the
+    twelve lines kept were the first to say FAIL, ERROR, STOPPED, NOT,
+    Traceback or refused, and checks that passed say "refused". Held on a
+    short log in that shape, as run() logs a step: fourteen passing lines that
+    say refused, a skipped one and an expected failure that do too, one FAIL
+    with its words, the summary and the "What is broken:" block. The lines
+    kept open on the block and then the [ FAIL ] line, none is the line of a
+    check that did not fail, and there are no more than twelve and the last
+    six, as before; a step that crashed keeps its Traceback and its last
+    lines, as before, without the passing line above them."""
+    name = "the next election's dates are on every week of the Calendar, each with its law"
+    found = "the Calendar's week of 2026-W47 (en): 'By law: RSA 655:14.' does not cite 'RSA 655:14, as amended'"
+    out = (["FRONTEND"] + [f"  [  ok  ] a short copy of table {i} is refused, NOT taken" for i in range(14)]
+           + [f"  [ FAIL ] {name}", f"           {found}", "  [ skip ] a refused key: no key here",
+              "  [xfail ] a refused report is said", "           expected to fail until x", "",
+              "=" * 74, "14 passed, 1 failed, 1 skipped, 1 expected to fail", "", "What is broken:",
+              f"  frontend/{name}", f"    {found[:150]}", "",
+              "Each of these is independent, so fix them in any order. Nothing",
+              "here touched the site or the data files.", "=" * 74])
+    passed = re.compile(r"\s*\[(?:  ok  | skip |xfail )\]")
+    got = NI.failure_lines(["  " + o for o in out])
+    want = ["  What is broken:", f"    frontend/{name}", f"      {found}", f"    [ FAIL ] {name}"]
+    assert got[:4] == want, f"GitHub's log would open on {got[:4]}, not on what failed: {want}"
+    assert not [ln for ln in got if passed.match(ln)], (
+        f"GitHub's log would show a check that did not fail: {[ln for ln in got if passed.match(ln)][:2]}")
+    assert len(got) <= 12 + 6, f"{len(got)} lines kept, more than the twelve and the last six"
+    crashed = ["  [  ok  ] a refused key warns", "  Traceback (most recent call last):",
+               '    File "x.py", line 1, in <module>', "  OSError: the disk is full"]
+    got = NI.failure_lines(crashed)
+    assert "  Traceback (most recent call last):" in got and got[-1] == "  OSError: the disk is full" \
+        and not [ln for ln in got if passed.match(ln)], f"a step that crashed shows {got}"
+    return "ok", ("a failed preflight step's lines in GitHub's log open on \"What is broken:\" and its "
+                  "[ FAIL ] line, with no check that passed, was skipped or failed as expected, in no "
+                  "more than eighteen lines; a crash keeps its Traceback and its last line")
 
 
 @check("build", "a time of day is read as 24 hours or given back as it came, and the build's day is New "
