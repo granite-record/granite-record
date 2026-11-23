@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 A pack for the shared bench: what its contributors are asked next, as SQL to
 load into its database with one wrangler command.
@@ -361,6 +361,23 @@ def j(v):
     return q(json.dumps(v, ensure_ascii=False, separators=(",", ":")))
 
 
+def keys_lines(keys, most=STATEMENT_MOST):
+    """A pack's keys as its "-- keys: [...]" lines, in order, each of `most` bytes at most: to_sql
+    holds every line of a pack to D1's limit, its header's among them, and on one line the keys
+    of a draw of every tag were over it, so the pack was refused (23 November 2026). One line,
+    "-- keys: []", for a pack of none; pack_files reads them back as one list."""
+    out, chunk, size = [], [], 0
+    for k in keys:
+        n = len(json.dumps(k, ensure_ascii=True))
+        if chunk and len("-- keys: []") + size + 2 + n > most:
+            out.append("-- keys: " + json.dumps(chunk, ensure_ascii=True))
+            chunk, size = [], 0
+        size += n + (2 if chunk else 0)
+        chunk.append(k)
+    out.append("-- keys: " + json.dumps(chunk, ensure_ascii=True))
+    return out
+
+
 def to_sql(pack, name, db, path, seed, sources, asks=None):
     """The pack as statements, with a header that says what it is and how to load it, and,
     where `asks` is given (asks_from), the owner's list after them (asks_sql)."""
@@ -371,7 +388,7 @@ def to_sql(pack, name, db, path, seed, sources, asks=None):
            asks_line(asks),
            "-- Load it with:",
            f"--   npx wrangler d1 execute {db} --remote --file {Path(path).as_posix()}",
-           "-- keys: " + json.dumps(pack["keys"], ensure_ascii=True), ""]
+           *keys_lines(pack["keys"]), ""]
     for r in pack["queues"]:
         out.append("INSERT INTO queues (queue, label, pool, judged, as_of, options, ord) VALUES ("
                    f"{q(r['queue'])}, {q(r['label'])}, {r['pool']}, {r['judged']}, {q(r['as_of'])}, "
@@ -404,18 +421,27 @@ def to_sql(pack, name, db, path, seed, sources, asks=None):
 
 def pack_files(folder):
     """[(path, keys)] of every earlier pack in `folder`, in the order of their names: each
-    .sql file whose first lines carry its "-- keys:" line, with the "kind\\tkey" it holds."""
+    .sql file whose header -- its "--" lines and blank ones, up to its first statement --
+    carries "-- keys:" lines, with the "kind\\tkey" they hold, in order. A large pack's keys
+    take as many lines as D1's limit on one needs (keys_lines), so every line of the header
+    is read, however many there are."""
     out = []
     for p in sorted(Path(folder).glob("*.sql")):
-        keys = [json.loads(line[len("-- keys: "):]) for line in p.read_text(encoding="utf-8").splitlines()[:12]
-                if line.startswith("-- keys: ")]
+        keys = []
+        with p.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.rstrip("\r\n")
+                if line.startswith("-- keys: "):
+                    keys.append(json.loads(line[len("-- keys: "):]))
+                elif line.strip() and not line.startswith("--"):
+                    break
         if keys:
             out.append((p, [k for ks in keys for k in ks]))
     return out
 
 
 def packed_keys(folder):
-    """("kind\\tkey") of every earlier pack in `folder`, read off its "-- keys:" line."""
+    """("kind\\tkey") of every earlier pack in `folder`, read off its "-- keys:" lines."""
     return {k for _p, keys in pack_files(folder) for k in keys}
 
 

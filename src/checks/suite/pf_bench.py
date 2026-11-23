@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -446,7 +446,9 @@ def _bench_pack_grows(BP, BL, RV):
     base moves every item and group by it and no calibration item; a group continued in a later
     pack is numbered after it; --queues gives each queue drawn what a pack of all three gives it
     and the others nothing, calibration included; --groups-of all draws every group of one
-    queue; a group too big for a pack's numbering is refused. And on main(), run twice in a tree
+    queue; a group too big for a pack's numbering is refused; a pack's keys over D1's limit on
+    one line written over as many "-- keys:" lines as they need, each under it, and pack_files
+    reading every one back past the header's first twelve lines. And on main(), run twice in a tree
     with no review/: the second pack numbered from PACK_BASE because the folder holds one before
     it, both loaded into the bench's schema in node (tests/bench/apply_pack.js) and served pack by
     pack and group by group; a queue not drawn has no row in the pack; --pools and --ledger read
@@ -488,6 +490,32 @@ def _bench_pack_grows(BP, BL, RV):
         assert "do not fit" in str(e), e
     else:
         raise AssertionError("a group bigger than a pack's numbering was numbered into the next")
+    # A PACK TOO BIG FOR ONE KEYS LINE (23 November 2026): on one line, a draw of every tag's keys
+    # was over D1's limit on a line, and the pack was refused. They take as many lines as they
+    # need now, each under it, and pack_files reads every one back, however far down they reach.
+    assert BP.keys_lines([]) == ["-- keys: []"], BP.keys_lines([])
+    five = BP.keys_lines(["aaaa", "bbbb", "cccc", "dddd", "eeee"], most=25)     # lines of 25 exactly, and one less
+    assert five == ['-- keys: ["aaaa", "bbbb"]', '-- keys: ["cccc", "dddd"]', '-- keys: ["eeee"]'], five
+    over = BP.keys_lines(["aaaa", "bbbbb"], most=25)                           # together they would be 26
+    assert over == ['-- keys: ["aaaa"]', '-- keys: ["bbbbb"]'], over
+    many = [f"tag\ttag|{'x' * 40}|title|2025-2026/SB{i}" for i in range(20_000)]
+    huge = {**full, "keys": many, "queues": [], "groups": [], "items": [], "calib": [], "elsewhere": []}
+    big = Path(tempfile.mkdtemp(prefix="gr-bigpack-"))
+    try:
+        p = big / "2026-11-23.sql"
+        try:
+            p.write_text(BP.to_sql(huge, p.stem, "graniterecord-bench-preview", p, 7, "a fixture"), encoding="utf-8",
+                         newline="\n")
+        except SystemExit as e:
+            raise AssertionError(f"a pack of {len(many):,} keys was refused: {str(e)[:160]}")
+        keyed = [x for x in p.read_text(encoding="utf-8").splitlines() if x.startswith("-- keys: ")]
+        read = BP.pack_files(big)
+    finally:
+        shutil.rmtree(big, ignore_errors=True)
+    assert len(keyed) > 12 and all(len(x.encode("utf-8")) <= BP.STATEMENT_MOST for x in keyed), (
+        len(keyed), max(len(x) for x in keyed))
+    assert len(read) == 1 and read[0][1] == many, (
+        f"a pack's keys over {len(keyed)} lines read back as {len(read[0][1]) if read else 0:,} of {len(many):,}")
 
     node = shutil.which("node") or shutil.which("node.exe")
     tmp = Path(tempfile.mkdtemp(prefix="gr-grow-"))
@@ -554,8 +582,9 @@ def _bench_pack_grows(BP, BL, RV):
         assert len(runs) == len(set(runs)), f"{q}: a group's items were not served together: {runs}"
     assert [x[0] for x in got["queues"]] == ["timing", "topic", "tag"], got["queues"]
     return "ok", (f"draw()'s defaults as before, a base moving items and groups alone, --queues and --groups-of "
-                  f"drawing only what they name; two packs from main() in a tree with no review/, the second "
-                  f"numbered from {BP.PACK_BASE:,} and served after the first, group by group "
+                  f"drawing only what they name; {len(many):,} keys over {len(keyed)} lines, each under "
+                  f"{BP.STATEMENT_MOST:,} bytes, read back whole; two packs from main() in a tree with no "
+                  f"review/, the second numbered from {BP.PACK_BASE:,} and served after the first, group by group "
                   f"({sum(len(v) for v in served.values())} items); --refresh wrote the one pool drawn into --pools")
 
 
