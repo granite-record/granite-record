@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -436,7 +436,7 @@ def _grow_fixture():
 
 @check("build", "a later pack follows the earlier ones: its items and groups numbered after every earlier "
                 "pack for its database and served after them, group by group; --queues and --groups-of draw "
-                "only what they name",
+                "only what they name; --pools and --ledger draw with nothing read or written in review/",
        needs=("bench_pack", "bench_ledger", "review"))
 def _bench_pack_grows(BP, BL, RV):
     """PACKS THAT CAN GROW (the owner, 23 November 2026: "add more entries for the tag and topics
@@ -446,11 +446,12 @@ def _bench_pack_grows(BP, BL, RV):
     base moves every item and group by it and no calibration item; a group continued in a later
     pack is numbered after it; --queues gives each queue drawn what a pack of all three gives it
     and the others nothing, calibration included; --groups-of all draws every group of one
-    queue; a group too big for a pack's numbering is refused. And on main(), run twice: the
-    second pack numbered from PACK_BASE because the folder holds one before it, both loaded into
-    the bench's schema in node (tests/bench/apply_pack.js) and served pack by pack and group by
-    group; a queue not drawn has no row in the pack; and a --queues or --groups-of the pack
-    cannot use is refused."""
+    queue; a group too big for a pack's numbering is refused. And on main(), run twice in a tree
+    with no review/: the second pack numbered from PACK_BASE because the folder holds one before
+    it, both loaded into the bench's schema in node (tests/bench/apply_pack.js) and served pack by
+    pack and group by group; a queue not drawn has no row in the pack; --pools and --ledger read
+    there, --refresh writes the pool drawn there alone, nothing reaches review/, and a --queues,
+    --groups-of or --ledger the pack cannot use is refused."""
     import contextlib
     import os
     pools, ledger, info = _grow_fixture()
@@ -491,17 +492,19 @@ def _bench_pack_grows(BP, BL, RV):
     node = shutil.which("node") or shutil.which("node.exe")
     tmp = Path(tempfile.mkdtemp(prefix="gr-grow-"))
     here = os.getcwd()
-    saved = (BP.Info, sys.argv[:])
+    saved = (BP.Info, sys.argv[:], {k: RV.KINDS[k]["sample"] for k in ("timestamp", "topic", "tag")})
     try:
-        (tmp / "review").mkdir()
+        (tmp / "pools").mkdir()
         for kind, items in pools.items():
-            (tmp / "review" / f".pool-{kind}.json").write_text(json.dumps(items), encoding="utf-8")
-        _ledger(tmp / "review" / "checked.jsonl", ledger)
+            (tmp / "pools" / f".pool-{kind}.json").write_text(json.dumps(items), encoding="utf-8")
+        _ledger(tmp / "copy" / "checked.jsonl", ledger)
+        kept = {p.as_posix(): p.read_bytes() for p in tmp.rglob("*") if p.is_file()}
         BP.Info = lambda root=".": info
         os.chdir(tmp)
 
         def run(*args):
-            sys.argv = ["bench_pack.py", "--preview", "--seed", "7", "--out", "packs", *args]
+            sys.argv = ["bench_pack.py", "--preview", "--seed", "7", "--pools", "pools", "--ledger",
+                        "copy/checked.jsonl", "--out", "packs", *args]
             out = io.StringIO()
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
                 try:
@@ -519,10 +522,18 @@ def _bench_pack_grows(BP, BL, RV):
         sql2 = p2.read_text(encoding="utf-8")
         assert "VALUES ('timing'" not in sql2 and "VALUES ('topic'" in sql2 and "'timestamp', 'V" not in sql2, (
             "a queue --queues does not name was written into the pack")
+        assert not (tmp / "review").exists(), "a pack drawn with --pools and --ledger wrote in review/"
+        assert all(Path(p).read_bytes() == b for p, b in kept.items()), "the pools or the ledger's copy changed"
         for args, words in ((("--queues", "nope"), "--queues"), (("--groups-of", "tag=0"), "--groups-of"),
-                            (("--queues", "tag", "--groups-of", "topic=2"), "not drawn")):
+                            (("--queues", "tag", "--groups-of", "topic=2"), "not drawn"),
+                            (("--ledger", "nowhere.jsonl"), "no such file")):
             code, _said = run(*args)
             assert isinstance(code, str) and words in code, (args, code)
+        for k, items in pools.items():
+            RV.KINDS[k]["sample"] = (lambda got: lambda: got)(items)
+        code, said = run("--refresh", "--pools", "fresh", "--queues", "tag", "--out", "other")
+        assert code == 0 and sorted(p.name for p in (tmp / "fresh").iterdir()) == [".pool-tag.json"] and \
+            not (tmp / "review").exists(), "--refresh wrote a pool not drawn, or wrote in review/"
         if not node:
             return "skip", "node is not on PATH: the two packs were drawn and written, and not served"
         r = _run([node, "--disable-warning=ExperimentalWarning", str(_paths.ROOT / "tests/bench/apply_pack.js"),
@@ -531,7 +542,9 @@ def _bench_pack_grows(BP, BL, RV):
         got = json.loads(r.stdout.strip().splitlines()[-1])
     finally:
         os.chdir(here)
-        BP.Info, sys.argv = saved
+        BP.Info, sys.argv = saved[0], saved[1]
+        for k, fn in saved[2].items():
+            RV.KINDS[k]["sample"] = fn
         shutil.rmtree(tmp, ignore_errors=True)
     served = got["served"]
     want = {"timing": [p1.stem] * 6, "topic": [p1.stem] * 4 + [p2.stem] * 6, "tag": [p1.stem] * 3 + [p2.stem] * 6}
@@ -541,9 +554,9 @@ def _bench_pack_grows(BP, BL, RV):
         assert len(runs) == len(set(runs)), f"{q}: a group's items were not served together: {runs}"
     assert [x[0] for x in got["queues"]] == ["timing", "topic", "tag"], got["queues"]
     return "ok", (f"draw()'s defaults as before, a base moving items and groups alone, --queues and --groups-of "
-                  f"drawing only what they name; two packs from main(), the second numbered from "
-                  f"{BP.PACK_BASE:,} and served after the first, group by group "
-                  f"({sum(len(v) for v in served.values())} items)")
+                  f"drawing only what they name; two packs from main() in a tree with no review/, the second "
+                  f"numbered from {BP.PACK_BASE:,} and served after the first, group by group "
+                  f"({sum(len(v) for v in served.values())} items); --refresh wrote the one pool drawn into --pools")
 
 
 # ---- the merge ----------------------------------------------------------------------

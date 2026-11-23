@@ -81,8 +81,10 @@ wrangler command that loads it; the owner runs that.
 A later pack is served after every earlier one: its items and groups are
 numbered from a million times the packs already in that folder (`ord`), and
 calibration keeps its own order. `--queues tag,topic` draws only those
-queues, and `--groups-of tag=all` (or a number) sets one queue's groups in
-place of `--groups`.
+queues, `--groups-of tag=all` (or a number) sets one queue's groups in place
+of `--groups`, and `--pools DIR` and `--ledger FILE` read the pools and a
+copy of the ledger from elsewhere, so a pack can be drawn in a scratch tree
+with nothing written in `review/`.
 
 ## What was answered: the merge
 

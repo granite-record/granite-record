@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.4
+# GRANITE_VERSION: 2026-11-16.5
 """
 A pack for the shared bench: what its contributors are asked next, as SQL to
 load into its database with one wrangler command.
@@ -12,15 +12,18 @@ load into its database with one wrangler command.
     python3 src/checks/bench_pack.py --groups 3 --seed 7   # more groups; another draw
     python3 src/checks/bench_pack.py --queues tag,topic --groups-of tag=all
                                                            # only those queues; every tag
+    python3 src/checks/bench_pack.py --pools P --ledger L --out O
+                                                           # pools, ledger and packs elsewhere
 
-Writes reports/bench/packs/<preview|production>/<date>.sql and prints the
-wrangler command that loads it. Asks nobody and runs nothing: the owner loads
-it. Reads review.py's own sample pools (review/.pool-<kind>.json, cached; with
---refresh, drawn again by review.py's own samplers from the data on disk, a
-draw that comes back empty leaving the cached pool as it was), the
-ledger (review/checked.jsonl, through bench_ledger), data/bills.json and the
-bills' texts (tag_rules.load_bills) for titles and the drafters' analyses,
-and data/subjects.json for the list a better topic is chosen from.
+Writes reports/bench/packs/<preview|production>/<date>.sql (or into --out) and
+prints the wrangler command that loads it. Asks nobody and runs nothing: the
+owner loads it. Reads review.py's own sample pools (review/.pool-<kind>.json,
+or in --pools, cached; with --refresh, drawn again by review.py's own samplers
+from the data on disk, a draw that comes back empty leaving the cached pool as
+it was), the ledger (review/checked.jsonl, or the copy --ledger names, through
+bench_ledger), data/bills.json and the bills' texts (tag_rules.load_bills) for
+titles and the drafters' analyses, and data/subjects.json for the list a
+better topic is chosen from.
 
 WHAT A PACK HOLDS (the design of 17 November 2026, approved):
 
@@ -67,8 +70,10 @@ WHAT A PACK HOLDS (the design of 17 November 2026, approved):
   JUDGED ON THE LAPTOP SINCE: an item packed before and judged by her on the
   laptop's bench since is marked "elsewhere", and no longer asked.
 
-Writes the pack file and nothing else; never the ledger, and in review/ only
-the pools' own cache, when --refresh draws a pool that is not empty.
+Writes the pack file and nothing else; never the ledger, and only the pools'
+own cache, when --refresh draws a pool that is not empty -- in review/, or in
+the folder --pools names, so that a draw in a scratch tree with a copy of the
+ledger writes nothing in the owner's review/.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -398,7 +403,7 @@ def packed_keys(folder):
 
 # ---- the data on disk ----------------------------------------------------------------
 
-def read_pool(kind, refresh=False):
+def read_pool(kind, refresh=False, folder=None):
     """review.py's pool of `kind`: its cache, read and never written; with
     `refresh`, drawn again by review.py's own sampler and kept in that cache
     as review.pool_for keeps it -- BUT A DRAW THAT COMES BACK EMPTY LEAVES THE
@@ -406,13 +411,14 @@ def read_pool(kind, refresh=False):
     back empty whenever the tag registry is not found: corrections/tags.json
     is not on the laptop, and the owner draws tags from a draft named by
     --tags (GRANITE_TAGS), so a refresh without it would have thrown her tag
-    pool away."""
+    pool away. The cache is review.py's own (review/.pool-<kind>.json), or
+    the same name in `folder` (--pools), read there and written there alone."""
     import review
-    p = review.OUT / f".pool-{kind}.json"
+    p = (Path(folder) if folder else review.OUT) / f".pool-{kind}.json"
     if refresh:
         items = review.KINDS[kind]["sample"]()
         if items:
-            p.parent.mkdir(exist_ok=True)
+            p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(json.dumps(items), encoding="utf-8")
             return items
         print(f"  {kind}: drawn again and empty"
@@ -494,6 +500,10 @@ def main():
     ap.add_argument("--refresh", action="store_true", help="draw review.py's pools again first")
     ap.add_argument("--tags", help="the tag registry to draw tags from (a draft in reports/), as "
                                    "review.py --tags takes it, where corrections/tags.json is not")
+    ap.add_argument("--pools", default=None, metavar="DIR",
+                    help="where review.py's pool caches are read, and with --refresh written (default review/)")
+    ap.add_argument("--ledger", default=None, metavar="FILE",
+                    help="the ledger to read, such as a copy (default review/checked.jsonl)")
     ap.add_argument("--out", default=None, help="the folder for packs (default reports/bench/packs/<db>)")
     a = ap.parse_args()
     if a.groups < 1:
@@ -506,8 +516,11 @@ def main():
     which = "preview" if a.preview else "production"
     db = DB[which]
     folder = Path(a.out) if a.out else OUT / which
-    pools = {POOL_OF[q]: read_pool(POOL_OF[q], a.refresh) for q in queues}
-    ledger = BL.read(BL.LEDGER)
+    pools = {POOL_OF[q]: read_pool(POOL_OF[q], a.refresh, a.pools) for q in queues}
+    ledger_path = Path(a.ledger) if a.ledger else BL.LEDGER
+    if a.ledger and not ledger_path.is_file():
+        raise SystemExit(f"--ledger {a.ledger}: no such file")
+    ledger = BL.read(ledger_path)
     earlier = pack_files(folder) if folder.is_dir() else []
     base = len(earlier) * PACK_BASE
     as_of = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -520,8 +533,10 @@ def main():
     while path.exists():
         path = folder / f"{day}-{n}.sql"
         n += 1
-    sources = ", ".join(f"review/.pool-{k}.json ({len(v):,})" for k, v in pools.items()) + \
-        f", the ledger ({len(ledger):,} lines)"
+    where = Path(a.pools).as_posix() if a.pools else "review"
+    sources = ", ".join(f"{where}/.pool-{k}.json ({len(v):,})" for k, v in pools.items()) + \
+        (f", the ledger ({len(ledger):,} lines)" if not a.ledger else
+         f", the ledger's copy {ledger_path.as_posix()} ({len(ledger):,} lines)")
     path.write_text(to_sql(pack, path.stem, db, path, a.seed, sources), encoding="utf-8", newline="\n")
     print(f"{path.as_posix()}: {len(pack['items'])} items for {db}")
     print(f"  served after the items of the {len(earlier)} earlier pack(s) in {folder.as_posix()}"
