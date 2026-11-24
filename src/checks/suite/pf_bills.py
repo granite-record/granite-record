@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.48
+# GRANITE_VERSION: 2026-11-16.49
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2107,7 +2107,8 @@ def _request_text_tab_asks_no_versions():
 
 
 @check("build", "a request's sponsor the roster misses is matched to a winner of the election only where certain: "
-                "same chamber, a middle initial or a tabled nickname, a surname no rival shares",
+                "same chamber, a middle initial, a tabled nickname or a whole middle name the other side lacks, "
+                "a surname and initial no rival shares",
        needs=("build_lsrs",))
 def _request_sponsor_winner(build_lsrs):
     """Alice, 13 November 2026: "as accurate as possible and not guess if we
@@ -2169,6 +2170,26 @@ def _request_sponsor_winner(build_lsrs):
     assert not L.same_first("tom", "tim") and not L.same_first("jack", "jim")
     assert L.same_first("ben", "benjamin") and not L.same_first("w", "walter"), (
         "an initial is only equal to itself")
+    # A WHOLE MIDDLE NAME on the winner's side (24 November 2026: "Germano Martins",
+    # "Mary Raven" and "Nathan Riggs" filed, the results print their middle names), still
+    # refused where a rival winner shares the surname and first initial.
+    whole = L.winner_finder(L.election_winners({"races": {
+        "H|Merrimack|10": {"candidates": [{"name": "Germano Mendes Martins", "party": "d", "elected": True}]},
+        "H|Hillsborough|12": {"candidates": [{"name": "Mary Beth Raven", "party": "d", "elected": True}]},
+        "H|Rockingham|29": {"candidates": [{"name": "Nathan Andrew Riggs", "party": "d", "elected": True}]},
+        "H|Belknap|2": {"candidates": [{"name": "Ann Marie Foss", "party": "r", "elected": True},
+                                       {"name": "Arthur Foss", "party": "d", "elected": True}]}}}, {}, [], []))
+    assert whole("Germano Martins", "HB")[0] == "Germano Mendes Martins (D)", "a whole middle name on one side"
+    assert whole("Mary Raven", "HB")[0] == "Mary Beth Raven (D)"
+    assert whole("Nathan Riggs", "HB")[0] == "Nathan Andrew Riggs (D)"
+    assert whole("Ann Foss", "HB") is None, (
+        "Ann Marie Foss fits, but Arthur Foss shares the surname and first initial: not certain")
+    assert whole("Mary Raven", "SB") is None, "still only the request's own chamber"
+    assert L.compatible("Mary Raven", "Mary Beth Raven") == (False, False), (
+        "linking a winner to a member's page keeps the initials-only rule")
+    assert L.compatible("Mary Raven", "Mary Beth Raven", whole_middles=True) == (True, False)
+    assert L.compatible("Mary Ann Raven", "Mary Beth Raven", whole_middles=True) == (False, False), (
+        "two middle names that differ are two people")
     # Two winners of one whole name are nobody.
     twin = L.winner_finder(L.election_winners({"races": {
         "H|A|1": {"candidates": [{"name": "Al Roe", "party": "r", "elected": True}]},

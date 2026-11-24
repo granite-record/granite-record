@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.32
+# GRANITE_VERSION: 2026-09-18.33
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -362,11 +362,21 @@ def same_first(a, b):
     return a == b or any(a in g and b in g for g in NICKNAMES)
 
 
-def compatible(req, win):
+def compatible(req, win, whole_middles=False):
     """(whether a request's sponsor can be this winner, whether the whole name
     is the same). Same surname; a first name equal or a NICKNAMES pair; a
     middle name only where one side has none and the other's is an initial, or
-    where they are equal. Anything else is not compatible, never 'close'."""
+    where they are equal. Anything else is not compatible, never 'close'.
+
+    `whole_middles` (winner_finder alone, 24 November 2026): where one side
+    has no middle name, the other's may be whole words, not only initials. The
+    list files "Germano Martins", "Mary Raven" and "Nathan Riggs" whom the
+    results print "Germano Mendes Martins", "Mary Beth Raven" and "Nathan
+    Andrew Riggs", so eleven requests had no party (the owner: "fix the members
+    who were not assigned a party affiliation"). It is certain there because
+    winner_finder still refuses wherever another winner of the chamber shares
+    the surname and first initial. Linking a winner to a member's page
+    (election_winners) keeps the rule without it."""
     a, b = _parts(req), _parts(win)
     if not (a and b):
         return False, False
@@ -377,6 +387,8 @@ def compatible(req, win):
     ma, mb = a[1], b[1]
     if ma and mb:
         ok = ma == mb
+    elif whole_middles:
+        ok = True
     else:
         ok = all(len(m) == 1 for m in ma + mb)
     return ok, False
@@ -470,7 +482,7 @@ def winner_finder(winners):
         pool = [w for w in winners if w["chamber"] == ch]
         ok = []
         for w in pool:
-            said = [compatible(name, n) for n in names(w)]
+            said = [compatible(name, n, whole_middles=True) for n in names(w)]
             good, exact = any(g for g, _ in said), any(x for _, x in said)
             if good:
                 ok.append((w, exact))
