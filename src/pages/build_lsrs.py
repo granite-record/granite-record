@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.33
+# GRANITE_VERSION: 2026-09-18.34
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -132,7 +132,7 @@ def _fold(s):
 
 
 def roster(site, collected="collected", year=None):
-    """{folded name: (label, slug)} for the sitting members.
+    """{folded name: (label, slug, chamber)} for the sitting members.
 
     The source names a sponsor "Ellen Read" and nothing more. The roster has
     her party, her seat and her page, and a request is filed by somebody
@@ -159,8 +159,15 @@ def roster(site, collected="collected", year=None):
         # A name two sitting members share cannot be resolved from a name
         # alone, so neither gets the label rather than one of them getting
         # the other's.
-        out[key] = None if key in out else (m.get("display") or m.get("name"),
-                                            m.get("slug"))
+        # AND THE CHAMBER THEY SIT IN, as the third field, which rows_from holds
+        # a request to (24 November 2026). A sitting Representative elected
+        # Senator files a Senate request as the Senate's member-elect, so a
+        # request of the other chamber is matched among that chamber's winners
+        # (winner_finder) and drawn under that title (election_winners), as
+        # their own page is -- never under the House seat's label.
+        ch = str(m.get("chamber") or "")[:1].upper()
+        out[key] = None if key in out else (
+            (m.get("display") or m.get("name"), m.get("slug")) + ((ch,) if ch in ("H", "S") else ()))
     # AND THE NEW MEMBERS-ELECT, WHO HAVE A PROVISIONAL PAGE (Alice, 7 November
     # 2026; build_elect_pages.py): matched "by name only where certain" -- the
     # same folded name, the request's chamber theirs (the third field, which
@@ -418,7 +425,9 @@ def election_winners(results, drawn, pages, people, titled=False):
     `titled` (elect_window): a member-elect's label carries their title, "Rep.-elect
     Jeff Goley (D)" (the owner, 17 November 2026) -- a winner
     the members-elect file draws as new or as a former member returning, or one
-    with a provisional page; never one who sits now."""
+    with a provisional page, or a sitting member elected to the other chamber
+    ("Sen.-elect Jim Creighton (R)", a sitting Representative elected Senator
+    for District 8); never one re-elected to the chamber they sit in."""
     by_slug = {m.get("slug"): m for m in people if m.get("slug")}
     out = []
     for key, race in sorted((results.get("races") or {}).items()):
@@ -446,7 +455,16 @@ def election_winners(results, drawn, pages, people, titled=False):
             rec = first_last((by_slug.get(e.get("s")) or {}).get("name")) if e.get("s") else ""
             if rec and _fold(rec) != _fold(name):
                 names.append(rec)
-            elect = e.get("k") in ("new", "former") or (not e and name in pg)
+            # AND A SITTING MEMBER ELECTED TO THE OTHER CHAMBER (the owner, 17
+            # November 2026: 'link the new member pages as Sen. "Elect" Laura
+            # Telerski for the title but connect it to their house record as
+            # well'): that chamber's member-elect, by the rule that heads their
+            # page (build_legislator_pages.elect_mode's "chamber": their record's
+            # chamber is not the race's), linked to the record they have.
+            seat = by_slug.get(e.get("s")) or {}
+            elect = (e.get("k") in ("new", "former") or (not e and name in pg)
+                     or (e.get("k") == "sitting" and bool(seat) and not seat.get("former")
+                         and str(seat.get("chamber") or "")[:1].upper() != ch))
             title = f"{elect_title(ch)} " if titled and elect else ""
             out.append({"name": name, "party": party, "chamber": ch, "race": key,
                         "slug": slug, "label": title + (f"{name} ({party})" if party else name),
@@ -528,12 +546,15 @@ def load_winners(site, collected):
 
 
 def party_of(label):
-    """The party letter a sponsor's label ends with -- "Rep. Ellen Read (D)", a
-    member-elect's "Jane Doe (R)" -- or "" where the label has none (a sponsor
-    who matched nobody is not given one). The roster's label is the one place
-    a sitting member's and a member-elect's party are both written, so this is
+    """The party a sponsor's label ends with -- "Rep. Ellen Read (D)", a
+    member-elect's "Jane Doe (R)", and a ballot's two-letter "(I/D)" as the
+    results print it (George Randell, Carroll 8, 2026; 24 November 2026), whose
+    first letter the bill search and the chip read (app.js partyOfSponsor,
+    components.js pchip) -- or "" where the label has none (a sponsor who
+    matched nobody is not given one). The roster's label is the one place a
+    sitting member's and a member-elect's party are both written, so this is
     read from it, as the card does (app.js cardSponsor), never from the name."""
-    m = re.search(r"\(([A-Z])\)\s*$", str(label or ""))
+    m = re.search(r"\(([A-Z](?:/[A-Z])?)\)\s*$", str(label or ""))
     return m.group(1) if m else ""
 
 
