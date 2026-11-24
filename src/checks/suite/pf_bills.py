@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.50
+# GRANITE_VERSION: 2026-11-16.51
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2345,7 +2345,8 @@ def _request_sponsor_name_forms(build_lsrs):
 
 
 @check("build", "a request's member-elect sponsor is drawn Rep.-elect or Sen.-elect "
-                "on its card and its page until the day they take office; a sitting member as ever",
+                "on its card and its page until the day they take office, a sitting member elected "
+                "to the other chamber among them; a sitting member re-elected as ever",
        needs=("build_lsrs", "build_request_pages"))
 def _request_member_elect_title(build_lsrs, build_request_pages):
     """The owner, 17 November 2026: on a request's card a member-elect's chip reads Rep.-elect
@@ -2356,9 +2357,17 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
     build_lsrs gives the label the title (elect_title) while elect_window is open -- the build's
     day before members_elect.json's "takes_office" -- to a member-elect matched by their
     provisional page (roster) or as a winner the file draws new or returning (Jeff Goley, a
-    former member); never to a sitting member re-elected or one elected to the other chamber;
-    and the search still reads the name (label_name). build_request_pages draws a member-elect's
-    chip on the request's page the same way (sponsors). From the day they take office, none."""
+    former member); never to a sitting member re-elected to the chamber they sit in; and the
+    search still reads the name (label_name). build_request_pages draws a member-elect's
+    chip on the request's page the same way (sponsors). From the day they take office, none.
+
+    A SITTING MEMBER ELECTED TO THE OTHER CHAMBER is that chamber's member-elect (24 November
+    2026), as the search's row (build_indexes.elect_rows) and their own page (the owner's Q3 of
+    17 November 2026: 'Sen. "Elect" Laura Telerski', joined to her House record) title them: a
+    Senate request of Jim Creighton's, matched as a winner, read "Jim Creighton (R)" with no title
+    at all, and Laura Telerski's, matched by the House roster, "Rep. Laura Telerski (D)". Both
+    read Sen.-elect now, linked to the record they have; a House request of theirs keeps the
+    roster's label."""
     L, RP = build_lsrs, build_request_pages
     tmp = Path(tempfile.mkdtemp(prefix="gr-elect-title-"))
     was = os.environ.get("GRANITE_BUILD_DATE")
@@ -2372,25 +2381,33 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
              "race": "S|2"}]}), encoding="utf-8")
         (tmp / "legislators.json").write_text(json.dumps([
             {"name": "Read, Ellen", "slug": "ellen-read-rock-10", "display": "Rep. Ellen Read (D)",
-             "display_full": "Rep. Ellen Read (D - Rock 10)", "party": "D"}]), encoding="utf-8")
+             "display_full": "Rep. Ellen Read (D - Rock 10)", "party": "D", "chamber": "H"},
+            {"name": "Telerski, Laura", "slug": "laura-telerski-hills-11",
+             "display": "Rep. Laura Telerski (D)", "display_full": "Rep. Laura Telerski (D - Hills 11)",
+             "party": "D", "chamber": "H"}]), encoding="utf-8")
         results = {"races": {
             "H|Hillsborough|21": {"candidates": [{"name": "Jeff Goley", "party": "d", "elected": True}]},
             "S|8": {"candidates": [{"name": "Jim Creighton", "party": "r", "elected": True}]},
+            "S|13": {"candidates": [{"name": "Laura Telerski", "party": "d", "elected": True}]},
             "H|Rockingham|10": {"candidates": [{"name": "Ellen Read", "party": "d", "elected": True}]}}}
         drawn = {"H|Hillsborough|21": {"elected": [{"n": "Jeff Goley", "p": "D", "k": "former", "id": "460",
                                                     "s": "jeffrey-goley-hills-21"}]},
                  "S|8": {"elected": [{"n": "Jim Creighton", "p": "R", "k": "sitting", "id": "9917",
                                       "s": "james-creighton-hills-30"}]},
+                 "S|13": {"elected": [{"n": "Laura Telerski", "p": "D", "k": "sitting", "id": "9117",
+                                       "s": "laura-telerski-hills-11"}]},
                  "H|Rockingham|10": {"elected": [{"n": "Ellen Read", "p": "D", "k": "sitting",
                                                   "s": "ellen-read-rock-10"}]}}
         people = [{"name": "Goley, Jeffrey", "slug": "jeffrey-goley-hills-21"},
-                  {"name": "Creighton, James", "slug": "james-creighton-hills-30"},
-                  {"name": "Read, Ellen", "slug": "ellen-read-rock-10"}]
+                  {"name": "Creighton, James", "slug": "james-creighton-hills-30", "chamber": "H"},
+                  {"name": "Telerski, Laura", "slug": "laura-telerski-hills-11", "chamber": "H"},
+                  {"name": "Read, Ellen", "slug": "ellen-read-rock-10", "chamber": "H"}]
         req = lambda n, body, who_: {"lsr": f"2027-{n}", "session": 2027, "body": body, "title": "t.",
                                      "sponsor": who_}
         lsrs = [req("0646", "CACR", "Colin Mitchell"), req("0651", "HB", "Colin Mitchell"),
                 req("0700", "SB", "Kurt Webber"), req("0556", "HB", "Jeffrey Goley"),
-                req("0800", "SB", "Jim Creighton"), req("0001", "HB", "Ellen Read")]
+                req("0800", "SB", "Jim Creighton"), req("0001", "HB", "Ellen Read"),
+                req("0898", "SB", "Laura Telerski"), req("0899", "HB", "Laura Telerski")]
         got = {}
         for day in ("2026-11-17", "2026-12-02"):
             os.environ["GRANITE_BUILD_DATE"] = day
@@ -2412,7 +2429,8 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
     labels, names, chips = got["2026-11-17"]
     want = {"2027-0646": rep + "Colin Mitchell (R)", "2027-0651": rep + "Colin Mitchell (R)",
             "2027-0700": sen + "Kurt Webber (D)", "2027-0556": rep + "Jeff Goley (D)",
-            "2027-0800": "Jim Creighton (R)", "2027-0001": "Rep. Ellen Read (D)"}
+            "2027-0800": sen + "Jim Creighton (R)", "2027-0001": "Rep. Ellen Read (D)",
+            "2027-0898": sen + "Laura Telerski (D)", "2027-0899": "Rep. Laura Telerski (D)"}
     bad = [f"{n}: {labels.get(n)!r}, not {w!r}" for n, w in want.items() if labels.get(n) != w]
     assert not bad, "a request's sponsor label before the day they take office: " + "; ".join(bad)
     assert names["2027-0646"] is None and names["2027-0556"] == ["Jeff Goley"], (
@@ -2426,8 +2444,9 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
     return "ok", ("before 2 December Colin Mitchell's House and CACR requests read Rep.-elect "
                   "Colin Mitchell (R), Kurt Webber's Sen.-elect, and Jeff Goley, a former "
                   "member returning, Rep.-elect, on the card's label and the page's chip; a "
-                  "sitting member, re-elected or elected to the Senate, as before; the search reads the "
-                  "name alone; on 2 December no one is titled")
+                  "sitting member re-elected as before, and the two elected to the Senate Sen.-elect "
+                  "on their Senate requests, as a winner or by the House roster, and as before on a "
+                  "House one; the search reads the name alone; on 2 December no one is titled")
 
 
 # app.js's cardSponsor in node, on an English page and a Spanish one (window.GR_WORDS as
@@ -11692,6 +11711,10 @@ def _requests_party_and_topic():
                    "LSR 2027-0003": (None, None)}, got
     assert L.party_of("Rep. Ellen Read (D)") == "D" and L.party_of("Jane Doe") == "" \
         and L.party_of("Sen. X (R - SD 1)") == "", "party_of reads something that is no party letter"
+    # A ballot's two-letter label, kept as the results print it (George Randell, Carroll 8, 2026,
+    # whose request carried no party at all): the search and the chip read its first letter.
+    assert L.party_of("Rep.-elect George Randell (I/D)") == "I/D" and L.party_of("X (I/)") == "" \
+        and L.party_of("X (DR)") == "", "party_of misreads a two-letter ballot label"
     bills = {"2025-2026": {}}
     topics = ["Elections", "Taxes - State", "Education - General"]
     words = {"Elections": ["ballot", "voter", "election", "polling"],
