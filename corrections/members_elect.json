@@ -269,7 +269,7 @@
         "Jerry Roche": null
       },
       "H|Merrimack|3": {
-        "Michael Visconti": null
+        "Vivian Marie Hall": null
       },
       "H|Merrimack|4": {
         "Cody York": null
@@ -445,17 +445,7 @@
         "Samuel Deering": null
       }
     },
-    "not_final": {
-      "H|Grafton|1": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
-      "H|Belknap|6": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
-      "H|Grafton|11": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
-      "H|Merrimack|3": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
-      "H|Strafford|18": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
-      "H|Hillsborough|36": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
-      "H|Hillsborough|45": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"},
-      "H|Hillsborough|44": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06", "seats": 1},
-      "H|Cheshire|18": {"recount": true, "why": "on the SoS recount schedule of 2026-11-06"}
-    },
+    "not_final": {},
     "held": {},
     "prior": {
       "H|Grafton|15": {"Zoe Hill": {"none": true, "evidence": [
