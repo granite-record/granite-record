@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.9
+# GRANITE_VERSION: 2026-09-18.10
 """
 Next session's bill requests, before any of them is a bill.
 
@@ -83,6 +83,28 @@ a role before a name as well as after it ("(Prime) Ellen Read", as the
 results page prints the prime). Which form the General Court will use is not
 known either; preflight's data check says on the night when a name still
 reads as a list.
+
+AND THE REQUESTS THE CSV DOES NOT HOLD (the night of 23 November 2026). The
+CSV held 908 requests, the newest of 21 November, while the page of every
+request (results_link) listed 1,264 the same evening ("LSR's Found: 1264"):
+the CSV had stopped growing and the page had not. So the page, which the
+night already asked for every request's text link, is read every night now,
+and each request it lists that the CSV does not is taken from it
+(with_page_rows): the number, the kind, the title and the sponsors, the
+prime first and the co-sponsors after, as the page prints them -- "Sponsors:
+(Prime) Nancy Murphy , David Watters, Rosemarie Rung" (page_listed). A
+request on both keeps the CSV's row, and no CSV row is dropped or changed for
+the page. A request taken from the page carries "from_page" in lsrs.json
+until the CSV lists it.
+
+The page's rows are used only when they add up: as many requests read as the
+page says it lists, each with its kind, a title and a prime sponsor. Where
+they do not, or the page is not read, nothing is taken from it, a request
+taken from it on an earlier night is kept as it stood rather than marked
+withdrawn (merge), and the night's line says so (LISTED: how many the CSV
+held, how many the page listed, how many were taken from it). Nobody here has
+seen the page's HTML: the reader was written from the owner's printout of the
+page [a guess at its markup], and the page's own count is the check on it.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -126,11 +148,18 @@ CSV_LINK = re.compile(
 RESULTS = "https://gc.nh.gov/lsr_search/LSR_Results.aspx"
 HIDDEN = ("__VIEWSTATE", "__VIEWSTATEGENERATOR", "__EVENTVALIDATION")
 
-# One row of the results page, for the fallback: the number and body on one
-# line, the sponsors on the next.
-ROW = re.compile(
-    r"(\d{4}-\d{3,4})\s*\t?\s*(HB|SB|CACR|HR|SR|HCR|SCR)\s*\t?\s*Title:\s*(.+?)\s*"
-    r"Sponsors:\s*\(Prime\)\s*(.+?)\s*(?=\d{4}-\d{3,4}\s|\Z)", re.S)
+# The rows of the page of every request (page_listed; AND THE REQUESTS THE CSV
+# DOES NOT HOLD), as the owner's printout of 23 November 2026 shows one: the
+# number, the kind, "Title:" and the title, then "Sponsors: (Prime)" and the
+# names. A row begins at a number followed by its kind and "Title:", and runs
+# to the next; any kind of two to five capitals, so that HJR and SJR, which
+# the page lists, are rows too.
+ROW_START = re.compile(r"(?<![\w-])(\d{4}-\d{3,4})\s*([A-Z]{2,5})\s*(?i:title)\s*:")
+# "LSR's Found: 1264", the count the page states above its rows.
+FOUND = re.compile(r"\bLSR\W{0,2}s\s+found\s*:?\s*(\d[\d,]*)", re.I)
+# The words this says tonight's lists in, after which nightly.take_lsrs finds
+# them in its output and puts them on the night's line.
+LISTED = "tonight's lists: "
 
 # "2027-0001", the shape of a request number, and the session it belongs to.
 LSR_NO = re.compile(r"^\s*(\d{4})-(\d{3,4})\s*$")
@@ -284,27 +313,103 @@ def post(url, fields, timeout=90):
     return got
 
 
+def page_text(html):
+    """The page of every request as text, a line to each piece of it: comments,
+    scripts and styles out, a link whose words name a text out (text_links
+    reads those; one is no part of a title), and every tag a line break."""
+    html = re.sub(r"<!--.*?-->|<(script|style)\b.*?</\1\s*>", " ", html or "", flags=re.I | re.S)
+    html = ANCHOR.sub(lambda m: " " if TEXT_WORDS.search(
+        _html.unescape(re.sub(r"<[^>]+>", " ", m.group(3)))) else m.group(0), html)
+    text = _html.unescape(re.sub(r"<[^>]+>", "\n", html))
+    text = re.sub(r"[^\S\n]+", " ", text)
+    return re.sub(r"\s*\n\s*", "\n", text).strip()
+
+
+def page_sponsors(words):
+    """(prime, [co-sponsors]) from what follows "Sponsors:" in a row of the page
+    of every request: the role mark and the names parted by commas, each name
+    on a line of its own where the page links it -- "(Prime) Nancy Murphy ,
+    David Watters, Rosemarie Rung". The list ends at the first line no comma
+    joins to it, because what follows is not a name (the page's foot, after
+    its last row). A Jr. or a numeral keeps its name, and the names are read
+    as split_sponsors reads them: the one marked Prime is the prime, else the
+    first."""
+    s = re.sub(r"^\s*(\([^()\n]*\))\s*", r"\1 ", (words or "").strip())
+    s = re.sub(r",\s*\n\s*", ", ", re.sub(r"\s*\n\s*,", ",", s))
+    parts = []
+    for bit in (b.strip() for b in s.split("\n", 1)[0].split(",")):
+        if parts and re.fullmatch(r"(?:jr|sr|ii|iii|iv)\.?", bit, re.I):
+            parts[-1] = f"{parts[-1]} {bit}"
+        elif bit:
+            parts.append(bit)
+    return split_sponsors("; ".join(parts))
+
+
+def page_listed(html):
+    """([rows], why): the requests the page of every request lists, each in
+    parse_csv's shape, and "" -- or [] and why they cannot be used.
+
+    Used only when they add up: the page states how many it lists ("LSR's
+    Found: 1264", FOUND) and as many are read, each with its kind, a title,
+    and a prime sponsor after its "Sponsors:". A request printed twice the same
+    way is one request; printed twice differently, the page is not used.
+    Nobody here has seen the page's HTML [a guess, written down as one], so a
+    page that does not add up is a page misread, never a smaller list.
+    """
+    text = page_text(html)
+    starts = list(ROW_START.finditer(text))
+    if not starts:
+        return [], "no request could be read off it"
+    rows, bad = {}, []
+    for i, m in enumerate(starts):
+        chunk = text[m.end():starts[i + 1].start() if i + 1 < len(starts) else len(text)]
+        num, no = m.group(1), LSR_NO.match(m.group(1))
+        part = re.split(r"(?i)\bsponsors\s*:", chunk, maxsplit=1)
+        title = " ".join(part[0].split())
+        prime, co = page_sponsors(part[1]) if len(part) == 2 else ("", [])
+        row = {"lsr": num, "session": int(no.group(1)) if no else 0, "body": m.group(2).upper(),
+               "title": title, "sponsor": prime, "cosponsors": co, "withdrawn": False}
+        if not (no and title and prime) or rows.setdefault(num, row) != row:
+            bad.append(num)
+    if bad:
+        return [], f"{len(bad)} of its rows could not be read: {', '.join(sorted(set(bad))[:3])}"
+    found = FOUND.search(text)
+    if not found:
+        return [], "it states no count to check its rows against"
+    if int(found.group(1).replace(",", "")) != len(rows):
+        return [], f"it says {int(found.group(1).replace(',', ''))} and {len(rows)} could be read"
+    return list(rows.values()), ""
+
+
 def parse_results_html(html):
-    """The results page, for when the CSV cannot be had.
+    """The results page's requests (page_listed), for when the CSV cannot be
+    had; [] where they cannot be used.
 
     Its rows carry exactly what an LSR has -- number, body, title, prime
-    sponsor -- so nothing is lost by reading them; it is only more fragile
-    than a file with headers, which is why it is the fallback and not the
-    first choice.
+    sponsor and co-sponsors -- so nothing is lost by reading them; it is only
+    more fragile than a file with headers, which is why it is the fallback and
+    not the first choice.
     """
-    text = re.sub(r"<[^>]+>", "\n", html)
-    text = html_unescape(text)
-    text = re.sub(r"[ \t\r\f\v]+", " ", text)
-    text = re.sub(r"\n\s*\n+", "\n", text)
-    out = []
-    for num, body, title, sponsor in ROW.findall(text):
-        m = LSR_NO.match(num)
-        if not m:
-            continue
-        out.append({"lsr": num, "session": int(m.group(1)), "body": body.upper(),
-                    "title": " ".join(title.split()),
-                    "sponsor": " ".join(sponsor.split()), "withdrawn": False})
-    return out
+    return page_listed(html)[0]
+
+
+def with_page_rows(rows, page):
+    """(rows, whether the page was used, what to say) -- the CSV's `rows`, and
+    after them each request the page of every request lists and the CSV does
+    not (page_listed), marked "from_page" (AND THE REQUESTS THE CSV DOES NOT
+    HOLD). `page` is the page's HTML, or None where it was not read. No CSV
+    row is dropped or changed for the page, and where its rows cannot be
+    used nothing is taken from it and the words say why."""
+    if page is None:
+        return rows, False, f"the CSV held {len(rows)}, the page was not read, none taken from it"
+    got, why = page_listed(page)
+    if why:
+        return rows, False, (f"the CSV held {len(rows)}, the page could not be used ({why}), "
+                             "none taken from it")
+    have = {r["lsr"] for r in rows}
+    taken = [dict(r, from_page=True) for r in got if r["lsr"] not in have]
+    return rows + taken, True, (f"the CSV held {len(rows)}, the page listed {len(got)}, "
+                                f"{len(taken)} taken from the page")
 
 
 def parse_csv(text):
@@ -421,7 +526,7 @@ def split_sponsors(field):
     return prime, co
 
 
-def merge(new):
+def merge(new, page_read=True):
     """New rows over old, and a request that has gone is kept and marked.
 
     A request vanishing between runs is a withdrawal, which is a fact about
@@ -432,6 +537,12 @@ def merge(new):
     withdrawal: a request drafted and filed becomes a bill. The flag says only
     that it left the list, and build_lsrs.became_bills reads the bills to say
     which -- a request whose number a bill carries reads "Introduced as HB 45".
+
+    AND A REQUEST TAKEN FROM THE PAGE (AND THE REQUESTS THE CSV DOES NOT
+    HOLD). One the CSV lists is the CSV's from then on, and loses its
+    "from_page". On a night the page of every request was not read or could
+    not be used (`page_read` false), one taken from it before that the CSV
+    does not list is kept as it stood: not read tonight is not gone.
     """
     old = {}
     if OUT.exists():
@@ -443,10 +554,13 @@ def merge(new):
     seen = {r["lsr"] for r in new}
     gone = 0
     for k, r in old.items():
-        if k not in seen and not r.get("withdrawn"):
+        if k not in seen and not r.get("withdrawn") and (page_read or not r.get("from_page")):
             r["withdrawn"] = True
             gone += 1
     merged = {**old, **{r["lsr"]: {**old.get(r["lsr"], {}), **r} for r in new}}
+    for r in new:
+        if not r.get("from_page"):
+            merged[r["lsr"]].pop("from_page", None)
     return [merged[k] for k in sorted(merged)], gone
 
 
@@ -665,10 +779,16 @@ def main():
         if not RAW_CSV.exists():
             raise SystemExit(f"  {RAW_CSV} is not here. Run without --parse first.")
         rows = parse_csv(RAW_CSV.read_text(encoding="utf-8", errors="replace"))
-        merged, gone = merge(rows)
+        # And the page of every request saved beside it, where it is
+        # (AND THE REQUESTS THE CSV DOES NOT HOLD).
+        saved = RAW_PAGE.with_name("lsr_results.html")
+        rows, page_read, listed = with_page_rows(
+            rows, saved.read_text(encoding="utf-8", errors="replace") if saved.is_file() else None)
+        merged, gone = merge(rows, page_read)
         OUT.write_text(json.dumps(merged, indent=1), encoding="utf-8")
         print(f"{len(rows)} requests parsed -> {OUT}"
               + (f"; {gone} newly marked withdrawn" if gone else ""))
+        print(f"  {LISTED}{listed}")
         return 0
     # One writer per file: the night takes the requests, and lsrs.json reaches
     # this machine from R2.
@@ -721,17 +841,22 @@ def main():
         raw2, enc3 = get(RESULTS)
         RAW_PAGE.with_name("lsr_results.html").write_bytes(raw2)
         page = raw2.decode(enc3, "replace")
-        rows = parse_results_html(page)
+        rows, why = page_listed(page)
         if not rows:
             raise SystemExit(
-                "  the results page yielded no requests either. Both are saved "
+                f"  the results page yielded no requests either ({why}). Both are saved "
                 "under archive/; read them before asking again.")
+        rows = [dict(r, from_page=True) for r in rows]
         print(f"  {len(rows)} requests read from the results page")
-    # THE LINKS TO THE TEXTS (THE TEXT, ONCE IT IS PUBLIC): the CSV's own,
-    # where it carries a column for them; else the results page's, the page
-    # the search page links for every request, one request more. Never a
-    # constructed address: where the search page links no such page, none.
-    if page is None and not any(r.get("text_pdf") for r in rows):
+        page_read, listed = True, (f"the CSV was not served, the page listed {len(rows)}, "
+                                   f"{len(rows)} taken from the page")
+    # THE REQUESTS THE CSV DOES NOT HOLD, AND THE LINKS TO THE TEXTS (THE TEXT,
+    # ONCE IT IS PUBLIC): the page the search page links for every request,
+    # read every night, one request more, for the requests it lists that the
+    # CSV does not and for each request's text link where the CSV gives none.
+    # Never a constructed address: where the search page links no such page,
+    # none, and nothing is taken from it.
+    if page is None:
         addr = results_link(html)
         if addr:
             time.sleep(PAUSE)
@@ -740,8 +865,14 @@ def main():
             page = raw3.decode(enc4, "replace")
         else:
             print("  the search page links no page of every request: no text link is read")
+        rows, page_read, listed = with_page_rows(rows, page)
     with_text_links(rows, page)
-    merged, gone = merge(rows)
+    have = {r["lsr"] for r in rows}
+    held = 0 if page_read else sum(1 for r in load_rows() if r.get("from_page")
+                                   and not r.get("withdrawn") and r.get("lsr") not in have)
+    print(f"  {LISTED}{listed}"
+          + (f"; {held} taken from it before kept as they stood" if held else ""))
+    merged, gone = merge(rows, page_read)
     OUT.write_text(json.dumps(merged, indent=1), encoding="utf-8")
     sessions = sorted({r["session"] for r in rows})
     print(f"{len(rows)} requests for {', '.join(str(s) for s in sessions)} -> {OUT}")

@@ -2870,6 +2870,17 @@ Cannabis (`topic_model.cannabis_topic`, 17 November 2026), which a bill's or a
 request's title decides whatever name the model or the General Court gave it,
 but a constitutional amendment's or a study's.
 
+The list the night fetches is the General Court's CSV and, after it, each
+request the page of every request lists and the CSV does not
+(`fetch_lsrs.with_page_rows`; on the night of 23 November 2026 the CSV held
+908 and the page listed 1,264). A request on both keeps the CSV's row; one
+taken from the page carries `from_page` in `lsrs.json` until the CSV lists it.
+The page's rows are used only when as many are read as the page says it lists
+(`fetch_lsrs.page_listed`), and on a night they are not, nothing is taken from
+it and the ones taken before are kept as they stood, not withdrawn. The night's
+line says how many the CSV held, how many the page listed and how many were
+taken from it (`nightly.lsrs_listed`).
+
 Each request has a page of its own at its row's `address`, `/request/<number>`
 (`src/pages/build_request_pages.py`), until the row carries a `moved_to` --
 the bill's page once that bill is introduced or, from the day filing for

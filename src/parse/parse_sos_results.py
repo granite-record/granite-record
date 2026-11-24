@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-17.14
+# GRANITE_VERSION: 2026-10-17.15
 """
 The Secretary of State's count of one general election's State Representative
 and State Senate races, read into collected/election_<year>.json.
@@ -417,6 +417,27 @@ def place_key(s):
     s = re.sub(r"['.]", "", fold(s).lower().replace("&", " and "))
     return " ".join(str(int(w)) if w.isdigit() else ABBREVIATIONS.get(w, w)
                     for w in re.findall(r"[a-z0-9]+", s))
+
+
+# A CANDIDATE'S HEADER IN A RECOUNT'S OWN BLOCK: "RECOUNT    Allan Frank, d",
+# "RECOUNT Write-Ins" (2026 Belknap 6). A bare "RECOUNT", the column beside a
+# count, is not one: it names nobody.
+RECOUNT_HEADED = re.compile(r"^recount\s+(\S.*)$", re.I)
+
+
+def recount_headed(row):
+    """Whether every cell a header row names after its first is a recount's
+    own header, "RECOUNT <what it recounts>": the district's recount printed
+    as a second block (24 November 2026)."""
+    cells = [v for v in row[1:] if v is not None]
+    return bool(cells) and all(isinstance(v, str) and RECOUNT_HEADED.match(v.strip()) for v in cells)
+
+
+def unrecount(v):
+    """A recount's header cell without its word: "RECOUNT  Bob McLean, d" ->
+    "Bob McLean, d"; anything else as it is."""
+    m = RECOUNT_HEADED.match(v.strip()) if isinstance(v, str) else None
+    return m.group(1).strip() if m else v
 
 
 # ---- one block: a header row and the rows under it ------------------------
@@ -968,6 +989,12 @@ def district(blocks, seats, where, choose=None, mark="elected"):
         if set(t2) != set(towns) or {c["name"] for c in c2} != {c["name"] for c in cands}:
             raise Refused(f"{again[0].where}: the recount's towns or candidates are not the "
                           "first count's")
+        # AND THEIR PARTIES (24 November 2026): a recount block that names a candidate under
+        # another party is not that candidate's recount; read, its party would replace the
+        # ballot's.
+        if {(c["name"], c["party"]) for c in c2} != {(c["name"], c["party"]) for c in cands}:
+            raise Refused(f"{again[0].where}: the recount names a candidate under another party "
+                          "than the first count's")
         # A recount block that prints no write-ins (a Recount row, 2022) leaves
         # the first count's.
         cands, scatter, recounted = c2, (s2 if s2 is not None else scatter), True
@@ -1321,6 +1348,13 @@ def read_house(path, county, election, legacy=False, alone=None):
         if m:
             n, seats = int(m.group(1)), int(m.group(2))
             flo, again = bool(m.group(3)), bool(m.group(4))
+            # THE RECOUNT AS THE DISTRICT AGAIN, EACH CANDIDATE HEADED "RECOUNT <name>, <party>"
+            # (24 November 2026: 2026 Belknap 6, Cheshire 18 and Grafton 1, in the Secretary of
+            # State's files of 17-20 November). It is the "RECOUNT FIGURES" block marked on
+            # its candidates rather than on its header, read the same way once the word is off:
+            # each name and party must then be the first count's, or district() refuses it.
+            if not again and n in found and recount_headed(row):
+                again, row = True, [row[0]] + [unrecount(v) for v in row[1:]]
             # THE FULL HEADER AGAIN (2016, 2018): a district too wide for one
             # row prints its header again, with the same seats, over the next
             # candidates. It is the district's next block, not a second district.
