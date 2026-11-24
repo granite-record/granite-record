@@ -266,11 +266,11 @@
  "2026": {
   "checks": {
    "a candidate's towns sum to the race's total": {
-    "held": 760,
+    "held": 759,
     "disagree": 0
    },
    "a column's towns sum to the file's Totals": {
-    "held": 546,
+    "held": 587,
     "disagree": 1
    },
    "a race's places are its towns": {
@@ -290,11 +290,11 @@
     "disagree": 0
    },
    "every row carries a count and its source": {
-    "held": 3207,
+    "held": 3352,
     "disagree": 0
    },
    "row ids are unique": {
-    "held": 3207,
+    "held": 3352,
     "disagree": 0
    },
    "the scattered write-ins sum to the race's": {
@@ -306,15 +306,15 @@
    {
     "check": "a column's towns sum to the file's Totals",
     "what": "H|Grafton|9 Ella V. Barrett (candidate, first): the towns add up to 1,240, the file's Totals say 1,152",
-    "where": "2026-ge-house-grafton.xlsx, sheet 'rgrafrep', row 50"
+    "where": "2026-ge-house-grafton_1.xlsx, sheet 'rgrafrep', row 58"
    }
   ],
   "kinds": {
-   "candidate": 2393,
-   "write_in_named": 5,
-   "write_ins_scattered": 809
+   "candidate": 2513,
+   "write_in_named": 2,
+   "write_ins_scattered": 837
   },
-  "town_rows": 3207,
-  "printed_totals": 546
+  "town_rows": 3352,
+  "printed_totals": 587
  }
 }
