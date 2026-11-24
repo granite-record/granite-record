@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.35
+# GRANITE_VERSION: 2026-09-18.36
 """
 Next session's bill requests, as a term the bill search can open.
 
