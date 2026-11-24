@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.15
+# GRANITE_VERSION: 2026-11-16.16
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -5968,6 +5968,71 @@ def _lsrs_unreturned_set_aside(NI):
                   "refused with the 20 said in brackets (the same kind); a race not final counted; "
                   "a failed or empty fetch refused; the roster read from the site served where "
                   "site/ has none, and a roster unreadable said")
+
+
+@check("build", "the night's request list says how many requests the CSV held, how many the page of "
+                "every request listed and how many were taken from the page, and counts the ones "
+                "taken from the page as growth, never as withdrawals",
+       needs=("nightly", "fetch_lsrs"))
+def _lsrs_page_said(NI, FL):
+    """AND THE REQUESTS THE CSV DOES NOT HOLD (fetch_lsrs; the night of 23 November 2026: the CSV
+    held 908, the page of every request listed 1,264). take_lsrs finds what the fetch said of
+    tonight's two lists (fetch_lsrs.LISTED) in the fetch's output (lsrs_listed) and puts it on
+    the night's line. Driven with the fetch answered here, writing lsrs.json and saying its line
+    as fetch_lsrs prints it: 60 standing requests and 20 more taken from the page are installed
+    -- growth is no withdrawal -- with the three counts on the line; a list refused for 20
+    withdrawals keeps the earlier one and says the counts after, its kind of warning unchanged;
+    a fetch that said nothing of its lists gives the line it gave before."""
+    was, cwd, mark = (NI.run, NI.say), os.getcwd(), len(NI.LOG)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lsrs-page-"))
+    old = [{"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB", "title": "t.",
+            "sponsor": "A Member", "withdrawn": False, "cosponsors": []} for n in range(1, 61)]
+    night = {}
+
+    def fetch(args, label, cwd=None, env=None, root=None):
+        NI.LOG.append(f"\n--- {label} ---")
+        NI.LSRS.write_text(json.dumps(night["rows"]), encoding="utf-8")
+        if night["said"]:
+            NI.LOG.append(f"    {FL.LISTED}{night['said']}")
+        NI.LOG.append("  (1s, exit 0)")
+        return 0
+
+    def take(rows, said):
+        Path("lsrs.json").write_text(json.dumps(old), encoding="utf-8")
+        night.update(rows=rows, said=said)
+        return NI.take_lsrs()
+    grown = old + [{"lsr": f"2027-{n:04d}", "session": 2027, "body": "HB", "title": "t.",
+                    "sponsor": "B Member", "withdrawn": False, "cosponsors": ["C Member"],
+                    "from_page": True} for n in range(61, 81)]
+    try:
+        os.chdir(tmp)
+        NI.run, NI.say = fetch, lambda *a, **k: None
+        Path("Docket.txt").write_text("﻿", encoding="utf-8")
+        said = take(grown, "the CSV held 60, the page listed 80, 20 taken from the page")
+        assert said == ("installed, 80 requests (was 60); the CSV held 60, the page listed 80, 20 taken "
+                        "from the page"), said
+        assert len(json.loads(Path("lsrs.json").read_text(encoding="utf-8"))) == 80, "the list grown was not kept"
+        gone = [dict(r, withdrawn=int(r["lsr"][-4:]) <= 20) for r in old]
+        words = "the CSV held 40, the page could not be used (it says 81 and 80 could be read), none taken from it"
+        said = take(gone, words)
+        plain = ("not taken: it would newly withdraw 20 of the 60 standing requests (who is not returning "
+                 "could not be told: no site/legislators.json here, and no site to read it from); the "
+                 "earlier 60 kept")
+        assert said == f"{plain}; {words}", said
+        assert NI.kind_of(said) == NI.kind_of(plain), "the counts made the refusal another kind of warning"
+        assert json.loads(Path("lsrs.json").read_text(encoding="utf-8")) == old, \
+            "a refused list did not put the earlier one back"
+        assert take(grown, "") == "installed, 80 requests (was 60)", "a fetch that said nothing changed the line"
+        assert NI.lsrs_listed(["  x", f"   {FL.LISTED}a", f"  {FL.LISTED}b"]) == "b" and \
+            NI.lsrs_listed(["  the CSV held 3"]) == "", "lsrs_listed reads other lines, or not the last"
+    finally:
+        NI.run, NI.say = was
+        del NI.LOG[mark:]
+        os.chdir(cwd)
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("60 standing and 20 taken from the page installed as 80, the three counts on the line; "
+                  "a list refused for 20 withdrawals keeps the earlier one and says the counts after, "
+                  "the same kind of warning; a fetch that says nothing gives the line it gave before")
 
 
 @check("build", "the night fetches the request texts the list links and this disk does not hold, at "
