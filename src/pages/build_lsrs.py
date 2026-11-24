@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.34
+# GRANITE_VERSION: 2026-09-18.35
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -1211,6 +1211,12 @@ def with_topics(rows, bills):
               "official code" + ("" if f["archived"] else
                                   " -- no past tables here (db/past): the current term alone"))
     got = request_topics.assign(rows, model)
+    # THE OWNER'S OWN WORD, where she has judged a request's topic on the bench
+    # (24 November 2026; request_topics.owner_topics): hers, over the title's.
+    mine = request_topics.owner_assign(rows, request_topics.owner_topics())
+    if mine:
+        print(f"  {mine} request topic{'s are' if mine != 1 else ' is'} the owner's, "
+              "as she judged them on the bench")
     return sum(n for t, n in got.items() if t != request_topics.MISC)
 
 

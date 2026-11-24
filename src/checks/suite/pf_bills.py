@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.51
+# GRANITE_VERSION: 2026-11-16.52
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -11823,6 +11823,74 @@ def _request_topics_below_threshold():
     return "ok", ("margin bands beneath the threshold counted, an unknown title in none; the identical-title "
                   "rule keeps the newest, counts only beneath the threshold, in the site's categories; score() "
                   "prints both")
+
+
+@check("build", "a request's topic is the owner's where she judged its topic card on the bench: the guess she "
+                "called right, the topic she named for one she called wrong; never a guess by itself, nor "
+                "anyone's answer but hers")
+def _request_topics_owner_word():
+    """The owner, 24 November 2026: put the requests the title leaves Miscellaneous "in the bench with your
+    best guess so I can judge them". The assistant's guess is a topic card's claim (key "topic|2027
+    requests|LSR 2027-0123"); her verdict, merged into review/checked.jsonl, becomes the request's topic
+    (request_topics.owner_topics, owner_assign; topic_by "owner").
+
+    Held on a fixture ledger read by bench_ledger's rules: correct takes the claim; wrong takes the better
+    topic she named; a General Court name is read through the site's vocabulary with the request's title
+    (Crimes, Crim.Proc. & Corr. for a parole title is Corrections); a retired name changes nothing; unsure,
+    wrong with nothing named, and a contributor's line change nothing; her later line beats her earlier
+    one, and her line beats a contributor's merged after it; a bill's topic card is not a request's; a
+    request already a bill keeps its own topic; and with no ledger nothing changes."""
+    import request_topics as RT
+    tmp = Path(tempfile.mkdtemp(prefix="gr-owner-topics-"))
+    try:
+        def line(n, verdict, claim, by="hand", better=None, key=None):
+            d = {"kind": "topic", "key": key or f"topic|2027 requests|LSR 2027-{n}", "verdict": verdict,
+                 "note": "", "by": by, "shown": {"topic": claim, "guess_by": "assistant"}, "at": "2026-11-25T10:00",
+                 "via": "bench"}
+            if better is not None:
+                d["fields"] = {"better_topic": better}
+            return d
+        led = [line("0001", "correct", "Elections"),
+               line("0002", "wrong", "Elections", better="Housing"),
+               line("0003", "wrong", "Courts and Procedure", better="Crimes, Crim.Proc. & Corr."),
+               line("0004", "correct", "Insurance", by="link:abc123"),
+               line("0005", "unsure", "Animals"),
+               line("0006", "wrong", "Gambling"),
+               line("0007", "correct", "Retirement"), line("0007", "wrong", "Retirement", better="Taxes - State"),
+               line("0008", "correct", "Elections"), line("0008", "wrong", "Elections", by="link:abc123",
+                                                          better="Insurance"),
+               line("0009", "wrong", "Legislature", better="CACR"),
+               line("0010", "correct", "Agriculture"),
+               line("0", "correct", "Elections", key="topic|2025-2026|HB1")]
+        p = tmp / "checked.jsonl"
+        p.write_text("".join(json.dumps(d) + "\n" for d in led), encoding="utf-8")
+        judged = RT.owner_topics(p)
+        assert judged == {"LSR 2027-0001": "Elections", "LSR 2027-0002": "Housing",
+                          "LSR 2027-0003": "Crimes, Crim.Proc. & Corr.", "LSR 2027-0007": "Taxes - State",
+                          "LSR 2027-0008": "Elections", "LSR 2027-0009": "CACR",
+                          "LSR 2027-0010": "Agriculture"}, judged
+        assert RT.owner_topics(tmp / "none.jsonl") == {}, "a ledger that is not there gave topics"
+        titles = {"0003": "relative to the parole of inmates"}
+        rows = [{"n": f"LSR 2027-{n}", "title": titles.get(n, "t"), "topic": "Miscellaneous", "topic_by": "title"}
+                for n in ("0001", "0002", "0003", "0004", "0005", "0006", "0007", "0008", "0009")]
+        rows.append({"n": "LSR 2027-0010", "title": "t", "topic": "Elections", "topic_by": "title",
+                     "introduced": "2027-01-04"})
+        n = RT.owner_assign(rows, judged)
+        got = {r["n"][4:]: (r["topic"], r["topic_by"]) for r in rows}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    misc = ("Miscellaneous", "title")
+    want = {"2027-0001": ("Elections", "owner"), "2027-0002": ("Housing", "owner"),
+            "2027-0003": ("Corrections", "owner"), "2027-0004": misc, "2027-0005": misc, "2027-0006": misc,
+            "2027-0007": ("Taxes - State", "owner"), "2027-0008": ("Elections", "owner"),
+            "2027-0009": misc, "2027-0010": ("Elections", "title")}
+    bad = [f"{k}: {got.get(k)}, not {v}" for k, v in want.items() if got.get(k) != v]
+    assert not bad, "a request's topic from the owner's verdicts: " + "; ".join(bad)
+    assert n == 5, f"owner_assign counted {n} rows, not 5"
+    return "ok", ("her right takes the guess, her wrong the topic she named (a General Court name in the site's "
+                  "category, a retired one nothing); unsure, wrong alone and a contributor's line change "
+                  "nothing; her last line counts and beats a contributor's; a bill's card and a request "
+                  "already a bill are left alone")
 
 
 @check("build", "the bug hunt of 11 November 2026: the sitting term rolls on Organization Day in the browser "

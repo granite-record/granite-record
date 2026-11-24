@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-12.8
+# GRANITE_VERSION: 2026-11-12.10
 """
 An initial topic for a bill request, from its title.
 
@@ -97,6 +97,18 @@ A CONSTITUTIONAL AMENDMENT IS NOT A TOPIC (the owner, 18 November 2026): the
 model does not learn CACR, so a CACR request takes the topic its title's
 subject gives, as a CACR bill does.
 
+THE OWNER'S OWN WORD, OVER THE TITLE'S (24 November 2026). The owner asked
+for the requests the title leaves Miscellaneous to go on the bench "with your
+best guess so I can judge them". The guess is the claim on a topic card and
+never reaches the site by itself; her verdict, once she has merged it into
+review/checked.jsonl (bench_pull.py), is the request's topic: the guess where
+she said it is right, the topic she chose instead where she said it is wrong
+and named one, read through the site's vocabulary where she chose a General
+Court name (owner_topics, owner_assign). `topic_by` says "owner". Her line
+alone counts (bench_ledger.who "hand"); a contributor's answer, merged or not,
+changes no request's topic. Unsure, or wrong with nothing named, changes
+nothing.
+
 WHAT IS WRITTEN. `topic` and `topic_by = "title"` on the row of every request
 not yet a bill: the topic its title gives, or Miscellaneous. The card and the
 page print the topic by its name alone, as a bill's (the owner, 14 November
@@ -117,6 +129,7 @@ import argparse
 import collections
 import json
 import random
+import re
 
 import topics
 
@@ -129,6 +142,11 @@ THRESHOLD = 6.0
 CURRENT_WEIGHT = 3
 # What topic_by says: the topic is the title's, not the General Court's.
 BY = "title"
+# What topic_by says where the owner judged it on the bench (owner_assign).
+OWNER_BY = "owner"
+# A request's topic card on the bench (the manager's pack of 24 November 2026):
+# "topic|2027 requests|LSR 2027-0123", the request's number last.
+REQUEST_CARD = re.compile(r"^topic\|(\d{4}) requests\|(LSR \d{4}-\d{4})$")
 # A request the title does not place (the docstring).
 MISC = topics.MISC
 
@@ -216,6 +234,57 @@ def assign(rows, model, site_name=None):
         r["topic"], r["topic_by"] = t or MISC, BY
         got[r["topic"]] += 1
     return dict(got)
+
+
+def owner_topics(path=None):
+    """{request number ("LSR 2027-0123"): the topic the owner gave it on the bench}, from
+    the bench's ledger (review/checked.jsonl, read by bench_ledger's rules): for each
+    request's topic card, the line that counts, where it is hers -- its claim where she
+    said correct, the better topic she named where she said wrong. A contributor's line,
+    unsure, and wrong with no topic named give nothing. {} where the ledger is not here."""
+    import bench_ledger as BL
+    p = Path(path) if path else _paths.ROOT / BL.LEDGER
+    if not p.exists():
+        return {}
+    out = {}
+    for (kind, key), lines in BL.judged(p).items():
+        m = REQUEST_CARD.match(str(key or ""))
+        if kind != "topic" or not m or not lines:
+            continue
+        last = lines[-1]
+        if BL.who(last) != "hand":
+            continue
+        verdict = last.get("verdict")
+        topic = ((last.get("shown") or {}).get("topic") if verdict == "correct" else
+                 (last.get("fields") or {}).get("better_topic") if verdict == "wrong" else None)
+        if topic and str(topic).strip():
+            out[m.group(2)] = str(topic).strip()
+    return out
+
+
+def owner_assign(rows, judged, names=None, site_name=None):
+    """Give each request row the owner judged (owner_topics) her topic, `topic_by`
+    OWNER_BY: as she gave it where it is one of the site's own topics (`names`,
+    tag_rules.known_topics), and through the site's vocabulary where it is a General Court
+    name (vocabulary_of, with the request's title). A name the vocabulary retires, and a
+    row already a bill, are left as they were. Returns how many rows took hers."""
+    if not judged:
+        return 0
+    if names is None:
+        import tag_rules
+        names = set(tag_rules.known_topics())
+    fn = site_name or _vocabulary_of()
+    n = 0
+    for r in rows:
+        if r.get("introduced") or r.get("n") not in judged:
+            continue
+        t = judged[r["n"]]
+        if t not in names:
+            t = fn(t, {"title": r.get("title") or "", "subject": "", "bill": ""}) or ""
+        if t:
+            r["topic"], r["topic_by"] = t, OWNER_BY
+            n += 1
+    return n
 
 
 def _scored(model, test, site):
