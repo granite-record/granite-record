@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.21
+# GRANITE_VERSION: 2026-11-08.22
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -94,7 +94,8 @@ def sponsors(site):
     A member-elect's chip carries their title until the day they take office,
     "Rep.-elect Colin Mitchell (R)" (the owner, 17 November 2026;
     build_lsrs.elect_title and elect_window), as the request's row labels them
-    for its card; a sitting member's is the roster's, as it was."""
+    for its card; a sitting member's is the roster's, as it was, with the
+    chamber they sit in, which person_chip reads for one elected to the other."""
     import build_lsrs
     out = {}
     f = site / "legislators.json"
@@ -102,7 +103,10 @@ def sponsors(site):
         if m.get("slug"):
             out[m["slug"]] = {"party_code": m.get("party"), "slug": m["slug"],
                               "display_full": m.get("display_full") or m.get("display")
-                              or m.get("name")}
+                              or m.get("name"),
+                              # The chamber they sit in, which person_chip holds a
+                              # member-elect title of the other chamber to.
+                              "chamber": str(m.get("chamber") or "")[:1].upper()}
     f = site / "elect_pages.json"
     titled = build_lsrs.elect_window(site)
     for p in (json.loads(f.read_text(encoding="utf-8")).get("pages") or [] if f.is_file() else []):
@@ -134,13 +138,35 @@ def person_chip(who_of, slug, label, party=""):
     to their page when there is a slug, as the request's card draws them
     ("Ben Baroody (D)"): their old seat belongs to someone else now. `party`
     is the row's party code; where the caller has none it is read from a
-    trailing "(D)" in the label."""
+    trailing "(D)" in the label.
+
+    BUT A SITTING MEMBER ELECTED TO THE OTHER CHAMBER (the owner, 24 November
+    2026: "Yes, fix it", of Jim Creighton's and Laura Telerski's Senate
+    requests, whose pages said "Rep. James Creighton (R - Hills 30)" where their
+    cards said Sen.-elect): on a request whose row titles them that chamber's
+    member-elect (build_lsrs.election_winners, until the day they take office),
+    the chip is the row's label and party, linked to their page, as every
+    member-elect's chip on a request is drawn ("Sen.-elect Jim Creighton (R)")."""
     m = who_of.get(slug) if slug else None
-    if m:
+    if m and not elected_elsewhere(m, label):
         return C.pchip(m)
     tag = re.search(r"\(([A-Za-z])\)\s*$", label or "")
     return C.pchip({"party_code": party or (tag.group(1) if tag else ""),
                     "slug": slug or "", "display_full": label or ""})
+
+
+# A row's member-elect title, and the chamber it names: "Sen.-elect" the Senate's,
+# "Rep.-elect" the House's (build_lsrs.elect_title's words).
+_ELECT_TITLE = re.compile(r"^(Rep|Sen)\.-elect\s")
+
+
+def elected_elsewhere(m, label):
+    """Whether a roster member `m` (sponsors') is drawn under a row's `label` that titles
+    them the other chamber's member-elect: the label's title names a chamber, and it is
+    not the one they sit in. False for a member with no chamber on the roster."""
+    t = _ELECT_TITLE.match(str(label or ""))
+    sits = str(m.get("chamber") or "")
+    return bool(t) and sits in ("H", "S") and ("S" if t.group(1) == "Sen" else "H") != sits
 
 
 def chips_of(people, who_of):

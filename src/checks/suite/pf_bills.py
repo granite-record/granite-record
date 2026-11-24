@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.53
+# GRANITE_VERSION: 2026-11-16.54
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2384,7 +2384,10 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
              "display_full": "Rep. Ellen Read (D - Rock 10)", "party": "D", "chamber": "H"},
             {"name": "Telerski, Laura", "slug": "laura-telerski-hills-11",
              "display": "Rep. Laura Telerski (D)", "display_full": "Rep. Laura Telerski (D - Hills 11)",
-             "party": "D", "chamber": "H"}]), encoding="utf-8")
+             "party": "D", "chamber": "H"},
+            {"name": "Creighton, James", "slug": "james-creighton-hills-30",
+             "display": "Rep. James Creighton (R)", "display_full": "Rep. James Creighton (R - Hills 30)",
+             "party": "R", "chamber": "H"}]), encoding="utf-8")
         results = {"races": {
             "H|Hillsborough|21": {"candidates": [{"name": "Jeff Goley", "party": "d", "elected": True}]},
             "S|8": {"candidates": [{"name": "Jim Creighton", "party": "r", "elected": True}]},
@@ -2418,7 +2421,12 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
             chips = RP.sponsors(tmp)
             got[day] = ({r["n"][4:]: r["sponsor_label"] for r in rows},
                         {r["n"][4:]: r.get("sponsor_names") for r in rows},
-                        {s: chips[s]["display_full"] for s in chips})
+                        {s: chips[s]["display_full"] for s in chips},
+                        # The chip the request's own page draws (person_chip), for the
+                        # two sitting Representatives elected to the Senate.
+                        {r["n"][4:]: RP.person_chip(chips, r["sponsor_slug"], r["sponsor_label"],
+                                                    r.get("sponsor_party") or "")
+                         for r in rows if r["n"][4:] in ("2027-0800", "2027-0898", "2027-0899")})
     finally:
         if was is None:
             os.environ.pop("GRANITE_BUILD_DATE", None)
@@ -2426,7 +2434,16 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
             os.environ["GRANITE_BUILD_DATE"] = was
         shutil.rmtree(tmp, ignore_errors=True)
     rep, sen = "Rep.-elect ", "Sen.-elect "
-    labels, names, chips = got["2026-11-17"]
+    labels, names, chips, page = got["2026-11-17"]
+    # THE REQUEST'S OWN PAGE (the owner, 24 November 2026: "Yes, fix it"): a Senate request of a
+    # sitting Representative elected Senator draws its chip as the row titles them, linked to the
+    # page they have; a House request of theirs keeps the roster's chip, their seat today.
+    for n, who_, slug in (("2027-0800", "Jim Creighton", "james-creighton-hills-30"),
+                          ("2027-0898", "Laura Telerski", "laura-telerski-hills-11")):
+        assert (sen + who_ in page[n] and f'href="legislator/{slug}"' in page[n] and "Hills" not in page[n]), (
+            f"{n}'s page chip is not the Senate member-elect's: {page[n]}")
+    assert "Rep. Laura Telerski" in page["2027-0899"] and "Hills 11" in page["2027-0899"], (
+        f"a House request of hers lost the roster's chip: {page['2027-0899']}")
     want = {"2027-0646": rep + "Colin Mitchell (R)", "2027-0651": rep + "Colin Mitchell (R)",
             "2027-0700": sen + "Kurt Webber (D)", "2027-0556": rep + "Jeff Goley (D)",
             "2027-0800": sen + "Jim Creighton (R)", "2027-0001": "Rep. Ellen Read (D)",
@@ -2437,16 +2454,19 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
         f"the search reads the title as part of the name: {names}")
     assert (chips["colin-mitchell-carr-8"], chips["kurt-webber-sd-2"], chips["ellen-read-rock-10"]) == (
         rep + "Colin Mitchell (R)", sen + "Kurt Webber (D)", "Rep. Ellen Read (D - Rock 10)"), chips
-    labels, _names, chips = got["2026-12-02"]
+    labels, _names, chips, page = got["2026-12-02"]
     assert not any(re.match(r"(Rep|Sen)\.-elect ", v) for v in list(labels.values()) + list(chips.values())), (
         f"a member-elect still titled on the day they take office: {labels} {chips}")
+    assert all("-elect" not in h for h in page.values()) and "Hills 30" in page["2027-0800"], (
+        f"a request page still titles a member-elect on the day they take office: {page}")
     assert L.label_name(rep + "Colin Mitchell (R)") == "Colin Mitchell"
     return "ok", ("before 2 December Colin Mitchell's House and CACR requests read Rep.-elect "
                   "Colin Mitchell (R), Kurt Webber's Sen.-elect, and Jeff Goley, a former "
                   "member returning, Rep.-elect, on the card's label and the page's chip; a "
                   "sitting member re-elected as before, and the two elected to the Senate Sen.-elect "
-                  "on their Senate requests, as a winner or by the House roster, and as before on a "
-                  "House one; the search reads the name alone; on 2 December no one is titled")
+                  "on their Senate requests' cards and pages, as a winner or by the House roster, and "
+                  "as before on a House one; the search reads the name alone; on 2 December no one is "
+                  "titled")
 
 
 # app.js's cardSponsor in node, on an English page and a Spanish one (window.GR_WORDS as
