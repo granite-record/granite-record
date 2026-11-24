@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.107
+# GRANITE_VERSION: 2026-09-04.109
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -1511,11 +1511,58 @@ def slowest_said(args, lines):
     return [ln for ln in lines if SLOWEST_LINE.fullmatch(ln.strip())]
 
 
-def failure_lines(lines, tail=6):
+# WHAT FAILED FIRST (23 November 2026). The weekly of 23 November stopped on
+# one failed check and GitHub's log named none: the twelve lines kept were
+# checks that passed and say "refused". Preflight's own "What is broken:" block
+# comes first now, in whole entries (a failed check's name, as its [ FAIL ] or
+# [ERROR ] line gives it, with every line under it), then those [ FAIL ] and
+# [ERROR ] lines, then the other lines that say failing, twelve in all, then
+# the step's last few outside the block, as before. Never one of preflight's
+# lines of a check that passed, was skipped or failed as expected: its status
+# line, the words under it, its entry in the closing lists.
+# preflight's _failure_lines_lead_with_what_failed holds it, with the shapes
+# pf_runner.main prints.
+CHECK_FAILED = re.compile(r"\s*\[(?: FAIL |ERROR ?)\]")
+CHECK_DID_NOT_FAIL = re.compile(r"(\s*)\[(?:  ok  | skip |xfail )\]")
+CLOSING_LISTS = ("Skipped, mostly because", "Expected to fail, each until")
+
+
+def _without_passing(lines):
+    """`lines` less preflight's lines of each check that did not fail: its
+    status line, the words under it (they start under its name, nine past the
+    status line's indent) and its entry in the closing lists, which run from
+    their heading to a blank line or a rule."""
+    out, under, listed = [], None, False
+    for ln in lines:
+        said, bare = CHECK_DID_NOT_FAIL.match(ln), ln.strip()
+        if said:
+            under = " " * (len(said.group(1)) + 9)
+        elif not (under and (ln.startswith(under) or not bare)):
+            under = None
+            listed = bare.startswith(CLOSING_LISTS) or (listed and bare and set(bare) != {"="})
+            if not listed:
+                out.append(ln)
+    return out
+
+
+def failure_lines(lines, tail=6, cap=12):
     """What a failed step said about failing, for a log that shows no more."""
-    hits = [ln for ln in lines if re.search(
-        r"\b(FAIL\w*|ERROR|STOPPED|NOT|Traceback|[Rr]efused)\b", ln)][:12]
-    last = [ln for ln in lines if ln.strip()][-tail:]
+    lines = _without_passing(lines)
+    at = next((i for i, ln in enumerate(lines) if ln.strip() == "What is broken:"), len(lines))
+    end = next((i for i in range(at, len(lines)) if not lines[i].strip()), len(lines))
+    block, hits, rest = lines[at + 1:end], lines[at:at + 1], lines[:at] + lines[end:]
+    failed = {ln.split("] ", 1)[-1] for ln in rest if CHECK_FAILED.match(ln)}
+    names = [i for i, ln in enumerate(block) if not i or ln.strip().partition("/")[2] in failed]
+    for a, b in zip(names, names[1:] + [len(block)]):
+        if len(hits) > 1 and len(hits) + b - a > cap:     # entries whole, the first cut if it must be
+            break
+        hits += block[a:b]
+    hits = hits[:cap]
+    for ln in [ln for ln in rest if CHECK_FAILED.match(ln)] + [
+            ln for ln in rest if re.search(r"\b(FAIL\w*|ERROR|STOPPED|NOT|Traceback|[Rr]efused)\b", ln)]:
+        if len(hits) < cap and ln not in hits:
+            hits.append(ln)
+    last = [ln for ln in rest if ln.strip()][-tail:]
     return hits + [ln for ln in last if ln not in hits]
 
 
@@ -6018,8 +6065,10 @@ def site_manifest(site, out, walk=None):
 # day stated (cold_build), and compares the two file for file (cold_compare),
 # less the files that carry a time of day or are the build's account of itself
 # (TREE_LEFT_OUT and TREE_LEFT_OUT_UNDER, which the night's own tree hash
-# leaves out too) and the changes files, written against the first-seen ledger
-# the night moved on (COLD_LEFT_OUT_UNDER). A difference is a warning in the
+# leaves out too), the changes files, written against the first-seen ledger
+# the night moved on (COLD_LEFT_OUT_UNDER), and the data API's files that carry
+# the build's moment or are written against its own ledger (COLD_LEFT_OUT,
+# COLD_LEFT_OUT_UNDER). A difference is a warning in the
 # weekly's verdict, naming the first files that differ, for the morning triage;
 # it holds no night, and the weekly's own fetches are as they were. The night itself
 # states no day: its pages are published, and a stated moment is read as UTC
@@ -6103,15 +6152,28 @@ def shadow_said(site):
 # ... and the changes files the email sender reads (follow_changes.py), which
 # are written against the first-seen ledger: the night moves the ledger on
 # itself once its build is accepted (keep_first_seen), so a build after it
-# decides what is new against a later one than the night's build did.
-COLD_LEFT_OUT_UNDER = TREE_LEFT_OUT_UNDER + ("changes/",)
+# decides what is new against a later one than the night's build did. And the
+# data API's change feed (api_records.py), written against archive/api-hashes.json,
+# which the night moves on the same way (keep_api_hashes): each night's file
+# carries the moment of the build that wrote that night, tonight's own and, for
+# a night no accepted build wrote (16 November 2026, before the feed began),
+# whichever build writes it.
+COLD_LEFT_OUT_UNDER = TREE_LEFT_OUT_UNDER + ("changes/", "api/changes/")
+# ... and the data API's two files that carry the build's own moment, as
+# data/manifest.json does: api/index.json ("built", api_records' clock in UTC)
+# and data/schema.json ("created", the manifest's "generated", the local clock).
+# A cold build states the night's day, so both say its midnight; the night's are
+# the clock's, moments apart and in two zones, which no stated moment gives back.
+# The weekly of 23 November 2026 differed from the night in these four files
+# alone. preflight's _cold_build_leaves_out_the_api_moments holds the two lists.
+COLD_LEFT_OUT = {"api/index.json", "data/schema.json"}
 
 
 def cold_left_out(rel):
     """Whether a file of the site is left out of the cold build's comparison:
     one that carries a time of day, is the build's own account of itself, or
-    is written against the ledger the night moved on."""
-    return rel in TREE_LEFT_OUT or rel.startswith(COLD_LEFT_OUT_UNDER)
+    is written against a ledger the night moved on."""
+    return rel in TREE_LEFT_OUT or rel in COLD_LEFT_OUT or rel.startswith(COLD_LEFT_OUT_UNDER)
 
 
 def cold_compare(night, cold):

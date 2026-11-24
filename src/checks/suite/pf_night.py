@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.17
+# GRANITE_VERSION: 2026-11-16.20
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -13118,6 +13118,76 @@ def _weekly_cold_build_compares(NI):
                   "code a note; the week's results and warnings carry it, clean and exit untouched")
 
 
+@check("workflows", "the cold build leaves out what the data API writes with the build's own moment -- "
+       "api/index.json, data/schema.json and every night's file under api/changes/ -- and compares "
+       "every other file of api/ and data/", needs=("nightly", "api_records", "api_schema"))
+def _cold_build_leaves_out_the_api_moments(NI, AR, AS):
+    """THE WEEKLY OF 23 NOVEMBER 2026: its cold build differed from the night's in 4 of 66,271
+    files, api/changes/2026-11-16.json and 2026-11-23.json, api/index.json and data/schema.json,
+    each by the build's moment. A cold build states the night's day, so its moments are that
+    day's midnight; the night's are the clock's (api_records' "built" in UTC, the manifest's
+    "generated", schema.json's "created", on the local clock). And each night's file of the change
+    feed carries the moment of the build that wrote that night: tonight's, and for a night no
+    accepted build wrote (the 16th, before the feed began), whichever build writes it.
+
+    Held: nightly.cold_left_out leaves those four out, and the rest of api/changes/, as it does
+    changes/ and data/manifest.json, and leaves in every other file of api/ and data/ (a row file,
+    a record's file, the bill files, the CSVs); cold_compare of two builds differing in those
+    alone is the same, and in one more file names that one. With api_records' and api_schema's own
+    code, a night that read a ledger from the 17th and a cold build that read the one it left,
+    each with its own moment: the eight change files differ in 16 and 23 November alone, and
+    there in "built" alone, the night's list coming back whole; the index in "built" alone; and
+    schema.json in "created" alone."""
+    out = ["api/index.json", "data/schema.json", "api/changes/2026-11-16.json", "api/changes/2026-11-23.json",
+           "api/changes/2026-11-19.json", "changes/2026-11-23.json", "changes/current.json",
+           "data/manifest.json", "build.json", "feed/all.xml"]
+    kept = ["api/bills/2025-2026/index.json", "api/bills/2025-2026/HB1.json", "api/members/index.json",
+            "api/members/100.json", "api/laws/index.json", "api/rollcalls/2025-2026.json",
+            "api/requests/2027/index.json", "api/changes.json", "data/bills-2025-2026.jsonl.gz",
+            "data/bill-texts-2025-2026.jsonl.gz", "data/bills.csv", "data/people.json", "index.html"]
+    assert [x for x in out if not NI.cold_left_out(x)] == [], (
+        f"the cold build compares {[x for x in out if not NI.cold_left_out(x)]}, which carry the build's moment")
+    assert [x for x in kept if NI.cold_left_out(x)] == [], (
+        f"the cold build leaves out {[x for x in kept if NI.cold_left_out(x)]}, which carry no moment")
+    night = {x: "1" * 64 for x in out + kept}
+    got = NI.cold_compare(night, dict(night, **{x: "2" * 64 for x in out}))
+    assert not (got["changed"] or got["added"] or got["removed"]) and got["compared"] == len(kept), got
+    got = NI.cold_compare(night, dict(night, **{x: "2" * 64 for x in out + ["api/bills/2025-2026/HB1.json"]}))
+    assert got["changed"] == ["api/bills/2025-2026/HB1.json"], got
+
+    def less(obj, key):
+        return {k: v for k, v in obj.items() if k != key}
+    tonight, night_at, cold_at = "2026-11-23", "2026-11-23T08:55:32Z", "2026-11-23T00:00:00Z"
+    empty = {k: [] for k in AR.KINDS}
+    days = [f"2026-11-{d}" for d in range(17, 23)]
+    hashes = {k: {} for k in AR.KINDS + (AR.BALLOTS,)}
+    hashes["bills"] = {"2025-2026/HB1": "a" * 16}
+    read = {"format": AR.LEDGER_FORMAT, "date": days[-1], "built": f"{days[-1]}T09:00:00Z",
+            "hashes": dict(hashes, bills={"2025-2026/HB1": "b" * 16}),
+            "nights": {d: {"built": f"{d}T09:00:00Z", "changed": empty, "removed": empty} for d in days}}
+    left, _found = AR.decide(read, hashes, tonight=tonight, built=night_at)
+    by_night = AR.change_files(left, tonight, night_at)
+    again, _found = AR.decide(left, hashes, tonight=tonight, built=cold_at)
+    by_cold = AR.change_files(again, tonight, cold_at)
+    differ = sorted(n for n in by_night if by_night[n] != by_cold[n])
+    assert differ == ["2026-11-16.json", "2026-11-23.json"] and \
+        all(less(by_night[n], "built") == less(by_cold[n], "built") for n in differ) and \
+        by_cold["2026-11-23.json"]["changed"]["bills"] == ["2025-2026/HB1"], (
+            f"a night and a cold build of its folder write the change files apart in {differ}, and not "
+            f"in their moment alone: {[(by_night[n], by_cold[n]) for n in differ][:1]}")
+    import types
+    o = types.SimpleNamespace(count={})
+    a, b = (AR.index_file(o, base="https://graniterecord.org", built=m, sitting="2025-2026", year="2027",
+                          terms=["2025-2026"], rc_terms=["2025-2026"], nights=[n[:-5] for n in by_night])
+            for m in (night_at, cold_at))
+    assert a != b and less(a, "built") == less(b, "built"), "api/index.json differs in more than its moment"
+    a, b = (AS.package([], [], "https://graniterecord.org/data/", m) for m in ("2026-11-23T03:54:27", cold_at[:-1]))
+    assert a != b and less(a, "created") == less(b, "created"), "data/schema.json differs in more than its moment"
+    return "ok", (f"api/index.json, data/schema.json and api/changes/ left out, with changes/ and the rest, and "
+                  f"{len(kept)} other files of api/ and data/ compared; two builds of one folder a moment "
+                  "apart write those three in their moment alone, the night's list of changes kept")
+
+
 @check("workflows", "the publish job tells the publish check of a publish and of a publish that "
        "failed, and stays quiet for a deploy refused on purpose")
 def _workflows_publish_pings():
@@ -16252,6 +16322,123 @@ def _slowest_reaches_the_job_log(NI):
         NI.WATCH["step"] = saved[3]
     return "ok", ("a preflight step's slowest line, and that alone, reaches GitHub's log; once "
                   "from a failed one; never from another step, nor in another shape")
+
+
+@check("pipeline", "a failed step shows GitHub's log what failed first: preflight's \"What is broken:\" "
+       "block in whole entries and its [ FAIL ] line, no line of a check that passed, was skipped or "
+       "failed as expected, in twelve lines and the last six, as before",
+       needs=("nightly",))
+def _failure_lines_lead_with_what_failed(NI):
+    """WHAT FAILED FIRST (nightly.failure_lines). The weekly of 23 November
+    2026 stopped on one failed check, and GitHub's log named none of it: the
+    twelve lines kept were the first to say FAIL, ERROR, STOPPED, NOT,
+    Traceback or refused, and checks that passed say "refused". Held on logs
+    in the shape pf_runner.main prints, as run() logs a step; the lines of
+    main that make that shape (the block's heading, a status line, the words
+    under it, the closing lists' headings) are read off main itself, so a
+    change there fails here rather than let a skipped check back in:
+
+    - today's: fourteen passing lines that say refused, a skipped check, an
+      expected failure and a passing one whose words say failing too, one
+      FAIL, the summary, the block and the closing lists. The lines kept open
+      on the block and the [ FAIL ] line, and none is a line of a check that
+      did not fail: a status line, the words under one, an entry in the lists;
+    - fourteen failed, an [ERROR ] first, two with the same words and the
+      fifth in three lines: the block's first four entries whole, both of
+      those words kept, the fifth left out whole, then the [ERROR ] and the
+      first [ FAIL ] lines, twelve, then the step's last six outside the
+      block and the lists, so never a name without its words nor words
+      without their name;
+    - a step with no block that says failing on more than twelve lines, its
+      [ERROR ] and [ FAIL ] lines after thirteen others, and ends on seven
+      more: exactly twelve, those two first, and then its last six, as before;
+    - a step that crashed keeps its Traceback and its last lines, as before,
+      without the passing line above them."""
+    import inspect
+    runner = inspect.getsource(main)
+    for said in ['print("\\nWhat is broken:")', 'print(f"  [{mark}] {c[\'name\']}")',
+                 'print(f"           {line}")'] + [f'print("\\n{h}' for h in NI.CLOSING_LISTS]:
+        assert said in runner, f"pf_runner.main no longer says {said}, the shape failure_lines reads"
+    name = "the next election's dates are on every week of the Calendar, each with its law"
+    found = "the Calendar's week of 2026-W47 (en): 'By law: RSA 655:14.' does not cite 'RSA 655:14, as amended'"
+    skipped, expected = "a refused key is said", "a refused report is said"
+    quiet = ["NOT here: no key on this machine", "FAILED until the report form lands",
+             "NOT asked: the fetch was refused"]     # the words under the skip, the xfail and a verbose ok
+    out = (["FRONTEND"] + [f"  [  ok  ] a short copy of table {i} is refused, NOT taken" for i in range(14)]
+           + [f"  [ FAIL ] {name}", f"           {found}", f"  [ skip ] {skipped}", f"           {quiet[0]}",
+              f"  [xfail ] {expected}", f"           {quiet[1]}", "  [  ok  ] a verbose check",
+              f"           {quiet[2]}", "", "=" * 74, "15 passed, 1 failed, 1 skipped, 1 expected to fail",
+              "", "What is broken:", f"  frontend/{name}", f"    {found[:150]}", "",
+              "Each of these is independent, so fix them in any order. Nothing",
+              "here touched the site or the data files.", "",
+              "Skipped, mostly because the file is not in this folder:", f"  frontend/{skipped}: {quiet[0]}",
+              "", "Expected to fail, each until the change it names lands (its findings are above):",
+              f"  frontend/{expected}", f"    {quiet[1]}", "=" * 74])
+    passed = re.compile(r"\s*\[(?:  ok  | skip |xfail )\]")
+    got = NI.failure_lines(["  " + o for o in out])
+    want = ["  What is broken:", f"    frontend/{name}", f"      {found}", f"    [ FAIL ] {name}"]
+    assert got[:4] == want, f"GitHub's log would open on {got[:4]}, not on what failed: {want}"
+    quieter = [ln for ln in got if passed.match(ln) or skipped in ln or expected in ln
+               or any(q in ln for q in quiet)]
+    assert not quieter, f"GitHub's log would show a line of a check that did not fail: {quieter[:2]}"
+    # Fourteen failed, an [ERROR ] first, two with the same words and the fifth in three
+    # lines, two of them at the names' own indent: the block in whole entries, as many as
+    # fit in twelve, then the failed checks' own lines, and nothing of the block past them.
+    bad = [("a check that raised", "OSError: the disk is full")] + [
+        (f"the rows of table {i} are whole", "assertion failed" if i in (2, 3)
+         else "3 rows are missing:\n  row 4\n  row 5" if i == 4 else f"row {i} is missing")
+        for i in range(1, 14)]
+    ran = ["FRONTEND"] + [x for i, (n, w) in enumerate(bad)
+                          for x in [f"  [{'ERROR ' if i == 0 else ' FAIL '}] {n}"]
+                          + [f"           {line}" for line in w.splitlines()]]
+    ends = ["0 passed, 14 failed, 1 skipped", "slowest 10 of 15 checks, of 9 s in all (1 s of it compiling "
+            "and loading preflight.py): _a 1.0 s", "the map of what each check read and ran: "
+            "logs/check-map-code.json.gz (15 checks, 9 files, 9 functions)",
+            "Each of these is independent, so fix them in any order. Nothing",
+            "here touched the site or the data files.", "=" * 74]
+    block = ["What is broken:"] + [x for n, w in bad
+                                   for x in [f"  frontend/{n}"] + f"    {w[:150]}".splitlines()]
+    many = ["  " + o for o in ran + [f"  [ skip ] {skipped}", f"           {quiet[0]}", "", "=" * 74]
+            + ends[:3] + [""] + block + ["", *ends[3:5], "",
+                                         "Skipped, mostly because the file is not in this folder:",
+                                         f"  frontend/{skipped}: {quiet[0]}", ends[5]]]
+    got = NI.failure_lines(many)
+    block = ["  " + b for b in block]
+    assert got[:9] == block[:9], (
+        f"GitHub's log would open on {got[:9]}, not on the block's first four entries, each whole")
+    assert got[9:12] == [f"    [{'ERROR ' if i == 0 else ' FAIL '}] {bad[i][0]}" for i in range(3)], (
+        f"the tenth to twelfth lines kept are {got[9:12]}, not the [ERROR ] line and the first [ FAIL ] lines: "
+        "the fifth entry, which does not fit, is left out whole")
+    assert got[12:] == ["  " + e for e in ends], (
+        f"after the twelve, GitHub's log would show {got[12:]}, not the step's last six outside the block")
+    quieter = [ln for ln in got if ln in block[9:] or skipped in ln or quiet[0] in ln]
+    assert not quieter, f"GitHub's log would show {quieter[:2]}: part of an entry, or a check that did not fail"
+    # The size, on a log that goes past both limits: no block, thirteen lines that say refused
+    # ahead of an [ERROR ] and a [ FAIL ] check, and a Traceback of seven lines after them.
+    long = (["  FRONTEND"] + [f"    the fetch was refused on request {i}" for i in range(13)]
+            + ["    [  ok  ] the fetch that printed them stops when refused", "    [ERROR ] a check that raised",
+               "             OSError: the disk is full", "    [ FAIL ] a check of the rows",
+               "             row 3 is missing", "  Traceback (most recent call last):"]
+            + [f'    File "pf_runner.py", line {950 + i}, in main' for i in range(6)]
+            + ["  MemoryError: out of memory"])
+    got = NI.failure_lines(long)
+    first = ["    [ERROR ] a check that raised", "    [ FAIL ] a check of the rows"] + [
+        f"    the fetch was refused on request {i}" for i in range(10)]
+    assert got[:12] == first, (
+        f"GitHub's log would keep {got[:3]}... first, not the failed checks and ten more: {first[:3]}...")
+    assert got[12:] == long[-6:], (
+        f"{len(got)} lines kept, not twelve and the step's last six: {got[12:14]}... after the twelfth")
+    crashed = ["  [  ok  ] a refused key warns", "  Traceback (most recent call last):",
+               '    File "x.py", line 1, in <module>', "  OSError: the disk is full"]
+    got = NI.failure_lines(crashed)
+    assert "  Traceback (most recent call last):" in got and got[-1] == "  OSError: the disk is full" \
+        and not [ln for ln in got if passed.match(ln)], f"a step that crashed shows {got}"
+    return "ok", ("a failed preflight step's lines in GitHub's log open on \"What is broken:\" and its "
+                  "[ FAIL ] line, with no line of a check that passed, was skipped or failed as expected; "
+                  "fourteen failed keep the block's first four entries whole, then the failed checks' own "
+                  "lines and the step's last six outside the block; a step that says failing on more "
+                  "than twelve lines keeps twelve, its [ERROR ] and [ FAIL ] lines first, and its last "
+                  "six, as before; a crash keeps its Traceback and its last line")
 
 
 @check("build", "a time of day is read as 24 hours or given back as it came, and the build's day is New "
