@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.40
+# GRANITE_VERSION: 2026-11-16.41
 """
 preflight's checks of members-elect and election results.
 
@@ -3920,6 +3920,68 @@ def _elect_reader_decisions(PSR):
     return "ok", ("write-ins the file does not name, as many as the last seat's votes, refused; "
                   "a county's later upload read in place of its earlier, two under one number "
                   "refused")
+
+
+@check("build", "members-elect: the results reader reads the recount printed as the district again, each "
+                "candidate headed RECOUNT (2026 Belknap 6, Cheshire 18, Grafton 1), as the district's recount, "
+                "and refuses one whose names or parties are not the first count's",
+       needs=("parse_sos_results",))
+def _elect_reader_recount_as_the_district_again(PSR):
+    """The fourth recount layout (24 November 2026), held on a fixture of the
+    Secretary of State's updated Belknap file: the district's header and counts,
+    then "District No. 6 (2)" again with every candidate's header "RECOUNT
+    <name>, <party>" and "RECOUNT Write-Ins", the recount's town rows and
+    Totals. The recount's figures decide the seats, the word never becomes part
+    of a name, and a recount whose names or parties are not the first count's,
+    or a second plain header, is refused as before."""
+    import datetime as dt
+    head = [["State of New Hampshire - 2026 STATE GENERAL ELECTION"],
+            ["State Representatives - BELKNAP COUNTY"], ["November 03, 2026"]]
+    N = None
+    first = [["District No. 6 (2)", "Ann Ames, d", "Bo Bell, d", "Cy Cole, r", N, "Write-Ins"],
+             ["Gilford", 100, 90, 95, N, 1], ["Gilmanton", 50, 61, 52, N, 0],
+             ["Totals", 150, 151, 147, N, 1]]
+
+    def again(names=("Ann Ames, d", "Bo Bell, d", "Cy Cole, r"), word="RECOUNT    "):
+        return [["District No. 6 (2)"] + [f"{word}{n}" for n in names] + [N, f"{word}Write-Ins"],
+                ["Gilford", 100, 90, 98, N, 1], ["Gilmanton", 50, 59, 55, N, 2],
+                ["Totals", 150, 149, 153, N, 3]]
+
+    def read(rows):
+        was = PSR.sheets
+        PSR.sheets = lambda p: [("s", rows)]
+        try:
+            return PSR.read_house(Path("2026-ge-house-belknap_2.xlsx"), "belknap", dt.date(2026, 11, 3))
+        finally:
+            PSR.sheets = was
+
+    seats, flo, d = read(head + first + again())[6]
+    got = {c["name"]: (c["votes"], c["elected"]) for c in d["candidates"]}
+    # The first count elects Bo Bell (151) and Ann Ames (150); the recount, Cy Cole (153) and Ann.
+    assert got == {"Ann Ames": (150, True), "Bo Bell": (149, False), "Cy Cole": (153, True)}, (
+        f"the recount's figures decide the seats: {got}")
+    assert d["recounted"] is True, d
+    assert not any("RECOUNT" in c["name"].upper() for c in d["candidates"]), d["candidates"]
+
+    def refused(why, rows, *words):
+        try:
+            read(rows)
+        except PSR.Refused as e:
+            assert all(w in str(e) for w in words), f"{why}: refused, but not for it: {e}"
+            return
+        raise AssertionError(f"{why}: read, where it must be refused")
+    refused("the district's plain header twice", head + first + again(word=""), "twice")
+    refused("a recount naming another candidate",
+            head + first + again(names=("Ann Ames, d", "Bo Bell, d", "Di Dunn, r")))
+    refused("a recount giving a candidate another party",
+            head + first + again(names=("Ann Ames, d", "Bo Bell, r", "Cy Cole, r")))
+    assert PSR.recount_headed(["District No. 6 (4)", "RECOUNT    Allan Frank, d", "RECOUNT Write-Ins"])
+    assert not PSR.recount_headed(["District No. 36 (2)", "Michael Pellerito, d", "RECOUNT", "Write-Ins"]), (
+        "a RECOUNT column beside each count is the other layout")
+    assert not PSR.recount_headed(["District No. 6 (4)", "RECOUNT", "RECOUNT"]), "a bare RECOUNT names nobody"
+    assert PSR.unrecount("RECOUNT      Bob McLean, d") == "Bob McLean, d"
+    return "ok", ("the district printed again with each candidate headed RECOUNT is its recount: the "
+                  "recount's figures decide, no name carries the word, and another name or party is refused")
 
 
 @check("build", "members-elect: the results reader reads the recount laid out as a row of "
