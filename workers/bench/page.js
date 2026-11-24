@@ -4,7 +4,12 @@
  * /bench#<token>; the token never leaves the browser but in the body of the
  * page's own requests. It is taken out of the address bar as soon as the page
  * reads it -- YouTube's player API sends the page's whole address to YouTube
- * -- and kept for the tab alone (sessionStorage), so a reload still works.
+ * -- and kept on the device (localStorage, "gr.bench"; the owner, 21 November
+ * 2026: "Make it remember the link on each device"), so a bookmark of /bench,
+ * a new tab or a reload opens it again. A token in the address always wins and
+ * replaces the kept one. The device forgets it when the bench answers it 404 (a
+ * link turned off, or a wrong one) and when "Forget this link on this
+ * device" is pressed, for a shared computer.
  *
  * WHAT IT IS (the design of 17 November 2026 and its mockups): one item, and
  * only its evidence. A timing: the bill, the proceeding, the day, and the
@@ -20,7 +25,14 @@
  * seconds (Z). A thin bar for the group being worked on, this sitting's
  * answers a lighter part of it; when a group is full the next one simply
  * follows: no score, no streak, no screen between groups. Under the item,
- * how far along each queue is. The owner's link adds the Links tab.
+ * how far along each queue is. The owner's link adds the Links tab, and her
+ * Your input tab (23 November 2026): what waits on her word, from the list the
+ * manager keeps, grouped by section with the number waiting beside the tab's
+ * name; an entry opened shows what it is, where to look, the question, her
+ * answers in the entry's own words and a note, and Save; Back (or Escape, or
+ * the browser's own Back: an entry opened is a step in its history) returns
+ * to the list. A contributor's page is as it was: no tab, and no word
+ * of the list in anything the bench tells it.
  *
  * Light and dark in the site's palette (site.gen.js PAGE_PALETTE, read from
  * app.css), and the site's three faces. Every value written into the page
@@ -30,6 +42,11 @@
 
 import { pageResponse } from "./common.js";
 import { PAGE_PALETTE } from "../follow/site.gen.js";
+
+// THE STATE'S CLOCK, written here on main (24 November 2026): the generated zone
+// (site.gen.js TIMEZONE, from src/lib/state_settings.json) comes with the refactor batch
+// still waiting for review, and takes this line's place when that batch is released.
+export const TIMEZONE = "America/New_York";
 
 export function nonce() {
   let s = "";
@@ -195,8 +212,52 @@ white-space:nowrap}
 text-decoration:underline;padding:0}
 .merge{border-left:4px solid var(--pine);background:var(--pine-soft);padding:12px 14px;border-radius:var(--r-in);margin:16px 0 0;
 font-size:15px}
+.forget{margin:24px 0 0}
+.forget button{min-height:44px;padding:0;border:0;background:none;color:var(--ink-2);font:500 14px/1.2 var(--sans);
+text-decoration:underline;text-underline-offset:3px}
 .merge code{font:500 13px/1.4 ui-monospace,"Cascadia Mono",Consolas,monospace;display:block;margin-top:6px;word-break:break-all}
 @media (prefers-reduced-motion:reduce){.card,.track .mine{transition:none}}
+textarea{font:inherit;color:inherit}
+.tabs .n{display:inline-block;min-width:20px;margin-left:6px;padding:2px 6px;border-radius:999px;background:var(--amber-soft);
+color:var(--amber);font:700 12px/16px var(--sans);text-align:center;font-variant-numeric:tabular-nums;vertical-align:1px}
+@media (max-width:560px){.top.own .row1{flex-wrap:wrap;row-gap:0}.top.own .tabs{flex-basis:100%;margin:0 -12px}}
+.asks{margin:18px 0 0}
+.asks h2{font:600 12px/1.3 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin:0 0 8px}
+.asks ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.ask{display:block;width:100%;min-height:56px;text-align:left;background:var(--surface);border:1px solid var(--rule);
+border-radius:var(--r-out);padding:12px 14px}
+.ask b{display:block;font:600 17px/1.35 var(--serif);color:var(--ink)}
+.ask .st{display:block;margin-top:4px;font:500 13px/1.3 var(--sans);color:var(--ink-2)}
+.ask.wait{border-left:4px solid var(--amber);padding-left:11px}
+.ask.wait .st{color:var(--amber);font-weight:700;letter-spacing:.05em;text-transform:uppercase;font-size:12px}
+.ask.done{background:transparent}
+.ask.done b{font-weight:400;color:var(--ink-2)}
+.back{min-height:44px;padding:0;border:0;background:none;color:var(--pine);font:600 15px/1.2 var(--sans);
+text-decoration:underline;text-underline-offset:3px}
+.entry{margin:4px 0 0}
+.entry h2{font:600 23px/1.3 var(--serif);margin:0 0 6px}
+.entry h2:focus{outline:none}
+.entry .was{margin:0 0 12px;font:500 14px/1.35 var(--sans);color:var(--ink-2)}
+.entry .what p{font:400 17px/1.6 var(--serif);margin:0 0 12px;white-space:pre-line;overflow-wrap:anywhere}
+.where{list-style:none;margin:0;padding:0}
+.where li{margin:0 0 6px;font:500 15px/1.45 var(--sans);overflow-wrap:anywhere}
+.where a{color:var(--pine);font-weight:600;text-underline-offset:3px}
+.where .plain{color:var(--ink-2)}
+.picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px;margin:14px 0 0}
+.pick{min-height:58px;border-radius:var(--r-out);border:1.5px solid var(--edge);background:var(--surface);
+font:600 16px/1.2 var(--sans);padding:8px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.pick small{font:700 11px/1 var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--pine)}
+.pick[aria-pressed="true"]{background:var(--pine);border-color:var(--pine);color:var(--on-pine)}
+.pick[aria-pressed="true"] small{color:var(--on-pine)}
+.notelabel{display:block;margin:18px 0 6px;font:600 14px/1.3 var(--sans)}
+.notelabel span{font-weight:500;color:var(--ink-2)}
+#asknote{display:block;width:100%;min-height:120px;padding:10px;border:1px solid var(--edge);border-radius:var(--r-in);
+background:var(--surface);font:16px/1.5 var(--sans);resize:vertical}
+@media (prefers-color-scheme:dark){#asknote{color-scheme:dark}}
+.count{display:block;min-height:18px;margin-top:4px;color:var(--ink-2);font-size:13px;text-align:right}
+.saverow{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin:10px 0 0}
+.saverow .btn{min-height:48px;padding:0 20px;font-size:16px}
+.askmsg{color:var(--brick);font:600 14px/1.3 var(--sans)}
 `;
 
 const FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com">
@@ -205,8 +266,21 @@ const FONTS = `<link rel="preconnect" href="https://fonts.googleapis.com">
 
 // The words the page itself says. A card's words are the pack's.
 const NEEDS_LINK = "This page needs a link";
+const NEEDS_WORDS = "Open the private link you were sent once on this device, and this page will remember it.";
+const FORGET = "Forget this link on this device";
+const FORGET_ASK = "Forget this link on this device? To open the bench here again, you will need the link.";
 const KEPT = "Your answers are kept with this link, and nothing else about you is. Answers and notes become " +
   "part of Granite Record’s open data, with no name on them.";
+// The owner's Your input tab: one line at its top, what it is and that her notes stay hers.
+const INPUT_LEDE = "Things waiting on your word, one at a time. Only you see your answers and notes here; they " +
+  "reach the laptop when you pull them, and never become part of Granite Record’s open data.";
+
+// THE ADDRESSES AN ENTRY MAY SEND HER TO (the list's format, ASKS_FORMAT.md): https on
+// graniterecord.org, a preview of it (a subdomain of graniterecord.pages.dev) or claude.ai,
+// and nothing else: no other scheme or host, no user:password@, no port. The pack refuses a
+// list with any other (bench_pack.py LINK_RULE, its twin, held to this by _bench_asks_pack),
+// and the page draws one that reached the database anyway as its words alone, never a link.
+export const LINK_RULE = String.raw`^https://(?:graniterecord\.org|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+graniterecord\.pages\.dev|claude\.ai)(?:/[A-Za-z0-9\-._~/?=&%+#:!$,;*()@]*)?$`;
 
 // THE PAGE'S SCRIPT, in one function under the answer's nonce. String.raw, so
 // the page receives its backslashes as written.
@@ -221,11 +295,17 @@ export const SCRIPT = String.raw`(function(){
 // THE TOKEN LEAVES THE ADDRESS AT ONCE. YouTube's player API sends the page's whole
 // address to YouTube when it makes the player (its forigin), and the address held the
 // token after "#" (seen on 17 November 2026). So it is read, taken out of the address
-// bar before anything else runs, and kept for this tab alone, so a reload of the tab
-// still works; nowhere else, and never sent but in a request's body.
+// bar before anything else runs, and kept on this device (localStorage), so /bench
+// alone opens it again here; nowhere else, and never sent but in a request's body. A
+// token in the address replaces the kept one; one a tab kept before (sessionStorage,
+// until 21 November 2026) moves to the device.
 var T=(location.hash||"").replace(/^#(t=)?/,"");
-try{if(T)sessionStorage.setItem("bench",T);else T=sessionStorage.getItem("bench")||"";}catch(e){}
 if(location.hash){try{history.replaceState(null,"",location.pathname+location.search);}catch(e){}}
+var KEY="gr.bench",was="";try{was=sessionStorage.getItem("bench")||"";}catch(e){}
+try{if(!T)T=localStorage.getItem(KEY)||was;if(T)localStorage.setItem(KEY,T);if(was)sessionStorage.removeItem("bench");}catch(e){if(!T)T=was;}
+// The device forgets the link: when the bench answers it 404, and when asked to.
+function forget(){T="";try{localStorage.removeItem(KEY);}catch(e){}try{sessionStorage.removeItem("bench");}catch(e){}
+var f=document.getElementById("forget");if(f)f.hidden=true;}
 var $=function(id){return document.getElementById(id);};
 var E={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return E[c];});}
@@ -234,6 +314,13 @@ return (h?h+":"+(m<10?"0":"")+m:m)+":"+(s<10?"0":"")+s;}
 function num(n){return Number(n||0).toLocaleString("en-US");}
 var MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function day(d){var m=/^(\d{4})-(\d\d)-(\d\d)/.exec(d||"");return m?(+m[3])+" "+MONTHS[+m[2]-1]:"";}
+// THE DAY OF A MOMENT, as the state's own clock has it (src/lib/state_settings.json "timezone"):
+// her answers are kept by their moment in UTC (store.js iso()), so an evening's answer is
+// already the next day by its first ten characters.
+var ZONE=${JSON.stringify(TIMEZONE)};
+function zoneDay(t){var d=new Date(t),p={};if(!t||isNaN(d))return "";
+try{new Intl.DateTimeFormat("en-US",{timeZone:ZONE,month:"numeric",day:"numeric"}).formatToParts(d)
+.forEach(function(x){p[x.type]=x.value;});}catch(e){return day(t);}return p.day&&p.month?p.day+" "+MONTHS[p.month-1]:day(t);}
 var ICON={no:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
 yes:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 unsure:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.2 7.4a2.9 2.9 0 1 1 4.1 2.6c-.8.4-1.3 1-1.3 1.9v.4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><circle cx="10" cy="15.6" r="1.25" fill="currentColor"/></svg>',
@@ -243,8 +330,9 @@ var SAID={yes:"Yes",no:"No",unsure:"Not sure"};
 // step it is on and the answers given to its steps; the mode (ask, mark,
 // better); whether the note is open; this sitting's answers by group.
 var S={view:null,queue:"mix",item:null,step:0,steps:[],mode:"ask",note:false,you:{},busy:false,
-tab:"judge",links:null,made:null,open:{},label:"",saved:null,toastT:0};
-var TOAST_MS=6000,HOLD_EVERY=120000,LEAD=8,SWIPE=80;
+tab:"judge",links:null,made:null,open:{},label:"",saved:null,toastT:0,
+asks:null,ask:null,pick:"",drafts:{}};
+var TOAST_MS=6000,HOLD_EVERY=120000,LEAD=8,SWIPE=80,NOTE_MOST=2000,NOTE_NEAR=300;
 
 function api(path,body){var b={t:T};for(var k in body)if(Object.prototype.hasOwnProperty.call(body,k))b[k]=body[k];
 return fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b),
@@ -272,9 +360,12 @@ function quiet(){if(ytReady&&YTP.pauseVideo)YTP.pauseVideo();}
 function step(){var c=S.item&&S.item.card;return c&&c.type==="moment"?c.steps[S.step]:null;}
 function words(s,at,bold){var t=esc(hms(at));return esc(s||"").replace("{t}",bold?"<b>"+t+"</b>":t);}
 function drawTop(){var v=S.view||{},owner=v.role==="owner",judging=S.tab==="judge";
-$("tabs").hidden=!owner;
-$("judgetab").toggleAttribute("aria-current",judging);$("linkstab").toggleAttribute("aria-current",!judging);
-if(judging)$("judgetab").setAttribute("aria-current","page");else $("linkstab").setAttribute("aria-current","page");
+$("tabs").hidden=!owner;$("top").className="top"+(owner?" own":"");
+["judge","links","input"].forEach(function(t){var b=$(t+"tab");b.toggleAttribute("aria-current",S.tab===t);
+if(S.tab===t)b.setAttribute("aria-current","page");});
+// The owner's Your input tab: how many entries wait on her word, beside its name.
+var w=owner?Number(v.asks)||0:0;$("inputn").textContent=w?num(w):"";$("inputn").hidden=!w;
+$("inputtab").setAttribute("aria-label",w?"Your input, "+num(w)+" waiting":"Your input");
 var qs=v.queues||[],k=$("kind");
 k.innerHTML=qs.map(function(q){return '<option value="'+esc(q.queue)+'">'+esc(q.label)+"</option>";}).join("")+
 (qs.length>1?'<option value="mix">A mix of all '+(qs.length===3?"three":qs.length===2?"two":"of them")+"</option>":"");
@@ -293,8 +384,8 @@ num(q.judged)+" of "+num(q.pool)+"</span></li>";}).join("");}
 function message(title,text,retry){quiet();$("player").hidden=true;$("head").innerHTML="";$("card").className="card empty";
 $("body").innerHTML="<h1>"+esc(title)+'</h1><p class="prose">'+esc(text)+"</p>"+
 (retry?'<p><button type="button" class="btn" data-do="retry">Try again</button></p>':"");$("answers").innerHTML="";}
-function draw(){drawTop();drawFar();var judging=S.tab==="judge";$("judge").hidden=!judging;$("links").hidden=judging;
-$("answers").hidden=!judging;if(!judging){$("toast").hidden=true;return quiet();}
+function draw(){drawTop();drawFar();var judging=S.tab==="judge";$("judge").hidden=!judging;$("links").hidden=S.tab!=="links";
+$("input").hidden=S.tab!=="input";$("answers").hidden=!judging;if(!judging){$("toast").hidden=true;return quiet();}
 var v=S.view;if(!v)return;
 if(v.state==="paused")return message("This link is paused","Nothing is asked of it for now. The person who sent it can turn it back on, and it will work again then.");
 var it=S.item;if(!it)return message("Nothing waiting right now","Every item this link can be given has an answer. Thank you. New ones are added from time to time; this link keeps working.");
@@ -337,12 +428,17 @@ if(b&&st)b.innerHTML=ICON.mark+" "+esc(st.mark)+" "+(t===null?"":esc(hms(t)));},
 function show(v){S.view=v;var it=(v.items||[])[0]||null;S.item=it;S.step=0;S.steps=[];S.mode="ask";S.note=false;
 if(it&&it.card.type==="moment")cue(it.card.player.id,it.card.steps[0].at);
 S.label=v.progress?v.progress.label:"";draw();}
-function start(){if(!/^[A-Za-z0-9_-]{43}$/.test(T))return needs();
-api("/api/bench/next",{queue:S.queue}).then(function(r){if(r.status===404)return needs();
+function start(){if(!/^[A-Za-z0-9_-]{43}$/.test(T))return lost();$("forget").hidden=false;
+api("/api/bench/next",{queue:S.queue}).then(function(r){if(r.status===404)return lost();
 if(!r.data||r.status>=500)return message("The bench cannot be reached just now","Nothing was lost. Try again in a minute.",true);
 S.queue=r.data.queue||"mix";show(r.data);});}
-function needs(){S.view=null;S.item=null;drawTop();$("far").hidden=true;
-message("${NEEDS_LINK}","Open the bench from the private link you were sent, whole. Nothing here works without it.");}
+// No link, or one the bench does not know (404: turned off, or wrong),
+// which the device then forgets, so a dead link does not linger.
+function lost(){forget();needs();}
+function needs(){S.view=null;S.item=null;S.tab="judge";S.links=null;S.made=null;S.open={};
+S.asks=null;S.ask=null;S.pick="";S.drafts={};drawTop();$("far").hidden=true;
+$("judge").hidden=false;$("links").hidden=true;$("input").hidden=true;$("answers").hidden=false;$("toast").hidden=true;
+message("${NEEDS_LINK}","${NEEDS_WORDS}");}
 function toast(said,undo){$("toastwords").textContent=said;$("undo").hidden=!undo;$("toast").hidden=false;
 clearTimeout(S.toastT);S.toastT=setTimeout(function(){$("toast").hidden=true;},TOAST_MS);}
 // AN ANSWER IS SENT ONLY WHEN IT IS GIVEN. Nothing is chosen in advance.
@@ -351,14 +447,14 @@ note=S.note&&$("note")?$("note").value:"",card=$("card");card.classList.add(side
 var go=function(tries){api("/api/bench/judge",{queue:S.queue,ref:it.ref,answer:answer,note:note}).then(function(r){
 if(r.status===429&&r.data&&r.data.why==="fast"&&tries<2)return setTimeout(function(){go(tries+1);},1100);
 S.busy=false;card.classList.remove("out-l","out-r");
-if(r.status===404)return needs();
+if(r.status===404)return lost();
 if(r.status===200){if(label)S.you[label]=(S.you[label]||0)+1;S.saved={label:label};toast("Saved: "+SAID[side],true);return show(r.data);}
 if(r.data&&r.data.why==="full"){S.view=r.data;S.item=null;drawTop();return message("That is all for today","Thank you. This link works again tomorrow.");}
 if(r.data&&r.data.items){toast(r.data.why==="paused"?"Not saved: this link is paused.":r.status===409?"Not saved: that one had been let go. Here is the next.":"Not saved.",false);return show(r.data);}
 toast("Not saved: the bench could not be reached. Try again.",false);draw();});};
 go(0);}
 function undo(){if(S.busy||$("toast").hidden||$("undo").hidden)return;S.busy=true;$("toast").hidden=true;
-api("/api/bench/undo",{queue:S.queue}).then(function(r){S.busy=false;if(r.status===404)return needs();
+api("/api/bench/undo",{queue:S.queue}).then(function(r){S.busy=false;if(r.status===404)return lost();
 if(!r.data)return toast("Not undone: the bench could not be reached.",false);
 if(r.data.undone&&S.saved&&S.you[S.saved.label])S.you[S.saved.label]--;S.saved=null;show(r.data);});}
 function answer(what){var it=S.item;if(!it||S.busy||S.tab!=="judge")return;var c=it.card;
@@ -374,13 +470,18 @@ if(what==="saveno"){var b=$("better")?$("better").value:"";return send(b?{answer
 if(S.mode==="ask")send({answer:what},what);}
 function openNote(){S.note=true;draw();var n=$("note");if(n)n.focus();}
 
-document.addEventListener("click",function(e){var t=e.target.closest?e.target.closest("[data-a],[data-do],#undo,[data-tab],[data-link]"):null;
+document.addEventListener("click",function(e){var t=e.target.closest?e.target.closest("[data-a],[data-do],#undo,[data-tab],[data-link],[data-ask],[data-pick]"):null;
 if(!t)return;if(t.id==="undo")return undo();if(t.dataset.a)return answer(t.dataset.a);
 if(t.dataset.tab)return tab(t.dataset.tab);if(t.dataset.link)return linkAct(t.dataset.link,t.dataset.id,t.dataset.answer);
-var d=t.dataset.do,st=step();if(d==="retry")return start();if(d==="note")return openNote();
+if(t.dataset.ask)return askOpen(t.dataset.ask);if(t.dataset.pick)return askPick(t.dataset.pick);
+var d=t.dataset.do,st=step();if(d==="retry")return start();
+if(d==="askback")return leave();if(d==="asksave")return askSave();if(d==="askretry")return asksList();
+if(d==="forget"){if(!confirm("${FORGET_ASK}"))return;forget();return needs();}if(d==="note")return openNote();
 if(d==="play"&&st)return play(st.at);if(d==="back")return nudge(-10);if(d==="fwd")return nudge(10);});
 $("kind").addEventListener("change",function(){S.queue=this.value;start();});
 document.addEventListener("keydown",function(e){
+// On her Your input tab no key judges anything: Escape is Back, from the note box too.
+if(S.tab==="input"){if(e.key==="Escape"&&S.ask){e.preventDefault();leave();}return;}
 if(e.target.matches&&e.target.matches("input,select,textarea")){if(e.key==="Escape"){if(S.mode==="better")answer("back");else if(S.note){S.note=false;draw();}}return;}
 if(e.ctrlKey||e.metaKey||e.altKey||S.tab!=="judge"||!S.item)return;var k=e.key,st=step(),hit=true;
 if(k==="ArrowRight")answer(S.mode==="mark"?"mark":S.mode==="better"?"saveno":"yes");
@@ -400,13 +501,18 @@ $("card").addEventListener("touchend",function(e){if(sx===null)return;var dx=e.c
 if(Math.abs(dx)>SWIPE&&Math.abs(dx)>2*Math.abs(dy))answer(dx>0?"yes":"no");},{passive:true});
 // The open page keeps what it holds: every two minutes, and when it is looked at again.
 setInterval(function(){if(S.item&&!document.hidden)api("/api/bench/hold",{});},HOLD_EVERY);
-document.addEventListener("visibilitychange",function(){if(!document.hidden&&S.item)api("/api/bench/hold",{});});
+// And her list is read again when she comes back to it (an entry open aside, which the list
+// would be drawn over), so a list loaded since, or an entry withdrawn, is the one she sees.
+document.addEventListener("visibilitychange",function(){if(document.hidden)return;if(S.item)api("/api/bench/hold",{});
+if(S.tab==="input"&&!S.ask&&S.view&&S.view.role==="owner")asksList();});
 // Another link opened in this tab changes only what follows "#", which loads nothing: read it afresh.
 window.addEventListener("hashchange",function(){if(location.hash)location.reload();});
 
 // ---- the owner's Links tab ---------------------------------------------------------
-function tab(t){S.tab=t;if(t==="links")return links({action:"list"});draw();}
-function links(body){return api("/api/bench/links",body).then(function(r){if(r.status===404){needs();return r;}
+function tab(t){var open=S.tab==="input"&&S.ask;if(open)askKeep();S.tab=t;if(t==="input")S.ask=null;if(open)histBack();
+if(t==="links")return links({action:"list"});
+if(t==="input"){drawInput();draw();return asksList();}draw();}
+function links(body){return api("/api/bench/links",body).then(function(r){if(r.status===404){lost();return r;}
 if(!r.data){$("linksbody").innerHTML='<p class="lede">The links cannot be read just now. Try again in a minute.</p>';draw();return r;}
 if(r.data.links)S.links=r.data.links;if(r.data.made)S.made=r.data.made;if(r.data.answers)S.open[body.id]=r.data.answers;
 drawLinks();draw();return r;});}
@@ -452,6 +558,100 @@ if(what==="takeback"&&l&&!confirm("Take back "+l.name+"’s "+l.unmerged+" answe
 if(what==="off"&&l&&!confirm("Turn off "+l.name+"’s link? It stops working for good; its answers stay for your merge."))return;
 if(what==="takeone"){delete S.open[id];return links({action:"takeone",id:id,answer:Number(answerId)}).then(function(){return links({action:"answers",id:id});});}
 S.made=null;links({action:what,id:id});}
+
+// ---- the owner's Your input tab ------------------------------------------------------
+// What waits on her word, from the list the manager keeps: a list grouped by section, and
+// one entry at a time, with her answer (the entry's own words) and a note. Her latest is
+// shown; saving again adds another. A draft she leaves by Back is kept in this page alone.
+var LINK=new RegExp(${JSON.stringify(LINK_RULE)});
+function linkOk(u){return typeof u==="string"&&LINK.test(u);}
+function askOf(key){return (S.asks||[]).filter(function(k){return k.key===key;})[0]||null;}
+function picksOf(c){var a=c&&c.answers&&typeof c.answers==="object"?c.answers:{};
+return Object.keys(a).filter(function(x){return x==="yes"||x==="no"||x==="unsure";});}
+function wordsOf(c,x){var a=(c&&c.answers)||{};return typeof a[x]==="string"&&a[x]?a[x]:SAID[x]||String(x||"");}
+function rowId(key){return "row-"+key;}
+// A row's state, as text (drawn through esc()): "Waiting", or her latest answer's day and words;
+// an entry offering one answer alone ("Save the note") is just "Answered" and the day, since
+// that button's words say what it does, not what she said.
+function stateOf(k){var a=k.answer;if(!a)return "Waiting";var when=zoneDay(a.at);
+return "Answered "+when+(picksOf(k.card).length===1?"":": "+wordsOf(k.card,a.answer));}
+// A choice or a note she left by Back, Escape or a tab and has not saved: kept in this page alone
+// (S.drafts), so a reload or a closed tab loses it, and its row says so. A one-answer entry not
+// answered yet holds nothing of hers until she types a note.
+function held(k){var d=S.drafts[k.key];return !!d&&(picksOf(k.card).length>1||!!k.answer||!!d.note);}
+function paras(s){return String(s==null?"":s).split(/\n[ \t]*\n/).map(function(p){return p.trim();}).filter(Boolean)
+.map(function(p){return "<p>"+esc(p)+"</p>";}).join("");}
+function asksGot(d){S.asks=Array.isArray(d.asks)?d.asks:[];if(S.view)S.view.asks=d.waiting;}
+function asksList(){if(S.asks===null)$("inputbody").innerHTML='<p class="lede">Reading the list&hellip;</p>';
+return api("/api/bench/asks",{action:"list"}).then(function(r){if(r.status===404)return lost();
+if(r.status===200&&r.data&&Array.isArray(r.data.asks)){asksGot(r.data);if(S.tab==="input"&&!S.ask)drawInput();return draw();}
+if(S.asks===null)$("inputbody").innerHTML='<p class="lede">The list cannot be read just now. Try again in a minute.</p>'+
+'<p><button type="button" class="btn" data-do="askretry">Try again</button></p>';draw();});}
+function drawInput(){$("inputhead").hidden=false;if(S.asks===null)return;var L=S.asks,h="",open=false,sec="";
+if(!L.length)h='<p class="prose">Nothing is waiting on your word just now.</p>';
+L.forEach(function(k){var c=k.card||{};if(!open||c.section!==sec){if(open)h+="</ul></section>";open=true;sec=c.section;
+h+='<section class="asks"><h2>'+esc(c.section)+"</h2><ul>";}
+h+='<li><button type="button" class="ask '+(k.answer?"done":"wait")+'" id="'+esc(rowId(k.key))+'" data-ask="'+esc(k.key)+'"><b>'+
+esc(c.title)+'</b><span class="st">'+esc(stateOf(k))+(held(k)?" &middot; not saved yet":"")+"</span></button></li>";});
+if(open)h+="</ul></section>";$("inputbody").innerHTML=h;}
+function drawEntry(){var k=askOf(S.ask);if(!k){S.ask=null;histBack();return drawInput();}$("inputhead").hidden=true;
+var c=k.card||{},a=k.answer,x=picksOf(c),one=x.length===1,d=S.drafts[k.key],where=Array.isArray(c.where)?c.where:[];
+var what=paras(c.what);S.pick=one?x[0]:d?d.pick:a&&x.indexOf(a.answer)>=0?a.answer:"";
+$("inputbody").innerHTML='<p><button type="button" class="back" data-do="askback">&larr; Back to the list</button></p>'+
+'<article class="entry" aria-labelledby="asktitle"><p class="label">'+esc(c.section)+'</p><h2 id="asktitle" tabindex="-1">'+
+esc(c.title)+"</h2>"+(a?'<p class="was">'+esc(stateOf(k))+"</p>":"")+'<div class="what">'+what+"</div>"+
+(where.length?'<p class="label">Where to look</p><ul class="where">'+where.map(function(w){w=w||{};
+return "<li>"+(linkOk(w.url)?'<a href="'+esc(w.url)+'" target="_blank" rel="noopener noreferrer">'+esc(w.label)+"</a>":
+'<span class="plain">'+esc(w.label)+"</span>")+"</li>";}).join("")+"</ul>":"")+
+'<p class="q">'+esc(c.question)+"</p>"+
+(one?"":'<div class="picks" role="group" aria-label="Your answer">'+x.map(function(y,i){
+return '<button type="button" class="pick" id="pick'+i+'" data-pick="'+esc(y)+'" aria-pressed="'+(S.pick===y?"true":"false")+'">'+
+esc(wordsOf(c,y))+(c.recommended===y?"<small>Recommended</small>":"")+"</button>";}).join("")+"</div>")+
+'<label class="notelabel" for="asknote">Your note <span>(optional)</span></label>'+
+'<textarea id="asknote" rows="5" maxlength="'+NOTE_MOST+'" aria-describedby="askcount"></textarea>'+
+'<small class="count" id="askcount" aria-live="polite"></small>'+
+'<div class="saverow"><button type="button" class="btn primary" data-do="asksave">'+(one?esc(wordsOf(c,x[0])):"Save")+"</button>"+
+'<span class="askmsg" id="askmsg" role="status"></span></div></article>';
+$("asknote").value=d?d.note:a?a.note||"":"";askCount();}
+function askOpen(key){if(!askOf(key))return;S.ask=key;histStep(key);drawEntry();if(window.scrollTo)window.scrollTo(0,0);$("asktitle").focus();}
+// AN ENTRY OPENED IS A STEP IN THE BROWSER'S HISTORY, so that a phone's Back gesture, the
+// browser's Back and a mouse's back button return to the list, as the page's Back and Escape
+// do, rather than leaving the bench and what she typed. Leaving the entry any other way (the
+// page's Back, Escape, a save, a tab) draws what follows at once and takes the step back too,
+// and the popstate that follows finds nothing open.
+function stepped(){try{return !!(history.state&&history.state.ask);}catch(e){return false;}}
+function histStep(key){try{history.pushState({ask:key},"");}catch(e){}}
+function histBack(){if(stepped())history.back();}
+function leave(){var was=stepped();askBack();if(was)history.back();}
+window.addEventListener("popstate",function(){if(S.tab==="input"&&S.ask)askBack();});
+// What she has chosen and typed, kept while the page is open, unless it is what she saved.
+function askKeep(){var n=$("asknote"),k=askOf(S.ask);if(!k||!n)return;var a=k.answer;
+if(a?a.answer===S.pick&&(a.note||"")===n.value:!S.pick&&!n.value){delete S.drafts[k.key];return;}
+S.drafts[k.key]={pick:S.pick,note:n.value};}
+function askBack(){var key=S.ask;if(!key)return;askKeep();S.ask=null;drawInput();var r=$(rowId(key));if(r&&r.focus)r.focus();}
+function askPick(y){var k=askOf(S.ask);if(!k)return;var x=picksOf(k.card);if(x.indexOf(y)<0)return;S.pick=y;
+x.forEach(function(z,i){$("pick"+i).setAttribute("aria-pressed",z===y?"true":"false");});$("askmsg").textContent="";askKeep();}
+function askCount(){var n=$("asknote"),c=$("askcount");if(!n||!c)return;var left=NOTE_MOST-String(n.value||"").length;
+c.textContent=left>NOTE_NEAR?"":left>1?num(left)+" characters left":left===1?"1 character left":"No characters left";}
+function askSave(){var k=askOf(S.ask);if(!k||S.busy)return;var c=k.card||{},x=picksOf(c),pick=x.length===1?x[0]:S.pick,
+n=$("asknote"),note=n?String(n.value||""):"";
+if(!pick||x.indexOf(pick)<0){$("askmsg").textContent="Choose an answer first.";if(x.length)$("pick0").focus();return;}
+if(note.length>NOTE_MOST){$("askmsg").textContent="Not saved: a note is 2,000 characters at most.";return;}
+S.busy=true;$("askmsg").textContent="";
+var go=function(tries){api("/api/bench/asks",{action:"answer",key:k.key,answer:pick,note:note}).then(function(r){
+if(r.status===429&&r.data&&r.data.why==="fast"&&tries<2)return setTimeout(function(){go(tries+1);},1100);
+S.busy=false;if(r.status===404)return lost();if(r.data&&Array.isArray(r.data.asks))asksGot(r.data);
+if(r.status===200){delete S.drafts[k.key];S.ask=null;histBack();drawInput();draw();toast(x.length===1?"Saved.":"Saved: "+wordsOf(c,pick),false);
+var row=$(rowId(k.key));if(row&&row.focus)row.focus();return;}
+// WITHDRAWN WHILE IT WAS OPEN: she stays in the entry, and what she typed with her, to copy.
+if(r.status===409){drawTop();$("askmsg").textContent="Not saved: this one is no longer on the list. Your note is still here to copy.";return;}
+// CHANGED WHILE IT WAS OPEN, so the answer she chose is not one it offers now: drawn again from
+// the list the bench sent back, her note kept, for her to choose again.
+if(r.data&&r.data.why==="bad"){drawTop();drawEntry();var p0=$("pick0");if(p0&&p0.focus)p0.focus();
+$("askmsg").textContent="Not saved: this entry changed while it was open. Choose again.";return;}
+$("askmsg").textContent=r.data&&r.data.why==="long"?"Not saved: a note is 2,000 characters at most.":
+r.status===429?"Not saved. Try again in a moment.":"Not saved: the bench could not be reached. Try again.";});};go(0);}
+document.addEventListener("input",function(e){if(e.target&&e.target.id==="asknote"){askKeep();askCount();}});
 start();})();`;
 
 export function benchPage() {
@@ -468,7 +668,8 @@ ${FONTS}
 <div class="row1"><div class="brand">Granite Record<span>Bench</span></div>
 <div id="kindtop"><select class="kind" id="kind" aria-label="What to judge" hidden></select></div>
 <nav class="tabs" id="tabs" aria-label="Bench" hidden><button type="button" id="judgetab" data-tab="judge">Judge</button>
-<button type="button" id="linkstab" data-tab="links">Links</button></nav></div>
+<button type="button" id="linkstab" data-tab="links">Links</button>
+<button type="button" id="inputtab" data-tab="input">Your input<span class="n" id="inputn" aria-hidden="true" hidden></span></button></nav></div>
 <div id="kindrow" class="chooser" hidden></div>
 <div class="track" id="track" aria-hidden="true" hidden><i class="done" id="pdone"></i><i class="mine" id="pmine"></i></div>
 <div class="plabel" id="plabel" hidden><span id="pgroup"></span><span class="you" id="pyou" hidden></span></div>
@@ -484,6 +685,10 @@ ${FONTS}
 <div id="links" hidden><h1 class="page">Links</h1>
 <p class="lede">One link for each person you invite. Only this page, opened with your own link, shows them.</p>
 <div id="linksbody"></div></div>
+<div id="input" hidden><div id="inputhead"><h1 class="page">Your input</h1>
+<p class="lede">${INPUT_LEDE}</p></div>
+<div id="inputbody"></div></div>
+<p class="forget" id="forget" hidden><button type="button" data-do="forget">${FORGET}</button></p>
 <noscript><p class="lede">This page needs JavaScript. Your link keeps its key after the &ldquo;#&rdquo; in its address,
 which your browser sends to no server, and a few lines of script on this page read it from there.</p></noscript>
 </main>

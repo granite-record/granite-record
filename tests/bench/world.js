@@ -1,7 +1,11 @@
 // A bench to test on: the fake D1 of tests/follow/ with the bench's own schema
-// (workers/bench/schema.sql), a small pack of each kind of card, and links.
+// (workers/bench/schema.sql), a small pack of each kind of card, links, and the
+// owner's list for her Your input tab (and a database made before its tables).
 // Every token is made at run time and lives only in memory.
 
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { FakeD1 } from "../follow/fake_d1.js";
 import { hashToken } from "../../workers/follow/address.js";
@@ -89,6 +93,41 @@ export async function addLink(d1, { id, name = "Sam", role = "contributor", queu
 
 export function makeBench() {
   return new FakeD1(SCHEMA);
+}
+
+// THE OWNER'S LIST, as a pack loads it (bench_pack.py --asks): a card is the entry as the
+// page draws it, with its section's label.
+export function askCard({ section = "In the update waiting for your word", title = "Navigation in two rows",
+                          what = "Each section's pages now sit in a second row.\n\nOn a phone the row scrolls.",
+                          where = [{ label: "The home page on the preview", url: "https://dry-run.graniterecord.pages.dev/" }],
+                          question = "Does the new navigation read right on a computer and on a phone?",
+                          answers = { yes: "Looks right", no: "Needs changes", unsure: "Let’s discuss" },
+                          recommended = "yes", added = "2026-11-23" } = {}) {
+  return { section, title, what, where, question, answers, recommended, added };
+}
+
+// Entries straight into the table: [{ key, section, ord, card, state }].
+export function loadAsks(d1, entries) {
+  entries.forEach((e, i) => d1.sql.prepare(
+    "INSERT INTO asks (key, section, ord, card, pack, state, added_on) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run(e.key, e.section || "release", e.ord ?? i, JSON.stringify(e.card || askCard()), "2026-11-23-asks",
+         e.state || "open", "2026-11-23"));
+}
+
+// A bench whose database was made before the asks tables were: the schema without them, as
+// the preview's and production's databases stood until a pack brought the list.
+export function benchBeforeAsks() {
+  const text = readFileSync(SCHEMA, "utf8");
+  const cut = text.indexOf("-- THE OWNER'S LIST");
+  if (cut < 0) throw new Error("schema.sql no longer marks where the owner's list begins");
+  const dir = mkdtempSync(join(tmpdir(), "gr-bench-"));
+  const path = join(dir, "schema-before-asks.sql");
+  writeFileSync(path, text.slice(0, cut));
+  try {
+    return new FakeD1(path);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 export const at = (s, base = T0) => new Date(new Date(base).getTime() + s * 1000);

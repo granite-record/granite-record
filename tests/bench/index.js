@@ -7,3 +7,5 @@
 import "./store.test.js";
 import "./functions.test.js";
 import "./page.test.js";
+import "./asks.test.js";
+import "./input_page.test.js";

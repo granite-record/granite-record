@@ -944,7 +944,9 @@ Function's answer, never a file in `site/`, linked from nowhere.
 
 A pack (`bench_pack.py`) is a seeded draw from `review.py`'s own pools that
 leaves out every key the ledger or an earlier pack holds, with the owner's
-own judgments for calibration (one item in 25 a contributor is given). An
+own judgments for calibration (one item in 25 a contributor is given), and
+is served after every pack loaded before it (`--queues` and `--groups-of`
+choose what it draws). An
 item is claimed by one statement and held ten minutes, renewed while the
 page is open; an answer is kept in the ledger's words with its item marked
 judged in one batch; the page is told an item's opaque reference, queue and
@@ -954,6 +956,15 @@ run by the owner on the laptop after every note has passed
 
     python3 src/checks/bench_pull.py
     python3 src/checks/bench_pull.py --approve <name or id>
+
+The owner's link has a tab of its own, Your input (23 November 2026): the
+list of what waits on her word, which the manager keeps in
+`private/asks/asks.json` and the pack loads into two tables apart from the
+judgments; her answers come back to `private/asks/answers.jsonl`, never to
+the ledger:
+
+    python3 src/checks/bench_pack.py --asks private/asks/asks.json --only-asks
+    python3 src/checks/bench_pull.py --asks
 
 `workers/bench/README.md` has the routes, the limits and the commands.
 
