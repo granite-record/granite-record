@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.38
+# GRANITE_VERSION: 2026-11-16.39
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -15665,7 +15665,8 @@ def _row_tab_addresses():
                    "only while their page is written, and Live now only while build_live.LINKED is on")
 def _row_comes_and_goes():
     """Six of the row's items are drawn only where the run writes their page
-    (chrome.row_facts): the bill requests, named for their year; the
+    (chrome.row_facts): the bill requests, named for their year (and not on
+    the days the bill search opens on them, _row_requests_follow_the_search); the
     members-elect, who carry the day they take office (data-until) so a page
     read after it hides them, as the hub's own tab does; the elections, while
     there are results to build them from; the former members' list; the
@@ -15733,6 +15734,107 @@ def _row_comes_and_goes():
     return "ok", (f"the six come and go with their pages, in the row and the menu; LINKED is "
                   f"{'on' if build_live.LINKED else 'off'} and {len(live)} fixture pages link Live now; "
                   f"all {len(keys)} row labels have a Spanish draft")
+
+
+@check("frontend", "the Bills row draws no bill requests item on the days the bill search opens on them, "
+                   "and a request's page is Search bills' then; chrome's rule is app.js's on every day tried",
+       needs=("chrome",))
+def _row_requests_follow_the_search(CH):
+    """The owner, 24 November 2026: "2027 Bill requests does not need to be a
+    separate tab under bills because it already opens to that page by
+    default." The bill search opens on the requests from the day after the
+    election until they are introduced (app.js's requestsFirst, held by
+    _search_opens_on_requests_after_the_election); chrome.requests_first is
+    that rule for the build's day. Held here: the two answer alike on every
+    case tried, and the general election is the same day in both for nine
+    years; on a site whose meta.json lists the 2027 requests, row_facts gives
+    the row its requests item on 3 November 2026 and on 8 January 2027, once
+    they are introduced, and none on 4 November 2026 or 10 December; and on a
+    day with none, a request's page marks Search bills and links no
+    requests item, in the row, the phone's menu and the footer's map."""
+    from build_members_elect import general_election
+    R = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "n": 302, "withdrawn": 4}
+    published = ["2027-2028", "2025-2026"]
+    cases = {"eve": ({}, "2026-11-02"), "day": ({}, "2026-11-03"), "after": ({}, "2026-11-04"),
+             "june": ({}, "2027-06-15"), "published": ({"terms": published}, "2026-12-10"),
+             "organized": ({"terms": published, "requests": dict(R, introduced=3, introduced_in_session=0)},
+                           "2026-12-10"),
+             "introduced": ({"terms": published,
+                             "requests": dict(R, introduced=300, introduced_in_session=297)}, "2027-01-08"),
+             "older": ({"terms": ["2029-2030", "2027-2028"]}, "2029-01-08"),
+             "allWithdrawn": ({"requests": dict(R, n=4)}, "2026-12-10"),
+             "none": ({"requests": None}, "2026-12-10"),
+             "noTerms": ({"terms": []}, "2026-12-10"),
+             "secondYear": ({"terms": published, "requests": dict(R, term="2028-requests", year=2028)},
+                            "2027-11-03"),
+             "secondYearEve": ({"terms": published, "requests": dict(R, term="2028-requests", year=2028)},
+                               "2027-11-02"),
+             "yearFromTerm": ({"requests": {"term": "2027-requests", "n": 5}}, "2026-11-04")}
+    metas = {k: dict({"terms": ["2025-2026", "2023-2024"], "requests": R}, **over)
+             for k, (over, _d) in cases.items()}
+    years = list(range(2026, 2035))
+    # Each day at 17:00 UTC, noon or one o'clock in Concord, so it is the same
+    # day by either clock.
+    got = _app_js("(() => {const M = " + json.dumps(metas) + ", D = " + json.dumps(
+        {k: d for k, (_o, d) in cases.items()}) + ";\n"
+        "  const out = {};\n"
+        "  for (const k in M) out[k] = scope.requestsFirst(M[k], new Date(D[k] + 'T17:00:00Z'));\n"
+        "  return {first: out, days: " + json.dumps(years) + ".map(y => scope.electionDayOf(y))};\n"
+        "})()", names=("requestsFirst", "electionDayOf", "nhDay"))
+    mine = {k: CH.requests_first(metas[k], d) for k, (_o, d) in cases.items()}
+    if got is not None:
+        apart = {k: (got["first"][k], mine[k]) for k in cases if got["first"][k] != mine[k]}
+        assert not apart, f"app.js and chrome answer apart (app.js, chrome): {apart}"
+        ours = [general_election(y).isoformat() for y in years]
+        assert got["days"] == ours, f"the general election is {got['days']} in app.js, {ours} here"
+    want = {"eve": False, "day": False, "after": True, "june": True, "published": True, "organized": True,
+            "introduced": False, "older": False, "allWithdrawn": False, "none": False, "noTerms": False,
+            "secondYearEve": False, "yearFromTerm": True}
+    wrong = {k: mine[k] for k, v in want.items() if mine[k] != v}
+    assert not wrong, f"chrome.requests_first answers {wrong}"
+    # ROW_FACTS ON THE BUILD'S DAY, over a site that lists the 2027 requests.
+    before, env = CH._SITE[0], os.environ.get("GRANITE_BUILD_DATE")
+    drawn = {}
+    with tempfile.TemporaryDirectory() as d:
+        try:
+            for day, terms, req in (("2026-11-03", ["2025-2026"], R), ("2026-11-04", ["2025-2026"], R),
+                                    ("2026-12-10", published, R),
+                                    ("2027-01-08", published, dict(R, introduced_in_session=297))):
+                (Path(d) / "meta.json").write_text(json.dumps({"terms": terms, "requests": req}),
+                                                   encoding="utf-8")
+                os.environ["GRANITE_BUILD_DATE"] = day
+                CH.use_site(d)
+                CH._FACTS.clear()
+                drawn[day] = CH.row_facts()["requests"]
+        finally:
+            if env is None:
+                os.environ.pop("GRANITE_BUILD_DATE", None)
+            else:
+                os.environ["GRANITE_BUILD_DATE"] = env
+            CH.use_site(before)
+            CH._FACTS.clear()
+    assert drawn["2026-11-03"] == drawn["2027-01-08"] == {"term": "2027-requests", "year": "2027"} \
+        and drawn["2026-11-04"] is None and drawn["2026-12-10"] is None, (
+            f"row_facts gives the row the requests {drawn}: on 3 November 2026 and 8 January 2027 "
+            "they should have their item, on 4 November and 10 December none")
+    # A REQUEST'S PAGE on a day the row has none: Search bills marked.
+    facts = {"requests": None, "elect_until": None, "elections": True, "former": True, "documents": True,
+             "live": False}
+    off = CH.nav("bills.html", item="requests", facts=facts)
+    on = CH.nav("bills.html", item="requests",
+                facts=dict(facts, requests={"term": "2027-requests", "year": "2027"}))
+    marked = lambda t: re.findall(r'<a href="([^"]*)"[^>]*aria-current="page"[^>]*>', t)  # noqa: E731
+    assert "?term=2027-requests" not in off + CH.footer_html("en", facts=facts) \
+        and marked(off) == ["bills.html", "bills.html", "bills.html"], (
+            f"on a day the row draws no requests item, a request's page marks {marked(off)} "
+            "(its tab, its row and its menu should mark Search bills) or links them")
+    assert marked(on) == ["bills.html", "bills.html?term=2027-requests", "bills.html?term=2027-requests"], (
+        f"on a day the row draws the requests, a request's page marks {marked(on)}")
+    return "ok", (f"chrome and app.js answer alike on all {len(cases)} cases"
+                  + ("" if got is not None else " (node or app.js not here: chrome's own answers only)")
+                  + f" and name the same election day for {len(years)} years; the item drawn on 3 November "
+                  "2026 and 8 January 2027, none on 4 November and 10 December; a request's page marks "
+                  "Search bills on a day with none")
 
 
 @check("frontend", "on a page in another language the phone's menu and the footer's map mark a link to a "

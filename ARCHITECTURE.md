@@ -1575,8 +1575,11 @@ header again for each record page from it. An item whose page a build may not wr
 -- the bill requests, the members-elect, the elections, the former members, the
 calendars and journals, and Live now while `build_live.LINKED` is off -- is drawn
 only while it is written (`chrome.row_facts`, `COMES_AND_GOES`), so no page of a run
-links a page the run did not write. On a page in another language the menu and the
-map mark a link to an English-only page "(en inglés)"; the row does not. The in-page
+links a page the run did not write. The bill requests are left out too on the days
+the bill search opens on them (`chrome.requests_first`, app.js's `requestsFirst` for
+the build's day), when a request's page is Search bills'. On a page in another
+language the menu and the map mark a link to an English-only page "(en inglés)";
+the row does not. The in-page
 tabs of Laws, Officials and Resources are the row: their strips stay in the page,
 hidden, because their script opens a panel from an address, and `find.js`'s
 `rowMount` keeps the row's mark on the panel that is open. A new page joins a

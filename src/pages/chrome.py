@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.16
+# GRANITE_VERSION: 2026-10-23.17
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -112,15 +112,22 @@ def tab_words(lang="en"):
 # not built is not here; it joins the day it is.
 #
 # Six are drawn only while their page is written (row_facts): two seasonal --
-# the bill requests, between a session's first request and its filing
-# deadline, and the members-elect, between the election and Organization Day
-# -- Live now, only while the owner's switch is on (build_live.LINKED), and
-# three a build without their data does not write: the elections, the former
-# members' list and the calendars and journals.
+# the bill requests, while a session's are listed and not on the days the bill
+# search opens on them (requests_first), and the members-elect, between the
+# election and Organization Day -- Live now, only while the owner's switch is
+# on (build_live.LINKED), and three a build without their data does not write:
+# the elections, the former members' list and the calendars and journals.
 ROWS = {
     "bills.html": (("search", "bills.html"),
                    # VOTES IN THE BILLS ROW (the owner, 20 November 2026).
                    ("votes", "votes.html"),
+                   # NOT WHILE THE SEARCH OPENS ON THEM (the owner, 24 November
+                   # 2026: "2027 Bill requests does not need to be a separate
+                   # tab under bills because it already opens to that page by
+                   # default"): on those days row_facts leaves the requests out
+                   # (requests_first), and a request's page is Search bills'
+                   # (nav). On the others -- before the election, and once the
+                   # requests are introduced as bills -- they have their item.
                    ("requests", "bills.html?term={term}"),
                    ("terms", "directory.html")),
     "laws.html": (("statutes", "laws.html"),
@@ -225,10 +232,48 @@ def use_site(site):
         _FACTS.clear()
 
 
+def requests_first(meta, day):
+    """Whether the bill search opens on the bill requests on `day` (a date,
+    or "YYYY-MM-DD"), by meta.json (`meta`): app.js's requestsFirst, the same
+    rule in the same steps, so the row and the search cannot disagree on the
+    build's day -- preflight runs both over the same days
+    (_row_requests_follow_the_search). From the day after the general
+    election of the year before the requests' own, while one of them stands,
+    the newest term is not past their session, and none has been introduced
+    on a day of their own year."""
+    def count(x):
+        try:
+            return float(x or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def year(x):
+        try:
+            return int(str(x).strip())
+        except ValueError:
+            return None
+    r = meta.get("requests") if isinstance(meta, dict) else None
+    terms = (meta.get("terms") if isinstance(meta, dict) else None) or []
+    if not isinstance(r, dict) or not r.get("term") or not terms:
+        return False
+    if not count(r.get("n")) - count(r.get("withdrawn")) > 0:
+        return False
+    ry, t0 = year(r.get("year") or str(r["term"])[:4]), year(str(terms[0])[:4])
+    if ry is None:
+        return False
+    if t0 is not None and (ry < t0 or (ry == t0 and count(r.get("introduced_in_session")) > 0)):
+        return False
+    from build_members_elect import general_election
+    return str(day)[:10] > general_election(ry - 1).isoformat()
+
+
 def row_facts():
     """What the row's items that come and go need, judged once a run from
     the site folder (use_site) and the project beside it:
-      "requests": {"term", "year"} of the bill requests, or None;
+      "requests": {"term", "year"} of the bill requests the row draws, or
+        None: where there are none, and on the days the bill search opens on
+        them (requests_first, by the build's day), when Search bills is
+        their list;
       "elect_until": the day the members-elect take office, or None;
       "elections": whether there are election results to build pages of;
       "former": whether any member who left has a page to list;
@@ -252,9 +297,14 @@ def row_facts():
             return _json.loads(p.read_text(encoding="utf-8")) if p.is_file() else default
         except ValueError:
             return default
-    r = (read(site / "meta.json", {}) or {}).get("requests")
+    meta = read(site / "meta.json", {}) or {}
+    r = meta.get("requests")
     req = ({"term": r["term"], "year": str(r.get("year") or str(r["term"])[:4])}
            if isinstance(r, dict) and r.get("term") else None)
+    if req:
+        import build_date
+        if requests_first(meta, build_date.today()):
+            req = None
     # A members-elect file that will not read stops each builder that draws
     # the members-elect, which says why (build_members_elect.for_pages); the
     # header leaves their item out rather than stopping every other page too.
@@ -831,6 +881,11 @@ def nav(page="", home=False, lang="en", item=None, facts=None):
         # four of its items at once, so none is marked until an address names
         # one (find.js, rowMount).
         item = ROWS[section][0][0]
+    if item == "requests" and not (row_facts() if facts is None else facts).get("requests"):
+        # A request's page, on the days the bill search opens on the
+        # requests and the row draws no item of their own (row_facts): their
+        # list is Search bills'.
+        item = ROWS["bills.html"][0][0]
     words = tab_words(lang)
     to = (lambda h: h) if lang == i18n.DEFAULT else (lambda h: i18n.href(lang, h))
     tabs = "\n".join(f'<a href="{to(href)}"{cur if href == section else ""}>{icon(glyph)}{words[href]}</a>'
