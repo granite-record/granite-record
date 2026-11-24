@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 A pack for the shared bench: what its contributors are asked next, as SQL to
 load into its database with one wrangler command.
@@ -387,7 +387,7 @@ def to_sql(pack, name, db, path, seed, sources, asks=None):
            f"{len(pack['elsewhere'])} judged on the laptop since they were packed.",
            asks_line(asks),
            "-- Load it with:",
-           f"--   npx wrangler d1 execute {db} --remote --file {Path(path).as_posix()}",
+           f"--   npx wrangler d1 execute {db} --remote --file {load_path(path).as_posix()} --yes",
            *keys_lines(pack["keys"]), ""]
     for r in pack["queues"]:
         out.append("INSERT INTO queues (queue, label, pool, judged, as_of, options, ord) VALUES ("
@@ -417,6 +417,26 @@ def to_sql(pack, name, db, path, seed, sources, asks=None):
     if long:
         raise SystemExit(f"{len(long)} statement(s) over {STATEMENT_MOST:,} bytes, which D1 refuses: {long[0]}")
     return "\n".join(out) + "\n"
+
+
+def load_path(path):
+    """The copy of a pack that wrangler loads: <stem>.load.sql beside it."""
+    p = Path(path)
+    return p.with_name(p.stem + ".load.sql")
+
+
+def load_copy(path):
+    """Write the pack's statements alone, with no comment and no blank line, as
+    <stem>.load.sql beside it, and return that path. D1'S IMPORT COUNTS A PACK'S LEADING
+    COMMENTS AS PART OF ITS FIRST STATEMENT (24 November 2026): a pack of every tag carried
+    its keys over three "-- keys:" lines of some 80 KB each, and the import refused the
+    whole file, "statement too long: SQLITE_TOOBIG". The pack keeps its header (pack_files
+    reads its keys there, and a copy with none is no pack to it); wrangler is given this."""
+    p = Path(path)
+    lines = [x for x in p.read_text(encoding="utf-8").splitlines() if x.strip() and not x.lstrip().startswith("--")]
+    out = load_path(p)
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return out
 
 
 def pack_files(folder):
@@ -657,7 +677,7 @@ def asks_only_sql(asks, name, db, path, as_of, source):
            "-- No items: nothing is drawn.",
            asks_line(asks),
            "-- Load it with:",
-           f"--   npx wrangler d1 execute {db} --remote --file {Path(path).as_posix()}", ""]
+           f"--   npx wrangler d1 execute {db} --remote --file {load_path(path).as_posix()} --yes", ""]
     out += asks_sql(asks, name)
     long = [s[:80] for s in out if len(s.encode("utf-8")) > STATEMENT_MOST]
     if long:
@@ -764,6 +784,7 @@ def write_asks_only(asks, db, folder, source):
         n += 1
     path.write_text(asks_only_sql(asks, path.stem, db, path, as_of, Path(source).as_posix()), encoding="utf-8",
                     newline="\n")
+    load = load_copy(path)
     print(f"{path.as_posix()}: the owner's list alone, for {db}")
     print(f"  {len(asks['rows'])} asks for her Your input tab, and {len(asks['withdrawn'])} withdrawn")
     for s in asks["sections"]:
@@ -771,7 +792,7 @@ def write_asks_only(asks, db, folder, source):
         if n:
             print(f"  {s['label']:44} {n:3}")
     print("Load it with:")
-    print(f"  npx wrangler d1 execute {db} --remote --file {path.as_posix()}")
+    print(f"  npx wrangler d1 execute {db} --remote --file {load.as_posix()} --yes")
     return 0
 
 
@@ -836,6 +857,7 @@ def main():
     if a.asks:
         sources += f", the owner's list {Path(a.asks).as_posix()}"
     path.write_text(to_sql(pack, path.stem, db, path, a.seed, sources, asks), encoding="utf-8", newline="\n")
+    load = load_copy(path)
     print(f"{path.as_posix()}: {len(pack['items'])} items for {db}")
     print(f"  served after the items of the {len(earlier)} earlier pack(s) in {folder.as_posix()}"
           if earlier else f"  the first pack in {folder.as_posix()}")
@@ -849,7 +871,7 @@ def main():
     for r in pack["queues"]:
         print(f"  how far along: {r['label']:14} {r['judged']:,} of {r['pool']:,}")
     print("Load it with:")
-    print(f"  npx wrangler d1 execute {db} --remote --file {path.as_posix()}")
+    print(f"  npx wrangler d1 execute {db} --remote --file {load.as_posix()} --yes")
     return 0
 
 

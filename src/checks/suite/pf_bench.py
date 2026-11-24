@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.19
+# GRANITE_VERSION: 2026-11-16.20
 """
 preflight's checks of the bench: the ledger a person's judgments are kept in
 (review/checked.jsonl) and every reader of it (src/lib/bench_ledger.py,
@@ -547,6 +547,20 @@ def _bench_pack_grows(BP, BL, RV):
         code, said = run("--queues", "tag,topic", "--groups-of", "tag=all")
         assert code == 0 and "served after the items of the 1 earlier pack(s)" in said, (code, said)
         p2 = next(p for p, _k in BP.pack_files("packs") if p != p1)
+        # THE COPY WRANGLER LOADS (24 November 2026): D1's import counted a pack's leading comments
+        # as part of its first statement, and refused a pack of every tag (SQLITE_TOOBIG). Beside
+        # each pack, its statements alone; the load command names that copy; and a copy, having no
+        # keys, is never counted as a pack.
+        for p in (p1, p2):
+            lp = BP.load_path(p)
+            body = lp.read_text(encoding="utf-8").splitlines()
+            want = [x for x in p.read_text(encoding="utf-8").splitlines() if x.strip() and not x.lstrip().startswith("--")]
+            assert body and body == want and not any(x.lstrip().startswith("--") for x in body), (
+                f"{lp.name} is not the pack's statements alone")
+            assert all(len(x.encode("utf-8")) <= BP.STATEMENT_MOST for x in body), f"{lp.name} has a statement over D1's limit"
+        assert sorted(p.name for p, _k in BP.pack_files("packs")) == sorted([p1.name, p2.name]), (
+            f"a load copy was counted as a pack: {[p.name for p, _k in BP.pack_files('packs')]}")
+        assert f"--file {BP.load_path(p2).as_posix()} --yes" in said, f"the load command names the pack, not its copy: {said[-240:]}"
         sql2 = p2.read_text(encoding="utf-8")
         assert "VALUES ('timing'" not in sql2 and "VALUES ('topic'" in sql2 and "'timestamp', 'V" not in sql2, (
             "a queue --queues does not name was written into the pack")
@@ -828,7 +842,8 @@ def _bench_asks_pack(BP):
             return code, out.getvalue()
 
         code, said = run("--asks", "list.json", "--only-asks")
-        made = sorted(p.name for p in (tmp / "run" / "packs").glob("*.sql"))
+        made = sorted(p.name for p in (tmp / "run" / "packs").glob("*.sql") if not p.name.endswith(".load.sql"))
+        assert BP.load_path(tmp / "run" / "packs" / made[0]).is_file() if made else True, "a list's pack has no load copy"
         assert code == 0 and len(made) == 1 and made[0].endswith("-asks.sql") and "5 asks" in said, (code, said, made)
         assert BP.pack_files("packs") == [] and sorted(p.name for p in (tmp / "run").iterdir()) == ["list.json", "packs"], (
             "a pack of the list alone read or wrote something but the list and its pack")
@@ -839,7 +854,9 @@ def _bench_asks_pack(BP):
                             (("--only-asks",), "--asks FILE"), (("--asks", "none.json", "--only-asks"), "no such file")):
             code, _said = run(*args)
             assert isinstance(code, str) and words in code, (args, code)
-        assert len(list((tmp / "run" / "packs").glob("*.sql"))) == 1, "a refused list wrote a pack"
+        assert len([p for p in (tmp / "run" / "packs").glob("*.sql") if not p.name.endswith(".load.sql")]) == 1, (
+            "a refused list wrote a pack")
+        assert len(list((tmp / "run" / "packs").glob("*.load.sql"))) == 1, "a refused list wrote a load copy"
         if not node:
             return "skip", "node is not on PATH: the list was read and written, and not served"
         rule = _run([node, "--disable-warning=ExperimentalWarning", str(_paths.ROOT / "tests/bench/apply_asks.js"),
