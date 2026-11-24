@@ -1425,7 +1425,7 @@
             "name": "Kate Coyle",
             "office": "County Commissioner, District 1",
             "district": "1",
-            "party": "R",
+            "party": "D",
             "party_as_printed": "REP",
             "domicile": "Portsmouth",
             "phone": "",
@@ -1433,7 +1433,8 @@
             "source": "records/sources/sos-county-roster-2025-2026.pdf, page 6 (the Secretary of State's COUNTY ROSTER 2025-2026)",
             "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/documents/2024-12/roster-county-offices-2024.pdf",
             "as_of": "2024-12-05",
-            "read": "2026-10-09"
+            "read": "2026-10-09",
+            "note": "A Democrat, at the owner's word (24 November 2026), where the roster prints REP: the Secretary of State's 2026 results print her Kate Coyle, d, re-elected for District 1 with 38,066 votes (records/sources/2026-ge-county-offices-rockingham.xlsx, sheet Rockingham Commissioner, TOTALS), and NHPR's ElectionStats export prints her Democratic in the 2020 race (40,793 to 35,401) and the 2022 one (38,978 to 25,622) (records/sources/nhpr/elstats_search_1c8d819c6c04d611.csv). The roster's REP is the one source that disagrees."
           },
           "2": {
             "name": "Steven L. Goddu",
