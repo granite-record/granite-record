@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.48
+# GRANITE_VERSION: 2026-11-16.49
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2771,6 +2771,218 @@ def _lsr_text_links():
     return "ok", ("a row's one link to its text taken, by its address or its words; none for a row without, "
                   "another host, two links or two requests; the page of every request is the search page's "
                   f"own link{real}; a CSV link column read; commas after a role mark and a role first split")
+
+
+# The page of every request in the shape of the owner's printout of 23 November 2026 (fetch_lsrs,
+# AND THE REQUESTS THE CSV DOES NOT HOLD): (number, kind, title, prime, [co-sponsors]) a row.
+_LSR_PAGE = [
+    ("2027-0001", "HB", "relative to required Holocaust and genocide study requirements for an adequate "
+                        "public education.", "Ellen Read", []),
+    ("2027-0008", "HB", "relative to PFAS facility liability.", "Nancy Murphy",
+     ["David Watters", "Rosemarie Rung", "Wendy Thomas"]),
+    ("2027-0400", "HJR", "urging Congress to keep the Old Man's profile on the quarter.", "Bob Roe Jr.",
+     ["Jane Doe"]),
+    ("2027-1570", "HB", "relative to the scope and disclosure requirements of the state right-to-know law.",
+     "Jake Abuhav", []),
+]
+
+
+def _lsr_page(rows, count=None, markup="grid", head=True):
+    """The page of every request made here from `rows` (_LSR_PAGE's shape): "LSR's Found: N" (`count`,
+    else as many as there are; none where `head` is false), then the rows, then the page's foot. A
+    grid of linked names, the prime's comma set apart as the printout prints it (" Nancy Murphy ,
+    David Watters"), a link to a text after one title; a table of plain words; or each row twice,
+    for a phone and for a desktop."""
+    import html as _h
+
+    def who(n):
+        # "Bob Roe Jr." is printed with its comma, as a name of that form would be.
+        n = n.replace(" Jr.", ", Jr.")
+        return f'<a href="/house/members/member.aspx?pid={len(n)}">{_h.escape(n)}</a>'
+    out = []
+    for num, kind, title, prime, co in rows:
+        if markup == "table":
+            names = "(Prime) " + ", ".join([prime.replace(" Jr.", ", Jr."), *co])
+            out.append(f"<tr><td>{num}</td><td>{kind}</td><td>Title: {_h.escape(title)}<br>"
+                       f"Sponsors: {_h.escape(names)}</td></tr>")
+            continue
+        text = (' <a href="/lsr_search/billText.aspx?sy=2027&amp;id=1&amp;txtFormat=pdf">PDF</a>'
+                if num == "2027-0001" else "")
+        names = who(prime) + (" , " + ", ".join(who(c) for c in co) if co else "") if prime else ""
+        out.append(f'<div class="row border-top py-3">\n  <div class="col-md-2">{num}</div>\n'
+                   f'  <div class="col-md-1">{kind}</div>\n  <div class="col-md-9">\n'
+                   f'    <div class="row"><div class="col-2"><b>Title:</b></div>\n'
+                   f'      <div class="col-10">{_h.escape(title)}{text}</div></div>\n'
+                   f'    <div class="row"><b>Sponsors:</b> <b>(Prime)</b> {names}</div>\n  </div>\n</div>')
+    body = "\n".join(out)
+    if markup == "table":
+        body = f"<table>{body}</table>"
+    if markup == "twice":
+        body = f'<div class="d-md-none">{body}</div><div class="d-none d-md-block">{body}</div>'
+    found = (f'<div>LSR&#39;s Found:&nbsp; <b><span id="pageBody_lblCount">'
+             f'{len(rows) if count is None else count}</span></b></div>' if head else "")
+    return (f'<html><head><script>var x = "2027-0001 HB Title: none";</script></head><body>'
+            f'<a href="LSR_Search.aspx">New Query</a>{found}\n{body}\n'
+            '<footer><a class="footer-link" href="/committee_of_conference/">Committees of Conference</a>\n'
+            '<a class="footer-link" href="/downloads/">Downloads</a> Session 2027-2028 &copy; 2026</footer>'
+            '</body></html>')
+
+
+@check("build", "the page of every request is read for its rows: the number, the kind, the title, the "
+                "prime sponsor first and the co-sponsors after, up to the page's foot; and used only "
+                "when as many are read as the page says it lists, each whole",
+       needs=("fetch_lsrs",))
+def _lsr_page_rows(FL):
+    """AND THE REQUESTS THE CSV DOES NOT HOLD (fetch_lsrs; the night of 23 November 2026: the CSV
+    held 908 requests, the page of every request listed 1,264). Nobody here has seen the page's
+    HTML: the owner printed it, and its reader (page_listed) was written from the printout. Held,
+    on pages made here in the printout's shape (_lsr_page) -- "LSR's Found: 4", then rows of the
+    number, the kind, "Title:" and the title, "Sponsors: (Prime)" and the names parted by commas
+    -- in three markups, a grid of linked names, a table of plain words, and each row printed
+    twice for a phone and a desktop: the four rows read exactly, an HJR among them, the
+    co-sponsors after the prime, a Jr. kept with its name, a link to a text kept out of the
+    title, and the last row's names stopping at the page's foot. And never a page misread: one
+    saying 5 with 4 read, one stating no count, a row with no sponsor, a request printed twice
+    differently, and a page of no rows each give no rows, and say why."""
+    want = [{"lsr": n, "session": 2027, "body": k, "title": t, "sponsor": p, "cosponsors": co,
+             "withdrawn": False} for n, k, t, p, co in _LSR_PAGE]
+    for markup in ("grid", "table", "twice"):
+        got, why = FL.page_listed(_lsr_page(_LSR_PAGE, markup=markup))
+        assert (got, why) == (want, ""), f"the {markup} page read as {got or why}"
+    assert FL.parse_results_html(_lsr_page(_LSR_PAGE)) == want, "the fallback's reader is not page_listed"
+    for page, said in (
+            (_lsr_page(_LSR_PAGE, count=5), "it says 5 and 4 could be read"),
+            (_lsr_page(_LSR_PAGE, head=False), "it states no count to check its rows against"),
+            (_lsr_page([*_LSR_PAGE[:1], ("2027-0008", "HB", "t.", "", []), *_LSR_PAGE[2:]]),
+             "1 of its rows could not be read: 2027-0008"),
+            (_lsr_page([*_LSR_PAGE, ("2027-0001", "HB", "another title.", "Ellen Read", [])], count=4),
+             "1 of its rows could not be read: 2027-0001"),
+            ("<html><body><p>No LSRs were found.</p></body></html>", "no request could be read off it")):
+        got, why = FL.page_listed(page)
+        assert (got, why) == ([], said), f"a page misread was used, or said otherwise: {got[:1]} {why!r}"
+        assert FL.parse_results_html(page) == [], "the fallback took the rows of a page misread"
+    return "ok", ("4 rows read exactly in three markups, an HJR, co-sponsors after the prime, a Jr., "
+                  "a text's link out of the title, the last row's names ending at the foot; a page "
+                  "saying 5, stating no count, with a row of no sponsor or a request twice differently, "
+                  "or of no rows, gives none and says why")
+
+
+@check("build", "the night takes each request the page of every request lists and the CSV does not, "
+                "keeps every CSV row as the CSV gives it, takes nothing from a page that does not add "
+                "up, keeps a request taken from the page as it stood on a night the page cannot be "
+                "used, and says how many the CSV held, the page listed and were taken from it",
+       needs=("fetch_lsrs",))
+def _lsr_page_rows_taken(FL):
+    """AND THE REQUESTS THE CSV DOES NOT HOLD (fetch_lsrs). Driven through main() in a throwaway
+    folder, the search page, the CSV and the page of every request answered here (get and post
+    replaced, urlopen raising), each night from the lsrs.json the last left:
+
+      - a CSV of 3 and a page of 5 holding them, one printed otherwise than the CSV prints it: 5
+        requests, the 2 the CSV lacks taken from the page with their co-sponsors and "from_page",
+        the CSV's 3 as the CSV gives them; the line says 3, 5 and 2;
+      - a CSV with a column linking a text: the page is read all the same;
+      - a page listing fewer, all of them in the CSV: the CSV's list, none taken;
+      - a page misread (it says 6): the CSV's 3, the 2 taken the night before kept as they stood
+        and not withdrawn, and the line says why; a page read that no longer lists one of the 2
+        withdraws it; a CSV that lists the other makes it the CSV's, "from_page" gone;
+      - a page of no rows on a first night: the CSV's list exactly, and said.
+    """
+    import contextlib
+    import io
+    import time
+    import types
+    import urllib.request
+    import refusal
+    here = os.getcwd()
+    saved = (refusal.MARK, refusal.LOCK, FL.get, FL.post, FL.time, sys.argv, urllib.request.urlopen)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lsrpage-"))
+    search = ('<a href="LSR_Results.aspx" class="link-primary">Click here</a> to see all Bill Requests '
+              '<a id="pageBody_lnkCVS" href="javascript:__doPostBack(&#39;ctl00$pageBody$lnkCVS&#39;,'
+              '&#39;&#39;)">Download CSV File</a>'
+              + "".join(f'<input type="hidden" name="{f}" id="{f}" value="x" />' for f in FL.HIDDEN))
+    csv3 = ("LSR Number,Bill Type,LSR Title,Sponsors\n2027-0001,HB,t one.,Ellen Read (Prime)\n"
+            "2027-0002,HB,t two.,Bob Roe (Prime)\n2027-0003,SB,t three.,Jane Doe (Prime)\n")
+    page5 = [("2027-0001", "HB", "t one.", "Ellen Read", []),
+             ("2027-0002", "HB", "t two, as the page prints it.", "Bob Roe", ["Ann Two"]),
+             ("2027-0003", "SB", "t three.", "Jane Doe", []),
+             ("2027-0004", "HB", "t four.", "Nancy Murphy", ["David Watters", "Wendy Thomas"]),
+             ("2027-0005", "CACR", "t five.", "Ann Lee", [])]
+    night = {}
+
+    def get(url, timeout=60):
+        return (search if url == FL.SEARCH else night["page"]).encode("utf-8"), "utf-8"
+
+    def post(url, fields, timeout=90):
+        return night["csv"].encode("utf-8"), "utf-8", "text/csv", "attachment; filename=lsr.csv"
+
+    def run(csv_text, page):
+        night.update(csv=csv_text, page=page)
+        sys.argv = ["fetch_lsrs.py"]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            rc = FL.main()
+        rows = {r["lsr"]: r for r in json.loads(Path("lsrs.json").read_text(encoding="utf-8"))}
+        said = [ln.strip()[len(FL.LISTED):] for ln in out.getvalue().splitlines()
+                if ln.strip().startswith(FL.LISTED)]
+        return rc, rows, said[-1] if said else ""
+
+    def raiser(*a, **k):
+        raise AssertionError("the request list's fetch opened a connection")
+    csv_rows = {r["lsr"]: r for r in FL.parse_csv(csv3)}
+    try:
+        os.chdir(tmp)
+        Path("archive").mkdir()
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        FL.get, FL.post = get, post
+        FL.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time, strftime=time.strftime)
+        urllib.request.urlopen = raiser
+        rc, rows, said = run(csv3, _lsr_page(page5))
+        assert rc == 0 and said == "the CSV held 3, the page listed 5, 2 taken from the page", (rc, said)
+        assert sorted(rows) == [f"2027-000{n}" for n in range(1, 6)] and \
+            not any(r["withdrawn"] for r in rows.values()), f"not the 5 requests of CSV and page: {sorted(rows)}"
+        assert {k: r for k, r in rows.items() if k in csv_rows} == csv_rows, \
+            "a CSV row was dropped or changed for the page"
+        assert rows["2027-0004"] == {"lsr": "2027-0004", "session": 2027, "body": "HB", "title": "t four.",
+                                     "sponsor": "Nancy Murphy", "cosponsors": ["David Watters", "Wendy Thomas"],
+                                     "withdrawn": False, "from_page": True}, rows["2027-0004"]
+        Path("lsrs.json").unlink()
+        rc, rows, said = run(csv3.replace("Sponsors\n", "Sponsors,Bill Text PDF\n")
+                             .replace("(Prime)\n2027-0002", "(Prime),https://gc.nh.gov/x/1.pdf\n2027-0002"),
+                             _lsr_page(page5))
+        assert said == "the CSV held 3, the page listed 5, 2 taken from the page" and len(rows) == 5, \
+            ("with a text linked in the CSV the page was not read", said)
+        Path("lsrs.json").unlink()
+        rc, rows, said = run(csv3, _lsr_page(page5[:2]))
+        assert rows == csv_rows and said == "the CSV held 3, the page listed 2, 0 taken from the page", \
+            (rows, said)
+        Path("lsrs.json").unlink()
+        run(csv3, _lsr_page(page5))
+        rc, rows, said = run(csv3, _lsr_page(page5, count=6))
+        assert said == ("the CSV held 3, the page could not be used (it says 6 and 5 could be read), none "
+                        "taken from it; 2 taken from it before kept as they stood"), said
+        assert not rows["2027-0004"]["withdrawn"] and not rows["2027-0005"]["withdrawn"] and \
+            rows["2027-0004"]["from_page"], ("a request taken from the page was withdrawn on a night "
+                                             "the page could not be used", rows["2027-0004"])
+        rc, rows, said = run(csv3, _lsr_page([*page5[:3], page5[4]]))
+        assert rows["2027-0004"]["withdrawn"] and not rows["2027-0005"]["withdrawn"], \
+            "a request the page read no longer lists was not withdrawn"
+        rc, rows, said = run(csv3 + "2027-0005,CACR,t five from the CSV.,Ann Lee (Prime)\n",
+                             _lsr_page([*page5[:3], page5[4]]))
+        assert rows["2027-0005"]["title"] == "t five from the CSV." and "from_page" not in rows["2027-0005"], \
+            ("a request the CSV lists is not the CSV's", rows["2027-0005"])
+        assert said == "the CSV held 4, the page listed 4, 0 taken from the page", said
+        Path("lsrs.json").unlink()
+        rc, rows, said = run(csv3, "<html><body><p>No LSRs were found.</p></body></html>")
+        assert rows == csv_rows and said == ("the CSV held 3, the page could not be used (no request could "
+                                             "be read off it), none taken from it"), (rows, said)
+    finally:
+        os.chdir(here)
+        (refusal.MARK, refusal.LOCK, FL.get, FL.post, FL.time, sys.argv, urllib.request.urlopen) = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a CSV of 3 and a page of 5: 5, the 2 from the page with co-sponsors, the CSV's 3 as it "
+                  "gives them, said 3, 5 and 2; the page read beside a CSV linking a text; a page of fewer "
+                  "leaves the CSV's list; a page misread takes none and keeps the 2 taken before; a page "
+                  "read withdraws one it dropped; the CSV's row wins; a page of no rows said")
 
 
 @check("build", "the request texts' drain asks for what the list links and this disk has not settled, "
