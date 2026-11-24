@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.106
+# GRANITE_VERSION: 2026-09-04.107
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -775,6 +775,13 @@ STUDY_NIGHTLY = ("StatStudMeetings", "StatStudDetails")
 # whose site/ starts empty, from the site production serves (LSR_ROSTER):
 # last night's roster and members-elect, which the requests kept were built
 # beside.
+#
+# AND THE REQUESTS THE CSV DOES NOT HOLD (the night of 23 November 2026: the
+# CSV held 908, the page of every request listed 1,264). fetch_lsrs takes
+# from the page each request the CSV lacks. Those are growth, which the guard
+# does not count; and on a night the page cannot be used, the ones taken from
+# it before are kept as they stood rather than withdrawn, so a page misread
+# does not trip it. The line says the three counts (lsrs_listed).
 LSRS = Path("lsrs.json")
 LSR_GONE_MOST = 0.10
 LSR_GONE_FLOOR = 5
@@ -4329,7 +4336,9 @@ def not_moving_of(v):
 
 def take_lsrs(base=None):
     """Next session's bill requests into lsrs.json, whole or not at all, and a
-    line saying what happened: "installed, ..." or "not taken: ...". The fetch
+    line saying what happened: "installed, ..." or "not taken: ...", with how
+    many the CSV held, how many the page of every request listed and how many
+    were taken from the page, where the fetch said so (lsrs_listed). The fetch
     runs here, in the working folder, so that a refusal it meets is recorded in
     the refusal record every other fetch reads. Where the requests gone would
     trip the guard, those of members not returning are set aside from its
@@ -4339,8 +4348,11 @@ def take_lsrs(base=None):
     old = load_json(LSRS) if before is not None else []
     old = old if isinstance(old, list) else []
     standing = {r.get("lsr") for r in old if isinstance(r, dict) and not r.get("withdrawn")}
+    mark = len(LOG)
     rc = run(["fetch_lsrs.py"], "next session's bill requests, from the General Court")
     EXITS["fetch_lsrs.py"] = rc
+    # What the fetch said of tonight's two lists, for the line (lsrs_listed).
+    listed = lsrs_listed(LOG[mark:])
     new = load_json(LSRS)
     # A REQUEST THAT LEFT THE LIST AS A BILL IS NO WITHDRAWAL (the rehearsal of
     # 17 November 2026). fetch_lsrs marks every request gone from the list
@@ -4384,10 +4396,12 @@ def take_lsrs(base=None):
             LSRS.unlink(missing_ok=True)
         say(f"  bill requests not taken: {why}")
         return (f"not taken: {why}; "
-                + (f"the earlier {len(standing)} kept" if before is not None else "none on file"))
+                + (f"the earlier {len(standing)} kept" if before is not None else "none on file")
+                + (f"; {listed}" if listed else ""))
     active = sum(1 for r in new if isinstance(r, dict) and not r.get("withdrawn"))
     filed = len(left) - len(gone)
     said = (f"installed, {active} requests (was {len(standing)})"
+            + (f"; {listed}" if listed else "")
             + (f"; {filed} filed as bills" if filed else "")
             + (f"; {len(gone)} no longer listed, {len(aside)} of them by members not returning "
                f"(set aside from the check: {who})" if aside else
@@ -4395,6 +4409,20 @@ def take_lsrs(base=None):
     if aside:
         say(f"  bill requests {said}")
     return said
+
+
+def lsrs_listed(lines):
+    """What fetch_lsrs said of tonight's two lists -- how many requests the CSV
+    held, how many the page of every request listed, how many were taken from
+    the page (fetch_lsrs.LISTED, AND THE REQUESTS THE CSV DOES NOT HOLD) --
+    from its stretch of LOG, for take_lsrs's line; "" where it said nothing
+    of them."""
+    try:
+        import fetch_lsrs as FL
+    except Exception:       # noqa: BLE001 -- the line's words never stop the night
+        return ""
+    said = [ln.strip()[len(FL.LISTED):] for ln in lines if ln.strip().startswith(FL.LISTED)]
+    return said[-1] if said else ""
 
 
 def unreturned(gone, base=None):
