@@ -20,6 +20,9 @@ import { clock, esc, readCapped } from "../follow/common.js";
 export { clock, esc };
 
 export const MAX_BODY = 4096;
+// The owner's answer on her Your input tab carries a note of up to 2,000 characters, so
+// that route's body may be 8 KiB (functions/api/bench/asks.js); every other keeps MAX_BODY.
+export const ASKS_BODY = 8192;
 
 // ---- the log ------------------------------------------------------------------
 // A code and a count, and nothing else: no token, no link's name or id, no
@@ -66,10 +69,11 @@ export function sameSite(request, env) {
   return hostAllowed(request.headers.get("Origin"), env);
 }
 
-// The body, as JSON, of at most MAX_BODY bytes; null for anything else.
-export async function readJson(request) {
+// The body, as JSON, of at most MAX_BODY bytes (or `max`, ASKS_BODY's route alone); null
+// for anything else.
+export async function readJson(request, max = MAX_BODY) {
   if (!(request.headers.get("Content-Type") || "").startsWith("application/json")) return null;
-  const raw = await readCapped(request, MAX_BODY);
+  const raw = await readCapped(request, max);
   if (raw === null) return null;
   try {
     const v = JSON.parse(raw);

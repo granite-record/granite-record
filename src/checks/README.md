@@ -26,7 +26,9 @@ Scripts that write no record and no page, only a verdict or a report:
   pack of what its contributors are asked next, drawn from `review.py`'s own
   pools and written as SQL for the owner to load (`bench_pack`), and what
   they answered, pulled, screened and, on her word, merged into the ledger
-  (`bench_pull`, the one writer of the ledger but `review.py`);
+  (`bench_pull`, the one writer of the ledger but `review.py`); the same two
+  load the owner's own list for her Your input tab and bring her answers
+  back to `private/asks/` (`--asks`), never to the ledger;
   the bench page's script, and `drawn_pages`' node driver, are files in
   `inline/` (`review.js`, `drawn_pages.js`), each read through
   `inline_js` as src/pages/README.md says;

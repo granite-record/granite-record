@@ -136,3 +136,40 @@ CREATE TABLE IF NOT EXISTS link_days (
   n     INTEGER NOT NULL,
   PRIMARY KEY (link, day)
 );
+
+-- THE OWNER'S LIST (23 November 2026): what waits on her word, on the Your
+-- input tab that her own link alone opens (functions/api/bench/asks.js),
+-- loaded by a pack (bench_pack.py --asks) from the list the manager keeps in
+-- private/, and never part of the open data. Kept apart from judgments, so the
+-- merge, the Links counts, undo, the daily cap, calibration and how far along
+-- never read it. bench_pack.py writes these two statements into a pack as they
+-- stand here, so that one wrangler command makes them on a database made
+-- before them.
+CREATE TABLE IF NOT EXISTS asks (
+  key       TEXT PRIMARY KEY,             -- the list's key, kept when an entry is revised
+  section   TEXT NOT NULL,                -- the id of the section it is listed under
+  ord       INTEGER NOT NULL,             -- the order it is listed in: its section, then the list
+  card      TEXT NOT NULL,                -- JSON: the entry as the page draws it
+  pack      TEXT NOT NULL,                -- the pack that wrote it last
+  state     TEXT NOT NULL DEFAULT 'open' CHECK (state IN ('open', 'withdrawn')),
+  added_on  TEXT NOT NULL                 -- day it was first asked
+);
+CREATE INDEX IF NOT EXISTS asks_open ON asks(state, ord);
+
+-- Her answers, every one kept: the latest is the one the tab shows. A pull
+-- (bench_pull.py --asks) appends each to private/asks/answers.jsonl once, and
+-- then marks it pulled. `note` is cleaned as the report box cleans a reader's
+-- words, several lines and 2,000 characters at most, with `hidden` saying it
+-- carried characters that hide text, which were taken out.
+CREATE TABLE IF NOT EXISTS ask_answers (
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  key     TEXT NOT NULL REFERENCES asks(key),
+  link    TEXT NOT NULL REFERENCES links(id),
+  answer  TEXT NOT NULL CHECK (answer IN ('yes', 'no', 'unsure')),
+  note    TEXT NOT NULL DEFAULT '',
+  hidden  INTEGER NOT NULL DEFAULT 0,
+  at      TEXT NOT NULL,
+  pulled  INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS ask_answers_key ON ask_answers(key, id);
+CREATE INDEX IF NOT EXISTS ask_answers_pulled ON ask_answers(pulled, id);

@@ -67,7 +67,8 @@ in its own header or README:
 - **The shared bench** (approved 17 November 2026), where people the owner
   invites check the site's work one item at a time: the page
   `functions/bench.js` (`/bench`), the endpoints under `functions/api/bench/`
-  (next, judge, undo, hold, and the owner's links), and `workers/bench/`, its
+  (next, judge, undo, hold, and the owner's links and her list of what waits
+  on her word), and `workers/bench/`, its
   database's schema and the code they share, on a D1 database of its own. It
   is reached only through a private link the owner sends, whose token travels
   after "#" and in request bodies, never in an address; it keeps of a person

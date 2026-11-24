@@ -207,7 +207,9 @@ test("every value from the bench reaches the page through esc()", () => {
   };
   for (const f of ["c.head", "c.meta", "c.title", "c.body", "c.label", "c.claim", "c.def", "c.q", "st.label", "st.q",
                    "st.find", "st.mark", "st.lost", "l.name", "l.id", "a.head", "a.what", "a.note", "a.side", "q.label",
-                   "f.better_topic", "p.label"]) {
+                   "f.better_topic", "p.label",
+                   // the owner's Your input tab
+                   "c.section", "c.what", "c.question", "c.answers", "w.label", "w.url", "k.key", "a.at"]) {
     for (const m of src.matchAll(new RegExp(`\\b${f.replace(".", "\\.")}\\b(?!\\s*[?=!&|])`, "g")))
       assert.ok(!joined(src, m.index, f.length), `${f} is joined into the page unescaped: ` +
                 JSON.stringify(src.slice(m.index - 40, m.index + 30)));

@@ -17,6 +17,10 @@
  * CALIBRATION. One item in CALIB_EVERY a contributor is given is one the
  * owner judged already (calib), never one that link has answered; its answer
  * is kept here beside hers, and never merged into the ledger.
+ *
+ * THE OWNER'S YOUR INPUT TAB (askList, askWaiting, askAnswer, at the foot):
+ * what waits on her word and her answers, in two tables of their own that no
+ * other call reads.
  */
 
 import { hashToken } from "../follow/address.js";
@@ -475,4 +479,74 @@ export async function takeBack(db, id, jid = null) {
       "AND (?2 = -1 OR id = ?2)").bind(id, which),
   ]);
   return r[1]?.meta?.changes ?? 0;
+}
+
+// ---- the owner's Your input tab ----------------------------------------------------------
+//
+// What waits on her word (the asks table, loaded by bench_pack.py --asks from the list the
+// manager keeps), each entry with her latest answer, and her answers (ask_answers), every
+// one kept. Only her own link reaches these (functions/api/bench/asks.js); nothing of them
+// is in any contributor's view, the Links counts, the merge, undo, the cap or calibration.
+// The tab is not a queue: no link's queues can name it (QUEUES, queuesOf, makeLink).
+
+export const ASK_NOTE_MOST = 2000;
+export const ASK_ANSWERS = ["yes", "no", "unsure"];
+export const ASK_KEY = /^[a-z0-9][a-z0-9-]{2,59}$/;
+
+// A database made before the two tables were (the pack that brings the list makes them):
+// no list there, rather than an error, so that her Judge tab works on it as it did.
+const noTable = e => /no such table/i.test(String(e?.message ?? e));
+async function orNone(fn, none) {
+  try {
+    return await fn();
+  } catch (e) {
+    if (noTable(e)) return none;
+    throw e;
+  }
+}
+
+// Every entry not withdrawn, in the list's order (sections in the list's order, entries in
+// each in the list's), each { key, card, answer }: her latest answer { answer, note, at },
+// or null.
+export async function askList(db) {
+  const rows = await orNone(async () => (await db.prepare(
+    "SELECT a.key, a.card, x.answer, x.note, x.at FROM asks a LEFT JOIN ask_answers x ON x.id = " +
+    "(SELECT MAX(y.id) FROM ask_answers y WHERE y.key = a.key) WHERE a.state = 'open' ORDER BY a.ord, a.key")
+    .all()).results || [], []);
+  return rows.map(r => ({ key: r.key, card: parse(r.card, {}),
+                          answer: r.answer ? { answer: r.answer, note: r.note || "", at: r.at } : null }));
+}
+
+// How many entries wait on her word: not withdrawn, and with no answer yet. null where the
+// tables are not made yet.
+export async function askWaiting(db) {
+  return await orNone(async () => Number(await db.prepare(
+    "SELECT COUNT(*) AS n FROM asks a WHERE a.state = 'open' AND NOT EXISTS " +
+    "(SELECT 1 FROM ask_answers x WHERE x.key = a.key)").first("n")) || 0, null);
+}
+
+// HER ANSWER, kept beside the ones before it, only for an entry still asked, only one of the
+// entry's own answers, with a note (as the Function cleaned it) of ASK_NOTE_MOST characters
+// at most, and a second or more after her last (GAP_MS), read again in the statement that
+// writes it. { ok: true, answer } or { ok: false, why }, why one of "gone" (no such entry,
+// or withdrawn), "bad" (an answer it does not offer), "long" and "fast".
+export async function askAnswer(db, link, { key, answer, note = { text: "", hidden: 0 } }, now) {
+  if (typeof key !== "string" || !ASK_KEY.test(key)) return { ok: false, why: "gone" };
+  const text = String(note?.text ?? "");
+  if (text.length > ASK_NOTE_MOST) return { ok: false, why: "long" };
+  const row = await orNone(() => db.prepare("SELECT card FROM asks WHERE key = ?1 AND state = 'open'")
+    .bind(key).first(), null);
+  if (!row) return { ok: false, why: "gone" };
+  const offered = parse(row.card, {}).answers;
+  if (!ASK_ANSWERS.includes(answer) || !offered || typeof offered !== "object" || !Object.hasOwn(offered, answer))
+    return { ok: false, why: "bad" };
+  const t = iso(now), gap = iso(new Date(now.getTime() - GAP_MS));
+  const r = await db.prepare(
+    "INSERT INTO ask_answers (key, link, answer, note, hidden, at) SELECT ?1, ?2, ?3, ?4, ?5, ?6 " +
+    "WHERE EXISTS (SELECT 1 FROM asks WHERE key = ?1 AND state = 'open') " +
+    "AND NOT EXISTS (SELECT 1 FROM ask_answers WHERE link = ?2 AND at > ?7)")
+    .bind(key, link.id, answer, text, note?.hidden ? 1 : 0, t, gap).run();
+  if (r?.meta?.changes) return { ok: true, answer };
+  const still = await db.prepare("SELECT 1 AS y FROM asks WHERE key = ?1 AND state = 'open'").bind(key).first();
+  return { ok: false, why: still ? "fast" : "gone" };
 }

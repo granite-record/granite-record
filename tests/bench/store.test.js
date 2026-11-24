@@ -28,7 +28,8 @@ test("the schema keeps no column about a person but the link's name and two days
   assert.deepEqual(cols.links, ["id", "name", "token_hash", "role", "queues", "state", "made_on", "last_on",
                                 "daily_cap"]);
   assert.deepEqual(Object.keys(cols).sort(),
-                   ["calib", "calib_holds", "groups", "items", "judgments", "link_days", "links", "queues"]);
+                   ["ask_answers", "asks", "calib", "calib_holds", "groups", "items", "judgments", "link_days", "links",
+                    "queues"]);
   const all = Object.values(cols).flat().join(" ");
   assert.doesNotMatch(all, /\b(ip|email|mail|address|cookie|agent|device|browser|referr?er|session|token)\b/i,
     "no column for an address, a cookie, a device or a referrer, and none for a token but its hash");
