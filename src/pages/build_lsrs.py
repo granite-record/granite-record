@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.36
+# GRANITE_VERSION: 2026-09-18.37
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -881,6 +881,18 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
         if name and not hit and not (chamber_of(body) is None and _fold(name) in who):
             hit = find(name, body)
         return hit
+
+    def co_match(name):
+        """A co-sponsor, who may sit in either chamber: matched as a
+        constitutional amendment request's sponsor is (the whole name, and
+        nobody else of it sitting, elected or confirmed in either chamber);
+        else by the prime sponsor's rules in one chamber, where they find the
+        name in that chamber alone -- found in both, it is nobody."""
+        hit = match(name, None)
+        if hit:
+            return hit
+        each = [h for h in (match(name, "H"), match(name, "S")) if h]
+        return each[0] if len(each) == 1 else None
     rows, unmatched = [], []
     for r in lsrs:
         num = str(r.get("lsr") or "").strip()
@@ -902,13 +914,24 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
         # The co-sponsors, matched as the prime sponsor is (a name that
         # matches nobody is kept as the source gives it), for the request's
         # own page; a request with none carries no key.
+        # AND A CO-SPONSOR MAY SIT IN EITHER CHAMBER (the owner, 24 November
+        # 2026: "Yes, take them", of the co-sponsors the General Court's
+        # results page names; fetch_lsrs). A request is filed in its prime
+        # sponsor's own chamber and co-sponsored from both, so a co-sponsor is
+        # matched by the same rules with no chamber assumed (co_match). Each
+        # carries the chamber their match gives ("chamber"), and the row its
+        # prime sponsor's ("sponsor_chamber": theirs, else the chamber the
+        # request is filed in), which its page and card group them by as a
+        # bill's sponsors are grouped (build_request_pages.sponsors_section).
         co = []
         for c in r.get("cosponsors") or []:
             c = str(c or "").strip()
-            h = match(c, body)
+            h = co_match(c) if c else None
             if c:
                 co.append({"label": h[0] if h else c, "slug": h[1] if h else "", "name": c,
-                           **({"party": party_of(h[0])} if h and party_of(h[0]) else {})})
+                           **({"party": party_of(h[0])} if h and party_of(h[0]) else {}),
+                           **({"chamber": h[2]} if h and len(h) > 2 and h[2] in ("H", "S") else {})})
+        mine = (hit[2] if hit and len(hit) > 2 and hit[2] in ("H", "S") else chamber_of(body)) if co else None
         rows.append({
             "id": "LSR" + num.replace("-", ""),
             "n": "LSR " + num,
@@ -925,9 +948,10 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
             **({"sponsor_party": party_of(hit[0])} if hit and party_of(hit[0]) else {}),
             # The co-sponsors' names, as a bill's row has them (`cosp`), so
             # the Sponsor filter's "Include co-sponsored" reads a request as
-            # it reads a bill. The source gives none today.
+            # it reads a bill: the results page's, where it names any.
             **({"cosp": [c["name"] for c in co]} if co else {}),
             **({"cosponsors": co} if co else {}),
+            **({"sponsor_chamber": mine} if mine else {}),
             "body": body,
             "body_label": BODY.get(body, body),
             "committee": "", "committees": [], "topic": "", "topic_by": "",
@@ -1326,6 +1350,16 @@ def main():
           "the same title (History)")
     print(f"  {meta['requests']['withdrawn']} withdrawn; "
           f"{sum(1 for r in rows if r['sponsor_slug'])} sponsors matched to a member")
+    # THE CO-SPONSORS (rows_from, co_match): how many the requests name, how
+    # many are linked to a member's page, and the names that matched nobody,
+    # which their page shows as printed, with no party.
+    named = [c for r in rows for c in r.get("cosponsors") or []]
+    if named:
+        loose = sorted({c["name"] for c in named if not c.get("slug") and not c.get("party")})
+        print(f"  {sum(1 for r in rows if r.get('cosponsors'))} request(s) name {len(named)} co-sponsor(s), "
+              f"{sum(1 for c in named if c.get('slug'))} linked to a member's page"
+              + (f"; {len(loose)} name(s) matched nobody, shown as printed: " + ", ".join(loose[:6])
+                 + (" ..." if len(loose) > 6 else "") if loose else ""))
     also = [r for r in rows if r.get("sponsor_names")]
     if also:
         who = sorted({r["sponsor"] for r in also})

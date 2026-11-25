@@ -2893,6 +2893,21 @@ it and the ones taken before are kept as they stood, not withdrawn. The night's
 line says how many the CSV held, how many the page listed and how many were
 taken from it (`nightly.lsrs_listed`).
 
+The CSV names a request's prime sponsor alone, and the page its co-sponsors
+too (95 requests on the owner's printout of 23 November 2026; her word of 24
+November, "Yes, take them"): a request on both takes the page's co-sponsors,
+in the page's order, and nothing else of its row, unless the page names the
+CSV's prime sponsor among them. On a night the page says nothing of a request
+-- not read, not usable, or not listing it -- it keeps the co-sponsors it had
+(`fetch_lsrs.merge`), and the night's line says how many have co-sponsors from
+the page. `build_lsrs.rows_from` matches each co-sponsor by the prime
+sponsor's rules with no chamber assumed (`co_match`: the whole name, nobody
+else of it, in either chamber; else the prime sponsor's rules in the one
+chamber that finds the name), since a request is co-sponsored from both
+chambers: on the printout 58 of the 345 names were of the other chamber, and
+all 345 matched a member's page. A name that matches nobody is kept as
+printed.
+
 Each request has a page of its own at its row's `address`, `/request/<number>`
 (`src/pages/build_request_pages.py`), until the row carries a `moved_to` --
 the bill's page once that bill is introduced or, from the day filing for
