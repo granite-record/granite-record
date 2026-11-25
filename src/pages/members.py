@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-20.3
+# GRANITE_VERSION: 2026-11-20.4
 """
 A member of the General Court as the site has them: how a member is named,
 the roll calls and the floor as a member's record reads them, and the
@@ -1097,6 +1097,56 @@ def keep_moved(former, path=MOVED_ADDRESSES, links=None, sitting=()):
     return kept, unrecorded
 
 
+def turned_addresses(term_rosters, legs, former, links=None):
+    """({sitting id: [addresses]}, how many former rows took one): THE ADDRESS A
+    MEMBER'S PAGE HAD IN A TERM WHOSE ROSTER IS FROZEN, ANSWERED WHERE THEIR
+    PAGE IS NOW (25 November 2026, for Organization Day).
+
+    A member's address is built from the seat they hold (member_slug), so on
+    the night the roster turns to the next term a member re-elected to
+    another seat -- five Representatives at the election of 3 November 2026
+    -- has their page at a new address, and one elected to the other chamber
+    under a new number (Jim Creighton and Laura Telerski) has the page their
+    record is joined to at the new chamber's; and the address the page had
+    until Organization Day, in readers' bookmarks and in every update email
+    sent, would answer nothing. Each member of a term whose own roster is
+    frozen (`term_rosters`, which build_site_v2 labels the term's members
+    by) is looked for where their record is now: a sitting member's page,
+    under their own number or the one it is joined to (`links`), or a former
+    member's (`former`). Where the address their row gave then is no page's
+    now, it answers with a 301 to that page: a sitting member's in the map
+    returned, which build_legislators writes into their row of
+    legislators.json for build_pages' _redirects; a former member's
+    appended to their row's moved_from, as every earlier address of a
+    former member's page is. An address that is a page's own now stays that
+    page's, and is never moved. Worked out afresh each build from the frozen
+    roster, which is kept, so nothing needs recording."""
+    on_page = {str(x): str(k) for k, v in (links or {}).items() for x in v}
+    live = ({_member_address(m) for m in legs.values() if m.get("name")}
+            | {_member_address(m) for m in former.values()}
+            | {a for m in former.values() for a in m.get("moved_from") or []})
+    sitting, n_former = {}, 0
+    for t in sorted(term_rosters or {}):
+        for mid, row in sorted((term_rosters[t] or {}).items()):
+            mid = str(mid)
+            if not isinstance(row, dict) or not row.get("name"):
+                continue
+            was = _member_address(row)
+            if was in live:
+                continue
+            page = mid if mid in legs or mid in former else on_page.get(mid, "")
+            if page in legs:
+                sitting.setdefault(page, []).append(was)
+            elif page in former:
+                m = former[page]
+                m["moved_from"] = [*(m.get("moved_from") or []), was]
+                n_former += 1
+            else:
+                continue
+            live.add(was)
+    return sitting, n_former
+
+
 # What one ballot says about whether the member took part, in the order a
 # roll call is read when two of a member's numbers somehow both hold a ballot
 # on it: a vote cast outranks anything else the other ballot says.
@@ -1411,7 +1461,8 @@ def build_officers(out, votes_by_member, legs, today=None):
 
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
                       sponsored=None, bill_year=None, links=None,
-                      former=None, offices=None, index_rows=None, manual=None):
+                      former=None, offices=None, index_rows=None, manual=None,
+                      moved=None):
     """One JSON per member, plus the index and the town map.
 
     Split out of main(). main() was 808 lines even after the station
@@ -1425,6 +1476,10 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     which of a member's bills passed (member_figures). `manual` is
     manual_seats': {member id: {chamber: [term]}}, the 1989-1998 terms the
     Manual for the General Court seats a member in with no bill that term.
+    `moved` is turned_addresses' {sitting id: [addresses]}: the addresses a
+    sitting member's page had in a frozen term, which their row carries as
+    moved_from for build_pages to answer with a 301, as a former member's
+    row does.
     """
     lg, fm = [], []
     # Read off every ballot once, because what one member's attendance needs
@@ -1518,6 +1573,10 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                 row["service"] = ML.service(mv)
             fm.append(row)
         else:
+            if (moved or {}).get(mid):
+                # The addresses this page had in a frozen term (turned_addresses),
+                # which build_pages answers with a 301 to this one.
+                row["moved_from"] = list(moved[mid])
             lg.append(row)
         # What they put their name to. The page's own meta description has
         # promised "sponsored bills" since it was written and the file did not

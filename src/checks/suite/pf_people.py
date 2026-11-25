@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of sponsors, members and officials.
 
@@ -22,7 +22,7 @@ from pathlib import Path
 import _paths
 
 from pf_core import (_in_suite, _run, _source, check, imp)
-from pf_fixture import (_fixture_site_shared)
+from pf_fixture import (CHAIN_NEEDS, _built_site_prepare, _built_site_run, _fixture_site_shared)
 from pf_harness import (_app_js, _node_app, _with_components)
 from pf_shared import (SPONSOR_HONORIFIC, _STATUSCAT_HARNESS, _STATUS_CATEGORY,
                        _STATUS_REAL_PAIRS, _elect_strip, _officials_now)
@@ -1833,6 +1833,192 @@ def _member_links(member_links, build_site_v2):
                   "with no vote yet joined to the House number that voted in the newest term, a namesake "
                   "of 2017-2018 left to wait for a vote, another party apart; the member "
                   "files carry both chambers newest first")
+
+
+def _turned_roster_fixture(root):
+    """The fixture project, its builders still to run, with the roster turned as Organization
+    Day turns it, the way tests/rehearse_turn.py fakes one: the members 2025-2026 sat with are
+    data/frozen/2025-2026/legislators.json, as build_data writes it once the roster installed is
+    another House (freeze_term.own_roster_terms, which reads the day files written here), and
+    data/legislators.json is the next House. Returns (base, the builders, their four rows)."""
+    here = Path(".").resolve()
+    base, steps = _built_site_prepare(here, root)
+
+    def leg(mid, last, first, ch, district, party="R", towns=(), committees=(), seat=""):
+        tag = f"SD{district}" if ch == "S" else f"Rock {district}"
+        return {"id": mid, "last": last, "first": first, "name": f"{last}, {first}", "chamber": ch,
+                "party": {"R": "Republican", "D": "Democrat"}[party], "party_code": party,
+                "county": "Rockingham", "county_abbr": "Rock", "district": district,
+                "label": f"{'Sen.' if ch == 'S' else 'Rep.'} {first} {last} ({party} - {tag})",
+                "email": f"{first.lower()}.{last.lower()}@gc.nh.gov", "url": "",
+                "towns": list(towns), "committees": list(committees), "title": "", "seat": seat,
+                "phone": ""}
+    d = root / "data"
+    nelson, altschiller = json.loads((d / "legislators.json").read_text(encoding="utf-8"))
+    vose_h = leg("377300", "Vose", "Michael", "H", "5", towns=["Brentwood"])
+    example_was = leg("377301", "Example", "Pat", "H", "6", party="D", towns=["Brentwood"],
+                      committees=["Commerce"])
+    vose_s = leg("990103", "Vose", "Michael", "S", "23", towns=["Brentwood", "Fremont", "Danville"])
+    example = leg("377301", "Example", "Pat", "H", "7", party="D", towns=["Fremont"],
+                  committees=["Commerce"])
+    newell = leg("990104", "Newell", "Pat", "H", "32", towns=["Danville"], committees=["Commerce"],
+                 seat="1005")
+    then = [nelson, altschiller, vose_h, example_was]
+    now = [altschiller, vose_s, example, newell]
+    (d / "frozen" / "2025-2026").mkdir(parents=True)
+    (d / "frozen" / "2025-2026" / "legislators.json").write_text(json.dumps(then), encoding="utf-8")
+    (d / "legislators.json").write_text(json.dumps(now), encoding="utf-8")
+    votes = json.loads((d / "member_votes.json").read_text(encoding="utf-8"))
+    for m in (vose_h, example_was):
+        votes.append({"member_id": m["id"], "name": m["name"], "party": m["party_code"],
+                      "label": f"{m['name']}({m['party_code']}) Rock {m['district']}",
+                      "year": "2026", "body": "H", "vote_number": "310", "bill": "HB1442",
+                      "question": "Ought to Pass", "date": "2026-03-06", "vote": "Yea"})
+    (d / "member_votes.json").write_text(json.dumps(votes), encoding="utf-8")
+    # The seat table as the Sunday fetch left it before the turn, and the committee's listing.
+    (d / "committee_members.json").write_text(json.dumps({"H43": [
+        {"id": m["id"], "name": m["name"], "party": m["party"], "party_code": m["party_code"],
+         "district": m["district"], "county_code": "08", "chamber": "H", "sequence": i,
+         "sitting": True, "seat_active": True} for i, m in enumerate((nelson, example_was))]}),
+        encoding="utf-8")
+    (root / "committees.json").write_text(json.dumps({"House": [
+        {"name": "Commerce", "chair": "Pat Example", "vice_chair": "", "clerk": ""}]}),
+        encoding="utf-8")
+    # The day files freeze_term.own_roster_terms reads: the session's docket (2026), the
+    # term's freeze with its roster, and the roster installed since, which is another House.
+    (root / "Docket.txt").write_text("2026|0503|3/6/2026 11:12:00 AM|HB1442|H|Ought to Pass|x\n",
+                                     encoding="utf-8")
+    fz = root / "frozen" / "2025-2026"
+    (fz / "day").mkdir(parents=True)
+    (fz / "manifest.json").write_text("{}", encoding="utf-8")
+
+    def txt(rows):
+        return "".join(f"{m['id']}|{m['name'].split(', ')[0]}|{m['name'].split(', ')[-1]}||"
+                       f"{m['chamber']}|||{m['district']}|{m['party_code']}||||||\n" for m in rows)
+    (fz / "day" / "legislators.txt").write_text(txt(then), encoding="utf-8")
+    (root / "legislators.txt").write_text(txt(now), encoding="utf-8")
+    return base, steps, {"nelson": nelson, "vose": vose_s, "example": example, "newell": newell}
+
+
+@check("build", "the night the roster turns, built on the fixture: a member not returning is Former Rep. "
+                "on their own page and in the search, and named as they sat on their bills and votes; "
+                "one re-elected to another seat keeps their record, the old address answering; one "
+                "elected to the Senate under a new number has one page with both chambers, the House "
+                "page's address answering; a new member is on the committee the roster names",
+       needs=("build_site_v2", "build_pages", "freeze_term"))
+def _turned_roster_built(B, BP, FT):
+    """The owner, 25 November 2026: "making sure to transition currently serving members that
+    are not returning as Former Rep. on their pages". On Organization Day the General Court's
+    roster seats the next House; the fixture is built here the night it does
+    (_turned_roster_fixture): of the four members of 2025-2026, Rep. Jodi Nelson did not
+    return, Sen. Debra Altschiller was re-elected to her seat, Rep. Pat Example to another
+    district (Rockingham 6 to 7), and Rep. Michael Vose to the Senate under a new number, with
+    no vote under it yet; Rep. Pat Newell is new. Every builder is run, as build_all runs them,
+    and the pages are read:
+
+      Nelson    "Former Rep. Jodi Nelson (R - Rock 13)" on her own page, "Former
+                Representative ..." heading it, and "Former Rep." in the search, as the owner
+                settled (treat-former-members-the-same); on her bill and its roll call she is
+                "Rep. Jodi Nelson" as she sat, linked to her page, and nowhere marked; in the
+                Former members list, and not among the Legislators or on her committee;
+      Example   one page, at the new seat's address, with his vote of 2026; the old address a
+                301 to it (members.turned_addresses);
+      Vose      one page, the Senate number's, carrying the House number's vote
+                (member_links, A SITTING MEMBER WITH NO VOTE YET), no "Former Rep." page beside
+                it, and the House page's address a 301 to it; his vote of 2026 still "Rep.";
+      Newell    a page, his work email, floor seat and committee as the roster gives them, and a
+                place on Commerce, which the roster names for him and the seat table, the
+                Sunday fetch's, does not yet (build_committees, A MEMBER THE SEAT TABLE HAS NO
+                ROW FOR YET); Altschiller's page where it was, no 301 from it."""
+    import re as _re
+    here = Path(".").resolve()
+    missing = [x for x in CHAIN_NEEDS if not _paths.locate(x).exists()]
+    if missing or not (here / "src/pages/bills.html").exists():
+        return "skip", f"not here: {', '.join(missing) or 'src/pages/bills.html'}"
+    root = Path(tempfile.mkdtemp(prefix="gr-turnedroster-"))
+    try:
+        base, steps, who = _turned_roster_fixture(root)
+        assert FT.own_roster_terms(root) == ["2025-2026"], (
+            f"the fixture's roster has not turned for freeze_term: {FT.own_roster_terms(root)}")
+        _built_site_run(root, steps)
+        site = root / "site"
+        read = lambda p: (site / p).read_text(encoding="utf-8")
+        load = lambda p: json.loads(read(p))
+        former = {m["id"]: m for m in load("former.json")}
+        legs = {m["id"]: m for m in load("legislators.json")}
+        assert sorted(former) == ["377204"] and former["377204"].get("slug") == "jodi-nelson-rock-13", (
+            f"the former members are {sorted(former)}: wanted Nelson alone, at her address")
+        assert sorted(legs) == ["377207", "377301", "990103", "990104"], sorted(legs)
+        page = read("legislator/jodi-nelson-rock-13.html")
+        title = _re.search(r"<title>(.*?)</title>", page).group(1)
+        heads = _re.findall(r"<h1[^>]*>(.*?)</h1>", page, _re.S)
+        assert title == "Former Rep. Jodi Nelson (R - Rock 13) | Granite Record" and \
+            heads == ["Former Representative Jodi Nelson (R - Rock 13)"] and "GR_FORMER=true" in page, (
+            title, heads)
+        find = load("find.json")
+        rows = {(r[0], r[3]) : r[1] for r in find if r and r[0] in ("legislator", "former", "elect")}
+        assert rows == {("former", "legislator/jodi-nelson-rock-13"): "Former Rep. Jodi Nelson",
+                        ("legislator", "legislator/debra-altschiller-sd-24"):
+                            "Sen. Debra Altschiller (D - SD24)",
+                        ("legislator", "legislator/michael-vose-sd-23"): "Sen. Michael Vose (R - SD23)",
+                        ("legislator", "legislator/pat-example-rock-7"): "Rep. Pat Example (D - Rock 7)",
+                        ("legislator", "legislator/pat-newell-rock-32"):
+                            "Rep. Pat Newell (R - Rock 32)"}, f"the search's members are {rows}"
+        idx = {r["id"]: r for r in load("idx/2025-2026.json")}
+        assert (idx["HB1442"].get("sponsor_label"), idx["HB1442"].get("sponsor_slug")) == (
+            "Rep. Jodi Nelson (R - Rock 13)", "jodi-nelson-rock-13"), (
+            "HB 1442's sponsor is not named as she sat, at her page", idx["HB1442"])
+        bill = read("bill/2026/hb1442.html")
+        ballots = set(_re.findall(r'"n": "((?:Former )?(?:Rep|Sen)\. [^"]+)"', bill))
+        assert {"Rep. Jodi Nelson (R)", "Rep. Michael Vose (R)", "Rep. Pat Example (D)"} <= ballots and \
+            not any(b.startswith("Former") or b.startswith("Sen. Michael") for b in ballots), (
+            f"HB 1442's roll call names its members {sorted(ballots)}: wanted each as they sat")
+        assert "legislator/jodi-nelson-rock-13" in read("directory/former-legislators.html"), (
+            "Nelson is not in the Former members list")
+        officials = read("officials.html")
+        assert "jodi-nelson-rock-13" not in officials and all(
+            f"legislator/{m['slug']}" in officials for m in legs.values()), (
+            "the Legislators tab does not list the four sitting members alone")
+        vose, example = legs["990103"], legs["377301"]
+        assert vose.get("member_ids") == ["990103", "377300"] and \
+            vose.get("moved_from") == ["/legislator/michael-vose-rock-5"] and \
+            [v["k"] for v in load("legislators/990103.json")["votes"]] == ["2026-H-310"], (
+            "Vose's Senate page does not carry his House number's record", vose)
+        assert not (site / "legislator" / "michael-vose-rock-5.html").exists(), (
+            "Vose's House number has a page of its own beside his Senate one")
+        assert example.get("slug") == "pat-example-rock-7" and \
+            example.get("moved_from") == ["/legislator/pat-example-rock-6"] and \
+            [v["k"] for v in load("legislators/377301.json")["votes"]] == ["2026-H-310"], example
+        assert "moved_from" not in legs["377207"] and "moved_from" not in former["377204"], (
+            "an address that did not move answers with a 301")
+        redirects = set(read("_redirects").splitlines())
+        for old, new in (("michael-vose-rock-5", "michael-vose-sd-23"),
+                         ("pat-example-rock-6", "pat-example-rock-7")):
+            want = {f"/legislator/{old} /legislator/{new} 301",
+                    f"/legislator/{old}/votes /legislator/{new}/votes 301"}
+            assert want <= redirects, f"_redirects does not move /legislator/{old}: {want - redirects}"
+        assert not any(r.startswith(("/legislator/debra-altschiller", "/legislator/jodi-nelson"))
+                       for r in redirects), "a page that stayed is moved"
+        cmte = load("committee/H43.json")
+        names = sorted(m.get("label") for m in cmte.get("members") or [])
+        assert names == ["Rep. Pat Example (D - Rock 7)", "Rep. Pat Newell (R - Rock 32)"], (
+            f"Commerce lists {names}: wanted the two the roster seats on it, Newell with no row yet")
+        # What the General Court publishes of a new member after Organization Day -- the work
+        # email, the floor seat, the committees -- reaches their row and their own file.
+        new = legs["990104"]
+        assert (new.get("email"), new.get("seat"), new.get("committees")) == (
+            "pat.newell@gc.nh.gov", "1005", ["Commerce"]) and \
+            load("legislators/990104.json").get("email") == "pat.newell@gc.nh.gov" and \
+            (site / "legislator" / "pat-newell-rock-32.html").exists(), (
+            f"the new member's row and page: {new}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("the fixture built with the roster turned: Nelson Former Rep. on her page and in the "
+                  "search, named as she sat on HB 1442 and its roll call, in Former members, off the "
+                  "Legislators tab and her committee; Example at Rock 7 with his record, Rock 6 a 301; "
+                  "Vose one Senate page with his House vote, Rock 5 a 301, no Former page; Newell's "
+                  "page, email, seat and committee, and on Commerce with no seat row; Altschiller "
+                  "where she was")
 
 
 @check("naming", "a bill text's sponsor line is read as each era prints it, and a surname is a member only where one fits",

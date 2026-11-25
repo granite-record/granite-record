@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.333
+# GRANITE_VERSION: 2026-09-05.334
 """
 Generate the faceted site from real General Court data.
 
@@ -395,7 +395,7 @@ from members import (ATTENDANCE_KIND, FLOOR_RECORD, FORMER_LABEL, MOVED_ADDRESSE
                      build_officers, corrected_seats, date_former_seats, floor_moment,
                      former_movers, former_roster, keep_moved, last_term_labels, member_attendance,
                      member_office, printed_record, printed_seats, same_person, seat_of_the_lines,
-                     sponsored_in_order, term_seats, write_floor_record)
+                     sponsored_in_order, term_seats, turned_addresses, write_floor_record)
 
 
 def build_composition(a, legs):
@@ -2895,6 +2895,14 @@ def main():
         print(f"  {', '.join(term_rosters)}: a frozen roster that is not the sitting one, "
               f"{sum(len(v) for v in term_rosters.values()):,} members; their sponsors are "
               "labelled from it and looked for among the members who hold no seat now")
+    # AND THE ADDRESS EACH OF THEM HAD THEN, where their page is at another now
+    # (turned_addresses): a 301 to it, from the night the roster turns.
+    turned, turned_former = turned_addresses(term_rosters, legs, former, links)
+    if turned or turned_former:
+        print(f"  {sum(map(len, turned.values())) + turned_former} address(es) a member's page had "
+              f"in {', '.join(term_rosters)} answer with a 301 to the page their record is on now: "
+              + ", ".join(f"{a} -> {legs[k].get('name')}" for k, v in sorted(turned.items())
+                          for a in v)[:400])
     # BEFORE seats_held, and over both populations. A sponsor matched on their
     # name alone is only that member if this says they held a seat in that
     # chamber that term -- so a former member absent from it would be matched
@@ -3072,7 +3080,7 @@ def main():
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
                            sponsored, bill_year, links, former, offices,
                            index_rows={(r.get("term"), r.get("id")): r for r in index},
-                           manual=manual)
+                           manual=manual, moved=turned)
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records

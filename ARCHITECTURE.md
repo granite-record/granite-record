@@ -264,6 +264,14 @@ Court gives a member who changes chamber a new number: the night the roster
 turns, `build_feeds.continuations` finds them in that seat and their follow
 moves to the new key, with an ending that says where they sit, rather than
 telling their followers they left.
+That night their page is one page as well: `member_links.links` joins the
+earlier number to a sitting member who has no vote yet where it voted in the
+newest term, and every address a member's page had in a term whose roster is
+frozen answers with a 301 to the page their record is on now
+(`members.turned_addresses`, a sitting member's in their row of
+`legislators.json`, a former member's in theirs). A member the daily roster
+seats on a committee is on that committee's page before the Sunday seat table
+has a row for them (`build_committees.who_sits`).
 The second job deploys to production. It sits behind one of two GitHub
 environments, which the release gate below chooses between: `production`,
 which has no reviewer, for a night the gate clears, and `production-review`,

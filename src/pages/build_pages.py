@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.304
+# GRANITE_VERSION: 2026-09-04.305
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -409,7 +409,14 @@ def moved_members(site):
     they have now (build_site_v2.former_movers, 30 October 2026): Shannon
     Chandley's House page answers with her Senate page, which carries both
     chambers' votes. Read off former.json's rows, where build_site_v2 says
-    which addresses each took in; in both spellings, as MOVED's are."""
+    which addresses each took in; in both spellings, as MOVED's are.
+
+    AND A SITTING MEMBER'S PAGE THAT MOVED AT THE TURN (25 November 2026,
+    members.turned_addresses): from the night the roster turns, the address
+    a re-elected member's page had in the term just finished, before their
+    seat or their chamber changed, is in their row of legislators.json as
+    moved_from, and answers the same way. No sitting row carries one before
+    that night."""
     try:
         rows = json.loads((Path(site) / "former.json").read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -419,8 +426,18 @@ def moved_members(site):
         # and said nothing (bug hunt of 11 November 2026, finding 11).
         sys.exit(f"{Path(site) / 'former.json'} could not be read, and _redirects "
                  f"would lose the moved members' 301s: {e!r}")
+    try:
+        sitting = json.loads((Path(site) / "legislators.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        sitting = []
+    except (OSError, ValueError) as e:
+        sys.exit(f"{Path(site) / 'legislators.json'} could not be read, and _redirects "
+                 f"would lose the moved members' 301s: {e!r}")
+    rows = [*(rows if isinstance(rows, list) else []),
+            *(r for r in (sitting if isinstance(sitting, list) else [])
+              if isinstance(r, dict) and r.get("moved_from"))]
     out = []
-    for r in rows if isinstance(rows, list) else []:
+    for r in rows:
         new = f"/legislator/{r.get('slug')}" if r.get("slug") else ""
         for old in (r.get("moved_from") or []) if new else []:
             # And a tab of the old page to the same tab of the new one: the

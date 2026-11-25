@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.73
+# GRANITE_VERSION: 2026-09-07.74
 """
 A page's worth of data for every committee.
 
@@ -753,6 +753,26 @@ def who_sits(site, data):
         ch = (lg.get("chamber") or "")[:1].upper()
         assigned[mid] = {code_of(re.sub(r"\s+-\s+Division\s+[IVX]+$", "", nm), ch)
                          for nm in names_} - {None}
+    # AND A MEMBER THE SEAT TABLE HAS NO ROW FOR YET (25 November 2026, for
+    # Organization Day). The table is the database's, taken on Sundays, and a
+    # member the General Court numbers at the turn has no row in it for weeks
+    # while the daily roster already names their committees: their own page
+    # listed a committee whose page left them out. A committee the roster
+    # names for a member with no row of that committee at all takes a seat
+    # made from the roster's own row, which on_it_today then holds to the
+    # same tests. None is made today: every assignment the roster names has
+    # a row (0 of 374 members' on 25 November 2026). A row the table holds,
+    # retired or not, is left to decide as before.
+    held = {(str(s.get("id")), code) for code, rows in seats.items() for s in rows or []}
+    for mid in sorted(assigned):
+        lg = legs.get(mid) or {}
+        for code in sorted(assigned[mid]):
+            if (mid, code) in held:
+                continue
+            seats.setdefault(code, []).append({
+                "id": mid, "name": lg.get("name") or "", "chamber": lg.get("chamber") or "",
+                "party": lg.get("party") or "", "party_code": lg.get("party_code") or "",
+                "district": lg.get("district") or "", "sitting": True, "from_roster": True})
 
     def on_it_today(seat, code):
         # "sitting" is Legislators.Active on the PERSON, not on the seat: it
