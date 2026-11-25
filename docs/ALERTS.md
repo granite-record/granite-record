@@ -40,7 +40,21 @@ with the alert as the body (nightly.yml:267-286, 568-596). The body is one or mo
 | "The General Court's database is on hold: …" (nightly.py:5888) | The database could not be reached. The sentence says until when nothing asks it (src/fetch/gc_db/probe_db.py:162-171). | No, unless it says the login was refused. | If it says "until the credentials in probe_db.py are changed", the published password has changed: ask for the code to be updated. | Yes, at the time it names. |
 | "Checks of tonight's built site failed -- held for approval: {names}." or "The checks of tonight's build did not run, so the night waits for approval." (nightly.py:4872-4882) | Tonight's site was built, but a check of it failed, so it was not published on its own. | **Yes.** | Have the named checks read, then approve or leave the night (see *graniterecord.org published*). | No. |
 | "The night was not clean: …" (nightly.py:5892-5893) | Something in the night went wrong. The rest of the sentence says what, e.g. "The build failed." (`plain_why`, nightly.py:2357-2399). | Read it. | Nothing unless it repeats on a second night. A refusal named here is the row above. | Yes, the next clean night. |
-| The weekly job failed (weekly.yml:214-237) | Sunday's committee-roster run failed. It publishes nothing. | No. | Nothing. | Yes, the next good night pings up. |
+
+The weekly job no longer tells this check anything (25 November 2026): it has a check of its own, below.
+
+## Granite Record weekly (`HEALTHCHECKS_WEEKLY_URL`)
+
+Added 25 November 2026, at the owner's word, so that a weekly problem stops emailing as if a night had failed.
+When a real weekly run of main ends, it sends a plain ping if the week ended well and `/fail` if it did not
+(weekly.yml, "Tell Healthchecks how the weekly job ended"). A dry run, any run off main, sends nothing. The
+check is the owner's to create, on a weekly schedule: the job starts at 04:17 UTC on Monday. Without the
+secret, nothing is sent.
+
+| Email says | Means | Needs you? | What to do | Fixes itself? |
+|---|---|---|---|---|
+| *(down, no body)* | No weekly run reached its end this week: it did not start, or it is still running long after its time. | Look once. | Open GitHub → Actions → weekly. | Yes, when a week finishes. |
+| *(down, `/fail`)* | The weekly's committee rosters, former members or study committees run failed. It publishes nothing. | No. | Read the run's page if it fails twice. | Yes, the next good week pings up. |
 
 ## Night waiting for your approval (`HEALTHCHECKS_WARN_URL`)
 

@@ -268,17 +268,22 @@ jobs:
           python src/ops/cloud.py state-up
           exit $LASTEXITCODE
 
-      # Healthchecks' check expects the nightly each day, so the weekly job
-      # tells it only when it fails; a success here would stand in for a
-      # night that never ran. A dry run -- every run off main -- tells it
-      # nothing at all (7 October 2026): its failure is the code it is
-      # proving, not the week's, and the check watches only the runs whose
-      # outcome is the site's -- the scheduled night, a real run by hand of
-      # main, and a real week's failure. preflight holds this step.
-      - name: Tell Healthchecks the weekly job failed
-        if: failure() && env.DRY_RUN == 'false'
+      # THE WEEKLY'S OWN CHECK (the owner, 25 November 2026: "Yes, it can get
+      # its own healthcheck monitor"). The weekly used to tell the nightly's
+      # check of a week that failed, so the failed weekly of 23 November
+      # emailed as if a night had failed. It now tells a check of its own,
+      # HEALTHCHECKS_WEEKLY_URL, which the person creates with a weekly
+      # schedule: a plain ping for a week that ended well and /fail for one
+      # that did not, so that check also says when a week never ran. The
+      # nightly's check hears nothing from the weekly. A dry run -- every run
+      # off main -- tells it nothing at all (7 October 2026): its failure is
+      # the code it is proving, not the week's. With no such secret, nothing
+      # is told. preflight holds this step.
+      - name: Tell Healthchecks how the weekly job ended
+        if: always() && env.DRY_RUN == 'false'
         env:
-          HC_URL: ${{ secrets.HEALTHCHECKS_URL }}
+          HC_URL: ${{ secrets.HEALTHCHECKS_WEEKLY_URL }}
+          ENDED: ${{ job.status }}
         run: |
           # Main is refs/heads/main exactly (nightly.MAIN_REF): GitHub's if
           # above compares without case, and takes a branch named Main for main.
@@ -287,10 +292,11 @@ jobs:
             exit 0
           }
           if (-not $env:HC_URL) {
-            Write-Output "No HEALTHCHECKS_URL secret, so no ping."
+            Write-Output "No HEALTHCHECKS_WEEKLY_URL secret, so no ping: the weekly's own check is not set up."
             exit 0
           }
-          curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_URL/fail"
+          $end = if ($env:ENDED -eq 'success') { '' } else { '/fail' }
+          curl.exe -fsS -m 15 --retry 3 -o NUL "$env:HC_URL$end"
           exit 0
 
   # The 60-day pause, as in nightly.yml: this workflow re-enables itself each

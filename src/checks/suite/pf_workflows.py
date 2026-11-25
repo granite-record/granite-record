@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the GitHub workflows.
 
@@ -223,7 +223,10 @@ WORKFLOW_SECRETS = {"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
                     # The approval check (18 October 2026; a held night alone since
                     # 7 November, nightly.APPROVAL_FILE): optional, and the person's
                     # to create.
-                    "HEALTHCHECKS_WARN_URL"}
+                    "HEALTHCHECKS_WARN_URL",
+                    # The weekly's own check (25 November 2026): optional, and the
+                    # person's to create; the weekly no longer tells the nightly's.
+                    "HEALTHCHECKS_WEEKLY_URL"}
 
 
 @check("workflows", "the workflow files parse, pin every action to a commit, and time out")
@@ -748,8 +751,10 @@ def _workflows_site_handoff():
 
 
 # The workflows whose every kind of run (WF_RUNS) Healthchecks is held to:
-# every workflow that names HEALTHCHECKS_URL, which the check holds too.
+# every workflow that names HEALTHCHECKS_URL, or the weekly's own
+# HEALTHCHECKS_WEEKLY_URL (25 November 2026), which the check holds too.
 WF_PINGS = ("nightly.yml", "weekly.yml")
+HC_PING_SECRET = re.compile(r"secrets\.HEALTHCHECKS_(?:WEEKLY_)?URL\b")
 
 
 # The first thing a Healthchecks step's script does: compare the ref with
@@ -771,8 +776,9 @@ def _workflows_healthchecks():
     dry run at all, by the box or by the branch, and for every run that is
     not one -- a scheduled night, a run by hand of main with Dry run
     unticked -- in the outcome it is there for, as before. The weekly's ping,
-    which tells Healthchecks only of a week that failed, likewise: never for
-    a week off main. Every workflow that names HEALTHCHECKS_URL is held. And
+    to a check of its own since 25 November 2026 (HEALTHCHECKS_WEEKLY_URL:
+    how the week ended), likewise: never for a week off main. Every workflow
+    that names either secret is held. And
     since no if can tell refs/heads/Main from main -- GitHub compares strings
     without case, and nightly.py does not (the review of 7 October 2026) --
     each such step's script compares the ref exactly before it pings
@@ -780,8 +786,8 @@ def _workflows_healthchecks():
     files = {f.name: f for f in _workflows()}
     if not files:
         return "skip", "no .github/workflows here"
-    naming = sorted(n for n, f in files.items() if "secrets.HEALTHCHECKS_URL" in
-                    "\n".join(_wf_code(f.read_text(encoding="utf-8").splitlines())))
+    naming = sorted(n for n, f in files.items() if HC_PING_SECRET.search(
+                    "\n".join(_wf_code(f.read_text(encoding="utf-8").splitlines()))))
     assert set(naming) <= set(WF_PINGS), \
         f"{sorted(set(naming) - set(WF_PINGS))} ping Healthchecks and are not held to the dry-run rule"
     held = []
@@ -799,7 +805,7 @@ def _workflows_healthchecks():
         for jl in _wf_jobs("\n".join(lines)).values():
             for st in _wf_steps(_wf_code(jl)):
                 s = "\n".join(st)
-                if "secrets.HEALTHCHECKS_URL" not in s:
+                if not HC_PING_SECRET.search(s):
                     continue
                 m = re.search(r"^        if:\s*(.+?)\s*$", s, re.M)
                 cond = _gh_unwrap(m.group(1)) if m else "true"
