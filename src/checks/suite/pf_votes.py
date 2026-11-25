@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.3
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of roll calls and the votes pages.
 
@@ -1822,12 +1822,16 @@ def _votes_sidebar():
     frame = re.findall("|".join(re.escape(p) for p in parts), page)
     if frame != parts:
         bad.append(f"the frame of the filters and the list is not the bill search's: {frame}")
-    bills = _source("src/pages/bills.html")
+    # Worded as the bill search's button is ("Filter by" and some of its filters), and naming the votes'
+    # own: held to the form of the bill search's words, which are the bill search's to change.
+    theirs = re.search(r'id="ftoggle"[^>]*><span>([^<]*)</span>', _source("src/pages/bills.html"), re.S)
+    theirs = " ".join(theirs.group(1).split()).lower() if theirs else ""
     said = str(getattr(VPG, "TOGGLE", "")).lower()
     named = re.findall(r"[a-z]+", said.replace("filter by ", "", 1))
-    if not (said.startswith("filter by ") and "Filter by topic, sponsor or committee" in re.sub(r"\s+", " ", bills)
+    if not (theirs.startswith("filter by ") and said.startswith("filter by ") and named
             and set(named) - {"or"} <= {"chamber", "date", "dates", "result", "margin", "kind", "member"}):
-        bad.append(f"the Filter button says {said!r}: the bill search's words for its own filters")
+        bad.append(f"the Filter button says {said!r}, where the bill search's says {theirs!r}: the bill search's "
+                   "way of words, naming the votes' own filters")
     js = _source("src/pages/app.js")
     block = js[js.index("THE VOTES PAGE ====="):]
     for old in ("bfilt", "vfilters", "vtoggle", "vsearch", "vbadge"):
