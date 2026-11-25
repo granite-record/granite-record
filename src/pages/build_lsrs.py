@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.38
+# GRANITE_VERSION: 2026-09-18.39
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -132,7 +132,8 @@ def _fold(s):
 
 
 def roster(site, collected="collected", year=None):
-    """{folded name: (label, slug, chamber)} for the sitting members.
+    """{folded name: (label, slug, chamber[, the chamber they sit in now])}
+    for the sitting members.
 
     The source names a sponsor "Ellen Read" and nothing more. The roster has
     her party, her seat and her page, and a request is filed by somebody
@@ -144,6 +145,17 @@ def roster(site, collected="collected", year=None):
     if not p.exists():
         return {}
     out = {}
+    # AND FROM THE DAY THEY TAKE OFFICE, A SITTING MEMBER ELECTED TO THE OTHER
+    # CHAMBER IS LABELLED AS THE OFFICE THEY HOLD (chamber_moves; 25 November
+    # 2026): a House request of Laura Telerski's, or her name as a co-sponsor,
+    # would have read the House roster's "Rep. Laura Telerski (D)" on 2
+    # December, when she sits in the Senate. Matched as the roster has them --
+    # the third field stays the chamber it seats them in, so a request of the
+    # chamber they won still goes to its winners (below) -- and labelled with
+    # that chamber's title and the party they were elected under; the fourth
+    # field is the chamber they sit in now, which a request's Sponsors group
+    # them by (rows_from's "chamber" and "sponsor_chamber").
+    moved = chamber_moves(site, collected) if took_office(site) else {}
     for m in json.loads(p.read_text(encoding="utf-8")):
         # "Abbas, Daryl" -- surname first, and there are no separate first and
         # last fields on the roster to read instead; every one of the 406 has
@@ -166,8 +178,15 @@ def roster(site, collected="collected", year=None):
         # (winner_finder) and drawn under that title (election_winners), as
         # their own page is -- never under the House seat's label.
         ch = str(m.get("chamber") or "")[:1].upper()
+        label, now = m.get("display") or m.get("name"), ()
+        if m.get("slug") in moved and ch in ("H", "S"):
+            won, party = moved[m["slug"]]
+            party = party or party_of(label)
+            label = (f"{office_title(won)} {label_name(m.get('display')) or f'{first} {last}'}"
+                     + (f" ({party})" if party else ""))
+            now = (won,)
         out[key] = None if key in out else (
-            (m.get("display") or m.get("name"), m.get("slug")) + ((ch,) if ch in ("H", "S") else ()))
+            (label, m.get("slug")) + ((ch,) + now if ch in ("H", "S") else ()))
     # AND THE NEW MEMBERS-ELECT, WHO HAVE A PROVISIONAL PAGE (Alice, 7 November
     # 2026; build_elect_pages.py): matched "by name only where certain" -- the
     # same folded name, the request's chamber theirs (the third field, which
@@ -295,6 +314,30 @@ def took_office(site):
     import build_date
     day = _takes_office(site)
     return bool(day) and build_date.today().isoformat() >= day
+
+
+def chamber_moves(site, collected="collected"):
+    """{slug: (chamber, party)} for the sitting members the newest election
+    sent to the other chamber, while the roster is still the term the election
+    ended: each sitting member a race of the other chamber elected ("k"
+    "sitting", "s" their slug; election_races), with that race's chamber and
+    the party they were elected under ("p"). {} once the roster is the new
+    term's, which seats them in their new chamber itself, or where the races
+    cannot be read."""
+    races, turned, _term, _why = election_races(site, collected)
+    if turned or not races:
+        return {}
+    p = Path(site) / "legislators.json"
+    sits = {m.get("slug"): str(m.get("chamber") or "")[:1].upper()
+            for m in (json.loads(p.read_text(encoding="utf-8")) if p.is_file() else [])}
+    out = {}
+    for key, race in races.items():
+        ch = key.split("|")[0]
+        for e in race.get("elected") or []:
+            s = e.get("s")
+            if e.get("k") == "sitting" and s and sits.get(s) in ("H", "S") and sits[s] != ch:
+                out[s] = (ch, str(e.get("p") or "").upper())
+    return out
 
 
 def page_names(site):
@@ -971,7 +1014,9 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
         # carries the chamber their match gives ("chamber"), and the row its
         # prime sponsor's ("sponsor_chamber": theirs, else the chamber the
         # request is filed in), which its page and card group them by as a
-        # bill's sponsors are grouped (build_request_pages.sponsors_section).
+        # bill's sponsors are grouped (build_request_pages.sponsors_section):
+        # the chamber they sit in now, where the roster gives it (a member
+        # elected to the other chamber, from the day they take office).
         co = []
         for c in r.get("cosponsors") or []:
             c = str(c or "").strip()
@@ -979,8 +1024,8 @@ def rows_from(lsrs, who, became=None, year=None, winners=None, earlier=None, fil
             if c:
                 co.append({"label": h[0] if h else c, "slug": h[1] if h else "", "name": c,
                            **({"party": party_of(h[0])} if h and party_of(h[0]) else {}),
-                           **({"chamber": h[2]} if h and len(h) > 2 and h[2] in ("H", "S") else {})})
-        mine = (hit[2] if hit and len(hit) > 2 and hit[2] in ("H", "S") else chamber_of(body)) if co else None
+                           **({"chamber": h[-1]} if h and len(h) > 2 and h[-1] in ("H", "S") else {})})
+        mine = (hit[-1] if hit and len(hit) > 2 and hit[-1] in ("H", "S") else chamber_of(body)) if co else None
         rows.append({
             "id": "LSR" + num.replace("-", ""),
             "n": "LSR " + num,
