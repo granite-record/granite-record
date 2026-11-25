@@ -200,7 +200,10 @@ looks for new livestreams (`src/ops/livestreams.py --since-state`), and runs
 refusal is on file; since 16 November 2026, after its list of calendars and
 journals, those documents the kit does not hold, 25 a night at most, their
 text, and the House committees' reports, the amendments and the meetings read
-off it again where it changed (`nightly.take_document_files`); since 17
+off it again where it changed (`nightly.take_document_files`), each document
+under the archive's name, `HC001` -- one the list gave as "HC 1", as it gave
+the 2027 session's first calendar, is put under it before the list is read
+(`fetch_calendar_archive.renumber`, 25 November 2026); since 17
 November 2026, after those, the bill requests' texts the request list links and
 the kit does not hold, 10 a night at most, and their text
 (`nightly.take_lsr_texts`); the rebuild,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.111
+# GRANITE_VERSION: 2026-09-04.112
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -4593,6 +4593,16 @@ def take_documents(v=None):
         f.unlink(missing_ok=True)
     try:
         import fetch_calendar_archive as CA
+        # A DOCUMENT KEPT UNDER ITS SOURCE NAME, PUT UNDER THE ARCHIVE'S (25
+        # November 2026): "HC 1.pdf", the 2027 session's first House Calendar,
+        # which no reader of the calendars took for one. Before the list is
+        # read, so the list is judged against the queue it is handed.
+        renamed, unrenamed = CA.renumber(DOCS)
+        for old, new_ in renamed:
+            say(f"  the list of calendars and journals: {old} put under the archive's name, {new_}")
+        for old in unrenamed:
+            say(f"  the list of calendars and journals: {old} left under its own name: the "
+                "archive's name for it is another document's", echo=False)
         was = CA.read_rows(DOCS)
     except Exception as e:                                      # noqa: BLE001
         say(f"  the list of calendars and journals not taken: {type(e).__name__}: {e}",

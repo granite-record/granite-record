@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-29.3
+# GRANITE_VERSION: 2026-10-29.4
 """
 What each House committee said about the bills it held for interim study:
 the INTERIM STUDY STATEMENTS of the House Calendar's autumn edition.
@@ -346,7 +346,10 @@ def read(root="."):
             spelled.setdefault(h, n)
     for f, sec in found:
         year = f.parent.name
-        num = re.match(r"HC0*(\d+[A-Z]?)", f.stem).group(1)
+        # The archive's "HC010" and the General Court's own "HC 1" alike (25
+        # November 2026, fetch_committee_reports.CALENDAR_FILE): a name this
+        # read as no calendar stopped the step on .group of nothing.
+        num = re.match(r"HC\s*0*(\d+[A-Za-z]?)", f.stem).group(1).upper()
         source = f"House Calendar {num}, {year}"
         term = P.term_of(year)
         n = h = 0

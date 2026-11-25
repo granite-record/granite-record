@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.15
+# GRANITE_VERSION: 2026-09-08.16
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -248,8 +248,17 @@ def _local(prefix, name, label):
     filename, because a filename can be "SC 29.pdf" with no "No" in it at all
     while its label still reads "No 29". Where neither carries a number the
     source name is kept, so nothing is silently renamed to a collision.
+
+    AND A NAME THAT IS THE ARCHIVE'S OWN LETTERS AND A NUMBER (25 November
+    2026). The first House Calendar of the 2027 session was listed as "HC
+    1.pdf" with a label that names no "No", and was kept as "HC 1.pdf",
+    which no reader of the calendars took for one: the night's re-read of
+    2027's committee reports found "no calendars in calendars/2027/" and
+    held the night. A name that is the list's own letters (HC, SC, HJ, SJ),
+    a space or none and a number, is that number.
     """
-    m = DOCNUM_RE.search(label or "") or DOCNUM_RE.search(name or "")
+    m = DOCNUM_RE.search(label or "") or DOCNUM_RE.search(name or "") \
+        or re.match(rf"{re.escape(prefix)}\s*(\d+[A-Za-z]?)\.pdf$", name or "", re.I)
     if not m:
         return name
     num = m.group(1)
@@ -280,6 +289,52 @@ def write_rows(path, rows):
         for r in rows:
             w.writerow({k: r.get(k) or "" for k in FIELDS})
     tmp.replace(path)
+
+
+def renumber(queue=None):
+    """[(old path, new path)] of the documents put under the archive's name
+    tonight, and [old path] of those that could not be: a row of `queue`
+    (QUEUE by default) whose document was kept under its source name, as
+    _local kept a name in which it found no number, and whose name _local
+    numbers now (AND A NAME THAT IS THE ARCHIVE'S OWN LETTERS AND A NUMBER):
+    its PDF and the text beside it are renamed on this disk, and its path in
+    the queue, which is written whole. Run by the night before the list is
+    read (nightly.take_documents), so the list's judge() finds the queue it
+    compares and the queue it is handed the same.
+
+    Asks nobody and fetches nothing. Never on a laptop that has stood down,
+    where the queue is the night's to write (list_is_the_nights), and never
+    over a file or a row already at the new name: that one keeps its name,
+    and is said."""
+    queue = Path(queue or QUEUE)
+    if list_is_the_nights() or not queue.exists():
+        return [], []
+    rows = read_rows(queue)
+    taken = {(r.get("path") or "").replace("\\", "/").lower() for r in rows}
+    moved, left = [], []
+    for r in rows:
+        src = SOURCES.get((r.get("chamber"), r.get("kind")))
+        path, name = r.get("path") or "", r.get("name") or ""
+        if not src or not path or not name or path.replace("\\", "/").rsplit("/", 1)[-1] != name:
+            continue
+        new_name = _local(src[4], name, r.get("label") or "")
+        if new_name == name:
+            continue
+        new = path[:len(path) - len(name)] + new_name
+        old_p, new_p = Path(path), Path(new)
+        if new.replace("\\", "/").lower() in taken or new_p.exists() \
+                or new_p.with_suffix(".txt").exists():
+            left.append(path)
+            continue
+        for a, b in ((old_p, new_p), (old_p.with_suffix(".txt"), new_p.with_suffix(".txt"))):
+            if a.exists():
+                os.replace(a, b)
+        taken.add(new.replace("\\", "/").lower())
+        r["path"] = new
+        moved.append((path, new))
+    if moved:
+        write_rows(queue, rows)
+    return moved, left
 
 
 def _key(r):
