@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.303
+# GRANITE_VERSION: 2026-09-04.304
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3081,7 +3081,7 @@ def officials_pages(out, legs, C):
             # "Members-Elect (N)", N the winners the file names: a race not
             # final counts none, and a tab of none says no number, as any tab.
             ("members-elect", say(lang, "of.tab.elect", "Members-Elect"), OT.elect_count(elect),
-             OT.members_elect(elect, today, lang, [*legs, *gone], elect_towns, C)),
+             OT.members_elect(elect, today, lang, [*legs, *gone], elect_towns)),
             ("federal", say(lang, "of.tab.federal", "Federal Delegation"),
              OT.count(off, "federal"), OT.federal(off, lang)),
             ("executive", say(lang, "of.tab.executive", "Executive Branch"),

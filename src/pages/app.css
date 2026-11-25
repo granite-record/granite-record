@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.420 */
+/* GRANITE_VERSION: 2026-09-07.421 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -10073,11 +10073,6 @@ color:var(--ink-2);margin:0 0 var(--sp-3)}
 :where(body.pg) .ovincoming:not([hidden]) ~ .ovsitting .ovch .comp > .pbar2{height:8px}
 :where(body.pg) .ovincoming:not([hidden]) ~ .ovsitting .comp{display:flex;flex-direction:column}
 :where(body.pg) .ovincoming:not([hidden]) ~ .ovsitting .compshort{order:-1}
-:where(body.pg) .compnow{margin:var(--sp-5) 0 0}
-:where(body.pg) .compnowl{margin:0 0 var(--sp-3) !important;font-size:var(--t-sm);color:var(--ink-2)}
-:where(body.pg) .compnowl b{color:var(--ink);font-weight:600;margin-right:var(--sp-2)}
-:where(body.pg) .compnowl .csb{white-space:nowrap}
-:where(body.pg) .pbar2.pbarthin{height:8px}
 :where(body.pg) .ovpeople{display:flex;flex-wrap:wrap;gap:var(--sp-4) var(--sp-5)}
 :where(body.pg) .ovpeople .mchip{margin:0}
 :where(body.pg) .ovlist{list-style:none;margin:0;padding:0;display:grid;gap:var(--sp-4)}

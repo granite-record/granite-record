@@ -2400,8 +2400,8 @@ Members-Elect tab, laid out as the Legislators tab is (the Senate and then
 the House, by last name or by county), each member-elect the person chip with
 one word beside it -- Returning, Incumbent, New chamber, New or Prior service
 not on record, the status `build_members_elect.elect_status` gives (below) --
-and each chamber's totals at the top, with the chamber as it sits
-smaller under each, and on the Officials overview, whose Legislature
+and each chamber's totals at the top (the chambers as they sit are the
+Overview's, since 24 November 2026), and on the Officials overview, whose Legislature
 leads with the incoming chambers until the day they sit; as one
 line on the page of each member the file links, which `app.js` draws from
 `GR_ELECT` only for that member (a former member elected again is re-headed

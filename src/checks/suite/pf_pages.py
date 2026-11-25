@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.39
+# GRANITE_VERSION: 2026-11-16.40
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -31,7 +31,8 @@ from pf_shared import (BASE_HREF, INLINE_BODY, OFFSITE, _HEARD_PRELUDE, _LEFT_OU
                        _ballot_mixed_rows, _bill_index_write, _built_sites, _cite_plain,
                        _css_can_reach, _css_decls, _css_hex, _css_palette, _css_ratio,
                        _css_rules, _css_screen_rules, _css_selectors, _css_specificity,
-                       _css_token_colour, _css_won, _fixture_drawn, _html_walk, _mk,
+                       _css_token_colour, _css_won, _elect_absent, _elect_built, _fixture_drawn,
+                       _html_walk, _mk,
                        _narratives, _officials_now, _plant, _published_harnesses, _site_bills,
                        _site_gen, _site_records, page_source)
 
@@ -14718,30 +14719,59 @@ def _officials_overview_elect_labels(OV):
                   "without the key; the same in Spanish")
 
 
-@check("frontend", "the Members-elect tab draws who sits now, smaller, under each chamber's "
-       "members-elect", needs=("officials_tabs",))
-def _members_elect_sitting_compare(OT):
-    """The owner, 21 November 2026: "keep the currently serving legislators on
-    the members elect page." Read as: the tab's totals keep the chambers as
-    they sit beside the incoming ones, and nothing leaves Legislators. Over
-    the fixture's members-elect and chambers, officials_tabs.members_elect
-    draws, under each chamber's bar of members-elect, "Serving now" and that
-    chamber's sitting counts on a thin bar -- the Senate's under the
-    Senate's, the House's under the House's -- and none without the
-    chambers; the rest of the tab is the same either way."""
-    with_ = OT.members_elect(_OV_ELECT, "2026-11-20", "en", [], {}, _OV_COMP)
-    without = OT.members_elect(_OV_ELECT, "2026-11-20", "en", [], {})
-    comps = with_.split('<div class="comp">')[1:]
-    assert len(comps) == 2 and all(c.count('<div class="compnow">') == 1 for c in comps) \
-        and "<b>Senate</b>" in comps[0] and "2 of 2 seats elected" in comps[0] \
-        and comps[0].find("2 of 2 seats elected") < comps[0].find('<div class="compnow">') \
-        and "16 <span" in comps[0] and "<b>House</b>" in comps[1] and "212 <span" in comps[1] \
-        and "18 vacant" in comps[1] and with_.count("<b>Serving now</b>") == 2, (
-            "the sitting chambers are not drawn under the members-elect's, each under its own")
-    assert "compnow" not in without and re.sub(r'<div class="compnow">.*?</div></div>', "", with_,
-                                               flags=re.S) == without, (
-        "the comparison changes the tab beyond itself, or is drawn without the chambers")
-    return "ok", "\"Serving now\" and the sitting counts on a thin bar under the Senate's and the House's"
+@check("build", "the Members-elect tab draws each chamber's members-elect and no \"Serving now\" bar "
+                "under it, in both languages; the Overview's \"Serving until then\" and the town pages' "
+                "\"Serving now\" stay", needs=("officials_tabs",))
+def _members_elect_no_serving_now(OT):
+    """The owner, 24 November 2026: "Remove the serving now section on the
+    members elect tab since it's already on the overview page" -- "it just
+    adds visual clutter on the member's elect page and is unnecessary." From
+    21 November each chamber's bar on the tab had its sitting members under
+    it, "Serving now" on a thin bar (officials_tabs.sitting_compare, .compnow
+    in app.css); both are gone. Held on the Officials page the fixture's
+    election builds, in English and in Spanish: the Members-elect panel draws
+    the Senate's and the House's bars of members-elect, and no "Serving now"
+    (or its Spanish), no .compnow and no thin bar; the Overview panel still
+    says "Serving until then" over the chambers as they sit; a town page
+    still puts "Serving now" over who sits; and app.css styles no .compnow
+    or .pbarthin. And officials_tabs.members_elect alone draws the two bars."""
+    import i18n
+    alone = OT.members_elect(_OV_ELECT, "2026-11-20", "en", [], {})
+    assert alone.count('<div class="comp">') == 2 and "2 of 2 seats elected" in alone \
+        and "compnow" not in alone and "Serving now" not in alone, (
+            "officials_tabs.members_elect does not draw the two chambers' bars alone")
+    css = _source("src/pages/app.css")
+    assert not re.search(r"\.(compnow|compnowl|pbarthin)\b", css), (
+        "app.css still styles the Members-elect tab's Serving now bars (.compnow, .pbarthin)")
+    absent = _elect_absent()
+    if absent:
+        return "skip", "not here: " + ", ".join(absent) + " (members_elect alone draws no Serving now)"
+    w, _o, _doc, _said = _elect_built()
+    site = w / "site"
+
+    def panel(t, pid):
+        start = t.find(f'<div class="twnpane" id="{pid}" role="tabpanel"')
+        assert start >= 0, f"the Officials page has no {pid} panel"
+        end = t.find('<div class="twnpane" id=', start + 1)
+        return t[start:end if end > 0 else len(t)]
+    said = []
+    for lang, page in (("en", "officials.html"), ("es", "es/officials.html")):
+        t = (site / page).read_text(encoding="utf-8")
+        me, ov = panel(t, "members-elect"), panel(t, "overview")
+        now = i18n.say(lang, "elect.serving", "Serving now")
+        until = i18n.say(lang, "of.ov.sitting_until", "Serving until then")
+        bars = me.count('<div class="comp">')
+        assert bars == 2 and "compnow" not in me and "pbarthin" not in me and now not in me, (
+            f"{page}: the Members-elect panel draws {bars} chamber bars, or still a \"{now}\" bar "
+            "under them")
+        assert until in ov, f"{page}: the Overview no longer says \"{until}\" over the sitting chambers"
+        said.append(lang)
+    towns = sorted((site / "town").glob("*.html"))
+    assert any('class="elnow" data-elect' in f.read_text(encoding="utf-8") for f in towns), (
+        "no town page puts \"Serving now\" over who sits any more")
+    return "ok", (f"the Members-elect panel draws two chamber bars and no Serving now in {' and '.join(said)}; "
+                  "the Overview keeps Serving until then, the town pages Serving now; app.css styles no "
+                  ".compnow")
 
 
 @check("frontend", "the Officials row opens on the Overview, its first item, in My Town's place")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.29
+# GRANITE_VERSION: 2026-10-10.30
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -950,35 +950,20 @@ def bar_segs(groups, seats):
                    f'title="{E(w)}: {n}"></span>' for _p, n, w, c in groups)
 
 
-def comp_block(name, said, groups, seats, lang="en", after=""):
+def comp_block(name, said, groups, seats, lang="en"):
     """One chamber's bar, as build_pages.static_bar draws the roster's, in its
     classes: its name and what the count says, the bar, its legend, and the
     one short line a phone shows (the walk of 8 November 2026: a chart on a
-    phone as well), then `after`."""
+    phone as well)."""
     legend = "".join(f'<span><span class="pdot {c}"></span>{E(w)} <b>{n}</b></span>'
                      for _p, n, w, c in groups)
     return (f'<div class="comp"><div class="compline"><b>{E(name)}</b>'
             f'<span class="statemeta">{said}</span></div><div class="pbar2">{bar_segs(groups, seats)}</div>'
             f'<div class="plegend">{legend}</div>'
-            f'<p class="compshort"><b>{E(name)}</b> {short_counts(groups, lang)}</p>' + after + "</div>")
+            f'<p class="compshort"><b>{E(name)}</b> {short_counts(groups, lang)}</p></div>')
 
 
-def sitting_compare(x, lang="en", label=None):
-    """WHO SITS NOW, SMALL, beside a bar of the members-elect (the owner, 21
-    November 2026): `label` ("Serving now" unless given) and the chamber's
-    sitting members by party on one line, over a thin bar of the same
-    seats, so the incoming chamber can be read against the one it follows.
-    "" without a composition."""
-    groups = sitting_groups(x, lang)
-    if not groups:
-        return ""
-    label = I.say(lang, "elect.serving", "Serving now") if label is None else label
-    return (f'<div class="compnow"><p class="compnowl"><b>{E(label)}</b> '
-            f'{short_counts(groups, lang)}</p>'
-            f'<div class="pbar2 pbarthin" aria-hidden="true">{bar_segs(groups, x.get("seats"))}</div></div>')
-
-
-def elect_totals(races, lang="en", by_id=None, sitting=None):
+def elect_totals(races, lang="en", by_id=None):
     """THE SEATS AT THE TOP (the owner's walk of 7 November 2026, C): the
     Legislators tab's "Who holds the seats", for the members-elect -- each
     chamber's members-elect by party, the cross-nominated apart and a
@@ -987,12 +972,12 @@ def elect_totals(races, lang="en", by_id=None, sitting=None):
     ("House 279 D &middot; 99 R &middot; 19 not final"). Drawn as
     build_pages.static_bar draws the roster's, in its classes.
 
-    AND WHO SITS NOW, SMALLER, UNDER EACH (the owner, 21 November 2026:
-    "keep the currently serving legislators on the members elect page"):
-    `sitting` is home.json's composition ({"S": ..., "H": ...}), and each
-    chamber's bar is followed by its sitting members by party on a thin bar
-    of their own (sitting_compare), so the two can be read against each
-    other. Nothing is drawn for it without one."""
+    AND NOTHING OF WHO SITS NOW (the owner, 24 November 2026: "Remove the
+    serving now section on the members elect tab since it's already on the
+    overview page"; "it just adds visual clutter on the member's elect page
+    and is unnecessary"). From 21 November each chamber's bar had its
+    sitting members under it, "Serving now" on a thin bar; the Overview's
+    "Serving until then" draws the chambers as they sit."""
     out = []
     for ch, sen in (("S", True), ("H", False)):
         got = elect_chamber(races, ch, lang)
@@ -1003,8 +988,7 @@ def elect_totals(races, lang="en", by_id=None, sitting=None):
         said = (I.say(lang, "elect.won_nf", "{won} of {seats} seats elected, {nf} not final",
                       won=len(won), seats=seats, nf=nf) if nf else
                 I.say(lang, "elect.won", "{won} of {seats} seats elected", won=len(won), seats=seats))
-        out.append(comp_block(name, said, groups, seats, lang,
-                              sitting_compare((sitting or {}).get(ch), lang)))
+        out.append(comp_block(name, said, groups, seats, lang))
     if not out:
         return ""
     # The kinds, one line a chamber, under the bars (the walk of dry run 8).
@@ -1110,7 +1094,7 @@ def elect_nf_count(rows, lang="en"):
             + I.say(lang, "elect.nf_named", "Who won the seats lists them, and By county.") + "</p>")
 
 
-def members_elect(elect, today, lang="en", people=None, towns=None, sitting=None):
+def members_elect(elect, today, lang="en", people=None, towns=None):
     """THE MEMBERS-ELECT TAB (the person's decisions of 16 October 2026):
     who November's election sent to the General Court, for the weeks before
     they sit -- the approved sentence; then each chamber's seats by party
@@ -1122,11 +1106,11 @@ def members_elect(elect, today, lang="en", people=None, towns=None, sitting=None
     the other two's double. Drawn from site/members_elect.json (`elect`,
     from build_members_elect.for_pages) and never beside the roster, which
     stays on the Legislators tab as who holds each seat; so no "Serving
-    now" here. Over the lists a search box and three filters (status, party,
+    now" here (the Overview draws the chambers as they sit: the owner, 24
+    November 2026). Over the lists a search box and three filters (status, party,
     chamber: elect_controls), written hidden for the script to show, over
     items that carry what they read; `towns` ({race key: [towns]}) lets a
-    town's name find its members-elect. `sitting`, home.json's composition,
-    draws who sits now, smaller, under each chamber's totals (elect_totals).
+    town's name find its members-elect.
     `people`, the sitting and former members, gives a linked
     member's surname for the order, the chamber they sit or sat in for
     their word, and the county the Legislators tab lists each Senate
@@ -1276,7 +1260,7 @@ def members_elect(elect, today, lang="en", people=None, towns=None, sitting=None
 </div>
 </section>"""
     return (f'<div class="elpane" data-elect{until_attrs(takes, today)}>' + intro
-            + elect_totals(races, lang, by_id, sitting)
+            + elect_totals(races, lang, by_id)
             + elect_controls([(k, e) for k, r in races.items() for e in r.get("elected") or []],
                              by_id, lang, races, towns)
             + views + ELECT_FILTER_JS + "</div>")
