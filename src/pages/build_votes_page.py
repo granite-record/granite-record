@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-13.3
+# GRANITE_VERSION: 2026-11-13.4
 """
 The votes page: /votes, a search of every roll call since 1999.
 
@@ -10,6 +10,18 @@ page is the shell every record page is made from (shell.page) with a heading
 and one lead; its list, its filters and its search are app.js's votes block
 (THE VOTES PAGE), which reads votes/index.json and the term files that
 build_votes.py writes. GR_VOTES, set here, is what makes app.js draw it.
+
+LAID OUT AS THE BILL SEARCH IS (the owner on the bench, 24 November 2026:
+"The votes page filters should be more similar to the left sidebar search
+filters on bill and law pages"). The page writes what bills.html writes for
+the bill search and build_rsa for the Laws page, in the same classes: across
+the top the term picker beside the box and its Return key (.qline, .qbox),
+and under them the Sort with the count beside it (.qhint); then the filters'
+column (.facets) beside the list, and the Filter button (.ftoggle) that
+opens them under 60em, worded the bill search's way with the votes' own
+filters. app.js fills the pickers once the terms are known and draws the
+groups into the column. Without scripts none of it is shown (app.css,
+html:not(.js)): the noscript line says where the votes are.
 
 WHAT IT SAYS OF ITS SCOPE is what it covers -- "Roll calls from 1999" -- and
 nothing of what came before (the owner, 12 November 2026): the roll calls of
@@ -46,6 +58,14 @@ LEAD = ("Every roll call of the New Hampshire House and Senate from 1999, with h
 # member's name.
 NOTE = ("A voice vote or a division records no member&rsquo;s vote, and is on the bill&rsquo;s "
         "page and its session day, not here.")
+# THE FILTER BUTTON'S WORDS, the bill search's way ("Filter by topic, sponsor
+# or committee"), naming the votes' own filters: three of the six, as the bill
+# search's names three of its seven -- the first group, and a day's votes and a
+# member's, which the design found most wanted after a bill's -- in the order
+# the groups stand in. On one line at a phone's 360px with the count beside
+# them (258px of its 264 in Chrome, 25 November 2026), where "chamber, date,
+# result or member" took two.
+TOGGLE = "Filter by chamber, date or member"
 
 
 def body():
@@ -53,9 +73,18 @@ def body():
 <h1 id="vhead">{TITLE}</h1>
 <p class="lead">{LEAD}</p>
 <p class="src fill">{NOTE}</p>
-<div id="vctl"></div>
-<p class="src" id="vcount" role="status" aria-live="polite">Loading&hellip;</p>
+<div class="vtop" id="vctl" role="search" aria-label="Search the votes">
+<form class="qline" id="vform" action="/votes"><label for="vterm" class="sr">Legislative term</label><select id="vterm" data-vf="term" title="Two-year term"></select><label for="vq" class="sr">Search the votes by bill number or words</label><div class="qbox"><input id="vq" name="q" type="search" spellcheck="false" autocomplete="off" disabled placeholder="Bill number or words"><button id="vgo" type="submit" disabled title="Search" aria-label="Search">&#8629;</button></div></form>
+<div class="qhint"><label for="vsort" class="sr">Sort order</label><select id="vsort" data-vf="sort"></select><span id="vcount" role="status" aria-live="polite" aria-atomic="true">Loading&hellip;</span></div>
+</div>
+<div class="vlay" id="vlay">
+<button class="ftoggle" id="vftoggle" type="button" aria-expanded="false" aria-controls="vfacets"><span>{TOGGLE}</span><span class="badge" hidden></span><span class="chev">&#9656;</span></button>
+<aside class="facets" id="vfacets" aria-label="Filters"></aside>
+<div class="vmain">
+<p class="src vnote" id="vclose" hidden></p>
 <div id="vlist"></div>
+</div>
+</div>
 <noscript><p class="note">This page needs JavaScript to search. Without it, each bill&rsquo;s page lists its votes on its Votes tab, and each session day lists the votes taken.</p></noscript>
 </div>"""
 
