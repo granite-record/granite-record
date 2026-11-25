@@ -1482,7 +1482,9 @@ a browser with real key presses. What it changed in how the code works:
 
 **A redraw gives focus back.** `app.js` draws by replacing markup, and the
 control that had focus is replaced with it. `render()`, `renderPage()` and
-`renderFacets()` each take the key of the focused control before they draw
+`renderFacets()` -- and the votes page's `votesFacets()`, which draws its
+filters with the bill search's own groups (`fgroupFrame`, `fcheck`) since
+25 November 2026 -- each take the key of the focused control before they draw
 (`focusKey`: its id; or its tag and data attributes, inside its card; or its
 tag and classes; and its place among what that matches) and focus the control
 with that key after (`refocus`), but only if the redraw took focus away. A

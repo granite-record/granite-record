@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of roll calls and the votes pages.
 
@@ -1262,13 +1262,20 @@ const terms = ["2025-2026", "2023-2024"], out = {bad: []};
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 for (const qs of ["", "?q=hb+1442", "?term=all&margin=close&body=H",
     "?from=2024-03-01&to=2024-03-31&result=failed&kind=Amendment&member=daryl-abbas-sd-22&sort=close&q=x",
-    "?term=2023-2024", "?from=2023-01-01&to=2026-01-01", "?q=a+b&sort=new", "?q=a&term=all"]) {
+    "?term=2023-2024", "?from=2023-01-01&to=2026-01-01", "?q=a+b&sort=new", "?q=a&term=all",
+    "?kind=Passage&kind=Amendment&body=S&body=H&margin=tied&margin=close&result=failed&result=passed"]) {
   const st = s.votesRead(qs, terms), a = s.votesAddr(st, terms), st2 = s.votesRead(a, terms);
   if (!same(st, st2)) out.bad.push(["round trip", qs, a, st, st2]);
   if (qs === "" && a !== "") out.bad.push(["a bare page has an address", a]);
 }
 if (s.votesAddr(s.votesRead("?from=2024-03-01", terms), terms) !== "from=2024-03-01")
   out.bad.push(["a day names its term", s.votesAddr(s.votesRead("?from=2024-03-01", terms), terms)]);
+// A filter of boxes is each value the address names, once, in the filter's own order; a single value,
+// as every link before the boxes wrote it, is that one box.
+out.many = s.votesAddr(s.votesRead("?kind=Passage&kind=Amendment&kind=Passage&body=S&body=H&margin=tied&margin=close" +
+  "&result=failed&result=passed&kind=Nope", terms), terms);
+out.one = [s.votesRead("?body=H", terms).body, s.votesRead("?kind=Veto+override", terms).kind,
+  s.votesRead("?margin=tied", terms).margin, s.votesRead("?result=failed", terms).result];
 const junk = s.votesRead("?body=X&result=zz&term=1850-1851&kind=Nope&margin=q&from=notaday", terms);
 if (!same(junk, s.votesDefault(terms))) out.bad.push(["a value it does not know is a filter", junk]);
 // Rows and ballots: three House roll calls and one Senate, five House members and two Senators.
@@ -1293,8 +1300,10 @@ for (const r of rows) {
   if (y !== r.y || n !== r.n) out.bad.push(["ballots do not count to the tally", r.id, y, n]);
 }
 const pass = (over, ids) => rows.filter(r => s.votesPass(r, Object.assign({}, st, over), ids || null)).map(r => r.id);
-out.close = pass({margin: "close"}); out.tied = pass({margin: "tied"}); out.house = pass({body: "H"});
-out.failed = pass({result: "failed"}); out.kind = pass({kind: "Amendment"}); out.days = pass({from: "2025-02-01", to: "2025-03-01"});
+out.close = pass({margin: ["close"]}); out.tied = pass({margin: ["tied"]}); out.house = pass({body: ["H"]});
+out.failed = pass({result: ["failed"]}); out.kind = pass({kind: ["Amendment"]}); out.days = pass({from: "2025-02-01", to: "2025-03-01"});
+out.either = pass({margin: ["close", "tied"]}); out.both = pass({body: ["H", "S"]});
+out.kinds = pass({kind: ["Amendment", "Procedural"]});
 out.m14 = pass({}, ["14"]); out.m20 = pass({}, ["20"]); out.m1 = pass({}, ["12"]);
 out.words = s.votesClose(rows[0]) + "|" + s.votesClose(rows[1]) + "|" + s.votesClose(rows[2]);
 process.stdout.write("\\n@@" + JSON.stringify(out));
@@ -1308,11 +1317,19 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
     assert not got["bad"], f"{got['bad'][:2]}"
     want = {"close": ["2025-H-1", "2025-S-1"], "tied": ["2025-H-2", "2025-S-1"], "house": ["2025-H-1", "2025-H-2", "2025-H-3"],
             "failed": ["2025-H-2"], "kind": ["2025-H-3"], "days": ["2025-H-2"],
+            "either": ["2025-H-1", "2025-H-2", "2025-S-1"], "both": ["2025-H-1", "2025-H-2", "2025-H-3", "2025-S-1"],
+            "kinds": ["2025-H-2", "2025-H-3"],
             "m14": ["2025-H-3"], "m20": ["2025-S-1"], "m1": ["2025-H-1", "2025-H-2", "2025-H-3"]}
     for k, v in want.items():
         assert got[k] == v, f"the filter {k} gave {got[k]}, not {v}"
+    assert got["many"] == ("body=H&body=S&result=passed&result=failed&margin=close&margin=tied"
+                           "&kind=Amendment&kind=Passage"), (
+        f"the boxes an address ticks are written back as {got['many']!r}: each value once, in its filter's order")
+    assert got["one"] == [["H"], ["Veto override"], ["tied"], ["failed"]], (
+        f"a link's one value is not its one box: {got['one']}")
     assert got["words"].startswith("Close: 1 voter would have had to switch|Tied|"), got["words"]
-    return "ok", "address round trip, filters, ballots tie to tallies, 1999 scope wording, no party label"
+    return "ok", ("address round trip, a value a parameter for each filter of boxes and one value its box, "
+                  "filters, ballots tie to tallies, 1999 scope wording, no party label")
 
 
 # THE VOTES PAGE AS A READER MET IT (the review of 14 November 2026, on the preview): a session
@@ -1324,6 +1341,9 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
 _VOTES_READER_JS = r"""
 require("./stub.js");
 const fs = require("fs");
+// The page's listeners, kept where the stub drops them, so a check can fire one.
+const HEARD = {};
+document.addEventListener = (t, f) => { (HEARD[t] = HEARD[t] || []).push(f); };
 const route = {};
 globalThis.fetch = async u => {
   const k = Object.keys(route).find(x => String(u).endsWith(x));
@@ -1333,7 +1353,7 @@ globalThis.fetch = async u => {
 let s;
 try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") +
   "; ({votesRead, votesAddr, votesPass, votesRowsOf, votesRowHtml, votesTermOf, votesDefault," +
-  " votesControls, votesDraw, votesNeedPeople, votesChange, voteGroups, renderVotes, VT, IDX, LOADED," +
+  " votesControls, votesFacets, votesDraw, votesNeedPeople, votesChange, voteGroups, renderVotes, VT, IDX, LOADED," +
   " sit: x => { SITDAYS = x; }})"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
 const tick = async n => { for (let i = 0; i < (n || 6); i++) await new Promise(r => setImmediate(r)); };
@@ -1351,8 +1371,8 @@ const rows = [
   {id: "2021-S-54", d: "2021-02-18", c: "S", b: "SB5", mk: "otp", k: "Committee report", q: "Ought to Pass", p: 1, y: 14, n: 10, t: "2021-2022"}];
 const st0 = s.votesDefault(terms);
 const pass = over => rows.filter(r => s.votesPass(r, Object.assign({}, st0, over), null)).map(r => r.id);
-out.day24 = pass({day: "2021-02-24", body: "H"}); out.day25 = pass({day: "2021-02-25", body: "H"});
-out.day18 = pass({day: "2021-02-18", body: "S"}); out.file26 = pass({from: "2021-02-26", to: "2021-02-26"});
+out.day24 = pass({day: "2021-02-24", body: ["H"]}); out.day25 = pass({day: "2021-02-25", body: ["H"]});
+out.day18 = pass({day: "2021-02-18", body: ["S"]}); out.file26 = pass({from: "2021-02-26", to: "2021-02-26"});
 s.sit({H: new Set(["2021-02-24", "2021-02-25"]), S: new Set(["2021-02-18"]), rc: {}});
 out.link1 = s.votesRowHtml(rows[0], 0, ""); out.link3 = s.votesRowHtml(rows[2], 2, "");
 // THE TERM FOLLOWS the dates and the member, in the address as on the page.
@@ -1420,23 +1440,29 @@ out.voiceOnly = s.renderVotes(bill, {rollcalls: [{question: "Ought to Pass", dat
   vote_kind: "VV", passed: true}]});
 out.withRc = s.renderVotes(bill, {rollcalls: [{question: "Ought to Pass", date: "2025-03-01", body: "H",
   passed: true, yeas: 200, nays: 150, tally: {}, members: []}]});
-// THE CONTROLS DRAWN AGAIN keep what is typed in the Member box, the focus and its caret, and the
-// phone's Filters state; the close-vote rule is under the filters only while Margin asks for close votes.
+// THE FILTERS DRAWN AGAIN WHEN THE MEMBERS ARRIVE keep what is typed in the Member box, the focus and
+// its caret; the Filter button is the page's own and no drawing of the filters writes it; the close-vote
+// rule is above the list only while Margin asks for close votes. The letters are typed through the
+// page's own handler (the votes page's listeners, heard where the stub would drop them).
+window.GR_VOTES = true;
 const box = {id: "vmem", value: "lar", selectionStart: 3, selectionEnd: 3, focused: 0,
   focus() { this.focused++; }, setSelectionRange(a, b) { this.range = [a, b]; }};
-const ctl = {id: "vctl", _html: "", contains: n => n === box};
-Object.defineProperty(ctl, "innerHTML", {get() { return ctl._html; }, set(v) { ctl._html = String(v); }});
-const page = {id: "vpage", classList: {contains: c => c === "vfopen", toggle() { return true; }}};
+const side = {id: "vfacets", _html: "", scrollTop: 0, contains: n => n === box, querySelectorAll: () => []};
+Object.defineProperty(side, "innerHTML", {get() { return side._html; }, set(v) { side._html = String(v); }});
+const shut = {id: "vclose", hidden: true, textContent: ""};
 const byId = document.getElementById.bind(document);
-document.getElementById = id => ({vctl: ctl, vmem: box, vpage: page})[id] || byId(id);
-document.activeElement = box;
+document.getElementById = id => ({vfacets: side, vmem: box, vclose: shut})[id] || byId(id);
 s.VT.st = s.votesRead("", terms);
-s.votesControls();
-out.ctl = ctl._html; out.focused = box.focused; out.range = box.range || null;
+(HEARD.input || []).filter(f => /GR_VOTES/.test(String(f))).forEach(f => f({target: box}));
+document.activeElement = box;
+s.VT.drawn = "";
+s.votesControls(); s.votesFacets(null, null);
+out.ctl = side._html; out.focused = box.focused; out.range = box.range || null;
+out.closeShut = [shut.hidden, shut.textContent];
 s.VT.st = s.votesRead("?margin=close", terms);
 document.activeElement = null;
 s.votesControls();
-out.ctlClose = ctl._html;
+out.closeOpen = [shut.hidden, shut.textContent];
 process.stdout.write("\n@@" + JSON.stringify(out));
 })().catch(e => { console.log("RUN " + e.constructor.name + ": " + e.message); process.exit(1); });
 """
@@ -1515,19 +1541,427 @@ def _votes_page_reads():
     if 'href="votes?q=HB+2&amp;term=2025-2026">Find these votes on the votes page' not in got["withRc"]:
         bad.append("a bill with a roll call does not lead to /votes?q=HB+2&term=2025-2026: "
                    + (re.search(r'<p class="src vlink">.*?</p>', got["withRc"], re.S) or [""])[0][:200])
-    # The controls keep what is in hand.
+    # The filters keep what is in hand; the Filter button is the page's, which no drawing writes.
     if 'id="vmem"' not in got["ctl"] or 'value="lar"' not in got["ctl"] or got["focused"] != 1 \
-            or got["range"] != [3, 3] or 'aria-expanded="true"' not in got["ctl"]:
-        bad.append("the controls drawn again lose the Member box's letters, its focus or caret, or the "
-                   f"Filters' state (focused {got['focused']}, caret {got['range']})")
-    if 'id="vclose" hidden' not in got["ctl"] or 'id="vclose" hidden' in got["ctlClose"] \
-            or "Close: 5 or fewer House voters" not in got["ctlClose"]:
-        bad.append("the close-vote rule is not under the filters only while Margin asks for close votes")
+            or got["range"] != [3, 3]:
+        bad.append("the filters drawn again lose the Member box's letters, its focus or caret "
+                   f"(focused {got['focused']}, caret {got['range']})")
+    toggle = '<button class="ftoggle" id="vftoggle" type="button" aria-expanded="false" aria-controls="vfacets">'
+    if toggle not in VPG.body() or "vftoggle" in got["ctl"]:
+        bad.append("the Filter button is not the page's own, written once, where no drawing of the filters "
+                   "can set it shut over a panel that is open")
+    if got["closeShut"][0] is not True or got["closeOpen"][0] is not False \
+            or not got["closeOpen"][1].startswith("Close: 5 or fewer House voters"):
+        bad.append(f"the close-vote rule is not above the list only while Margin asks for close votes: "
+                   f"{got['closeShut']} {got['closeOpen']}")
     assert not bad, "; ".join(bad[:4])
     return "ok", ("?day= lists the roll calls its page counts and links the file's date to it; the term "
                   "follows dates, a day and a member, in the address alike; the member is named and their "
                   "yeas and nays counted; an unknown member is dropped; 'veto' finds an override; the Member "
                   "box keeps its letters and focus; a voice-only bill has no link")
+
+
+# THE VOTES PAGE'S FILTERS AS THE BILL SEARCH'S (the owner on the bench, 24 November 2026: "The votes
+# page filters should be more similar to the left sidebar search filters on bill and law pages"; 25
+# November, start it). A term of seven roll calls and a term of two, a member's ballots, and every
+# address the page read before its filters were a sidebar, each drawn through votesDraw in node against
+# dom_stub.js; and the bill search's own sidebar drawn beside them, to compare their markup with.
+_VSIDE_ROWS = {
+    "2025-2026": [
+        {"id": "2025-H-1", "d": "2025-01-08", "c": "H", "b": "HB1", "k": "Committee report", "q": "Ought to Pass",
+         "p": 1, "y": 200, "n": 150, "f": 26},
+        {"id": "2025-H-2", "d": "2025-01-08", "c": "H", "b": "HB2", "k": "Amendment", "q": "Adopt the amendment",
+         "p": 0, "y": 170, "n": 172, "f": 2, "cl": 1},
+        {"id": "2025-H-3", "d": "2025-02-12", "c": "H", "b": "", "w": "Suspend the rules", "k": "Procedural",
+         "q": "Suspend the Rules", "p": 0, "y": 180, "n": 180, "f": 1, "cl": 1},
+        {"id": "2025-S-1", "d": "2025-01-30", "c": "S", "b": "SB4", "k": "Passage", "q": "Pass the bill",
+         "p": 1, "y": 14, "n": 10, "f": 3},
+        # A tie a question needing two thirds lost by four: tied, and not close.
+        {"id": "2025-S-2", "d": "2025-02-20", "c": "S", "b": "SB5", "k": "Veto override", "q": "Override the veto",
+         "p": 0, "y": 12, "n": 12, "f": 4},
+        {"id": "2025-S-3", "d": "2025-03-05", "c": "S", "b": "SB6", "k": "Amendment", "q": "Adopt the amendment",
+         "p": 1, "y": 13, "n": 11, "f": 2, "cl": 1},
+        # Dated the 6th by the file and counted on the 5th's session page.
+        {"id": "2025-H-4", "d": "2025-03-06", "s": "2025-03-05", "c": "H", "b": "HB7", "k": "Passage",
+         "q": "Pass the bill", "p": 1, "y": 300, "n": 50, "f": 126}],
+    "2023-2024": [
+        {"id": "2023-H-1", "d": "2023-02-01", "c": "H", "b": "HB8", "k": "Committee report", "q": "Ought to Pass",
+         "p": 0, "y": 100, "n": 250, "f": 76},
+        {"id": "2024-S-1", "d": "2024-04-04", "c": "S", "b": "SB9", "k": "Passage", "q": "Pass the bill",
+         "p": 1, "y": 20, "n": 4, "f": 9}]}
+# Rep. Jane Doe, member 10: yea on H-1, excused on H-2, nay on H-3, not on H-4.
+_VSIDE_JANE = {"2025-H-1": "Y", "2025-H-2": "E", "2025-H-3": "N", "2025-H-4": "."}
+# Every address the page read before the sidebar, each with what it means; and a few the boxes make.
+_VSIDE_CASES = [
+    ("", {}), ("?body=H", {"body": ["H"]}), ("?body=S", {"body": ["S"]}),
+    ("?result=failed", {"result": ["failed"]}), ("?result=passed", {"result": ["passed"]}),
+    ("?margin=close", {"margin": ["close"]}), ("?margin=tied", {"margin": ["tied"]}),
+    ("?kind=Amendment", {"kind": ["Amendment"]}), ("?kind=Veto+override", {"kind": ["Veto override"]}),
+    ("?from=2025-02-01&to=2025-02-28", {"from": "2025-02-01", "to": "2025-02-28"}),
+    ("?from=2025-03-06", {"from": "2025-03-06"}),
+    ("?day=2025-03-05&body=H", {"day": "2025-03-05", "body": ["H"]}),
+    ("?member=jane-doe", {"member": "jane-doe"}), ("?q=HB2", {"q": "HB2"}),
+    ("?term=2023-2024", {"term": "2023-2024"}), ("?term=all&kind=Passage", {"term": "all", "kind": ["Passage"]}),
+    ("?sort=close", {"sort": "close"}),
+    ("?kind=Amendment&kind=Passage&body=S", {"kind": ["Amendment", "Passage"], "body": ["S"]}),
+    ("?margin=close&margin=tied&result=failed", {"margin": ["close", "tied"], "result": ["failed"]})]
+_VSIDE_GROUPS = [("body", "Chamber"), ("dates", "Dates"), ("result", "Result"), ("margin", "Margin"),
+                 ("kind", "Kind of Question"), ("member", "Member")]
+_VSIDE_TICKS = ("body", "result", "margin", "kind")
+
+_VOTES_SIDE_JS = r"""
+require("./stub.js");
+const fs = require("fs");
+const HEARD = {};
+document.addEventListener = (t, f) => { (HEARD[t] = HEARD[t] || []).push(f); };
+const wrote = [];
+history.replaceState = (a, b, u) => { wrote.push(String(u)); location.search = String(u).includes("?") ? "?" + String(u).split("?")[1] : ""; };
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8") +
+  "; ({votesRead, votesAddr, votesDraw, votesControls, votesFacets, votesOpenFor, VT, renderFacets, sel," +
+  " openGroups, LOADED, setRCX: v => { RCX = v; }, setMeta: m => { META = m; }, setTerm: t => { term = t; }," +
+  " setRows: r => { IDX = r; }})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const fx = JSON.parse(fs.readFileSync("./fx.json", "utf8"));
+const out = {cases: {}, events: {}};
+(async () => {
+const terms = ["2025-2026", "2023-2024"], rcx = {};
+s.VT.idx = {terms, close: {H: 5, S: 2}, counts: {}};
+for (const [t, rows] of Object.entries(fx.rows)) {
+  s.VT.rows[t] = rows.map(r => Object.assign({t}, r));
+  rows.forEach(r => { rcx[r.id] = {y: r.y, n: r.n}; });
+}
+s.setRCX(rcx);
+// Both terms' bill indexes are taken as here, so no row waits on one (votesWants).
+s.LOADED.add("2025-2026"); s.LOADED.add("2023-2024");
+s.VT.bal["2025-2026"] = {chambers: {H: {m: ["10", "11"], r: Object.fromEntries(Object.entries(fx.jane).map(([k, l]) => [k, l + "Y"]))},
+  S: {m: ["20"], r: {"2025-S-1": "Y", "2025-S-2": "N", "2025-S-3": "Y"}}}};
+s.VT.people = [{slug: "jane-doe", ids: ["10"], terms: null, hay: "rep jane doe hills 4", former: false,
+  m: {slug: "jane-doe", display_plain: "Rep. Jane Doe", display_full: "Rep. Jane Doe (D - Hills 4)", party: "D"}}];
+s.VT.peopleAsked = true;
+const $ = id => document.getElementById(id);
+const badge = () => document.querySelector("#vftoggle .badge");
+const draw = qs => {
+  s.VT.st = s.votesRead(qs, terms); s.VT.openG = null; s.VT.drawn = "";
+  s.votesOpenFor(s.VT.st); s.votesControls(); s.votesDraw();
+  const b = badge();
+  return {side: $("vfacets").innerHTML, ids: [...$("vlist").innerHTML.matchAll(/data-vring="([^"]+)"/g)].map(m => m[1]),
+    count: $("vcount").textContent, term: $("vterm").value, sort: $("vsort").value, box: $("vq").value,
+    badge: [b.textContent, b.hidden], close: $("vclose").hidden, addr: s.votesAddr(s.VT.st, terms)};
+};
+for (const [qs] of fx.cases) out.cases[qs] = draw(qs);
+// THE BOXES HEARD: a box ticked and unticked through the page's own handler, every page's change
+// handler hearing it as the browser's would (the bill search's among them, which a box of data-f
+// would reach); the Filter button opening and Escape shutting the panel; a group's head opening it.
+window.GR_VOTES = true;
+const all = (type, ev) => { try { (HEARD[type] || []).forEach(f => f(ev)); return ""; }
+  catch (e) { return e.constructor.name + ": " + e.message; } };
+const mine = (type, ev) => (HEARD[type] || []).filter(f => /GR_VOTES/.test(String(f))).forEach(f => f(ev));
+draw("");
+const box = (v, on) => ({dataset: {vtick: "kind"}, value: v, checked: on, id: "", name: "", type: "checkbox",
+  tagName: "INPUT", form: null, closest: () => null, matches: () => false, getAttribute: () => null,
+  classList: {contains: () => false}});
+out.events.threw = all("change", {target: box("Procedural", true)});
+out.events.ticked = [s.VT.st.kind, wrote[wrote.length - 1] || "", /data-vtick="kind" value="Procedural" checked/.test($("vfacets").innerHTML)];
+all("change", {target: box("Procedural", false)});
+out.events.unticked = [s.VT.st.kind, wrote[wrote.length - 1] || ""];
+const cls = new Set(), lay = {id: "vlay", classList: {toggle: c => (cls.has(c) ? (cls.delete(c), false) : (cls.add(c), true)),
+  contains: c => cls.has(c), remove: c => cls.delete(c), add: c => cls.add(c)}};
+const attrs = {}, ftb = {id: "vftoggle", setAttribute: (k, v) => { attrs[k] = v; }, focus() { attrs.focused = true; }};
+const byId = document.getElementById.bind(document);
+document.getElementById = id => ({vlay: lay, vftoggle: ftb})[id] || byId(id);
+mine("click", {target: {closest: q => (q === "#vftoggle" ? ftb : null)}});
+out.events.opened = [cls.has("fopen"), attrs["aria-expanded"]];
+mine("keydown", {key: "Escape", target: {closest: q => (q === "#vfacets,#vftoggle" ? ftb : null)}});
+out.events.shut = [cls.has("fopen"), attrs["aria-expanded"], !!attrs.focused];
+const head = {getAttribute: k => (k === "data-g" ? "result" : null)};
+mine("click", {target: {closest: q => (q === "#vfacets .fhead" ? head : null)}});
+out.events.head = /data-g="result"\s+aria-expanded="true"/.test($("vfacets").innerHTML);
+document.getElementById = byId;
+// The bill search's own sidebar, over two bills, to hold the votes page's groups to its markup.
+s.setMeta({terms: ["2025-2026"], committee_codes: {}, topics: []});
+s.setRows([{id: "HB1", n: "HB 1", title: "a bill", kind: "done", status: "Killed", chip: "Died", committees: ["Finance"],
+  committee: "Finance", topic: "", sponsor: "", term: "2025-2026", year: 2025, passage: "", votedays: [], nrc: 0, last_action: ""},
+  {id: "SB2", n: "SB 2", title: "a bill", kind: "law", status: "Signed into law", chip: "Became Law", committees: [],
+  committee: "", topic: "", sponsor: "", term: "2025-2026", year: 2025, passage: "", votedays: [], nrc: 0, last_action: ""}]);
+s.LOADED.add("2025-2026"); s.setTerm("2025-2026");
+s.sel.status.add("Died");
+s.renderFacets();
+out.bills = document.querySelector("#facets").innerHTML;
+process.stdout.write("\n@@" + JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.constructor.name + ": " + e.message); process.exit(1); });
+"""
+# A filter group as the bill search's fgroup draws one, and a box of it as its short lists draw one.
+_VSIDE_FRAME = re.compile(r'<div class="fgroup (open)?"><button class="fhead" data-g="(\w+)"\s+aria-expanded="(true|false)">'
+                          r'<span>([^<]*)</span>(?:<span class="badge">(\d+)</span>)?\s*<span class="chev">▸</span>'
+                          r'</button><div class="fbody( whole)?" (hidden)?>')
+_VSIDE_BOX = re.compile(r'<label class="fopt (off)?( fzero)?">\s*<input type="checkbox" data-(f|vtick)="(\w+)" '
+                        r'value="([^"]*)" (checked)?>\s*<span>(.*?)</span>\s*<span class="c">([\d,]*)</span></label>', re.S)
+
+
+def _vside_vals(r, k):
+    """A roll call's values for a filter of boxes, as the page states them: its chamber, its result,
+    close where `cl` says so and tied where its yeas are its nays, and its kind of question."""
+    if k == "body":
+        return [r["c"]]
+    if k == "result":
+        return ["passed" if r["p"] else "failed"]
+    if k == "margin":
+        return [m for m, on in (("close", r.get("cl")), ("tied", r["y"] > 0 and r["y"] == r["n"])) if on]
+    return [r["k"]]
+
+
+def _vside_state(meaning):
+    st = {"q": "", "term": "2025-2026", "body": [], "result": [], "margin": [], "kind": [], "from": "", "to": "",
+          "day": "", "member": "", "sort": ""}
+    st.update(meaning)
+    return st
+
+
+def _vside_passes(r, st, ignore=None):
+    """Whether a roll call is listed under a state, the box group `ignore` left out: written here from
+    the rule the page states, not from its code."""
+    for k in _VSIDE_TICKS:
+        if k != ignore and st[k] and not set(_vside_vals(r, k)) & set(st[k]):
+            return False
+    if (st["from"] and r["d"] < st["from"]) or (st["to"] and r["d"] > st["to"]):
+        return False
+    if st["day"] and r.get("s", r["d"]) != st["day"]:
+        return False
+    if st["q"] and r["b"] != st["q"]:
+        return False
+    return not st["member"] or _VSIDE_JANE.get(r["id"], ".") != "."
+
+
+def _vside_listed(st):
+    """The roll calls a state lists, in its order: the newest first (the House before the Senate on a
+    day, the higher roll first), or the fewest voters from changing the outcome first."""
+    rows = [r for t, rs in _VSIDE_ROWS.items() if st["term"] in ("all", t) for r in rs]
+    newest = sorted(rows, key=lambda r: (r["d"], r["c"] == "H", int(r["id"].split("-")[2])), reverse=True)
+    rank = {r["id"]: i for i, r in enumerate(newest)}
+    hit = [r for r in newest if _vside_passes(r, st)]
+    if st["sort"] == "close":
+        hit.sort(key=lambda r: (r.get("f") is None, r.get("f") or 0, rank[r["id"]]))
+    return [r["id"] for r in hit], rows
+
+
+def _vside_addr(st):
+    """The address a state is written back as, by the page's rule: what differs from the page bare, in
+    the order q, term, body, from, to, day, result, margin, kind, member, sort, a filter of boxes a value
+    a parameter in its own order. Every case's term is the newest but where its address names one."""
+    from urllib.parse import urlencode
+    pairs = [("q", st["q"])] if st["q"] else []
+    pairs += [("term", st["term"])] if st["term"] != "2025-2026" else []
+    pairs += [("body", v) for v in st["body"]]
+    pairs += [(k, st[k]) for k in ("from", "to", "day") if st[k]]
+    pairs += [(k, v) for k in ("result", "margin", "kind") for v in st[k]]
+    pairs += [("member", st["member"])] if st["member"] else []
+    pairs += [("sort", st["sort"])] if st["sort"] and st["sort"] != ("best" if st["q"] else "new") else []
+    return urlencode(pairs)
+
+
+def _votes_side_run():
+    """_VOTES_SIDE_JS's answer over the fixture, or None where node, app.js or the stub is not here."""
+    js = Path("src/pages/app.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and Path("tests/dom_stub.js").exists() and node):
+        return None
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(_with_components(_source(js)), encoding="utf-8")
+        (root / "stub.js").write_text(_source("tests/dom_stub.js"), encoding="utf-8")
+        (root / "fx.json").write_text(json.dumps({"rows": _VSIDE_ROWS, "jane": _VSIDE_JANE, "cases": _VSIDE_CASES}),
+                                      encoding="utf-8")
+        (root / "go.js").write_text(_VOTES_SIDE_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js's votes page did not run under node: " + (r.stderr or r.stdout or "")[-400:])
+        return json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "the votes page's filters are the bill search's: its term picker, box, Sort and count "
+       "across the top; its groups at the side, drawn by its own pieces, Chamber alone open, each box with "
+       "the roll calls it would list; under 60em its Filter button, worded its way; its stylesheet's rules")
+def _votes_sidebar():
+    """The owner's ask of 24 November 2026, held. The page writes the bill search's top (bills.html:
+    the term picker beside the box and its Return key, then the Sort and the count beside it) and the
+    frame of its filters (the column, and the Filter button that opens it under 60em, its words the bill
+    search's way and naming the votes' own filters). app.js draws the groups into the column with the
+    bill search's own pieces: each group the markup fgroup draws, each box the markup its short lists
+    draw (data-vtick where the bill search's say data-f, so a votes box never reaches the bill search's
+    handler), in the order Chamber, Dates, Result, Margin, Kind of Question, Member; Chamber alone open
+    on a bare page, as Status is there; the Result's words the rows' own chips; each box's number the
+    roll calls the list would hold with it, the other filters and the term kept -- counted here from the
+    rule the page states, not its code -- greyed at none. The boxes, the Filter button, Escape and a
+    group's head are heard through the page's own handlers. And app.css names these ids in the bill
+    search's own rules, keeps the column where the template hides its own, and puts the button over the
+    groups under 60em; no rule of the old row is left."""
+    sys.path.insert(0, "src/pages")
+    try:
+        import build_votes_page as VPG
+    finally:
+        sys.path.pop(0)
+    page = VPG.body()
+    bad = []
+    # The top: the term picker, then the box and its key, as bills.html's .qline; the Sort before the count.
+    top = re.search(r'<div class="vtop" id="vctl" role="search" aria-label="Search the votes">(.*?)\n</div>', page, re.S)
+    parts = ['<form class="qline"', '<select id="vterm"', '<div class="qbox"><input id="vq"',
+             '<button id="vgo" type="submit"', '<div class="qhint">', '<select id="vsort"',
+             '<span id="vcount" role="status" aria-live="polite" aria-atomic="true">']
+    order = re.findall("|".join(re.escape(p) for p in parts), top.group(1) if top else "")
+    if order != parts:
+        bad.append(f"the top of the page is not the bill search's, the term picker and the box, then the Sort "
+                   f"before the count: {order}")
+    # The frame: the Filter button, the column, then the list, with the close-vote line above it.
+    parts = ['<div class="vlay" id="vlay">', '<button class="ftoggle" id="vftoggle" type="button" aria-expanded="false" '
+             'aria-controls="vfacets"><span>', '<span class="badge" hidden></span><span class="chev">',
+             '<aside class="facets" id="vfacets" aria-label="Filters"></aside>', '<div class="vmain">', 'id="vclose" hidden',
+             '<div id="vlist">']
+    frame = re.findall("|".join(re.escape(p) for p in parts), page)
+    if frame != parts:
+        bad.append(f"the frame of the filters and the list is not the bill search's: {frame}")
+    # Worded as the bill search's button is ("Filter by" and some of its filters), and naming the votes'
+    # own: held to the form of the bill search's words, which are the bill search's to change.
+    theirs = re.search(r'id="ftoggle"[^>]*><span>([^<]*)</span>', _source("src/pages/bills.html"), re.S)
+    theirs = " ".join(theirs.group(1).split()).lower() if theirs else ""
+    said = str(getattr(VPG, "TOGGLE", "")).lower()
+    named = re.findall(r"[a-z]+", said.replace("filter by ", "", 1))
+    if not (theirs.startswith("filter by ") and said.startswith("filter by ") and named
+            and set(named) - {"or"} <= {"chamber", "date", "dates", "result", "margin", "kind", "member"}):
+        bad.append(f"the Filter button says {said!r}, where the bill search's says {theirs!r}: the bill search's "
+                   "way of words, naming the votes' own filters")
+    js = _source("src/pages/app.js")
+    block = js[js.index("THE VOTES PAGE ====="):]
+    for old in ("bfilt", "vfilters", "vtoggle", "vsearch", "vbadge"):
+        if old in block or re.search(r"\b" + old + r"\b", page):
+            bad.append(f"the votes page still draws its old row ({old})")
+    if "fgroupFrame(" not in block or "fcheck(" not in block or 'class="fgroup' in block:
+        bad.append("the votes page draws its groups with markup of its own, not the bill search's pieces")
+    got = _votes_side_run()
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    # The bill search's own groups and boxes are the markup the pattern reads.
+    bf = [m.group(2) for m in _VSIDE_FRAME.finditer(got["bills"])]
+    bb = [m.group(4) for m in _VSIDE_BOX.finditer(got["bills"]) if m.group(3) == "f"]
+    if "status" not in bf or got["bills"].count('class="fgroup') != len(bf) or "status" not in bb:
+        bad.append(f"the pattern does not read the bill search's own groups ({bf}) and boxes ({sorted(set(bb))})")
+    groups_seen = 0
+    for qs, meaning in _VSIDE_CASES:
+        c, st = got["cases"][qs], _vside_state(meaning)
+        side = c["side"]
+        frames = list(_VSIDE_FRAME.finditer(side))
+        if side.count('class="fgroup') != len(frames) or [(m.group(2), m.group(4)) for m in frames] != _VSIDE_GROUPS:
+            bad.append(f"{qs or '/votes'}: the groups are {[(m.group(2), m.group(4)) for m in frames]}, not the bill "
+                       "search's markup in the order Chamber, Dates, Result, Margin, Kind of Question, Member")
+            continue
+        groups_seen += len(frames)
+        want_open = {"body"} | {k for k in _VSIDE_TICKS if st[k]} | ({"dates"} if st["from"] or st["to"] or st["day"]
+                                                                     else set()) | ({"member"} if st["member"] else set())
+        opened = {m.group(2) for m in frames if m.group(3) == "true"}
+        if opened != want_open or any((m.group(1) == "open") != (m.group(3) == "true") or
+                                      (m.group(7) == "hidden") == (m.group(3) == "true") for m in frames):
+            bad.append(f"{qs or '/votes'}: the groups open are {sorted(opened)}, not {sorted(want_open)}")
+        _ids, rows = _vside_listed(st)
+        for m in _VSIDE_BOX.finditer(side):
+            off, _z, attr, k, v, on, words, n = m.groups()
+            if attr != "vtick":
+                bad.append(f"{qs}: a box heard as {attr}")
+                continue
+            want = sum(1 for r in rows if _vside_passes(r, st, k) and v in _vside_vals(r, k))
+            if int(n.replace(",", "") or -1) != want or bool(off) != (want == 0 and not on) or bool(on) != (v in st[k]):
+                bad.append(f"{qs or '/votes'}: the {k} box {v!r} says {n} (off {bool(off)}, ticked {bool(on)}), where "
+                           f"{want} roll calls would be listed")
+        badges = {m.group(2): int(m.group(5) or 0) for m in frames}
+        for k in _VSIDE_TICKS:
+            if badges[k] != len(st[k]):
+                bad.append(f"{qs or '/votes'}: the {k} group's head says {badges[k]} ticked, not {len(st[k])}")
+    if not bad:
+        bare = got["cases"][""]["side"]
+        if bare.count('class="chip rcres pass">Motion Passed<') != 1 or bare.count('class="chip rcres fail">Motion Failed<') != 1:
+            bad.append("the Result's boxes are not the rows' own chips")
+        if 'class="sbox" id="vmem"' not in bare or 'id="vf-from"' not in bare or 'id="vf-to"' not in bare:
+            bad.append("the Member group has no name box, or the Dates group no From and To")
+    ev = got["events"]
+    if ev["threw"] or ev["ticked"][0] != ["Procedural"] or not ev["ticked"][1].endswith("?kind=Procedural") \
+            or not ev["ticked"][2] or ev["unticked"][0] != [] or "kind=" in ev["unticked"][1]:
+        bad.append(f"a box ticked and unticked through the page's handlers: {ev['threw'] or ev['ticked']} {ev['unticked']}")
+    if ev["opened"] != [True, "true"] or ev["shut"] != [False, "false", True] or not ev["head"]:
+        bad.append(f"the Filter button opens {ev['opened']}, Escape shuts {ev['shut']}, a head opens its group "
+                   f"{ev['head']}")
+    # The stylesheet: these ids in the bill search's rules; the column kept; the button under 60em.
+    css = re.sub(r"/\*.*?\*/", "", _source("src/pages/app.css"), flags=re.S)
+    for rule in ("#vq,#q,#rsq{", "#vq:focus,#q:focus,#rsq:focus{", ".qbox #vq,.qbox #q,.qbox #rsq{", "#vgo,#qgo,#rsgo{",
+                 "#vterm,#year{", "#vsort,#sort{", ".searchrow,.vtop{--pickw:", ".shell .vlay .facets{display:block}"):
+        if rule not in css:
+            bad.append(f"app.css has no {rule}")
+    narrow = re.search(r"@media \(max-width:59\.9375em\)\{\s*\.vlay\{(.*?)\n\}", css, re.S)
+    if not narrow or ".shell .vlay .ftoggle{display:flex}" not in narrow.group(0) \
+            or ".shell .vlay:not(.fopen) .facets{display:none}" not in narrow.group(0):
+        bad.append("under 60em the Filter button is not over the groups, shut until pressed")
+    if re.search(r"\.(?:vfilters|vtoggle|vsearch)\b|\.vpage\.vfopen", css):
+        bad.append("app.css keeps a rule of the old row")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", (f"the bill search's top and frame; {groups_seen} groups over {len(_VSIDE_CASES)} addresses in its "
+                  "markup, Chamber alone open on a bare page and each group an address sets with it, every box's "
+                  "number the roll calls it would list; the boxes, the button, Escape and a head heard; the "
+                  "stylesheet's rules")
+
+
+@check("frontend", "every address the votes page read before its sidebar lists the same roll calls and ticks "
+       "the box it names, the phone's Filter button carries how many filters are set, and the address the "
+       "page writes is the one it read")
+def _votes_address_ticks():
+    """KEEP every filter in the address (the brief of 25 November 2026): ?q=&term=&body=&from=&to=&day=
+    &result=&margin=&kind=&member=&sort=, the same names and meanings, so every link already out there
+    opens the same votes, and a parameter that now ticks a box ticks that box. Each address of a link
+    -- one value a filter, as every link before the boxes wrote it -- and a few the boxes write, each
+    drawn in node: the roll calls it lists are those the rule gives, counted here from the rule and
+    not from the page's code, in the page's order; the box it names is ticked and no other; the dates,
+    the session day, the member, the words, the term and the order are where the page shows them; the
+    close-vote line stands above the list only while Margin asks for close votes; the address the page
+    writes back is the canonical one; and the Filter button's count is how many filters the side has
+    set -- each box, each date, a session day, a member -- hidden at none, the term and the order across
+    the top not among them, as the bill search's button counts what its groups have ticked."""
+    got = _votes_side_run()
+    if got is None:
+        return "skip", "node, app.js or dom_stub.js is not here"
+    bad = []
+    for qs, meaning in _VSIDE_CASES:
+        c, st = got["cases"][qs], _vside_state(meaning)
+        where = qs or "/votes"
+        ids, _rows = _vside_listed(st)
+        if c["ids"] != ids:
+            bad.append(f"{where} lists {c['ids']}, not {ids}")
+        ticked = sorted((m.group(4), m.group(5)) for m in _VSIDE_BOX.finditer(c["side"]) if m.group(6))
+        want = sorted((k, v) for k in _VSIDE_TICKS for v in st[k])
+        if ticked != want:
+            bad.append(f"{where} ticks {ticked}, not {want}")
+        for key, field in (("from", "vf-from"), ("to", "vf-to")):
+            m = re.search(r'id="' + field + r'" data-vf="' + key + r'" value="([^"]*)"', c["side"])
+            if not m or m.group(1) != st[key]:
+                bad.append(f"{where}: the {key} box says {m and m.group(1)!r}, not {st[key]!r}")
+        if bool(st["day"]) != ("Session day" in c["side"]) or (st["day"] and "The House, March 5, 2025" not in c["side"]):
+            bad.append(f"{where}: the session day is not named in the Dates group with its Clear")
+        jane = 'class="mchip p-D"' in c["side"] and "data-vmemclear" in c["side"]
+        if bool(st["member"]) != jane or (st["member"] and "Rep. Jane Doe voted yea or nay on 2 of 3 roll calls"
+                                         not in c["count"]):
+            bad.append(f"{where}: the member is not shown as their chip with its Clear, or not counted: {c['count']!r}")
+        if c["term"] != st["term"] or c["box"] != st["q"] or c["sort"] != (st["sort"] or ("best" if st["q"] else "new")):
+            bad.append(f"{where}: the term picker {c['term']!r}, the box {c['box']!r}, the Sort {c['sort']!r}")
+        if c["close"] != ("close" not in st["margin"]):
+            bad.append(f"{where}: the close-vote line is {'hidden' if c['close'] else 'shown'}")
+        n = sum(len(st[k]) for k in _VSIDE_TICKS) + sum(1 for k in ("from", "to", "day", "member") if st[k])
+        if c["badge"] != ([str(n), False] if n else ["", True]):
+            bad.append(f"{where}: the Filter button carries {c['badge']}, where {n} filters are set")
+        if c["addr"] != _vside_addr(st):
+            bad.append(f"{where} is written back as {c['addr']!r}, not {_vside_addr(st)!r}")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", (f"{len(_VSIDE_CASES)} addresses, each a link's parameter or the boxes' own: the roll calls the "
+                  "rule gives, the box it names ticked and no other, the dates, the day, the member, the words, the "
+                  "term and the order in place, the address written back as read, and the Filter button carrying "
+                  "the filters set and not the term or the order")
 
 
 @check("data", "votes data: every roll call has a row, every counted tally ties to its ballots, the 14 stated "
