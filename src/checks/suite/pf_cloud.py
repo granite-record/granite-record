@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.2
+# GRANITE_VERSION: 2026-11-16.4
 """
 preflight's checks of the bucket and the refusals (cloud.py, refusal.py).
 
@@ -676,6 +676,72 @@ def _backup_fixture(CL, tmp):
     assert code == 0, f"the fixture's backup failed: {out[-300:]}"
     man = json.loads((bucket / "state" / "backup-manifest.json").read_text(encoding="utf-8"))
     return root, bucket, B, man
+
+
+@check("cloud", "kit-down asks once more, one file at a time, for what did not arrive: a file R2 "
+                "refused once comes down, and one it refuses twice still makes the kit short",
+       needs=("cloud",))
+def _kit_down_asks_again(CL):
+    """ONE MORE ASK (cloud.kit_down, 25 November 2026). R2 answered a dev dry
+    run's kit-down with "ServiceUnavailable: Reduce your rate of simultaneous
+    reads on the same object" for 9 of 36,255 files, after botocore's own ten
+    tries each, and the night stopped on a short kit. kit-down now asks for
+    what did not arrive once more, one file at a time after SECOND_PASS_PAUSE;
+    only what fails that ask too makes the kit short.
+
+    Against a folder bucket whose get_file refuses one kit file a set number of
+    times: refused once, kit-down ends 0 with the file byte for byte and says it
+    asked again; refused twice, it ends with THE KIT IS SHORT naming that file.
+    The pause is set to nothing here, so the check waits on nothing.
+    """
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-cloud-again-"))
+    real_open, real_pause = CL.open_bucket, CL.SECOND_PASS_PAUSE
+    key = "kit/legislation/2026/HB1.html"
+    refusals = {key: 0}
+
+    class Refusing(CL.FolderBucket):
+        def get_file(self, k, dst, size=None):
+            if refusals.get(k, 0) > 0:
+                refusals[k] -= 1
+                raise OSError("ServiceUnavailable: Reduce your rate of simultaneous reads on "
+                              "the same object.")
+            return super().get_file(k, dst, size=size)
+
+    try:
+        root, bucket = tmp / "laptop", tmp / "bucket"
+        root.mkdir()
+        _cloud_fixture(root, real)
+        B = ["--local-bucket", str(bucket)]
+        code, out = _cloud_call(CL, "seed-kit", "--root", str(root), *B)
+        assert code == 0, f"the fixture's seed-kit failed: {out[-300:]}"
+        code, out = _cloud_call(CL, "state-up", "--root", str(root), *B)
+        assert code == 0, f"the fixture's state-up failed: {out[-300:]}"
+        CL.open_bucket = lambda a, preview=False: Refusing(a.local_bucket, create=False)
+        CL.SECOND_PASS_PAUSE = 0
+        for times, whole in ((1, True), (2, False)):
+            night = tmp / f"night-{times}"
+            night.mkdir()
+            shutil.copy(root / "cloud_kit.json", night / "cloud_kit.json")
+            assert _cloud_call(CL, "state-down", "--root", str(night), *B)[0] == 0
+            refusals[key] = times
+            code, out = _cloud_call(CL, "kit-down", "--root", str(night), *B)
+            came = night / "legislation" / "2026" / "HB1.html"
+            if whole:
+                assert code == 0, (f"kit-down stopped on a file R2 refused once, though the second "
+                                   f"ask would have brought it: {out[-400:]}")
+                assert "asking for them again" in out and "1 of them arrived" in out, out[-400:]
+                assert came.read_bytes() == (root / "legislation/2026/HB1.html").read_bytes(), \
+                    "the file the second ask brought is not the laptop's"
+            else:
+                assert code != 0 and "THE KIT IS SHORT" in out and "legislation/2026/HB1.html" in out, \
+                    f"a file refused twice did not make the kit short: {out[-400:]}"
+                assert not came.exists(), "a file that never arrived is on the disk"
+        return "ok", ("a kit file R2 refuses once comes down on kit-down's second ask, byte "
+                      "for byte; one refused twice still makes the kit short")
+    finally:
+        CL.open_bucket, CL.SECOND_PASS_PAUSE = real_open, real_pause
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 @check("cloud", "restore brings the backup back into an empty folder, each file checked against "

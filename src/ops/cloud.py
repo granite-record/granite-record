@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.36
+# GRANITE_VERSION: 2026-09-25.37
 """
 The nightly's kit and the laptop's backup, in the project's private R2 bucket.
 
@@ -628,6 +628,9 @@ DOWN_WORKERS = 64
 # How often get_file asks again for a small file whose read broke part way:
 # download_file's own number (s3transfer's num_download_attempts).
 GET_TRIES = 5
+# kit-down's second ask, one file at a time, for what did not arrive in its
+# first pass, after this pause (seconds; kit_down, ONE MORE ASK).
+SECOND_PASS_PAUSE = 30
 
 
 class Failed(Exception):
@@ -1662,7 +1665,7 @@ def cmd_kit_down(a, root):
             f"{len(clash):,} here differ from the kit; the definition requires "
             f"{len(short):,} the bucket lacks.")
         return
-    got, bad = set(), []
+    got, bad, failed = set(), [], []
     lock = threading.Lock()
     prog = Progress("fetched", len(todo), sum(e["size"] for e in todo.values()))
 
@@ -1685,6 +1688,7 @@ def cmd_kit_down(a, root):
             tmp.unlink(missing_ok=True)
             with lock:
                 bad.append(f"{rel}: {type(e).__name__}: {e}")
+                failed.append(item)
             return
         with lock:
             got.add(rel)
@@ -1693,6 +1697,23 @@ def cmd_kit_down(a, root):
     # many small ones come down beside them, rather than last and alone.
     with ThreadPoolExecutor(max_workers=a.workers) as ex:
         list(ex.map(one, sorted(todo.items(), key=lambda kv: (-kv[1]["size"], kv[0]))))
+    # ONE MORE ASK, ONE FILE AT A TIME (25 November 2026). R2 answered a dev
+    # dry run's kit-down with "ServiceUnavailable: Reduce your rate of
+    # simultaneous reads on the same object" for 9 of 36,255 files, after
+    # botocore's own ten tries each, and the night stopped on a short kit
+    # (run 45678782588). What did not arrive in the first pass is asked for
+    # again once, after a pause, one file at a time; only what fails that ask
+    # too makes the kit short, and the night still stops on it.
+    if failed:
+        say(f"kit-down: {len(failed):,} files did not arrive in the first pass; asking for "
+            f"them again, one at a time, after {SECOND_PASS_PAUSE} s")
+        time.sleep(SECOND_PASS_PAUSE)
+        again = sorted(failed, key=lambda kv: kv[0])
+        failed.clear()
+        bad.clear()
+        for item in again:
+            one(item)
+        say(f"kit-down: {len(again) - len(failed):,} of them arrived on the second ask")
     # THE RECORD: what arrived, which kit-up compares the night's files with,
     # and which build_all.py reads as "this folder is built from the kit".
     now = datetime.now()
