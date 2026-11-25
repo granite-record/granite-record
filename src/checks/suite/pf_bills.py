@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.58
+# GRANITE_VERSION: 2026-11-16.59
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2697,6 +2697,18 @@ def _request_labels_on_organization_day(L, RP, BME):
     s1, s2 = sponsors(h1["2027-0001"]), sponsors(h2["2027-0001"])
     assert s1 and "-elect" in s1 and s2 == off(s1) and "Hills 30" not in s2, (
         f"on 2 December the Sponsors are not 1 December's with the -elect taken off: {s2[:600]!r}")
+    # THE SPONSOR FILTER'S CHAMBER, which app.js reads off the label's title (spChamber): each member
+    # under the chamber they sit in that day, on both days; Nora North, with none, under none.
+    order = sorted(want)
+    chambers = _app_js("(() => " + json.dumps([[rs[n]["sponsor_label"] for n in order] for rs in (r1, r2)])
+                       + ".map(ls => ls.map(l => scope.spChamber(l))))()", names=("spChamber",))
+    if chambers is None:
+        return "skip", ("the rows, the heads and the Sponsors hold on both days; node, app.js or the stub "
+                        "is not here for the Sponsor filter's chamber")
+    sits = {"2027-0003": "S", "2027-0004": "S", "2027-0007": ""}
+    assert chambers == [[sits.get(n, "H") for n in order],
+                        [sits.get(n, "S" if n == "2027-0009" else "H") for n in order]], (
+        f"the Sponsor filter's chamber by the label, 1 and 2 December: {chambers}")
     return "ok", ("on 1 December Rep.-elect and Sen.-elect, on 2 December Rep. Ben Baroody (D) by his "
                   "nickname, Sen. Jim Creighton (R) and Sen. Laura Telerski (D) linked to their records with "
                   "no House seat, on a House request and as a co-sponsor too, among the Senators; Rep. Colin "
