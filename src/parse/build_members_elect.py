@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.22
+# GRANITE_VERSION: 2026-10-16.23
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -1575,13 +1575,15 @@ def seat_switch(sitting, former, districts, collected="collected", hand_path=Non
        "moved": {id: {"key": the race they won, "towns": its towns}}}
 
     SWITCHED from the day after Organization Day (proceedings.switch_day),
-    while the roster is still the House the election ended: `newest`, the
-    site's newest term, is the one before the election's (the members-elect
-    step's own sign, term_why), and the term the election ended is not among
-    `roster_terms` (freeze_term.own_roster_terms: the roster installed has
-    turned from its frozen one). From the roster's turn the roster itself
-    says who sits, and nothing here moves anybody. None too before the day,
-    and with no results on file.
+    while the roster is still the House the election ended: the term the
+    election ended is not among `roster_terms` (freeze_term.own_roster_terms:
+    the roster installed has turned from its frozen one). From the roster's
+    turn the roster itself says who sits, and nothing here moves anybody.
+    `newest`, the site's newest term, is the one before the election's or the
+    election's own: the New term run that turns it may come before the
+    General Court's roster turns, and the switch holds until the roster does,
+    so no night between flips anybody back. None too before the day, for a
+    site of another election's terms, and with no results on file.
 
     `sitting` and `former` are the roster's rows in the site's shape (an id, a
     name, a chamber, a county, a district, a slug and display_full: members.
@@ -1597,7 +1599,7 @@ def seat_switch(sitting, former, districts, collected="collected", hand_path=Non
     term = str(results.get("term") or "")
     day = proceedings.switch_day(election.year)
     today = _day(today)
-    if day is None or today < day or not term or newest != term_before(term) \
+    if day is None or today < day or not term or newest not in (term_before(term), term) \
             or term_before(term) in set(roster_terms or ()):
         return None
     hand, _note = read_hand(Path(hand_path or HAND_DEFAULT), results["election"])

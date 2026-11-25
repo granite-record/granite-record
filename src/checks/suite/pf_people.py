@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 preflight's checks of sponsors, members and officials.
 
@@ -2163,9 +2163,10 @@ def _switch_fixture(root, turned=False):
     return base, out
 
 
-@check("code", "the day after Organization Day is the switch day, by the rule for Organization Day; and "
+@check("code", "the day after Organization Day is the switch day, by the rule for Organization Day; "
                "who the election moved is decided by identity, a member not returning only where their "
-               "race is decided, the same people the requests drop",
+               "race is decided, the same people the requests drop; and the switch lasts until the "
+               "roster itself turns",
        needs=("build_members_elect", "build_lsrs", "proceedings"))
 def _seat_changes_rule(BME, L, P):
     """proceedings.switch_day is organization_day and a day (3 December 2026, 6 December 2028, 4
@@ -2175,8 +2176,9 @@ def _seat_changes_rule(BME, L, P):
     final, one held by hand, or no race at all -- and one among another race's winners moved
     there, the other chamber's included; re-elected to their own seat, nothing. The leaving are
     build_lsrs.not_returning's, on the same races (its own rule for the requests). And seat_switch
-    switches nothing before the day, once the roster has turned (roster_terms), or once the
-    site's newest term is the election's."""
+    switches nothing before the day, once the roster has turned (roster_terms), or for a site
+    whose newest term is neither the one the election ended nor its own; and it holds through a
+    New term run that comes before the roster turns, so no night flips a member back."""
     import datetime as dt
     assert (P.switch_day(2026), P.switch_day(2028), P.switch_day(2030), P.switch_day(2027)) == (
         dt.date(2026, 12, 3), dt.date(2028, 12, 7), dt.date(2030, 12, 5), None), (
@@ -2225,18 +2227,25 @@ def _seat_changes_rule(BME, L, P):
                 for label, day, newest, terms in (
                     ("2 December", "2026-12-02", "2025-2026", ()),
                     ("the roster turned", "2026-12-03", "2025-2026", ("2025-2026",)),
-                    ("the site turned", "2026-12-03", "2027-2028", ()))}
-        on = BME.seat_switch(*args, today="2026-12-03", newest="2025-2026", roster_terms=())
+                    ("the roster turned after a New term run", "2026-12-04", "2027-2028",
+                     ("2025-2026",)),
+                    ("a site two terms on", "2026-12-03", "2029-2030", ()))}
+        # The New term run can come before the General Court's roster turns: the switch holds.
+        on = {label: BME.seat_switch(*args, today="2026-12-03", newest=newest, roster_terms=())
+              for label, newest in (("3 December", "2025-2026"),
+                                    ("a New term run, the roster not turned", "2027-2028"))}
     finally:
         os.chdir(was)
         shutil.rmtree(root, ignore_errors=True)
-    assert all(v is None for v in none.values()) and on and on["day"] == "2026-12-03" \
-        and on["term"] == "2027-2028" and on["leaving"] == {} and on["moved"] == {}, (
-        f"seat_switch on the days and the turns: {none}, on 3 December {on}")
+    assert all(v is None for v in none.values()) and all(
+        v and v["day"] == "2026-12-03" and v["term"] == "2027-2028" and v["leaving"] == {}
+        and v["moved"] == {} for v in on.values()), (
+        f"seat_switch on the days and the turns: {none}, switched {on}")
     return "ok", ("switch_day is Organization Day and a day, every even year from 1990 to 2098; one "
                   "lost in a decided race leaving, two moved, one to the Senate, the not final, the "
                   "held and the raceless undecided, as the requests' own rule has them; nothing "
-                  "switched on 2 December, once the roster turned or once the site's term is theirs")
+                  "switched on 2 December, once the roster turned or for a site two terms on, and "
+                  "the switch held through a New term run until the roster turns")
 
 
 # What the switch's check reads of a page of the fixture's site, as the reader gets it.
