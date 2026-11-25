@@ -2839,8 +2839,11 @@ give one. Until the day they take office a member-elect's label, and so the
 request's card and the chip on its page, carries their title, "Rep.-elect"
 or "Sen.-elect" (`elect_title`, `elect_window`; hyphenated everywhere since
 the owner's word of 20 November 2026, the traditional form, where from
-16 November the word Elect stood in quotation marks); the Sponsor filter lists
-them by name. A prime sponsor is found by every name the site prints for them:
+16 November the word Elect stood in quotation marks), and from that day the
+title of the office they hold, "Rep." or "Sen." (`office_title`,
+`took_office`): the "-elect" goes and the title stays, a sitting member
+elected to the other chamber drawn as that chamber's member and never under
+the House seat they left; the Sponsor filter lists them by name. A prime sponsor is found by every name the site prints for them:
 where the card's label or the page it links to gives the name in other words
 than the list does, as the search reads words (accents and apostrophes left
 out, a full stop no difference, a hyphen a break) -- "Lee C. Nyquist", the
