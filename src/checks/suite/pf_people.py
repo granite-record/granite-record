@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.5
+# GRANITE_VERSION: 2026-11-16.6
 """
 preflight's checks of sponsors, members and officials.
 
@@ -1781,6 +1781,27 @@ def _member_links(member_links, build_site_v2):
     assert why["5001"][0].startswith("party") and why["6001"][0].startswith("ground"), why
     assert all(w.startswith("more than one") for w in why["7001"]) and len(why["7001"]) == 2, why
 
+    # A SITTING MEMBER WITH NO VOTE YET (25 November 2026): the roster that turns on
+    # Organization Day seats a representative elected to the Senate under a new number weeks
+    # before its first roll call. Laura Telerski's House number voted in the newest term and
+    # joins her Senate number; a namesake whose number last voted in 2017-2018 waits for the
+    # member's own first vote; one of another party stays apart with the reason; and the
+    # members above join as they did.
+    fresh = [member("990201", "Telerski", "Laura", "S", "D", "Nashua", "3"),
+             member("990202", "Olden", "Ann", "S", "D", "Nashua", "3"),
+             member("990203", "Other", "Ed", "S", "D", "Nashua", "3")]
+    more = {**by, "9117": [row("9117", "Telerski, Laura", "Rep. Laura Telerski (D - Hills 11)", "D",
+                               "H", "3/5/2026")],
+            "8800": [row("8800", "Olden, Ann", "Olden, Ann(D) Hillsborough 06", "D", "H", "5/3/2018")],
+            "8801": [row("8801", "Other, Ed", "Rep. Ed Other (R - Hills 6)", "R", "H", "3/5/2026")]}
+    joined, apart = ML.links(roster + fresh, more, districts)
+    assert joined == {**linked, "990201": ["9117"]}, (
+        f"with three members who have not voted yet, joined {joined}: wanted the four above and "
+        "Telerski's Senate number to her House one, and nobody else")
+    said = {r["member"]: r["why"] for r in apart if r["member"].startswith("9902")}
+    assert set(said) == {"990203"} and said["990203"][0].startswith("party"), (
+        f"members with no vote yet left apart: {said}; wanted Ed Other alone, for his party")
+
     root = Path(tempfile.mkdtemp(prefix="gr-links-"))
     try:
         (root / "legislators").mkdir()
@@ -1808,7 +1829,9 @@ def _member_links(member_links, build_site_v2):
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return "ok", ("4 real chamber changers joined, Rep. Patrick Long and Kelleigh Murphy kept apart, and a "
-                  "party change, another county and two fitting numbers left for a person; the member "
+                  "party change, another county and two fitting numbers left for a person; a senator "
+                  "with no vote yet joined to the House number that voted in the newest term, a namesake "
+                  "of 2017-2018 left to wait for a vote, another party apart; the member "
                   "files carry both chambers newest first")
 
 

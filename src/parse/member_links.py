@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.11
+# GRANITE_VERSION: 2026-09-13.12
 """
 Which sitting members voted under an earlier number in the other chamber.
 
@@ -56,6 +56,20 @@ when every one of these holds:
 
 A candidate that meets 1-3 and fails anything after is reported with the
 reason and is not joined. Nothing here reads the network or writes a file.
+
+A SITTING MEMBER WITH NO VOTE YET (25 November 2026, for Organization Day). The
+General Court numbers a member elected to the other chamber anew, and the
+roster that turns on Organization Day seats them under that number weeks
+before its first roll call: Reps. Jim Creighton and Laura Telerski, elected to
+the Senate on 3 November 2026. Until then the rule above passed them over --
+it read the member's own votes for rule 4 -- so their House record stood on a
+page of its own as "Former Rep." beside a Senate page with nothing on it. Such
+a member is now held to the same six rules, the roster's party standing for
+the votes they have not cast (rule 4) and nothing to overlap (rule 3), and to
+one more: the earlier number voted in the newest term any number voted in --
+they sat in the other chamber until the turn. A namesake who left years ago is
+not joined on a name before the member has voted; from their first vote the
+rule above decides, as it always has.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -229,14 +243,23 @@ def links(roster, votes_by_member, districts, prof=None):
         if key:
             by_surname[key].append(eid)
 
+    # The newest term any number voted in: a sitting member with no vote yet
+    # is joined only to a number that voted in it (A SITTING MEMBER WITH NO
+    # VOTE YET, above).
+    newest = max((t for p in prof.values() for t in p["span"]), default=None)
     fits, missed = defaultdict(list), []
     for m in roster:
         sid, chamber = str(m.get("id")), (m.get("chamber") or "")[:1].upper()
-        own = prof.get(sid)
-        if not own or chamber not in ("H", "S"):
+        if chamber not in ("H", "S"):
             continue
         other = "S" if chamber == "H" else "H"
         party = (m.get("party_code") or (m.get("party") or "")[:1]).upper()
+        own = prof.get(sid)
+        fresh = own is None
+        if fresh:
+            if not party:
+                continue
+            own = {"days": set(), "span": {}, "parties": Counter({party: 1})}
         last, first = split_name(m.get("name"))
         last, first = m.get("last") or last, m.get("first") or first
         counties, senate = ground(m, districts)
@@ -245,6 +268,8 @@ def links(roster, votes_by_member, districts, prof=None):
             if eid == sid or p["bodies"] != {other}:
                 continue
             if not same_first(split_name(p["name"])[1], first):
+                continue
+            if fresh and max(p["span"], default=None) != newest:
                 continue
             if sat_together(own, p):
                 continue
