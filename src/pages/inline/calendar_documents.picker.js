@@ -57,22 +57,24 @@
   if(!sec||!sec.querySelector) return;
   function $(id){ return document.getElementById(id); }
   var form=$("cdpick"), selSet=$("cdset"), selYear=$("cdyear"), selDoc=$("cddoc"),
-      open=$("cdopen"), stat=$("cdstat"), now=$("cdnow"), years=$("cdyears");
+      open=$("cdopen"), stat=$("cdstat"), now=$("cdnow");
   if(!form||!selSet||!selYear||!selDoc||!open) return;
   var IX=null, LOADING=false, FAILED=false, ASKED=false;
 
-  // The pickers in place of the years: the years are what a reader without
-  // script is given, and stay in the page for the day the list will not load.
+  // The pickers come up. Without script, and on the day the list will not
+  // load, the newest of each kind and the directory under the box are the
+  // way in: every document of every year is a plain link there. (Under the
+  // schedule, until 25 November 2026, the box had a list of the years that
+  // the pickers took the place of; on the list page the directory is that.)
   form.hidden=false;
-  if(years) years.hidden=true;
 
   // THE STATUS LINE SPEAKS ONLY TO A READER WHO HAS COME TO THE PICKERS. It
-  // is a live region, and the list is fetched when the section is merely
-  // near: on a week with little on it that is as the page loads, and "36
-  // House Calendars for 2026" was then read out to somebody at the top of
-  // the page who had asked for nothing. ASKED is set by a focus on a picker,
-  // a touch on one or the link from the week's heading; until then nothing
-  // is said, and after it the line says what a change of picker brought.
+  // is a live region, and the list is fetched when the box is merely near:
+  // at the top of the list page that is as the page loads, as it was on a
+  // quiet week under the schedule, where "36 House Calendars for 2026" was
+  // then read out to somebody who had asked for nothing. ASKED is set by a
+  // focus on a picker or a touch on one; until then nothing is said, and
+  // after it the line says what a change of picker brought.
   function say(t){ if(stat&&stat.textContent!==t) stat.textContent=t; }
   // `from` is the picker that changed -- "set", "year", "doc" -- or "all" when
   // the list has just arrived. Only the pickers after it are filled again, so
@@ -95,12 +97,12 @@
     if(now) now.textContent=s.chosen;
     if(from==="set"||from==="year"||(from==="all"&&ASKED)) say(s.count);
   }
-  // Without the list the section is what it is without script, which needs no
-  // explaining to a reader who was not in it when the pickers went.
+  // Without the list the box is what it is without script -- the newest of
+  // each kind, over the directory -- which needs no explaining to a reader
+  // who was not in it when the pickers went.
   function fail(){
     FAILED=true; LOADING=false;
     form.hidden=true;
-    if(years) years.hidden=false;
     if(ASKED) say("The list of documents could not be loaded here. Every year is linked below.");
   }
   // `asked` is true where a reader's own act brought the list: only then is
@@ -127,8 +129,8 @@
   // Nothing is submitted: Enter in a picker must not reload the page.
   form.addEventListener("submit",function(e){ e.preventDefault(); });
 
-  // THE LIST IS FETCHED WHEN THE SECTION IS NEAR, or as soon as a reader
-  // heads for it: one file, once, and not on a visit that never scrolls here.
+  // THE LIST IS FETCHED WHEN THE BOX IS NEAR, or as soon as a reader heads
+  // for it: one file, once. At the top of the list page it is near at once.
   if(typeof IntersectionObserver==="function"){
     var io=new IntersectionObserver(function(es){
       if(es.some(function(e){ return e.isIntersecting; })){ io.disconnect(); load(false); }

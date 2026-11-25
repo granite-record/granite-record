@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.98
+# GRANITE_VERSION: 2026-09-08.99
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -1315,8 +1315,17 @@ def sources_list(sources):
     editor's own account of how hearings run in practice have no page to send
     a reader to. The row names the source, and the bracket at the end of its
     name, where there is one, says who published it.
+
+    A PAGE OF OURS THIS RUN DOES NOT WRITE IS NAMED, NOT LINKED (25 November
+    2026). The calendars and journals' own page, which four guides send a
+    reader to for the documents they cite, is written only where the queue
+    lists one; a fork's build and preflight's fixture write none, so there
+    the row names it, as the header's row leaves its tab out
+    (chrome.written).
     """
     def one(label, u):
+        if u and not u.startswith("http") and not chrome.written(u):
+            u = ""
         if not u:
             m = re.match(r"^(.*?) \(([^()]*)\)$", label)
             name, meta = (m.group(1), m.group(2)) if m else (label, "Granite Record")

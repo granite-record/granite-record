@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.59
+# GRANITE_VERSION: 2026-09-18.60
 """
 The General Court's week, one page per week.
 
@@ -31,8 +31,9 @@ can send to somebody, and the whole thing works with no script at all.
   site/calendar/data/committees.json
                                 every committee on the calendar, for its picker
   site/calendar/documents.json  every calendar and journal linked, for the
-                                pickers under the schedule
-  site/calendar/documents.html  the same list as plain links, a year at a time
+                                pickers at the top of the list page
+  site/calendar/documents.html  the pickers and the newest of each kind, then
+                                the same list as plain links, a year at a time
 
 A CALENDAR ON TOP OF THE WEEKS (24 September 2026). The person asked for the
 General Court's schedule done properly: a month down the left with the week
@@ -82,12 +83,16 @@ the script keeps the reader on /calendar, with the week, the day, the view
 and the filters in the query -- /calendar?week=2026-W28 -- so a reload or a
 link sent opens what was on the screen. WEEK_JS says how.
 
-CALENDARS & JOURNALS, AS PDFs (1 October 2026). Under the schedule of every
-week: pickers in a row -- House or Senate calendars or journals, the year, the
-document -- and a button that opens the General Court's own PDF, as its own
-pages do. calendar_documents.py reads the list and writes the section, its
-script and the list page; this hands the section to every week's page and
-writes the two files beside them. Without script the section is plain links.
+CALENDARS & JOURNALS, AS PDFs (1 October 2026). Pickers in a row -- House or
+Senate calendars or journals, the year, the document -- and a button that
+opens the General Court's own PDF, as its own pages do. They were under the
+schedule of every week until 25 November 2026, when the owner asked for them
+at the top of the Calendar row's Calendars and journals page, above the full
+list: "so that it's easy to select what you're looking for quickly and have
+the full directory below that rather than splitting it across the schedule
+page." calendar_documents.py reads the list and writes the pickers' box, its
+script and the list's body; this writes the list page and its index beside
+the weeks, and no week carries any of it. Without script the box is links.
 
 MONDAY TO FRIDAY, IN TITLE CASE (9 October 2026, the second round of the
 polish, approved). "Dont display Saturdays and sundays on the week view, only
@@ -1314,16 +1319,17 @@ def study_hidden(days, meets, draw, lang="en"):
 
 
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
-              today, sessions=frozenset(), study=False, docs=None, picker="",
+              today, sessions=frozenset(), study=False, docs=None,
               events=None, lang="en"):
     """Write one week's page. `study` is whether the calendar holds the study
     and statutory committees' meetings from the database copy; the page's
     description claims them only then.
 
-    `picker` is the Calendars & Journals section (calendar_documents.
-    block_html), the same on every week because a reader may be on any of
-    them; "" where there is no list, and then the page carries no section and
-    no script for one.
+    NO CALENDARS & JOURNALS SECTION (the owner, 25 November 2026). It was
+    under the schedule of every week until then; its pickers and the newest
+    of each kind are at the top of the list page now (documents_files), which
+    the Calendar row's Calendars and journals tab leads to, and nothing takes
+    their place here. A week carries its own script alone.
 
     NO NOTE OF WHERE THEY COME FROM. The page said under its key that they
     come "from the General Court's own database, as copied on 8 September
@@ -1336,8 +1342,8 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
 
     `lang` is the page's language (the Calendar in Spanish, 9 November 2026):
     "es" writes the same week at /es/calendar/<week>, its frame, words and
-    cards in Spanish, its script week_js("es"). `picker` is then the
-    section in Spanish too. Only English's pages are counted and listed."""
+    cards in Spanish, its script week_js("es"). Only English's pages are
+    counted and listed."""
     w = week_facts(key, weeks, today, events, lang)
     label, lead, days, meets, n = w["label"], w["lead"], w["days"], w["meets"], w["n"]
     pre = lang_prefix(lang)
@@ -1362,7 +1368,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     # /calendar as the page it copies, so there is one page to index.
     copies = [path] + ([f"{pre}/calendar/{key}.html"] if path == f"{pre}/calendar.html" else [])
     heading = say(lang, "calp.week_of", "The Week of {label}", label=S.E(label))
-    scripts = (week_js(lang),) + ((CD.picker_js(lang),) if picker else ())
+    scripts = (week_js(lang),)
     # THE PAGE IS THE WEEK AS A LIST, AND THE SCRIPT MAKES IT A CALENDAR.
     # Without script this reads exactly as it did: the week's heading, its
     # lead, the arrows, the key to the colours and every day in order. With
@@ -1394,8 +1400,9 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                           S.cited(datetime.date.fromisocalendar(
                               int(key[:4]), int(key[6:]), 7)))
                 if lang == i18n.DEFAULT else "")
-             # NO LINK DOWN TO THE CALENDARS & JOURNALS (F11): the section is
-             # the last block of the schedule's column, where a reader finds it.
+             # NO LINK DOWN TO THE CALENDARS & JOURNALS (F11), and since 25
+             # November 2026 no section of them: they are at the top of their
+             # own page, the Calendar row's Calendars and journals tab.
              + f'<nav class="wknav" aria-label="{say(lang, "calp.other_weeks", "Other weeks")}">'
              f'{"".join(nav)}</nav>'
              # THE NEXT ELECTION'S DATES (the owner, 19 November 2026: "The general info on
@@ -1411,13 +1418,10 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              + f'<div class="calview" id="calview">{body}</div>'
              # ONE SET OF ARROWS, AT THE TOP, AND A RULE UNDER THE LIST (the
              # owner's walk of dry run 9, 8 November 2026), so the schedule
-             # and the Calendars & Journals below it read as two things.
+             # and what is below it read as two things. Below it until 25
+             # November 2026 were the Calendars & Journals, which are at the
+             # top of their own page now (documents_files).
              '<hr class="calend">'
-             # BELOW THE SCHEDULE AND ITS ARROWS, inside the schedule's column:
-             # as wide as the schedule on a desktop, the last block of the page
-             # on a phone. The script redraws #calview and the arrows and
-             # leaves this alone.
-             + picker
              + '</div>'
              # The hover preview: one element, placed beside whichever day
              # it describes, so it never covers the day being read.
@@ -1427,10 +1431,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              # script on this site lives -- shell.page takes no script -- and
              # without its comment lines, which stay here for the reader of
              # the source rather than travelling with 103 pages.
-             f"<script>{lean_js(scripts[0])}</script>"
-             # A SCRIPT OF ITS OWN, after the Calendar's: neither reads the
-             # other, and a fault in one leaves the other running.
-             + (f"<script>{lean_js(scripts[1])}</script>" if picker else ""))
+             f"<script>{lean_js(scripts[0])}</script>")
     named = say(lang, "calp.week_of", "The Week of {label}", label=label)
     for f in copies:
         # THIS PAGE IN THE OTHER LANGUAGES, for the footer's language list and
@@ -1500,11 +1501,13 @@ def documents_problem(cdocs, queue=None, kit=None):
     """Why a run that has no calendars or journals to link is a failed run,
     or "" where it is not one.
 
-    SILENCE IS NOT SUCCESS. With no list this builder draws no section on any
-    week, takes the list page and the index off the disk and the list page
-    out of the sitemap -- and it did all of that behind one WARNING line and
-    an exit of zero, so the night would have published a Calendar page without
-    its pickers and called the build good. Two cases are faults:
+    SILENCE IS NOT SUCCESS. With no list this builder takes the list page --
+    and with it the pickers, at its top since 25 November 2026 -- and the
+    index off the disk and the list page out of the sitemap, and the header's
+    row loses its Calendars and journals tab; it did all of that behind one
+    WARNING line and an exit of zero, so the night would have published a
+    Calendar without its pickers and called the build good. Two cases are
+    faults:
 
       - THE QUEUE IS HERE AND NOTHING CAN BE READ FROM IT: a file cut short, a
         header that is not the queue's. A fault on any machine.
@@ -1513,22 +1516,21 @@ def documents_problem(cdocs, queue=None, kit=None):
         arrived (build_all.KIT_RECORD, as the journal step's kit_required).
 
     A bare folder with no queue -- a fork, preflight's fixture, a first build
-    -- is neither: the page is built without the section and the run says so.
+    -- is neither: the weeks are built, no list page is, and the run says so.
     """
     if cdocs:
         return ""
     queue = Path(queue or CD.QUEUE)
     if queue.exists():
         return (f"{queue.as_posix()} is here and no calendar or journal could be read "
-                "from it, so every week would lose its Calendars & Journals section and "
-                "the list page would go")
+                "from it, so the Calendars and journals page and its pickers would go")
     if kit is None:
         import build_all
         kit = build_all.KIT_RECORD.exists()
     if kit:
         return (f"{queue.as_posix()} is not here and this folder was filled from the kit, "
-                "whose list (cloud_kit.json) carries it: every week would lose its "
-                "Calendars & Journals section and the list page would go")
+                "whose list (cloud_kit.json) carries it: the Calendars and journals page "
+                "and its pickers would go")
     return ""
 
 
@@ -1541,6 +1543,13 @@ def documents_files(site, base, cdocs, left_out, urls):
     urls, or sitemap_merge would take it out as a /calendar address nobody
     wrote. With nothing to link, neither file is left on disk: a list page
     from an older build would be a page the Calendar no longer links.
+
+    THE PICKERS AT THE TOP (the owner, 25 November 2026): the page is its
+    heading, its line, Cite this page, then the box of pickers and the newest
+    of each kind (calendar_documents.block_html), then the directory as it
+    was (list_body). The box's script follows the list's own, each in a
+    script of its own: neither reads the other, and a fault in one leaves the
+    other running.
     """
     index_f = Path(site) / CD.INDEX_PATH.lstrip("/")
     list_f = Path(site) / CD.LIST_PATH.lstrip("/")
@@ -1554,6 +1563,7 @@ def documents_files(site, base, cdocs, left_out, urls):
     index_f.write_text(blob, encoding="utf-8")
 
     heading, lead, body = CD.list_body(cdocs, left_out)
+    top = CD.block_html(cdocs)
     first, last = CD.span(cdocs)
     path = CD.LIST_PATH
     description = ("Every House and Senate calendar and journal the New Hampshire General "
@@ -1566,12 +1576,15 @@ def documents_files(site, base, cdocs, left_out, urls):
                   skip_label="Skip to the list", sr_title="", og_type="website",
                   nav_current="calendar.html", cite=False,
                   jsonld=LD.listing(heading, description, base, S.canon(path)))
-    # Cite this page under the line, as on the weeks (week_page).
+    # Cite this page under the line, as on the weeks (week_page), and the
+    # pickers under it, above the directory.
     html = html.replace('<div id="results"></div>',
                         '<div id="results"><div class="clist dirlist cdpage">'
                         f'<h1>{S.E(heading)}</h1><p class="src">{lead}</p>'
-                        f'{S.cite_block(path, heading, base, S.cited(*(str(d.date or '') for d in cdocs)))}{body}</div></div>'
-                        f"<script>{lean_js(CD.LIST_JS)}</script>", 1)
+                        f'{S.cite_block(path, heading, base, S.cited(*(str(d.date or '') for d in cdocs)))}'
+                        f'{top}{body}</div></div>'
+                        f"<script>{lean_js(CD.LIST_JS)}</script>"
+                        f"<script>{lean_js(CD.picker_js())}</script>", 1)
     assert '<div class="clist dirlist cdpage">' in html, f"{path}: the template has no results slot"
     list_f.write_text(S.clean_links(html), encoding="utf-8")
     urls.append(base + S.canon(path))
@@ -2018,8 +2031,9 @@ def main():
     print(f"  {n_cal:,} meetings linked to the calendar that printed their notice, "
           f"{n_jnl:,} floor sittings to their journal ({len(cal_urls):,} calendars "
           f"and {len(journal_keys):,} journals in archive/queue.csv)")
-    # CALENDARS & JOURNALS: the list is read once and the same section goes on
-    # every week. What was read is said at the end of the run (below).
+    # CALENDARS & JOURNALS: the list is read once, for the list page and its
+    # pickers (documents_files); no week carries them since 25 November 2026.
+    # What was read is said at the end of the run (below).
     cdocs, cd_out = CD.read(today=today)
     # BEFORE ANYTHING IS WRITTEN: a list that should be here and is not stops
     # the run with the site as it was, and says why as the run's last line.
@@ -2027,27 +2041,23 @@ def main():
     if problem:
         print(f"  FAILED: {problem}")
         return 1
-    picker = CD.block_html(cdocs, cd_out)
     urls, total = [], 0
     for i, key in enumerate(order):
         total += week_page(site, base, key, weeks, order, i,
                            titles, years, code, urls, today, sits,
-                           study=bool(study_rows), docs=docs, picker=picker,
-                           events=events)
+                           study=bool(study_rows), docs=docs, events=events)
     # THE SAME WEEKS IN EVERY OTHER LANGUAGE THE CALENDAR HAS (i18n.PAGES):
-    # each at its own address under /<code>/, with that language's section of
-    # Calendars & Journals, their files and months below. Not counted again.
+    # each at its own address under /<code>/, their files and months below.
+    # Not counted again.
     langs = [c for c in i18n.LANGS if c != i18n.DEFAULT and i18n.has(c, "calendar.html")]
     for lang in langs:
-        picker_l = CD.block_html(cdocs, cd_out, lang=lang)
         for i, key in enumerate(order):
             week_page(site, base, key, weeks, order, i, titles, years, code, [], today, sits,
-                      study=bool(study_rows), docs=docs, picker=picker_l, events=events,
-                      lang=lang)
+                      study=bool(study_rows), docs=docs, events=events, lang=lang)
     size = documents_files(site, base, cdocs, cd_out, urls)
     if size:
         print(f"  calendar/documents.json ({size:,} bytes) and calendar/documents.html, "
-              "the same list as plain links")
+              "the pickers over the same list as plain links")
 
     # THE MONTH FILES, which the page's month grid and its other weeks read.
     # SILENCE IS NOT SUCCESS: a run that wrote weeks and no months is a
@@ -2098,7 +2108,7 @@ def main():
         # Only a bare folder comes here: documents_problem stopped the run
         # above wherever the list ought to have been.
         print(f"  WARNING: no calendars or journals to link -- {CD.QUEUE.as_posix()} is not "
-              "on disk, so the week pages carry no Calendars & Journals section")
+              "on disk, so there is no Calendars and journals page and no pickers")
     return 0
 
 
