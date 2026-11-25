@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.56
+# GRANITE_VERSION: 2026-11-16.59
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2347,8 +2347,9 @@ def _request_sponsor_name_forms(build_lsrs):
 
 
 @check("build", "a request's member-elect sponsor is drawn Rep.-elect or Sen.-elect "
-                "on its card and its page until the day they take office, a sitting member elected "
-                "to the other chamber among them; a sitting member re-elected as ever",
+                "on its card and its page until the day they take office, and Rep. or Sen. from it, "
+                "a sitting member elected to the other chamber among them; a sitting member "
+                "re-elected as ever",
        needs=("build_lsrs", "build_request_pages"))
 def _request_member_elect_title(build_lsrs, build_request_pages):
     """The owner, 17 November 2026: on a request's card a member-elect's chip reads Rep.-elect
@@ -2369,13 +2370,20 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
     Senate request of Jim Creighton's, matched as a winner, read "Jim Creighton (R)" with no title
     at all, and Laura Telerski's, matched by the House roster, "Rep. Laura Telerski (D)". Both
     read Sen.-elect now, linked to the record they have; a House request of theirs keeps the
-    roster's label."""
+    roster's label.
+
+    FROM THE DAY THEY TAKE OFFICE THE "-ELECT" GOES AND THE TITLE STAYS (25 November 2026;
+    build_lsrs.took_office, office_title). Until then the title went with it: on 2 December
+    "Colin Mitchell (R)" and "Jim Creighton (R)", and the Senate requests' page chips went back to
+    the old roster's "Rep. James Creighton (R - Hills 30)", a seat he no longer holds. Now every
+    label and chip reads as on 17 November with the "-elect" taken off, "Rep. Colin Mitchell
+    (R)", "Sen. Jim Creighton (R)", linked as before, and the search reads the same names; and
+    Laura Telerski's House request, which the House roster matches, reads "Sen. Laura Telerski
+    (D)" from that day too, when she sits in the Senate (build_lsrs.chamber_moves)."""
     L, RP = build_lsrs, build_request_pages
     tmp = Path(tempfile.mkdtemp(prefix="gr-elect-title-"))
     was = os.environ.get("GRANITE_BUILD_DATE")
     try:
-        (tmp / "members_elect.json").write_text(json.dumps(
-            {"election": "2026-11-03", "takes_office": "2026-12-02", "races": {}}), encoding="utf-8")
         (tmp / "elect_pages.json").write_text(json.dumps({"takes_office": "2026-12-02", "pages": [
             {"slug": "colin-mitchell-carr-8", "name": "Colin Mitchell", "party": "R", "chamber": "H",
              "race": "H|Carroll|8"},
@@ -2403,6 +2411,10 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
                                        "s": "laura-telerski-hills-11"}]},
                  "H|Rockingham|10": {"elected": [{"n": "Ellen Read", "p": "D", "k": "sitting",
                                                   "s": "ellen-read-rock-10"}]}}
+        # The members-elect file, with the races, which the roster reads from the day they take
+        # office for a member the election sent to the other chamber (chamber_moves).
+        (tmp / "members_elect.json").write_text(json.dumps(
+            {"election": "2026-11-03", "takes_office": "2026-12-02", "races": drawn}), encoding="utf-8")
         people = [{"name": "Goley, Jeffrey", "slug": "jeffrey-goley-hills-21"},
                   {"name": "Creighton, James", "slug": "james-creighton-hills-30", "chamber": "H"},
                   {"name": "Telerski, Laura", "slug": "laura-telerski-hills-11", "chamber": "H"},
@@ -2417,7 +2429,8 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
         for day in ("2026-11-17", "2026-12-02"):
             os.environ["GRANITE_BUILD_DATE"] = day
             who = L.roster(tmp, str(tmp / "no-results"))
-            ws = L.election_winners(results, drawn, [], people, titled=L.elect_window(tmp))
+            ws = L.election_winners(results, drawn, [], people, titled=L.elect_window(tmp),
+                                    took=L.took_office(tmp))
             rows, _ = L.rows_from(lsrs, who, {}, 2027, ws)
             L.with_sponsor_names(rows, {})
             chips = RP.sponsors(tmp)
@@ -2456,19 +2469,252 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
         f"the search reads the title as part of the name: {names}")
     assert (chips["colin-mitchell-carr-8"], chips["kurt-webber-sd-2"], chips["ellen-read-rock-10"]) == (
         rep + "Colin Mitchell (R)", sen + "Kurt Webber (D)", "Rep. Ellen Read (D - Rock 10)"), chips
-    labels, _names, chips, page = got["2026-12-02"]
-    assert not any(re.match(r"(Rep|Sen)\.-elect ", v) for v in list(labels.values()) + list(chips.values())), (
-        f"a member-elect still titled on the day they take office: {labels} {chips}")
-    assert all("-elect" not in h for h in page.values()) and "Hills 30" in page["2027-0800"], (
-        f"a request page still titles a member-elect on the day they take office: {page}")
-    assert L.label_name(rep + "Colin Mitchell (R)") == "Colin Mitchell"
+    labels2, names2, chips, page = got["2026-12-02"]
+    # ON THE DAY THEY TAKE OFFICE: the 17 November labels with the "-elect" taken off, the same
+    # names for the search, the provisional pages' chips titled as their rows are, and the two
+    # elected to the Senate drawn as senators on their Senate requests' pages, linked to the
+    # record they have, not under the House seat they left -- and on Laura Telerski's House
+    # request too, which the House roster matched: she sits in the Senate from that day.
+    took = {n: w.replace(".-elect ", ". ", 1) for n, w in want.items()}
+    took["2027-0899"] = "Sen. Laura Telerski (D)"
+    bad = [f"{n}: {labels2.get(n)!r}, not {w!r}" for n, w in took.items() if labels2.get(n) != w]
+    assert not bad, "a request's sponsor label on the day they take office: " + "; ".join(bad)
+    assert names2 == names, f"the search's names changed with the title: {names2}, not {names}"
+    assert (chips["colin-mitchell-carr-8"], chips["kurt-webber-sd-2"], chips["ellen-read-rock-10"]) == (
+        "Rep. Colin Mitchell (R)", "Sen. Kurt Webber (D)", "Rep. Ellen Read (D - Rock 10)"), chips
+    for n, who_, slug in (("2027-0800", "Jim Creighton", "james-creighton-hills-30"),
+                          ("2027-0898", "Laura Telerski", "laura-telerski-hills-11"),
+                          ("2027-0899", "Laura Telerski", "laura-telerski-hills-11")):
+        assert ("Sen. " + who_ in page[n] and f'href="legislator/{slug}"' in page[n]
+                and "Hills" not in page[n] and "-elect" not in page[n]), (
+            f"{n}'s page chip on the day they take office is not the senator's: {page[n]}")
+    assert L.label_name(rep + "Colin Mitchell (R)") == "Colin Mitchell" == L.label_name("Rep. Colin Mitchell (R)")
     return "ok", ("before 2 December Colin Mitchell's House and CACR requests read Rep.-elect "
                   "Colin Mitchell (R), Kurt Webber's Sen.-elect, and Jeff Goley, a former "
                   "member returning, Rep.-elect, on the card's label and the page's chip; a "
                   "sitting member re-elected as before, and the two elected to the Senate Sen.-elect "
                   "on their Senate requests' cards and pages, as a winner or by the House roster, and "
-                  "as before on a House one; the search reads the name alone; on 2 December no one is "
-                  "titled")
+                  "as before on a House one; the search reads the name alone; on 2 December the same "
+                  "with the -elect taken off, Rep. Colin Mitchell (R) and Sen. Jim Creighton (R), the "
+                  "senators' chips linked and seatless, Laura Telerski's House request among them")
+
+
+@check("build", "on Organization Day each member a request names reads the office they hold that day: "
+                "the titles of 1 December with the -elect taken off -- a match by nickname, sitting "
+                "members elected to the Senate, co-sponsors and new members with no id among them -- "
+                "on the row, the page's head and its Sponsors; everyone else as the day before",
+       needs=("build_lsrs", "build_request_pages", "build_members_elect"))
+def _request_labels_on_organization_day(L, RP, BME):
+    """Organization Day, 2 December 2026: the members elected on 3 November take office, the
+    members-elect file retires and the provisional pages stay (build_members_elect,
+    build_elect_pages). Until 25 November 2026 a request's member-elect lost the title with the
+    "-elect": on the list of 24 November, 290 of 1,313 requests would have read "Ben Baroody (D)"
+    or "Jim Creighton (R)" from that day, no title on the card or the chip and no chamber for the
+    Sponsor filter (app.js spChamber), and Jim Creighton's and Laura Telerski's Senate requests'
+    pages the old roster's "Rep. James Creighton (R - Hills 30)", a seat he no longer holds. A
+    request labels a member as the office they hold that day: Rep. or Sen., the party they were
+    elected under, and a link to their page where there is one (build_lsrs.took_office,
+    office_title).
+
+    Over a fixture election, as the nights build it -- 1 December with the members-elect file, 2
+    December without it and the roster still the old term's, so election_races works the races
+    out again -- through load_winners, roster, rows_from, with_sponsor_names and the pages
+    build_request_pages writes, each person on the two days beside each other:
+
+      - a match by nickname: "Benjamin Baroody", the former member the results print "Ben
+        Baroody" (NICKNAMES), returning: Rep.-elect, then Rep. Ben Baroody (D), linked to his page;
+      - sitting members elected to the Senate, Jim Creighton (a winner, as the list spells him)
+        and Laura Telerski (the House roster has her; a Senate request goes to the winners):
+        Sen.-elect, then Sen., each page's chip linked to their record and never the House seat;
+        and where the House roster matches her -- a House request of hers, her name as a
+        co-sponsor -- Rep. Laura Telerski (D) with her House seat on 1 December, Sen. Laura
+        Telerski (D) on 2 December, seatless and among the Senators (build_lsrs.chamber_moves);
+      - a new member with a provisional page and no id, Colin Mitchell: Rep.-elect, then Rep.,
+        linked to that page, his CACR the same; and Dana New, with no page: no link, and the title
+        and party all the same;
+      - co-sponsors of Ellen Read's request, the same on the row, and its Sponsors section on 2
+        December is 1 December's with the "-elect" taken off;
+      - as they were: Ellen Read, re-elected, with the roster's label, chip and seat; Nora North,
+        the winner of a race not final, who has no page, the name and party alone on both days,
+        since the record does not say yet who holds the seat; and the names the search reads."""
+    seat = {"H": "Rep.", "S": "Sen."}
+    mem = lambda i, last, first, ch, county, dist, party, tag, slug, **k: {
+        "id": i, "name": f"{last}, {first}", "chamber": ch, "county": county, "district": dist,
+        "party": party, "party_code": party, "slug": slug, "display": f"{seat[ch]} {first} {last} ({party})",
+        "display_plain": f"{seat[ch]} {first} {last}",
+        "display_full": f"{seat[ch]} {first} {last} ({party} - {tag})", **k}
+    cand = lambda n, p, won=True: {"name": n, "party": p, "votes": 100 if won else 90, "write_in": False,
+                                   "elected": won}
+    race = lambda towns, seats, *cs: {"seats": seats, "floterial": False, "towns": towns, "scatter": 0,
+                                      "candidates": list(cs)}
+    results = {"_source": [{"url": "https://www.sos.nh.gov/elections/election-results", "saved": "2026-11-05"}],
+               "election": "2026-11-03", "term": "2027-2028", "races": {
+                   "H|Rockingham|10": race(["Rye"], 1, cand("Ellen Read", "d"), cand("Rob Rival", "r", False)),
+                   "H|Hillsborough|16": race(["Weare"], 1, cand("Ben Baroody", "d")),
+                   "H|Carroll|8": race(["Conway"], 2, cand("Colin Mitchell", "r"), cand("Dana New", "d")),
+                   "H|Coos|2": race(["Gorham"], 1, cand("Nora North", "d")),
+                   "S|8": race(["Conway", "Rye"], 1, cand("Jim Creighton", "r")),
+                   "S|13": race(["Gorham", "Weare"], 1, cand("Laura Telerski", "d"))}}
+    hand = {"2026-11-03": {"recount_deadline": "2026-11-13",
+                           "matches": {"S|8": {"Jim Creighton": "102"}, "S|13": {"Laura Telerski": "103"},
+                                       "H|Hillsborough|16": {"Ben Baroody": "201"},
+                                       "H|Carroll|8": {"Colin Mitchell": None, "Dana New": None}},
+                           "not_final": {"H|Coos|2": {"seats": 1, "recount": True}}}}
+    town = lambda senate, county, dist, seats: {"0": {"congress": 1, "council": 1, "senate": senate, "house": [
+        {"county": county, "district": dist, "floterial": False, "seats": seats}]}}
+    districts = {"Rye": town(8, "Rockingham", 10, 1), "Conway": town(8, "Carroll", 8, 2),
+                 "Weare": town(13, "Hillsborough", 16, 1), "Gorham": town(13, "Coos", 2, 1)}
+    sitting = [mem("101", "Read", "Ellen", "H", "Rockingham", "10", "D", "Rock 10", "ellen-read-rock-10"),
+               mem("102", "Creighton", "James", "H", "Hillsborough", "30", "R", "Hills 30",
+                   "james-creighton-hills-30"),
+               mem("103", "Telerski", "Laura", "H", "Hillsborough", "11", "D", "Hills 11", "laura-telerski-hills-11")]
+    former = [mem("201", "Baroody", "Benjamin", "H", "Hillsborough", "39", "D", "Hills 39",
+                  "benjamin-baroody-hills-39", former=True,
+                  served={"first": "12/5/2018", "last": "12/1/2020", "terms": ["2019-2020"]})]
+    # Colin Mitchell's provisional page, as build_elect_pages writes it on both days (nobody is
+    # numbered until the roster is the new term's); Dana New has none (an address taken, say).
+    pages = {"election": "2026-11-03", "takes_office": "2026-12-02", "sources": [], "moved": {}, "pages": [
+        {"slug": "colin-mitchell-carr-8", "name": "Colin Mitchell", "party": "R", "chamber": "H",
+         "county": "Carroll", "district": "8", "race": "H|Carroll|8", "towns": ["Conway"]}]}
+    req = lambda n, body, who_, co=(): {"lsr": f"2027-{n}", "session": 2027, "body": body,
+                                        "title": f"relative to item {n}.", "sponsor": who_,
+                                        "withdrawn": False, "cosponsors": list(co)}
+    lsrs = [req("0001", "HB", "Ellen Read", ("Colin Mitchell", "Jim Creighton", "Dana New")),
+            req("0002", "HB", "Benjamin Baroody", ("Laura Telerski",)), req("0003", "SB", "Jim Creighton"),
+            req("0004", "SB", "Laura Telerski"), req("0005", "HB", "Colin Mitchell"),
+            req("0006", "HB", "Dana New"), req("0007", "HB", "Nora North"),
+            req("0008", "CACR", "Colin Mitchell"), req("0009", "HB", "Laura Telerski", ("Ellen Read",))]
+    meta = {"terms": ["2025-2026"], "requests": {"term": "2027-requests", "label": "2027 Bill Requests",
+                                                 "year": 2027, "abbr": L.ABBR}}
+    was_day, was_cwd = os.environ.get("GRANITE_BUILD_DATE"), os.getcwd()
+    got = {}
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d)
+        site, coll = root / "site", root / "collected"
+        for p in (site / "idx", coll, root / "corrections"):
+            p.mkdir(parents=True)
+
+        def put(path, obj):
+            path.write_text(json.dumps(obj), encoding="utf-8")
+        put(coll / "election_2026.json", results)
+        put(root / "corrections" / "members_elect.json", hand)
+        for name, obj in (("districts.json", districts), ("legislators.json", sitting),
+                          ("former.json", former), ("elect_pages.json", pages), ("meta.json", meta)):
+            put(site / name, obj)
+        (site / "bills.html").write_text(_source("src/pages/bills.html"), encoding="utf-8")
+        try:
+            os.chdir(root)
+            settled, _note = BME.read_hand(root / "corrections" / "members_elect.json", "2026-11-03")
+            races, _report = BME.members_elect(results, sitting, former, districts, settled, "2026-12-01")
+            put(site / "members_elect.json", {"election": "2026-11-03", "takes_office": "2026-12-02",
+                                              "term": "2027-2028", "races": races})
+            for day in ("2026-12-01", "2026-12-02"):
+                os.environ["GRANITE_BUILD_DATE"] = day
+                if day == "2026-12-02":
+                    # Organization Day: the step deletes the file; the provisional pages stay.
+                    (site / "members_elect.json").unlink()
+                winners, _said = L.load_winners(site, str(coll))
+                rows, unmatched = L.rows_from(lsrs, L.roster(site, str(coll), 2027), year=2027,
+                                              winners=winners)
+                L.with_sponsor_names(rows, L.page_names(site))
+                put(site / "idx" / "2027-requests.json", rows)
+                RP.write(site, "https://x")
+                got[day] = ({r["n"][4:]: r for r in rows}, unmatched,
+                            {p.stem: p.read_text(encoding="utf-8") for p in (site / "request").glob("*.html")})
+        finally:
+            os.chdir(was_cwd)
+            if was_day is None:
+                os.environ.pop("GRANITE_BUILD_DATE", None)
+            else:
+                os.environ["GRANITE_BUILD_DATE"] = was_day
+    (r1, u1, h1), (r2, u2, h2) = got["2026-12-01"], got["2026-12-02"]
+    assert not u1 and not u2, f"a name matched nobody: {u1} {u2}"
+    off = lambda s: s.replace(".-elect ", ". ")
+    want = {"2027-0001": ("Rep. Ellen Read (D)", "ellen-read-rock-10", "D"),
+            "2027-0002": ("Rep.-elect Ben Baroody (D)", "benjamin-baroody-hills-39", "D"),
+            "2027-0003": ("Sen.-elect Jim Creighton (R)", "james-creighton-hills-30", "R"),
+            "2027-0004": ("Sen.-elect Laura Telerski (D)", "laura-telerski-hills-11", "D"),
+            "2027-0005": ("Rep.-elect Colin Mitchell (R)", "colin-mitchell-carr-8", "R"),
+            "2027-0006": ("Rep.-elect Dana New (D)", "", "D"),
+            "2027-0007": ("Nora North (D)", "", "D"),
+            "2027-0008": ("Rep.-elect Colin Mitchell (R)", "colin-mitchell-carr-8", "R"),
+            "2027-0009": ("Rep. Laura Telerski (D)", "laura-telerski-hills-11", "D")}
+    co = [("Rep.-elect Colin Mitchell (R)", "colin-mitchell-carr-8", "R", "H"),
+          ("Sen.-elect Jim Creighton (R)", "james-creighton-hills-30", "R", "S"),
+          ("Rep.-elect Dana New (D)", "", "D", "H")]
+    prime = lambda r: (r["sponsor_label"], r["sponsor_slug"], r.get("sponsor_party", ""))
+    cos = lambda r: [(c["label"], c["slug"], c.get("party", ""), c.get("chamber", "")) for c in r.get("cosponsors") or []]
+    # The same people on 2 December, each label with the "-elect" taken off and nothing else;
+    # Laura Telerski, where the House roster matched her, the Senate's member from that day.
+    took = {n: (off(v[0]),) + v[1:] for n, v in want.items()}
+    took["2027-0009"] = ("Sen. Laura Telerski (D)", "laura-telerski-hills-11", "D")
+    her = {"1 December": [("Rep. Laura Telerski (D)", "laura-telerski-hills-11", "D", "H")],
+           "2 December": [("Sen. Laura Telerski (D)", "laura-telerski-hills-11", "D", "S")]}
+    for day, rs, w, wc, ch in (("1 December", r1, want, co, "H"),
+                               ("2 December", r2, took, [(off(c[0]),) + c[1:] for c in co], "S")):
+        bad = [f"{n}: {prime(rs[n])}, not {v}" for n, v in w.items() if prime(rs[n]) != v]
+        assert not bad, f"on {day} a request's prime sponsor reads otherwise: " + "; ".join(bad)
+        assert cos(rs["2027-0001"]) == wc, f"on {day} the co-sponsors read {cos(rs['2027-0001'])}, not {wc}"
+        assert cos(rs["2027-0002"]) == her[day] and rs["2027-0009"].get("sponsor_chamber") == ch, (
+            f"on {day} Laura Telerski as the House roster matched her: {cos(rs['2027-0002'])}, "
+            f"her House request's chamber {rs['2027-0009'].get('sponsor_chamber')}")
+    assert {n: r.get("sponsor_names") for n, r in r1.items()} == {n: r.get("sponsor_names") for n, r in r2.items()}, (
+        "the names the search reads changed with the title")
+
+    def head(html):
+        return re.search(r'<dl class="rfacts">.*?</dl>', html, re.S).group(0)
+
+    def sponsors(html):
+        m = re.search(r'<section class="w4" id="sponsors">.*?</section>', html, re.S)
+        return m.group(0) if m else ""
+    text = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", h))
+    assert sorted(h1) == sorted(h2) == sorted(want), f"the request pages written: {sorted(h1)} {sorted(h2)}"
+    bad = [n for n in want if n != "2027-0009" and head(h2[n]) != off(head(h1[n]))]
+    assert not bad, ("on 2 December a page's head is not 1 December's with the -elect taken off: "
+                     + "; ".join(f"{n}: {text(head(h2[n]))!r}" for n in bad))
+    t1, t2 = (head(h["2027-0009"]) for h in (h1, h2))
+    assert "Rep. Laura Telerski (D - Hills 11)" in text(t1) and "Sen. Laura Telerski (D)" in text(t2) \
+        and 'href="legislator/laura-telerski-hills-11"' in t2 and "Hills" not in t2, (
+        f"her House request's chip: {text(t1)!r}, then {text(t2)!r}")
+    spch = lambda s: re.findall(r'<h3 class="spch">(\w+) <span class="sechn">(\d+)</span>', s)
+    b1, b2 = sponsors(h1["2027-0002"]), sponsors(h2["2027-0002"])
+    assert spch(b1) == [] and "Hills 11" in b1 and spch(b2) == [("Representatives", "1"), ("Senators", "1")] \
+        and "Sen. Laura Telerski (D)" in text(b2) and "Hills" not in b2, (
+        f"Laura Telerski as a co-sponsor is not among the Senators on 2 December alone: {text(b2)!r}")
+    assert spch(sponsors(h2["2027-0009"])) == [("Senators", "1"), ("Representatives", "1")], (
+        f"her House request's Sponsors do not open with the Senators on 2 December: {spch(sponsors(h2['2027-0009']))}")
+    for n, who_, slug in (("2027-0003", "Jim Creighton (R)", "james-creighton-hills-30"),
+                          ("2027-0004", "Laura Telerski (D)", "laura-telerski-hills-11")):
+        for day, h in (("1 December", h1[n]), ("2 December", h2[n])):
+            assert (f'href="legislator/{slug}"' in head(h) and "Hills" not in head(h)
+                    and f"{'Sen.-elect' if day[0] == '1' else 'Sen.'} {who_}" in text(head(h))), (
+                f"{n}'s chip on {day} is not the senator's, linked to their record: {text(head(h))!r}")
+    assert "Rep.-elect Dana New (D)" in text(head(h1["2027-0006"])) \
+        and "Rep. Dana New (D)" in text(head(h2["2027-0006"])) and "href=" not in head(h2["2027-0006"]), (
+        f"a new member with no page: {text(head(h2['2027-0006']))!r}")
+    assert "Rep. Ellen Read (D - Rock 10)" in text(head(h2["2027-0001"])) \
+        and head(h1["2027-0001"]) == head(h2["2027-0001"]), "a member re-elected does not keep the roster's chip"
+    s1, s2 = sponsors(h1["2027-0001"]), sponsors(h2["2027-0001"])
+    assert s1 and "-elect" in s1 and s2 == off(s1) and "Hills 30" not in s2, (
+        f"on 2 December the Sponsors are not 1 December's with the -elect taken off: {s2[:600]!r}")
+    # THE SPONSOR FILTER'S CHAMBER, which app.js reads off the label's title (spChamber): each member
+    # under the chamber they sit in that day, on both days; Nora North, with none, under none.
+    order = sorted(want)
+    chambers = _app_js("(() => " + json.dumps([[rs[n]["sponsor_label"] for n in order] for rs in (r1, r2)])
+                       + ".map(ls => ls.map(l => scope.spChamber(l))))()", names=("spChamber",))
+    if chambers is None:
+        return "skip", ("the rows, the heads and the Sponsors hold on both days; node, app.js or the stub "
+                        "is not here for the Sponsor filter's chamber")
+    sits = {"2027-0003": "S", "2027-0004": "S", "2027-0007": ""}
+    assert chambers == [[sits.get(n, "H") for n in order],
+                        [sits.get(n, "S" if n == "2027-0009" else "H") for n in order]], (
+        f"the Sponsor filter's chamber by the label, 1 and 2 December: {chambers}")
+    return "ok", ("on 1 December Rep.-elect and Sen.-elect, on 2 December Rep. Ben Baroody (D) by his "
+                  "nickname, Sen. Jim Creighton (R) and Sen. Laura Telerski (D) linked to their records with "
+                  "no House seat, on a House request and as a co-sponsor too, among the Senators; Rep. Colin "
+                  "Mitchell (R) linked to his provisional page, Rep. Dana New (D) with no page and no link, "
+                  "and the co-sponsors the same, on the row, the head and the Sponsors; Ellen Read and Nora "
+                  "North, of a race not final, as they were; the search's names unchanged")
 
 
 # app.js's cardSponsor in node, on an English page and a Spanish one (window.GR_WORDS as

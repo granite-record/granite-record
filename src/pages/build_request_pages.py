@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.24
+# GRANITE_VERSION: 2026-11-08.25
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -105,9 +105,11 @@ def sponsors(site):
 
     A member-elect's chip carries their title until the day they take office,
     "Rep.-elect Colin Mitchell (R)" (the owner, 17 November 2026;
-    build_lsrs.elect_title and elect_window), as the request's row labels them
-    for its card; a sitting member's is the roster's, as it was, with the
-    chamber they sit in, which person_chip reads for one elected to the other."""
+    build_lsrs.elect_title and elect_window), and from that day the title of
+    the office, "Rep. Colin Mitchell (R)" (build_lsrs.office_title and
+    took_office), as the request's row labels them for its card; a sitting
+    member's is the roster's, as it was, with the chamber they sit in, which
+    person_chip reads for one elected to the other."""
     import build_lsrs
     out = {}
     f = site / "legislators.json"
@@ -120,9 +122,10 @@ def sponsors(site):
                               # member-elect title of the other chamber to.
                               "chamber": str(m.get("chamber") or "")[:1].upper()}
     f = site / "elect_pages.json"
-    titled = build_lsrs.elect_window(site)
+    titled, took = build_lsrs.elect_window(site), build_lsrs.took_office(site)
     for p in (json.loads(f.read_text(encoding="utf-8")).get("pages") or [] if f.is_file() else []):
-        title = f"{build_lsrs.elect_title(p.get('chamber'))} " if titled else ""
+        title = (f"{build_lsrs.elect_title(p.get('chamber'))} " if titled
+                 else f"{build_lsrs.office_title(p.get('chamber'))} " if took else "")
         out.setdefault(p["slug"], {"party_code": p.get("party"), "slug": p["slug"],
                                    "display_full": title + (f"{p['name']} ({p['party']})"
                                                             if p.get("party") else p["name"])})
@@ -158,7 +161,10 @@ def person_chip(who_of, slug, label, party="", prime=False):
     cards said Sen.-elect): on a request whose row titles them that chamber's
     member-elect (build_lsrs.election_winners, until the day they take office),
     the chip is the row's label and party, linked to their page, as every
-    member-elect's chip on a request is drawn ("Sen.-elect Jim Creighton (R)").
+    member-elect's chip on a request is drawn ("Sen.-elect Jim Creighton (R)");
+    and from that day, when the row titles them that chamber's member, "Sen. Jim
+    Creighton (R)", the same -- never the roster's House seat, which they no
+    longer hold, while the roster is still the old term's.
 
     `prime`: the chip carries the Prime label a bill page's prime sponsor
     carries among its sponsors (components.pchip; sponsors_section)."""
@@ -171,16 +177,17 @@ def person_chip(who_of, slug, label, party="", prime=False):
                     "slug": slug or "", "display_full": label or "", **mark})
 
 
-# A row's member-elect title, and the chamber it names: "Sen.-elect" the Senate's,
-# "Rep.-elect" the House's (build_lsrs.elect_title's words).
-_ELECT_TITLE = re.compile(r"^(Rep|Sen)\.-elect\s")
+# A row's title, and the chamber it names: "Sen.-elect" and "Sen." the Senate's,
+# "Rep.-elect" and "Rep." the House's (build_lsrs.elect_title's and office_title's words).
+_LABEL_TITLE = re.compile(r"^(Rep|Sen)\.(?:-elect)?\s")
 
 
 def elected_elsewhere(m, label):
     """Whether a roster member `m` (sponsors') is drawn under a row's `label` that titles
-    them the other chamber's member-elect: the label's title names a chamber, and it is
-    not the one they sit in. False for a member with no chamber on the roster."""
-    t = _ELECT_TITLE.match(str(label or ""))
+    them the other chamber's member-elect, or from the day they take office that
+    chamber's member: the label's title names a chamber, and it is not the one they sit
+    in. False for a member with no chamber on the roster."""
+    t = _LABEL_TITLE.match(str(label or ""))
     sits = str(m.get("chamber") or "")
     return bool(t) and sits in ("H", "S") and ("S" if t.group(1) == "Sen" else "H") != sits
 
