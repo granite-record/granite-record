@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.26
+# GRANITE_VERSION: 2026-11-08.27
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -117,13 +117,16 @@ def sponsors(site):
     has the chip of the seat they were elected to, "Rep. Pat Example (D -
     Rock 7)", "Sen. Laura Telerski (D - SD13)"; a member not returning has
     none here, and is drawn as a former member is, by the row's own label
-    and party (person_chip), since their seat is someone else's now."""
+    and party (person_chip), since their seat is someone else's now; and a
+    former member elected again has a member's chip at the seat they won,
+    "Rep. Benjamin Baroody (D - Hills 16)", as the roster will give it."""
     import build_lsrs
     import members as MEM
     switch = MEM.read_switch(site)
     out = {}
     f = site / "legislators.json"
-    for m in (json.loads(f.read_text(encoding="utf-8")) if f.is_file() else []):
+    for m in [*(json.loads(f.read_text(encoding="utf-8")) if f.is_file() else []),
+              *switch["returning"].values()]:
         if str(m.get("id") or "") in switch["leaving"]:
             continue
         m = switch["moved"].get(str(m.get("id") or ""), m)

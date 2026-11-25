@@ -1796,14 +1796,22 @@ roster's turn will: a member not returning gets their former member's file
 (`former_roster`, `date_former_seats`, `last_term_labels`), so their page reads
 "Former Representative ...", their search row "Former Rep. ...", and they are in
 Former members; one elected to another district or to the Senate is drawn at
-the seat they won. Their rows go to `site/seat_switch.json`, which
+the seat they won; and a former member elected again (`seat_changes`'
+"returning", the 28 of 3 November 2026) is a member from that day, their record
+at the seat they won under the party the ballot printed, "Representative ..." on
+their page with the day they took office, a member's row in the search and in
+the requests (the record's name, not the ballot's), off Former members, their
+earlier service kept, and no email, committee, floor seat or feed until the
+General Court publishes them. Their rows go to `site/seat_switch.json`, which
 `build_legislator_pages`, `build_indexes` and the requests (`build_lsrs`,
 `build_request_pages`) read through `members.read_switch`; `legislators.json`
 and `former.json` stay the roster's and the record's, so the census and every
 list of who holds a seat (the Legislators tab, the town pages, the map, the
 committees) are the old roster's until it turns, and bills, roll calls and
 committee rosters name each member as they sat. A page keeps its address until
-the turn, when `members.turned_addresses` moves it with a 301. None is written
+the turn, when `members.turned_addresses` moves it with a 301 -- a former member
+elected again's too, from the address of their former member's page
+(`former_rows_had`), since no frozen roster holds them. None is written
 before the day, or once the roster has turned, which says the same itself. The
 Speaker of 2025-2026, Sherman Packard, is among those not returning: from 3
 December his page is a former member's and names no office, so none names the

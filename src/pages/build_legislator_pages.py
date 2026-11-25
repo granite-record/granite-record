@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.51
+# GRANITE_VERSION: 2026-09-04.52
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -682,6 +682,20 @@ def elect_body(p, doc, reqs, req_meta, places, today, path="", base=""):
     return head + elected + tabs
 
 
+def took_line(took):
+    """A former member elected again's line on their own page from the day
+    after Organization Day until the roster turns (members.seat_switched's
+    "took", {"election", "day"}): "Elected November 3, 2026. Took office
+    December 2, 2026.", the words a new member's provisional page says that
+    day (elect_body), or "" where `took` names no days. app.js's
+    renderMemberHead draws the same line from their own file's "took"."""
+    e, d = str((took or {}).get("election") or ""), str((took or {}).get("day") or "")
+    if not (C.UNTIL_DAY.fullmatch(e) and C.UNTIL_DAY.fullmatch(d)):
+        return ""
+    return (f'<p class="elline">Elected {C.esc(C.date_words(e, "full"))}. '
+            f'Took office {C.esc(C.date_words(d, "full"))}.</p>')
+
+
 def write_elect_pages(site, out, t, base, written_slugs, pages_of_towns, today):
     """Each new member-elect's provisional page, from site/elect_pages.json:
     noindex and out of the sitemap until numbered (B2). A slug a member's page
@@ -908,11 +922,16 @@ def main():
     # drawn from their former member's row, "Former Representative ...", and
     # one elected to another seat from their row at it -- each at the address
     # their page has, and with the file build_site_v2 wrote for them so.
+    # AND A FORMER MEMBER ELECTED AGAIN (the switch's "returning"), a member from
+    # that day: drawn from their row at the seat they won in place of the former
+    # member's, at the address their page has, with the day they took office.
     switch = MEM.read_switch(site)
     now = {**switch["leaving"], **switch["moved"]}
+    back_now = switch["returning"]
     urls, written, n_former = [], 0, 0
     for m in [*legs, *former]:
-        m = now.get(str(m.get("id") or ""), m) if not m.get("former") else m
+        m = (back_now.get(str(m.get("id") or ""), m) if m.get("former")
+             else now.get(str(m.get("id") or ""), m))
         slug = m.get("slug") or person_slug(m)
         path = f"/legislator/{slug}.html"
         # "Former Rep. ..." for a member who has left: heading() says why.
@@ -929,10 +948,12 @@ def main():
         # there is no file to look for: shell.member_followable is the test
         # both use. Titled as the feed titles itself.
         named = m.get("display") or m.get("name") or f"Member #{mid}"
+        # Not a former member elected again's until the roster seats them: build_feeds
+        # writes the roster's members' feeds, and theirs is written from the night it does.
         feed = (f'<link rel="alternate" type="application/rss+xml" '
                 f'title="{E(named)} — Granite Record" '
                 f'href="/feed/legislator/{E(mid)}.xml">'
-                if S.member_followable(m) else "")
+                if S.member_followable(m) and mid not in back_now else "")
         # A MEMBER-ELECT'S ONE LINE (16 October 2026), in the plain page and,
         # through GR_ELECT, in the page app.js draws (renderMemberHead), which
         # draws it only for this id: a reader who goes on from here to another
@@ -946,6 +967,10 @@ def main():
         # above it says the seat. Everyone else's keeps the line as it was.
         line = (elect_line(None if returning else race, elect["election"],
                            elect["takes_office"], today, elect["until"]) if race else "")
+        # A FORMER MEMBER ELECTED AGAIN, FROM THE DAY AFTER ORGANIZATION DAY: the day they
+        # took office, under the heading their record has at the seat they won (took_line).
+        if mid in back_now and not line:
+            line = took_line(m.get("took") or rec.get("took"))
         # "until", the day after Organization Day, is when app.js stops drawing
         # the member-elect's head and line by the reader's clock; takes_office
         # is the day the line prints.

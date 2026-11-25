@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.41
+# GRANITE_VERSION: 2026-09-18.42
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -160,11 +160,16 @@ def roster(site, collected="collected", year=None):
     # owner, 25 November 2026), is not the roster's to label: they are drawn
     # as the roster's turn draws them (departed, below), by name and party,
     # never the seat they leave, linked to their page, which is the former
-    # member's from that day.
+    # member's from that day. And a FORMER MEMBER ELECTED AGAIN ("returning")
+    # is the roster's member they will be: matched and labelled from their row
+    # at the seat they won -- the record's name, "Rep. Benjamin Baroody (D)",
+    # never the ballot's "Ben Baroody" -- linked to the page they have, so
+    # their requests read as they will once the roster seats them.
     import members as MEM
-    leaving = MEM.read_switch(site)["leaving"]
+    sw = MEM.read_switch(site)
+    leaving = sw["leaving"]
     moved = chamber_moves(site, collected) if took_office(site) else {}
-    for m in json.loads(p.read_text(encoding="utf-8")):
+    for m in [*json.loads(p.read_text(encoding="utf-8")), *sw["returning"].values()]:
         if str(m.get("id") or "") in leaving:
             continue
         # "Abbas, Daryl" -- surname first, and there are no separate first and

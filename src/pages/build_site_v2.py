@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.335
+# GRANITE_VERSION: 2026-09-05.336
 """
 Generate the faceted site from real General Court data.
 
@@ -393,7 +393,8 @@ from members import (ATTENDANCE_KIND, FLOOR_RECORD, FORMER_LABEL, MOVED_ADDRESSE
                      _ATTENDANCE_PRESENT, _ATTENDANCE_RANK, _LABEL_SEAT, _SUFFIX, _member_address,
                      _roll_call_key, _surname, attendance_context, ballot_seat, build_legislators,
                      build_officers, corrected_seats, date_former_seats, floor_moment,
-                     former_movers, former_roster, keep_moved, last_term_labels, member_attendance,
+                     former_movers, former_roster, former_rows_had, keep_moved, last_term_labels,
+                     member_attendance,
                      member_office, printed_record, printed_seats, same_person, seat_of_the_lines,
                      seat_switched, site_rows, sponsored_in_order, term_seats, turned_addresses,
                      write_floor_record)
@@ -2897,8 +2898,16 @@ def main():
               f"{sum(len(v) for v in term_rosters.values()):,} members; their sponsors are "
               "labelled from it and looked for among the members who hold no seat now")
     # AND THE ADDRESS EACH OF THEM HAD THEN, where their page is at another now
-    # (turned_addresses): a 301 to it, from the night the roster turns.
-    turned, turned_former = turned_addresses(term_rosters, legs, former, links)
+    # (turned_addresses): a 301 to it, from the night the roster turns. And a
+    # FORMER MEMBER THE ROSTER SEATS AGAIN, who held no seat in a term it froze
+    # but has a record (the 28 former members elected on 3 November 2026): the
+    # address of their former member's page (former_rows_had), answered the same.
+    froze = {str(k) for r in term_rosters.values() for k in r}
+    back = sorted(k for k in legs if term_rosters and k not in froze and votes_by_member.get(k))
+    had = (former_rows_had(back, legs, former, votes_by_member, links,
+                           load("former_members.json", {}), max(bills) if bills else "",
+                           district_lines, quiet=True) if back else {})
+    turned, turned_former = turned_addresses(term_rosters, legs, former, links, had=had)
     if turned or turned_former:
         print(f"  {sum(map(len, turned.values())) + turned_former} address(es) a member's page had "
               f"in {', '.join(term_rosters)} answer with a 301 to the page their record is on now: "

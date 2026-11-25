@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.23
+# GRANITE_VERSION: 2026-10-16.24
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -1532,9 +1532,10 @@ def members_elect(results, sitting, former, districts, hand, today, settled=Fals
 
 def seat_changes(races, sitting):
     """{"leaving": {member id: their own seat's race key}, "moved": {member
-    id: the race key they won}}: what the election did to each sitting member,
-    by identity -- the races as members_elect() draws them, their "id" -- never
-    by name.
+    id: the race key they won}, "returning": {former member's id: the race key
+    they won}}: what the election did to each sitting member, and which former
+    members it sent back, by identity -- the races as members_elect() draws
+    them, their "id" -- never by name.
 
     THE SAME RULE AS THE REQUESTS' (build_lsrs.not_returning, the owner's of 12
     November 2026). A sitting member is LEAVING where no race's winners name
@@ -1543,12 +1544,19 @@ def seat_changes(races, sitting):
     say and the rule does not need. One MOVED is among the winners of a race
     that is not their own seat's -- another district of their chamber, or the
     other chamber. Re-elected to their own seat, or in a race not decided, or
-    in none the file lists: as they are."""
-    won = {}
+    in none the file lists: as they are. And a FORMER MEMBER ELECTED AGAIN --
+    a winner the step or the owner linked to a former member's record (the
+    race's "former", and its "id": the page their record is on) -- is
+    RETURNING, at the seat they won (the manager's word of 25 November 2026,
+    under the owner's "switch to the new titles" on 3 December: 28 of them at
+    the election of 3 November 2026)."""
+    won, back = {}, {}
     for key, race in (races or {}).items():
         for e in (race or {}).get("elected") or []:
             if e.get("k") == "sitting" and e.get("id"):
                 won.setdefault(str(e["id"]), key)
+            elif e.get("k") == "former" and e.get("id"):
+                back.setdefault(str(e["id"]), key)
     leaving, moved = {}, {}
     for m in sitting or []:
         mid, seat = str(m.get("id") or ""), seat_of(m)
@@ -1562,7 +1570,7 @@ def seat_changes(races, sitting):
         if race is None or race.get("not_final") or race.get("held"):
             continue
         leaving[mid] = seat
-    return {"leaving": leaving, "moved": moved}
+    return {"leaving": leaving, "moved": moved, "returning": back}
 
 
 def seat_switch(sitting, former, districts, collected="collected", hand_path=None, today=None,
@@ -1571,8 +1579,11 @@ def seat_switch(sitting, former, districts, collected="collected", hand_path=Non
     build's day by default), or None where the site does not switch:
 
       {"day": "2026-12-03", "election": "2026-11-03", "term": "2027-2028",
+       "took": "2026-12-02", the day they took office (Organization Day),
        "leaving": {id: race key},
-       "moved": {id: {"key": the race they won, "towns": its towns}}}
+       "moved": {id: {"key": the race they won, "towns": its towns}},
+       "returning": {former member's id: {"key", "towns", "party": the
+                     letter the ballot printed for them}}}
 
     SWITCHED from the day after Organization Day (proceedings.switch_day),
     while the roster is still the House the election ended: the term the
@@ -1606,10 +1617,17 @@ def seat_switch(sitting, former, districts, collected="collected", hand_path=Non
     races, _report = members_elect(results, sitting, former, districts, hand, today.isoformat())
     got = seat_changes(races, sitting)
     on_file, _clash = races_on_file(districts)
+    party = {str(e["id"]): str(e.get("p") or "") for r in races.values()
+             for e in (r or {}).get("elected") or [] if e.get("k") == "former" and e.get("id")}
+    took = proceedings.organization_day(election.year)
     return {"day": day.isoformat(), "election": results["election"], "term": term,
+            "took": took.isoformat() if took else "",
             "leaving": got["leaving"],
             "moved": {mid: {"key": key, "towns": sorted((on_file.get(key) or {}).get("towns") or [])}
-                      for mid, key in got["moved"].items()}}
+                      for mid, key in got["moved"].items()},
+            "returning": {mid: {"key": key, "party": party.get(mid, ""),
+                                "towns": sorted((on_file.get(key) or {}).get("towns") or [])}
+                          for mid, key in got["returning"].items()}}
 
 
 # ---- what the pages read ---------------------------------------------------

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.377
+// GRANITE_VERSION: 2026-09-07.378
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10359,7 +10359,16 @@ function renderMemberHead(m){
   // sentence under their name says the seat.
   const elect=G&&typeof electLine==="function"&&String(G.id)===String(m.id)
     ?electLine(retPage?null:G.key,G.election,G.takes_office,null,G.until):"";
-  return head+note+elect;
+  // A FORMER MEMBER ELECTED AGAIN, FROM THE DAY AFTER ORGANIZATION DAY UNTIL THE
+  // ROSTER SEATS THEM (members.seat_switched, the switch's "returning"): their own
+  // file is a member's at the seat they won, and its "took" the election and the
+  // day they took office, said as a new member's provisional page says it
+  // (build_legislator_pages.took_line).
+  const tk=m.took||{},day=/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+  const took=!former&&!elect&&day.test(String(tk.election||""))&&day.test(String(tk.day||""))
+    ?`<p class="elline">Elected ${esc(dateWords(tk.election,"full"))}. Took office ${
+      esc(dateWords(tk.day,"full"))}.</p>`:"";
+  return head+note+elect+took;
 }
 
 // THE TERM AT A GLANCE (the person's feedback of 9 October 2026, item 7:
