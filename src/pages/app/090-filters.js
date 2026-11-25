@@ -213,10 +213,8 @@ function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
     // TAGS:END
   }else{
     const order=zerosLast(key,vals,counts);
-    inner=order.vals.map((v,i)=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}${i===order.rule?' fzero':''}">
-      <input type="checkbox" data-f="${key}" value="${esc(v)}" ${chosen.has(v)?"checked":""}>
-      <span>${paint?chip(v,paint(v)):show?show(v):esc(v)}</span>
-      <span class="c">${(counts[v]||0).toLocaleString()}</span></label>`).join("");
+    inner=order.vals.map((v,i)=>fcheck("data-f",key,v,chosen.has(v),!counts[v]&&!chosen.has(v),i===order.rule,
+      paint?chip(v,paint(v)):show?show(v):esc(v),(counts[v]||0).toLocaleString())).join("");
   }
   // A short list that is the same few words in every term -- the Status
   // filter's categories, the kinds of measure -- is shown whole (.whole):
@@ -224,9 +222,29 @@ function fgroup(key,label,vals,counts,searchable,paint,show,extra,extraN){
   // term's seven kinds and none of All Terms' after SCR, CACR among them,
   // with nothing to say the list went on.
   const whole=key==="status"||key==="type";
+  return fgroupFrame(key,label,open,chosen.size+(extraN||0),inner,whole);
+}
+// ONE FILTER GROUP, AS fgroup DRAWS IT, and the votes page draws its own with
+// it (votesFacets, 25 November 2026): its head the button that opens and
+// shuts it, with how many are chosen in it in a badge, and under it the
+// group's body, `inner`, shown whole where `whole` says its list is short.
+// `open` is true or false.
+function fgroupFrame(key,label,open,n,inner,whole){
   return `<div class="fgroup ${open?'open':''}"><button class="fhead" data-g="${key}"
-    aria-expanded="${open}"><span>${label}</span>${chosen.size+(extraN||0)?`<span class="badge">${chosen.size+(extraN||0)}</span>`:""}
+    aria-expanded="${open}"><span>${label}</span>${n?`<span class="badge">${n}</span>`:""}
     <span class="chev">▸</span></button><div class="fbody${whole?" whole":""}" ${open?"":"hidden"}>${inner}</div></div>`;
+}
+// ONE OPTION OF A GROUP, AS fgroup DRAWS ITS SHORT LISTS' (Status, Bill Type,
+// Committee), and the votes page's boxes with it: the box, ticked where `on`;
+// the value's words, in HTML; and how many the list would hold with it,
+// greyed where that is none (`off`), with the hairline above the first zero of
+// a narrowed long list (`zero`). `attr` is the attribute a page hears the box
+// by -- data-f, the bill search's (sel); data-vtick, the votes page's.
+function fcheck(attr,key,v,on,off,zero,words,count){
+  return `<label class="fopt ${off?'off':''}${zero?' fzero':''}">
+      <input type="checkbox" ${attr}="${key}" value="${esc(v)}" ${on?"checked":""}>
+      <span>${words}</span>
+      <span class="c">${count}</span></label>`;
 }
 
 // TAGS:BEGIN
