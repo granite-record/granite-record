@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.22
+# GRANITE_VERSION: 2026-11-08.24
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -32,6 +32,13 @@ bill's, where its follow has moved; and its Bill Text tab, which every
 request has (the owner, 17 November 2026), shows its text once the night has
 read it ("text_on_file"; text_pane), read by machine from the General
 Court's PDF, which it links. It forwards only once the bill is introduced.
+
+ITS CO-SPONSORS, AS A BILL'S PAGE DRAWS THEM (the owner, 24 November 2026:
+"Yes, take them", of the co-sponsors the General Court's results page names;
+fetch_lsrs, build_lsrs): its Summary opens with them, the prime sponsor first
+and labelled, then each co-sponsor in the page's order, by chamber where they
+are of both, with the count under the chips (sponsors_section, app.js
+renderSponsors). A request the page names none for draws as it did.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -46,8 +53,13 @@ import re
 
 import shell as S
 import components as C
+import i18n
 
 E = S.E
+# The language a request's page is in: the site's own (i18n.PAGES builds it in
+# no other). Its sponsors' words are cataloged all the same (lang/es.json), as
+# every word the site adds is, for the day it is translated.
+LANG = i18n.DEFAULT
 # Not indexed (Alice, 8 November 2026), as the provisional members-elect pages.
 ROBOTS = '<meta name="robots" content="noindex,follow">'
 # The site's word for a topic nobody could place (topics.MISC), never printed.
@@ -130,7 +142,7 @@ def state_of(r):
     return "Withdrawn" if r.get("withdrawn") else (r.get("status") or "")
 
 
-def person_chip(who_of, slug, label, party=""):
+def person_chip(who_of, slug, label, party="", prime=False):
     """THE ONE RULE for a person on a request's page (13 November 2026): a
     sitting member, or a provisional member-elect page, keeps the chip the
     roster gives -- their seat today. Anyone else the row names, a returning
@@ -146,13 +158,17 @@ def person_chip(who_of, slug, label, party=""):
     cards said Sen.-elect): on a request whose row titles them that chamber's
     member-elect (build_lsrs.election_winners, until the day they take office),
     the chip is the row's label and party, linked to their page, as every
-    member-elect's chip on a request is drawn ("Sen.-elect Jim Creighton (R)")."""
+    member-elect's chip on a request is drawn ("Sen.-elect Jim Creighton (R)").
+
+    `prime`: the chip carries the Prime label a bill page's prime sponsor
+    carries among its sponsors (components.pchip; sponsors_section)."""
+    mark = {"prime": True} if prime else {}
     m = who_of.get(slug) if slug else None
     if m and not elected_elsewhere(m, label):
-        return C.pchip(m)
+        return C.pchip({**m, **mark})
     tag = re.search(r"\(([A-Za-z])\)\s*$", label or "")
     return C.pchip({"party_code": party or (tag.group(1) if tag else ""),
-                    "slug": slug or "", "display_full": label or ""})
+                    "slug": slug or "", "display_full": label or "", **mark})
 
 
 # A row's member-elect title, and the chamber it names: "Sen.-elect" the Senate's,
@@ -169,10 +185,67 @@ def elected_elsewhere(m, label):
     return bool(t) and sits in ("H", "S") and ("S" if t.group(1) == "Sen" else "H") != sits
 
 
-def chips_of(people, who_of):
-    """The chips of the people a row names: [{"label", "slug"}, ...]."""
-    return [person_chip(who_of, c.get("slug"), c.get("label"), c.get("party") or "")
-            for c in people or []]
+def _party_names():
+    """{letter: the party's name}, for the title over its count under the
+    sponsors' chips: the state's one table's words (state_settings.party_words,
+    "D" is "Democrat", as app.js's PARTY_NAME gives a bill's), in the page's
+    language (parts.party_word)."""
+    import parts
+    import state_settings as ST
+    return {k: parts.party_word(w, LANG) for k, w in ST.party_words("name").items()}
+
+
+def sponsors_section(r, who_of):
+    """THE SPONSORS, AS A BILL'S PAGE DRAWS THEM (app.js renderSponsors; the
+    owner, 19 November 2026, for a bill: "Sponsors appear at the top of the
+    Summary tab"), for a request whose row names co-sponsors: the prime
+    sponsor first, carrying the Prime label, then each co-sponsor in the
+    results page's order (build_lsrs.rows_from); grouped by chamber, the
+    prime sponsor's first, under a heading for each only where they are of
+    more than one (the row's "sponsor_chamber" and each co-sponsor's
+    "chamber"; a name that matched nobody has none); and under the chips
+    their count, with each party's. Every person is person_chip's, so a
+    sitting member keeps the roster's seat and a name that matched nobody is
+    drawn as printed, with no party and no link. The markup is
+    renderSponsors', space for space, which _request_sponsors_as_a_bills
+    holds."""
+    people = [{"slug": r.get("sponsor_slug") or "", "label": r.get("sponsor_label") or r.get("sponsor") or "",
+               "party": r.get("sponsor_party") or "", "chamber": r.get("sponsor_chamber") or "",
+               "prime": True}]
+    people += [{"slug": c.get("slug") or "", "label": c.get("label") or c.get("name") or "",
+                "party": c.get("party") or "", "chamber": c.get("chamber") or "", "prime": False}
+               for c in r.get("cosponsors") or []]
+
+    def ch(p):
+        return str(p["chamber"]).upper()[:1]
+    origin = ch(people[0]) or ("S" if str(r.get("id") or "").upper().startswith("S") else "H")
+    rest = [p for p in people if ch(p) not in ("H", "S")]
+    split = sum(1 for c in ("H", "S") if any(ch(p) == c for p in people)) + (1 if rest else 0) > 1
+
+    def block(group, word):
+        if not group:
+            return ""
+        chips = " ".join(person_chip(who_of, p["slug"], p["label"], p["party"], prime=p["prime"])
+                         for p in group)
+        head = f'<h3 class="spch">{E(word)} <span class="sechn">{len(group)}</span></h3>' if split else ""
+        return f'{head}\n      <div class="chosen">{chips}</div>'
+    words = {"H": i18n.say(LANG, "req.representatives", "Representatives"),
+             "S": i18n.say(LANG, "req.senators", "Senators")}
+    other = "H" if origin == "S" else "S"
+    tally = {}
+    for p in people:
+        k = str(p["party"]).upper()[:1]
+        if k:
+            tally[k] = tally.get(k, 0) + 1
+    names = _party_names()
+    parties = " · ".join(f'<span title="{E(names.get(k, k))}">{tally[k]} {E(k)}</span>'
+                         for k in sorted(tally))
+    count = (i18n.say(LANG, "req.one_sponsor", "1 Sponsor") if len(people) == 1
+             else i18n.say(LANG, "req.n_sponsors", "{n} Sponsors", n=len(people)))
+    return ("\n    " + block([p for p in people if ch(p) == origin], words[origin])
+            + block([p for p in people if ch(p) == other], words[other])
+            + "\n    " + block(rest, i18n.say(LANG, "req.no_chamber", "Chamber Not on File"))
+            + f'\n    <p class="spcount">{E(count)}' + (f" · {parties}" if parties else "") + "</p>")
 
 
 def rail_of(r):
@@ -193,7 +266,8 @@ def head(r, req, who_of, path, base):
     after Cite where a request can be followed (GR_REQUEST). No Testify, no
     Print: there is no hearing to sign in to and no record to print yet.
     A field the request has no value for is left out, as the bill page leaves
-    its own out: no Committee until it is referred."""
+    its own out: no Committee until it is referred. The co-sponsors are the
+    Summary's, as a bill's are (sponsors_section), not the head's."""
     word = state_of(r)
     slug = r.get("sponsor_slug")
     name = r.get("sponsor_label") or r.get("sponsor") or ""
@@ -202,9 +276,6 @@ def head(r, req, who_of, path, base):
         facts.append(["Prime Sponsor", person_chip(who_of, slug, name, r.get("sponsor_party") or "")])
     elif name:
         facts.append(["Prime Sponsor", E(name)])
-    cos = chips_of(r.get("cosponsors"), who_of)
-    if cos:
-        facts.append(["Co-Sponsors" if len(cos) > 1 else "Co-Sponsor", " ".join(cos)])
     if r.get("body_label"):
         facts.append(["Kind", E(r["body_label"])])
     # THE BILL IT WAS FILED AS (the owner, 17 November 2026: "Drafted and filed
@@ -297,33 +368,22 @@ def text_pane(r, year):
             f'<pre class="vtext" translate="no">{E(text)}</pre>{pdf}')
 
 
-def summary(r, req):
-    """The Summary tab: the requests' explanation, About Requests, alone (the
-    owner, 17 November 2026: "leave the summary as the about section"). What
-    the record says of the request's text is the Bill Text tab's (text_pane),
-    which it led the Summary with until then. The facts of this one are the
-    head's (the status chip, the field grid): not said twice (the owner, 14
-    November 2026: "just let the pages speak for themselves")."""
+def summary(r, req, who_of=None):
+    """The Summary tab: the requests' explanation, About Requests (the owner,
+    17 November 2026: "leave the summary as the about section"); and above
+    it, for a request whose row names co-sponsors, its sponsors, as a bill's
+    Summary opens with its own (sponsors_section, under the bill's "Sponsors"
+    heading and anchor). What the record says of the request's text is the
+    Bill Text tab's (text_pane), which it led the Summary with until then.
+    The facts of this one are the head's (the status chip, the field grid):
+    not said twice (the owner, 14 November 2026: "just let the pages speak
+    for themselves")."""
     year = r.get("year") or req.get("year")
-    return C.section("About Requests", f'<p class="lsrnote">{explain(year, req.get("abbr"))}</p>', "about")
-
-
-def sponsors_pane(r, who_of):
-    """The Sponsors tab, only where co-sponsors are listed (the General
-    Court lists one once they have accepted): the prime sponsor and every
-    co-sponsor as the person chip, by person_chip's one rule, as head() draws
-    the prime sponsor: a returning former member from the row, never their
-    old seat."""
-    cos = chips_of(r.get("cosponsors"), who_of)
-    slug = r.get("sponsor_slug")
-    name = r.get("sponsor_label") or r.get("sponsor") or ""
-    prime = (person_chip(who_of, slug, name, r.get("sponsor_party") or "")
-             if slug and (slug in who_of or name) else E(name))
-    return (f'<p class="spcount">{len(cos) + 1} Sponsors</p>'
-            f'<h2 class="sech spgrp">Prime Sponsor</h2><div class="chosen">{prime}</div>'
-            f'<h2 class="sech spgrp">{"Co-Sponsors" if len(cos) > 1 else "Co-Sponsor"} '
-            f'<span class="sechn">{len(cos)}</span></h2><div class="chosen">{" ".join(cos)}</div>'
-            '<p class="src">A co-sponsor is listed once they have accepted.</p>')
+    about = C.section("About Requests", f'<p class="lsrnote">{explain(year, req.get("abbr"))}</p>', "about")
+    if not r.get("cosponsors"):
+        return about
+    return C.section(i18n.say(LANG, "req.sponsors", "Sponsors"), sponsors_section(r, who_of or {}),
+                     "sponsors") + about
 
 
 def history_pane(r):
@@ -346,8 +406,10 @@ def tabs(rid, path, panes):
     2026: a request's page "should at least show the summary tab"):
     the record's strip, components.record_tabs, as app.js's renderDetail
     draws a bill's -- the same component, its tabs keyed as a bill's (0
-    Summary, 6 Bill Text, 4 Sponsors, 7 History, as the request's card keys
-    them); before 16 November a request with a Summary alone drew no strip
+    Summary, 6 Bill Text, 7 History, as the request's card keys them; no
+    Sponsors tab, which a bill's page has not had since 19 November 2026:
+    its sponsors open its Summary); before 16 November a request with a
+    Summary alone drew no strip
     and left the page ending under the rail, and since 17 November every
     request has Summary and Bill Text at least. `panes` is [(key, word, count, body)],
     the first chosen. The page is built ahead with every pane on it, so the
@@ -368,11 +430,10 @@ def tabs(rid, path, panes):
 def body(r, req, who_of, path, base):
     """One request's page: a bill's, with what a request has drawn and the
     rest left quiet."""
-    # Bill Text second, as on a bill's page, and on every request (text_pane).
-    panes = [("0", "Summary", 0, summary(r, req)),
+    # Bill Text second, as on a bill's page, and on every request (text_pane);
+    # the sponsors the Summary's (summary), as on a bill's.
+    panes = [("0", "Summary", 0, summary(r, req, who_of)),
              ("6", "Bill Text", text_count(r), text_pane(r, r.get("year") or req.get("year")))]
-    if r.get("cosponsors"):
-        panes.append(("4", "Sponsors", len(r["cosponsors"]) + 1, sponsors_pane(r, who_of)))
     if r.get("history"):
         panes.append(("7", "History", len(r["history"]), history_pane(r)))
     return head(r, req, who_of, path, base) + tabs(r.get("id") or "", path, panes)

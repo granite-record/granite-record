@@ -172,8 +172,9 @@ const termOfYear=y=>{
    request's row alone: a request has a number, a title, a prime sponsor, the
    body it will be filed in and, once they accept, its co-sponsors -- no
    committee, hearing or vote yet, and its text only once filed -- so its card
-   opens onto Summary, Bill Text (saying where the text stands until the night
-   has read it), Sponsors and History, and its rail has three stops of its own. */
+   opens onto Summary (its sponsors first where it has co-sponsors, as a bill's
+   Summary opens), Bill Text (saying where the text stands until the night
+   has read it) and History, and its rail has three stops of its own. */
 // A BILL REQUEST CAN BE FOLLOWED BY EMAIL (the person, 22 October 2026):
 // until it is drafted, when the follow moves onto its bill (build_feeds,
 // BILL REQUESTS). Its Follow is on its own page, after Cite, as a bill's is
@@ -191,22 +192,31 @@ function followUp(){
     if(r.body&&r.body.cancel)Promise.resolve().then(()=>r.body.cancel()).catch(()=>{});
     return r.ok;});
 }
-// A co-sponsor's chip, as a bill's sponsor is drawn: the roster's label, the
-// party read from it, the member's page where they have one. A name that
-// matched nobody stays as typed, with no party.
-const lsrChip=c=>pchip({display_full:c.label||c.name||"",
-  party:c.party||(/\(([A-Z])\b/.exec(c.label||"")||[])[1]||"",slug:c.slug||""});
+// A REQUEST'S SPONSORS AS A BILL'S ARE DRAWN (renderSponsors; the owner, 24
+// November 2026: "Yes, take them", of the co-sponsors the General Court's
+// results page names): the prime sponsor first, labelled Prime, then each
+// co-sponsor in the page's order, each a person chip as the byline draws the
+// prime (cardSponsor: the row's label, the party read from it, the member's
+// page where they have one; a name that matched nobody as typed, with no
+// party), and the chamber build_lsrs matched them in, which renderSponsors
+// groups them by. build_request_pages.sponsors_section draws the page's.
+function lsrSponsors(b){
+  const sp=cardSponsor(b);
+  return (sp?[Object.assign({},sp,{chamber:b.sponsor_chamber||"",prime:true})]:[]).concat(
+    (b.cosponsors||[]).map(c=>Object.assign(cardSponsor({sponsor_label:c.label||c.name||"",
+      sponsor_party:c.party||"",sponsor_slug:c.slug||""})||{},{chamber:c.chamber||""})));
+}
 // The tabs a request has (the numbers are a bill's own, which a tab's
 // identity is): Summary; Bill Text, always (the owner, 17 November 2026: "move
 // the text about the bill text into a bill text tab and just list it as 0
 // until the text is published"), its count 1 once the night has read the text
 // and until then the text "0", which recordTabs draws as "(0)" where the
-// number 0 draws no count (build_request_pages.text_count); Sponsors, where
-// co-sponsors have accepted; History, where an earlier bill has the same title.
+// number 0 draws no count (build_request_pages.text_count); History, where an
+// earlier bill has the same title. No Sponsors tab, as a bill has none since
+// 19 November 2026: a request's co-sponsors open its Summary (lsrPane).
 function lsrTabs(b){
-  const hist=b.history||[],cos=b.cosponsors||[];
+  const hist=b.history||[];
   return [["0","Summary",0],["6","Bill Text",b.text_on_file?1:"0"]].concat(
-    cos.length?[["4","Sponsors",cos.length+1]]:[],
     hist.length?[["7","History",hist.length]]:[]);
 }
 // What the Bill Text tab says while the text is not here, by what the row
@@ -258,16 +268,8 @@ function lsrAbout(b){
     esc(year)} bill. Some are withdrawn first.${Object.entries(abbr).map(([k,v])=>` ${esc(k)} stands for ${esc(v)}.`).join("")}</p>`);
 }
 function lsrPane(b,t){
-  const cos=b.cosponsors||[],hist=b.history||[],sp=cardSponsor(b);
-  const prime=sp?pchip(Object.assign({},sp,{prime:false,role:""})):"";
+  const cos=b.cosponsors||[],hist=b.history||[];
   if(t==="6")return lsrTextPane(b);
-  if(t==="4"){
-    return `<p class="spcount">${cos.length+1} Sponsors</p>
-      ${prime?`<h2 class="sech spgrp">Prime Sponsor</h2><div class="chosen">${prime}</div>`:""}
-      <h2 class="sech spgrp">${cos.length>1?"Co-Sponsors":"Co-Sponsor"} <span class="sechn">${cos.length}</span></h2>
-      <div class="chosen">${cos.map(lsrChip).join(" ")}</div>
-      <p class="src">A co-sponsor is listed once they have accepted.</p>`;
-  }
   if(t==="7"){
     return `<p class="src">${hist.length===1?"A bill":"Bills"} of an earlier session with this same title:</p>
       <ul class="lsrhist">${hist.map(h=>`<li><a href="bill/${esc(h.year)}/${esc(String(h.id||"").toLowerCase())}">${
@@ -276,11 +278,13 @@ function lsrPane(b,t){
   // WHAT THE BYLINE DOES NOT SAY (the owner, 14 November 2026: "just let the
   // pages speak for themselves"): the chip has the status, the byline the kind,
   // the prime sponsor and the topic; what is left is the co-sponsors and the way
-  // on to the request's own page.
+  // on to the request's own page. The co-sponsors as a bill's Summary opens
+  // with its sponsors (renderSummary, lsrSponsors), with no id: a list opens
+  // many cards.
   // And the bill it was filed as, while it is still a request (the owner, 17
   // November 2026: "Drafted and filed as HB123 sounds fine"). Then what a
   // request is, as its own page's Summary says it (lsrAbout).
-  return `${cos.length?`<p><b>${cos.length>1?"Co-Sponsors":"Co-Sponsor"}:</b> ${cos.map(lsrChip).join(" ")}</p>`:""}
+  return `${cos.length?section("Sponsors",renderSponsors(b,{sponsors:lsrSponsors(b)})):""}
     ${b.introduced&&!b.moved_to?`<p><b>Filed As:</b> ${b.bill_at?`<a href="${esc(b.bill_at)}">${esc(b.introduced)}</a>`:esc(b.introduced)}</p>`:""}
     ${lsrAbout(b)}
     ${b.address?`<p><a href="${esc(b.moved_to||b.address)}">${b.moved_to?"Read the bill":"Open the request’s own page"}</a></p>`:""}`;

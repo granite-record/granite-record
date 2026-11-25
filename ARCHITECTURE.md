@@ -2896,6 +2896,21 @@ it and the ones taken before are kept as they stood, not withdrawn. The night's
 line says how many the CSV held, how many the page listed and how many were
 taken from it (`nightly.lsrs_listed`).
 
+The CSV names a request's prime sponsor alone, and the page its co-sponsors
+too (95 requests on the owner's printout of 23 November 2026; her word of 24
+November, "Yes, take them"): a request on both takes the page's co-sponsors,
+in the page's order, and nothing else of its row, unless the page names the
+CSV's prime sponsor among them. On a night the page says nothing of a request
+-- not read, not usable, or not listing it -- it keeps the co-sponsors it had
+(`fetch_lsrs.merge`), and the night's line says how many have co-sponsors from
+the page. `build_lsrs.rows_from` matches each co-sponsor by the prime
+sponsor's rules with no chamber assumed (`co_match`: the whole name, nobody
+else of it, in either chamber; else the prime sponsor's rules in the one
+chamber that finds the name), since a request is co-sponsored from both
+chambers: on the printout 58 of the 345 names were of the other chamber, and
+all 345 matched a member's page. A name that matches nobody is kept as
+printed.
+
 Each request has a page of its own at its row's `address`, `/request/<number>`
 (`src/pages/build_request_pages.py`), until the row carries a `moved_to` --
 the bill's page once that bill is introduced or, from the day filing for
@@ -2917,7 +2932,13 @@ the roster's chip, with the seat they hold, and a new member-elect the chip of
 their provisional page; anyone else the row names, a former member elected
 again among them, is drawn from the row's own label and party and linked to
 their page (`build_request_pages.person_chip`), since their old seat is
-someone else's now.
+someone else's now. A request with co-sponsors opens its Summary, on its page
+and its card, with its sponsors as a bill's Summary opens with its own (`app.js`
+`renderSponsors`; `build_request_pages.sponsors_section`, the same markup): the
+prime sponsor first and labelled, each chamber under its heading where they
+are of both, the count under the chips; neither has a Sponsors tab, as a bill
+has none since 19 November 2026. A member's Co-sponsored tab in the requests'
+term lists the requests that name them (`app.js` `renderMemberRequests`).
 
 A request's card is a bill card drawn from its row (`app.js`, `lsrCardHtml`),
 and its page a bill page's head (`build_request_pages.head`). Both draw the

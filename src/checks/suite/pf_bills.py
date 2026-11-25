@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.54
+# GRANITE_VERSION: 2026-11-16.56
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1546,25 +1546,23 @@ def _request_pages():
             f"a returning former member's request page draws the sponsor as {dd and dd.group(1)!r}, "
             "not as the row's own 'Ben Baroody (D)', linked, with no old seat")
         # EVERY PLACE A REQUEST'S PAGE DRAWS A PERSON: the head's Prime
-        # Sponsor and Co-Sponsors, and the Sponsors tab's two groups -- four
-        # chips of the former member, each linked, none with the old seat
-        # (24 November 2026: the tabs added the second two; the check
-        # counted two).
-        pane = re.search(r'<div class="pane sspane"[^>]*id="pane_LSR20270004_4"[^>]*>(.*?)(?=<div class="pane sspane"|\Z)',
-                         fp, re.S)
-        assert pane, "a request with co-sponsors has no Sponsors tab"
-        grp = re.findall(r'<div class="chosen">(.*?)</div>', pane.group(1), re.S)
-        assert len(grp) == 2, f"the Sponsors tab draws {len(grp)} groups of people, not the prime sponsor and the co-sponsors"
+        # Sponsor, and the Summary's Sponsors, as a bill's (24 November 2026:
+        # until the co-sponsors came, the head's Co-Sponsors and a Sponsors
+        # tab) -- three chips of the former member, each linked, none with the
+        # old seat, and the sitting co-sponsor's with hers.
+        sec = re.search(r'<section class="w4" id="sponsors">(.*?)</section>', fp, re.S)
+        assert sec, "a request with co-sponsors has no Sponsors at the top of its Summary"
+        grp = re.findall(r'<div class="chosen">(.*?)</div>', sec.group(1), re.S)
+        assert len(grp) == 1, f"the Sponsors draw {len(grp)} groups of people, where no chamber is on file"
         link = 'href="legislator/benjamin-baroody-hills-39"'
         assert fp.count("Hills 39") == 0 \
-            and 'Ben Baroody <span class="mtag">(D)</span>' in grp[0] and link in grp[0] \
-            and "Rep." not in grp[0] \
-            and 'Ben Baroody <span class="mtag">(D)</span>' in grp[1] and link in grp[1] \
-            and 'Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>' in grp[1] \
-            and fp.count(link) == 4 \
-            and fp.count('Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>') == 2, (
+            and grp[0].count('Ben Baroody <span class="mtag">(D)</span>') == 2 and grp[0].count(link) == 2 \
+            and "Rep. Ben" not in fp and "Rep. Benjamin" not in fp \
+            and 'Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>' in grp[0] \
+            and fp.count(link) == 3 \
+            and fp.count('Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>') == 1, (
             "a former member on a request's page is drawn with the old seat or unlinked in the head or the "
-            f"Sponsors tab, or a sitting co-sponsor loses hers (links to the former member: {fp.count(link)}, not 4)")
+            f"Sponsors, or a sitting co-sponsor loses hers (links to the former member: {fp.count(link)}, not 3)")
     # Filing complete: the rest forward to their sponsor; a withdrawn one stays.
     old = dict(L.FILING_COMPLETE)
     try:
@@ -1601,8 +1599,9 @@ def _request_tabs_switch(build_lsrs):
     id="summary" and bills.html already carries <p class="count"
     id="summary">; app.js's ssPaneOf finds a pane by getElementById, found the
     <p>, and never took data-on off the pane. The panes are a bill's,
-    pane_<id>_<key> (0 Summary, 6 Bill Text, 4 Sponsors, 7 History) since 16
-    November 2026. And the owner's "just let the pages speak for themselves":
+    pane_<id>_<key> (0 Summary, 6 Bill Text, 7 History) since 16 November
+    2026, and no Sponsors tab since 24 November 2026, as a bill has none: the
+    co-sponsors open the Summary. And the owner's "just let the pages speak for themselves":
     no Status, Kind, Prime Sponsor or Topic said again in the Summary under the
     chip and the byline. Every request has a Bill Text tab beside its Summary
     since 17 November 2026 (_request_bill_text_tab), so the page and the card
@@ -1648,7 +1647,7 @@ def _request_tabs_switch(build_lsrs):
         dup = sorted(i for i, c in collections.Counter(ids).items() if c > 1)
         assert not dup, f"a request page ({label}) carries an id twice: {dup}"
     tabs = re.findall(r'<button[^>]*role="tab"[^>]*aria-controls="([^"]+)"', many)
-    assert tabs == ["pane_LSR20270001_0", "pane_LSR20270001_6", "pane_LSR20270001_4", "pane_LSR20270001_7"], (
+    assert tabs == ["pane_LSR20270001_0", "pane_LSR20270001_6", "pane_LSR20270001_7"], (
         f"a request page with co-sponsors and a History has tabs controlling {tabs}")
     for t in tabs:
         own = re.findall(r'<div class="pane sspane"[^>]*\sid="%s"' % re.escape(t), many)
@@ -1687,8 +1686,8 @@ def _request_tabs_switch(build_lsrs):
         assert got["one"].count('id="%s"' % c) == 1, f"a card tab controls {c!r}, which is not one pane"
     assert got["one"].count('role="tablist"') == 1 and got["one"].count('role="tab"') == 2, (
         "a request's card with no co-sponsor and no History does not draw Summary and Bill Text")
-    assert got["many"].count('role="tab"') == 4, "a request's card with co-sponsors and a History lost a tab"
-    return "ok", ("a request page's four panes have their own ids, unique on the page, each tab pointing at "
+    assert got["many"].count('role="tab"') == 3, "a request's card with co-sponsors and a History lost a tab"
+    return "ok", ("a request page's three panes have their own ids, unique on the page, each tab pointing at "
                   "its pane, on the page and the card; Summary and Bill Text at least on both; the Summary "
                   "does not repeat the chip or the byline")
 
@@ -1753,14 +1752,15 @@ def _request_card_summary_explains(build_lsrs):
             f"{n}'s opened card does not say what a request is as its page does, in its Summary: {pane[:900]!r}")
         link = pane.find("Open the request’s own page")
         assert 0 <= pane.find(about) < link, f"{n}'s card puts About Requests after the link to its page"
-        for said in ("<b>Co-Sponsor:</b>", "<b>Filed As:</b>"):
+        # The co-sponsors as a bill's Summary opens with its sponsors (24 November 2026).
+        for said in ('<h2 class="w4h">Sponsors</h2>', "<b>Filed As:</b>"):
             assert said not in pane or pane.find(said) < pane.find(about), (
                 f"{n}'s card puts {said!r} under About Requests")
-    assert "<b>Co-Sponsor:</b>" in got[0] and "<b>Filed As:</b>" in got[2], (
+    assert '<h2 class="w4h">Sponsors</h2>' in got[0] and "<b>Filed As:</b>" in got[2], (
         "the card lost its co-sponsor or the bill it was filed as")
     return "ok", ("three requests' pages (requested with a co-sponsor, withdrawn, filed as HB 5) carry About "
                   "Requests in their Summary, and each one's opened card the same section in its Summary, "
-                  "byte for byte, after the co-sponsor and Filed As and before the link to the page")
+                  "byte for byte, after the sponsors and Filed As and before the link to the page")
 
 
 @check("frontend", "a bill's page and card and a request's card draw their tabs with the record's one "
@@ -1808,8 +1808,10 @@ def _one_record_tab_strip():
     want = {"bill": C.record_tabs("HB1", [["0", "Summary", 0], ["1", "Votes", 1]] + rest, "0"),
             "texted": C.record_tabs("HB1", [["0", "Summary", 0], ["6", "Bill Text", 0], ["1", "Votes", 0]]
                                     + rest, "0"),
+            # A request's card has no Sponsors tab either (24 November 2026): its co-sponsors
+            # open its Summary (_request_sponsors_as_a_bills).
             "card": C.record_tabs("LSR20279999", [["0", "Summary", 0], ["6", "Bill Text", "0"],
-                                                  ["4", "Sponsors", 3], ["7", "History", 1]], "7")}
+                                                  ["7", "History", 1]], "7")}
     for k, w in want.items():
         assert w in got[k], f"the {k} strip is not record_tabs' answer: {got[k][:500]!r}, not {w!r}"
     assert got["bill"].startswith(want["bill"]) and got["texted"].startswith(want["texted"]), (
@@ -2928,9 +2930,10 @@ def _lsr_page_rows(FL):
 
 
 @check("build", "the night takes each request the page of every request lists and the CSV does not, "
-                "keeps every CSV row as the CSV gives it, takes nothing from a page that does not add "
-                "up, keeps a request taken from the page as it stood on a night the page cannot be "
-                "used, and says how many the CSV held, the page listed and were taken from it",
+                "keeps every CSV row as the CSV gives it but for the page's co-sponsors, takes nothing "
+                "from a page that does not add up, keeps a request taken from the page as it stood on a "
+                "night the page cannot be used, and says how many the CSV held, the page listed and "
+                "were taken from it",
        needs=("fetch_lsrs",))
 def _lsr_page_rows_taken(FL):
     """AND THE REQUESTS THE CSV DOES NOT HOLD (fetch_lsrs). Driven through main() in a throwaway
@@ -2939,7 +2942,8 @@ def _lsr_page_rows_taken(FL):
 
       - a CSV of 3 and a page of 5 holding them, one printed otherwise than the CSV prints it: 5
         requests, the 2 the CSV lacks taken from the page with their co-sponsors and "from_page",
-        the CSV's 3 as the CSV gives them; the line says 3, 5 and 2;
+        the CSV's 3 as the CSV gives them but for the page's co-sponsors (AND THE CO-SPONSORS THE
+        PAGE NAMES, _lsr_page_cosponsors_taken); the line says 3, 5, 2 and the 2 with co-sponsors;
       - a CSV with a column linking a text: the page is read all the same;
       - a page listing fewer, all of them in the CSV: the CSV's list, none taken;
       - a page misread (it says 6): the CSV's 3, the 2 taken the night before kept as they stood
@@ -2989,6 +2993,8 @@ def _lsr_page_rows_taken(FL):
     def raiser(*a, **k):
         raise AssertionError("the request list's fetch opened a connection")
     csv_rows = {r["lsr"]: r for r in FL.parse_csv(csv3)}
+    # The CSV's rows as the night keeps them: the page's co-sponsors on the one it names some for.
+    paged = {k: dict(r, cosponsors=["Ann Two"]) if k == "2027-0002" else r for k, r in csv_rows.items()}
     try:
         os.chdir(tmp)
         Path("archive").mkdir()
@@ -2997,11 +3003,12 @@ def _lsr_page_rows_taken(FL):
         FL.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time, strftime=time.strftime)
         urllib.request.urlopen = raiser
         rc, rows, said = run(csv3, _lsr_page(page5))
-        assert rc == 0 and said == "the CSV held 3, the page listed 5, 2 taken from the page", (rc, said)
+        assert rc == 0 and said == ("the CSV held 3, the page listed 5, 2 taken from the page, 2 with "
+                                    "co-sponsors from it"), (rc, said)
         assert sorted(rows) == [f"2027-000{n}" for n in range(1, 6)] and \
             not any(r["withdrawn"] for r in rows.values()), f"not the 5 requests of CSV and page: {sorted(rows)}"
-        assert {k: r for k, r in rows.items() if k in csv_rows} == csv_rows, \
-            "a CSV row was dropped or changed for the page"
+        assert {k: r for k, r in rows.items() if k in csv_rows} == paged, \
+            "a CSV row was dropped, or changed for the page in more than its co-sponsors"
         assert rows["2027-0004"] == {"lsr": "2027-0004", "session": 2027, "body": "HB", "title": "t four.",
                                      "sponsor": "Nancy Murphy", "cosponsors": ["David Watters", "Wendy Thomas"],
                                      "withdrawn": False, "from_page": True}, rows["2027-0004"]
@@ -3009,17 +3016,18 @@ def _lsr_page_rows_taken(FL):
         rc, rows, said = run(csv3.replace("Sponsors\n", "Sponsors,Bill Text PDF\n")
                              .replace("(Prime)\n2027-0002", "(Prime),https://gc.nh.gov/x/1.pdf\n2027-0002"),
                              _lsr_page(page5))
-        assert said == "the CSV held 3, the page listed 5, 2 taken from the page" and len(rows) == 5, \
-            ("with a text linked in the CSV the page was not read", said)
+        assert said == ("the CSV held 3, the page listed 5, 2 taken from the page, 2 with co-sponsors "
+                        "from it") and len(rows) == 5, ("with a text linked in the CSV the page was not read", said)
         Path("lsrs.json").unlink()
         rc, rows, said = run(csv3, _lsr_page(page5[:2]))
-        assert rows == csv_rows and said == "the CSV held 3, the page listed 2, 0 taken from the page", \
-            (rows, said)
+        assert rows == paged and said == ("the CSV held 3, the page listed 2, 0 taken from the page, 1 with "
+                                          "co-sponsors from it"), (rows, said)
         Path("lsrs.json").unlink()
         run(csv3, _lsr_page(page5))
         rc, rows, said = run(csv3, _lsr_page(page5, count=6))
         assert said == ("the CSV held 3, the page could not be used (it says 6 and 5 could be read), none "
-                        "taken from it; 2 taken from it before kept as they stood"), said
+                        "taken from it; 2 taken from it before kept as they stood; 1 kept their co-sponsors "
+                        "as they stood"), said
         assert not rows["2027-0004"]["withdrawn"] and not rows["2027-0005"]["withdrawn"] and \
             rows["2027-0004"]["from_page"], ("a request taken from the page was withdrawn on a night "
                                              "the page could not be used", rows["2027-0004"])
@@ -3030,7 +3038,7 @@ def _lsr_page_rows_taken(FL):
                              _lsr_page([*page5[:3], page5[4]]))
         assert rows["2027-0005"]["title"] == "t five from the CSV." and "from_page" not in rows["2027-0005"], \
             ("a request the CSV lists is not the CSV's", rows["2027-0005"])
-        assert said == "the CSV held 4, the page listed 4, 0 taken from the page", said
+        assert said == "the CSV held 4, the page listed 4, 0 taken from the page, 1 with co-sponsors from it", said
         Path("lsrs.json").unlink()
         rc, rows, said = run(csv3, "<html><body><p>No LSRs were found.</p></body></html>")
         assert rows == csv_rows and said == ("the CSV held 3, the page could not be used (no request could "
@@ -3040,9 +3048,341 @@ def _lsr_page_rows_taken(FL):
         (refusal.MARK, refusal.LOCK, FL.get, FL.post, FL.time, sys.argv, urllib.request.urlopen) = saved
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("a CSV of 3 and a page of 5: 5, the 2 from the page with co-sponsors, the CSV's 3 as it "
-                  "gives them, said 3, 5 and 2; the page read beside a CSV linking a text; a page of fewer "
-                  "leaves the CSV's list; a page misread takes none and keeps the 2 taken before; a page "
-                  "read withdraws one it dropped; the CSV's row wins; a page of no rows said")
+                  "gives them but for the page's co-sponsors, said 3, 5, 2 and 2 with co-sponsors; the page "
+                  "read beside a CSV linking a text; a page of fewer leaves the CSV's list; a page misread "
+                  "takes none and keeps the 2 taken before and the co-sponsors; a page read withdraws one "
+                  "it dropped; the CSV's row wins; a page of no rows said")
+
+
+@check("build", "a request the CSV holds takes the co-sponsors the page of every request names for it, in "
+                "the page's order, and keeps them on a night the page says nothing of it; one the page "
+                "names none for has none, and the page naming the CSV's prime among them gives none",
+       needs=("fetch_lsrs",))
+def _lsr_page_cosponsors_taken(FL):
+    """AND THE CO-SPONSORS THE PAGE NAMES (fetch_lsrs; the owner, 24 November 2026: "Yes, take
+    them"). The CSV's Sponsors column names a request's prime sponsor alone; the page names the
+    co-sponsors of 95 on the owner's printout of 23 November, 2027-0008 Nancy Murphy's with David
+    Watters, Rosemarie Rung and Wendy Thomas (_LSR_PAGE, the fixture's rows). Driven through
+    main() as _lsr_page_rows_taken drives it, on a CSV holding the fixture's four requests, each
+    night from the lsrs.json the last left:
+
+      - a first night with no page (the search page links none): every row as the CSV gives it,
+        no co-sponsor anywhere;
+      - the page read: 2027-0008 has its three, in the page's order, the HJR its one, 2027-0001
+        none, every other field the CSV's; the line says 2 with co-sponsors;
+      - the page not read, then misread: each keeps its co-sponsors, and the line says so;
+      - the page read naming 2027-0008 with none: it has none; and a page whose row names the
+        CSV's prime sponsor among the co-sponsors: that request keeps the CSV's none, said."""
+    import contextlib
+    import io
+    import time
+    import types
+    import urllib.request
+    import refusal
+    here = os.getcwd()
+    saved = (refusal.MARK, refusal.LOCK, FL.get, FL.post, FL.time, sys.argv, urllib.request.urlopen)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-lsrco-"))
+    form = ('<a id="pageBody_lnkCVS" href="javascript:__doPostBack(&#39;ctl00$pageBody$lnkCVS&#39;,'
+            '&#39;&#39;)">Download CSV File</a>'
+            + "".join(f'<input type="hidden" name="{f}" id="{f}" value="x" />' for f in FL.HIDDEN))
+    linked = '<a href="LSR_Results.aspx" class="link-primary">Click here</a> to see all Bill Requests ' + form
+    csv4 = "LSR Number,Bill Type,LSR Title,Sponsors\n" + "".join(
+        f'{n},{k},"{t}",{p} (Prime)\n' for n, k, t, p, _co in _LSR_PAGE)
+    night = {}
+
+    def get(url, timeout=60):
+        return (night["search"] if url == FL.SEARCH else night["page"]).encode("utf-8"), "utf-8"
+
+    def post(url, fields, timeout=90):
+        return csv4.encode("utf-8"), "utf-8", "text/csv", "attachment; filename=lsr.csv"
+
+    def run(page, search=linked):
+        night.update(search=search, page=page)
+        sys.argv = ["fetch_lsrs.py"]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            rc = FL.main()
+        assert rc == 0, out.getvalue()[-400:]
+        rows = {r["lsr"]: r for r in json.loads(Path("lsrs.json").read_text(encoding="utf-8"))}
+        said = [ln.strip()[len(FL.LISTED):] for ln in out.getvalue().splitlines()
+                if ln.strip().startswith(FL.LISTED)]
+        return rows, said[-1] if said else ""
+
+    def raiser(*a, **k):
+        raise AssertionError("the request list's fetch opened a connection")
+    csv_rows = {r["lsr"]: r for r in FL.parse_csv(csv4)}
+    co = {n: list(c) for n, _k, _t, _p, c in _LSR_PAGE}
+    try:
+        os.chdir(tmp)
+        Path("archive").mkdir()
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        FL.get, FL.post = get, post
+        FL.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time, strftime=time.strftime)
+        urllib.request.urlopen = raiser
+        assert all(r["cosponsors"] == [] for r in csv_rows.values()) and len(csv_rows) == 4, (
+            "the fixture's CSV names a co-sponsor, or not its four requests")
+        rows, said = run(None, search=form)
+        assert rows == csv_rows and "the page was not read" in said and "kept their co-sponsors" not in said, (
+            "a first night with no page is not the CSV's list exactly", said)
+        rows, said = run(_lsr_page(_LSR_PAGE))
+        assert rows["2027-0008"]["cosponsors"] == ["David Watters", "Rosemarie Rung", "Wendy Thomas"], (
+            f"2027-0008's co-sponsors read {rows['2027-0008']['cosponsors']}, not the page's three in its order")
+        assert {k: r["cosponsors"] for k, r in rows.items()} == co and \
+            {k: {f: v for f, v in r.items() if f != "cosponsors"} for k, r in rows.items()} == \
+            {k: {f: v for f, v in r.items() if f != "cosponsors"} for k, r in csv_rows.items()}, (
+            "the page's co-sponsors are not each request's, or the page changed more of a CSV row")
+        assert said == "the CSV held 4, the page listed 4, 0 taken from the page, 2 with co-sponsors from it", said
+        for page, why in ((None, "the page was not read"), (_lsr_page(_LSR_PAGE, count=9),
+                                                             "the page could not be used")):
+            rows, said = run(page, search=form if page is None else linked)
+            assert {k: r["cosponsors"] for k, r in rows.items()} == co and why in said \
+                and said.endswith("; 2 kept their co-sponsors as they stood"), (
+                f"on a night {why}, a request lost its co-sponsors, or the line did not say it kept them", said)
+        none = [(n, k, t, p, [] if n == "2027-0008" else c) for n, k, t, p, c in _LSR_PAGE]
+        rows, said = run(_lsr_page(none))
+        assert rows["2027-0008"]["cosponsors"] == [] and rows["2027-0400"]["cosponsors"] == ["Jane Doe"] \
+            and said.endswith(", 1 with co-sponsors from it"), (
+            "a request the page lists with no co-sponsors kept the ones it had", rows["2027-0008"], said)
+        odd = [(n, k, t, "Ann Other", [p]) if n == "2027-1570" else (n, k, t, p, c) for n, k, t, p, c in _LSR_PAGE]
+        rows, said = run(_lsr_page(odd))
+        assert rows["2027-1570"]["cosponsors"] == [] and rows["2027-1570"]["sponsor"] == "Jake Abuhav" \
+            and "(1 naming the CSV's prime sponsor among them left as the CSV gives them: 2027-1570)" in said, (
+            "a page naming the CSV's prime sponsor as a co-sponsor gave that request co-sponsors", said)
+    finally:
+        os.chdir(here)
+        (refusal.MARK, refusal.LOCK, FL.get, FL.post, FL.time, sys.argv, urllib.request.urlopen) = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("no page, the CSV's four exactly; the page read, 2027-0008's three in the page's order and "
+                  "the HJR's one, nothing else of a row changed, said; not read and misread, both kept and "
+                  "said; listed with none, none; the CSV's prime among them, none taken and said")
+
+
+@check("build", "a request's co-sponsors are matched by the prime sponsor's rules in either chamber: each "
+                "one certain is a person with their label, party, chamber and page, in the page's order; a "
+                "name matching nobody, or two people, is kept as printed; a request with none is unchanged",
+       needs=("build_lsrs",))
+def _request_cosponsors_matched(build_lsrs):
+    """build_lsrs.rows_from, co_match (the owner, 24 November 2026: "Yes, take them", of the
+    co-sponsors the results page names). A request is filed in its prime sponsor's chamber and
+    co-sponsored from both: on the owner's printout, 58 of the 345 co-sponsor names were of the
+    other chamber (Sen. David Watters on 2027-0008, a House request), and the prime sponsor's rule,
+    which looks for a sponsor in the request's chamber alone, matched none of them. Held on the
+    fixture's rows (_LSR_PAGE) and one request more, with a roster and two elections' winners of the
+    shapes roster() and election_winners give:
+
+      - 2027-0008: David Watters a sitting senator, Rosemarie Rung and Wendy Thomas sitting
+        representatives, in the page's order, each with label, page, party and chamber, the names
+        as printed in `cosp`, and the prime sponsor's chamber on the row;
+      - the HJR's Jane Doe, whom nobody has, as printed: no page, no party, no chamber;
+      - a winner the roster has not (Jim Creighton, a sitting representative elected senator) by
+        the whole name; a winner by the prime sponsor's middle-name rule in the one chamber that
+        has her (Mary Raven, printed Mary Beth Raven); and Sam Lee, whom that rule finds in both
+        chambers, and Pat Moore, two sitting members, are nobody;
+      - 2027-0001, with none, is the row it was: no co-sponsor key and no chamber."""
+    L = build_lsrs
+    who = {"nancymurphy": ("Rep. Nancy Murphy (D)", "nancy-murphy-hills-12", "H"),
+           "davidwatters": ("Sen. David Watters (D)", "david-watters-sd-4", "S"),
+           "rosemarierung": ("Rep. Rosemarie Rung (D)", "rosemarie-rung-hills-12", "H"),
+           "wendythomas": ("Rep. Wendy Thomas (D)", "wendy-thomas-hills-12", "H"),
+           "ellenread": ("Rep. Ellen Read (D)", "ellen-read-rock-10", "H"),
+           "jakeabuhav": ("Rep. Jake Abuhav (R)", "jake-abuhav-rock-21", "H"),
+           # Two sitting members of one name: roster() keeps neither.
+           "patmoore": None}
+    winners = [{"name": "Jim Creighton", "names": ["Jim Creighton", "James Creighton"], "party": "R",
+                "chamber": "S", "race": "S|8", "slug": "james-creighton-hills-30",
+                "label": "Sen.-elect Jim Creighton (R)"},
+               {"name": "Mary Beth Raven", "names": ["Mary Beth Raven"], "party": "D", "chamber": "H",
+                "race": "H|Hillsborough|1", "slug": "", "label": "Rep.-elect Mary Beth Raven (D)"},
+               {"name": "Sam Q. Lee", "names": ["Sam Q. Lee"], "party": "R", "chamber": "H",
+                "race": "H|Belknap|2", "slug": "sam-lee-belk-2", "label": "Rep.-elect Sam Q. Lee (R)"},
+               {"name": "Sam R. Lee", "names": ["Sam R. Lee"], "party": "D", "chamber": "S",
+                "race": "S|3", "slug": "sam-lee-sd-3", "label": "Sen.-elect Sam R. Lee (D)"}]
+    lsrs = [{"lsr": n, "session": 2027, "body": k, "title": t, "sponsor": p, "cosponsors": list(c),
+             "withdrawn": False} for n, k, t, p, c in _LSR_PAGE]
+    lsrs.append({"lsr": "2027-0900", "session": 2027, "body": "SB", "title": "relative to coves.",
+                 "sponsor": "David Watters", "withdrawn": False,
+                 "cosponsors": ["Jim Creighton", "Mary Raven", "Sam Lee", "Pat Moore"]})
+    rows, _ = L.rows_from(lsrs, who, year=2027, winners=winners)
+    by = {r["n"][4:]: r for r in rows}
+    want = [{"label": "Sen. David Watters (D)", "slug": "david-watters-sd-4", "name": "David Watters",
+             "party": "D", "chamber": "S"},
+            {"label": "Rep. Rosemarie Rung (D)", "slug": "rosemarie-rung-hills-12", "name": "Rosemarie Rung",
+             "party": "D", "chamber": "H"},
+            {"label": "Rep. Wendy Thomas (D)", "slug": "wendy-thomas-hills-12", "name": "Wendy Thomas",
+             "party": "D", "chamber": "H"}]
+    r8 = by["2027-0008"]
+    assert r8.get("cosponsors") == want, f"2027-0008's co-sponsors are {r8.get('cosponsors')}"
+    assert r8.get("cosp") == ["David Watters", "Rosemarie Rung", "Wendy Thomas"] \
+        and r8.get("sponsor_chamber") == "H" and r8["sponsor_slug"] == "nancy-murphy-hills-12", (
+        f"2027-0008's names or its prime sponsor's chamber: {r8.get('cosp')} {r8.get('sponsor_chamber')}")
+    assert by["2027-0400"]["cosponsors"] == [{"label": "Jane Doe", "slug": "", "name": "Jane Doe"}], (
+        f"a name nobody has is not kept as printed: {by['2027-0400']['cosponsors']}")
+    got = {c["name"]: (c["label"], c["slug"], c.get("party"), c.get("chamber")) for c in by["2027-0900"]["cosponsors"]}
+    assert got == {"Jim Creighton": ("Sen.-elect Jim Creighton (R)", "james-creighton-hills-30", "R", "S"),
+                   "Mary Raven": ("Rep.-elect Mary Beth Raven (D)", "", "D", "H"),
+                   "Sam Lee": ("Sam Lee", "", None, None), "Pat Moore": ("Pat Moore", "", None, None)} \
+        and by["2027-0900"].get("sponsor_chamber") == "S", (
+        f"a winner by the whole name, one by the middle-name rule in one chamber, and two names of two "
+        f"people: {got}, the prime's chamber {by['2027-0900'].get('sponsor_chamber')}")
+    one = by["2027-0001"]
+    bare, _ = L.rows_from([{k: v for k, v in lsrs[0].items() if k != "cosponsors"}], who, year=2027,
+                          winners=winners)
+    assert one == bare[0] and not {"cosponsors", "cosp", "sponsor_chamber"} & set(one), (
+        f"a request with no co-sponsor carries something new: {sorted(set(one) & {'cosponsors', 'cosp', 'sponsor_chamber'})}")
+    return "ok", ("2027-0008's three, a senator and two representatives, in the page's order with label, page, "
+                  "party and chamber; Jane Doe as printed; a winner by the whole name and one by the middle-name "
+                  "rule in her one chamber; a name of two people nobody; a request with none unchanged")
+
+
+@check("build", "a request's co-sponsors open its page's and its card's Summary as a bill's sponsors open "
+                "its Summary: the prime labelled and first, each chamber under its heading where they are of "
+                "both, the count under the chips, no Sponsors tab; a request with none draws as before",
+       needs=("build_lsrs", "build_request_pages"))
+def _request_sponsors_as_a_bills(build_lsrs, build_request_pages):
+    """The owner, 24 November 2026 ("Yes, take them"): a request lists its co-sponsors "as a bill
+    does". A bill's page has drawn its sponsors at the top of its Summary since 19 November 2026
+    (app.js renderSponsors, _bill_tabs_one_line), with no Sponsors tab; a request's page and card
+    had a Sponsors tab and a Co-Sponsors line in the head, drawn for a list that named none until
+    now. Held on build_lsrs' rows for the fixture's 2027-0008 (Nancy Murphy, with David Watters,
+    a senator, Rosemarie Rung and Wendy Thomas), its HJR (Bob Roe Jr. and Jane Doe, whom nobody
+    has) and 2027-0001 (none), on the page build_request_pages writes and the card app.js draws:
+
+      - the page's Summary opens with "Sponsors" (the bill's heading and anchor), then About
+        Requests; the chips are Nancy Murphy, labelled Prime, Rosemarie Rung and Wendy Thomas
+        under "Representatives 3", then David Watters under "Senators 1", and "4 Sponsors · 4 D"
+        under them; Jane Doe drawn as printed, with no party and no link, under "Chamber Not on
+        File"; the head names the prime sponsor alone and there is no Sponsors tab;
+      - the card's Summary opens with the same section, byte for byte but the anchor, drawn by
+        the bill's own renderSponsors, and has no Sponsors tab;
+      - 2027-0001's page has Summary and Bill Text, its Summary About Requests alone, and is the
+        same page whether its row says no co-sponsor or says nothing of them."""
+    import tempfile
+    import components as C
+    L, RP = build_lsrs, build_request_pages
+    who = {"nancymurphy": ("Rep. Nancy Murphy (D)", "nancy-murphy-hills-12", "H"),
+           "davidwatters": ("Sen. David Watters (D)", "david-watters-sd-4", "S"),
+           "rosemarierung": ("Rep. Rosemarie Rung (D)", "rosemarie-rung-hills-12", "H"),
+           "wendythomas": ("Rep. Wendy Thomas (D)", "wendy-thomas-hills-12", "H"),
+           "ellenread": ("Rep. Ellen Read (D)", "ellen-read-rock-10", "H")}
+    lsrs = [{"lsr": n, "session": 2027, "body": k, "title": t, "sponsor": p, "cosponsors": list(c),
+             "withdrawn": False} for n, k, t, p, c in _LSR_PAGE[:3]]
+    rows, _ = L.rows_from(lsrs, who, year=2027)
+    by = {r["n"][4:]: r for r in rows}
+    req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "abbr": L.ABBR}
+
+    def pages(rs):
+        with tempfile.TemporaryDirectory() as d:
+            site = Path(d)
+            (site / "idx").mkdir()
+            (site / "bills.html").write_text(_source("src/pages/bills.html"), encoding="utf-8")
+            (site / "meta.json").write_text(json.dumps({"requests": req}), encoding="utf-8")
+            (site / "idx" / "2027-requests.json").write_text(json.dumps(rs), encoding="utf-8")
+            RP.write(site, "https://x")
+            return {p.stem: p.read_text(encoding="utf-8") for p in (site / "request").glob("*.html")}
+    got = pages(rows)
+
+    def summary(html, rid):
+        s = html[html.index(f'id="pane_{rid}_0"'):]
+        return s[:s.find('<div class="pane', 10)] if '<div class="pane' in s[10:] else s
+    pg, hj, one = got["2027-0008"], got["2027-0400"], got["2027-0001"]
+    s8 = summary(pg, "LSR20270008")
+    secs = re.findall(r'<section class="w4"( id="[^"]*")?><h2 class="w4h">([^<]*)</h2>', s8)
+    assert secs == [(' id="sponsors"', "Sponsors"), (' id="about"', "About Requests")], (
+        f"2027-0008's Summary is {secs}, not its Sponsors and then About Requests")
+    sec = s8[:s8.index("</section>")]
+    chips = re.findall(r'class="mchip p-(\w)" translate="no"><a href="legislator/([^"]+)"', sec)
+    assert chips == [("D", "nancy-murphy-hills-12"), ("D", "rosemarie-rung-hills-12"),
+                     ("D", "wendy-thomas-hills-12"), ("D", "david-watters-sd-4")], (
+        f"the sponsors are not the prime, then the page's order by chamber, the prime's first: {chips}")
+    assert re.findall(r'<h3 class="spch">(\w+) <span class="sechn">(\d+)</span>', sec) == [
+        ("Representatives", "3"), ("Senators", "1")] \
+        and '<i translate="yes">Prime</i>' in sec.split("rosemarie-rung")[0] and sec.count(">Prime</i>") == 1, (
+        "the chambers are not headed, or the prime sponsor is not the one labelled Prime")
+    assert re.search(r'</div>\s*<p class="spcount">4 Sponsors · <span title="Democrat">4 D</span></p>', sec), (
+        "the sponsors' count is not under their chips, as a bill's is")
+    hsec = summary(hj, "LSR20270400")
+    assert '<span class="mchip p-X" translate="no">Jane Doe</span>' in hsec \
+        and re.search(r'<h3 class="spch">Chamber Not on File <span class="sechn">1</span></h3>', hsec), (
+        f"a co-sponsor nobody has is not drawn as printed: {hsec[:900]!r}")
+    for n, html in got.items():
+        head = re.search(r'<dl class="rfacts">.*?</dl>', html, re.S).group(0)
+        tabs = re.findall(r'<button[^>]*role="tab"[^>]*>([^<]*)<', html)
+        assert "Co-Sponsor" not in head and "Prime Sponsor" in head and tabs == ["Summary", "Bill Text"] \
+            and not re.search(r'id="(?:tab|pane)_LSR\d+_4"', html), (
+            f"/request/{n} names its co-sponsors in its head, or keeps a Sponsors tab: {tabs}")
+    s1 = summary(one, "LSR20270001")
+    assert re.findall(r'<section class="w4"( id="[^"]*")?>', s1) == [' id="about"'] and "spcount" not in one \
+        and "spch" not in one, "a request with no co-sponsor draws a Sponsors section"
+    bare = {k: v for k, v in by["2027-0001"].items() if k not in ("cosponsors", "cosp", "sponsor_chamber")}
+    assert pages([bare])["2027-0001"] == one, "a request's page with no co-sponsor depends on how its row says so"
+    # THE CARD, in node: the bill's renderSponsors, under the bill's heading, with no anchor.
+    js = ("(() => { scope.setMeta({requests: " + json.dumps(req) + "}); const rows = "
+          + json.dumps([by["2027-0008"], by["2027-0400"], by["2027-0001"]]) + ";"
+          " rows.forEach(r => scope.openCards.add(r.id)); return rows.map(r => scope.lsrCardHtml(r, '')); })()")
+    cards = _app_js(js, names=("lsrCardHtml", "openCards", "setMeta: x => (META = x)"))
+    if cards is None:
+        return "skip", "the pages hold; node, app.js or the stub is not here for the card"
+    for (n, rid), card in zip((("2027-0008", "LSR20270008"), ("2027-0400", "LSR20270400"),
+                               ("2027-0001", "LSR20270001")), cards):
+        page_sec = re.search(r'<section class="w4" id="sponsors">.*?</section>', summary(got[n], rid), re.S)
+        card_sec = re.search(r'<section class="w4"><h2 class="w4h">Sponsors</h2>.*?</section>',
+                             summary(card, rid), re.S)
+        if n == "2027-0001":
+            assert not page_sec and not card_sec and 'class="spcount"' not in card, (
+                "a card with no co-sponsor draws a Sponsors section")
+        else:
+            assert page_sec and card_sec and page_sec.group(0).replace(' id="sponsors"', "", 1) == card_sec.group(0), (
+                f"{n}'s card does not draw its page's Sponsors: {card_sec and card_sec.group(0)[:700]!r} != "
+                f"{page_sec and page_sec.group(0)[:700]!r}")
+        assert 'data-t="4"' not in card and C.record_tabs(rid, [["0", "Summary", 0], ["6", "Bill Text", "0"]], "0") \
+            in card, f"{n}'s card keeps a Sponsors tab, or not the strip its page has"
+    return "ok", ("2027-0008's Summary opens with its Sponsors, the prime labelled and first, Representatives 3 "
+                  "then Senators 1, 4 Sponsors · 4 D under them; Jane Doe as printed; no Sponsors tab and the "
+                  "head the prime's alone; the card's section the page's byte for byte; a request with none "
+                  "drawn as before")
+
+
+@check("frontend", "in the requests' term, a member's Co-sponsored tab lists the requests that name them "
+                   "a co-sponsor, as it lists the bills they co-sponsor, and their Prime sponsored tab their own",
+       needs=("build_lsrs",))
+def _member_cosponsored_requests(build_lsrs):
+    """app.js renderMemberRequests. Until 24 November 2026 a request named its prime sponsor alone,
+    and a member's Co-sponsored tab in the requests' term said "A request names only its prime
+    sponsor, so none is co-sponsored". Now a request names the co-sponsors the results page names
+    (fetch_lsrs), and that sentence would be untrue on the page of every member who co-sponsors
+    one. Held on build_lsrs' rows for the fixture's 2027-0008, in node: Wendy Thomas's Co-sponsored
+    tab lists its card and says 1 co-sponsored for 2027, her Prime sponsored tab none for 2027;
+    Nancy Murphy's Prime sponsored tab lists it as before and her Co-sponsored tab says none is
+    co-sponsored for 2027; and the old sentence is nowhere."""
+    L = build_lsrs
+    who = {"nancymurphy": ("Rep. Nancy Murphy (D)", "nancy-murphy-hills-12", "H"),
+           "davidwatters": ("Sen. David Watters (D)", "david-watters-sd-4", "S"),
+           "rosemarierung": ("Rep. Rosemarie Rung (D)", "rosemarie-rung-hills-12", "H"),
+           "wendythomas": ("Rep. Wendy Thomas (D)", "wendy-thomas-hills-12", "H")}
+    n, k, t, p, c = _LSR_PAGE[1]
+    rows, _ = L.rows_from([{"lsr": n, "session": 2027, "body": k, "title": t, "sponsor": p,
+                            "cosponsors": list(c), "withdrawn": False}], who, year=2027)
+    req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "abbr": L.ABBR}
+    js = ("(() => { scope.setMeta({requests: " + json.dumps(req) + "}); scope.IDX.length = 0; "
+          + "".join(f"scope.IDX.push({json.dumps(r)}); " for r in rows)
+          + "scope.LOADED.add('2027-requests'); const her = {slug: 'wendy-thomas-hills-12'}, "
+          "prime = {slug: 'nancy-murphy-hills-12'}; return {co: scope.renderMemberRequests(her, false), "
+          "own: scope.renderMemberRequests(her, true), filed: scope.renderMemberRequests(prime, true), "
+          "none: scope.renderMemberRequests(prime, false)}; })()")
+    got = _app_js(js, names=("renderMemberRequests", "IDX", "LOADED", "setMeta: x => (META = x)"))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    plain = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", h)).strip()
+    assert 'data-id="LSR20270008"' in got["co"] and "1 co-sponsored for 2027." in plain(got["co"]), (
+        f"a co-sponsor's Co-sponsored tab does not list the request: {plain(got['co'])[:300]!r}")
+    assert plain(got["own"]) == "No bill requests for 2027." and 'data-id="LSR20270008"' in got["filed"] \
+        and "1 filed for 2027." in plain(got["filed"]) and plain(got["none"]) == "No bill requests co-sponsored for 2027.", (
+        f"the prime sponsor's tabs, or a member's with none: {[plain(got[x])[:120] for x in ('own', 'filed', 'none')]}")
+    assert not any("names only its prime sponsor" in v for v in got.values()) \
+        and "names only its prime sponsor" not in _source("src/pages/app.js"), (
+        "a member's page still says a request names only its prime sponsor")
+    return "ok", ("a co-sponsor's Co-sponsored tab lists the request, 1 co-sponsored for 2027; the prime sponsor's "
+                  "tab lists it as before; each member's other tab says none; the old sentence gone")
 
 
 @check("build", "the request texts' drain asks for what the list links and this disk has not settled, "
@@ -10448,8 +10788,9 @@ def _request_cards_like_bills(build_lsrs):
         RP.write(site, "https://x")
         page = (site / "request" / "2027-0001.html").read_text(encoding="utf-8")
         plain = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
+    # The co-sponsors open the Summary, as a bill's sponsors do (24 November 2026): no Sponsors tab.
     for want in ('<h1 class="rh1"><span data-term="LSR">LSR</span> 2027-0001',
-                 'id="tab_LSR20270001_4"', 'id="tab_LSR20270001_7"', 'href="bill/2024/hb7"', ">Died</span>",
+                 '<section class="w4" id="sponsors">', 'id="tab_LSR20270001_7"', 'href="bill/2024/hb7"', ">Died</span>",
                  "LSR stands for Legislative Service Request.", '<li aria-current="page">LSR 2027-0001</li>',
                  'class="mchip p-R"', 'class="mchip p-D"'):
         assert want in page, f"a request's page lacks {want!r}"
@@ -10460,8 +10801,10 @@ def _request_cards_like_bills(build_lsrs):
     assert "<abbr" not in page and page.count('data-term="LSR"') == 1 \
         and (RP.C.WORDBOOK.get("glossary") or {}).get("LSR", {}).get("name") == "Legislative Service Request", (
         "a request's page explains LSR otherwise than by the glossary's popover, or the glossary has no LSR")
-    assert 'id="tab_LSR20270002_7"' not in plain and 'id="tab_LSR20270002_4"' not in plain, (
-        "a request with no earlier bill and no co-sponsor has a tab for them")
+    assert 'id="tab_LSR20270002_7"' not in plain and 'id="sponsors"' not in plain \
+        and 'id="tab_LSR20270001_4"' not in page, (
+        "a request with no earlier bill and no co-sponsor has a tab or a section for them, or one with "
+        "co-sponsors a Sponsors tab")
     assert "<dt>Subject</dt><dd>Education - General" in page and "(from the title)" not in page, (
         "a request's page does not give its topic by name as a bill's page gives its subject")
     assert "<dt>Subject</dt>" not in plain and "Miscellaneous" not in plain, (
@@ -10508,8 +10851,9 @@ def _request_cards_like_bills(build_lsrs):
         "a request's card does not print its topic by name alone")
     assert "Miscellaneous" not in pl and "<abbr" not in pl, (
         "a request's card prints Miscellaneous, or its number has a tooltip")
-    assert 'data-t="4"' in shut and 'data-t="7"' in shut and 'data-t="0"' in shut, (
-        "a request with co-sponsors and a History has not the three tabs")
+    assert 'data-t="4"' not in shut and 'data-t="7"' in shut and 'data-t="0"' in shut \
+        and '<h2 class="w4h">Sponsors</h2>' in shut, (
+        "a request with co-sponsors and a History has not its Summary, opening with them, and its History")
     assert 'aria-expanded="true"' in op and '<div class="cbody">' in op \
         and 'id="pane_LSR20270001_7" aria-labelledby="tab_LSR20270001_7" tabindex="0" data-t="7">' in op \
         and 'href="bill/2024/hb7"' in op and 'class="mchip p-R"' in op, (

@@ -26475,6 +26475,46 @@
    "es": "Todo el estado",
    "state": "draft"
   },
+  "req.n_cosponsored": {
+   "en": "{n} co-sponsored for {year}",
+   "es": "{n} copatrocinadas para {year}",
+   "state": "draft"
+  },
+  "req.n_sponsors": {
+   "en": "{n} Sponsors",
+   "es": "{n} patrocinadores",
+   "state": "draft"
+  },
+  "req.no_chamber": {
+   "en": "Chamber Not on File",
+   "es": "Cámara no registrada",
+   "state": "draft"
+  },
+  "req.none_cosponsored": {
+   "en": "No bill requests co-sponsored for {year}.",
+   "es": "Ninguna solicitud de proyecto de ley copatrocinada para {year}.",
+   "state": "draft"
+  },
+  "req.one_sponsor": {
+   "en": "1 Sponsor",
+   "es": "1 patrocinador",
+   "state": "draft"
+  },
+  "req.representatives": {
+   "en": "Representatives",
+   "es": "Representantes",
+   "state": "draft"
+  },
+  "req.senators": {
+   "en": "Senators",
+   "es": "Senadores",
+   "state": "draft"
+  },
+  "req.sponsors": {
+   "en": "Sponsors",
+   "es": "Patrocinadores",
+   "state": "draft"
+  },
   "roster.all": {
    "en": "All {n} sitting members, by surname, each chamber on\nits own.",
    "es": "Los {n} miembros en funciones, por apellido, cada cámara por separado.",

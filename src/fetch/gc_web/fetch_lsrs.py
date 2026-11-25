@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.10
+# GRANITE_VERSION: 2026-09-18.11
 """
 Next session's bill requests, before any of them is a bill.
 
@@ -105,6 +105,19 @@ withdrawn (merge), and the night's line says so (LISTED: how many the CSV
 held, how many the page listed, how many were taken from it). Nobody here has
 seen the page's HTML: the reader was written from the owner's printout of the
 page [a guess at its markup], and the page's own count is the check on it.
+
+AND THE CO-SPONSORS THE PAGE NAMES (the owner, 24 November 2026: "Yes, take
+them"). The CSV's Sponsors column names a request's prime sponsor alone; the
+page names its co-sponsors as well -- 95 requests on the owner's printout of
+23 November, 2027-0008 Nancy Murphy's with David Watters, Rosemarie Rung and
+Wendy Thomas. So a request on both takes the page's co-sponsors, in the
+page's order, and nothing else of its row changes (with_page_rows) -- unless
+the page names the CSV's own prime sponsor among them, when the two disagree
+on who filed it and the CSV's row is kept as it is. A night the page says
+nothing of a request -- not read, not usable, or not listing it -- and its
+CSV row names no co-sponsor, the request keeps the co-sponsors it had
+(merge): not read tonight is not gone. The night's line says how many
+requests have co-sponsors from the page, and how many kept theirs.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -381,6 +394,12 @@ def page_listed(html):
     return list(rows.values()), ""
 
 
+def _fold(s):
+    """A name folded to its letters, as build_lsrs folds one to match it:
+    "Nancy Murphy" and "nancy  murphy" are one name."""
+    return re.sub(r"[^a-z]", "", str(s or "").lower())
+
+
 def parse_results_html(html):
     """The results page's requests (page_listed), for when the CSV cannot be
     had; [] where they cannot be used.
@@ -394,22 +413,33 @@ def parse_results_html(html):
 
 
 def with_page_rows(rows, page):
-    """(rows, whether the page was used, what to say) -- the CSV's `rows`, and
-    after them each request the page of every request lists and the CSV does
-    not (page_listed), marked "from_page" (AND THE REQUESTS THE CSV DOES NOT
-    HOLD). `page` is the page's HTML, or None where it was not read. No CSV
-    row is dropped or changed for the page, and where its rows cannot be
-    used nothing is taken from it and the words say why."""
+    """(rows, whether the page was used, what to say, the requests it listed)
+    -- the CSV's `rows`, and after them each request the page of every
+    request lists and the CSV does not (page_listed), marked "from_page" (AND
+    THE REQUESTS THE CSV DOES NOT HOLD). `page` is the page's HTML, or None
+    where it was not read. No CSV row is dropped, and none is changed for the
+    page but in its co-sponsors (AND THE CO-SPONSORS THE PAGE NAMES): a
+    request the page lists takes the page's, in its order, unless they name
+    the CSV row's own prime sponsor. Where the page's rows cannot be used
+    nothing is taken from it, the words say why, and it listed nothing."""
     if page is None:
-        return rows, False, f"the CSV held {len(rows)}, the page was not read, none taken from it"
+        return rows, False, f"the CSV held {len(rows)}, the page was not read, none taken from it", set()
     got, why = page_listed(page)
     if why:
         return rows, False, (f"the CSV held {len(rows)}, the page could not be used ({why}), "
-                             "none taken from it")
+                             "none taken from it"), set()
     have = {r["lsr"] for r in rows}
     taken = [dict(r, from_page=True) for r in got if r["lsr"] not in have]
+    said = {r["lsr"]: list(r.get("cosponsors") or []) for r in got}
+    odd = sorted(r["lsr"] for r in rows if r["lsr"] in said
+                 and _fold(r.get("sponsor")) in {_fold(c) for c in said[r["lsr"]]})
+    rows = [dict(r, cosponsors=said[r["lsr"]]) if r["lsr"] in said and r["lsr"] not in odd else r
+            for r in rows]
+    named = sum(1 for r in rows + taken if r["lsr"] in said and r.get("cosponsors"))
     return rows + taken, True, (f"the CSV held {len(rows)}, the page listed {len(got)}, "
-                                f"{len(taken)} taken from the page")
+                                f"{len(taken)} taken from the page, {named} with co-sponsors from it"
+                                + (f" ({len(odd)} naming the CSV's prime sponsor among them left as "
+                                   f"the CSV gives them: {', '.join(odd[:3])})" if odd else "")), set(said)
 
 
 def parse_csv(text):
@@ -526,7 +556,7 @@ def split_sponsors(field):
     return prime, co
 
 
-def merge(new, page_read=True):
+def merge(new, page_read=True, said=None):
     """New rows over old, and a request that has gone is kept and marked.
 
     A request vanishing between runs is a withdrawal, which is a fact about
@@ -543,7 +573,13 @@ def merge(new, page_read=True):
     "from_page". On a night the page of every request was not read or could
     not be used (`page_read` false), one taken from it before that the CSV
     does not list is kept as it stood: not read tonight is not gone.
+
+    AND ITS CO-SPONSORS (AND THE CO-SPONSORS THE PAGE NAMES). `said` is the
+    requests tonight's page listed (with_page_rows), whose co-sponsors are
+    the page's word, none included. Any other request whose row tonight
+    names no co-sponsor keeps those it had.
     """
+    said = set(said or ())
     old = {}
     if OUT.exists():
         try:
@@ -561,7 +597,19 @@ def merge(new, page_read=True):
     for r in new:
         if not r.get("from_page"):
             merged[r["lsr"]].pop("from_page", None)
+        had = (old.get(r["lsr"]) or {}).get("cosponsors")
+        if had and r["lsr"] not in said and not r.get("cosponsors"):
+            merged[r["lsr"]]["cosponsors"] = list(had)
     return [merged[k] for k in sorted(merged)], gone
+
+
+def co_kept(rows, merged, said):
+    """The night's words for the requests that kept the co-sponsors they had
+    (merge): "; 3 kept their co-sponsors as they stood", or "" for none."""
+    by = {r.get("lsr"): r for r in merged}
+    n = sum(1 for r in rows if r["lsr"] not in said and not r.get("cosponsors")
+            and (by.get(r["lsr"]) or {}).get("cosponsors"))
+    return f"; {n} kept their co-sponsors as they stood" if n else ""
 
 
 def with_text_links(rows, page):
@@ -782,13 +830,13 @@ def main():
         # And the page of every request saved beside it, where it is
         # (AND THE REQUESTS THE CSV DOES NOT HOLD).
         saved = RAW_PAGE.with_name("lsr_results.html")
-        rows, page_read, listed = with_page_rows(
+        rows, page_read, listed, said = with_page_rows(
             rows, saved.read_text(encoding="utf-8", errors="replace") if saved.is_file() else None)
-        merged, gone = merge(rows, page_read)
+        merged, gone = merge(rows, page_read, said)
         OUT.write_text(json.dumps(merged, indent=1), encoding="utf-8")
         print(f"{len(rows)} requests parsed -> {OUT}"
               + (f"; {gone} newly marked withdrawn" if gone else ""))
-        print(f"  {LISTED}{listed}")
+        print(f"  {LISTED}{listed}{co_kept(rows, merged, said)}")
         return 0
     # One writer per file: the night takes the requests, and lsrs.json reaches
     # this machine from R2.
@@ -848,8 +896,9 @@ def main():
                 "under archive/; read them before asking again.")
         rows = [dict(r, from_page=True) for r in rows]
         print(f"  {len(rows)} requests read from the results page")
-        page_read, listed = True, (f"the CSV was not served, the page listed {len(rows)}, "
-                                   f"{len(rows)} taken from the page")
+        page_read, said = True, {r["lsr"] for r in rows}
+        listed = (f"the CSV was not served, the page listed {len(rows)}, {len(rows)} taken from "
+                  f"the page, {sum(1 for r in rows if r.get('cosponsors'))} with co-sponsors from it")
     # THE REQUESTS THE CSV DOES NOT HOLD, AND THE LINKS TO THE TEXTS (THE TEXT,
     # ONCE IT IS PUBLIC): the page the search page links for every request,
     # read every night, one request more, for the requests it lists that the
@@ -865,21 +914,22 @@ def main():
             page = raw3.decode(enc4, "replace")
         else:
             print("  the search page links no page of every request: no text link is read")
-        rows, page_read, listed = with_page_rows(rows, page)
+        rows, page_read, listed, said = with_page_rows(rows, page)
     with_text_links(rows, page)
     have = {r["lsr"] for r in rows}
     held = 0 if page_read else sum(1 for r in load_rows() if r.get("from_page")
                                    and not r.get("withdrawn") and r.get("lsr") not in have)
+    merged, gone = merge(rows, page_read, said)
     print(f"  {LISTED}{listed}"
-          + (f"; {held} taken from it before kept as they stood" if held else ""))
-    merged, gone = merge(rows, page_read)
+          + (f"; {held} taken from it before kept as they stood" if held else "")
+          + co_kept(rows, merged, said))
     OUT.write_text(json.dumps(merged, indent=1), encoding="utf-8")
     sessions = sorted({r["session"] for r in rows})
     print(f"{len(rows)} requests for {', '.join(str(s) for s in sessions)} -> {OUT}")
     if gone:
         print(f"  {gone} request(s) no longer listed, kept and marked withdrawn")
-    print("\nThese are requests, not bills: a title and a prime sponsor, and "
-          "nothing else\nuntil one is drafted and introduced.")
+    print("\nThese are requests, not bills: a title, a prime sponsor and any co-sponsors, "
+          "and nothing else\nuntil one is drafted and introduced.")
     return 0
 
 

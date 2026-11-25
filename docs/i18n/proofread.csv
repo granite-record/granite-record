@@ -1,4 +1,12 @@
 on the site,key,english,spanish (draft),from
+A bill request's own page: its sponsors; and a member's page: the requests they co-sponsor,req.n_cosponsored,{n} co-sponsored for {year},{n} copatrocinadas para {year},request-cosponsors
+A bill request's own page: its sponsors; and a member's page: the requests they co-sponsor,req.n_sponsors,{n} Sponsors,{n} patrocinadores,request-cosponsors
+A bill request's own page: its sponsors; and a member's page: the requests they co-sponsor,req.no_chamber,Chamber Not on File,Cámara no registrada,request-cosponsors
+A bill request's own page: its sponsors; and a member's page: the requests they co-sponsor,req.none_cosponsored,No bill requests co-sponsored for {year}.,Ninguna solicitud de proyecto de ley copatrocinada para {year}.,request-cosponsors
+A bill request's own page: its sponsors; and a member's page: the requests they co-sponsor,req.one_sponsor,1 Sponsor,1 patrocinador,request-cosponsors
+A bill request's own page: its sponsors; and a member's page: the requests they co-sponsor,req.representatives,Representatives,Representantes,request-cosponsors
+A bill request's own page: its sponsors; and a member's page: the requests they co-sponsor,req.senators,Senators,Senadores,request-cosponsors
+A bill request's own page: its sponsors; and a member's page: the requests they co-sponsor,req.sponsors,Sponsors,Patrocinadores,request-cosponsors
 A how-to guide: attend-a-hearing,guide.attend-a-hearing.after-the-hearing,After the hearing,Después de la audiencia,dev
 A how-to guide: attend-a-hearing,guide.attend-a-hearing.afterward-the-committee-votes-on-what,"Afterward, the committee votes on what to recommend, sometimes the same day.","Después, el comité vota qué recomendar, a veces el mismo día.",dev
 A how-to guide: attend-a-hearing,guide.attend-a-hearing.ask-to-speak,Ask to speak,Pida la palabra,dev
