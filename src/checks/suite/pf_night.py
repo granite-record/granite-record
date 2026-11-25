@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.23
+# GRANITE_VERSION: 2026-11-16.24
 """
 preflight's checks of the night, the week and what runs them (nightly.py, build_all.py, handoff, the gate).
 
@@ -3747,6 +3747,155 @@ def _committees_full_sessions():
     return "ok", (f"{' and '.join(FS.CHAMBER[b] for b in bodies)} first in their columns, each "
                   f"leading to its page of every term; {n_days} days of the latest terms, newest "
                   "first, each on a built page; the script draws a day as the page does")
+
+
+# A CHAMBER'S PAGE RUN IN NODE (_chamber_pages_offer_the_other): the page's own
+# script over a Chamber and a Term select as the page draws them, each case a
+# term chosen, the address it is on and the chamber chosen; what it records is
+# where the page was sent, and the chamber chosen after a pageshow.
+_CHAMBER_SWITCH_JS = r"""
+const fs = require("fs");
+const cases = JSON.parse(fs.readFileSync("./cases.json", "utf8"));
+const js = fs.readFileSync("./script.js", "utf8");
+const out = [];
+for (const c of cases) {
+  const went = [], heard = {}, on = {};
+  globalThis.window = globalThis;
+  globalThis.addEventListener = (t, f) => { heard[t] = f; };
+  const opt = (o) => ({value: o.value, getAttribute: (n) => n === "data-terms" ? (o.terms ?? null) : null});
+  const term = {value: c.term, options: c.terms.map((t) => ({value: t})), addEventListener(t, f) { on.term = f; }};
+  const cham = {value: c.mine, options: c.chambers.map(opt), selectedIndex: c.chambers.findIndex((o) => o.value === c.mine),
+                addEventListener(t, f) { on[t] = f; }};
+  const sort = {value: "new", addEventListener() {}};
+  const list = {children: [], appendChild() {}, setAttribute() {}, removeAttribute() {}, innerHTML: ""};
+  const ctl = {dataset: {body: c.body}, querySelector: (q) => ({".chterm": term, ".chbody": cham})[q] || null};
+  globalThis.document = {querySelector: (q) => ({".chamberctl": ctl, ".chsort": sort, ".chdays": list,
+                                                 ".chcount": {innerHTML: "", textContent: ""}})[q] || null,
+                         getElementById: () => null};
+  globalThis.location = {search: "", pathname: c.path, hash: "#day-2026-01-07",
+                         set href(v) { went.push(v); }, get href() { return c.path; }};
+  globalThis.history = {replaceState() {}};
+  globalThis.fetch = async () => ({ok: true, json: async () => ({days: []})});
+  const got = {};
+  try {
+    (0, eval)(js);
+    const i = c.chambers.findIndex((o) => o.value === c.choose);
+    cham.selectedIndex = i; cham.value = c.choose;
+    if (on.change) on.change();
+    got.went = went;
+    if (heard.pageshow) { heard.pageshow(); got.after = cham.value; }
+  } catch (e) { got.threw = e.constructor.name + ": " + e.message; }
+  out.push(got);
+}
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("build", "each chamber's session days page offers the other chamber beside the term, opening its page "
+                "at the term chosen where that chamber sat in it", needs=("build_full_sessions", "chrome"))
+def _chamber_pages_offer_the_other(FS, CH):
+    """The owner, 24 November 2026: "On the Calendars page, clicking the
+    session days tab only takes you to House session days rather than also
+    Senate session days, not sure whether to just add another tab or a
+    selector within that tab." Built as the selector recommended to her:
+    each chamber's page draws, in its bar (.bfilt.pterm.chamberctl) before
+    Term and in the same kind of label, a Chamber select of House and
+    Senate, its own chosen and the other carrying that chamber's terms,
+    newest first; where the other chamber's page is not written there is no
+    select. Held on the fixture's built pages, where each page that is built
+    offers the other if it is built too, and on two made-up chambers; the
+    page's script, run in node, opens the other chamber's page at the term
+    chosen where that chamber sat in it and it is not its newest, at its
+    newest otherwise, on Videos where this page is on Videos, and nowhere
+    for its own chamber, and a pageshow chooses this page's chamber again;
+    and the Calendar row's one Session days item is the item of both pages
+    (chrome.locate)."""
+    bar = re.compile(r'<div class="bfilt pterm chamberctl" data-body="([HS])">(.*?)</div>', re.S)
+
+    def offered(html):
+        """(the bar's labels in order, [(value, data-terms or None, chosen)]) of a page's Chamber
+        select, or None where the page draws none."""
+        m = bar.search(html)
+        assert m, "a chamber's page has no term bar"
+        labels = re.findall(r"<label>([^<]+?) <select class=\"(\w+)\">", m.group(2))
+        sel = re.search(r'<select class="chbody">(.*?)</select>', m.group(2), re.S)
+        if not sel:
+            return labels, None
+        return labels, [(v, t or None, bool(s)) for v, t, s in re.findall(
+            r'<option value="(\w+)"(?: data-terms="([^"]*)")?( selected)?>', sel.group(1))]
+    # TWO MADE-UP CHAMBERS, each with a page.
+    def made(body, terms, other):
+        return {"body": body, "terms": terms, "latest": terms[0], "days": [], "dates": ["2025-01-08"],
+                "members": 0, "chair": [], "nobill": False, "other": other}
+    house_terms, senate_terms = ["2025-2026", "2023-2024", "2021-2022"], ["2025-2026", "2023-2024"]
+    pages = {"H": FS.page_body(made("H", house_terms, ("S", senate_terms)), "/session/house.html"),
+             "S": FS.page_body(made("S", senate_terms, ("H", house_terms)), "/session/senate.html")}
+    want = {"H": [("house", None, True), ("senate", " ".join(senate_terms), False)],
+            "S": [("house", " ".join(house_terms), False), ("senate", None, True)]}
+    for b, html in pages.items():
+        labels, opts = offered(html)
+        assert labels == [("Chamber", "chbody"), ("Term", "chterm")] and opts == want[b], (
+            f"the {FS.CHAMBER[b]}'s page draws the bar {labels} and the chambers {opts}, not Chamber "
+            f"before Term and {want[b]}")
+    alone = FS.page_body(made("H", house_terms, None), "/session/house.html")
+    assert offered(alone) == ([("Term", "chterm")], None), (
+        "a chamber whose other has no page offers it all the same")
+    # ON THE FIXTURE'S SITE: each page built offers the other where it is built.
+    site = _fixture_site_shared()[0] / "site"
+    built = {b: site / "session" / f"{FS.SLUG[b]}.html" for b in ("H", "S")}
+    built = {b: p for b, p in built.items() if p.is_file()}
+    if not built:
+        return "skip", "the fixture builds no chamber's page"
+    for b, p in built.items():
+        o = "S" if b == "H" else "H"
+        _labels, opts = offered(p.read_text(encoding="utf-8"))
+        if o in built:
+            terms = sorted((f.stem for f in (site / "session" / o).glob("*.json")
+                            if re.fullmatch(r"\d{4}-\d{4}", f.stem)), reverse=True)
+            assert opts and [v for v, _t, _s in opts] == ["house", "senate"] \
+                and dict((v, s) for v, _t, s in opts)[FS.SLUG[b]] \
+                and dict((v, t) for v, t, _s in opts)[FS.SLUG[o]] == " ".join(terms), (
+                    f"session/{FS.SLUG[b]}.html offers {opts}, not the {FS.CHAMBER[o]} with its terms {terms}")
+        else:
+            assert opts is None, f"session/{FS.SLUG[b]}.html offers a chamber whose page is not built"
+    # THE ROW'S ONE ITEM, current on both.
+    for slug in ("house", "senate"):
+        assert CH.locate(f"/session/{slug}.html") == ("calendar.html", "sessions"), (
+            f"/session/{slug} is not the Calendar row's Session days")
+    # THE SCRIPT, as the page runs it.
+    js = re.search(r"<script>(.*?)</script>", FS.SCRIPT, re.S).group(1)
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "ok", (f"the bar draws Chamber before Term on both made-up chambers, none without the other; "
+                      f"{len(built)} fixture page(s) as built (node is not here: the script not run)")
+    chambers = lambda b: [{"value": v, "terms": t} for v, t, _s in want[b]]  # noqa: E731
+    cases = [  # (what, body, address, term chosen, chamber chosen, where it should go)
+        ("a term the Senate sat in", "H", "/session/house", "2023-2024", "senate", ["/session/senate?term=2023-2024"]),
+        ("the Senate's newest", "H", "/session/house", "2025-2026", "senate", ["/session/senate"]),
+        ("a term the Senate has none of", "H", "/session/house", "2021-2022", "senate", ["/session/senate"]),
+        ("on Videos", "H", "/session/house/videos", "2023-2024", "senate", ["/session/senate/videos?term=2023-2024"]),
+        ("its own chamber", "H", "/session/house", "2023-2024", "house", []),
+        ("from the Senate", "S", "/session/senate", "2023-2024", "house", ["/session/house?term=2023-2024"])]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "script.js").write_text(js, encoding="utf-8")
+        (root / "cases.json").write_text(json.dumps([
+            {"body": b, "path": p, "term": t, "terms": house_terms if b == "H" else senate_terms,
+             "chambers": chambers(b), "mine": FS.SLUG[b], "choose": ch} for _w, b, p, t, ch, _g in cases]),
+            encoding="utf-8")
+        (root / "go.js").write_text(_CHAMBER_SWITCH_JS, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0 and "@@" in r.stdout, "the chamber page's script would not run: " + r.stderr[-300:]
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    wrong = [f"{w}: {g}" for (w, b, _p, _t, _c, go), g in zip(cases, got)
+             if g.get("threw") or g.get("went") != go or g.get("after") != FS.SLUG[b]]
+    assert not wrong, "choosing a chamber: " + "; ".join(wrong)
+    return "ok", (f"the bar draws Chamber before Term, the other chamber with its terms, none without it; "
+                  f"{len(built)} fixture page(s) as built; the script, on {len(cases)} cases, opens the other's "
+                  "page at the term where it sat in it, on Videos from Videos, nowhere for its own, and "
+                  "chooses its own again on pageshow; Session days current on both")
 
 
 @check("workflows", "the night says who started it -- the timer, GitHub's schedule or a person -- "

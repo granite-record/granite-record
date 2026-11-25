@@ -73,6 +73,24 @@
   opened();
   term.addEventListener("change",function(){show(term.value,true);});
   sort.addEventListener("change",order);
+  // THE OTHER CHAMBER (build_full_sessions, THE OTHER CHAMBER): its page, at
+  // the term chosen here where it sat in it and that is not its newest (its
+  // page's own), on Videos from Videos. The select says this page's chamber
+  // when the page is shown, coming Back to it included, whatever a browser
+  // kept of the choice, so the other can be chosen again.
+  var cham=ctl.querySelector(".chbody");
+  if(cham){
+    var mine=b==="S"?"senate":"house";
+    cham.value=mine;
+    cham.addEventListener("change",function(){
+      var o=cham.options[cham.selectedIndex];
+      if(!o||o.value===mine)return;
+      var k=String(o.getAttribute("data-terms")||"").split(" ").indexOf(term.value);
+      location.href="/session/"+o.value+(/\/videos\/?$/.test(location.pathname)?"/videos":"")
+        +(k>0?"?term="+term.value:"");
+    });
+    addEventListener("pageshow",function(){cham.value=mine;});
+  }
   var want=new URLSearchParams(location.search).get("term");
   if(want&&want!==term.value&&[].some.call(term.options,function(o){return o.value===want;})){
     term.value=want;show(want,false);

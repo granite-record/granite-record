@@ -28,7 +28,8 @@ Officials are drawn by `officials_tabs.py` from `corrections/officials.json`,
 which it reads and never writes. The House and the Senate are each a card at the
 top of their column of `/committees`, drawn as a committee's card is, and each
 card leads to the chamber's page of session days, `/session/house` and
-`/session/senate`, beside the day pages: a term picker over every term, the
+`/session/senate`, beside the day pages: a chamber picker that opens the other
+chamber's page (24 November 2026), a term picker over every term, the
 latest chosen, and that term's days listed as a committee's meetings are,
 each leading to its own page. Both are `build_full_sessions.py`'s, a step
 after both chambers' session pages: it fills the slots `build_committees.py`

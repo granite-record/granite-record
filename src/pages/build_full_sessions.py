@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.16
+# GRANITE_VERSION: 2026-10-10.17
 """
 The House and the Senate as committees of the whole: a card at the top of
 each column of /committees, and a page for each chamber's session days.
@@ -30,6 +30,20 @@ Two pages, not one per term: the latest term is written into the page, so it
 reads without script; another term is drawn from that term's file,
 site/session/<H|S>/<term>.json, which build_session_pages writes
 (write_term_records), when it is chosen.
+
+THE OTHER CHAMBER, BESIDE THE TERM (the owner, 24 November 2026: "On the
+Calendars page, clicking the session days tab only takes you to House session
+days rather than also Senate session days, not sure whether to just add
+another tab or a selector within that tab"; a selector within the page was
+recommended to her, for her to confirm). Each page's bar has a Chamber select,
+House and Senate, its own chosen, before the Term select and drawn as it is:
+choosing the other chamber opens that chamber's page, at the term chosen here
+where that chamber sat in it (the option's data-terms, its terms newest
+first) and on its Videos tab from this one's. There is none where the other
+chamber's page is not written. The Calendar row keeps its one Session days
+item, which leads to the House's page and is current on both. Its words are
+the Calendar page's (calp.chamber, calp.house, calp.senate), Spanish drafts
+and all, though the two pages are drawn in English only.
 
 WHY A STEP OF ITS OWN, AFTER THE SESSION PAGES. Those term files are written
 after build_committees, so the committees step cannot read them on a build
@@ -73,6 +87,7 @@ import structured as LD
 import components as C
 import inline_js as IJ
 from components import date_words, pchip
+from i18n import say
 
 E = lambda s: _html.escape(str(s or ""), quote=True)  # noqa: E731
 CHAMBER = {"H": "House", "S": "Senate"}
@@ -87,6 +102,7 @@ TERM = re.compile(r"\d{4}-\d{4}")
 # The chamber's page, beside its folder of days: /session/house beside
 # /session/H/ (see WHY /session/house above).
 SLUG = {"H": "house", "S": "senate"}
+OTHER = {"H": "S", "S": "H"}
 
 
 def slot(body):
@@ -111,16 +127,28 @@ def _load(path, default):
         return default
 
 
+def terms_of(site, body):
+    """A chamber's terms, by its term files (site/session/<H|S>/<term>.json),
+    newest first."""
+    return sorted((f.stem for f in (Path(site) / "session" / body).glob("*.json")
+                   if TERM.fullmatch(f.stem)), reverse=True)
+
+
 def chamber(site, body, today):
     """What the record holds for one chamber: its terms (the term files, newest
     first), its latest term's days, every day it sat, its members today and
-    who presides today."""
+    who presides today; and the other chamber, (its body, its terms), where
+    that chamber's page is written too, or None."""
     site = Path(site)
-    terms = sorted((f.stem for f in (site / "session" / body).glob("*.json")
-                    if TERM.fullmatch(f.stem)), reverse=True)
-    dates = sorted((_load(site / "session" / "days.json", {}) or {}).get(body) or [])
+    terms = terms_of(site, body)
+    every = _load(site / "session" / "days.json", {}) or {}
+    dates = sorted(every.get(body) or [])
     if not terms or not dates:
         return None
+    # main writes a chamber's page wherever it has terms and days, as here.
+    other = OTHER[body]
+    oterms = terms_of(site, other)
+    other = (other, oterms) if oterms and every.get(other) else None
     days = (_load(site / "session" / body / f"{terms[0]}.json", {}) or {}).get("days") or []
     legs = _load(site / "legislators.json", []) or []
     by_id = {str(m.get("id")): m for m in legs}
@@ -137,7 +165,7 @@ def chamber(site, body, today):
     nobill = (site / "session" / "nobill" / f"{terms[0]}.html").exists()
     return {"body": body, "terms": terms, "latest": terms[0], "days": days, "dates": dates,
             "members": sum(1 for m in legs if m.get("chamber") == body), "chair": chair,
-            "nobill": nobill}
+            "nobill": nobill, "other": other}
 
 
 def bare_name(m):
@@ -276,17 +304,32 @@ def videos_json(c):
                       separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
 
 
+def chamber_select(c):
+    """THE CHAMBER, BESIDE THE TERM (see THE OTHER CHAMBER above): House and
+    Senate, by the slug of their pages, this chamber's chosen and the other's
+    carrying its terms, newest first, for the page's script; "" where the
+    other chamber has no page."""
+    if not c.get("other"):
+        return ""
+    other, terms = c["other"]
+    words = {"H": say("en", "calp.house", "House"), "S": say("en", "calp.senate", "Senate")}
+    opts = "".join(f'<option value="{SLUG[b]}"'
+                   + (" selected" if b == c["body"] else f' data-terms="{E(" ".join(terms))}"')
+                   + f">{E(words[b])}</option>" for b in ("H", "S"))
+    return f'<label>{E(say("en", "calp.chamber", "Chamber"))} <select class="chbody">{opts}</select></label>'
+
+
 def page_body(c, path="", base=""):
-    """The chamber's page: the record head, then the term, then its two
-    panes: the latest term's days, in the order chosen, and the Videos tab's,
-    which app.js draws and shows (videos_json). Without script the days are
-    the page, as they always were."""
+    """The chamber's page: the record head, then the chamber and the term,
+    then its two panes: the latest term's days, in the order chosen, and the
+    Videos tab's, which app.js draws and shows (videos_json). Without script
+    the days are the page, as they always were."""
     body = c["body"]
     opts = "".join(f'<option value="{E(t)}"{" selected" if t == c["latest"] else ""}>'
                    f"{E(C.term_words(t))}</option>" for t in c["terms"])
     days = "".join(day_section(body, d) for d in reversed(c["days"]))
     return (page_head(c, path or f"/session/{SLUG[body]}.html", base)
-            + f'<div class="bfilt pterm chamberctl" data-body="{body}">'
+            + f'<div class="bfilt pterm chamberctl" data-body="{body}">{chamber_select(c)}'
             f'<label>Term <select class="chterm">{opts}</select></label></div>'
             '<div class="chpane" id="chdays"><div class="bfilt chorder">'
             '<label>Order <select class="chsort"><option value="new" selected>Newest first'
