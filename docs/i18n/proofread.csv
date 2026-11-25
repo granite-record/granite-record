@@ -4926,7 +4926,7 @@ The Officials page's tabs: each office and who holds it,off.read_on,; read {day}
 The Officials page's tabs: each office and who holds it,off.role.deputy,Deputy Speaker,Vicepresidente de la Cámara,dev
 The Officials page's tabs: each office and who holds it,off.role.president,Senate President,Presidente del Senado,dev
 The Officials page's tabs: each office and who holds it,off.role.speaker,Speaker,Presidente de la Cámara,dev
-The Officials page's tabs: each office and who holds it,off.roster_src,"Kept by hand, read from the Secretary of State&rsquo;s county roster for 2025&ndash;2026, dated {day}","Se mantiene a mano, leído de la lista de funcionarios de los condados de la Secretaría de Estado para 2025&ndash;2026, con fecha del {day}",dev
+The Officials page's tabs: each office and who holds it,off.roster_src,"Kept by hand, read from the Secretary of State&rsquo;s county roster for {term}, dated {day}","Se mantiene a mano, leído de la lista de funcionarios de los condados de la Secretaría de Estado para {term}, con fecha del {day}",dev
 The Officials page's tabs: each office and who holds it,off.seat_one,{n} seat,{n} escaño,dev
 The Officials page's tabs: each office and who holds it,off.seats,{n} seats,{n} escaños,dev
 The Officials page's tabs: each office and who holds it,off.sos,Secretary of State,Secretaría de Estado,dev

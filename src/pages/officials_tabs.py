@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.30
+# GRANITE_VERSION: 2026-10-10.31
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
@@ -606,10 +606,37 @@ def judicial(off, lang="en"):
 ROSTER_ELECTION = datetime.date(2026, 11, 3)
 
 
-def ballot_line(today, lang="en"):
-    """The sentence under the county roster about its election."""
-    on = date_words(ROSTER_ELECTION, "full", lang)
-    if today <= ROSTER_ELECTION:
+def roster_term(co):
+    """THE TERM THE COUNTY ROSTER IS OF, as its own record names it (25 November
+    2026): the term in the saved file's name, "sos-county-roster-2025-2026.pdf", or
+    in its source, "COUNTY ROSTER 2025-2026", else the term its date falls in, so
+    that the roster the person reads after the election names its own term on the
+    page where "2025-2026" was typed. "2025&ndash;2026", as the page writes it."""
+    import proceedings as P
+    import terms as T
+    for said in (co.get("source_file"), co.get("source")):
+        for m in re.finditer(r"(?<!\d)(\d{4})-(\d{4})(?!\d)", str(said or "")):
+            if T.is_key(m.group(0)):
+                return f"{m.group(1)}&ndash;{m.group(2)}"
+    a, _, b = P.term_on(str(co.get("as_of") or "")[:10]).partition("-")
+    return f"{a}&ndash;{b}" if b else ""
+
+
+def roster_election(co):
+    """The general election the county roster's seats go to: the one in the last year of
+    its term (roster_term), as 3 November 2026 is the 2025-2026 roster's
+    (ROSTER_ELECTION)."""
+    import build_members_elect as BME
+    last = re.sub(r"\D", "", roster_term(co))[4:8]
+    return BME.general_election(int(last)) if len(last) == 4 else ROSTER_ELECTION
+
+
+def ballot_line(today, lang="en", election=None):
+    """The sentence under the county roster about its election: `election`, the
+    roster's (roster_election), ROSTER_ELECTION where none is given."""
+    election = election or ROSTER_ELECTION
+    on = date_words(election, "full", lang)
+    if today <= election:
         return I.say(lang, "off.ballot_on", "Most of these seats are on the ballot on {day}.",
                      day=on)
     return I.say(lang, "off.ballot_was", "Most of these seats were on the ballot on {day}; "
@@ -667,11 +694,12 @@ def county(off, legs, today=None, lang="en"):
     if co.get("as_of"):
         src = ('<p class="ofsrcs">'
                + I.say(lang, "off.roster_src", "Kept by hand, read from the Secretary of "
-                       "State&rsquo;s county roster for 2025&ndash;2026, dated {day}",
-                       day=E(_long(co["as_of"], lang)))
+                       "State&rsquo;s county roster for {term}, dated {day}",
+                       term=roster_term(co), day=E(_long(co["as_of"], lang)))
                + (I.say(lang, "off.read_on", "; read {day}", day=E(_long(co["read"], lang)))
                   if co.get("read") else "")
-               + ". " + ballot_line(build_date.today() if today is None else today, lang) + "</p>")
+               + ". " + ballot_line(build_date.today() if today is None else today, lang,
+                                    roster_election(co)) + "</p>")
     return (f'<div class="ofintro">{about}</div>' if about else "") + "".join(parts) + src
 
 

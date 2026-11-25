@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.45
+# GRANITE_VERSION: 2026-11-16.46
 """
 preflight's checks of members-elect and election results.
 
@@ -1046,6 +1046,53 @@ def _officials_vacant_seat(BME, OT):
     return "ok", ("on a made-up county, an empty seat drawn Vacant with its day, source and successor, "
                   "a sheriff's successor with no party, in English and Spanish, the holder on the "
                   f"successor's day, a vacancy with no source or day refused; the real file names {n}")
+
+
+@check("frontend", "the County tab's source line names the term its roster is of, and the election "
+                   "its seats go to, from the roster's own record: 2025-2026 and 3 November 2026 "
+                   "today, 2027-2028 and 7 November 2028 once the next roster is read",
+       needs=("officials_tabs",))
+def _county_roster_term(OT):
+    """The owner, 25 November 2026: "any references that list 2025-2026 as the current
+    term". The County tab's line under the roster read "the Secretary of State's county
+    roster for 2025-2026" and "Most of these seats were on the ballot on November 3, 2026",
+    both typed, and the person reads the next roster in after the election: the line would
+    have named the old term and the old ballot over the new names. Both are the roster's
+    own now (officials_tabs.roster_term, roster_election): the term in its saved file's
+    name or its source, else the term its date falls in."""
+    import datetime as _dt
+    real = (_officials_now().get("county") or {})
+    now = {"source_file": "records/sources/sos-county-roster-2025-2026.pdf", "as_of": "2024-12-05",
+           "read": "2026-10-09"}
+    nxt = {"source_file": "records/sources/sos-county-roster-2027-2028.pdf", "as_of": "2026-12-09",
+           "read": "2026-12-12"}
+    assert (OT.roster_term(now), OT.roster_election(now)) == ("2025&ndash;2026", _dt.date(2026, 11, 3)) \
+        and (OT.roster_term(nxt), OT.roster_election(nxt)) == ("2027&ndash;2028", _dt.date(2028, 11, 7)), (
+        OT.roster_term(now), OT.roster_term(nxt))
+    assert OT.roster_term({"as_of": "2026-12-09"}) == "2027&ndash;2028" and \
+        OT.roster_term({"source": "COUNTY ROSTER 2025-2026", "as_of": "2026-12-09"}) == "2025&ndash;2026", (
+        "a roster's term from its source, else its day")
+
+    def line(co, day):
+        doc = {"county": {**co, "counties": {"Belknap": {"name": "Belknap County", "commissioners": {
+            "1": {"name": "Ann Holder", "office": "County Commissioner, District 1", "district": "1",
+                  "party": "R"}}}}}}
+        h = OT.county(doc, [], day)
+        m = re.search(r'<p class="ofsrcs">(.*?)</p>', h, re.S)
+        return m.group(1) if m else ""
+    was = line(now, _dt.date(2026, 11, 25))
+    assert "county roster for 2025&ndash;2026, dated December 5, 2024" in was and \
+        "were on the ballot on November 3, 2026" in was, was
+    later = line(nxt, _dt.date(2027, 1, 20))
+    assert "county roster for 2027&ndash;2028, dated December 9, 2026" in later and \
+        "are on the ballot on November 7, 2028" in later and "2025" not in later, later
+    if real.get("as_of"):
+        assert OT.roster_term(real) == "2025&ndash;2026", (
+            f"the real roster's term reads {OT.roster_term(real)!r}: its file is "
+            f"{real.get('source_file')!r}")
+    return "ok", ("the line names 2025-2026 and November 3, 2026 for today's roster, 2027-2028 and "
+                  "November 7, 2028 for the next one's file, a roster's term from its source or its "
+                  "day; the real record's is 2025-2026")
 
 
 @check("files", "corrections/officials.json has one reader, build_members_elect.read_officials, "
