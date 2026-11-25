@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.40
+# GRANITE_VERSION: 2026-11-16.41
 """
 preflight's checks of the pages the builders write, the shell, exports, feeds and the built site read back.
 
@@ -4669,8 +4669,9 @@ const F = vm.runInThisContext("({FIND, findRows, findMatch, findName, findKind, 
 const at = (day) => { held = new RealDate(day + "T12:00:00").getTime(); F.FIND.rows = null; F.FIND.loading = null; };
 (async () => {
   const out = {days: {}, match: {}, search: {}};
-  // The rows as find.js takes them in, on the reader's day: before the day they take office, and on it.
-  for (const day of ["2026-11-20", "2026-12-02"]) {
+  // The rows as find.js takes them in, on the reader's day: before the day they take office, on
+  // it, and on the day after, when the site switches to them (proceedings.switch_day).
+  for (const day of ["2026-11-20", "2026-12-02", "2026-12-03"]) {
     at(day);
     out.days[day] = (await F.findRows()).map(r => [r[0], F.findName(r), r[3]]);
   }
@@ -4764,7 +4765,9 @@ def _find_members_elect(BI, BP):
       member's ("House · Hills 25 · Democrat"), leading to their own page; the former member's
       row is not beside it but in it, with the day they take office; a sitting member's row is
       as it was, and nobody has a second;
-    - on the day they take office, by the build's day: a new member's row is a member's, "Rep.
+    - on Organization Day, by the build's day and the reader's, the rows of the day before (its
+      night publishes before they are sworn in); on the day after (proceedings.switch_day; the
+      owner, 25 November 2026), by the build's day: a new member's row is a member's, "Rep.
       Heather Deiner (D - Hills 25)", and the former member's row is as it was; and by the
       reader's day, from a find.json built before it, the former member's row is back
       (find.js's findNow) while a new member's follows their page, which changes with the build;
@@ -4788,7 +4791,7 @@ def _find_members_elect(BI, BP):
         site.mkdir()
         legs = _find_elect_site(site)
         got = {}
-        for day in ("2026-11-20", "2026-12-02"):
+        for day in ("2026-11-20", "2026-12-02", "2026-12-03"):
             os.environ["GRANITE_BUILD_DATE"] = day
             with contextlib.redirect_stdout(io.StringIO()):
                 got[day] = BI.find_index(site, legs, {})
@@ -4798,7 +4801,12 @@ def _find_members_elect(BI, BP):
         else:
             os.environ["GRANITE_BUILD_DATE"] = saved
         shutil.rmtree(root, ignore_errors=True)
-    rows, after = got["2026-11-20"], got["2026-12-02"]
+    # ORGANIZATION DAY ITSELF IS THE DAY BEFORE (the owner, 25 November 2026: "wait until
+    # December 3rd to switch to the new titles"): its night, built before the members are sworn
+    # in, gives the rows of 20 November; the day after gives the members' rows.
+    assert got["2026-12-02"] == got["2026-11-20"], (
+        f"find_index's rows on Organization Day are not the members-elect's: {got['2026-12-02']}")
+    rows, after = got["2026-11-20"], got["2026-12-03"]
     people = [r[:5] + ([r[5]] if len(r) > 5 else []) for r in rows if r[0] in ("legislator", "elect", "former")]
     was = ["former", "Former Rep. Benjamin Baroody", "House · Hills 39 · 2023–2024",
            "legislator/benjamin-baroody-hills-39", "Hills D", 2024]
@@ -4812,7 +4820,7 @@ def _find_members_elect(BI, BP):
             ["elect", "Rep.-elect Benjamin Baroody (D - Hills 16)", "House · Hills 16 · Democrat",
              "legislator/benjamin-baroody-hills-39",
              "Benjamin C. Baroody Hillsborough Hills D member-elect rep-elect representative-elect",
-             "2026-12-02"],
+             "2026-12-03"],
             ["elect", "Rep.-elect Heather Deiner (D - Hills 25)", "House · Hills 25 · Democrat",
              "legislator/heather-deiner-hills-25",
              "Hillsborough member-elect rep-elect representative-elect"]]
@@ -4872,8 +4880,9 @@ def _find_members_elect(BI, BP):
     by_day = {d: {a: (k, n) for k, n, a in v} for d, v in js["days"].items()}
     base = "legislator/benjamin-baroody-hills-39"
     if by_day["2026-11-20"].get(base) != ("elect", "Rep.-elect Benjamin Baroody (D - Hills 16)") \
-            or by_day["2026-12-02"].get(base) != ("former", "Former Rep. Benjamin Baroody") \
-            or by_day["2026-12-02"].get("legislator/heather-deiner-hills-25") != (
+            or by_day["2026-12-02"] != by_day["2026-11-20"] \
+            or by_day["2026-12-03"].get(base) != ("former", "Former Rep. Benjamin Baroody") \
+            or by_day["2026-12-03"].get("legislator/heather-deiner-hills-25") != (
                 "elect", "Rep.-elect Heather Deiner (D - Hills 25)"):
         bad.append(f"the rows find.js takes in on the reader's day: {js['days']}")
     for q, who in queries.items():
@@ -14610,18 +14619,23 @@ def _officials_overview_switch(OV):
         import html as _h
         return " ".join(_h.unescape(_re.sub(r"<[^>]+>", " ", h)).split())
     inside = leg("2026-11-20", _OV_ELECT)
-    assert OV.leads_incoming(_OV_ELECT, "2026-11-20") and not OV.leads_incoming(_OV_ELECT, "2026-12-02") \
+    # THROUGH ORGANIZATION DAY, AND NOT THE DAY AFTER (the owner, 25 November 2026: "wait until
+    # December 3rd to switch to the new titles since the swearing in ceremony happens on the
+    # morning of December 2nd"): the file's "until", or the day after its takes_office.
+    assert OV.leads_incoming(_OV_ELECT, "2026-11-20") and OV.leads_incoming(_OV_ELECT, "2026-12-02") \
+        and not OV.leads_incoming(_OV_ELECT, "2026-12-03") \
+        and OV.leads_incoming({**_OV_ELECT, "until": "2026-12-03"}, "2026-12-02") \
         and not OV.leads_incoming(None, "2026-11-20") \
         and not OV.leads_incoming({**_OV_ELECT, "races": {}}, "2026-11-20"), (
             "leads_incoming does not follow the file and the day")
-    assert '<div class="ovincoming" data-elect data-until="2026-12-02">' in inside, (
-        "the incoming block is not drawn, or not retired on the day they take office")
+    assert '<div class="ovincoming" data-elect data-until="2026-12-03">' in inside, (
+        "the incoming block is not drawn, or not retired the day after they take office")
     words = text(inside)
     assert "The incoming legislature Elected November 3, 2026; takes office December 2, 2026." in words, (
         f"the incoming legislature is not headed as such with its days: {words[:200]!r}")
     from pf_shared import _elect_strip
     i_in = inside.find("2 of 2 seats elected")
-    i_until = inside.find('<h3 class="ovnowh" data-elect data-until="2026-12-02">Serving until then</h3>')
+    i_until = inside.find('<h3 class="ovnowh" data-elect data-until="2026-12-03">Serving until then</h3>')
     i_sit = inside.find('<div class="ovsitting">')
     assert "2 of 3 seats elected, 1 not final" in inside and -1 < i_in < i_until < i_sit, (
         "the incoming chambers do not lead, over \"Serving until then\" and the chambers as they sit")
@@ -14634,7 +14648,7 @@ def _officials_overview_switch(OV):
         and f"{small} .compshort{{display:block" in css, (
             "app.css does not draw the sitting chambers small while the incoming ones lead")
     assert 'href="officials.html#members-elect"' in inside, "no way to the members-elect in the window"
-    for day, elect in (("2026-12-02", _OV_ELECT), ("2026-12-09", _OV_ELECT), ("2026-11-20", None),
+    for day, elect in (("2026-12-03", _OV_ELECT), ("2026-12-09", _OV_ELECT), ("2026-11-20", None),
                        ("2026-11-20", {**_OV_ELECT, "races": {}})):
         out = leg(day, elect)
         assert "ovincoming" not in out and "incoming" not in text(out).lower() \
@@ -14643,7 +14657,8 @@ def _officials_overview_switch(OV):
             and out.count('<div class="comp">') == 2 and '<div class="ovsitting">' in out, (
                 f"{day}: the sitting chambers do not lead on full bars")
     return "ok", ("in the window the incoming chambers lead under \"The incoming legislature\" with "
-                  "its two days, retiring on 2 December, and the sitting ones follow, small while it "
+                  "its two days, Organization Day among them, retiring on 3 December, and the "
+                  "sitting ones follow, small while it "
                   "shows and otherwise the block drawn without the file; "
                   "on the day, after it, with no file and with no races, the sitting chambers lead "
                   "and nothing of the incoming is drawn")
@@ -17240,15 +17255,18 @@ def _member_elections_tab(BP):
 
 
 @check("build", "check_site refuses a site/members_elect.json on or after the day its "
-                "members-elect take office, which holds the night", needs=("check_site",))
+                "members-elect retire, the day after they take office, which holds the night",
+       needs=("check_site",))
 def _elect_refused_on_the_day(CS):
     """Check 6 of the plan: the third guard after the step and the browser.
-    A members_elect.json still in the site on its takes_office, or after, is
-    a site that would call sitting members members-elect; check_site refuses
-    it, and a refusal there holds the night. Before the day it passes, and
-    says until when; a file that names no day is refused, since nothing
-    would take it down. And main() runs it: a site dated 2 December with the
-    file in it is refused by name."""
+    A members_elect.json still in the site on the day after its takes_office
+    (its "until"; the owner, 25 November 2026: "wait until December 3rd to
+    switch to the new titles"), or after, is a site that would call sitting
+    members members-elect; check_site refuses it, and a refusal there holds
+    the night. Before the day it passes -- Organization Day itself among
+    them -- and says until when; a file that names no day is refused, since
+    nothing would take it down. And main() runs it: a site dated 3 December
+    with the file in it is refused by name."""
     from datetime import date
     root = Path(tempfile.mkdtemp(prefix="gr-elect-check-"))
     try:
@@ -17258,12 +17276,21 @@ def _elect_refused_on_the_day(CS):
         p.write_text(json.dumps({"election": "2026-11-03", "takes_office": "2026-12-02",
                                  "term": "2027-2028", "races": {}}), encoding="utf-8")
         got = {}
-        for day in (date(2026, 11, 20), date(2026, 12, 1), date(2026, 12, 2), date(2027, 1, 6)):
+        for day in (date(2026, 11, 20), date(2026, 12, 1), date(2026, 12, 2), date(2026, 12, 3),
+                    date(2027, 1, 6)):
             errors = []
             CS.members_elect(site, errors, today=day)
             got[day.isoformat()] = bool(errors)
-        assert got == {"2026-11-20": False, "2026-12-01": False, "2026-12-02": True,
-                       "2027-01-06": True}, f"check_site refuses members_elect.json on {got}"
+        assert got == {"2026-11-20": False, "2026-12-01": False, "2026-12-02": False,
+                       "2026-12-03": True, "2027-01-06": True}, (
+            f"check_site refuses members_elect.json on {got}")
+        # A file that names its day, "until", is judged by it.
+        p.write_text(json.dumps({"election": "2026-11-03", "takes_office": "2026-12-02",
+                                 "until": "2026-12-05", "term": "2027-2028", "races": {}}),
+                     encoding="utf-8")
+        errors = []
+        CS.members_elect(site, errors, today=date(2026, 12, 4))
+        assert not errors, f"check_site does not read the file's until: {errors}"
         p.write_text(json.dumps({"election": "2026-11-03", "races": {}}), encoding="utf-8")
         errors = []
         CS.members_elect(site, errors, today=date(2026, 11, 20))
@@ -17281,15 +17308,16 @@ def _elect_refused_on_the_day(CS):
                                      encoding="utf-8")
         r = _run([sys.executable, _paths.script("check_site.py"), "--site", str(site)],
                  capture_output=True, text=True, timeout=120,
-                 env={"GRANITE_BUILD_DATE": "2026-12-02"})
+                 env={"GRANITE_BUILD_DATE": "2026-12-03"})
         said = (r.stdout or "") + (r.stderr or "")
-        assert r.returncode != 0 and "members_elect.json is still in the site on 2026-12-02" in said, (
-            "check_site.py, run on a site dated 2 December with members_elect.json in it, does "
+        assert r.returncode != 0 and "members_elect.json is still in the site on 2026-12-03" in said, (
+            "check_site.py, run on a site dated 3 December with members_elect.json in it, does "
             "not refuse it by name: " + said[-300:])
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    return "ok", ("passed on 20 November and 1 December, refused on 2 December and after, and "
-                  "refused with no takes_office; main() refuses it by name")
+    return "ok", ("passed on 20 November, 1 December and Organization Day, refused on 3 December and "
+                  "after, a file's own until read, and refused with no takes_office; main() refuses "
+                  "it by name")
 
 
 @check("data", "the measures the search page left out read as their records say, and "

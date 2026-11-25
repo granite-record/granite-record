@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.18
+# GRANITE_VERSION: 2026-10-23.19
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -274,7 +274,8 @@ def row_facts():
         None: where there are none, and on the days the bill search opens on
         them (requests_first, by the build's day), when Search bills is
         their list;
-      "elect_until": the day the members-elect take office, or None;
+      "elect_until": the day the members-elect retire, the day after they take
+        office (build_members_elect.until_of), or None;
       "elections": whether there are election results to build pages of;
       "former": whether any member who left has a page to list;
       "documents": whether there is a calendars' queue to list them from;
@@ -316,7 +317,7 @@ def row_facts():
         from build_members_elect import for_pages
         with contextlib.redirect_stdout(io.StringIO()):
             elect = for_pages(site)
-        until = elect["takes_office"] if elect else None
+        until = elect["until"] if elect else None
     except (ImportError, SystemExit):
         until = None
     former = any(isinstance(m, dict) and m.get("slug") for m in (read(site / "former.json", []) or []))

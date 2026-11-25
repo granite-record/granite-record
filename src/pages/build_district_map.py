@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.8
+# GRANITE_VERSION: 2026-10-09.9
 """
 The district map's data, and its script and stylesheet, into the site.
 
@@ -156,9 +156,10 @@ def who_sits(legislators, officials, places):
 
 
 def elect_of(elect, places):
-    """{"election", "takes_office", "races": {"base|RO13": race, "float|RO32":
-    race, "senate|24": race}} from the members-elect file, keyed as `who`
-    is, or None where there is no file.
+    """{"election", "takes_office", "until", "races": {"base|RO13": race,
+    "float|RO32": race, "senate|24": race}} from the members-elect file, keyed
+    as `who` is, or None where there is no file; "until" is the day after
+    Organization Day, when the panel's block retires.
 
     A LIST IN THE PANEL, THE FILL UNCHANGED (the person's decisions of 16
     October 2026). map.js draws each district's members-elect in its panel
@@ -179,7 +180,7 @@ def elect_of(elect, places):
             code = f"{CODE[parts[1]]}{int(parts[2])}"
             races[("float|" if code in flo else "base|") + code] = race
     return {"election": elect["election"], "takes_office": elect["takes_office"],
-            "races": races}
+            "until": elect["until"], "races": races}
 
 
 def fills(geom, who):

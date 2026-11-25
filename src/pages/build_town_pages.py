@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.64
+# GRANITE_VERSION: 2026-09-09.65
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -1187,15 +1187,16 @@ def elect_parts(elect, key):
     (the person's decisions of 16 October 2026). The block is drawn from
     site/members_elect.json alone, under the sitting members and never among
     them, and the sitting members get "Serving now" over them wherever one
-    is drawn, which names nobody. Both carry data-elect and retire on the day
-    they take office (components.until_attrs); with no file neither is
-    drawn and the page is the page it was."""
+    is drawn, which names nobody. Both carry data-elect and retire the day
+    after they take office, the file's "until" (components.until_attrs);
+    with no file neither is drawn and the page is the page it was."""
     race = elect_race_of(elect, key)
     if race is None:
         return "", ""
     today = build_date.today().isoformat()
-    return (C.elect_now(elect["takes_office"], today),
-            C.elect_block([["", race]], elect["election"], elect["takes_office"], today))
+    return (C.elect_now(elect["until"], today),
+            C.elect_block([["", race]], elect["election"], elect["takes_office"], today,
+                          until=elect["until"]))
 
 
 def state_house(dist, legs, elect=None):
@@ -1913,12 +1914,13 @@ def main():
               and any(x["slug"] in p["m"] for p in places)}
     doc = {"places": places, "people": people, "offices": panel_offices(off)}
     # THE MEMBERS-ELECT OF THE RACES A PLACE NAMES IN "e", each race once,
-    # with the file's two days, for the My Town card (find.js). Only while
+    # with the file's days -- the election, Organization Day and the day after,
+    # when they retire -- for the My Town card (find.js). Only while
     # there is a file: without one places.json is what it was.
     if elect:
         keys = sorted({k for p in places for k in p.get("e") or []}, key=race_order)
         doc["elect"] = {"election": elect["election"], "takes_office": elect["takes_office"],
-                        "races": {k: elect["races"][k] for k in keys}}
+                        "until": elect["until"], "races": {k: elect["races"][k] for k in keys}}
     (site / "places.json").write_text(
         json.dumps(doc, separators=(",", ":"), ensure_ascii=False),
         encoding="utf-8")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.33
+# GRANITE_VERSION: 2026-11-16.34
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -9516,7 +9516,8 @@ def _elect_pages_link_own():
     lines = {}
     for f in (ws / "legislator").glob("*.html"):
         t = f.read_text(encoding="utf-8")
-        line = re.findall(r'<p class="elline" data-elect data-until="2026-12-02">(.*?)</p>', t)
+        # Retiring the day after Organization Day (the owner, 25 November 2026).
+        line = re.findall(r'<p class="elline" data-elect data-until="2026-12-03">(.*?)</p>', t)
         g = re.findall(r"window\.GR_ELECT=(\{[^{}]*\});", t)
         # The header's row and menu and the footer's map carry the tab's own
         # data-elect on every page (chrome.ROWS): the line is the page's own.
@@ -9536,13 +9537,15 @@ def _elect_pages_link_own():
                   and g[0].get("title") == "Rep.-elect"
                   and g[0].get("where") == "Member-elect of the New Hampshire House of "
                   f"Representatives, {words.get(key).replace(' district', '')}."
-                  and {k: v for k, v in g[0].items() if k in ("id", "key", "election", "takes_office")}
-                  == {"id": mid, "key": key, "election": "2026-11-03", "takes_office": "2026-12-02"})
+                  and {k: v for k, v in g[0].items()
+                       if k in ("id", "key", "election", "takes_office", "until")}
+                  == {"id": mid, "key": key, "election": "2026-11-03", "takes_office": "2026-12-02",
+                      "until": "2026-12-03"})
         else:
             ok = (line == [f"Elected November 3, 2026, for {words.get(key)}. Takes office "
                            "December 2, 2026."]
                   and g == [{"id": mid, "key": key, "election": "2026-11-03",
-                             "takes_office": "2026-12-02"}])
+                             "takes_office": "2026-12-02", "until": "2026-12-03"}])
         if not ok:
             bad.append(f"{slug}'s page says {line} and hands app.js {g}")
     for p in json.loads((ws / "places.json").read_text(encoding="utf-8"))["places"]:
@@ -9553,13 +9556,13 @@ def _elect_pages_link_own():
             "display_full": "Rep. Michael Vose (R - Rock 5)", "party": "R"}
     smith = dict(vose, id="900003", name="Smith, John", display_full="Rep. John Smith (R - Rock 20)")
     g = json.dumps({"id": "900001", "key": "H|Rockingham|6", "election": "2026-11-03",
-                    "takes_office": "2026-12-02"})
+                    "takes_office": "2026-12-02", "until": "2026-12-03"})
     got = _app_js("[(window.GR_ELECT=" + g + ", scope.renderMemberHead(" + json.dumps(vose) + ")), "
                   "scope.renderMemberHead(" + json.dumps(smith) + "), "
                   "(delete window.GR_ELECT, scope.renderMemberHead(" + json.dumps(vose) + "))]",
                   names=("renderMemberHead",))
     if got is not None:
-        line = ('<p class="elline" data-elect data-until="2026-12-02">Elected November 3, 2026, '
+        line = ('<p class="elline" data-elect data-until="2026-12-03">Elected November 3, 2026, '
                 "for Rockingham district 6. Takes office December 2, 2026.</p>")
         if [line in h for h in got] != [True, False, False]:
             bad.append("app.js draws the line on the member's page "

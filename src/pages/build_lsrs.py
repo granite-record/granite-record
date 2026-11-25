@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.39
+# GRANITE_VERSION: 2026-09-18.40
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -145,16 +145,16 @@ def roster(site, collected="collected", year=None):
     if not p.exists():
         return {}
     out = {}
-    # AND FROM THE DAY THEY TAKE OFFICE, A SITTING MEMBER ELECTED TO THE OTHER
-    # CHAMBER IS LABELLED AS THE OFFICE THEY HOLD (chamber_moves; 25 November
-    # 2026): a House request of Laura Telerski's, or her name as a co-sponsor,
-    # would have read the House roster's "Rep. Laura Telerski (D)" on 2
-    # December, when she sits in the Senate. Matched as the roster has them --
-    # the third field stays the chamber it seats them in, so a request of the
-    # chamber they won still goes to its winners (below) -- and labelled with
-    # that chamber's title and the party they were elected under; the fourth
-    # field is the chamber they sit in now, which a request's Sponsors group
-    # them by (rows_from's "chamber" and "sponsor_chamber").
+    # AND FROM THE DAY AFTER THEY TAKE OFFICE, A SITTING MEMBER ELECTED TO THE
+    # OTHER CHAMBER IS LABELLED AS THE OFFICE THEY HOLD (chamber_moves; 25
+    # November 2026): a House request of Laura Telerski's, or her name as a
+    # co-sponsor, would have read the House roster's "Rep. Laura Telerski (D)"
+    # on 3 December, when she sits in the Senate. Matched as the roster has
+    # them -- the third field stays the chamber it seats them in, so a request
+    # of the chamber they won still goes to its winners (below) -- and labelled
+    # with that chamber's title and the party they were elected under; the
+    # fourth field is the chamber they sit in now, which a request's Sponsors
+    # group them by (rows_from's "chamber" and "sponsor_chamber").
     moved = chamber_moves(site, collected) if took_office(site) else {}
     for m in json.loads(p.read_text(encoding="utf-8")):
         # "Abbas, Daryl" -- surname first, and there are no separate first and
@@ -279,38 +279,47 @@ def office_title(chamber):
 
 
 def _takes_office(site):
-    """The day the members-elect take office, as the members-elect file gives it
-    (site/members_elect.json, else site/elect_pages.json, each "takes_office"),
-    or "" where neither is there."""
+    """The day the site switches to the members the election sent, the day
+    after Organization Day (proceedings.switch_day), as the members-elect file
+    gives it (site/members_elect.json, else site/elect_pages.json, each
+    "until", or the day after its "takes_office" in a file that names none:
+    build_members_elect.until_of), or "" where neither is there.
+
+    THE DAY AFTER, NOT THE DAY (the owner, 25 November 2026: "wait until
+    December 3rd to switch to the new titles since the swearing in ceremony
+    happens on the morning of December 2nd"): the night of Organization Day
+    publishes before they are sworn in, so its requests still read
+    "Rep.-elect"."""
+    import build_members_elect as BME
     for name in ("members_elect.json", "elect_pages.json"):
         p = Path(site) / name
         try:
-            day = str((json.loads(p.read_text(encoding="utf-8")) or {}).get("takes_office") or "")
+            day = BME.until_of(json.loads(p.read_text(encoding="utf-8")) or {})
         except (OSError, ValueError, AttributeError):
             continue
         if day:
-            return day
+            return day.isoformat()
     return ""
 
 
 def elect_window(site):
     """Whether a request's member-elect sponsor is drawn under their title:
-    from the election until the day they take office, which the members-elect
-    file gives (site/members_elect.json, else site/elect_pages.json, each
-    "takes_office"), by the build's day. False where neither is there."""
+    from the election until the day after Organization Day, which the
+    members-elect file gives (_takes_office), by the build's day. False where
+    neither file is there."""
     import build_date
     day = _takes_office(site)
     return bool(day) and build_date.today().isoformat() < day
 
 
 def took_office(site):
-    """Whether the members-elect have taken office by the build's day: on or
-    after the day the members-elect file gives (_takes_office), the other side
-    of elect_window. From then a request draws each of them under the title of
-    the office they hold that day, "Rep." or "Sen." (office_title), never the
-    name alone -- the "-elect" goes, the title stays (Organization Day, 2
-    December 2026, when the members-elect file retires and the provisional
-    pages stay). False where neither file gives the day."""
+    """Whether the site has switched to the members the election sent, by the
+    build's day: on or after the day after Organization Day (_takes_office),
+    the other side of elect_window. From then a request draws each of them
+    under the title of the office they hold, "Rep." or "Sen." (office_title),
+    never the name alone -- the "-elect" goes, the title stays (3 December
+    2026, when the members-elect file retires and the provisional pages
+    stay). False where neither file gives the day."""
     import build_date
     day = _takes_office(site)
     return bool(day) and build_date.today().isoformat() >= day

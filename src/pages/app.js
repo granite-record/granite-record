@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.376
+// GRANITE_VERSION: 2026-09-07.377
 // esc, dateWords and dateSpan, clock, cmteLink and pchip are components.js's,
 // which every page loads before this file (the component plan's C1 and C2),
 // and so is WORDBOOK, the words of src/pages/words/ that the build writes into
@@ -10231,14 +10231,15 @@ function renderMemberHead(m){
   //     "Elect" Laura Telerski for the title but connect it to their house
   //     record as well'), the page their House record, its line the seat
   //     they hold now, named by its office, with the same sentence beside it.
-  // Both end on the day they take office, by the reader's own clock as well
-  // as the build's (components.js's untilAttrs): from then on the page is
-  // the member's as before.
+  // Both end the day after they take office, GR_ELECT's "until" (the day
+  // after Organization Day, proceedings.switch_day), by the reader's own
+  // clock as well as the build's (components.js's untilAttrs): from then on
+  // the page is the member's as before.
   const EG=window.GR_ELECT;
   const electLive=!!(EG&&String(EG.id)===String(m.id)&&EG.where&&(()=>{
     const d=new Date(),t=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"
       +String(d.getDate()).padStart(2,"0");
-    return t<String(EG.takes_office||"").slice(0,10);})());
+    return t<String(EG.until||"").slice(0,10);})());
   const retPage=electLive&&EG.mode==="returning", chamPage=electLive&&EG.mode==="chamber";
   // TITLED AS A MEMBER-ELECT (the owner, 16 November 2026): GR_ELECT's title,
   // "Rep.-elect", which fullTitle spells out, as build_legislator_pages.
@@ -10357,7 +10358,7 @@ function renderMemberHead(m){
   // A returning member's is the new member-elect's: no "for <district>", the
   // sentence under their name says the seat.
   const elect=G&&typeof electLine==="function"&&String(G.id)===String(m.id)
-    ?electLine(retPage?null:G.key,G.election,G.takes_office,null):"";
+    ?electLine(retPage?null:G.key,G.election,G.takes_office,null,G.until):"";
   return head+note+elect;
 }
 

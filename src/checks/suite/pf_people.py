@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of sponsors, members and officials.
 
@@ -569,7 +569,10 @@ def _elect_returning_pages(OT, LP, BME):
         # take office", a day long past is "after".
         d = {"id": mem["id"], "key": infos[name]["key"], **base,
              **{k: back[name][k] for k in ("mode", "name", "party", "where", "title")}}
-        return dict(d, takes_office="2999-01-01" if far else "2000-01-01")
+        # The page goes back by "until", the day after they take office (the owner, 25
+        # November 2026).
+        return dict(d, takes_office="2999-01-01" if far else "2000-01-01",
+                    until="2999-01-02" if far else "2000-01-02")
     line = "Elected November 3, 2026. Takes office December 2, 2026."
     exprs = [
         # 0 the returning member, 1 the same once the day has come, 2 with no GR_ELECT,
@@ -653,9 +656,10 @@ def _elect_returning_pages(OT, LP, BME):
                 bad.append(what)
     # The plain page, for a reader without script: the same form, with the years app.js gives
     # (the review before the release of 16 November 2026: the 25 returning pages had none).
-    until = LP.until_attrs("2026-12-02", "2026-11-20")
+    until = LP.until_attrs("2026-12-03", "2026-11-20")
     plain_html = LP.static_record(vose, vose, LP.elect_line(None, "2026-11-03", "2026-12-02",
-                                                           "2026-11-20"), {}, back["vose"], until)
+                                                           "2026-11-20", "2026-12-03"), {},
+                                  back["vose"], until)
     for want in ("<h1>Representative-elect Michael Vose (R)</h1>", f"<p>{back['vose']['where']}</p>", line,
                  "<p>Earlier seat: Rep. Michael Vose (R - Rock 5)</p>",
                  "<li><b>On record:</b> House, 2017–2018</li>"):
@@ -673,7 +677,7 @@ def _elect_returning_pages(OT, LP, BME):
     with_counts = LP.static_record(counted, counted, "", {}, back["vose"], until)
     for name, html in (("alone", plain_html), ("beside the roll call counts", with_counts)):
         if "On record:" in _elect_strip(html) or not re.search(
-                r'<(?:ul|li)\b[^>]*\sdata-elect data-until="2026-12-02"[^>]*>(?:<li>)?<b>On record:</b> '
+                r'<(?:ul|li)\b[^>]*\sdata-elect data-until="2026-12-03"[^>]*>(?:<li>)?<b>On record:</b> '
                 r'House, 2017–2018</li>', html):
             bad.append(f"the plain returning page's On record fact, {name}, is not inside what "
                        f"carries data-elect and its day: {html[:400]}")
@@ -785,7 +789,7 @@ def _elect_other_chamber_joined(BI, OT, LP):
         (site / "meta.json").write_text(json.dumps({"terms": ["2025-2026"], "topics": []}), encoding="utf-8")
         (site / "former.json").write_text("[]", encoding="utf-8")
         got = {}
-        for day in ("2026-11-20", "2026-12-02"):
+        for day in ("2026-11-20", "2026-12-02", "2026-12-03"):
             os.environ["GRANITE_BUILD_DATE"] = day
             with contextlib.redirect_stdout(io.StringIO()):
                 got[day] = [r for r in BI.find_index(site, legs, {}) if r[0] in ("legislator", "elect")]
@@ -798,11 +802,14 @@ def _elect_other_chamber_joined(BI, OT, LP):
     hers = "legislator/laura-telerski-hills-11"
     own = ["legislator", "Rep. Laura Telerski (D - Hills 11)", "House · Hills 11 · Democrat", hers,
            "Telerski Laura Hillsborough Laura.Telerski@x"]
-    before, after = got["2026-11-20"], got["2026-12-02"]
+    # Organization Day's night is the day before's (the owner, 25 November 2026: "wait until
+    # December 3rd to switch to the new titles"); the day after is hers.
+    assert got["2026-12-02"] == got["2026-11-20"], f"her rows on Organization Day: {got['2026-12-02']}"
+    before, after = got["2026-11-20"], got["2026-12-03"]
     mine = [r for r in before if r[3] == hers]
     assert mine == [["elect", "Sen.-elect Laura Telerski (D - SD13)", "Senate · SD13 · Democrat", hers,
                      "Laura Telerski Telerski Laura Hillsborough Laura.Telerski@x Hills 11 "
-                     "member-elect sen-elect senator-elect", "2026-12-02", own]], (
+                     "member-elect sen-elect senator-elect", "2026-12-03", own]], (
         f"her rows in the search before she takes office: {mine}")
     assert [r[0] for r in before if r[3] != hers] == ["legislator", "legislator"] and \
         [r[0] for r in after] == ["legislator"] * 3 and [r for r in after if r[3] == hers] == [own], (
@@ -816,8 +823,8 @@ def _elect_other_chamber_joined(BI, OT, LP):
                 'require("./stub.js");\nconst src = require("fs").readFileSync("./find.js", "utf8");\n'
                 'const s = (0, eval)(src + "; ({findNow})");\n'
                 f'const rows = {json.dumps(before)};\n'
-                'process.stdout.write("@@" + JSON.stringify([s.findNow(rows, "2026-12-01"), '
-                's.findNow(rows, "2026-12-02")]));\n', encoding="utf-8")
+                'process.stdout.write("@@" + JSON.stringify([s.findNow(rows, "2026-12-02"), '
+                's.findNow(rows, "2026-12-03")]));\n', encoding="utf-8")
             r = _run(["node", "go.js"], cwd=tmp, capture_output=True, text=True, timeout=60)
             assert r.returncode == 0 and "@@" in r.stdout, (r.stderr or r.stdout)[-300:]
             eve, day = json.loads(r.stdout.rsplit("@@", 1)[1])
@@ -844,6 +851,7 @@ def _elect_other_chamber_joined(BI, OT, LP):
     def ge(far):
         return {"id": "9117", "key": "S|13", "election": "2026-11-03",
                 "takes_office": "2999-01-01" if far else "2000-01-01",
+                "until": "2999-01-02" if far else "2000-01-02",
                 **{k: back[k] for k in ("mode", "name", "party", "where", "title")}}
     heads = _app_js("[" + ", ".join(f"(window.GR_ELECT={json.dumps(ge(far))}, scope.renderMemberHead("
                                     f"{json.dumps(m)}))" for far in (True, False)) + "]",
@@ -2019,6 +2027,7 @@ def _turned_roster_built(B, BP, FT):
                   "Vose one Senate page with his House vote, Rock 5 a 301, no Former page; Newell's "
                   "page, email, seat and committee, and on Commerce with no seat row; Altschiller "
                   "where she was")
+
 
 
 @check("naming", "a bill text's sponsor line is read as each era prints it, and a surname is a member only where one fits",

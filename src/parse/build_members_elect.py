@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.20
+# GRANITE_VERSION: 2026-10-16.21
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -34,14 +34,18 @@ reopen:
      count it; site/former.json is kept apart from it for the same reason. So
      members-elect have their own file and no other.
   2. THEY RETIRE BY THEMSELVES. The file is written only while the build's
-     day (build_date.today()) is after the election and before Organization
-     Day -- the first Wednesday of December, 2 December 2026
-     (proceedings.organization_day) -- and the site's newest term
-     (site/meta.json terms[0]) is still the one before theirs. A build on
-     Organization Day, a build once the New term run has turned terms[0] to
-     their term, and a build before the election each delete the file and say
-     why. Retiring on 2 December holds even if the General Court's files have
-     not turned by then: the old roster then shows alone until they do.
+     day (build_date.today()) is after the election and before the day after
+     Organization Day -- Organization Day is the first Wednesday of December,
+     2 December 2026 (proceedings.organization_day), and they retire on 3
+     December (proceedings.switch_day; the owner, 25 November 2026: "wait
+     until December 3rd to switch to the new titles since the swearing in
+     ceremony happens on the morning of December 2nd") -- and the site's
+     newest term (site/meta.json terms[0]) is still the one before theirs. A
+     build on or after that day, a build once the New term run has turned
+     terms[0] to their term, and a build before the election each delete the
+     file and say why. Retiring on 3 December holds even if the General
+     Court's files have not turned by then: the old roster then shows alone
+     until they do.
   3. A LINK ONLY ON A CERTAIN MATCH. A stranger's record under a
      member-elect's name is worse than a missing link (member_links.py says
      why, from the two Patrick Longs). A winner is linked to a page only as
@@ -98,7 +102,7 @@ sha256 is held to the saved file when it is on disk.
 
 THE FILE IT WRITES, site/members_elect.json:
 
-    {"election": "2026-11-03", "takes_office": "2026-12-02",
+    {"election": "2026-11-03", "takes_office": "2026-12-02", "until": "2026-12-03",
      "term": "2027-2028", "sources": ["https://..."],
      "races": {"S|24": {"seats": 1, "not_final": 0, "held": 0,
                         "elected": [{"n": "Debra Altschiller", "p": "D",
@@ -110,7 +114,10 @@ THE FILE IT WRITES, site/members_elect.json:
                                                 "k": "new",
                                                 "e": "pat-newell-rock-32"}]}, ...}}
 
-Every race the district table names is there, the Senate first. `k` is
+`takes_office` is Organization Day, the day the pages print ("Takes office
+December 2, 2026."); `until` is the day after, the day every block drawn from
+the file retires (data-until) and the step stops writing it. Every race the
+district table names is there, the Senate first. `k` is
 sitting, former or new; `id` and `s` (the page's slug) are there only on a
 link; `own` is true only for a sitting member re-elected to the seat they
 hold, the one a saved town's "Your rep" marks (find.js, ytMark); `u` is true
@@ -261,16 +268,35 @@ def term_before(term):
     return f"{a - 2}-{a - 1}"
 
 
-def dates_why(today, election, takes_office):
+def dates_why(today, election, until):
     """Why no member-elect is shown on `today`, by the calendar alone, or ""
-    between the day after the election and the day before Organization Day."""
+    between the day after the election and Organization Day itself. `until`
+    is the day they retire, the day after Organization Day
+    (proceedings.switch_day): the night of Organization Day still shows them,
+    since it publishes before they are sworn in that morning."""
     if today <= election:
         return (f"the build's day, {today}, is not after the election of {election}: a build "
                 "before the results shows none")
-    if today >= takes_office:
-        return (f"the build's day, {today}, is on or after Organization Day, {takes_office}, "
-                "when they take office: they retire that day")
+    if today >= until:
+        return (f"the build's day, {today}, is on or after {until}, the day after Organization "
+                "Day, when the site switches to the members they elected: they retire that day")
     return ""
+
+
+def until_of(doc):
+    """The day a members-elect file's members-elect retire, as a date: its
+    "until", which the step writes from proceedings.switch_day, the day after
+    Organization Day; for a file that names none (one written before 25
+    November 2026, or made by hand for a test), the day after its
+    "takes_office", which is the same day. None where neither is a day."""
+    for k, after in (("until", 0), ("takes_office", 1)):
+        raw = str((doc or {}).get(k) or "")[:10]
+        if DAY_RE.match(raw):
+            try:
+                return datetime.date.fromisoformat(raw) + datetime.timedelta(days=after)
+            except ValueError:
+                return None
+    return None
 
 
 def term_why(newest, term):
@@ -283,11 +309,11 @@ def term_why(newest, term):
                else "the site is not the one this election's members-elect follow"))
 
 
-def window(today, election, takes_office, newest, term):
+def window(today, election, until, newest, term):
     """Why no member-elect is shown, or "" while they are: after the
-    election, before Organization Day, and while the site's newest term is
-    the one before theirs (rule 2)."""
-    return dates_why(today, election, takes_office) or term_why(newest, term)
+    election, before `until` (the day after Organization Day), and while the
+    site's newest term is the one before theirs (rule 2)."""
+    return dates_why(today, election, until) or term_why(newest, term)
 
 
 # ---- names -----------------------------------------------------------------
@@ -1499,13 +1525,15 @@ def for_pages(site):
     to read the file differently, and none of them names the file itself.
 
     THE PAGES HOLD THE WINDOW TOO. The step removes the file outside the
-    weeks between the election and Organization Day, and check_site refuses
-    one left on the night. But a page builder is also run on its own, by a
-    person, on a site the step has not touched since: a file written on 1
-    December and a town page built from it on the 2nd would put members-elect
-    in the page the day they take office, hidden by until_attrs and still
-    there. So a file outside the window, by the step's own rule (window()),
-    is not drawn, and the builder says why.
+    weeks between the election and the day after Organization Day, and
+    check_site refuses one left on the night. But a page builder is also run
+    on its own, by a person, on a site the step has not touched since: a file
+    written on 2 December and a town page built from it on the 3rd would put
+    members-elect in the page the day they retire, hidden by until_attrs and
+    still there. So a file outside the window, by the step's own rule
+    (window()), is not drawn, and the builder says why. The doc returned
+    carries "until", the day they retire (until_of), whatever file it was
+    read from, and every page reads that day from it.
 
     A FILE THAT WILL NOT READ STOPS THE BUILDER. The step writes it whole, so
     one that does not parse, or names no days or no races, is a fault to
@@ -1516,7 +1544,10 @@ def for_pages(site):
     try:
         doc = json.loads(p.read_text(encoding="utf-8"))
         election = datetime.date.fromisoformat(doc["election"])
-        takes_office = datetime.date.fromisoformat(doc["takes_office"])
+        datetime.date.fromisoformat(doc["takes_office"])
+        until = until_of(doc)
+        if until is None:
+            raise ValueError(f"its until, {doc.get('until')!r}, is no day")
         term, races = str(doc["term"]), doc["races"]
         bad = [k for k, r in races.items()
                if not KEY_RE.match(k) or not isinstance(r, dict)
@@ -1535,13 +1566,14 @@ def for_pages(site):
     except (OSError, ValueError):
         terms = None
     newest = terms[0] if isinstance(terms, list) and terms else None
-    why = window(build_date.today(), election, takes_office, newest, term)
+    why = window(build_date.today(), election, until, newest, term)
     if why:
         print(f"  members-elect: {p.as_posix()} is not drawn -- {why}")
         return None
     n = sum(len(r["elected"]) for r in races.values())
+    doc["until"] = until.isoformat()
     print(f"  members-elect: drawn from {p.as_posix()}, {len(races)} races, {n} elected, "
-          f"until {doc['takes_office']}")
+          f"until {doc['until']}")
     return doc
 
 
@@ -1771,8 +1803,11 @@ def decide(a, site, hand_path):
     results = read_results(path)
     election = datetime.date.fromisoformat(results["election"])
     takes_office = proceedings.organization_day(election.year)
+    # They take office on Organization Day, which the pages print; they retire
+    # the day after, the day the site switches to them (proceedings.switch_day).
+    until = proceedings.switch_day(election.year)
     today = build_date.today()
-    why = dates_why(today, election, takes_office)
+    why = dates_why(today, election, until)
     if not why:
         meta = load_json(site / "meta.json", "the site's meta.json, which names its terms")
         terms = meta.get("terms") if isinstance(meta, dict) else None
@@ -1832,7 +1867,7 @@ def decide(a, site, hand_path):
                 if e.get("k") == "new" and own.get((key, e.get("n"))):
                     e["e"] = own[(key, e.get("n"))]
     doc = {"election": results["election"], "takes_office": takes_office.isoformat(),
-           "term": results["term"],
+           "until": until.isoformat(), "term": results["term"],
            "sources": [s.get("url") for s in results.get("_source") or [] if s.get("url")],
            "races": races}
     # NO ADDRESS IS SAID (23 October 2026): parse_sos_results wrote no url
@@ -1897,8 +1932,8 @@ def main():
               "a sponsor of 1989-1998: shown as prior service not on record, never as returning")
     if report["pending"]:
         print(f"  NOT FINAL YET: {report['pending']}")
-    print(f"  wrote {dest.as_posix()}; it is shown until {doc['takes_office']}, "
-          "Organization Day")
+    print(f"  wrote {dest.as_posix()}; it is shown until {doc['until']}, the day after "
+          f"Organization Day ({doc['takes_office']})")
     return 0
 
 

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.18
+// GRANITE_VERSION: 2026-10-09.19
 /* THE DISTRICT MAP (map v1), as a module a page mounts:
 
      <link rel="stylesheet" href="/map.css">
@@ -770,11 +770,13 @@ function mount(root,opts){
     changed();
   }
   /* WHO NOVEMBER'S ELECTION SENT, IN THE PANEL (the person's decisions of
-     16 October 2026): between the election and Organization Day the file
+     16 October 2026): between the election and the day after Organization
+     Day the file
      carries "elect", and a district's members-elect are listed under its
      sitting members, with "Serving now" over those, in components.js's
      electBlock and electNow -- a town page's own block. Handed no day, the
-     block is retired by the reader's clock. The fill is the sitting
+     block is retired by the reader's clock on the file's "until", the day
+     after Organization Day. The fill is the sitting
      members' and never this. Without "elect" (or without components.js on
      the page) the panel is what it was. */
   function elected(lk,fid){
@@ -784,9 +786,9 @@ function mount(root,opts){
   function seatLine(lk,fid){
     const ms=sitting(M,lk,fid),seats=seatsOf(M,lk,fid),E=elected(lk,fid);
     return `<div class="pk">${seats===1?tr("map.seat_one","{n} seat",{n:seats}):tr("map.seats","{n} seats",{n:seats})}${seats>ms.length?" "+(seats-ms.length===1?tr("map.dot_vacant_one","&middot; {n} vacant",{n:1}):tr("map.dot_vacant","&middot; {n} vacant",{n:seats-ms.length})):""}</div>`+
-      (E?electNow(E.takes_office,null):"")+
+      (E?electNow(E.until,null):"")+
       (ms.length?`<div class="chips">${ms.map(chip).join("")}</div>`:`<p class="quiet">${tr("map.all_vacant","Every seat is vacant.")}</p>`)+
-      (E?electBlock([["",E.races[lk+"|"+fid]]],E.election,E.takes_office,null,globalThis.GR_LANG):"");
+      (E?electBlock([["",E.races[lk+"|"+fid]]],E.election,E.takes_office,null,globalThis.GR_LANG,E.until):"");
   }
   function describe(lk,fid){
     const tw=M.tw[lk+"|"+fid]||[];

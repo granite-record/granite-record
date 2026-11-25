@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.59
+# GRANITE_VERSION: 2026-11-16.60
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -2347,8 +2347,8 @@ def _request_sponsor_name_forms(build_lsrs):
 
 
 @check("build", "a request's member-elect sponsor is drawn Rep.-elect or Sen.-elect "
-                "on its card and its page until the day they take office, and Rep. or Sen. from it, "
-                "a sitting member elected to the other chamber among them; a sitting member "
+                "on its card and its page until the day after they take office, and Rep. or Sen. "
+                "from it, a sitting member elected to the other chamber among them; a sitting member "
                 "re-elected as ever",
        needs=("build_lsrs", "build_request_pages"))
 def _request_member_elect_title(build_lsrs, build_request_pages):
@@ -2372,8 +2372,10 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
     read Sen.-elect now, linked to the record they have; a House request of theirs keeps the
     roster's label.
 
-    FROM THE DAY THEY TAKE OFFICE THE "-ELECT" GOES AND THE TITLE STAYS (25 November 2026;
-    build_lsrs.took_office, office_title). Until then the title went with it: on 2 December
+    FROM THE DAY AFTER THEY TAKE OFFICE THE "-ELECT" GOES AND THE TITLE STAYS (25 November 2026;
+    build_lsrs.took_office, office_title; the day after, 3 December, the owner's of the same day:
+    Organization Day's night publishes before they are sworn in, and reads as the days before).
+    Until then the title went with it: on 2 December
     "Colin Mitchell (R)" and "Jim Creighton (R)", and the Senate requests' page chips went back to
     the old roster's "Rep. James Creighton (R - Hills 30)", a seat he no longer holds. Now every
     label and chip reads as on 17 November with the "-elect" taken off, "Rep. Colin Mitchell
@@ -2426,7 +2428,7 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
                 req("0800", "SB", "Jim Creighton"), req("0001", "HB", "Ellen Read"),
                 req("0898", "SB", "Laura Telerski"), req("0899", "HB", "Laura Telerski")]
         got = {}
-        for day in ("2026-11-17", "2026-12-02"):
+        for day in ("2026-11-17", "2026-12-02", "2026-12-03"):
             os.environ["GRANITE_BUILD_DATE"] = day
             who = L.roster(tmp, str(tmp / "no-results"))
             ws = L.election_winners(results, drawn, [], people, titled=L.elect_window(tmp),
@@ -2449,6 +2451,11 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
             os.environ["GRANITE_BUILD_DATE"] = was
         shutil.rmtree(tmp, ignore_errors=True)
     rep, sen = "Rep.-elect ", "Sen.-elect "
+    # ORGANIZATION DAY ITSELF READS AS THE DAYS BEFORE (the owner, 25 November 2026: "wait until
+    # December 3rd to switch to the new titles since the swearing in ceremony happens on the
+    # morning of December 2nd"): its night publishes before they are sworn in.
+    assert got["2026-12-02"] == got["2026-11-17"], (
+        f"on Organization Day the requests read otherwise than before it: {got['2026-12-02'][0]}")
     labels, names, chips, page = got["2026-11-17"]
     # THE REQUEST'S OWN PAGE (the owner, 24 November 2026: "Yes, fix it"): a Senate request of a
     # sitting Representative elected Senator draws its chip as the row titles them, linked to the
@@ -2469,8 +2476,8 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
         f"the search reads the title as part of the name: {names}")
     assert (chips["colin-mitchell-carr-8"], chips["kurt-webber-sd-2"], chips["ellen-read-rock-10"]) == (
         rep + "Colin Mitchell (R)", sen + "Kurt Webber (D)", "Rep. Ellen Read (D - Rock 10)"), chips
-    labels2, names2, chips, page = got["2026-12-02"]
-    # ON THE DAY THEY TAKE OFFICE: the 17 November labels with the "-elect" taken off, the same
+    labels2, names2, chips, page = got["2026-12-03"]
+    # THE DAY AFTER THEY TAKE OFFICE: the 17 November labels with the "-elect" taken off, the same
     # names for the search, the provisional pages' chips titled as their rows are, and the two
     # elected to the Senate drawn as senators on their Senate requests' pages, linked to the
     # record they have, not under the House seat they left -- and on Laura Telerski's House
@@ -2489,25 +2496,32 @@ def _request_member_elect_title(build_lsrs, build_request_pages):
                 and "Hills" not in page[n] and "-elect" not in page[n]), (
             f"{n}'s page chip on the day they take office is not the senator's: {page[n]}")
     assert L.label_name(rep + "Colin Mitchell (R)") == "Colin Mitchell" == L.label_name("Rep. Colin Mitchell (R)")
-    return "ok", ("before 2 December Colin Mitchell's House and CACR requests read Rep.-elect "
+    return "ok", ("before 3 December, Organization Day included, Colin Mitchell's House and CACR "
+                  "requests read Rep.-elect "
                   "Colin Mitchell (R), Kurt Webber's Sen.-elect, and Jeff Goley, a former "
                   "member returning, Rep.-elect, on the card's label and the page's chip; a "
                   "sitting member re-elected as before, and the two elected to the Senate Sen.-elect "
                   "on their Senate requests' cards and pages, as a winner or by the House roster, and "
-                  "as before on a House one; the search reads the name alone; on 2 December the same "
+                  "as before on a House one; the search reads the name alone; on 3 December the same "
                   "with the -elect taken off, Rep. Colin Mitchell (R) and Sen. Jim Creighton (R), the "
-                  "senators' chips linked and seatless, Laura Telerski's House request among them")
+                  "senators' chips linked and, with no seat_switch.json here, seatless, Laura "
+                  "Telerski's House request among them")
 
 
-@check("build", "on Organization Day each member a request names reads the office they hold that day: "
-                "the titles of 1 December with the -elect taken off -- a match by nickname, sitting "
-                "members elected to the Senate, co-sponsors and new members with no id among them -- "
-                "on the row, the page's head and its Sponsors; everyone else as the day before",
+@check("build", "from the day after Organization Day each member a request names reads the office they "
+                "hold: the titles of 1 and 2 December with the -elect taken off -- a match by "
+                "nickname, sitting members elected to the Senate, co-sponsors and new members with no "
+                "id among them -- on the row, the page's head and its Sponsors; everyone else as the "
+                "days before",
        needs=("build_lsrs", "build_request_pages", "build_members_elect"))
 def _request_labels_on_organization_day(L, RP, BME):
-    """Organization Day, 2 December 2026: the members elected on 3 November take office, the
-    members-elect file retires and the provisional pages stay (build_members_elect,
-    build_elect_pages). Until 25 November 2026 a request's member-elect lost the title with the
+    """Organization Day, 2 December 2026: the members elected on 3 November take office. The day
+    after, 3 December (the owner, 25 November 2026: "wait until December 3rd to switch to the new
+    titles since the swearing in ceremony happens on the morning of December 2nd"; Organization
+    Day's night publishes before they are sworn in, and reads as 1 December), the members-elect
+    file retires and the provisional pages stay (build_members_elect, build_elect_pages). The
+    seats the switch gives the two elected to the Senate on their chips are site/seat_switch.json's,
+    which this does not write, and _seat_switch_by_day holds. Until 25 November 2026 a request's member-elect lost the title with the
     "-elect": on the list of 24 November, 290 of 1,313 requests would have read "Ben Baroody (D)"
     or "Jim Creighton (R)" from that day, no title on the card or the chip and no chamber for the
     Sponsor filter (app.js spChamber), and Jim Creighton's and Laura Telerski's Senate requests'
@@ -2608,10 +2622,11 @@ def _request_labels_on_organization_day(L, RP, BME):
             races, _report = BME.members_elect(results, sitting, former, districts, settled, "2026-12-01")
             put(site / "members_elect.json", {"election": "2026-11-03", "takes_office": "2026-12-02",
                                               "term": "2027-2028", "races": races})
-            for day in ("2026-12-01", "2026-12-02"):
+            for day in ("2026-12-01", "2026-12-02", "2026-12-03"):
                 os.environ["GRANITE_BUILD_DATE"] = day
-                if day == "2026-12-02":
-                    # Organization Day: the step deletes the file; the provisional pages stay.
+                if day == "2026-12-03":
+                    # The day after Organization Day: the step deletes the file; the
+                    # provisional pages stay. (On Organization Day the file is still written.)
                     (site / "members_elect.json").unlink()
                 winners, _said = L.load_winners(site, str(coll))
                 rows, unmatched = L.rows_from(lsrs, L.roster(site, str(coll), 2027), year=2027,
@@ -2627,7 +2642,14 @@ def _request_labels_on_organization_day(L, RP, BME):
                 os.environ.pop("GRANITE_BUILD_DATE", None)
             else:
                 os.environ["GRANITE_BUILD_DATE"] = was_day
-    (r1, u1, h1), (r2, u2, h2) = got["2026-12-01"], got["2026-12-02"]
+    # ORGANIZATION DAY READS AS THE DAY BEFORE (the owner, 25 November 2026: "wait until December
+    # 3rd to switch to the new titles since the swearing in ceremony happens on the morning of
+    # December 2nd"), its pages but for the day each carries.
+    o_rows, o_unmatched, o_pages = got["2026-12-02"]
+    assert o_rows == got["2026-12-01"][0] and o_unmatched == got["2026-12-01"][1] \
+        and sorted(o_pages) == sorted(got["2026-12-01"][2]), (
+        "on Organization Day the requests read otherwise than the day before")
+    (r1, u1, h1), (r2, u2, h2) = got["2026-12-01"], got["2026-12-03"]
     assert not u1 and not u2, f"a name matched nobody: {u1} {u2}"
     off = lambda s: s.replace(".-elect ", ". ")
     want = {"2027-0001": ("Rep. Ellen Read (D)", "ellen-read-rock-10", "D"),
@@ -2644,14 +2666,14 @@ def _request_labels_on_organization_day(L, RP, BME):
           ("Rep.-elect Dana New (D)", "", "D", "H")]
     prime = lambda r: (r["sponsor_label"], r["sponsor_slug"], r.get("sponsor_party", ""))
     cos = lambda r: [(c["label"], c["slug"], c.get("party", ""), c.get("chamber", "")) for c in r.get("cosponsors") or []]
-    # The same people on 2 December, each label with the "-elect" taken off and nothing else;
+    # The same people on 3 December, each label with the "-elect" taken off and nothing else;
     # Laura Telerski, where the House roster matched her, the Senate's member from that day.
     took = {n: (off(v[0]),) + v[1:] for n, v in want.items()}
     took["2027-0009"] = ("Sen. Laura Telerski (D)", "laura-telerski-hills-11", "D")
     her = {"1 December": [("Rep. Laura Telerski (D)", "laura-telerski-hills-11", "D", "H")],
-           "2 December": [("Sen. Laura Telerski (D)", "laura-telerski-hills-11", "D", "S")]}
+           "3 December": [("Sen. Laura Telerski (D)", "laura-telerski-hills-11", "D", "S")]}
     for day, rs, w, wc, ch in (("1 December", r1, want, co, "H"),
-                               ("2 December", r2, took, [(off(c[0]),) + c[1:] for c in co], "S")):
+                               ("3 December", r2, took, [(off(c[0]),) + c[1:] for c in co], "S")):
         bad = [f"{n}: {prime(rs[n])}, not {v}" for n, v in w.items() if prime(rs[n]) != v]
         assert not bad, f"on {day} a request's prime sponsor reads otherwise: " + "; ".join(bad)
         assert cos(rs["2027-0001"]) == wc, f"on {day} the co-sponsors read {cos(rs['2027-0001'])}, not {wc}"
@@ -2670,7 +2692,7 @@ def _request_labels_on_organization_day(L, RP, BME):
     text = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", h))
     assert sorted(h1) == sorted(h2) == sorted(want), f"the request pages written: {sorted(h1)} {sorted(h2)}"
     bad = [n for n in want if n != "2027-0009" and head(h2[n]) != off(head(h1[n]))]
-    assert not bad, ("on 2 December a page's head is not 1 December's with the -elect taken off: "
+    assert not bad, ("on 3 December a page's head is not 1 December's with the -elect taken off: "
                      + "; ".join(f"{n}: {text(head(h2[n]))!r}" for n in bad))
     t1, t2 = (head(h["2027-0009"]) for h in (h1, h2))
     assert "Rep. Laura Telerski (D - Hills 11)" in text(t1) and "Sen. Laura Telerski (D)" in text(t2) \
@@ -2680,12 +2702,12 @@ def _request_labels_on_organization_day(L, RP, BME):
     b1, b2 = sponsors(h1["2027-0002"]), sponsors(h2["2027-0002"])
     assert spch(b1) == [] and "Hills 11" in b1 and spch(b2) == [("Representatives", "1"), ("Senators", "1")] \
         and "Sen. Laura Telerski (D)" in text(b2) and "Hills" not in b2, (
-        f"Laura Telerski as a co-sponsor is not among the Senators on 2 December alone: {text(b2)!r}")
+        f"Laura Telerski as a co-sponsor is not among the Senators on 3 December alone: {text(b2)!r}")
     assert spch(sponsors(h2["2027-0009"])) == [("Senators", "1"), ("Representatives", "1")], (
-        f"her House request's Sponsors do not open with the Senators on 2 December: {spch(sponsors(h2['2027-0009']))}")
+        f"her House request's Sponsors do not open with the Senators on 3 December: {spch(sponsors(h2['2027-0009']))}")
     for n, who_, slug in (("2027-0003", "Jim Creighton (R)", "james-creighton-hills-30"),
                           ("2027-0004", "Laura Telerski (D)", "laura-telerski-hills-11")):
-        for day, h in (("1 December", h1[n]), ("2 December", h2[n])):
+        for day, h in (("1 December", h1[n]), ("3 December", h2[n])):
             assert (f'href="legislator/{slug}"' in head(h) and "Hills" not in head(h)
                     and f"{'Sen.-elect' if day[0] == '1' else 'Sen.'} {who_}" in text(head(h))), (
                 f"{n}'s chip on {day} is not the senator's, linked to their record: {text(head(h))!r}")
@@ -2696,7 +2718,7 @@ def _request_labels_on_organization_day(L, RP, BME):
         and head(h1["2027-0001"]) == head(h2["2027-0001"]), "a member re-elected does not keep the roster's chip"
     s1, s2 = sponsors(h1["2027-0001"]), sponsors(h2["2027-0001"])
     assert s1 and "-elect" in s1 and s2 == off(s1) and "Hills 30" not in s2, (
-        f"on 2 December the Sponsors are not 1 December's with the -elect taken off: {s2[:600]!r}")
+        f"on 3 December the Sponsors are not 1 December's with the -elect taken off: {s2[:600]!r}")
     # THE SPONSOR FILTER'S CHAMBER, which app.js reads off the label's title (spChamber): each member
     # under the chamber they sit in that day, on both days; Nora North, with none, under none.
     order = sorted(want)
@@ -2708,8 +2730,8 @@ def _request_labels_on_organization_day(L, RP, BME):
     sits = {"2027-0003": "S", "2027-0004": "S", "2027-0007": ""}
     assert chambers == [[sits.get(n, "H") for n in order],
                         [sits.get(n, "S" if n == "2027-0009" else "H") for n in order]], (
-        f"the Sponsor filter's chamber by the label, 1 and 2 December: {chambers}")
-    return "ok", ("on 1 December Rep.-elect and Sen.-elect, on 2 December Rep. Ben Baroody (D) by his "
+        f"the Sponsor filter's chamber by the label, 1 and 3 December: {chambers}")
+    return "ok", ("on 1 December Rep.-elect and Sen.-elect, on 3 December Rep. Ben Baroody (D) by his "
                   "nickname, Sen. Jim Creighton (R) and Sen. Laura Telerski (D) linked to their records with "
                   "no House seat, on a House request and as a co-sponsor too, among the Senators; Rep. Colin "
                   "Mitchell (R) linked to his provisional page, Rep. Dana New (D) with no page and no link, "
@@ -2856,15 +2878,17 @@ def _requests_not_returning():
        needs=("build_lsrs", "build_members_elect"))
 def _requests_not_returning_from_organization_day(L, BME):
     """The rehearsal of 17 November 2026. build_members_elect retires
-    site/members_elect.json on Organization Day, 2 December 2026, and
-    not_returning read nothing else, so the night of 2 December published
+    site/members_elect.json -- on Organization Day then, the day after it,
+    3 December 2026, since the owner's word of 25 November -- and
+    not_returning read nothing else, so the night it retired published
     every withdrawn request of a member not returning as "Withdrawn" again --
     on the live site request/2027-0320 -- with its 301 to the list gone,
     against the owner's rule of 12 November. Over a fixture election, as the
-    nights build it: 1 December with the file; 2 December with none and the
-    old roster (election_races works the races out again); 3 December after
-    the New term run, the new roster sitting and the member who lost, and the
-    representative now in the Senate under a new number, in former.json."""
+    nights build it: 1 and 2 December with the file; 3 December with none and
+    the old roster (election_races works the races out again); 4 December
+    after the New term run, the new roster sitting and the member who lost,
+    and the representative now in the Senate under a new number, in
+    former.json."""
     import tempfile
     mem = lambda i, last, first, ch, county, dist, party, slug, **k: {
         "id": i, "name": f"{last}, {first}", "chamber": ch, "county": county, "district": dist,
@@ -2933,10 +2957,12 @@ def _requests_not_returning_from_organization_day(L, BME):
             put("members_elect.json", {"election": "2026-11-03", "takes_office": "2026-12-02",
                                        "term": "2027-2028", "races": races})
             got["1 Dec"] = night("2026-12-01")
-            # 2 December: the file retired, the roster still the old term's.
-            (site / "members_elect.json").unlink()
+            # 2 December, Organization Day: the file is still written, until the day after.
             got["2 Dec"] = night("2026-12-02")
-            # 3 December: the New term run has seated the next House; Ann Lost and
+            # 3 December: the file retired, the roster still the old term's.
+            (site / "members_elect.json").unlink()
+            got["3 Dec"] = night("2026-12-03")
+            # 4 December: the New term run has seated the next House; Ann Lost and
             # Cy Mover's House number are former members of 2025-2026.
             put("meta.json", {"terms": ["2027-2028", "2025-2026"]})
             put("legislators.json", [
@@ -2951,7 +2977,7 @@ def _requests_not_returning_from_organization_day(L, BME):
                                 mem("13", "Mover", "Cy", "H", "Belknap", "2", "D", "cy-mover-belk-2",
                                     **served),
                                 mem("14", "Seat", "Sy", "S", "", "1", "R", "sy-seat-sd-1", **served)])
-            got["3 Dec"] = night("2026-12-03")
+            got["4 Dec"] = night("2026-12-04")
             # Requests of the session after (2028's, filed from September 2027) are
             # sitting members' alone: a name only a member gone in 2026 has links nobody.
             got["2028"] = (sorted(L.not_returning(site, str(coll), year=2028)[0]),
@@ -2963,12 +2989,12 @@ def _requests_not_returning_from_organization_day(L, BME):
                 os.environ.pop("GRANITE_BUILD_DATE", None)
             else:
                 os.environ["GRANITE_BUILD_DATE"] = was_day
-    for day in ("1 Dec", "2 Dec"):
+    for day in ("1 Dec", "2 Dec", "3 Dec"):
         gone, dropped, kept = got[day]
         assert gone == ["ann-lost-belk-1", "sy-seat-sd-1"], (day, "not returning", gone)
         assert dropped == ["LSR 2027-0001"], (day, "dropped", dropped)
         assert sorted(kept) == ["LSR 2027-0002", "LSR 2027-0003", "LSR 2027-0004"], (day, sorted(kept))
-    gone, dropped, kept = got["3 Dec"]
+    gone, dropped, kept = got["4 Dec"]
     assert dropped == ["LSR 2027-0001"], ("after the New term run the withdrawn request of a member who "
                                           "lost is not dropped", dropped, gone)
     assert "ann-lost-belk-1" in gone and "cy-mover-sd-1" not in gone, gone
@@ -2982,8 +3008,8 @@ def _requests_not_returning_from_organization_day(L, BME):
         standing["sponsor_slug"], standing["sponsor_label"])
     assert got["2028"] == ([], False, True), (
         "a member gone in 2026 is matched to, or dropped from, the requests of 2028", got["2028"])
-    return "ok", ("LSR 2027-0001 of a member who lost dropped on 1 December with the file, on 2 December "
-                  "without it, and on 3 December by the new roster; the returning member's and the new "
+    return "ok", ("LSR 2027-0001 of a member who lost dropped on 1 and 2 December with the file, on 3 "
+                  "December without it, and on 4 December by the new roster; the returning member's and the new "
                   "senator's withdrawn and the standing one kept, the last linked to the member who "
                   "left by name and party")
 

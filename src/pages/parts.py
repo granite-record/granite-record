@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-19.5
+# GRANITE_VERSION: 2026-11-19.6
 """
 What the page builders share: the pieces more than one builder draws a page
 with, kept here rather than inside one builder that the others import.

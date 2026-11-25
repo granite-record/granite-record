@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.9
+# GRANITE_VERSION: 2026-11-16.10
 """
 preflight's checks of build checks with no module under test, for a person to sort.
 
@@ -4484,15 +4484,19 @@ def _elect_links():
                   "until the person's file names 900002; the new people unlinked")
 
 
-@check("build", "members-elect: written only after the election and before Organization Day while "
-                "the site's newest term is the one before theirs; otherwise none, and the last "
-                "build's removed and the reason said")
+@check("build", "members-elect: written only after the election and before the day after "
+                "Organization Day while the site's newest term is the one before theirs; otherwise "
+                "none, and the last build's removed and the reason said")
 def _elect_retires():
     """The person's decisions of 16 October 2026: members-elect retire by
-    themselves on Organization Day, 2 December 2026, or as soon as the site's
-    newest term is theirs, whichever is first, and a build before the
-    election shows none. The fixture's election, its step dated 20 November,
-    writes the file; dated 2 December, on the election day itself and in
+    themselves -- since the owner's word of 25 November ("wait until December
+    3rd to switch to the new titles since the swearing in ceremony happens on
+    the morning of December 2nd"), the day after Organization Day, 3 December
+    2026 -- or as soon as the site's newest term is theirs, whichever is
+    first, and a build before the election shows none. The fixture's
+    election, its step dated 20 November, writes the file, and dated 2
+    December, Organization Day, still writes it, until the 3rd; dated 3
+    December, on the election day itself and in
     October it writes none, removes one an earlier build left and says why;
     so it does once site/meta.json's newest term is 2027-2028; and so with no
     results file at all. None of these is a failure of the build. A results
@@ -4507,6 +4511,7 @@ def _elect_retires():
         stale = site / "members_elect.json"
         code, out, doc = _elect_run(root, _ELECT_IN)
         assert code == 0 and doc and doc["takes_office"] == "2026-12-02" and \
+            doc.get("until") == "2026-12-03" and \
             doc["election"] == "2026-11-03" and doc["term"] == "2027-2028", (
             f"dated {_ELECT_IN} the step wrote {doc and {k: doc[k] for k in doc if k != 'races'}}: "
             + out[-300:])
@@ -4519,8 +4524,14 @@ def _elect_retires():
             if code != 0 or doc is not None or why not in out or "Removed" not in out:
                 bad.append(f"{label}: exit {code}, {'a file left' if doc else 'no file'}, said "
                            f"{out.strip()[-160:]!r}")
-        gone("2026-12-02", "on or after Organization Day", "dated 2 December")
-        gone("2027-01-06", "on or after Organization Day", "dated January")
+        # Organization Day itself: still written, until the day after.
+        stale.write_bytes(old)
+        code, out, doc = _elect_run(root, "2026-12-02")
+        if code != 0 or not doc or doc.get("until") != "2026-12-03":
+            bad.append(f"dated 2 December: exit {code}, {'a file' if doc else 'no file'}, said "
+                       f"{out.strip()[-160:]!r}")
+        gone("2026-12-03", "the day after Organization Day", "dated 3 December")
+        gone("2027-01-06", "the day after Organization Day", "dated January")
         gone("2026-11-03", "is not after the election", "dated the election day")
         gone("2026-10-16", "is not after the election", "dated October")
         meta_p = site / "meta.json"
@@ -4544,9 +4555,10 @@ def _elect_retires():
         assert not bad, "; ".join(bad)
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    return "ok", ("written on 20 November; none, the last build's removed and why said, on 2 "
-                  "December, in January, on the election day, in October, with 2027-2028 the "
-                  "newest term and with no results; a results file that will not read stops it")
+    return "ok", ("written on 20 November and on 2 December, until the 3rd; none, the last build's "
+                  "removed and why said, on 3 December, in January, on the election day, in October, "
+                  "with 2027-2028 the newest term and with no results; a results file that will not "
+                  "read stops it")
 
 
 @check("build", "members-elect: the step leaves every other file of the site byte for byte as it "
@@ -4878,8 +4890,10 @@ def _elect_map_panels(with_map, without_map):
 # "Serving now", then who sits (or the words for nobody), then the block: the
 # order the person's decision draws them in, on each surface's own markup.
 def _elect_order(sitting):
-    return re.compile(r'<p class="elnow" data-elect data-until="2026-12-02">Serving now</p>'
-                      r"(?:" + sitting + r')<div class="elect" data-elect data-until="2026-12-02">',
+    # They retire the day after Organization Day (proceedings.switch_day; the owner, 25
+    # November 2026), the day the site switches to them.
+    return re.compile(r'<p class="elnow" data-elect data-until="2026-12-03">Serving now</p>'
+                      r"(?:" + sitting + r')<div class="elect" data-elect data-until="2026-12-03">',
                       re.S)
 
 

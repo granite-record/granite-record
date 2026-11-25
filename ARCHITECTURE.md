@@ -2376,10 +2376,17 @@ not final, holds a winner off the pages and, under `party`, gives the party a
 cross-nominated winner filed under (the results print both nominations).
 
 Four rules, the person's. The file is written only while the build's day is
-after the election and before Organization Day (`proceedings.organization_day`)
-and `site/meta.json`'s newest term is the one before theirs; otherwise the
-step removes it and says why, so they retire on their own, and
-`src/checks/check_site.py` refuses a file still there on its `takes_office`. A winner is
+after the election and before the day after Organization Day
+(`proceedings.switch_day`, 3 December 2026: the owner, 25 November 2026, "wait
+until December 3rd to switch to the new titles since the swearing in ceremony
+happens on the morning of December 2nd" -- Organization Day's night publishes
+before they are sworn in) and `site/meta.json`'s newest term is the one before
+theirs; otherwise the step removes it and says why, so they retire on their
+own, and `src/checks/check_site.py` refuses a file still there on its `until`.
+The file names both days: `takes_office`, Organization Day, which the pages
+print, and `until`, the day after, which every block retires on
+(`build_members_elect.until_of` reads it, or the day after `takes_office` in a
+file that names none). A winner is
 linked to a page only as the seat's sitting member (the same first name, a
 short form `member_links.SHORT` lists, or -- widened by the person on 17
 October 2026 -- a first name of four letters or more the other runs on from by
@@ -2608,7 +2615,8 @@ district's towns, the election's line, a tab of
 their requests as a member's page lists them (or that none is filed yet) and
 a tab of the race as the Elections tab draws it (`build_member_elections.race_row`),
 with any seats not final and the day the race's results file was saved.
-From Organization Day it says they took office, and it gives way to their
+From the day after Organization Day it says they took office (on Organization
+Day), and it gives way to their
 regular page when the General Court numbers them. Only a former member elected again is
 re-headed: their own page is headed as a new member-elect's is, the
 member-elect of the new seat, with the earlier seat kept below. A sitting
@@ -2877,7 +2885,7 @@ amendment request, which either chamber may file, is matched by the whole name
 alone, where one sitting member, member-elect or winner has it and nobody else. A request whose sponsor is not returning is dropped and its address
 forwards to the requests' list, matched by member and never by name: by the
 members-elect file's races while it is drawn, by the same races worked out
-again from Organization Day, when it retires, while the roster is still the
+again from the day after Organization Day, when it retires, while the roster is still the
 old term's (`election_races`), and once the roster is the new term's by the
 roster itself, each member of the old term not on it (`departed`), whom a
 request's sponsor is matched to as a sitting member is and drawn by name and

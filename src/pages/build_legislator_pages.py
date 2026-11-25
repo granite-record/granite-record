@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.49
+# GRANITE_VERSION: 2026-09-04.50
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -19,8 +19,9 @@ WHAT A MEMBER'S PAGE ANSWERS
 Which bills they put their name to, prime and co-sponsored, filterable by term
 and outcome; every roll call they are recorded in, filterable by how they voted;
 the district they sit for and the towns in it, ward by ward where a city is
-split between members. Between a general election and Organization Day, a
-member the election sent back -- sitting or returning -- also has one line
+split between members. Between a general election and the day after
+Organization Day (proceedings.switch_day), a member the election sent back --
+sitting or returning -- also has one line
 saying so under their name, from site/members_elect.json alone (the person's
 decisions of 16 October 2026); nobody else's page says anything about it.
 And each new member-elect has a page of their own from site/elect_pages.json
@@ -48,6 +49,7 @@ import components as C
 import member_links as ML
 import shell as S
 import structured as LD
+import build_members_elect as BME
 from build_members_elect import for_pages as members_elect
 # A request's own page's Share, which a member-elect's provisional page has too.
 from build_request_pages import SHARE
@@ -337,8 +339,8 @@ def elect_mode(m, info):
       ""           anyone else, the re-elected: the page as it was, with the
                    one line.
 
-    All of it exists only while the members-elect file does, which ends on
-    the day they take office (build_members_elect.for_pages)."""
+    All of it exists only while the members-elect file does, which ends the
+    day after they take office (build_members_elect.for_pages, until_of)."""
     if not info:
         return ""
     if info["k"] == "former" and m.get("former"):
@@ -376,7 +378,7 @@ def elect_heading(title, name, party=""):
     the honorific in full, as head_name spells a member's ("Representative
     James Spillane"), then the name and the party -- "Representative-elect
     Heather Deiner (D)" for `title` "Rep.-elect" (elect_title), and from
-    the day they take office a member's, "Representative Heather Deiner (D)"
+    the day after they take office a member's, "Representative Heather Deiner (D)"
     for "Rep.". It was the name and party alone, "Heather Deiner (D)", until
     the owner asked for the title on 16 November 2026. app.js's
     renderMemberHead heads a returning member-elect's page the same way,
@@ -613,12 +615,15 @@ def elect_body(p, doc, reqs, req_meta, places, today, path="", base=""):
 
     No contact detail, no votes, no seat and no committees: none is
     published for them until the General Court numbers them, when this
-    becomes their regular page. From the day they take office the trail
-    says Representative or Senator, the line a member of the chamber, and
-    the election's line that they took office (build_elect_pages, ON
-    ORGANIZATION DAY). `path` is the page's own, /legislator/<slug>.html
-    where none is given, and `base` the site's address."""
-    took = today >= doc["takes_office"]
+    becomes their regular page. From the day after they take office (the
+    file's "until", the day after Organization Day: build_elect_pages, THE
+    DAY AFTER ORGANIZATION DAY) the trail says Representative or Senator,
+    the line a member of the chamber, and the election's line that they took
+    office on Organization Day. `path` is the page's own,
+    /legislator/<slug>.html where none is given, and `base` the site's
+    address."""
+    gone = BME.until_of(doc)
+    took = bool(gone) and today >= gone.isoformat()
     path = path or f"/legislator/{p['slug']}.html"
     base = base or "https://graniterecord.org"
     ch = p.get("chamber")
@@ -699,7 +704,8 @@ def write_elect_pages(site, out, t, base, written_slugs, pages_of_towns, today):
         reqs = [r for r in rows if r.get("sponsor_slug") == slug]
         places = towns_linked(p.get("towns") or [], pages_of_towns)
         who = f"{p['name']}" + (f" ({p['party']})" if p.get("party") else "")
-        if today < doc["takes_office"]:
+        gone = BME.until_of(doc)
+        if not gone or today < gone.isoformat():
             who += ", member-elect"
         # The citation is in the head's actions, as a request's own page has it
         # (elect_body), so the page writes none above the head.
@@ -930,9 +936,12 @@ def main():
         # one's (elect_body): its line has no "for <district>", the sentence
         # above it says the seat. Everyone else's keeps the line as it was.
         line = (elect_line(None if returning else race, elect["election"],
-                           elect["takes_office"], today) if race else "")
+                           elect["takes_office"], today, elect["until"]) if race else "")
+        # "until", the day after Organization Day, is when app.js stops drawing
+        # the member-elect's head and line by the reader's clock; takes_office
+        # is the day the line prints.
         also = ({"GR_ELECT": {"id": mid, "key": race, "election": elect["election"],
-                              "takes_office": elect["takes_office"],
+                              "takes_office": elect["takes_office"], "until": elect["until"],
                               **({k: back[k] for k in ("mode", "name", "party", "where", "title")}
                                  if back else {})}} if race else {})
         if returning:
@@ -967,7 +976,7 @@ def main():
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True,
                      **({"GR_FORMER": True} if m.get("former") else {}), **also},
             static=static_record(m, rec, line, places, back,
-                                 until=until_attrs(elect["takes_office"], today) if race else ""),
+                                 until=until_attrs(elect["until"], today) if race else ""),
             skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406
             # member pages told a screen reader they were Bills.

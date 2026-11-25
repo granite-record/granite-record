@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 Check the site is fit to publish before uploading it.
 
@@ -189,12 +189,16 @@ def search_index(site, errors, warnings):
 
 
 def members_elect(site, errors, today=None):
-    """site/members_elect.json, refused on or after the day its members take
-    office (the person's decisions of 16 October 2026).
+    """site/members_elect.json, refused on or after the day its members-elect
+    retire (the person's decisions of 16 October 2026): the day after
+    Organization Day, the file's "until" (build_members_elect.until_of; the
+    owner, 25 November 2026: "wait until December 3rd to switch to the new
+    titles since the swearing in ceremony happens on the morning of December
+    2nd").
 
-    Members-elect retire by themselves on Organization Day: the step that
-    writes the file (build_members_elect.py) writes none from that day, and
-    the browser hides what a page drew of them by the reader's clock. This is
+    Members-elect retire by themselves on that day: the step that writes the
+    file (build_members_elect.py) writes none from it, and the browser hides
+    what a page drew of them by the reader's clock. This is
     the third guard, for a file that outlived both -- a build that skipped
     the step and left the last one in site/, or a site built before the day
     and published on it. Such a site would tell a reader that people who sit
@@ -213,19 +217,22 @@ def members_elect(site, errors, today=None):
         doc = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return ""           # the JSON check above has already refused it
-    takes = str(doc.get("takes_office") or "") if isinstance(doc, dict) else ""
+    from build_members_elect import until_of
+    gone = until_of(doc) if isinstance(doc, dict) else None
+    until = gone.isoformat() if gone else ""
     day = today or max(build_date.today(), date.today())
-    if not re.fullmatch(r"\d{4}-\d\d-\d\d", takes):
+    if not until:
         errors.append("members_elect.json names no takes_office, the day its members-elect "
-                      "retire, so nothing would ever take them down")
+                      "take office, and no until, the day they retire, so nothing would ever "
+                      "take them down")
         return ""
-    if day.isoformat() >= takes:
+    if day.isoformat() >= until:
         errors.append(f"members_elect.json is still in the site on {day.isoformat()}, and its "
-                      f"members-elect took office on {takes}: the pages would call sitting "
-                      "members members-elect. build_members_elect.py writes none from that "
-                      "day; run the build again")
+                      f"members-elect retired on {until}, the day after they took office: the "
+                      "pages would call sitting members members-elect. build_members_elect.py "
+                      "writes none from that day; run the build again")
         return ""
-    return takes
+    return until
 
 
 def redirect_rules(site):
@@ -545,7 +552,7 @@ def main():
     for k, v in sorted(counts.items()):
         print(f"  {k:<22} {v:,} entries")
 
-    # ---- members-elect, gone on the day they take office --------------------
+    # ---- members-elect, gone the day after they take office -----------------
     until = members_elect(site, errors)
     if until:
         print(f"\nmembers-elect: shown until {until}")
