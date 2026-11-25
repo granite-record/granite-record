@@ -2707,7 +2707,8 @@ election entry when a source is found; none is drawn until then.
 
 The next state general election's dates -- its primary's filing period, the
 primary and the general, those still ahead -- are on every week of the Calendar,
-under the week's arrows, and at the top of the elections page
+below its schedule (since 25 November 2026, in the place the Calendars and
+Journals left), and at the top of the elections page
 (`key_dates.election_dates` and `election_dates_html`; the owner, 19 November
 2026). Each is a day `key_dates.in_force` (`src/lib/election_law.py`'s, which the primary
 reader dates a primary by too) works out from the words of the RSA text

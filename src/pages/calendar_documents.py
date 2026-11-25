@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-01.12
+# GRANITE_VERSION: 2026-10-01.13
 """
 The General Court's calendars and journals, as the PDFs the General Court
-serves: the list the Calendar page's picker reads.
+serves: the list the Calendars and journals page's pickers read.
 
     import calendar_documents as CD
     docs, out = CD.read()            # what is linked, and what is left out
     CD.index(docs)                   # site/calendar/documents.json
-    CD.block_html(docs, out, here)   # the section under a week's schedule
-    CD.list_body(docs, out)          # site/calendar/documents.html
-    CD.PICKER_JS                     # the section's script
+    CD.block_html(docs)              # the pickers and the newest, at the top of the list page
+    CD.list_body(docs, out)          # site/calendar/documents.html's heading, line and directory
+    CD.PICKER_JS                     # the pickers' script
 
     python3 src/pages/calendar_documents.py    # what a build would link, no network
 
@@ -20,6 +20,15 @@ document -- and a button that opens the one chosen. The General Court has a
 page per chamber, each with three pickers; here it is one row, and the first
 picker carries the chamber: House Calendars, House Journals, Senate Calendars,
 Senate Journals.
+
+AT THE TOP OF THE LIST (the owner, 25 November 2026): "move this section of
+the calendar/journal selector to the calendars/journals tab at the top so that
+it's easy to select what you're looking for quickly and have the full
+directory below that rather than splitting it across the schedule page." The
+pickers and the newest of each kind are the first thing under the list page's
+heading, its line and Cite this page, and the directory follows them as it
+was. The week's schedule carries none of it: the Calendar row's Calendars and
+journals tab is the way there.
 
 LINKED, NOT HOSTED. The PDFs are 1.5 GB against a 2.0 GB deploy, three of
 them are larger than Cloudflare Pages allows one file to be, and GitHub's
@@ -63,8 +72,8 @@ how many they are. A year is not guessed from a neighbour's date: the guess
 would be taken back the night the document's own text is read.
 
 WHAT IS LEFT OUT, AND SAID. A row the queue marks withheld, gone or failed,
-or holds an error against, is not linked. The block says how many in one
-line and the list page names them. "NOT LINKED HERE", AND NOT "DOES NOT
+or holds an error against, is not linked. The list page says how many in one
+line, once, and names them. "NOT LINKED HERE", AND NOT "DOES NOT
 SERVE". The page said "the General Court lists but does not serve" of 45
 documents, and the queue bears that out for two: 2008's "09A" and "09B"
 answered 403. Forty-two more were set aside for having names of the same
@@ -115,8 +124,9 @@ MANY = {sid: many for sid, _ch, _kind, many, _one in SETS}
 ONE = {sid: one for sid, _ch, _kind, _many, one in SETS}
 CHAMBER = {sid: ch for sid, ch, _kind, _many, _one in SETS}
 
-# Where the section and its list live. The list is beside the week pages and
-# not in calendar/data/, which build_calendar.month_files prunes.
+# Where the pickers and their list live. The list is beside the week pages and
+# not in calendar/data/, which build_calendar.month_files prunes. ANCHOR is the
+# box at the top of the list page, which the pickers' script looks for.
 ANCHOR = "cdocs"
 NOT_LINKED = "notlinked"    # the list page's section that names what is left out
 LIST_PATH = "/calendar/documents.html"
@@ -572,16 +582,18 @@ def sources(docs):
     return out
 
 
-# ---- the section under a week's schedule --------------------------------------
+# ---- the box at the top of the list page ---------------------------------------
 #
 # WITHOUT SCRIPT IT IS LINKS: the newest of each set, at the General Court's
-# address, and every year of every set, each a link to that year on the list
-# page, where its documents are plain links. WITH SCRIPT the years give way
-# to the row of pickers, which is emitted hidden like every other control on
-# this page -- a control that does nothing is worse than no control.
+# address, and under the box the directory, every document of every year a
+# plain link. WITH SCRIPT the row of pickers comes up above the newest; it is
+# emitted hidden like every other control on this site -- a control that does
+# nothing is worse than no control.
 #
-# SAME TAB, as the cards' own links to these PDFs open (build_pages.cal_days),
-# so there is one behaviour on the page.
+# UNTIL 25 NOVEMBER 2026 THIS WAS A SECTION UNDER EVERY WEEK'S SCHEDULE, with
+# a heading of its own ("Calendars & Journals"), every year of every set as a
+# link to that year here, and a link to this page. On this page the page's
+# own heading names the box, and the directory under it is the years.
 
 def set_name(sid, many, lang="en"):
     """A set's name for the picker (many) or for a link (one), in `lang`: the
@@ -599,14 +611,29 @@ def set_name(sid, many, lang="en"):
             ("sj", False): say(lang, "calp.cd_sj_one", "Senate Journal")}[(sid, many)]
 
 
-def block_html(docs, left_out, esc=html.escape, lang="en"):
-    """The section, or "" where there is nothing to link: the same on every
-    week's page, because a reader may be on any of them.
+def block_html(docs, esc=html.escape, lang="en"):
+    """The box at the top of the list page, or "" where there is nothing to
+    link: the row of pickers and its button (emitted hidden, for the script
+    to show), the line its live status is said in, the newest of each set,
+    and what a calendar and a journal are. The list page puts it under its
+    heading, its line and Cite this page, and above the directory
+    (build_calendar.documents_files).
+
+    THE WORDS SAY WHAT THE RECORD HOLDS, as they did under the schedule:
+    "the newest listed here", never "the newest". HOW MANY ARE NOT LINKED IS
+    SAID ONCE ON THE PAGE, in the directory's own section that names them
+    (list_body), and not here as well.
+
+    WHERE THE PARAGRAPH ON THE TWO KINDS GOES: last in the box, under the
+    newest of each and right above the directory it describes, where it was
+    in the section -- after what a reader came for, which is the pickers.
 
     In another language (the Calendar in Spanish, 9 November 2026) the
-    section's words and the kinds of document are that language's; a
-    document's own name, which the General Court printed, is marked as
-    English. English is as it was."""
+    box's words and the kinds of document are that language's; a document's
+    own name, which the General Court printed, is marked as English. English
+    is as it was. The list page is English alone (i18n.PAGES), so nothing
+    draws the box in another language today; its words keep their entries
+    in each catalog for the day the page has a Spanish version."""
     sets = by_set(docs)
     # A document's name, as the General Court printed it: set apart in
     # another language, so a screen reader says it in English.
@@ -614,7 +641,6 @@ def block_html(docs, left_out, esc=html.escape, lang="en"):
     opt_en = "" if lang == "en" else " lang=\"en\""
     if not docs:
         return ""
-    list_href = _canon(LIST_PATH)
     first = next((sid for sid, years in sets.items() if years), "")
     years0 = sets[first]
     y0 = next(iter(years0))
@@ -626,12 +652,6 @@ def block_html(docs, left_out, esc=html.escape, lang="en"):
         f'{doc_name(esc(ds[0].label))} (PDF)</a></li>'
         for sid, years in sets.items() if years
         for ds in [next(iter(years.values()))])
-    years_nav = "".join(
-        f'<li><span class="cdset" id="cdy-{sid}">{esc(set_name(sid, True, lang))}</span>'
-        f'<ul aria-labelledby="cdy-{sid}">'
-        + "".join(f'<li><a href="{list_href}#{sid}-{y}">{y}</a></li>' for y in years)
-        + "</ul></li>"
-        for sid, years in sets.items() if years)
     # THE PICKERS OPEN ON WHAT THE GENERAL COURT'S DO: the first set, its
     # newest year, its newest document -- written here, so the button is a
     # real link to a real document before the list has been fetched.
@@ -644,8 +664,8 @@ def block_html(docs, left_out, esc=html.escape, lang="en"):
     # NOT DISABLED WHILE THEY WAIT: a disabled control is skipped by Tab, and
     # a reader who came by keyboard a moment before the list did would be put
     # past all three.
-    # THE FORM HAS NO NAME OF ITS OWN. Named by the heading, as the section
-    # is, it was a second landmark with the section's name.
+    # THE FORM HAS NO NAME OF ITS OWN. Named by the heading of the section it
+    # was in under the schedule, it was a second landmark with that name.
     pick = ('<form class="cdpick" id="cdpick" hidden>'
             '<div class="cdf"><label for="cdset">'
             + say(lang, "calp.cd_set", "Calendar or journal") + '</label>'
@@ -669,7 +689,7 @@ def block_html(docs, left_out, esc=html.escape, lang="en"):
             f'<p class="cdnow" id="cdnow">{esc(chosen_name(set_name(first, False, lang), d0.label))}</p>'
             # A NEW TAB, MARKED AS GOING OUT (the person, 7 October 2026,
             # F12), as every link to a calendar or journal is: the reader
-            # keeps the Calendar where they left it.
+            # keeps the list where they left it.
             f'<a class="cdopen out" id="cdopen" href="{esc(d0.url)}" '
             'target="_blank" rel="noopener" '
             f'aria-label="{esc(open_name(set_name(first, False, lang), d0.label, lang))}">'
@@ -678,37 +698,31 @@ def block_html(docs, left_out, esc=html.escape, lang="en"):
             # Outside the form, so it can still speak when the list will not
             # load and the form is taken away again.
             '<p class="calhint" id="cdstat" role="status" aria-live="polite"></p>')
-    out = left_out_line(left_out, lang)
-    return (f'<section class="cdocs" id="{ANCHOR}" aria-labelledby="cdhead">'
-            '<h2 id="cdhead">' + say(lang, "calp.cd_head", "Calendars &amp; Journals") + '</h2>'
+    # NO HEADING OF ITS OWN: the page's own (LIST_TITLE) names it. So what
+    # heads the newest is a level-two heading here, as the directory's four
+    # kinds are, drawn as the label it was under the section (app.css,
+    # .cdocs .cdsub).
+    return (f'<div class="cdocs" id="{ANCHOR}">'
             + pick
             # "LISTED HERE", because the list is as old as the queue. On
             # 1 October this headed House Calendar 32 of 4 September as "the
             # newest of each", and the example the person gave when asking
             # for the pickers was No 35 of 25 September. Each is shown with
             # its date, and the list page says how far the list reaches.
-            + '<h3 class="cdsub" id="cdnew">' + say(lang, "calp.cd_newest", "The newest listed here")
-            + '</h3>'
+            + '<h2 class="cdsub" id="cdnew">' + say(lang, "calp.cd_newest", "The newest listed here")
+            + '</h2>'
             f'<ul class="cdlatest" aria-labelledby="cdnew">{latest}</ul>'
-            '<nav class="cdyears" id="cdyears" aria-labelledby="cdby">'
-            '<h3 class="cdsub" id="cdby">' + say(lang, "calp.cd_years", "Every year, as a list")
-            + '</h3>'
-            f'<ul class="cdsets">{years_nav}</ul></nav>'
-            f'<p class="cdall"><a href="{list_href}">'
-            + say(lang, "calp.cd_list", "Every calendar and journal, as a list") + '</a>'
-            # The list's own page is English (i18n.PAGES), and says so.
-            + ('' if lang == "en" else ' <span class="r-en">('
-               + say(lang, "guides.in_english", "in English") + ')</span>') + '</p>'
             '<p class="src">' + say(lang, "calp.cd_src", "The calendar is what each chamber "
             "publishes ahead of time: hearings, committee reports and what the next session will "
             "take up. The journal is the record of a session day. These open the General "
             "Court&rsquo;s own files.") + '</p>'
-            + (f'<p class="cdleft">{esc(out)}</p>' if out else "")
-            + '</section>')
+            + '</div>')
 
 
 # THE PICKER'S SCRIPT IN ANOTHER LANGUAGE (the Calendar in Spanish, 9 November
-# 2026): PICKER_JS as it was, with the pairs below put over it by picker_js(),
+# 2026; since 25 November the pickers are on the list page alone, which is
+# English, so no page carries it until that page has a Spanish version):
+# PICKER_JS as it was, with the pairs below put over it by picker_js(),
 # so the English page's script is the English script to the byte. Each pair is
 # (the text of PICKER_JS, what replaces it); a pair that does not apply once
 # stops the build. The words are tr() calls: the page carries the language's
@@ -822,7 +836,10 @@ def list_lead(docs, esc=html.escape):
 def list_body(docs, left_out, esc=html.escape):
     """(heading, lead, body) of site/calendar/documents.html: four sections,
     a year to a <details>, the newest year of each open, every document a
-    plain link; then the documents listed and not linked, named."""
+    plain link; then the documents listed and not linked, named. The page
+    has the box of pickers (block_html) between its lead and this body,
+    which is the directory as it was before the box came up to the top
+    (build_calendar.documents_files)."""
     sets = by_set(docs)
     here = _canon(LIST_PATH)
     jump = " &middot; ".join(f'<a href="{here}#{sid}">{esc(MANY[sid])}</a>'
@@ -864,7 +881,7 @@ def list_body(docs, left_out, esc=html.escape):
     return LIST_TITLE, lead, "".join(body)
 
 
-# ---- the section's script ----------------------------------------------------------
+# ---- the pickers' script ------------------------------------------------------------
 #
 # Shaped as build_calendar.WEEK_JS is: a core of plain functions over the
 # index, which preflight runs in node, and below it the part that touches the

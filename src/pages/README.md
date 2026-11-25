@@ -377,8 +377,8 @@ The helpers the builders share:
   already parsed;
 - `vote_passage`: the Journal's words for a vote on no bill;
 - `latest_activity`: what the home page's Latest Activity holds;
-- `calendar_documents`: the calendar and journal PDFs the Calendar's picker
-  lists;
+- `calendar_documents`: the calendar and journal PDFs the pickers at the top
+  of the Calendars and journals page list;
 - `queue_links`: those PDFs' addresses, found in the drain's queue;
 - `rsa_links`: where a statute citation links;
 - `constitution_tab`: the Constitution as a tab of the Laws page;
@@ -434,8 +434,8 @@ A builder's own scripts, written into its pages (20 November 2026):
   `src/checks/inline/` holds the bench's page script and `drawn_pages`'
   driver the same way. Three strings stay where they are, each a patch
   or a head rather than a page's script, with its reason in preflight's
-  `_INLINE_KEPT`: the Spanish pieces of the Calendar's script and of its
-  picker (`build_calendar.WEEK_ES`, `calendar_documents.PICKER_ES`) and the
+  `_INLINE_KEPT`: the Spanish pieces of the Calendar's script and of the
+  documents' pickers (`build_calendar.WEEK_ES`, `calendar_documents.PICKER_ES`) and the
   head of `site/billmatch.js` (`build_pages.BILLMATCH_HEAD`).
 
 The data beside the code:

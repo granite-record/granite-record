@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.6
+# GRANITE_VERSION: 2026-11-16.7
 """
 preflight's checks of livestreams, markers, dockets and proceedings.
 
@@ -5095,9 +5095,11 @@ def _calendar_documents_on_disk():
     Every document the picker would link today is at an address the queue
     records, no two share one, and every row is either linked, left out and
     counted, or one of two listings of one document. Where a site is built,
-    its index and its section link nothing the queue does not hold -- which
-    stays true of a site built from an older, shorter list -- and a page that
-    carries the section has the index it reads and the list page it links.
+    its index and the box of pickers at the top of the list page link nothing
+    the queue does not hold -- which stays true of a site built from an
+    older, shorter list -- the list page that carries the box has the index
+    it reads, and the Calendar's own page carries none of it (25 November
+    2026).
 
     The list's age is said and never failed on: the queue is refreshed at
     night, a picker a few days behind is no reason to stop a build, and
@@ -5127,7 +5129,11 @@ def _calendar_documents_on_disk():
     said = (f"{len(docs):,} linked, {len(left):,} left out, {twice:,} second listings of "
             "one document")
     built = Path("site") / "calendar" / "documents.json"
-    page = Path("site") / "calendar.html"
+    page = Path("site") / "calendar" / "documents.html"
+    week = Path("site") / "calendar.html"
+    # THE PICKERS ARE AT THE TOP OF THE LIST PAGE since 25 November 2026, and
+    # the Calendar's own page carries no part of them. A site built before
+    # then has them under the week instead, and is said.
     if built.exists() and page.exists():
         sx = json.loads(built.read_text(encoding="utf-8"))
         on_site = {CD.address(sx, s["chamber"], d) for s in sx["sets"]
@@ -5136,28 +5142,33 @@ def _calendar_documents_on_disk():
             f"site/calendar/documents.json holds {len(on_site - recorded)} addresses the "
             f"queue does not: {sorted(on_site - recorded)[:2]}")
         t = page.read_text(encoding="utf-8")
-        assert t.count('<section class="cdocs" id="cdocs"') == 1, (
-            "site/calendar/documents.json is built and site/calendar.html has no section")
-        assert (Path("site") / "calendar" / "documents.html").exists(), (
-            "site/calendar.html links /calendar/documents and site/calendar/documents.html "
-            "is not there: run build_calendar.py")
-        sec = t[t.index('<section class="cdocs"'):]
-        sec = sec[:sec.index("</section>")]
-        ext = {_h.unescape(h) for h in re.findall(r'href="(https://[^"]*)"', sec)}
-        assert ext and ext <= recorded, (
-            f"site/calendar.html's section links {sorted(ext - recorded)[:2]}, which the "
-            "queue does not hold")
+        older = week.exists() and 'id="cdocs"' in week.read_text(encoding="utf-8")
+        if older:
+            assert 'id="cdocs"' not in t, (
+                "site/calendar.html and site/calendar/documents.html both carry the pickers")
+            said += ("; site/calendar.html carries the Calendars & Journals section of a build "
+                     "before 25 November 2026 -- build_calendar.py takes it to the list page")
+        else:
+            assert t.count('<div class="cdocs" id="cdocs">') == 1, (
+                "site/calendar/documents.json is built and site/calendar/documents.html has no "
+                "pickers at its top")
+            box = t[t.index('<div class="cdocs" id="cdocs">'):]
+            box = box[:box.index('<p class="src"><a href="/calendar/documents#')]
+            ext = {_h.unescape(h) for h in re.findall(r'href="(https://[^"]*)"', box)}
+            assert ext and ext <= recorded, (
+                f"site/calendar/documents.html's pickers link {sorted(ext - recorded)[:2]}, "
+                "which the queue does not hold")
         said += f"; the built site links {len(on_site):,}, all of them recorded"
     elif page.exists():
         t = page.read_text(encoding="utf-8")
-        # A PAGE WITH THE SECTION AND NO INDEX is pickers that load nothing and
-        # a link to a list that is not there. A page with neither was built
-        # before the pickers were, or on a folder with no queue, and is said.
-        assert '<section class="cdocs" id="cdocs"' not in t, (
-            "site/calendar.html carries the Calendars & Journals section and "
+        # A PAGE WITH THE PICKERS AND NO INDEX is pickers that load nothing. A
+        # list page with neither was built before the pickers were there, or
+        # on a folder with no queue, and is said.
+        assert 'id="cdocs"' not in t, (
+            "site/calendar/documents.html carries the pickers and "
             "site/calendar/documents.json is not there: run build_calendar.py")
-        said += ("; site/calendar.html was built without the section -- "
-                 "build_calendar.py will draw it")
+        said += ("; site/calendar/documents.html was built without the pickers -- "
+                 "build_calendar.py will draw them")
     first = CD.newest(docs, "hc")
     newest = CD.newest_date(docs, "hc")
     if first is not None and not first.date:
@@ -6738,12 +6749,19 @@ def _referral_coverage(referrals):
        needs=("calendar_documents", "i18n"))
 def _calendar_documents_in_spanish(CD, i18n):
     """block_html(lang="es") for a queue of four documents, one in each of the
-    four sets: the heading, the labels, the button and the sentence in
-    Spanish, the kinds of document in Spanish (Calendario de la Cámara), each
-    document's own name marked lang="en"; English's section is what it was
+    four sets: the labels, the button, the newest's heading and the sentence
+    in Spanish, the kinds of document in Spanish (Calendario de la Cámara),
+    each document's own name marked lang="en"; English's box is what it was
     with no language stated. picker_js("es") run in node says a document's
     count, its button's name and its choice in Spanish, as the English says
-    them in English."""
+    them in English.
+
+    SINCE 25 NOVEMBER 2026 NO PAGE DRAWS THEM IN SPANISH: the box went from
+    under every week's schedule, which is drawn in Spanish, to the top of the
+    list page, which is English alone (i18n.PAGES). The box keeps its words
+    and their catalog entries for the day the list page has a Spanish
+    version, and this holds them; the section's heading and its link to the
+    list went with the section, and their entries with them."""
     import csv
     import datetime as _dt
     node = _cal_node()
@@ -6769,18 +6787,21 @@ def _calendar_documents_in_spanish(CD, i18n):
                 w.writerow(list(r[:9]) + ["1", r[9]])
         docs, left = CD.read(q, root=root, today=_dt.date(2026, 10, 1))
         assert len(docs) == 4, f"{len(docs)} documents read, not 4"
-        en = CD.block_html(docs, left)
-        assert en == CD.block_html(docs, left, lang="en"), "English's section changed with its language stated"
-        es = CD.block_html(docs, left, lang="es")
-        for want in ("Calendarios y diarios de sesiones", "Abrir el PDF", "Calendario de la Cámara",
-                     "Diario del Senado", "Calendario o diario", "Los más recientes de esta lista",
-                     'lang="en">HC 32', "(en inglés)"):
-            assert want in es, f"the Spanish section lacks {want!r}"
+        en = CD.block_html(docs)
+        assert en == CD.block_html(docs, lang="en"), "English's box changed with its language stated"
+        es = CD.block_html(docs, lang="es")
+        for want in ("Abrir el PDF", "Calendario de la Cámara", "Diario del Senado",
+                     "Calendario o diario", "Los más recientes de esta lista", 'lang="en">HC 32',
+                     "El calendario es lo que cada cámara publica"):
+            assert want in es, f"the Spanish box lacks {want!r}"
+        assert not i18n.has("es", "calendar/documents.html"), (
+            "the list page has a Spanish version now: its box is drawn there in Spanish, and "
+            "this check should read that page")
         seen = _visible_text("<main>" + es + "</main>")
         for lead in ("Open the PDF", "Calendar or journal", "The newest listed here", "Document", "House Calendar"):
-            assert not re.search(rf"\b{re.escape(lead)}\b", seen), f"the Spanish section says {lead!r}"
+            assert not re.search(rf"\b{re.escape(lead)}\b", seen), f"the Spanish box says {lead!r}"
         if not node:
-            return "ok", "the Spanish section holds its words (node is not here for the picker's script)"
+            return "ok", "the Spanish box holds its words (node is not here for the picker's script)"
         import i18n as _i
         js = CD.picker_js("es")
         ix = json.dumps(CD.index(docs), ensure_ascii=False)
@@ -6799,7 +6820,8 @@ def _calendar_documents_in_spanish(CD, i18n):
         assert r.returncode == 0 and out.endswith("OK"), out[-900:]
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    return "ok", "the section, the kinds of document and the picker's script in Spanish; the documents' names marked English"
+    return "ok", ("the box, the kinds of document and the picker's script in Spanish; the documents' "
+                  "names marked English; the list page is English alone, so no page draws them yet")
 
 
 @check("build", "every recording's Eastern start is its UTC start on New Hampshire's clock",

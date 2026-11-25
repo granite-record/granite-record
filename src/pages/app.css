@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.423 */
+/* GRANITE_VERSION: 2026-09-07.426 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6175,16 +6175,19 @@ color:var(--pine);text-decoration:none;text-align:left}
 text-decoration-thickness:1px;text-underline-offset:3px}
 .wkpd{font-size:var(--t-sm);font-weight:400;color:var(--ink-2)}
 .wknav a:hover .wkpw,.wknav a.wkhere:hover,.calstep button:hover .wkpw{color:var(--ink)}
-/* A rule under the schedule, before Calendars and Journals (the owner's walk of dry run 9, 8 November 2026). */
+/* A rule under the schedule (the owner's walk of dry run 9, 8 November 2026), and under it
+   Upcoming elections (.kdnext) since 25 November 2026, in the place the Calendars and Journals
+   left when they went to the top of their own page. */
 .calend{border:0;border-top:2px solid var(--rule);margin:var(--sp-9) 0 var(--sp-7)}
 @media (max-width:30em){
   .wknav,.calstep{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"p n" "m m"}
 }
 
-/* NARROWING A WEEK. The controls sit between the week's arrows and its days,
-   because that is the order a reader uses them in: which week, then which of
-   it. They are emitted hidden and the page's own script unhides them, so a
-   reader without one never meets a control that does nothing. */
+/* NARROWING A WEEK. The controls sit above the week's arrows and its days
+   (the owner, 25 November 2026, put the arrows straight above the schedule,
+   under the view switch and the boxes, and not above all of them). They are
+   emitted hidden and the page's own script unhides them, so a reader without
+   one never meets a control that does nothing. */
 .wkfilter{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--sp-4);
 margin:0 0 var(--sp-6);padding:var(--sp-4) 0}
 .wkfilter[hidden]{display:none}
@@ -6602,31 +6605,31 @@ font-weight:600;color:var(--pine);text-decoration:underline;text-underline-offse
 /* THE GENERAL COURT'S OWN CALENDARS AND JOURNALS, AS PDFs (1 October 2026).
    Asked for "in a similar way to how GenCourt does it": pickers in a row --
    which kind, which year, which document -- and a button that opens the one
-   chosen, under the schedule and its arrows, as wide as the schedule. The
-   first picker carries the chamber, so it is one row and not two.
+   chosen. The first picker carries the chamber, so it is one row and not two.
 
-   Without script the section is links: the newest of each kind, and every
-   year of each as a link to that year on the list page (.cdyears). With it
-   the years give way to the row (.cdpick), which is emitted hidden like every
-   other control here. The pickers are native selects: the keyboard, the
-   screen reader and a phone's own wheel come with them. The button is a link
-   whose address the script keeps in step, in the solid pine that means "do
-   this" on this site (.fbk). calendar_documents.py writes the markup. */
-.cdocs{margin:0 0 var(--sp-9);scroll-margin-top:var(--sp-6)}
-.cdocs h2{font-size:var(--t-h2);line-height:1.2;margin:0 0 var(--sp-5)}
-/* The heading takes focus when the link under the week's name is followed. */
-.cdocs h2:focus{outline:none}
-.cdocs h2:focus-visible{outline:2px solid var(--pine);outline-offset:4px}
-/* ONE ROW WHEREVER ONE ROW FITS. The schedule's column is at its narrowest
-   not on a tablet but at 1024px, where the month comes up beside it and
-   leaves the row 652px; the first minimums written here (11rem, 7rem, 14rem)
-   needed 679px and put the button 27px past the box at that width, measured
-   in a browser on 1 October. These need 583px, which every width above
-   700px gives; at 700px and under the pickers stack. */
+   AT THE TOP OF THEIR OWN PAGE (the owner, 25 November 2026): under the
+   Calendars and Journals page's heading, its line and Cite this page, as wide
+   as the page, with the newest of each kind under the row and the directory
+   below the box (.cdocs). Under the schedule of every week until then.
+
+   Without script the box is links: the newest of each kind, over the
+   directory, where every document of every year is one. With script the row
+   (.cdpick) comes up, which is emitted hidden like every other control here.
+   The pickers are native selects: the keyboard, the screen reader and a
+   phone's own wheel come with them. The button is a link whose address the
+   script keeps in step, in the solid pine that means "do this" on this site
+   (.fbk). calendar_documents.py writes the markup. */
+.cdocs{margin:0 0 var(--sp-9)}
+/* ONE ROW WHEREVER ONE ROW FITS. The row has the page's width: 961px at
+   1024px, and 662px at 701px, the narrowest it is one row on. Under the
+   schedule it had 652px at 1024px, beside the month; the first minimums
+   written there (11rem, 7rem, 14rem) needed 679px and put the button 27px
+   past the box at that width, measured in a browser on 1 October. These need
+   583px; at 700px and under the pickers stack. */
 .cdpick{display:grid;grid-template-columns:minmax(9.5rem,1fr) 5.5rem minmax(11rem,2fr) auto;
 gap:var(--sp-4) var(--sp-5);align-items:end;margin:0;padding:var(--sp-6);
 background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out)}
-.cdpick[hidden],.cdyears[hidden]{display:none}
+.cdpick[hidden]{display:none}
 /* min-width:0, for .bfilt's reason: a select's minimum is its longest option,
    and "Daily Journal No 06 2-21-07-State of Judiciary Final" is wider than a
    phone. The column is what must fit; the option's text is the browser's to
@@ -6655,11 +6658,16 @@ color:var(--on-pine);background:var(--pine);border-radius:var(--r-in);text-decor
 .cdopen:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .cdocs > .calhint{margin:var(--sp-3) 0 0}
 .cdocs > .calhint:empty{margin:0}
-/* What heads the two lists outranks them: larger, and in the ink. */
-.cdsub{margin:var(--sp-7) 0 var(--sp-3);font-size:var(--t-ui);font-weight:600;color:var(--ink)}
-.cdlatest,.cdsets,.cdsets ul{list-style:none;margin:0;padding:0}
-.cdlatest{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 var(--sp-8);
-font-size:var(--t-ui);line-height:1.4}
+/* What heads the newest outranks them: in the ink, over the kinds' grey. A
+   level-two heading on the list page, as its four kinds are, under the page's
+   own heading; drawn as the label it was under the schedule (an h3 there),
+   not as the kinds' headings, which .clist and .cdpage give a rule and the
+   serif at --t-h2. A level is not a size. */
+.cdocs .cdsub{margin:var(--sp-7) 0 var(--sp-3);padding:0;border-bottom:0;font-family:var(--sans);
+font-size:var(--t-ui);font-weight:600;line-height:1.55;letter-spacing:0;text-transform:none;
+color:var(--ink)}
+.cdlatest{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+gap:0 var(--sp-8);font-size:var(--t-ui);line-height:1.4}
 .cdlatest li{padding:var(--sp-2) 0;min-width:0;overflow-wrap:anywhere}
 .cdset{color:var(--ink-2)}
 .cdlatest .cdset::after{content:":"}
@@ -6667,17 +6675,10 @@ font-size:var(--t-ui);line-height:1.4}
    and breaks where the words do; as a block it dropped whole to the next
    line in one column and not in the other. */
 .cdlatest a{padding:var(--sp-1) 0;font-weight:600}
-.cdsets{font-size:var(--t-ui);line-height:1.4}
-.cdsets > li{margin:0 0 var(--sp-4)}
-.cdsets > li > .cdset{display:block;margin:0 0 var(--sp-1)}
-.cdsets ul{display:flex;flex-wrap:wrap;gap:0 var(--sp-5)}
-/* 28px tall, so one year is one target for a finger. */
-.cdsets a{display:inline-block;padding:var(--sp-2) 0}
-.cdall{margin:var(--sp-6) 0 var(--sp-3);font-size:var(--t-ui);font-weight:600}
-.cdall a{display:inline-block;padding:var(--sp-1) 0}
-/* What the two kinds of document are, and what is not here: said last and
-   quietly, under the links they are about. */
-.cdocs .src,.cdleft{margin:0 0 var(--sp-2);font-size:var(--t-ui);line-height:1.5;color:var(--ink-2)}
+/* What the two kinds of document are: said last in the box and quietly,
+   under the newest of each and over the directory they are about. How many
+   are not linked is said once, in the directory's own section (#notlinked). */
+.cdocs .src{margin:var(--sp-6) 0 0;font-size:var(--t-ui);line-height:1.5;color:var(--ink-2)}
 @media (max-width:43.75em){
   /* Stacked, each as wide as the column and 44px tall, with the select's
      text at 16px so a phone does not zoom the page on focus. */
@@ -6689,8 +6690,8 @@ font-size:var(--t-ui);line-height:1.4}
   .cdlatest{grid-template-columns:minmax(0,1fr)}
 }
 
-/* EVERY CALENDAR AND JOURNAL, AS A LIST (/calendar/documents): what the
-   section's years link to, and the whole of it without script. A year is a
+/* EVERY CALENDAR AND JOURNAL, AS A LIST (/calendar/documents), under the
+   pickers' box: the whole of it, and all of it without script. A year is a
    <details>, the newest of each kind open; the documents run in columns as
    wide as the longest names need, so the page's width is used. */
 /* A kind's heading outranks the years under it, which .clist's small caps at

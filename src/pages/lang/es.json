@@ -646,11 +646,6 @@
    "es": "Calendario de la Cámara",
    "state": "draft"
   },
-  "calp.cd_head": {
-   "en": "Calendars &amp; Journals",
-   "es": "Calendarios y diarios de sesiones",
-   "state": "draft"
-  },
   "calp.cd_hj_many": {
    "en": "House Journals",
    "es": "Diarios de la Cámara",
@@ -669,11 +664,6 @@
   "calp.cd_left_one": {
    "en": "1 document the General Court lists is not linked here.",
    "es": "1 documento que la Legislatura incluye en su lista no está enlazado aquí.",
-   "state": "draft"
-  },
-  "calp.cd_list": {
-   "en": "Every calendar and journal, as a list",
-   "es": "Todos los calendarios y diarios, en una lista",
    "state": "draft"
   },
   "calp.cd_loading": {
@@ -734,11 +724,6 @@
   "calp.cd_year": {
    "en": "Year",
    "es": "Año",
-   "state": "draft"
-  },
-  "calp.cd_years": {
-   "en": "Every year, as a list",
-   "es": "Cada año, en una lista",
    "state": "draft"
   },
   "calp.chamber": {

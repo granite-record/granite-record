@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.72
+# GRANITE_VERSION: 2026-10-11.73
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -1495,7 +1495,11 @@ REPORTS = "db/CandH_Reports.psv"
 VERSIONS = "db/DocumentVersion.psv"
 MEMBERS = "Members.txt"
 DB = "the General Court's database, as copied to this disk on September 8, 2026"
-DOCS = "/calendar.html#cdocs"   # the Calendar page's Calendars & Journals: every build writes it
+# The Calendar row's Calendars and journals page, whose pickers open these: the
+# week's schedule carried them until 25 November 2026, and these linked its
+# section there. Written where archive/queue.csv lists a document, and named
+# without a link where a build writes none (build_civics.sources_list).
+DOCS = "/calendar/documents.html"
 # Read for the hearing and testimony guides' second pass (17 October 2026).
 # The first House calendar on this disk to print the executive-session line
 # "may be held throughout the day" in full (HC 21 of five days earlier has a

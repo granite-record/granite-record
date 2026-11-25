@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-23.17
+# GRANITE_VERSION: 2026-10-23.18
 """
 The frame every page shares, written once: the head's fonts, icons, share
 card, theme script and stylesheet; the header and its sections; the footer;
@@ -384,6 +384,26 @@ def row_items(section, lang="en", facts=None):
             extra += f' data-hash="{rest}"'
         out.append((iid, words[(section, iid)], href, extra, not i18n.has(lang, page)))
     return out
+
+
+def written(address, facts=None):
+    """Whether this run writes the page at `address` ("/calendar/documents.html"),
+    as far as the row can tell: what row_facts() says of a page of its own
+    that an item which comes and goes leads to (COMES_AND_GOES), and True of
+    every other address, which the row does not judge. For a link to such a
+    page from outside the row -- a guide's source row naming the calendars
+    and journals, whose page is written only where the queue lists one
+    (build_civics.sources_list, 25 November 2026) -- so that a build that
+    writes no such page, a fork's or the fixture's, links none."""
+    f = row_facts() if facts is None else facts
+    p = _split(address.strip())[0].lstrip("/")
+    page = p if p.endswith(".html") else (f"{p}index.html" if p.endswith("/") or not p else f"{p}.html")
+    for (section, iid), wait in COMES_AND_GOES.items():
+        for i, addr in ROWS.get(section, ()):
+            own = _split(addr)[0]
+            if i == iid and own == page and own != section:
+                return bool(f.get(wait))
+    return True
 
 
 def _in_english(lang, english):
