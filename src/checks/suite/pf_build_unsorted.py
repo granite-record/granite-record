@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of build checks with no module under test, for a person to sort.
 
@@ -1923,6 +1923,177 @@ def _calendar_text_readers(ET, FC, EA):
                   "Git's; --layout-only writes no other program's text; the committee reports "
                   "and the amendments read a calendar that is only text, under its PDF's name, "
                   "and find nothing without --text")
+
+
+# The first House Calendar of a session, as the night of 25 November 2026 had the 2027
+# session's: its masthead, its contents line, and no committee report in it.
+_FIRST_CALENDAR = """      State of   HOUSE RECORD
+New Hampshire
+                        First Year of the 170th General Court
+                Calendar and Journal of the 2027 Session
+ Vol.49         Concord,N.H.  Wednesday,November25,2026                         No.1
+        Contains: House Deadlines; Meetings and Notices; Seating for Organization Day ONLY.
+                  HOUSE CALENDAR
+MEMBERS OF THE HOUSE:
+Pursuant to Part II, Article 3 of the New Hampshire Constitution, the 170th Session of the
+General Court will Organize on the first Wednesday in December (December 2, 2026) at 10 a.m.
+"""
+# An interim study statement, as a calendar prints the section.
+_FIRST_INTERIM = """
+           2027 INTERIM STUDY STATEMENTS
+COMMERCE AND CONSUMER AFFAIRS
+HB 312, relative to a fixture. NOT RECOMMENDED FOR FUTURE LEGISLATION.
+Rep. Chris McAleer for Commerce and Consumer Affairs. The committee found that it was
+not needed. Vote 11-0.
+COMMITTEE MEETINGS
+"""
+
+
+@check("build", "the first House Calendar of a session under the General Court's own name, \"HC 1\", is "
+       "put under the archive's before the list is read, and every calendar after it is named and "
+       "read like any year's: the night's re-read of its committee reports, and the interim "
+       "statements, in the calendars' own order", needs=(
+           "fetch_calendar_archive", "fetch_committee_reports", "interim_statements", "nightly"))
+def _new_session_calendar_names(CA, FC, IS, NI):
+    """The night of 25 November 2026 (run 45574975646) was held for approval on a new kind of
+    warning: "committee_reports.json 2027 not read again from what arrived tonight: not taken:
+    the fetch exited 1". The 2027 session's first House Calendar was listed as "HC 1.pdf" with
+    a label naming no "No", so fetch_calendar_archive._local kept the name, the text went to
+    calendars/2027/HC 1.txt, and fetch_committee_reports.py --offline --text --year 2027,
+    which took only "HC001" for a calendar, said "--offline, and no calendars in
+    calendars/2027/ to read." and exited 1. (The House Journal list for 2027, not answered
+    with none on file, was already taken as none posted yet, and stays so.) Held here, in a
+    throwaway folder, with no request:
+
+      - _local numbers a House Calendar named "HC" and a number ("HC 1.pdf"), and keeps one
+        with no number, and the Senate's and the journals' source names as it always has
+        ("SC 29.pdf": 1,169 rows of the list are kept so, and their readers read any name);
+      - nightly.take_documents, on a night the list is not asked for, first puts the House
+        Calendar row kept as "HC 1.pdf" and its text under the archive's name (renumber), says
+        so, and leaves a row whose archive name another document has, a Senate calendar and a
+        journal kept under their source names, and the rest, as they were; a second night
+        moves nothing;
+      - fetch_committee_reports.py --offline --text --year 2027 reads "HC 1" as the night had
+        it (exit 0, the year's term written), the renamed HC001 beside a calendar still under
+        the General Court's name, and keeps a report's first printing by the calendars' order,
+        HC 2 before HC 10;
+      - interim_statements reads a statement from "HC 1" as House Calendar 1."""
+    import contextlib
+    import io
+    here = Path(".").resolve()
+    assert CA._local("HC", "HC 1.pdf", "") == "HC001.pdf" and \
+        CA._local("HC", "HC 1.pdf", "HC 1 November 25 2026") == "HC001.pdf" and \
+        CA._local("HC", "HC 41.pdf", "No 41 November 6 2026") == "HC041.pdf" and \
+        CA._local("SC", "SC 29.pdf", "No 29 May 7 2026") == "SC029.pdf" and \
+        CA._local("HC", "No 1 November 26 2024.pdf", "No 1 November 26 2024") == "HC001.pdf", (
+        "the archive's name of a document")
+    assert CA._local("HC", "Supplement.pdf", "") == "Supplement.pdf" and \
+        CA._local("HC", "SC 3.pdf", "") == "SC 3.pdf" and \
+        CA._local("SC", "SC 45.pdf", "") == "SC 45.pdf" and \
+        CA._local("HJ", "HJ 01 January 7, 2026.pdf", "HJ 01 January 7, 2026") == \
+        "HJ 01 January 7, 2026.pdf", "a source name the archive keeps, renamed"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-newsession-cal-"))
+    saved = (sys.argv, dict(NI.EXITS), NI.LOG, NI.QUIET)
+
+    def run(argv):
+        sys.argv = argv
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                FC.main()
+                return 0, out.getvalue()
+            except SystemExit as e:
+                return e.code, out.getvalue()
+
+    try:
+        os.chdir(tmp)
+        y27, y26 = Path("calendars") / "2027", Path("calendars") / "2026"
+        y27.mkdir(parents=True)
+        y26.mkdir(parents=True)
+        (y27 / "HC 1.txt").write_text(_FIRST_CALENDAR, encoding="utf-8")
+        (y27 / "HC002.txt").write_text(CALENDAR_PAGE, encoding="utf-8")
+        (y26 / "HC041.txt").write_text(CALENDAR_PAGE, encoding="utf-8")
+
+        def row(year, name, path, label="", chamber="H", kind="calendar"):
+            return {"chamber": chamber, "kind": kind, "year": year, "name": name,
+                    "url": f"https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName={name}",
+                    "path": path, "state": "held", "attempts": "0", "label": label}
+        # The Senate's calendar and a journal kept under their source names, as the list keeps
+        # 1,169 of theirs, their text beside them: no rule here renames them.
+        sen = Path("calendars_senate") / "2007"
+        sen.mkdir(parents=True)
+        (sen / "SC 45.txt").write_text("a Senate calendar", encoding="utf-8")
+        CA.write_rows(Path("archive") / "queue.csv", [
+            row("2027", "HC 1.pdf", "calendars/2027/HC 1.pdf"),
+            # Its archive name is another document's: it keeps its own.
+            row("2027", "HC 2.pdf", "calendars/2027/HC 2.pdf"),
+            row("2027", "No 2 December 4 2026.pdf", "calendars/2027/HC002.pdf",
+                "No 2 December 4 2026"),
+            row("2026", "HC 41.pdf", "calendars/2026/HC041.pdf", "No 41 November 6 2026"),
+            row("2007", "SC 45.pdf", "calendars_senate/2007/SC 45.pdf", "", "S"),
+            row("2026", "HJ 01 January 7, 2026.pdf", "journals/2026/HJ 01 January 7, 2026.pdf",
+                "HJ 01 January 7, 2026", "H", "journal"),
+            # A House Calendar of 2025 kept under a source name of another form, whose label
+            # the list has filled in since: not the case at hand, and left as it is.
+            row("2025", "No13aFebruary 21 2025.pdf", "calendars/2025/No13aFebruary 21 2025.pdf",
+                "No 13a February 21 2025")])
+
+        # The night, the list not asked for (the bill requests' fetch did not complete).
+        code, out = run(["fetch_committee_reports.py", "--year", "2027", "--offline", "--text",
+                         "--out", "reports.json"])
+        assert code in (0, None), f"the night's calendar under its own name: exit {code}: {out[-300:]}"
+        NI.EXITS.clear()
+        NI.EXITS["fetch_lsrs.py"] = 1
+        NI.LOG, NI.QUIET = [], True
+        with contextlib.redirect_stdout(io.StringIO()):
+            said = NI.take_documents({})
+        paths = {r["name"]: r["path"] for r in CA.read_rows(Path("archive") / "queue.csv")}
+        assert said.startswith("not asked for") and paths == {
+            "HC 1.pdf": "calendars/2027/HC001.pdf", "HC 2.pdf": "calendars/2027/HC 2.pdf",
+            "No 2 December 4 2026.pdf": "calendars/2027/HC002.pdf",
+            "HC 41.pdf": "calendars/2026/HC041.pdf",
+            "SC 45.pdf": "calendars_senate/2007/SC 45.pdf",
+            "HJ 01 January 7, 2026.pdf": "journals/2026/HJ 01 January 7, 2026.pdf",
+            "No13aFebruary 21 2025.pdf": "calendars/2025/No13aFebruary 21 2025.pdf"}, (said, paths)
+        assert (y27 / "HC001.txt").read_text(encoding="utf-8") == _FIRST_CALENDAR and \
+            not (y27 / "HC 1.txt").exists() and (sen / "SC 45.txt").exists(), (
+            "the text was not moved with its row, or a Senate calendar's was")
+        assert any("calendars/2027/HC 1.pdf put under the archive's name" in ln for ln in NI.LOG) \
+            and any("calendars/2027/HC 2.pdf left under its own name" in ln for ln in NI.LOG), NI.LOG
+        assert CA.renumber(Path("archive") / "queue.csv") == ([], ["calendars/2027/HC 2.pdf"]), (
+            "a second night moved something")
+
+        # The committee reports of 2027: the renamed HC001, a calendar under the General Court's
+        # own name, and the same reports reprinted in HC 10, kept at their first printing.
+        (y27 / "HC 10.txt").write_text(CALENDAR_PAGE, encoding="utf-8")
+        (y27 / "HC002.txt").rename(y27 / "HC 2.txt")
+        Path("reports.json").unlink(missing_ok=True)
+        code, out = run(["fetch_committee_reports.py", "--year", "2027", "--offline", "--text",
+                         "--out", "reports.json"])
+        rep = json.loads(Path("reports.json").read_text(encoding="utf-8")).get("2027-2028", {})
+        assert code in (0, None) and "offline: 3 calendars" in out and sorted(rep) == [
+            "HB1418", "HB1419"] and all(r["source"] == "House Calendar 2, 2027"
+                                        for v in rep.values() for r in v), (code, out[-400:], rep)
+
+        # The interim statements, from a calendar under the General Court's own name.
+        (y27 / "HC 3.txt").write_text(_FIRST_CALENDAR + _FIRST_INTERIM, encoding="utf-8")
+        data, _held, _per = IS.read(".")
+        st = (data.get("2027-2028") or {}).get("HB312") or [{}]
+        assert st[0].get("source") == "House Calendar 3, 2027", (
+            f"the interim statement of a calendar named HC 3: {data.get('2027-2028')}")
+    finally:
+        os.chdir(here)
+        sys.argv = saved[0]
+        NI.EXITS.clear()
+        NI.EXITS.update(saved[1])
+        NI.LOG, NI.QUIET = saved[2], saved[3]
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("a House Calendar \"HC 1.pdf\" is HC001.pdf, a name with no number and the Senate's "
+                  "and the journals' source names kept; the night's take renamed the 25 November row "
+                  "and its text before the list, kept a row whose name another has, a Senate "
+                  "calendar and a journal, and moved nothing the night after; the 2027 "
+                  "committee reports read from HC 1 as it was, and from HC001, HC 2 and HC 10 at "
+                  "their first printing; an interim statement of HC 3 is House Calendar 3")
 
 
 @check("build", "a fetch writes the term it was asked for")

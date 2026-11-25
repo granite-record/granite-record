@@ -25749,8 +25749,8 @@
    "state": "draft"
   },
   "off.roster_src": {
-   "en": "Kept by hand, read from the Secretary of State&rsquo;s county roster for 2025&ndash;2026, dated {day}",
-   "es": "Se mantiene a mano, leído de la lista de funcionarios de los condados de la Secretaría de Estado para 2025&ndash;2026, con fecha del {day}",
+   "en": "Kept by hand, read from the Secretary of State&rsquo;s county roster for {term}, dated {day}",
+   "es": "Se mantiene a mano, leído de la lista de funcionarios de los condados de la Secretaría de Estado para {term}, con fecha del {day}",
    "state": "draft"
   },
   "off.seats": {

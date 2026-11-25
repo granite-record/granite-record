@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.37
+# GRANITE_VERSION: 2026-09-04.38
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -253,6 +253,10 @@ HIDDEN_RE = re.compile(r"<input\b[^>]*type=[\"']hidden[\"'][^>]*>", re.I)
 ATTR_RE = re.compile(r"([\w:-]+)\s*=\s*[\"']([^\"']*)[\"']")
 # "No 32 September 4 2026", "No10A March 6 2026", "No 8a February 20 2026"
 DOCNUM_RE = re.compile(r"\bNo\s*(\d+[A-Za-z]?)\b")
+# A House Calendar on this disk, by its file's name: the archive's "HC010.pdf"
+# and "HC027A.pdf", and the General Court's own "HC 1.pdf", which a document
+# keeps where its list names no number (fetch_calendar_archive._local).
+CALENDAR_FILE = re.compile(r"HC\s*0*(\d+)([A-Za-z]*)\.pdf$")
 WS = re.compile(r"\s+")
 
 
@@ -634,10 +638,17 @@ def main():
             # there a year's calendars are their .txt files; read here by the
             # PDF's own name, so every source line is what it was.
             found |= {t.with_suffix(".pdf") for t in cache.glob("HC*.txt")}
-        for f in sorted(found):
-            m = re.match(r"HC0*(\d+)([A-Z]*)\.pdf$", f.name)
+        # A CALENDAR UNDER THE GENERAL COURT'S OWN NAME IS ONE TOO (25 November
+        # 2026): the 2027 session's first, "HC 1", was kept as its list named it
+        # (fetch_calendar_archive._local), and this read only "HC001", found no
+        # calendar in calendars/2027/ and stopped the night's re-read of the
+        # year. In the calendars' own order, so a report printed twice keeps
+        # its first printing whatever the files are called.
+        for f in found:
+            m = CALENDAR_FILE.match(f.name)
             if m:
-                targets.append((f"{m.group(1)}{m.group(2)}", f))
+                targets.append((f"{m.group(1)}{m.group(2).upper()}", f))
+        targets.sort(key=lambda t: calendar_order(t[0]))
         if not targets:
             sys.exit(f"--offline, and no calendars in {cache}/ to read.")
         print(f"offline: {len(targets)} calendars from {cache}/, no requests")
@@ -698,9 +709,9 @@ def main():
         # could reach the General Court to be told about it again.
         have = {str(x[0]) for x in targets}
         for f in sorted(cache.glob("HC*.pdf")):
-            m = re.match(r"HC0*(\d+)([A-Z]*)\.pdf$", f.name)
-            if m and f"{m.group(1)}{m.group(2)}" not in have:
-                targets.append((f"{m.group(1)}{m.group(2)}", f))
+            m = CALENDAR_FILE.match(f.name)
+            if m and f"{m.group(1)}{m.group(2).upper()}" not in have:
+                targets.append((f"{m.group(1)}{m.group(2).upper()}", f))
         if not urls and targets:
             print(f"  {len(targets)} calendars read from {cache}/")
 
