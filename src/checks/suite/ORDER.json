@@ -716,6 +716,7 @@
 "_calendar_every_week",
 "_calendar_every_weekday",
 "_pager_labels",
+"_calendar_week_order",
 "_calendar_study_committees",
 "_calendar_study_hidden_once",
 "_study_committee_pages",

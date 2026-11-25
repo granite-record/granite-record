@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.32
+# GRANITE_VERSION: 2026-11-16.33
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -6414,8 +6414,8 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(Q(".calhead h1").textContent==="The Week of March 16–20, 2026", "the heading: "+Q(".calhead h1").textContent);
   ok(W.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance", "the week of 16 March lists "+W.keys());
   ok((Q(".calday.calsel",$("calview"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-18", "the list does not mark the day chosen");
-  ok(QA(".calhead .wknav a").map(a=>a.getAttribute("href")).join()==="/calendar,/calendar,/calendar/2026-W13",
-     "the arrows: "+QA(".calhead .wknav a").map(a=>a.getAttribute("href")));
+  ok(QA(".calmain .wknav a").map(a=>a.getAttribute("href")).join()==="/calendar,/calendar,/calendar/2026-W13",
+     "the arrows: "+QA(".calmain .wknav a").map(a=>a.getAttribute("href")));
   // The rest of the page names the week shown, by its own page's address,
   // which is what is indexed: the citation's four forms, the canonical link,
   // og:url; and the skip link stays on this page.
@@ -6452,24 +6452,32 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(drawnAs("https://graniterecord.org/<wbr>","calendar"),
      "back on this week, its address in the citation is not drawn as shell.cite_url draws it: "
      +QA(".pcite .citeurl").map(u=>u.innerHTML).join(" | "));
-  // THE ARROWS KEEP FOCUS. The week after, from the head's arrows, then This
-  // week from the foot's: the same arrow in the new ones, and the heading
+  // THE ARROWS KEEP FOCUS. The week after, then This week, from the arrows
+  // over the schedule (in the head until 25 November 2026, and a second set
+  // at the foot until 8 November): the same arrow in the new ones, and the heading
   // where that arrow is gone. Each is a week on the calendar's own address.
   const arrow=(where,cls)=>Q(where+" a."+cls);
-  arrow(".calhead .wknav","wknext").focus(); arrow(".calhead .wknav","wknext").click(); await W.step();
-  ok(W.addr()==="/calendar?week=2026-W12" && D.activeElement===arrow(".calhead .wknav","wknext"),
+  arrow(".calmain .wknav","wknext").focus(); arrow(".calmain .wknav","wknext").click(); await W.step();
+  ok(W.addr()==="/calendar?week=2026-W12" && D.activeElement===arrow(".calmain .wknav","wknext"),
      "The week after dropped focus, or left the calendar's address: "+W.addr()+" "+D.activeElement.tagName+"."+D.activeElement.className);
   ok(W.sel()==="2026-03-18", "The week after did not open the week on its first sitting: "+W.sel());
-  arrow(".calhead .wknav","wkhere").focus(); arrow(".calhead .wknav","wkhere").click(); await W.step();
-  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar?week=2026-W11" && !arrow(".calhead .wknav","wkhere")
+  arrow(".calmain .wknav","wkhere").focus(); arrow(".calmain .wknav","wkhere").click(); await W.step();
+  ok(W.sel()==="2026-03-11" && W.addr()==="/calendar?week=2026-W11" && !arrow(".calmain .wknav","wkhere")
      && D.activeElement===Q(".calhead h1") && Q(".calhead h1").getAttribute("tabindex")==="-1",
      "This week, which is gone on this week, dropped focus: it is on "+D.activeElement.tagName+"."+D.activeElement.className+" at "+W.addr());
-  arrow(".calhead .wknav","wknext").focus(); arrow(".calhead .wknav","wknext").click(); await W.step();
-  ok(D.activeElement===arrow(".calhead .wknav","wknext"), "the head's The week after dropped focus");
-  arrow(".calhead .wknav","wkprev").focus(); arrow(".calhead .wknav","wkprev").click(); await W.step();
-  ok(W.sel()==="2026-03-11" && D.activeElement===arrow(".calhead .wknav","wkprev"), "The week before dropped focus");
+  arrow(".calmain .wknav","wknext").focus(); arrow(".calmain .wknav","wknext").click(); await W.step();
+  ok(D.activeElement===arrow(".calmain .wknav","wknext"), "the arrows' The week after dropped focus");
+  arrow(".calmain .wknav","wkprev").focus(); arrow(".calmain .wknav","wkprev").click(); await W.step();
+  ok(W.sel()==="2026-03-11" && D.activeElement===arrow(".calmain .wknav","wkprev"), "The week before dropped focus");
   // ---- the week, the day ----
   W.view("week").click(); await W.settle();
+  // THE ARROWS STAY STRAIGHT ABOVE THE SCHEDULE IN THE WEEK VIEW (the owner,
+  // 25 November 2026): one set, in the schedule's column, the view right under
+  // them, previous before next -- not the view's to redraw.
+  const nav7=Q(".calmain .wknav"), sibs7=nav7?nav7.parentNode.children:[];
+  ok(nav7 && QA(".wknav").length===1 && sibs7[sibs7.indexOf(nav7)+1]===$("calview")
+     && QA("a",nav7).map(a=>a.className).filter(c=>c==="wkprev"||c==="wknext").join()==="wkprev,wknext",
+     "in the Week view the arrows are not one set straight above the schedule, previous before next");
   // MONDAY TO FRIDAY, beside the month (9 October 2026): a column a day,
   // each the day's meetings in brief, and a Saturday whose one meeting is
   // hidden is no column.
@@ -6696,7 +6704,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // the mark follows, and the address still names no day; in the Day view
   // the day being read stays, and the address names it. Either way a reload
   // opens what was on the screen.
-  const prev2=W2.Q(".calhead .wknav a.wkprev"); prev2.focus(); prev2.click(); await W2.step();
+  const prev2=W2.Q(".calmain .wknav a.wkprev"); prev2.focus(); prev2.click(); await W2.step();
   ok(W2.sel()==="2026-03-10" && W2.addr()==="/calendar?week=2026-W11", "the week before opens on "+W2.sel()+" at "+W2.addr());
   await W2.tick("hearing",false); await W2.tick("exec",false);
   ok(W2.sel()==="2026-03-11" && W2.addr()==="/calendar?week=2026-W11&kinds=work,conf,floor,date",
@@ -6721,23 +6729,23 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const t4=W4.Q('td[tabindex="0"]',W4.$("cmgrid")); t4.focus(); t4.dispatchEvent(W4.ev("keydown",{key:"ArrowDown"})); await W4.settle();
   ok(!side4.classList.contains("folded") && !W4.store.has("gr.calendar.fold"), "an arrow key's unfolding was remembered as the reader's choice");
   // ---- a key on an arrow keeps the arrow in view; a click shows the day ----
-  // The head's arrows near the top of a long page, the foot's far down it,
+  // The arrows near the top of a long page, over the schedule, the rule under it far down,
   // and the day chosen between them.
-  const L=(el)=>el.matches(".calhead .wknav a")?150:el.matches(".calend")?3000
+  const L=(el)=>el.matches(".calmain .wknav a")?150:el.matches(".calend")?3000
     :el.matches(".calday.calsel")?1400:undefined;
   const W5=world("calendar.html","/calendar",{layout:L});
   await W5.run();
   const seen5=(el)=>{ const r=el.getBoundingClientRect(); return r.top>=0 && r.bottom<=800; };
   const press=async(el)=>{ el.focus(); el.dispatchEvent(W5.ev("click",{button:0,detail:0})); await W5.step(); };
-  await press(W5.Q(".calhead .wknav a.wknext"));
-  ok(W5.addr()==="/calendar?week=2026-W12" && W5.doc.activeElement===W5.Q(".calhead .wknav a.wknext")
+  await press(W5.Q(".calmain .wknav a.wknext"));
+  ok(W5.addr()==="/calendar?week=2026-W12" && W5.doc.activeElement===W5.Q(".calmain .wknav a.wknext")
      && seen5(W5.doc.activeElement),
-     "Enter on the head's The week after scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
-  await press(W5.Q(".calhead .wknav a.wkprev"));
-  ok(W5.addr()==="/calendar?week=2026-W11" && W5.doc.activeElement===W5.Q(".calhead .wknav a.wkprev")
+     "Enter on the arrows' The week after scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
+  await press(W5.Q(".calmain .wknav a.wkprev"));
+  ok(W5.addr()==="/calendar?week=2026-W11" && W5.doc.activeElement===W5.Q(".calmain .wknav a.wkprev")
      && seen5(W5.doc.activeElement),
-     "Enter on the head's The week before scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
-  const nx5=W5.Q(".calhead .wknav a.wknext"); nx5.focus(); nx5.click(); await W5.step();
+     "Enter on the arrows' The week before scrolled it off the screen: top "+W5.doc.activeElement.getBoundingClientRect().top);
+  const nx5=W5.Q(".calmain .wknav a.wknext"); nx5.focus(); nx5.click(); await W5.step();
   ok(W5.Q(".calday.calsel",W5.$("calview")).getBoundingClientRect().top===0,
      "a click on The week after no longer brings the day chosen into view");
   // ---- a month file that does not load ----
@@ -6748,7 +6756,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   const W6=world("calendar.html","/calendar",{files:(url)=>/\/calendar\/data\/2026-/.test(url)?null
     :(fs.existsSync(path.join(SITE,url.replace(/^\//,"")))?fs.readFileSync(path.join(SITE,url.replace(/^\//,"")),"utf8"):null)});
   await W6.run();
-  const n6=W6.Q(".calhead .wknav a.wknext"); n6.focus(); n6.dispatchEvent(W6.ev("click",{button:0,detail:0}));
+  const n6=W6.Q(".calmain .wknav a.wknext"); n6.focus(); n6.dispatchEvent(W6.ev("click",{button:0,detail:0}));
   await W6.step();
   const said6=W6.Q("p.calempty",W6.$("calview")), link6=said6&&W6.Q("a",said6);
   ok(W6.addr()==="/calendar?week=2026-W12" && W6.Q(".calhead h1").textContent==="The Week of March 16–20, 2026"
@@ -6828,7 +6836,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   await WA.run();
   ok(WA.sel()==="2026-03-03" && WA.addr()==="/calendar/2026-W10" && WA.Q("a.skip").getAttribute("href")==="/calendar/2026-W10#results",
      "a week's own page does not open on its week at its own address: "+WA.sel()+" "+WA.addr());
-  const na=WA.Q(".calhead .wknav a.wknext"); na.focus(); na.click(); await WA.step();
+  const na=WA.Q(".calmain .wknav a.wknext"); na.focus(); na.click(); await WA.step();
   ok(WA.addr()==="/calendar?week=2026-W11" && WA.sel()==="2026-03-11" && WA.G.history.length===2,
      "the first move from a week's own page is at "+WA.addr());
   WA.G.history.back(); await WA.step();
@@ -6838,7 +6846,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // the calendar keeps to that name, so a reload there finds the page.
   const WB=world("calendar/2026-W10.html","/calendar/2026-W10.html");
   await WB.run();
-  const nb=WB.Q(".calhead .wknav a.wknext"); nb.focus(); nb.click(); await WB.step();
+  const nb=WB.Q(".calmain .wknav a.wknext"); nb.focus(); nb.click(); await WB.step();
   ok(WB.addr()==="/calendar.html?week=2026-W11", "a page reached by its file's name moved to "+WB.addr());
   // ---- the skip link's step in the history ----
   // A fragment is a step of history too. Back from it leaves the address
@@ -6846,7 +6854,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // to stays.
   WA.$("cmnext").click(); await WA.settle();
   WA.G.history.pushState(null,"",WA.G.location.pathname+WA.G.location.search+"#results");
-  WA.Q(".calhead .wknav a.wknext").click(); await WA.step();
+  WA.Q(".calmain .wknav a.wknext").click(); await WA.step();
   WA.$("cmnext").click(); await WA.settle();
   const shown=WA.keys().join();
   WA.G.history.pushState(null,"",WA.G.location.pathname+WA.G.location.search+"#results");

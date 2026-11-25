@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.7
+# GRANITE_VERSION: 2026-11-16.8
 """
 preflight's checks of the calendar.
 
@@ -1347,11 +1347,14 @@ def _calendar_documents():
                 f"{f}: the week's heading still carries the summary or the link down: {head[:300]}")
             # CITE THIS PAGE UNDER THE WEEK'S LINE (the audit of 25 October
             # 2026, S9), once, not alone above the heading; naming the week
-            # at the address both copies of this week name as theirs.
+            # at the address both copies of this week name as theirs. The
+            # arrows under it went to the top of the schedule on 25 November
+            # 2026 (_calendar_week_order).
             cite = head.find('<div class="pageacts" id="pageacts">')
             assert t.count('class="pcite"') == 1 and \
-                head.find('<p class="src">') < cite < head.find('<nav class="wknav"'), (
-                f"{f}: Cite this page is not under the week's line, once, above its arrows")
+                0 <= head.find('<p class="src">') < cite and '<nav class="wknav"' not in head, (
+                f"{f}: Cite this page is not under the week's line, once, or the arrows are "
+                "still in the week's head")
             canon = re.search(r'<link rel="canonical" href="([^"]+)"', t).group(1)
             assert canon in _cite_plain(head[cite:]), (
                 f"{f}: the citation does not name the week at {canon}")
@@ -2453,6 +2456,95 @@ def _pager_labels():
     return "ok", (f"{len(files)} builders, scripts and words files write none of the old "
                   "labels; a week's page and the Calendar's script, a session day's pager "
                   "and Coming up say the new ones, and the floor is House Session Day")
+
+
+@check("frontend", "a week's page reads in the owner's order: its heading and Cite this page, the view "
+                   "switch, the count and the kinds of meeting, then Previous Week and Next Week "
+                   "straight above the schedule's first day, in English and in Spanish")
+def _calendar_week_order():
+    """The owner, 25 November 2026, of "The Week of November 23-27, 2026": "it would
+    be good to move the next week and previous week selectors to be above the
+    actual schedule since there's a lot of filters and other info between them
+    right now."
+
+    Held on a week's page as build_calendar.week_page writes it, in both
+    languages: the week's head is its heading, its line and (in English) Cite
+    this page, and carries no arrows; the schedule's column is the view switch,
+    the count and Reset filters, the boxes of the kinds of meeting and the key a
+    reader without script is given, then the arrows -- one set -- then the
+    schedule from its first day, then the rule under it. The arrows stand outside
+    #calview, which the script redraws for the List and the Week views alike, so
+    both have them above (_calendar_in_a_dom holds that in the Week view);
+    Previous Week comes before This Week and Next Week, each of the two with the
+    week it leads to under it, and the stylesheet keeps previous on the left and
+    next on the right at every width, a phone's included.
+
+    The home page's Coming up draws the same cards (build_pages.cal_days) and
+    none of this frame: it is its own block (build_pages.calendar_html), and its
+    order is as it was."""
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    if not Path("src/pages/bills.html").exists():
+        return "skip", "bills.html is not here"
+    css = _source("src/pages/app.css")
+    grid = _braced(css, ".wknav,.calstep{")
+    assert 'grid-template-areas:"p m n"' in grid \
+        and ".wknav .wkprev,.calstep .wkprev{grid-area:p;justify-self:start}" in css \
+        and ".wknav .wknext,.calstep .wknext{grid-area:n;justify-self:end;" in css \
+        and re.search(r'@media \(max-width:30em\)\{\s*\.wknav,\.calstep\{grid-template-columns:'
+                      r'minmax\(0,1fr\) minmax\(0,1fr\);grid-template-areas:"p n" "m m"\}', css), (
+        "the arrows do not keep previous on the left and next on the right at every width")
+    root = Path(tempfile.mkdtemp(prefix="gr-calorder-"))
+    try:
+        today = _dt.date(*CAL_TODAY)
+        weeks = BC.weeks_from(_cal_rows(), names={})
+        events = BC.key_date_days(weeks, today)
+        BC.every_week(weeks, today)
+        order = sorted(weeks)
+        site = root / "site"
+        site.mkdir()
+        shutil.copy(Path("src/pages/bills.html"), site / "bills.html")
+        # The week after this one: Previous Week, This Week and Next Week all drawn.
+        k = order[order.index(BC.week_key(today)) + 1]
+        with contextlib.redirect_stdout(io.StringIO()):
+            for lang in ("en", "es"):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, order, order.index(k),
+                             {}, {}, {}, [], today, set(), study=True, events=events, lang=lang)
+        for lang, f in (("en", site / "calendar" / f"{k}.html"),
+                        ("es", site / "es" / "calendar" / f"{k}.html")):
+            t = f.read_text(encoding="utf-8")
+            head = t[t.index('<div class="calhead">'):t.index('<div class="calside"')]
+            main = t[t.index('<div class="calmain">'):t.index('<div class="calpeek"')]
+            assert "wknav" not in head and "wkprev" not in head \
+                and 0 <= head.find("<h1>") < head.find('<p class="src">'), (
+                f"{lang}: the week's head is not its heading and its line, without the arrows")
+            assert (lang != "en") or head.find('<p class="src">') < head.find(
+                '<div class="pageacts" id="pageacts">'), f"{lang}: Cite this page is not under the line"
+            seq = ('<div class="calbar" id="calbar" hidden>', 'id="wkcount"', 'id="calreset"',
+                   '<fieldset class="calcats" id="calcats" hidden>', '<ul class="calkey"',
+                   '<nav class="wknav"', '<div class="calview" id="calview">', 'class="calday',
+                   '<hr class="calend">')
+            at = [main.find(s) for s in seq]
+            assert min(at) >= 0 and at == sorted(at), (
+                f"{lang}: the schedule's column does not read the switch, the count, Reset, the "
+                f"boxes, the key, the arrows, the schedule and its first day, then the rule: {at}")
+            sets = t.count('<nav class="wknav"')
+            assert sets == 1, f"{lang}: {sets} sets of arrows on the week's page"
+            nav = main[at[5]:main.index("</nav>", at[5]) + len("</nav>")]
+            assert main[at[5] + len(nav):].startswith('<div class="calview" id="calview">'), (
+                f"{lang}: something stands between the arrows and the schedule")
+            links = re.findall(r'<a class="(wkprev|wkhere|wknext)" href="[^"]*">(.*?)</a>', nav)
+            assert [c for c, _x in links] == ["wkprev", "wkhere", "wknext"] and all(
+                '<span class="wkpd">' in x for c, x in links if c != "wkhere"), (
+                f"{lang}: the arrows are not Previous Week, This Week and Next Week in that order, "
+                f"each of the two with its week: {links}")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"the week of {k} in English and Spanish: the heading and its line with no arrows; "
+                  "the switch, count, Reset, boxes and key; Previous, This and Next Week straight "
+                  "above the schedule and its first day; previous left and next right at every width")
 
 
 @check("frontend", "study and statutory committees are on the calendar, named, and off until a reader ticks them")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.60
+# GRANITE_VERSION: 2026-09-18.61
 """
 The General Court's week, one page per week.
 
@@ -1371,7 +1371,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     scripts = (week_js(lang),)
     # THE PAGE IS THE WEEK AS A LIST, AND THE SCRIPT MAKES IT A CALENDAR.
     # Without script this reads exactly as it did: the week's heading, its
-    # lead, the arrows, the key to the colours and every day in order. With
+    # lead, the key to the colours, the arrows and every day in order. With
     # it, the month grid and the filters come up down the left, the key
     # becomes the row of boxes that is also the filter, and the list becomes
     # one of three views over the same cards. On every week, empty ones
@@ -1402,9 +1402,9 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                 if lang == i18n.DEFAULT else "")
              # NO LINK DOWN TO THE CALENDARS & JOURNALS (F11), and since 25
              # November 2026 no section of them: they are at the top of their
-             # own page, the Calendar row's Calendars and journals tab.
-             + f'<nav class="wknav" aria-label="{say(lang, "calp.other_weeks", "Other weeks")}">'
-             f'{"".join(nav)}</nav>'
+             # own page, the Calendar row's Calendars and journals tab. AND NO
+             # ARROWS HERE since the same day: they are straight above the
+             # schedule (below).
              # THE NEXT ELECTION'S DATES (the owner, 19 November 2026: "The general info on
              # upcoming election deadlines should be included on the calendar"): its
              # filing period, primary and general, on every week, however far off --
@@ -1415,6 +1415,17 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              + '<div class="calmain">'
              + (BAR_HTML if lang == i18n.DEFAULT else bar_html(lang))
              + cats_html(lang)
+             # THE ARROWS STRAIGHT ABOVE THE SCHEDULE (the owner, 25 November
+             # 2026: "move the next week and previous week selectors to be
+             # above the actual schedule since there's a lot of filters and
+             # other info between them right now"): under the view switch, the
+             # count and the boxes, over the first day. Outside #calview, which
+             # the script redraws for the List and the Week views alike, so
+             # both have them above; WEEK_JS redraws them wherever they are in
+             # the frame (.wknav under #calapp). Previous on the left and next
+             # on the right at every width (app.css, .wknav).
+             + f'<nav class="wknav" aria-label="{say(lang, "calp.other_weeks", "Other weeks")}">'
+             f'{"".join(nav)}</nav>'
              + f'<div class="calview" id="calview">{body}</div>'
              # ONE SET OF ARROWS, AT THE TOP, AND A RULE UNDER THE LIST (the
              # owner's walk of dry run 9, 8 November 2026), so the schedule

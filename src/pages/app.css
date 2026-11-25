@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.423 */
+/* GRANITE_VERSION: 2026-09-07.424 */
 /* ONE STYLESHEET FOR EVERY PAGE (23 October 2026). Every page of the site
    links this file, /app.css: the record pages shell.page() makes from
    bills.html, and the five build_pages.py writes -- the home page, Officials,
@@ -6182,10 +6182,11 @@ text-decoration-thickness:1px;text-underline-offset:3px}
   .wknav,.calstep{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"p n" "m m"}
 }
 
-/* NARROWING A WEEK. The controls sit between the week's arrows and its days,
-   because that is the order a reader uses them in: which week, then which of
-   it. They are emitted hidden and the page's own script unhides them, so a
-   reader without one never meets a control that does nothing. */
+/* NARROWING A WEEK. The controls sit above the week's arrows and its days
+   (the owner, 25 November 2026, put the arrows straight above the schedule,
+   under the view switch and the boxes, and not above all of them). They are
+   emitted hidden and the page's own script unhides them, so a reader without
+   one never meets a control that does nothing. */
 .wkfilter{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--sp-4);
 margin:0 0 var(--sp-6);padding:var(--sp-4) 0}
 .wkfilter[hidden]{display:none}
