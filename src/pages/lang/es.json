@@ -8241,6 +8241,11 @@
    "es": "Declaración sobre el fallo judicial acerca del HB 1569, 29 de mayo de 2026 (Secretaría de Estado)",
    "state": "draft"
   },
+  "guide.how-to-vote.the-rules-on-proof-have-changed": {
+   "en": "<b>The rules on proof have changed more than once in 2026, and the courts are still involved.</b> The Secretary of State's page is the official word: check it before you go. On November 24, 2026 it still said that if you lack the documents to prove your citizenship, you may sign a qualified voter affidavit instead, subject to the penalties for voter fraud, as a court order of May 28, 2026 allowed again. The affidavit covers citizenship and nothing else: you still need proof of identity, age and domicile.",
+   "es": "<b>Las reglas sobre las pruebas han cambiado más de una vez en 2026, y los tribunales siguen interviniendo.</b> La página de la Secretaría de Estado es la fuente oficial: consúltela antes de ir. El 24 de noviembre de 2026 seguía diciendo que, si le faltan los documentos para probar su ciudadanía, puede firmar en su lugar una declaración jurada de votante calificado (qualified voter affidavit), sujeta a las sanciones por fraude electoral, como volvió a permitirlo una orden judicial del 28 de mayo de 2026. La declaración jurada cubre la ciudadanía y nada más: sigue necesitando pruebas de identidad, edad y domicilio.",
+   "state": "draft"
+  },
   "guide.how-to-vote.the-secretary-of-states-voter": {
    "en": "The Secretary of State&rsquo;s voter information lookup tells you whether you are registered and where your polling place is.",
    "es": "La búsqueda de información para votantes de la Secretaría de Estado le dice si está inscrito y dónde está su lugar de votación.",
@@ -8254,11 +8259,6 @@
   "guide.how-to-vote.there-is-no-minimum-time-you": {
    "en": "There is no minimum time you must have lived there first.",
    "es": "No hay un tiempo mínimo que deba haber vivido allí antes.",
-   "state": "draft"
-  },
-  "guide.how-to-vote.this-changed-in-2026-and-the": {
-   "en": "<b>This changed in 2026, and the courts are still involved.</b> What you may use as proof has changed more than once this year and may change again before the election. The Secretary of State's page is the official word: check it before you go. On October 24, 2026 it still said that if you lack the documents to prove your citizenship, you may sign a qualified voter affidavit instead, subject to the penalties for voter fraud, as a court order of May 28, 2026 allowed again. The affidavit covers citizenship and nothing else: you still need proof of identity, age and domicile.",
-   "es": "<b>Esto cambió en 2026, y los tribunales siguen interviniendo.</b> Lo que puede usar como prueba ha cambiado más de una vez este año y puede volver a cambiar antes de la elección. La página de la Secretaría de Estado es la fuente oficial: consúltela antes de ir. El 24 de octubre de 2026 seguía diciendo que, si le faltan los documentos para probar su ciudadanía, puede firmar en su lugar una declaración jurada de votante calificado (qualified voter affidavit), sujeta a las sanciones por fraude electoral, como volvió a permitirlo una orden judicial del 28 de mayo de 2026. La declaración jurada cubre la ciudadanía y nada más: sigue necesitando pruebas de identidad, edad y domicilio.",
    "state": "draft"
   },
   "guide.how-to-vote.title": {

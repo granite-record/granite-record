@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of Learn, the guides, civics and the numbers pages.
 
@@ -1915,6 +1915,47 @@ def _vote_guide_stayed_orders(G):
     assert not bad, "; ".join(bad[:4])
     return "ok", (f"{read:,} sentences of {len(G.GUIDES)} guides read; none names "
                   f"{' or '.join(G.STAYED_ORDERS)} as in force")
+
+
+@check("build", "How to Vote's note on proof gives the day of the Secretary of State's page it rests on, in "
+                "English and in its Spanish draft, and speaks of no election still to come once that year's "
+                "has passed", needs=("guides", "i18n", "build_date"))
+def _vote_guide_note_dated(G, i18n, build_date):
+    """The owner, 24 November 2026, "Yes, fix it now": the note on proof still
+    said the rules "may change again before the election", three weeks after
+    the general election of 3 November. The note says what the Secretary of
+    State's page said on the day it was read ("On November 24, 2026 it still
+    said ..."), and that day is the day of the claim it rests on, SOS_PROOF's
+    affidavit claim: so the two are held to one day; the note's Spanish draft
+    says the same day ("24 de noviembre de 2026"); and from the day after the
+    general election of the year the page was read in, by the build's day,
+    the note says nothing of "before the election" in either language."""
+    import datetime
+    from build_members_elect import general_election
+    g = next(g for g in G.GUIDES if g["slug"] == "how-to-vote")
+    note = next(s for s in g["steps"] if s["title"] == "Bring proof of four things")["note"]
+    m = re.search(r"On ([A-Z][a-z]+ \d{1,2}, \d{4}) it still said", note)
+    assert m, "How to Vote's note on proof no longer says the day the Secretary of State's page was read"
+    day = datetime.datetime.strptime(m.group(1), "%B %d, %Y").date()
+    rests = [c["checked"] for c in g["claims"]
+             if c["source"] == G.SOS_PROOF and "qualified voter affidavit" in c["says"]]
+    assert rests == [day.isoformat()], (
+        f"the note says the page was read on {day}, and the claim it rests on is dated {rests}")
+    key = G.page_keys("how-to-vote").get(i18n.norm(note))
+    entry = i18n.catalog("es").get("strings", {}).get(key) or {}
+    months = ("enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre "
+              "diciembre").split()
+    said = f"{day.day} de {months[day.month - 1]} de {day.year}"
+    assert key and entry.get("en") == i18n.norm(note) and said in (entry.get("es") or ""), (
+        f"the note's Spanish draft ({key}) is not of its English, or does not say {said}")
+    held = general_election(day.year)
+    past = build_date.today() > held
+    if past:
+        assert "before the election" not in note and "antes de la elección" not in entry["es"], (
+            f"the note still speaks of the election as to come, and the general election of "
+            f"{held} has passed")
+    return "ok", (f"the note's day, {m.group(1)}, is its claim's and its Spanish draft's ({said})"
+                  + (f"; nothing of before the election, which was {held}" if past else ""))
 
 
 @check("build", "the glossary page lists every glossary.json entry once, by its name in full, "

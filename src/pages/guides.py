@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-11.71
+# GRANITE_VERSION: 2026-10-11.72
 """
 The how-to guides: their words, their sources, and what each was checked
 against. Read by build_civics.py, which draws them on the Resources hub's
@@ -517,10 +517,13 @@ VOTING = guide(
           # are still deciding them, so the note sends the reader to the
           # Secretary of State's page first, and gives what that page said on
           # the day it was read as that, and dated.
-          note="<b>This changed in 2026, and the courts are still involved.</b> What you may "
-               "use as proof has changed more than once this year and may change again before "
-               "the election. The Secretary of State's page is the official word: check it "
-               "before you go. On October 24, 2026 it still said that if you lack the documents "
+          # AND NOT "BEFORE THE ELECTION" (the owner, 24 November 2026: "Yes, fix
+          # it now", the language sweep's rewrite): the election of 3 November
+          # had passed, so the note opens on the rules having changed, and its
+          # day is the page's fresh read of 24 November (the claim below).
+          note="<b>The rules on proof have changed more than once in 2026, and the courts are "
+               "still involved.</b> The Secretary of State's page is the official word: check it "
+               "before you go. On November 24, 2026 it still said that if you lack the documents "
                "to prove your citizenship, you may sign a qualified voter affidavit instead, "
                "subject to the penalties for voter fraud, as a court order of May 28, 2026 "
                "allowed again. The affidavit covers citizenship and "
@@ -588,10 +591,12 @@ VOTING = guide(
            "certified NH vital record for voter registration only; a free photo ID for voting "
            "from the DMV with a voucher from the clerk or Secretary of State; every voter shows "
            "proof of identity to get a ballot.", SOS_PROOF, CHECKED),
-     # Read again on 24 October 2026, in the person's PDF of the page that day.
+     # Read again on 24 November 2026, in a browser on the laptop, with the text
+     # kept at guides/sources/2026-11-24/ (before that on 24 October 2026, in the
+     # person's PDF of the page that day).
      claim("Citizenship only may be proven by a qualified voter affidavit, subject to the "
            "penalties for voter fraud, by a citizen without some or all of the documents; no "
-           "affidavit for identity, age or domicile.", SOS_PROOF, "2026-10-24"),
+           "affidavit for identity, age or domicile.", SOS_PROOF, "2026-11-24"),
      claim("May 28, 2026 order: the affidavit is back for citizenship only, not identity, age or "
            "domicile; proof of identity still needed for a ballot.", SOS_HB1569, CHECKED),
      claim("A voter presents proof of identity to the ballot clerk to receive a ballot.",
