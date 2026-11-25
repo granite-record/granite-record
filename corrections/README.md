@@ -19,6 +19,7 @@ it is, what it is for and how an entry is added.
 | `status/status.txt` | the state of the session -- session days, deadlines, sine die -- which no published file carries | `src/pages/build_site_v2.py` |
 | `vote_lines.json` | the one-line summary of a vote that names a member (a reprimand, a censure, an expulsion, a member's privileges; shown as a "Misc vote"), approved against the Journal's page; such a vote shows only the Journal's words until a line is here. Empty when it was made, 23 October 2026 | `src/parse/journal_motions.py` |
 | `name_forms.json` | two forms of one person's name the owner confirmed are the same person (a request filed by "Samuel Hoehn", the member-elect "Sam Hoehn"), with her words, the day and the evidence; a form not here is never guessed | `src/pages/build_lsrs.py` (`name_forms`), matching a request's sponsor |
+| `officials_links.json` | who an official is in the General Court's record, where the rule could not be sure: each holder, by the key `build_entities.py --links` prints, linked to a member's number (or to no one), with her words, the day and the evidence, and the forms of a name she confirmed (Chris for Christopher). Begun 25 November 2026 with five she confirmed on the review bench | `src/parse/build_entities.py` (`read_owner_links`) |
 
 ## Earlier service in `members_elect.json`
 

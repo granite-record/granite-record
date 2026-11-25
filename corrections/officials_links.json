@@ -1,0 +1,60 @@
+{
+  "_about": "The owner's word on who an official is: each entry links a holder named in corrections/officials.json, or in the Secretary of State's county roster, to a person of the General Court's record (their number), or to no one (null). Edited by a person; no generator writes this file. src/parse/build_entities.py reads it (read_owner_links): \"links\" by office|area|year|name, exactly as its --links list prints them, and \"name_forms\", a form of a person's name the owner confirmed, by the person's number.",
+  "_how": "One entry per holder: `person`, the record's number (a string), or null for no one of the record; `said`, the owner's words; `by` and `on`, who said so and the day; `evidence`, what was compared. A name form is `name` and `evidence`, under the person's number.",
+  "_checked": "2026-11-25",
+  "links": {
+    "us-house|1|2025|Chris Pappas": {
+      "person": "376509",
+      "said": "Same person",
+      "by": "the owner",
+      "on": "2026-11-25",
+      "evidence": "The officials file names US Representative Chris Pappas, D, New Hampshire's 1st district. The record's member 376509 is Rep. Christopher Pappas, Democrat, Hillsborough 8, 2003-2006; Hillsborough County lies in the 1st district. Name and party agree; Chris is a short form of Christopher, which the rule never links alone. Asked on the review bench whether they are one person, the owner answered \"Same person\" on 25 November 2026, and in chat that day let it be written here."
+    },
+    "us-senate|statewide|2027|Chris Pappas": {
+      "person": "376509",
+      "said": "Same person",
+      "by": "the owner",
+      "on": "2026-11-25",
+      "evidence": "The officials file names Chris Pappas, D, as US Senator-elect from 3 January 2027, the same man as the US Representative for the 1st district (the entry above). The owner confirmed him as the record's Rep. Christopher Pappas (member 376509) on 25 November 2026."
+    },
+    "secretary-of-state|statewide|2025|David M. Scanlan": {
+      "person": "371377",
+      "said": "Same person",
+      "by": "the owner",
+      "on": "2026-11-25",
+      "evidence": "The officials file names Secretary of State David M. Scanlan. The record's member 371377 is David M. Scanlan, former Rep. for Grafton 11, 1999-2002; the middle initial M agrees. The office is statewide and carries no party, so nothing else could agree. Asked on the review bench whether they are one person, the owner answered \"Same person\" on 25 November 2026."
+    },
+    "executive-council|5|2025|David K. Wheeler": {
+      "person": "203015",
+      "said": "Same person",
+      "by": "the owner",
+      "on": "2026-11-25",
+      "evidence": "The officials file names Executive Councilor David K. Wheeler, R, District 5. Two numbers of the record answer to the name, both David K. Wheeler of Milford, Republican: 203015, the Senate member of 1993-1994 (district 11), and 374017, the House member of 1989-1990 (Hillsborough). Milford is in Council District 5. Asked on the review bench whether the Councilor is the David K. Wheeler of Milford in the record, the owner answered \"Same person\" on 25 November 2026. Linked here under the Senate number, 203015; that 374017 is the same man rests on her answer, and joining the two numbers belongs to the gap-filling work."
+    },
+    "register-of-probate|carroll|2027|Steve Woodcock": {
+      "person": "9046",
+      "said": "Same person",
+      "by": "the owner",
+      "on": "2026-11-25",
+      "evidence": "The officials file names Steve Woodcock as Carroll County's register of probate-elect, taking office 6 January 2027. The record's member 9046 is Rep. Stephen Woodcock of Carroll 1 (Conway), sitting. The county agrees; the elect record gives no town or party, and Steve is a short form of Stephen. Asked on the review bench whether they are one person, the owner answered \"Same person\" on 25 November 2026."
+    },
+    "county-commissioner|strafford:1|2025|Joe Pitre": {
+      "person": "647",
+      "said": "Same person",
+      "by": "the owner",
+      "on": "2026-11-25",
+      "evidence": "The Secretary of State's county roster of 5 December 2024 prints Strafford's District 1 commissioner as Joe Pitre, Republican, of Farmington (since replaced). The record's member 647 is Rep. Joseph A. Pitre of Farmington, Strafford 1, 2011-2024, Republican. Town, county and party agree; Joe is a short form of Joseph. Asked on the review bench whether they are one person, the owner answered \"Same person\" on 25 November 2026."
+    }
+  },
+  "name_forms": {
+    "376509": [
+      {"name": "Chris Pappas", "evidence": "The form the officials file and the 2026 results print for the record's Rep. Christopher Pappas, confirmed by the owner on 25 November 2026."}
+    ],
+    "647": [
+      {"name": "Joe Pitre", "evidence": "The form the Secretary of State's county roster of 5 December 2024 prints for the record's Rep. Joseph A. Pitre, confirmed by the owner on 25 November 2026."}
+    ],
+    "9046": [
+      {"name": "Steve Woodcock", "evidence": "The form the officials file and the 2026 results print for the record's Rep. Stephen Woodcock, confirmed by the owner on 25 November 2026."}
+    ]
+  }
+}
