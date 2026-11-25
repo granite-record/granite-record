@@ -20,7 +20,8 @@ Each page has an overview, then a tab per office on file:
   - seats won by party, against the majority;
   - the district map, coloured by winners;
   - the closest races;
-  - the reader's notes on the files.
+  - the reader's notes on the files (taken off the page at the owner's word of
+    24 November 2026; they stay in `collected/`).
 - **State Senate.**
 - **State House:** grouped by county, with a box to find a town or ward.
 - **Ballot Questions,** where `corrections/ballot_results.json` has the

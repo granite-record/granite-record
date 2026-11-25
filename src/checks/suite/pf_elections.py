@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.44
+# GRANITE_VERSION: 2026-11-16.45
 """
 preflight's checks of members-elect and election results.
 
@@ -1341,6 +1341,42 @@ def _elections_page(BE, BME):
                       "the bars adding up, Grafton 9's total said")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "the elections page lists no Notes on the Files: the reader's notes stay in the collected "
+                "file, and a printed total that leaves out a town is still said on its race's card",
+       needs=("build_elections", "build_members_elect"))
+def _elections_no_file_notes(BE, BME):
+    """The owner, 24 November 2026: "You can remove the Notes on the Files
+    section for the elections page which details minutia of spreadsheet data
+    that readers don't need to know." build_elections.page_body over a
+    made-up election whose results carry two of the reader's notes -- a
+    printed total that leaves out a town (TOTALS_NOTE) and one of another
+    kind -- draws no "Notes on the Files", no list of notes and not the
+    other note's words, and still puts the printed total beside the towns'
+    sum on the race's card; and app.css styles no .er-notes. The notes stay
+    in collected/election_<year>.json, which no builder writes."""
+    other = ("2018-ge-house-belknap.xls, sheet 'belknap', row 7: a candidate is listed twice; the "
+             "second row is the one read")
+    total = ("2018-ge-house-belknap.xls, sheet 'belknap', row 9: the file's Totals cell is =SUM(B5:B7), "
+             "which leaves out Alpha; read as the towns add up: Gray's column, 150, where the Totals say 120")
+    assert BE.TOTALS_NOTE.match(total) and not BE.TOTALS_NOTE.match(other), "the made-up notes are not one of each"
+    cands = [{"name": "Gray", "party": "r", "votes": 150, "write_in": False, "elected": True},
+             {"name": "Hale", "party": "d", "votes": 100, "write_in": False, "elected": False}]
+    res = {"election": "2018-11-06", "term": "2019-2020", "_notes": [other, total],
+           "_source": [{"file": "records/sources/2018-ge-house-belknap.xls"}],
+           "races": {"H|Belknap|1": {"seats": 1, "floterial": False, "towns": ["Alpha"], "scatter": 0,
+                                     "candidates": cands}}}
+    hand = {"matches": {}, "not_final": {}, "held": {}, "party": {}, "recount_deadline": None}
+    decided, rep = BME.members_elect(res, [], [], None, hand, "2026-11-10", settled=True)
+    body = BE.page_body("2018-11-06", res, decided, rep, hand, Path("site"), [], True)
+    assert "Notes on the Files" not in body and "er-notes" not in body and "listed twice" not in body, (
+        "the elections page still lists the reader's notes on the files")
+    assert "prints 120 as Gray" in body and "add up to 150" in body and "leaves out Alpha" in body, (
+        "the race's card no longer says its printed total leaves out a town")
+    assert not re.search(r"\.er-notes\b", _source("src/pages/app.css")), "app.css still styles .er-notes"
+    return "ok", ("no Notes on the Files on an election whose results carry a note of each kind; the "
+                  "printed total that leaves out a town still said on its card; app.css styles no .er-notes")
 
 
 # THE MARGIN, DEFINED ONCE (the elections display design of 19 November 2026, section 2,

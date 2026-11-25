@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-07.22
+# GRANITE_VERSION: 2026-11-07.23
 """
 The official results of each general election on file, one page each, under
 Officials (docs/design/elections/DESIGN.md and BUILD_PLAN.md; the owner's
@@ -55,8 +55,10 @@ NO NUMBER BUT THE SECRETARY OF STATE'S. Every count on the page is the
 collected file's. Where the reader noted that a file's printed total
 disagrees with its own town counts (Grafton 9 in 2026: the Totals cell
 leaves out Orange), the card says so in plain words and shows the towns'
-sum, which is what the collected file holds. Every other note the reader
-made is listed, as it wrote it, under "Notes on the Files".
+sum, which is what the collected file holds. The reader's other notes stay
+in the collected file and are not on the page: the owner, 24 November 2026,
+of the overview's "Notes on the Files", which listed them -- "minutia of
+spreadsheet data that readers don't need to know".
 
 THE MARGIN IS election_margin.py's, the one rule (the elections display
 design of 19 November 2026, approved that day): each card's label at its top
@@ -933,13 +935,6 @@ def page_body(election, results, decided_races, report, hand, site, ballots, set
             f'<a href="{path}#er-mf-{p}" data-order="small" data-pane="{p}">Every {w} race, smallest margin '
             "first</a>" for p, w, ks in (("senate", "State Senate", senate), ("house", "State House", house))
             if ks) + "</p></section>")
-    notes = [n for n in results.get("_notes") or [] if not TOTALS_NOTE.match(n)]
-    if notes:
-        overview += ('<section class="ofpart"><h3 class="er-h">Notes on the Files</h3>'
-                     '<p class="src">What the reader of the Secretary of State&rsquo;s files noticed in '
-                     "them, in its own words. A printed total that leaves out a town is said on its "
-                     "race&rsquo;s card instead.</p><ul class=\"er-notes\">"
-                     + "".join(f"<li>{E(n)}</li>" for n in notes) + "</ul></section>")
     # The town box's count is the margin filter's line (MARGIN_JS), which says both.
     find = ('<div class="er-find" id="er-find" hidden><label for="er-q">Find a town or ward</label>'
             '<input id="er-q" type="search" autocomplete="off" placeholder="A town or ward"></div>')
