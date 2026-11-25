@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.61
+# GRANITE_VERSION: 2026-09-18.62
 """
 The General Court's week, one page per week.
 
@@ -1404,12 +1404,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              # November 2026 no section of them: they are at the top of their
              # own page, the Calendar row's Calendars and journals tab. AND NO
              # ARROWS HERE since the same day: they are straight above the
-             # schedule (below).
-             # THE NEXT ELECTION'S DATES (the owner, 19 November 2026: "The general info on
-             # upcoming election deadlines should be included on the calendar"): its
-             # filing period, primary and general, on every week, however far off --
-             # a week's page holds a key date only within KEY_AHEAD.
-             + KD.election_dates_html(KD.election_dates(today), today, lang, "h2", "kdnext")
+             # schedule (below), and Upcoming elections is under it.
              + '</div>'
              + side_html(lang)
              + '<div class="calmain">'
@@ -1433,6 +1428,15 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              # November 2026 were the Calendars & Journals, which are at the
              # top of their own page now (documents_files).
              '<hr class="calend">'
+             # THE NEXT ELECTION'S DATES (the owner, 19 November 2026: "The general info on
+             # upcoming election deadlines should be included on the calendar"): its
+             # filing period, primary and general, on every week, however far off --
+             # a week's page holds a key date only within KEY_AHEAD. UNDER THE SCHEDULE,
+             # in the place the Calendars & Journals left, the last block of its column
+             # (the owner, 25 November 2026: "so that way the info is still available but
+             # a bit more out of the way for folks just looking to see this week's
+             # schedule"); in the week's head until then.
+             + KD.election_dates_html(KD.election_dates(today), today, lang, "h2", "kdnext")
              + '</div>'
              # The hover preview: one element, placed beside whichever day
              # it describes, so it never covers the day being read.

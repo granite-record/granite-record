@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of the calendar.
 
@@ -2460,19 +2460,25 @@ def _pager_labels():
 
 @check("frontend", "a week's page reads in the owner's order: its heading and Cite this page, the view "
                    "switch, the count and the kinds of meeting, then Previous Week and Next Week "
-                   "straight above the schedule's first day, in English and in Spanish")
+                   "straight above the schedule's first day, the schedule, and Upcoming elections "
+                   "under it, in English and in Spanish")
 def _calendar_week_order():
     """The owner, 25 November 2026, of "The Week of November 23-27, 2026": "it would
     be good to move the next week and previous week selectors to be above the
     actual schedule since there's a lot of filters and other info between them
-    right now."
+    right now. It may be good to put the info on the upcoming elections section
+    below the schedule as well where the calendar selector used to go, so that
+    way the info is still available but a bit more out of the way for folks
+    just looking to see this week's schedule".
 
     Held on a week's page as build_calendar.week_page writes it, in both
     languages: the week's head is its heading, its line and (in English) Cite
-    this page, and carries no arrows; the schedule's column is the view switch,
-    the count and Reset filters, the boxes of the kinds of meeting and the key a
-    reader without script is given, then the arrows -- one set -- then the
-    schedule from its first day, then the rule under it. The arrows stand outside
+    this page, and carries neither the arrows nor Upcoming elections; the
+    schedule's column is the view switch, the count and Reset filters, the boxes
+    of the kinds of meeting and the key a reader without script is given, then
+    the arrows -- one set -- then the schedule from its first day, then the rule
+    under it, then Upcoming elections as key_dates.election_dates_html draws it,
+    the column's last block. The arrows stand outside
     #calview, which the script redraws for the List and the Week views alike, so
     both have them above (_calendar_in_a_dom holds that in the Week view);
     Previous Week comes before This Week and Next Week, each of the two with the
@@ -2486,6 +2492,8 @@ def _calendar_week_order():
     import datetime as _dt
     import io
     import build_calendar as BC
+    import key_dates as KD
+    import shell as S
     if not Path("src/pages/bills.html").exists():
         return "skip", "bills.html is not here"
     css = _source("src/pages/app.css")
@@ -2517,9 +2525,10 @@ def _calendar_week_order():
             t = f.read_text(encoding="utf-8")
             head = t[t.index('<div class="calhead">'):t.index('<div class="calside"')]
             main = t[t.index('<div class="calmain">'):t.index('<div class="calpeek"')]
-            assert "wknav" not in head and "wkprev" not in head \
+            assert "wknav" not in head and "wkprev" not in head and "kdnext" not in head \
                 and 0 <= head.find("<h1>") < head.find('<p class="src">'), (
-                f"{lang}: the week's head is not its heading and its line, without the arrows")
+                f"{lang}: the week's head is not its heading and its line, without the arrows "
+                "and without Upcoming elections")
             assert (lang != "en") or head.find('<p class="src">') < head.find(
                 '<div class="pageacts" id="pageacts">'), f"{lang}: Cite this page is not under the line"
             seq = ('<div class="calbar" id="calbar" hidden>', 'id="wkcount"', 'id="calreset"',
@@ -2540,11 +2549,19 @@ def _calendar_week_order():
                 '<span class="wkpd">' in x for c, x in links if c != "wkhere"), (
                 f"{lang}: the arrows are not Previous Week, This Week and Next Week in that order, "
                 f"each of the two with its week: {links}")
+            # UPCOMING ELECTIONS UNDER THE SCHEDULE, in the place the Calendars &
+            # Journals left: after the rule, the column's last block, unchanged.
+            box = S.clean_links(KD.election_dates_html(KD.election_dates(today), today, lang, "h2", "kdnext"))
+            assert box.startswith('<section class="kdnext"') and main.count('class="kdnext"') == 1 \
+                and main.endswith('<hr class="calend">' + box + "</div>"), (
+                f"{lang}: Upcoming elections is not straight under the schedule's rule, the last "
+                "block of its column, as election_dates_html draws it")
     finally:
         shutil.rmtree(root, ignore_errors=True)
     return "ok", (f"the week of {k} in English and Spanish: the heading and its line with no arrows; "
                   "the switch, count, Reset, boxes and key; Previous, This and Next Week straight "
-                  "above the schedule and its first day; previous left and next right at every width")
+                  "above the schedule and its first day; the schedule, its rule and Upcoming "
+                  "elections last; previous left and next right at every width")
 
 
 @check("frontend", "study and statutory committees are on the calendar, named, and off until a reader ticks them")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of a bill's history as the site tells it (narrative.py).
 
@@ -13517,8 +13517,9 @@ def _election_dates_on_calendar_and_hub(KD, BC, BE):
       primary and the general; on the day after 2028's general, 2030's three; the filing period
       is the key dates' (events) too, and never the status box's next deadline;
     - the Calendar: a week's page built on 19 November 2026 (build_calendar.week_page) carries the
-      list under the week's arrows, in Spanish on the Spanish week, each row with its RSA
-      citation and retiring the day after its last;
+      list below the week's schedule, after the rule under its days (the owner, 25 November 2026;
+      under the week's arrows in its head until then), in Spanish on the Spanish week, each row
+      with its RSA citation and retiring the day after its last;
     - the elections page (build_elections.index_body): the list under its heading, above the
       results, with no candidate and no special election."""
     import contextlib
@@ -13597,8 +13598,10 @@ def _election_dates_on_calendar_and_hub(KD, BC, BE):
     for lang, page in pages.items():
         holds(page, f"the Calendar's week of {k} ({lang})", lang)
         head = re.search(r'<div class="calhead">(.*?)<div class="calside"', page, re.S)
-        if not head or 'class="kdnext"' not in head.group(1):
-            bad.append(f"the Calendar ({lang}): the list is not under the week's heading and arrows")
+        main = page[page.find('<div class="calmain">'):]
+        if not head or 'class="kdnext"' in head.group(1) or not (
+                0 <= main.find('<hr class="calend">') < main.find('class="kdnext"')):
+            bad.append(f"the Calendar ({lang}): the list is not below the week's schedule")
     hub = BE.index_body([("2026-11-03", None)], "2026-11-19")
     holds(hub, "the elections page")
     if not (hub.find("<h1>Elections</h1>") < hub.find('class="kdnext"') < hub.find('class="lead"')
