@@ -1804,7 +1804,11 @@ list of who holds a seat (the Legislators tab, the town pages, the map, the
 committees) are the old roster's until it turns, and bills, roll calls and
 committee rosters name each member as they sat. A page keeps its address until
 the turn, when `members.turned_addresses` moves it with a 301. None is written
-before the day, or once the roster has turned, which says the same itself.
+before the day, or once the roster has turned, which says the same itself. The
+Speaker of 2025-2026, Sherman Packard, is among those not returning: from 3
+December his page is a former member's and names no office, so none names the
+Speaker until the roster seats the next one in the chair, and the night's
+`_speaker_page_built` allows exactly that while `site/seat_switch.json` says so.
 
 **Fix, for what is left: `(term, bill)` everywhere.**
 `probe_archive.py` and `setup_archive.py`, both since deleted, sketched this;

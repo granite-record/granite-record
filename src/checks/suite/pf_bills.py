@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.60
+# GRANITE_VERSION: 2026-11-16.61
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -8388,9 +8388,18 @@ def _speaker_page_built(B, OF):
             if o:
                 offices[r["id"]] = o
     speaker = {k for k, o in offices.items() if o == "Speaker of the House"}
-    assert speaker == {str(chair[0]["id"])}, (
-        f"{chair[0].get('name')} sits in the Speaker's chair, and the offices on file are "
-        f"{offices}: rebuild the site data")
+    # FROM THE DAY AFTER ORGANIZATION DAY UNTIL THE ROSTER TURNS (members.read_switch; the
+    # owner, 25 November 2026): a member the election did not return is drawn as a former
+    # member, and a former member's file names no office (members.member_office) -- the Speaker
+    # of 2025-2026, Sherman Packard, from 3 December 2026, while legislators.json, the roster's,
+    # still seats him in the chair. The chair's member is then nobody's Speaker on the site
+    # until the roster seats the next one there (_speaker_page_through_the_switch).
+    import members as MEM
+    gone = str(chair[0]["id"]) in MEM.read_switch(Path("site"))["leaving"]
+    assert speaker == (set() if gone else {str(chair[0]["id"])}), (
+        f"{chair[0].get('name')} sits in the Speaker's chair"
+        + (", drawn as not returning (site/seat_switch.json)," if gone else ",")
+        + f" and the offices on file are {offices}: rebuild the site data")
     others = {k: o for k, o in offices.items() if k not in speaker}
     assert len(set(others.values())) == len(others), f"one office, two members: {others}"
     of = Path("site/officers.json")
@@ -8419,9 +8428,68 @@ def _speaker_page_built(B, OF):
         stray = {k: o for k, o in others.items() if (k, o) not in held}
         assert not stray, (f"offices on file that officers.json gives nobody"
                            f"{' on ' + built if built else ''}: {stray}")
-    return "ok", (f"{chair[0].get('name')}, in seat {B.SPEAKER_SEAT}, is Speaker of the House"
+    return "ok", ((f"{chair[0].get('name')}, in seat {B.SPEAKER_SEAT}, is not returning, and no "
+                   "file names the Speaker until the roster turns" if gone else
+                   f"{chair[0].get('name')}, in seat {B.SPEAKER_SEAT}, is Speaker of the House")
                   + "".join(f"; {next(r.get('name') for r in rows if r['id'] == k)}, {o}"
                             for k, o in sorted(others.items(), key=lambda x: x[1])))
+
+
+@check("build", "the night's Speaker check holds through the switch: from the day after Organization "
+                "Day until the roster turns, a Speaker not returning is nobody's Speaker on file, and "
+                "any other file naming the office, or theirs, still fails it",
+       needs=("build_site_v2", "officers", "members"))
+def _speaker_page_through_the_switch(B, OF, MEM):
+    """The night runs _speaker_page_built on its built site (preflight --built; a check that holds
+    the night), and on 3 December 2026 the Speaker of 2025-2026, Sherman Packard, is among the
+    members not returning: from that day his own file is the former member's
+    (members.seat_switched), which names no office (members.member_office), while the roster's
+    legislators.json still seats him in the chair until the General Court's roster turns. Held
+    on made-up sites of two members, the chair's (425) and Steven Smith (656): the chair's file
+    naming the office and no switch passes; the chair's member drawn as leaving by
+    site/seat_switch.json, no file naming the office, passes; no file naming it and no switch
+    fails; the leaving member's file still naming it fails; and another member's file naming it
+    while the chair's member leaves fails."""
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp(prefix="gr-speaker-switch-"))
+    rows = [{"id": "425", "name": "Packard, Sherman", "chamber": "H", "seat": str(B.SPEAKER_SEAT)},
+            {"id": "656", "name": "Smith, Steven", "chamber": "H", "seat": "1001"}]
+
+    def run(chair_office, leaving, other_office=None):
+        s = root / "site"
+        shutil.rmtree(s, ignore_errors=True)
+        (s / "legislators").mkdir(parents=True)
+        (s / "legislators.json").write_text(json.dumps(rows), encoding="utf-8")
+        for r, o in ((rows[0], chair_office), (rows[1], other_office)):
+            (s / "legislators" / f"{r['id']}.json").write_text(
+                json.dumps({**r, **({"office": o} if o else {})}), encoding="utf-8")
+        if leaving:
+            (s / MEM.SEAT_SWITCH).write_text(json.dumps(
+                {"day": "2026-12-03", "election": "2026-11-03", "term": "2027-2028",
+                 "leaving": [{"id": "425", "former": True}], "moved": []}), encoding="utf-8")
+        os.chdir(root)
+        try:
+            return _speaker_page_built(B, OF)[0]
+        except AssertionError:
+            return "fails"
+        finally:
+            os.chdir(here)
+
+    try:
+        got = {"the chair's, no switch": run("Speaker of the House", False),
+               "leaving, none named": run(None, True),
+               "none named, no switch": run(None, False),
+               "leaving and still named": run("Speaker of the House", True),
+               "leaving, another named": run(None, True, "Speaker of the House")}
+    finally:
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+    assert got == {"the chair's, no switch": "ok", "leaving, none named": "ok",
+                   "none named, no switch": "fails", "leaving and still named": "fails",
+                   "leaving, another named": "fails"}, f"_speaker_page_built says {got}"
+    return "ok", ("the chair's Speaker passes; the chair's member leaving with no Speaker on file "
+                  "passes; no Speaker and no switch, the leaving member still Speaker, and another "
+                  "member Speaker while the chair's leaves each fail")
 
 
 @check("status", "the rail's last stop carries a day: the day a law took effect, or the day the bill was killed",
