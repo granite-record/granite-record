@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.23
+# GRANITE_VERSION: 2026-11-08.24
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -185,11 +185,14 @@ def elected_elsewhere(m, label):
     return bool(t) and sits in ("H", "S") and ("S" if t.group(1) == "Sen" else "H") != sits
 
 
-# A party's name, for the title over its count under the sponsors' chips, in
-# the words app.js's PARTY_NAME gives a bill's (parts.py's keys).
 def _party_names():
-    return {"R": i18n.say(LANG, "party.r", "Republican"), "D": i18n.say(LANG, "party.d", "Democrat"),
-            "I": i18n.say(LANG, "party.i", "Independent"), "L": i18n.say(LANG, "party.l", "Libertarian")}
+    """{letter: the party's name}, for the title over its count under the
+    sponsors' chips: the state's one table's words (state_settings.party_words,
+    "D" is "Democrat", as app.js's PARTY_NAME gives a bill's), in the page's
+    language (parts.party_word)."""
+    import parts
+    import state_settings as ST
+    return {k: parts.party_word(w, LANG) for k, w in ST.party_words("name").items()}
 
 
 def sponsors_section(r, who_of):
