@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.40
+# GRANITE_VERSION: 2026-09-18.41
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -155,8 +155,18 @@ def roster(site, collected="collected", year=None):
     # with that chamber's title and the party they were elected under; the
     # fourth field is the chamber they sit in now, which a request's Sponsors
     # group them by (rows_from's "chamber" and "sponsor_chamber").
+    #
+    # AND A MEMBER NOT RETURNING, FROM THE SAME DAY (members.read_switch; the
+    # owner, 25 November 2026), is not the roster's to label: they are drawn
+    # as the roster's turn draws them (departed, below), by name and party,
+    # never the seat they leave, linked to their page, which is the former
+    # member's from that day.
+    import members as MEM
+    leaving = MEM.read_switch(site)["leaving"]
     moved = chamber_moves(site, collected) if took_office(site) else {}
     for m in json.loads(p.read_text(encoding="utf-8")):
+        if str(m.get("id") or "") in leaving:
+            continue
         # "Abbas, Daryl" -- surname first, and there are no separate first and
         # last fields on the roster to read instead; every one of the 406 has
         # them as None. The LSR source writes "Daryl Abbas", so the comma is
@@ -199,7 +209,11 @@ def roster(site, collected="collected", year=None):
     if ep.exists():
         fj = site / "former.json"
         gone = set()
-        for m in (json.loads(fj.read_text(encoding="utf-8")) if fj.exists() else []):
+        # The former members, and those the build draws as former from the day
+        # after Organization Day (`leaving`), whom former.json holds once the
+        # roster turns: a name one of them has is nobody's here, as it will be.
+        for m in [*(json.loads(fj.read_text(encoding="utf-8")) if fj.exists() else []),
+                  *leaving.values()]:
             last, _, first = str(m.get("name") or "").partition(",")
             gone.add(_fold(f"{first} {last}"))
         titled, took = elect_window(site), took_office(site)
@@ -224,7 +238,11 @@ def roster(site, collected="collected", year=None):
         key = _fold(first_last(m.get("name")))
         if not key or key in out and key not in seen:
             continue
-        party = f" ({m['party_code']})" if len(str(m.get("party_code") or "")) == 1 else ""
+        # The party as former.json's row gives it: build_legislators writes it as "party", the
+        # letter the member's last ballot carries (former_roster), and no party_code -- which
+        # this read alone, so on the real files a departed member was drawn with none.
+        pc = str(m.get("party_code") or m.get("party") or "").strip()[:1].upper()
+        party = f" ({pc})" if pc and pc in MEM.PARTY_INITIALS else ""
         out[key] = None if key in seen else (f"{first_last(m.get('name'))}{party}", m.get("slug"))
         seen.add(key)
     return out
@@ -238,7 +256,19 @@ def departed(site, collected="collected", year=None):
     for requests of a session `year` other than the elected term's first:
     the requests for 2028, filed from September 2027, are sitting members'
     alone, and a name of theirs that only someone gone in 2026 shares must
-    not link to that person's page."""
+    not link to that person's page.
+
+    AND BEFORE THE TURN, FROM THE DAY AFTER ORGANIZATION DAY (the owner, 25
+    November 2026), the members not returning the build has already drawn as
+    former members (members.read_switch's "leaving", their rows as
+    former.json will have them): the same people, drawn the same way, on the
+    nights between the day and the roster's turn."""
+    import members as MEM
+    sw = MEM.read_switch(site)
+    if sw["leaving"]:
+        if year is not None and str(year) != str(sw.get("term") or "")[:4]:
+            return []
+        return list(sw["leaving"].values())
     _races, turned, term, _why = election_races(site, collected)
     if not turned or year is not None and str(year) != term[:4]:
         return []
@@ -1171,6 +1201,14 @@ def retire(rows, year, today):
     return n
 
 
+def _turned_rosters():
+    """The terms whose frozen roster the installed one has turned from, by the
+    day files in the working folder (freeze_term.own_roster_terms), as
+    build_site_v2 reads them."""
+    import freeze_term
+    return set(freeze_term.own_roster_terms())
+
+
 def election_races(site, collected="collected", hand_path=None):
     """(races, turned, term, why) for the newest general election: its races
     as the members-elect step draws them ("races" of site/members_elect.json),
@@ -1201,6 +1239,15 @@ def election_races(site, collected="collected", hand_path=None):
         term = str((results or {}).get("term") or "")
         terms = (rd("meta.json", {}) or {}).get("terms") or []
         if term and terms and terms[0] == term:
+            return None, True, term, ""
+        # AND ONCE THE ROSTER INSTALLED HAS TURNED FROM THE FROZEN ONE OF THE TERM
+        # THE ELECTION ENDED (freeze_term.own_roster_terms, the sign build_site_v2
+        # labels that term's members by), though meta.json's newest term may not
+        # have turned yet: the roster says who came back, and its former members
+        # are former.json's (departed) -- the same people the days after
+        # Organization Day drew as former members (members.read_switch), so
+        # nothing flips back on the night the roster turns.
+        if term and BME.term_before(term) in _turned_rosters():
             return None, True, term, ""
         if (site / "members_elect.json").is_file():
             doc = rd("members_elect.json", {}) or {}

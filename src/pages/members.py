@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-20.4
+# GRANITE_VERSION: 2026-11-20.5
 """
 A member of the General Court as the site has them: how a member is named,
 the roll calls and the floor as a member's record reads them, and the
@@ -1147,6 +1147,157 @@ def turned_addresses(term_rosters, legs, former, links=None):
     return sitting, n_former
 
 
+# THE SEATS AS THE ELECTION LEFT THEM, FROM THE DAY AFTER ORGANIZATION DAY,
+# BEFORE THE GENERAL COURT'S ROSTER TURNS (the owner, 25 November 2026: "I
+# would say wait until December 3rd to switch to the new titles since the
+# swearing in ceremony happens on the morning of December 2nd"). The roster
+# installed is the House of 2025-2026 until the General Court publishes the
+# next one, and legislators.json stays exactly that: the night's census counts
+# it, and every list of who holds a seat -- the Legislators tab, the town
+# pages, the map, the committees -- reads it. What switches on the day is each
+# member's own identity, as the roster's turn will draw it:
+#
+#   a member NOT RETURNING (build_members_elect.seat_changes: no race's winners
+#     name them, and their seat's race is decided) is a former member: their
+#     own file is the former member's, from the same code (former_roster,
+#     date_former_seats, last_term_labels, build_legislators), so their page
+#     reads "Former Representative ...", their search row "Former Rep. ...",
+#     and they are in the Former members list -- and when the roster turns,
+#     and they are former.json's, nothing of it changes;
+#   a member ELECTED TO ANOTHER SEAT -- another district of their chamber, or
+#     the other chamber (Jim Creighton and Laura Telerski) -- is drawn at the
+#     seat they won: the chamber, the district and its towns, their label, the
+#     title of a senator; a senator-elect sits on no Senate committee and in
+#     no floor seat yet. Their page keeps its address until the roster turns,
+#     when members.turned_addresses moves it and answers the old one with a
+#     301.
+#
+# On a bill, a roll call or a committee roster every member keeps the seat
+# they held then (labels-use-the-seat-held-at-the-time): those are drawn from
+# the ballots and from the roster as it stands, never from this. Written to
+# site/seat_switch.json (SEAT_SWITCH), which build_legislator_pages, the
+# search (build_indexes) and the requests (build_lsrs, build_request_pages)
+# read through read_switch and nothing else; none is written before the day,
+# or once the roster has turned.
+SEAT_SWITCH = "seat_switch.json"
+
+
+def site_rows(legs, former=None, links=None):
+    """([sitting row], [former row]): the roster and the former members in the
+    shape site/legislators.json and site/former.json give them to the
+    members-elect step (an id, a name, a chamber, a county, a district, the
+    page's slug, its display_full, a joined page's member_ids), worked out as
+    build_legislators works them out, for build_members_elect.seat_switch to
+    match the election's winners against before those files are written."""
+    def row(mid, m):
+        lab = member_labels(m.get("name"), chamber=m.get("chamber"),
+                            party=m.get("party_code") or m.get("party"),
+                            district=m.get("district"), county=m.get("county"),
+                            county_abbr=m.get("county_abbr"))
+        out = {**m, **lab, "id": str(mid), "slug": m.get("slug") or member_slug(m, lab)}
+        if (links or {}).get(mid):
+            out["member_ids"] = [str(mid), *(str(x) for x in links[mid])]
+        return out
+    return ([row(k, v) for k, v in legs.items()],
+            [row(k, v) for k, v in (former or {}).items()])
+
+
+def seat_switched(switch, legs, former, votes_by_member, links, former_file, current_term,
+                  district_lines=None):
+    """`switch` (build_members_elect.seat_switch's, or None) with "members":
+    {member id: the member as the election left them}, for build_legislators;
+    {} where the site does not switch.
+
+      leaving  their former member's row, made as the roster's turn makes it:
+               former_roster over the roster without them, then the seat their
+               last term's bills print (date_former_seats) and the label of
+               their last term's seat (last_term_labels), among every former
+               member so that no two pages take one address;
+      moved    their roster row at the seat they won: the race's chamber,
+               county and district, its towns (the switch's), the county's
+               abbreviation as the roster spells it, a senator's title and no
+               House committee or floor seat for one elected to the Senate,
+               and the address their page has now."""
+    if not switch:
+        return {}
+    members = {}
+    leaving = {str(k) for k in switch.get("leaving") or {}} & set(legs)
+    if leaving:
+        import contextlib
+        import io
+        rest = {k: v for k, v in legs.items() if k not in leaving}
+        gone = former_roster(rest, votes_by_member, links, former_file, current_term)
+        both = {**(former or {}), **{k: v for k, v in gone.items() if k in leaving}}
+        # The former members already went through this in main, which said what it
+        # had to of them: only a line about a member leaving now is said again.
+        said = io.StringIO()
+        with contextlib.redirect_stdout(said):
+            both, _redated = date_former_seats(both, votes_by_member, printed_seats(),
+                                               corrected_seats(), rest)
+        for line in said.getvalue().splitlines():
+            if any(f"({k})" in line for k in leaving):
+                print(line)
+        if district_lines is not None:
+            both, _relabelled = last_term_labels(both, votes_by_member, printed_record(),
+                                                 district_lines)
+        # AT THE ADDRESS THEIR PAGE HAS NOW: every list still links it, and it
+        # moves, with a 301, only when the roster turns (turned_addresses).
+        for k in sorted(leaving):
+            if k in both:
+                m = legs[k]
+                lab = member_labels(m.get("name"), chamber=m.get("chamber"),
+                                    party=m.get("party_code") or m.get("party"),
+                                    district=m.get("district"), county=m.get("county"),
+                                    county_abbr=m.get("county_abbr"))
+                row = dict(both[k], slug=m.get("slug") or member_slug(m, lab))
+                row.pop("moved_from", None)
+                members[k] = row
+    abbr = {m["county"]: m["county_abbr"] for m in legs.values()
+            if m.get("county") and m.get("county_abbr")}
+    for mid, won in sorted((switch.get("moved") or {}).items()):
+        m = legs.get(str(mid))
+        parts = str((won or {}).get("key") or "").split("|")
+        if not m or parts[0] not in ("H", "S") or len(parts) != (3 if parts[0] == "H" else 2):
+            continue
+        ch = parts[0]
+        lab = member_labels(m.get("name"), chamber=m.get("chamber"),
+                            party=m.get("party_code") or m.get("party"),
+                            district=m.get("district"), county=m.get("county"),
+                            county_abbr=m.get("county_abbr"))
+        new = dict(m, chamber=ch, district=parts[-1], towns=list(won.get("towns") or []),
+                   slug=m.get("slug") or member_slug(m, lab))
+        if ch == "H":
+            new.update(county=parts[1], county_abbr=abbr.get(parts[1], m.get("county_abbr") or ""))
+        if ch != str(m.get("chamber") or "")[:1].upper():
+            new.update(title="Senator" if ch == "S" else "Representative", committees=[],
+                       seat="")
+        new["label"] = member_labels(new.get("name"), chamber=ch,
+                                     party=new.get("party_code") or new.get("party"),
+                                     district=new["district"], county=new.get("county"),
+                                     county_abbr=new.get("county_abbr"))["display_full"]
+        members[str(mid)] = new
+    return {**switch, "members": members}
+
+
+def read_switch(site):
+    """{"leaving": {id: row}, "moved": {id: row}, "day", "term"} from
+    site/seat_switch.json (SEAT_SWITCH), the rows as build_legislators wrote
+    them -- a leaving member's as former.json would have it, a moved member's
+    as legislators.json would -- or both {} where there is no file: before
+    the day after Organization Day, and once the roster has turned. A file
+    that will not read stops the reader: the step writes it whole."""
+    p = Path(site) / SEAT_SWITCH
+    if not p.is_file():
+        return {"leaving": {}, "moved": {}, "day": None, "term": None}
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        return {**{k: {str(r["id"]): r for r in doc.get(k) or []} for k in ("leaving", "moved")},
+                "day": doc.get("day"), "term": doc.get("term")}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        raise SystemExit(f"{p.as_posix()} will not read ({type(e).__name__}: {e}): "
+                         "build_site_v2 writes it whole, so this is a fault to look at")
+
+
 # What one ballot says about whether the member took part, in the order a
 # roll call is read when two of a member's numbers somehow both hold a ballot
 # on it: a vote cast outranks anything else the other ballot says.
@@ -1462,7 +1613,7 @@ def build_officers(out, votes_by_member, legs, today=None):
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
                       sponsored=None, bill_year=None, links=None,
                       former=None, offices=None, index_rows=None, manual=None,
-                      moved=None):
+                      moved=None, switched=None):
     """One JSON per member, plus the index and the town map.
 
     Split out of main(). main() was 808 lines even after the station
@@ -1479,9 +1630,15 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     `moved` is turned_addresses' {sitting id: [addresses]}: the addresses a
     sitting member's page had in a frozen term, which their row carries as
     moved_from for build_pages to answer with a 301, as a former member's
-    row does.
+    row does. `switched` is seat_switched's: from the day after
+    Organization Day, until the roster turns, each member it names (one not
+    returning, as a former member; one elected to another seat, at it) is
+    written a second time, after the rest, by the same code -- their own file
+    as it will be once the roster turns, their row into site/seat_switch.json
+    and not into legislators.json or former.json, which stay as the roster
+    and the record give them.
     """
-    lg, fm = [], []
+    lg, fm, sw = [], [], []
     # Read off every ballot once, because what one member's attendance needs
     # to know about a roll call -- its day, its chair -- is not in their own.
     attending = attendance_context(votes_by_member)
@@ -1504,8 +1661,13 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     # preflight's "nobody is named surname-first", "a member is named the same
     # way by both namers", "an unnamed member is not dressed up as a person" --
     # applies to them unchanged. Only the list they land in differs, and that
-    # is the whole point: former_roster says why.
-    for mid, m in [*legs.items(), *(former or {}).items()]:
+    # is the whole point: former_roster says why. And the members the election
+    # moved, last (`switched`): their own file written again over the one just
+    # written, their row to the switch's own list.
+    for mid, m, as_switched in [*((k, v, False) for k, v in legs.items()),
+                                *((k, v, False) for k, v in (former or {}).items()),
+                                *((k, v, True) for k, v in
+                                  ((switched or {}).get("members") or {}).items())]:
         # A MEMBER WHO CHANGED CHAMBER VOTED UNDER TWO NUMBERS, one for each:
         # Sen. Cindy Rosenwald's page carried 1,399 of her 4,218 votes. A page
         # keeps every chamber the member sat in. Own votes first, so a member
@@ -1571,13 +1733,13 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                 # (the deep walk of 6 November 2026). As their own file gives
                 # them (`both`, below).
                 row["service"] = ML.service(mv)
-            fm.append(row)
+            (sw if as_switched else fm).append(row)
         else:
             if (moved or {}).get(mid):
                 # The addresses this page had in a frozen term (turned_addresses),
                 # which build_pages answers with a 301 to this one.
                 row["moved_from"] = list(moved[mid])
-            lg.append(row)
+            (sw if as_switched else lg).append(row)
         # What they put their name to. The page's own meta description has
         # promised "sponsored bills" since it was written and the file did not
         # carry them, so the page could not show them and a search engine was
@@ -1607,6 +1769,13 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         # it. Only where there are two: everyone else's file is as it was.
         both = ({"member_ids": [mid, *joined], "service": ML.service(mv)}
                 if joined else {})
+        # AND ONE THE ELECTION SENT TO THE OTHER CHAMBER (seat_switched): their votes are
+        # the chamber they sat in, which the page says by chamber, as it will once the
+        # roster joins their new number to this one -- not the Senate's years of a House
+        # record.
+        if as_switched and not joined and \
+                str(m.get("chamber") or "") != str((legs.get(mid) or m).get("chamber") or ""):
+            both = {"service": ML.service(mv)}
         office = member_office(m, offices)
         att = member_attendance(mv, attending)
         (out / "legislators" / f"{mid}.json").write_text(json.dumps({
@@ -1680,6 +1849,27 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     (out / "legislators.json").write_text(json.dumps(lg), encoding="utf-8")
     # Its own file, never merged into the one above. See former_roster.
     (out / "former.json").write_text(json.dumps(fm), encoding="utf-8")
+    # THE SEATS AS THE ELECTION LEFT THEM (seat_switched), from the day after
+    # Organization Day until the roster turns, and no file otherwise: site/ is
+    # never emptied, and a file a night before left would draw a switch the
+    # roster has since made itself.
+    swp = out / SEAT_SWITCH
+    if (switched or {}).get("members"):
+        ids = set((switched.get("leaving") or {}))
+        swp.write_text(json.dumps({
+            "day": switched.get("day"), "election": switched.get("election"),
+            "term": switched.get("term"),
+            "leaving": [r for r in sw if str(r.get("id")) in ids],
+            "moved": [r for r in sw if str(r.get("id")) not in ids]}), encoding="utf-8")
+        print(f"the seats as the {switched.get('election')} election left them, from "
+              f"{switched.get('day')}: {sum(1 for r in sw if str(r.get('id')) in ids)} member(s) "
+              f"not returning drawn as former members, {sum(1 for r in sw if str(r.get('id')) not in ids)} "
+              f"at the seat they were elected to (their own pages and the search; "
+              f"legislators.json is the roster's {len(lg):,}) -> {swp.as_posix()}")
+    elif swp.exists():
+        swp.unlink()
+        print(f"  {swp.as_posix()}: removed -- the site no longer switches by date (before the "
+              "day after Organization Day, or the roster has turned)")
     (out / "towns.json").write_text(json.dumps(towns), encoding="utf-8")
     print(f"{len(lg):,} legislator pages, {len(towns):,} towns")
     if fm:

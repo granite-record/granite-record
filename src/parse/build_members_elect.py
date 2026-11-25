@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-16.21
+# GRANITE_VERSION: 2026-10-16.22
 """
 Who November's election sent to the General Court, for the weeks before they sit.
 
@@ -44,8 +44,9 @@ reopen:
      build on or after that day, a build once the New term run has turned
      terms[0] to their term, and a build before the election each delete the
      file and say why. Retiring on 3 December holds even if the General
-     Court's files have not turned by then: the old roster then shows alone
-     until they do.
+     Court's files have not turned by then: from that day the members they
+     elected are drawn as the election seated them (members.seat_switch),
+     and the roster's lists show the old roster until the files turn.
   3. A LINK ONLY ON A CERTAIN MATCH. A stranger's record under a
      member-elect's name is worse than a missing link (member_links.py says
      why, from the two Patrick Longs). A winner is linked to a page only as
@@ -1510,6 +1511,103 @@ def members_elect(results, sitting, former, districts, hand, today, settled=Fals
         report["short"].append((key, on_file[key]["seats"], 0, 0, 0, False))
     report["short"].sort(key=lambda x: race_order(x[0]))
     return out, report
+
+
+# ---- the seats as the election left them -----------------------------------
+#
+# WHO HOLDS EACH SEAT FROM THE DAY AFTER ORGANIZATION DAY, BEFORE THE GENERAL
+# COURT'S ROSTER SAYS SO (the owner, 25 November 2026: "I would say wait until
+# December 3rd to switch to the new titles since the swearing in ceremony
+# happens on the morning of December 2nd", answering whether departing members
+# should read "Former Rep." and moved members show their new seat). The
+# General Court's roster turns when it publishes the new House, which may be
+# days after the members are sworn in; until then legislators.json is still
+# the House of 2025-2026, and is left so -- the night's census counts it, and
+# every list of who holds a seat reads it. What switches by date is each
+# sitting member's own identity: a member not returning is drawn as a former
+# member (their own page, the search, the Former members list), and one
+# elected to another seat, or to the other chamber, with the seat they were
+# elected to, exactly as the roster's turn will draw them (members.
+# seat_switched, which build_site_v2 hands build_legislators).
+
+def seat_changes(races, sitting):
+    """{"leaving": {member id: their own seat's race key}, "moved": {member
+    id: the race key they won}}: what the election did to each sitting member,
+    by identity -- the races as members_elect() draws them, their "id" -- never
+    by name.
+
+    THE SAME RULE AS THE REQUESTS' (build_lsrs.not_returning, the owner's of 12
+    November 2026). A sitting member is LEAVING where no race's winners name
+    them and their own seat's race is decided (nothing not final, nothing
+    held): lost, retired or ran for another office, which the record does not
+    say and the rule does not need. One MOVED is among the winners of a race
+    that is not their own seat's -- another district of their chamber, or the
+    other chamber. Re-elected to their own seat, or in a race not decided, or
+    in none the file lists: as they are."""
+    won = {}
+    for key, race in (races or {}).items():
+        for e in (race or {}).get("elected") or []:
+            if e.get("k") == "sitting" and e.get("id"):
+                won.setdefault(str(e["id"]), key)
+    leaving, moved = {}, {}
+    for m in sitting or []:
+        mid, seat = str(m.get("id") or ""), seat_of(m)
+        if not mid:
+            continue
+        if mid in won:
+            if seat and won[mid] != seat:
+                moved[mid] = won[mid]
+            continue
+        race = (races or {}).get(seat) if seat else None
+        if race is None or race.get("not_final") or race.get("held"):
+            continue
+        leaving[mid] = seat
+    return {"leaving": leaving, "moved": moved}
+
+
+def seat_switch(sitting, former, districts, collected="collected", hand_path=None, today=None,
+                newest=None, roster_terms=()):
+    """The seats as the newest general election left them, on `today` (the
+    build's day by default), or None where the site does not switch:
+
+      {"day": "2026-12-03", "election": "2026-11-03", "term": "2027-2028",
+       "leaving": {id: race key},
+       "moved": {id: {"key": the race they won, "towns": its towns}}}
+
+    SWITCHED from the day after Organization Day (proceedings.switch_day),
+    while the roster is still the House the election ended: `newest`, the
+    site's newest term, is the one before the election's (the members-elect
+    step's own sign, term_why), and the term the election ended is not among
+    `roster_terms` (freeze_term.own_roster_terms: the roster installed has
+    turned from its frozen one). From the roster's turn the roster itself
+    says who sits, and nothing here moves anybody. None too before the day,
+    and with no results on file.
+
+    `sitting` and `former` are the roster's rows in the site's shape (an id, a
+    name, a chamber, a county, a district, a slug and display_full: members.
+    site_rows), matched by members_elect() under the members-elect step's own
+    rules, the person's hand file applied (read_hand); `districts` is
+    site/districts.json. A hand file that will not read refuses (Refused), as
+    the members-elect step does: nothing is decided from it."""
+    path = newest_results(collected)
+    if path is None:
+        return None
+    results = read_results(path)
+    election = datetime.date.fromisoformat(results["election"])
+    term = str(results.get("term") or "")
+    day = proceedings.switch_day(election.year)
+    today = _day(today)
+    if day is None or today < day or not term or newest != term_before(term) \
+            or term_before(term) in set(roster_terms or ()):
+        return None
+    hand, _note = read_hand(Path(hand_path or HAND_DEFAULT), results["election"])
+    races, _report = members_elect(results, sitting, former, districts, hand, today.isoformat())
+    got = seat_changes(races, sitting)
+    on_file, _clash = races_on_file(districts)
+    return {"day": day.isoformat(), "election": results["election"], "term": term,
+            "leaving": got["leaving"],
+            "moved": {mid: {"key": key, "towns": sorted((on_file.get(key) or {}).get("towns") or [])}
+                      for mid, key in got["moved"].items()}}
 
 
 # ---- what the pages read ---------------------------------------------------

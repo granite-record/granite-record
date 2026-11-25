@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.50
+# GRANITE_VERSION: 2026-09-04.51
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -49,6 +49,7 @@ import components as C
 import member_links as ML
 import shell as S
 import structured as LD
+import members as MEM
 import build_members_elect as BME
 from build_members_elect import for_pages as members_elect
 # A request's own page's Share, which a member-elect's provisional page has too.
@@ -902,8 +903,16 @@ def main():
         except ValueError:
             return {}
 
+    # THE SEATS AS THE ELECTION LEFT THEM (members.seat_switched), from the day
+    # after Organization Day until the roster turns: a member not returning is
+    # drawn from their former member's row, "Former Representative ...", and
+    # one elected to another seat from their row at it -- each at the address
+    # their page has, and with the file build_site_v2 wrote for them so.
+    switch = MEM.read_switch(site)
+    now = {**switch["leaving"], **switch["moved"]}
     urls, written, n_former = [], 0, 0
     for m in [*legs, *former]:
+        m = now.get(str(m.get("id") or ""), m) if not m.get("former") else m
         slug = m.get("slug") or person_slug(m)
         path = f"/legislator/{slug}.html"
         # "Former Rep. ..." for a member who has left: heading() says why.

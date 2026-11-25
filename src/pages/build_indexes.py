@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.39
+# GRANITE_VERSION: 2026-09-13.40
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -52,6 +52,7 @@ import build_date
 import build_legislator_pages as BLP
 import slugs
 import guides as G
+import members as MEM
 import officials_tabs as OT
 import shell as S
 import structured as LD
@@ -283,9 +284,15 @@ def former_page(site, base, urls):
     more one). Named as the record names them -- "Former" is said on a
     member's own page and in search results and nowhere else -- under a
     heading that says what the list is; each with their chamber, seat and the
-    years the record holds them."""
+    years the record holds them.
+
+    AND, FROM THE DAY AFTER ORGANIZATION DAY UNTIL THE ROSTER TURNS, THE MEMBERS
+    NOT RETURNING (members.read_switch's "leaving"), each by the former
+    member's row the roster's turn will give them, so the list on the night
+    the roster turns is the list it already was."""
     fm = site / "former.json"
-    people = [m for m in (json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else [])
+    people = [m for m in [*(json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else []),
+                          *MEM.read_switch(site)["leaving"].values()]
               if m.get("slug") and (site / "legislator" / f"{m['slug']}.html").exists()]
     if not people:
         return 0
@@ -689,7 +696,15 @@ def find_index(site, legs, towns):
     pays. Once, when they first open the box, and never on a page load.
     """
     rows = []
+    # THE SEATS AS THE ELECTION LEFT THEM (members.read_switch), from the day
+    # after Organization Day until the roster turns: a member not returning has
+    # the former member's row below, "Former Rep. ...", in place of this one,
+    # and one elected to another seat this row at the seat they won.
+    switch = MEM.read_switch(site)
     for m in legs:
+        if str(m.get("id") or "") in switch["leaving"]:
+            continue
+        m = switch["moved"].get(str(m.get("id") or ""), m)
         where = m.get("district_label") or m.get("county") or ""
         rows.append(["legislator", m.get("display_full") or m.get("name") or "",
                      " · ".join(x for x in (
@@ -783,7 +798,8 @@ def find_index(site, legs, towns):
     # other, just later.
     fm = site / "former.json"
     people = {}
-    for m in (json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else []):
+    for m in [*(json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else []),
+              *switch["leaving"].values()]:
         if not m.get("slug"):
             continue
         people[S.canon(f"legislator/{m['slug']}.html")] = m

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.334
+# GRANITE_VERSION: 2026-09-05.335
 """
 Generate the faceted site from real General Court data.
 
@@ -395,7 +395,8 @@ from members import (ATTENDANCE_KIND, FLOOR_RECORD, FORMER_LABEL, MOVED_ADDRESSE
                      build_officers, corrected_seats, date_former_seats, floor_moment,
                      former_movers, former_roster, keep_moved, last_term_labels, member_attendance,
                      member_office, printed_record, printed_seats, same_person, seat_of_the_lines,
-                     sponsored_in_order, term_seats, turned_addresses, write_floor_record)
+                     seat_switched, site_rows, sponsored_in_order, term_seats, turned_addresses,
+                     write_floor_record)
 
 
 def build_composition(a, legs):
@@ -3077,10 +3078,26 @@ def main():
     manual, manual_left = manual_seats({**legs, **former}, links, sponsored, votes_by_member)
     for _said in manual_said(manual, manual_left):
         print(_said)
+    # THE SEATS AS THE ELECTION LEFT THEM, FROM THE DAY AFTER ORGANIZATION DAY
+    # (build_members_elect.seat_switch, members.seat_switched; the owner, 25
+    # November 2026): until the roster turns, a member not returning is drawn as
+    # a former member and one elected to another seat at it, on their own page
+    # and in the search. legislators.json stays the roster. After the bills,
+    # which name every member as they sat.
+    import build_members_elect as BME
+    try:
+        switched = seat_switched(
+            BME.seat_switch(*site_rows(legs, former, links), load(a.districts, {}),
+                            newest=max(bills) if bills else "", roster_terms=term_rosters),
+            legs, former, votes_by_member, links, load("former_members.json", {}),
+            max(bills) if bills else "", district_lines)
+    except BME.Refused as e:
+        switched = {}
+        print(f"  WARNING: no member is drawn as the election left them: {e}")
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
                            sponsored, bill_year, links, former, offices,
                            index_rows={(r.get("term"), r.get("id")): r for r in index},
-                           manual=manual, moved=turned)
+                           manual=manual, moved=turned, switched=switched)
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records

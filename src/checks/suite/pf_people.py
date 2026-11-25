@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of sponsors, members and officials.
 
@@ -2028,6 +2028,500 @@ def _turned_roster_built(B, BP, FT):
                   "page, email, seat and committee, and on Commerce with no seat row; Altschiller "
                   "where she was")
 
+
+# THE ELECTION OF THE SWITCH'S FIXTURE (25 November 2026), made up over the fixture's own districts
+# (pf_fixture._built_site_prepare): Rockingham 13, two seats over Raymond and Stratham; Rockingham 6,
+# 7 and 8, one town each, under the floterial Rockingham 32; Senate districts 24 and 23. Of the
+# roster of 2025-2026 (_switch_fixture): Jodi Nelson loses Rockingham 13; Debra Altschiller is
+# re-elected to SD24; Pat Example, of Rockingham 6, wins Rockingham 7; Michael Vose, a
+# Representative for Rockingham 5, wins SD23. New: Ann Other and Hal Burns (Rockingham 13), Ruth
+# Gale (Rockingham 6) and Pat Newell (Rockingham 32), each with a provisional page; Dana Ricard
+# (Rockingham 8), whose race the hand file holds not final, with none.
+def _sw_race(towns, seats, *cands, floterial=False):
+    return {"seats": seats, "floterial": floterial, "towns": list(towns), "scatter": 0,
+            "candidates": [{"name": n, "party": p, "votes": v, "write_in": False, "elected": won}
+                           for n, p, v, won in cands]}
+
+
+_SW_RESULTS = {
+    "_source": [{"url": "https://www.sos.nh.gov/elections/election-results", "saved": "2026-11-05"}],
+    "election": "2026-11-03", "term": "2027-2028", "races": {
+        "S|24": _sw_race(["Raymond", "Stratham"], 1, ("Debra Altschiller", "d", 900, True),
+                         ("Tom Brandt", "r", 800, False)),
+        "S|23": _sw_race(["Brentwood", "Danville", "Fremont"], 1, ("Michael Vose", "r", 700, True),
+                         ("Lee Rourke", "d", 600, False)),
+        "H|Rockingham|13": _sw_race(["Raymond", "Stratham"], 2, ("Ann Other", "d", 500, True),
+                                    ("Hal Burns", "r", 480, True), ("Jodi Nelson", "r", 470, False)),
+        "H|Rockingham|6": _sw_race(["Brentwood"], 1, ("Ruth Gale", "d", 300, True)),
+        "H|Rockingham|7": _sw_race(["Fremont"], 1, ("Pat Example", "d", 310, True)),
+        "H|Rockingham|8": _sw_race(["Danville"], 1, ("Dana Ricard", "d", 320, True)),
+        "H|Rockingham|32": _sw_race(["Brentwood", "Danville", "Fremont"], 1,
+                                    ("Pat Newell", "r", 330, True), floterial=True)}}
+_SW_HAND = {"2026-11-03": {"recount_deadline": "2026-11-13",
+                           "matches": {"H|Rockingham|32": {"Pat Newell": None}},
+                           "not_final": {"H|Rockingham|8": {"recount": True}}}}
+# Their requests for 2027, one each, as the General Court's list names them.
+_SW_LSRS = [{"lsr": f"2027-{n}", "session": 2027, "body": body, "title": f"relative to item {n}.",
+             "sponsor": who, "withdrawn": False, "cosponsors": []}
+            for n, body, who in (("0001", "HB", "Jodi Nelson"), ("0002", "HB", "Pat Example"),
+                                 ("0003", "SB", "Michael Vose"), ("0004", "HB", "Pat Newell"),
+                                 ("0005", "HB", "Dana Ricard"), ("0006", "SB", "Debra Altschiller"))]
+# Where each day's site is read: the 2025-2026 page of each, and the page their record is on once
+# the roster has turned (Example's at the seat he won, Vose's at the Senate number's).
+_SW_PAGES = {"nelson": ("jodi-nelson-rock-13", "jodi-nelson-rock-13"),
+             "altschiller": ("debra-altschiller-sd-24", "debra-altschiller-sd-24"),
+             "example": ("pat-example-rock-6", "pat-example-rock-7"),
+             "vose": ("michael-vose-rock-5", "michael-vose-sd-23")}
+
+
+def _switch_fixture(root, turned=False):
+    """The fixture project, its builders still to run, on the election above (_SW_RESULTS, the
+    person's file _SW_HAND, the requests _SW_LSRS): the roster of 2025-2026 -- Nelson (Rockingham
+    13), Altschiller (SD24), Vose (Rockingham 5) and Example (Rockingham 6), each with a vote of
+    2026 -- or, `turned`, the roster Organization Day turns it to, as tests/rehearse_turn.py fakes
+    one (_turned_roster_fixture's way): that roster frozen, and the next House installed, every
+    winner numbered but Dana Ricard, Vose under a new Senate number. Returns (base, the builders,
+    in build_all's order, the members-elect steps and the requests' among them)."""
+    here = Path(".").resolve()
+    base, steps = _built_site_prepare(here, root)
+
+    def leg(mid, last, first, ch, district, party="R", towns=(), committees=(), seat=""):
+        tag = f"SD{district}" if ch == "S" else f"Rock {district}"
+        return {"id": mid, "last": last, "first": first, "name": f"{last}, {first}", "chamber": ch,
+                "party": {"R": "Republican", "D": "Democrat"}[party], "party_code": party,
+                "county": "Rockingham", "county_abbr": "Rock", "district": district,
+                "label": f"{'Sen.' if ch == 'S' else 'Rep.'} {first} {last} ({party} - {tag})",
+                "email": f"{first.lower()}.{last.lower()}@gc.nh.gov", "url": "",
+                "towns": list(towns), "committees": list(committees), "title": "", "seat": seat,
+                "phone": ""}
+    d = root / "data"
+    nelson, altschiller = json.loads((d / "legislators.json").read_text(encoding="utf-8"))
+    vose_h = leg("377300", "Vose", "Michael", "H", "5", towns=["Brentwood"])
+    example_was = leg("377301", "Example", "Pat", "H", "6", party="D", towns=["Brentwood"],
+                      committees=["Commerce"])
+    then = [nelson, altschiller, vose_h, example_was]
+    votes = json.loads((d / "member_votes.json").read_text(encoding="utf-8"))
+    for m in (vose_h, example_was):
+        votes.append({"member_id": m["id"], "name": m["name"], "party": m["party_code"],
+                      "label": f"{m['name']}({m['party_code']}) Rock {m['district']}",
+                      "year": "2026", "body": "H", "vote_number": "310", "bill": "HB1442",
+                      "question": "Ought to Pass", "date": "2026-03-06", "vote": "Yea"})
+    (d / "member_votes.json").write_text(json.dumps(votes), encoding="utf-8")
+    (d / "committee_members.json").write_text(json.dumps({"H43": [
+        {"id": m["id"], "name": m["name"], "party": m["party"], "party_code": m["party_code"],
+         "district": m["district"], "county_code": "08", "chamber": "H", "sequence": i,
+         "sitting": True, "seat_active": True} for i, m in enumerate((nelson, example_was))]}),
+        encoding="utf-8")
+    (root / "committees.json").write_text(json.dumps({"House": [
+        {"name": "Commerce", "chair": "Pat Example", "vice_chair": "", "clerk": ""}]}),
+        encoding="utf-8")
+    (root / "collected").mkdir(exist_ok=True)
+    (root / "collected" / "election_2026.json").write_text(json.dumps(_SW_RESULTS), encoding="utf-8")
+    (root / "corrections").mkdir(exist_ok=True)
+    (root / "corrections" / "members_elect.json").write_text(json.dumps(_SW_HAND), encoding="utf-8")
+    (root / "lsrs.json").write_text(json.dumps(_SW_LSRS), encoding="utf-8")
+    if turned:
+        now = [altschiller, leg("990103", "Vose", "Michael", "S", "23",
+                                towns=["Brentwood", "Danville", "Fremont"]),
+               leg("377301", "Example", "Pat", "H", "7", party="D", towns=["Fremont"],
+                   committees=["Commerce"]),
+               leg("990104", "Newell", "Pat", "H", "32", towns=["Brentwood", "Danville", "Fremont"]),
+               leg("990105", "Other", "Ann", "H", "13", party="D", towns=["Raymond", "Stratham"]),
+               # The General Court's own spelling of the ballot's "Hal Burns", which the
+               # members-elect step's rule does not take for him (three letters): on a roster
+               # that has turned, nothing but the roster says who sits.
+               leg("990106", "Burns", "Harold", "H", "13", towns=["Raymond", "Stratham"]),
+               leg("990107", "Gale", "Ruth", "H", "6", party="D", towns=["Brentwood"])]
+        (d / "frozen" / "2025-2026").mkdir(parents=True)
+        (d / "frozen" / "2025-2026" / "legislators.json").write_text(json.dumps(then), encoding="utf-8")
+        (d / "legislators.json").write_text(json.dumps(now), encoding="utf-8")
+        (root / "Docket.txt").write_text("2026|0503|3/6/2026 11:12:00 AM|HB1442|H|Ought to Pass|x\n",
+                                         encoding="utf-8")
+        fz = root / "frozen" / "2025-2026"
+        (fz / "day").mkdir(parents=True)
+        (fz / "manifest.json").write_text("{}", encoding="utf-8")
+
+        def txt(rows):
+            return "".join(f"{m['id']}|{m['name'].split(', ')[0]}|{m['name'].split(', ')[-1]}||"
+                           f"{m['chamber']}|||{m['district']}|{m['party_code']}||||||\n" for m in rows)
+        (fz / "day" / "legislators.txt").write_text(txt(then), encoding="utf-8")
+        (root / "legislators.txt").write_text(txt(now), encoding="utf-8")
+    else:
+        (d / "legislators.json").write_text(json.dumps(then), encoding="utf-8")
+    # The members-elect steps after the site data and the requests' before the pages, and each
+    # request's page after the legislator pages, as build_all runs them. Each is held to the site's
+    # meta.json, which every day has: what they write comes and goes with the day.
+    extra = {"build_site_v2.py": [("build_elect_pages.py", ["--site", "site"], "site/meta.json"),
+                                  ("build_members_elect.py", ["--site", "site"], "site/meta.json"),
+                                  ("build_lsrs.py", ["--site", "site"], "site/meta.json")],
+             "build_legislator_pages.py": [("build_request_pages.py",
+                                            ["--site", "site", "--base", base], "site/meta.json")]}
+    out = []
+    for s in steps:
+        out.append(s)
+        out += extra.get(s[0], [])
+    return base, out
+
+
+@check("code", "the day after Organization Day is the switch day, by the rule for Organization Day; and "
+               "who the election moved is decided by identity, a member not returning only where their "
+               "race is decided, the same people the requests drop",
+       needs=("build_members_elect", "build_lsrs", "proceedings"))
+def _seat_changes_rule(BME, L, P):
+    """proceedings.switch_day is organization_day and a day (3 December 2026, 6 December 2028, 4
+    December 2030; none for an odd year), the one day every switch reads. build_members_elect.
+    seat_changes, over races as members_elect draws them: a sitting member among no race's
+    winners is leaving only where their own seat's race is decided -- not one with a seat not
+    final, one held by hand, or no race at all -- and one among another race's winners moved
+    there, the other chamber's included; re-elected to their own seat, nothing. The leaving are
+    build_lsrs.not_returning's, on the same races (its own rule for the requests). And seat_switch
+    switches nothing before the day, once the roster has turned (roster_terms), or once the
+    site's newest term is the election's."""
+    import datetime as dt
+    assert (P.switch_day(2026), P.switch_day(2028), P.switch_day(2030), P.switch_day(2027)) == (
+        dt.date(2026, 12, 3), dt.date(2028, 12, 7), dt.date(2030, 12, 5), None), (
+        "switch_day is not the day after Organization Day", P.switch_day(2026), P.switch_day(2028))
+    assert all(P.switch_day(y) - P.organization_day(y) == dt.timedelta(days=1) for y in range(1990, 2100, 2))
+    row = lambda i, ch, county, d, slug: {"id": i, "name": f"M{i}, A", "chamber": ch, "county": county,  # noqa: E731
+                                          "district": d, "slug": slug}
+    sitting = [row("1", "H", "Rockingham", "13", "a-rock-13"), row("2", "H", "Rockingham", "13", "b-rock-13"),
+               row("3", "H", "Rockingham", "6", "c-rock-6"), row("4", "H", "Rockingham", "5", "d-rock-5"),
+               row("5", "H", "Rockingham", "8", "e-rock-8"), row("6", "H", "Belknap", "2", "f-belk-2"),
+               row("7", "S", "", "24", "g-sd-24"), row("8", "H", "Coos", "1", "h-coos-1")]
+    won = lambda i, s: {"n": "x", "p": "R", "k": "sitting", "id": i, "s": s}  # noqa: E731
+    races = {"H|Rockingham|13": {"seats": 2, "not_final": 0, "held": 0,
+                                 "elected": [won("1", "a-rock-13"), {"n": "New", "k": "new"}]},
+             "H|Rockingham|6": {"seats": 1, "not_final": 0, "held": 0, "elected": [{"n": "N", "k": "new"}]},
+             "H|Rockingham|7": {"seats": 1, "not_final": 0, "held": 0, "elected": [won("3", "c-rock-6")]},
+             "S|23": {"seats": 1, "not_final": 0, "held": 0, "elected": [won("4", "d-rock-5")]},
+             "H|Rockingham|8": {"seats": 1, "not_final": 1, "held": 0, "elected": []},
+             "H|Belknap|2": {"seats": 1, "not_final": 0, "held": 1, "elected": []},
+             "S|24": {"seats": 1, "not_final": 0, "held": 0, "elected": [won("7", "g-sd-24")]}}
+    got = BME.seat_changes(races, sitting)
+    assert got == {"leaving": {"2": "H|Rockingham|13"},
+                   "moved": {"3": "H|Rockingham|7", "4": "S|23"}}, (
+        f"seat_changes says {got}: wanted 2 leaving (lost a decided race); 3 to Rockingham 7 and 4 "
+        "to the Senate; 1 and 7 re-elected; 5 not final, 6 held and 8 in no race undecided")
+    with tempfile.TemporaryDirectory() as d:
+        site = Path(d)
+        (site / "legislators.json").write_text(json.dumps(sitting), encoding="utf-8")
+        (site / "members_elect.json").write_text(json.dumps(
+            {"election": "2026-11-03", "takes_office": "2026-12-02", "term": "2027-2028",
+             "races": races}), encoding="utf-8")
+        gone, undecided = L.not_returning(site, str(site / "no-results"))
+    assert set(gone) == {sitting[1]["slug"]} and set(undecided) == {"e-rock-8", "f-belk-2", "h-coos-1"}, (
+        f"the requests' rule disagrees: {gone} {undecided}")
+    # NOTHING SWITCHES BEFORE THE DAY, NOR ONCE THE ROSTER OR THE SITE IS THE NEW TERM'S.
+    root = Path(tempfile.mkdtemp(prefix="gr-seatrule-"))
+    was = os.getcwd()
+    try:
+        (root / "collected").mkdir()
+        (root / "collected" / "election_2026.json").write_text(json.dumps(_SW_RESULTS), encoding="utf-8")
+        os.chdir(root)
+        districts = {"Raymond": {"0": {"senate": 24, "house": [{"county": "Rockingham", "district": 13,
+                                                                "seats": 2}]}}}
+        args = ([], [], districts)
+        none = {label: BME.seat_switch(*args, today=day, newest=newest, roster_terms=terms)
+                for label, day, newest, terms in (
+                    ("2 December", "2026-12-02", "2025-2026", ()),
+                    ("the roster turned", "2026-12-03", "2025-2026", ("2025-2026",)),
+                    ("the site turned", "2026-12-03", "2027-2028", ()))}
+        on = BME.seat_switch(*args, today="2026-12-03", newest="2025-2026", roster_terms=())
+    finally:
+        os.chdir(was)
+        shutil.rmtree(root, ignore_errors=True)
+    assert all(v is None for v in none.values()) and on and on["day"] == "2026-12-03" \
+        and on["term"] == "2027-2028" and on["leaving"] == {} and on["moved"] == {}, (
+        f"seat_switch on the days and the turns: {none}, on 3 December {on}")
+    return "ok", ("switch_day is Organization Day and a day, every even year from 1990 to 2098; one "
+                  "lost in a decided race leaving, two moved, one to the Senate, the not final, the "
+                  "held and the raceless undecided, as the requests' own rule has them; nothing "
+                  "switched on 2 December, once the roster turned or once the site's term is theirs")
+
+
+# What the switch's check reads of a page of the fixture's site, as the reader gets it.
+def _sw_page(site, slug):
+    p = site / "legislator" / f"{slug}.html"
+    if not p.exists():
+        return None
+    t = p.read_text(encoding="utf-8")
+    title = re.search(r"<title>(.*?)</title>", t)
+    return {"title": title.group(1) if title else "",
+            "h1": re.findall(r"<h1[^>]*>(.*?)</h1>", t, re.S),
+            "former": "GR_FORMER=true" in t,
+            "elect": "GR_ELECT" in t or "data-elect" in re.sub(r"<footer>.*?</footer>", "",
+                                                                 re.sub(r"<header.*?</header>", "", t,
+                                                                        flags=re.S), flags=re.S)}
+
+
+@check("build", "the seats change hands on the site on 3 December, the day after Organization Day, by "
+                "date: on 1 and 2 December the members-elect and the old titles; from 3 December a "
+                "member not returning is Former on their page, in the search and in Former members, "
+                "one re-elected to another seat or to the Senate drawn at it, the members-elect gone, "
+                "every record as it was; and the night the roster turns changes none of it",
+       needs=("build_site_v2", "freeze_term"))
+def _seat_switch_by_day(B, FT):
+    """The owner, 25 November 2026: "I would say wait until December 3rd to switch to the new
+    titles since the swearing in ceremony happens on the morning of December 2nd". The fixture's
+    election (_SW_RESULTS) is built four times as build_all builds it, every builder run, the day
+    stated: 1 December, 2 December (Organization Day, whose night publishes before the members are
+    sworn in), 3 December (proceedings.switch_day), each on the roster of 2025-2026, and 4
+    December with the roster turned (_switch_fixture). Read on each, side by side:
+
+      1 and 2 December, the same: the members-elect file (until 3 December) and its blocks, every
+        one carrying data-until="2026-12-03"; Nelson, Example and Vose on their pages, titles and
+        search rows as they sit; Nelson not among the Former members; the requests' members-elect
+        Rep.-elect and Sen.-elect;
+      3 December: no members-elect file and nothing drawn of it; site/seat_switch.json; Nelson
+        "Former Rep. Jodi Nelson (R - Rock 13)" on her page (GR_FORMER, her own file the former
+        member's), "Former Rep." in the search, in Former members, her request "Jodi Nelson (R)";
+        Example "Rep. Pat Example (D - Rock 7)" and Vose "Sen. Michael Vose (R - SD23)" on their
+        pages and in the search and their requests' chips, at their pages' addresses;
+        Altschiller as she was; Newell's provisional page and request "Rep."; Dana Ricard, of a
+        race not final, as before; and legislators.json still the roster's four, so the census
+        and every list of who holds a seat are the old roster's, HB 1442's sponsor and roll call
+        naming each as they sat;
+      4 December, the roster turned: every title, heading, search row (but the address, which the
+        roster's turn moves with a 301), Former members row and request label of the four as on 3
+        December, Nelson's own file key for key and the heads app.js draws from the four's files
+        the same, and no members-elect block or seat_switch.json; and Harold Burns, as the General
+        Court spells the ballot's "Hal Burns" (a name the members-elect step does not take for
+        his), a member: from the turn the roster alone says who sits. And a member-elect's head
+        (app.js, GR_ELECT) lasts until its "until", whatever its takes_office."""
+    here = Path(".").resolve()
+    missing = [x for x in CHAIN_NEEDS + ["build_members_elect.py", "build_elect_pages.py",
+                                         "build_lsrs.py", "build_request_pages.py"]
+               if not _paths.locate(x).exists()]
+    if missing or not (here / "src/pages/bills.html").exists():
+        return "skip", f"not here: {', '.join(missing) or 'src/pages/bills.html'}"
+    days = {"1 Dec": ("2026-12-01", False), "2 Dec": ("2026-12-02", False),
+            "3 Dec": ("2026-12-03", False), "turned": ("2026-12-04", True)}
+    seen = {}
+    roots = []
+    try:
+        for label, (day, turned) in days.items():
+            root = Path(tempfile.mkdtemp(prefix="gr-seatswitch-"))
+            roots.append(root)
+            _base, steps = _switch_fixture(root, turned)
+            if turned:
+                assert FT.own_roster_terms(root) == ["2025-2026"], (
+                    f"the fixture's roster has not turned for freeze_term: {FT.own_roster_terms(root)}")
+            _built_site_run(root, steps, env={**os.environ, "GRANITE_BUILD_DATE": day})
+            site = root / "site"
+            load = lambda p: json.loads((site / p).read_text(encoding="utf-8"))  # noqa: E731
+            pick = 1 if turned else 0
+            find = load("find.json")
+            requests = {r["n"][4:]: r for r in load("idx/2027-requests.json")}
+            heads = {}
+            for n in requests:
+                f = site / "request" / f"{n}.html"
+                h = f.read_text(encoding="utf-8") if f.exists() else ""
+                m = re.search(r'<dl class="rfacts">.*?</dl>', h, re.S)
+                heads[n] = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m.group(0) if m else "")).strip()
+            blocks = sorted({u for f in site.rglob("*.html")
+                             for u in re.findall(r'data-elect data-until="([\d-]+)"',
+                                                 re.sub(r"<header.*?</header>|<footer>.*?</footer>", "",
+                                                        f.read_text(encoding="utf-8"), flags=re.S))})
+            seen[label] = {
+                "elect_file": load("members_elect.json").get("until")
+                if (site / "members_elect.json").exists() else None,
+                "switch_file": (site / "seat_switch.json").exists(),
+                "blocks": blocks,
+                "pages": {k: _sw_page(site, v[pick]) for k, v in _SW_PAGES.items()},
+                "files": {k: {x: load(f"legislators/{mid}.json").get(x)
+                              for x in ("former", "chamber", "district", "display_full", "email",
+                                        "towns", "committees")}
+                          for k, mid in (("nelson", "377204"), ("example", "377301"),
+                                         ("vose", "990103" if turned else "377300"))},
+                "find": {r[3]: r[:3] for r in find if r and r[0] in ("legislator", "former", "elect")},
+                "former_list": (site / "directory/former-legislators.html").exists() and
+                               "legislator/jodi-nelson-rock-13" in
+                               (site / "directory/former-legislators.html").read_text(encoding="utf-8"),
+                "roster": sorted(m["id"] for m in load("legislators.json")),
+                "requests": {n: (r["sponsor_label"], r["sponsor_slug"]) for n, r in requests.items()},
+                "heads": heads,
+                "hb1442": {r["id"]: r for r in load("idx/2025-2026.json")}["HB1442"].get("sponsor_label"),
+                "ballots": sorted(set(re.findall(r'"n": "((?:Former )?(?:Rep|Sen)\. [^"]+)"',
+                                                 (site / "bill/2026/hb1442.html").read_text(encoding="utf-8")))),
+                "redirects": sorted(r for r in (site / "_redirects").read_text(encoding="utf-8").splitlines()
+                                    if r.startswith("/legislator/") and " 301" in r
+                                    and "/:" not in r and "*" not in r),
+                "provisional": _sw_page(site, "pat-newell-rock-32"),
+                "burns": _sw_page(site, "harold-burns-rock-13") if turned else None,
+                "nelson_file": {k: v for k, v in load("legislators/377204.json").items()
+                                if k not in ("elections", "up")},
+                "own_files": {k: load(f"legislators/{mid}.json")
+                              for k, mid in (("nelson", "377204"), ("example", "377301"),
+                                             ("vose", "990103" if turned else "377300"),
+                                             ("altschiller", "377207"))},
+            }
+    finally:
+        for r in roots:
+            shutil.rmtree(r, ignore_errors=True)
+    d1, d2, d3, dt = (seen[k] for k in ("1 Dec", "2 Dec", "3 Dec", "turned"))
+    bad = []
+    # ORGANIZATION DAY IS THE DAY BEFORE'S (the request pages' heads aside, which carry the day).
+    same = [k for k in d1 if k not in ("heads", "own_files", "nelson_file")]
+    if any(d1[k] != d2[k] for k in same) or any(
+            c not in d2["heads"][n] for n, c in (("2027-0001", "Rep. Jodi Nelson (R - Rock 13)"),
+                                                 ("2027-0002", "Rep. Pat Example (D - Rock 6)"),
+                                                 ("2027-0003", "Sen.-elect Michael Vose (R)"))):
+        bad.append("2 December is not 1 December: " + "; ".join(
+            f"{k}: {d1[k]!r} -> {d2[k]!r}" for k in d1 if d1[k] != d2[k])[:900])
+    if d1["elect_file"] != "2026-12-03" or d1["blocks"] != ["2026-12-03"] or d1["switch_file"]:
+        bad.append(f"1 December's members-elect: file until {d1['elect_file']}, blocks {d1['blocks']}, "
+                   f"seat_switch.json {d1['switch_file']}")
+    # THE DAY AFTER: the members-elect gone, the switch made.
+    if d3["elect_file"] is not None or d3["blocks"] or not d3["switch_file"]:
+        bad.append(f"3 December's members-elect: file {d3['elect_file']}, blocks {d3['blocks']}, "
+                   f"seat_switch.json {d3['switch_file']}")
+    want3 = {
+        "nelson": ("Former Rep. Jodi Nelson (R - Rock 13) | Granite Record",
+                   "Former Representative Jodi Nelson (R - Rock 13)", True),
+        "altschiller": ("Sen. Debra Altschiller (D - SD24) | Granite Record",
+                        "Senator Debra Altschiller (D - SD24)", False),
+        "example": ("Rep. Pat Example (D - Rock 7) | Granite Record",
+                    "Representative Pat Example (D - Rock 7)", False),
+        "vose": ("Sen. Michael Vose (R - SD23) | Granite Record",
+                 "Senator Michael Vose (R - SD23)", False)}
+    for label, day in (("3 December", d3), ("the turned night", dt)):
+        for who, (title, h1, former) in want3.items():
+            p = day["pages"][who]
+            if not p or (p["title"], p["h1"], p["former"]) != (title, [h1], former) or p["elect"]:
+                bad.append(f"{label}: {who}'s page is {p}, not {title!r} / {h1!r}")
+    was = {"nelson": "Rep. Jodi Nelson (R - Rock 13)", "example": "Rep. Pat Example (D - Rock 6)",
+           "vose": "Rep. Michael Vose (R - Rock 5)"}
+    for who, label in was.items():
+        p = d1["pages"][who]
+        if not p or p["title"] != f"{label} | Granite Record" or p["former"]:
+            bad.append(f"1 December: {who}'s page is {p}, not {label!r} as they sit")
+    # THEIR OWN FILES, WHICH app.js DRAWS THE PAGE FROM: the former member's, and the seat won.
+    f3 = d3["files"]
+    if not f3["nelson"].get("former") or f3["nelson"].get("email") or f3["nelson"].get("towns") \
+            or (f3["example"].get("district"), f3["example"].get("display_full")) != (
+                "7", "Rep. Pat Example (D - Rock 7)") \
+            or (f3["vose"].get("chamber"), f3["vose"].get("district"), f3["vose"].get("committees")) != (
+                "S", "23", []):
+        bad.append(f"3 December's own files: {[(k, {x: v.get(x) for x in ('former', 'chamber', 'district', 'display_full', 'email')}) for k, v in f3.items()]}")
+    if d1["files"]["nelson"].get("former") or d1["files"]["example"].get("district") != "6":
+        bad.append("1 December's own files already switched")
+    # THE SEARCH: the same rows on 3 December and the night the roster turns, but the address the
+    # turn moves.
+    rows3 = {tuple(v): k for k, v in d3["find"].items()}
+    rowst = {tuple(v): k for k, v in dt["find"].items()}
+    for row, addr in (
+            (("former", "Former Rep. Jodi Nelson", "House · Rock 13 · 2023–2026"),
+             "legislator/jodi-nelson-rock-13"),
+            (("legislator", "Sen. Debra Altschiller (D - SD24)", "Senate · SD24 · Democrat"),
+             "legislator/debra-altschiller-sd-24"),
+            (("legislator", "Rep. Pat Example (D - Rock 7)", "House · Rock 7 · Democrat"),
+             "legislator/pat-example-rock-6"),
+            (("legislator", "Sen. Michael Vose (R - SD23)", "Senate · SD23 · Republican"),
+             "legislator/michael-vose-rock-5")):
+        if rows3.get(row) != addr:
+            bad.append(f"3 December's search has no row {row} at {addr}: {sorted(rows3)[:12]}")
+        if row not in rowst:
+            bad.append(f"the turned night's search has no row {row}: {sorted(rowst)[:12]}")
+    if any(v[1].startswith("Former") for k, v in d1["find"].items() if "nelson" in k):
+        bad.append("1 December's search already says Former Rep.")
+    if not d3["former_list"] or not dt["former_list"] or d1["former_list"]:
+        bad.append(f"Former members lists Nelson on 1 Dec {d1['former_list']}, 3 Dec "
+                   f"{d3['former_list']}, turned {dt['former_list']}")
+    # THE ROSTER STAYS THE ROSTER until it turns, and the records name each as they sat.
+    if d3["roster"] != sorted(["377204", "377207", "377300", "377301"]):
+        bad.append(f"3 December's legislators.json holds {d3['roster']}: wanted the roster's four")
+    for label, day in (("1 Dec", d1), ("3 Dec", d3), ("turned", dt)):
+        if day["hb1442"] != "Rep. Jodi Nelson (R - Rock 13)" or not {
+                "Rep. Jodi Nelson (R)", "Rep. Michael Vose (R)", "Rep. Pat Example (D)"} <= set(day["ballots"]) \
+                or any(b.startswith(("Former", "Sen. Michael")) for b in day["ballots"]):
+            bad.append(f"{label}: HB 1442 names {day['hb1442']} and {day['ballots']}")
+    # THE REQUESTS: the labels and their pages' chips.
+    want_req = {
+        "1 Dec": {"2027-0001": ("Rep. Jodi Nelson (R)", "jodi-nelson-rock-13"),
+                  "2027-0002": ("Rep. Pat Example (D)", "pat-example-rock-6"),
+                  "2027-0003": ("Sen.-elect Michael Vose (R)", "michael-vose-rock-5"),
+                  "2027-0004": ("Rep.-elect Pat Newell (R)", "pat-newell-rock-32"),
+                  "2027-0005": ("Dana Ricard (D)", ""),
+                  "2027-0006": ("Sen. Debra Altschiller (D)", "debra-altschiller-sd-24")},
+        "3 Dec": {"2027-0001": ("Jodi Nelson (R)", "jodi-nelson-rock-13"),
+                  "2027-0002": ("Rep. Pat Example (D)", "pat-example-rock-6"),
+                  "2027-0003": ("Sen. Michael Vose (R)", "michael-vose-rock-5"),
+                  "2027-0004": ("Rep. Pat Newell (R)", "pat-newell-rock-32"),
+                  "2027-0005": ("Dana Ricard (D)", ""),
+                  "2027-0006": ("Sen. Debra Altschiller (D)", "debra-altschiller-sd-24")}}
+    for label in ("1 Dec", "3 Dec"):
+        if seen[label]["requests"] != want_req[label]:
+            bad.append(f"{label}'s requests read {seen[label]['requests']}")
+    chips = {"2027-0001": ("Rep. Jodi Nelson (R - Rock 13)", "Jodi Nelson (R)"),
+             "2027-0002": ("Rep. Pat Example (D - Rock 6)", "Rep. Pat Example (D - Rock 7)"),
+             "2027-0003": ("Sen.-elect Michael Vose (R)", "Sen. Michael Vose (R - SD23)")}
+    for n, (before, after) in chips.items():
+        if before not in d1["heads"][n] or after not in d3["heads"][n] or after not in dt["heads"][n]:
+            bad.append(f"request {n}'s chip: 1 Dec {d1['heads'][n]!r}, 3 Dec {d3['heads'][n]!r}, "
+                       f"turned {dt['heads'][n]!r}")
+    # The turned night's labels, the text of 3 December's: the slugs are the pages' now.
+    if {n: v[0] for n, v in dt["requests"].items() if n != "2027-0004"} != \
+            {n: v[0] for n, v in d3["requests"].items() if n != "2027-0004"}:
+        bad.append(f"the turned night's request labels are not 3 December's: {dt['requests']}")
+    # NEW MEMBERS: Newell's provisional page a member's from 3 December; at the turn his own.
+    pn = d3["provisional"]
+    if not pn or pn["title"] != "Pat Newell (R) | Granite Record" or (d1["provisional"] or {}).get(
+            "title") != "Pat Newell (R), member-elect | Granite Record":
+        bad.append(f"Newell's provisional page: 1 Dec {d1['provisional']}, 3 Dec {pn}")
+    # NELSON'S OWN FILE ON 3 DECEMBER IS THE ONE THE TURN WRITES, key for key.
+    a, b = d3["nelson_file"], dt["nelson_file"]
+    differ = sorted(k for k in set(a) | set(b) if a.get(k) != b.get(k))
+    if differ:
+        bad.append(f"Nelson's own file on 3 December and the turned night differs in {differ}: "
+                   + ", ".join(f"{k} {a.get(k)!r} / {b.get(k)!r}" for k in differ)[:500])
+    # A MEMBER THE ROSTER'S TURN SEATS IS NOBODY'S TO SWITCH: the General Court's "Burns, Harold",
+    # whom the members-elect step does not take for the ballot's "Hal Burns", sits.
+    if not dt["burns"] or dt["burns"]["former"] or not dt["burns"]["title"].startswith("Rep. Harold Burns"):
+        bad.append(f"the turned night's Harold Burns: {dt['burns']}")
+    # THE HEADS app.js DRAWS FROM THE OWN FILES, the same on 3 December and the turned night; and
+    # a member-elect's head lasts until GR_ELECT's "until", not its takes_office.
+    order = ("nelson", "example", "vose", "altschiller")
+    ge = {"id": "377204", "key": "H|Rockingham|13", "election": "2026-11-03",
+          "takes_office": "2000-01-01", "until": "2999-01-02", "mode": "returning",
+          "name": "Jodi Nelson", "party": "R", "title": "Rep.-elect",
+          "where": "Member-elect of the New Hampshire House of Representatives, Rockingham 13."}
+    js = _app_js("[" + ", ".join(f"scope.renderMemberHead({json.dumps(day['own_files'][w])})"
+                                 for day in (d3, dt) for w in order)
+                 + f", (window.GR_ELECT={json.dumps(ge)}, "
+                   f"scope.renderMemberHead({json.dumps(d3['own_files']['nelson'])}))]",
+                 names=("renderMemberHead",))
+    if js is not None:
+        h1 = lambda h: re.sub(r"<[^>]+>", "", " ".join(re.findall(r'<h1 class="rh1">(.*?)</h1>', h)))  # noqa: E731
+        words = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", re.sub(r'href="[^"]*"', "", h))).strip()  # noqa: E731
+        for i, who in enumerate(order):
+            a, b = words(js[i]), words(js[len(order) + i])
+            if a != b:
+                at = next((k for k in range(min(len(a), len(b))) if a[k] != b[k]), min(len(a), len(b)))
+                bad.append(f"app.js draws {who}'s head otherwise on the turned night: ...{a[max(0, at - 60):at + 80]!r} "
+                           f"/ ...{b[max(0, at - 60):at + 80]!r}")
+        # The heading is the name and title; the seat and its towns are on the line under it.
+        if [h1(js[i]) for i in range(len(order))] != [
+                "Former Representative Jodi Nelson", "Representative Pat Example",
+                "Senator Michael Vose", "Senator Debra Altschiller"] \
+                or "Rockingham District&nbsp;7" not in js[1] or "Senate District&nbsp;23" not in js[2] \
+                or "House, 2026" not in words(js[2]):
+            bad.append(f"app.js's heads on 3 December: {[words(js[i])[:200] for i in range(len(order))]}")
+        if h1(js[-1]) != "Representative-elect Jodi Nelson (R)":
+            bad.append(f"a member-elect's head with until ahead and takes_office past: {h1(js[-1])!r}")
+    # THE ADDRESSES THE TURN MOVES, answered.
+    for old, new in (("pat-example-rock-6", "pat-example-rock-7"), ("michael-vose-rock-5", "michael-vose-sd-23")):
+        if f"/legislator/{old} /legislator/{new} 301" not in dt["redirects"]:
+            bad.append(f"the turned night does not answer /legislator/{old}: {dt['redirects']}")
+    if any(r.startswith(("/legislator/pat-example", "/legislator/michael-vose", "/legislator/jodi-nelson"))
+           for r in d3["redirects"]):
+        bad.append(f"3 December moves an address: {d3['redirects']}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("1 and 2 December the same, the members-elect until 3 December; on 3 December "
+                  "Nelson Former Rep. on her page, in the search and in Former members, Example at "
+                  "Rock 7 and Vose at SD23 on theirs and their requests' chips, the members-elect gone, "
+                  "legislators.json the roster's four and HB 1442 naming each as they sat; the turned "
+                  "night every title, search row, Former row and request label the same, its 301s "
+                  "covering the two addresses it moves")
 
 
 @check("naming", "a bill text's sponsor line is read as each era prints it, and a surname is a member only where one fits",
