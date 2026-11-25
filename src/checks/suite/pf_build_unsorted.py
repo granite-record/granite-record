@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.8
+# GRANITE_VERSION: 2026-11-16.9
 """
 preflight's checks of build checks with no module under test, for a person to sort.
 
@@ -1965,12 +1965,14 @@ def _new_session_calendar_names(CA, FC, IS, NI):
     with none on file, was already taken as none posted yet, and stays so.) Held here, in a
     throwaway folder, with no request:
 
-      - _local numbers a name of the list's own letters and a number ("HC 1.pdf", "SC 29.pdf")
-        and keeps one with none, or another list's letters;
-      - nightly.take_documents, on a night the list is not asked for, first puts the row kept
-        under its source name and its text under the archive's name (renumber), says so, and
-        leaves a row whose archive name another document has, and the rest, as they were; a
-        second night moves nothing;
+      - _local numbers a House Calendar named "HC" and a number ("HC 1.pdf"), and keeps one
+        with no number, and the Senate's and the journals' source names as it always has
+        ("SC 29.pdf": 1,169 rows of the list are kept so, and their readers read any name);
+      - nightly.take_documents, on a night the list is not asked for, first puts the House
+        Calendar row kept as "HC 1.pdf" and its text under the archive's name (renumber), says
+        so, and leaves a row whose archive name another document has, a Senate calendar and a
+        journal kept under their source names, and the rest, as they were; a second night
+        moves nothing;
       - fetch_committee_reports.py --offline --text --year 2027 reads "HC 1" as the night had
         it (exit 0, the year's term written), the renamed HC001 beside a calendar still under
         the General Court's name, and keeps a report's first printing by the calendars' order,
@@ -1981,12 +1983,15 @@ def _new_session_calendar_names(CA, FC, IS, NI):
     here = Path(".").resolve()
     assert CA._local("HC", "HC 1.pdf", "") == "HC001.pdf" and \
         CA._local("HC", "HC 1.pdf", "HC 1 November 25 2026") == "HC001.pdf" and \
-        CA._local("SC", "SC 29.pdf", "") == "SC029.pdf" and \
         CA._local("HC", "HC 41.pdf", "No 41 November 6 2026") == "HC041.pdf" and \
+        CA._local("SC", "SC 29.pdf", "No 29 May 7 2026") == "SC029.pdf" and \
         CA._local("HC", "No 1 November 26 2024.pdf", "No 1 November 26 2024") == "HC001.pdf", (
         "the archive's name of a document")
     assert CA._local("HC", "Supplement.pdf", "") == "Supplement.pdf" and \
-        CA._local("HC", "SC 3.pdf", "") == "SC 3.pdf", "a name with no number of the list's, renamed"
+        CA._local("HC", "SC 3.pdf", "") == "SC 3.pdf" and \
+        CA._local("SC", "SC 45.pdf", "") == "SC 45.pdf" and \
+        CA._local("HJ", "HJ 01 January 7, 2026.pdf", "HJ 01 January 7, 2026") == \
+        "HJ 01 January 7, 2026.pdf", "a source name the archive keeps, renamed"
     tmp = Path(tempfile.mkdtemp(prefix="gr-newsession-cal-"))
     saved = (sys.argv, dict(NI.EXITS), NI.LOG, NI.QUIET)
 
@@ -2009,17 +2014,29 @@ def _new_session_calendar_names(CA, FC, IS, NI):
         (y27 / "HC002.txt").write_text(CALENDAR_PAGE, encoding="utf-8")
         (y26 / "HC041.txt").write_text(CALENDAR_PAGE, encoding="utf-8")
 
-        def row(year, name, path, label=""):
-            return {"chamber": "H", "kind": "calendar", "year": year, "name": name,
+        def row(year, name, path, label="", chamber="H", kind="calendar"):
+            return {"chamber": chamber, "kind": kind, "year": year, "name": name,
                     "url": f"https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName={name}",
                     "path": path, "state": "held", "attempts": "0", "label": label}
+        # The Senate's calendar and a journal kept under their source names, as the list keeps
+        # 1,169 of theirs, their text beside them: no rule here renames them.
+        sen = Path("calendars_senate") / "2007"
+        sen.mkdir(parents=True)
+        (sen / "SC 45.txt").write_text("a Senate calendar", encoding="utf-8")
         CA.write_rows(Path("archive") / "queue.csv", [
             row("2027", "HC 1.pdf", "calendars/2027/HC 1.pdf"),
             # Its archive name is another document's: it keeps its own.
             row("2027", "HC 2.pdf", "calendars/2027/HC 2.pdf"),
             row("2027", "No 2 December 4 2026.pdf", "calendars/2027/HC002.pdf",
                 "No 2 December 4 2026"),
-            row("2026", "HC 41.pdf", "calendars/2026/HC041.pdf", "No 41 November 6 2026")])
+            row("2026", "HC 41.pdf", "calendars/2026/HC041.pdf", "No 41 November 6 2026"),
+            row("2007", "SC 45.pdf", "calendars_senate/2007/SC 45.pdf", "", "S"),
+            row("2026", "HJ 01 January 7, 2026.pdf", "journals/2026/HJ 01 January 7, 2026.pdf",
+                "HJ 01 January 7, 2026", "H", "journal"),
+            # A House Calendar of 2025 kept under a source name of another form, whose label
+            # the list has filled in since: not the case at hand, and left as it is.
+            row("2025", "No13aFebruary 21 2025.pdf", "calendars/2025/No13aFebruary 21 2025.pdf",
+                "No 13a February 21 2025")])
 
         # The night, the list not asked for (the bill requests' fetch did not complete).
         code, out = run(["fetch_committee_reports.py", "--year", "2027", "--offline", "--text",
@@ -2034,9 +2051,13 @@ def _new_session_calendar_names(CA, FC, IS, NI):
         assert said.startswith("not asked for") and paths == {
             "HC 1.pdf": "calendars/2027/HC001.pdf", "HC 2.pdf": "calendars/2027/HC 2.pdf",
             "No 2 December 4 2026.pdf": "calendars/2027/HC002.pdf",
-            "HC 41.pdf": "calendars/2026/HC041.pdf"}, (said, paths)
+            "HC 41.pdf": "calendars/2026/HC041.pdf",
+            "SC 45.pdf": "calendars_senate/2007/SC 45.pdf",
+            "HJ 01 January 7, 2026.pdf": "journals/2026/HJ 01 January 7, 2026.pdf",
+            "No13aFebruary 21 2025.pdf": "calendars/2025/No13aFebruary 21 2025.pdf"}, (said, paths)
         assert (y27 / "HC001.txt").read_text(encoding="utf-8") == _FIRST_CALENDAR and \
-            not (y27 / "HC 1.txt").exists(), "the text was not moved with its row"
+            not (y27 / "HC 1.txt").exists() and (sen / "SC 45.txt").exists(), (
+            "the text was not moved with its row, or a Senate calendar's was")
         assert any("calendars/2027/HC 1.pdf put under the archive's name" in ln for ln in NI.LOG) \
             and any("calendars/2027/HC 2.pdf left under its own name" in ln for ln in NI.LOG), NI.LOG
         assert CA.renumber(Path("archive") / "queue.csv") == ([], ["calendars/2027/HC 2.pdf"]), (
@@ -2067,9 +2088,10 @@ def _new_session_calendar_names(CA, FC, IS, NI):
         NI.EXITS.update(saved[1])
         NI.LOG, NI.QUIET = saved[2], saved[3]
         shutil.rmtree(tmp, ignore_errors=True)
-    return "ok", ("\"HC 1.pdf\" is HC001.pdf and \"SC 29.pdf\" SC029.pdf, a name with no number kept; "
-                  "the night's take renamed the 25 November row and its text before the list, kept "
-                  "a row whose name another has, and moved nothing the night after; the 2027 "
+    return "ok", ("a House Calendar \"HC 1.pdf\" is HC001.pdf, a name with no number and the Senate's "
+                  "and the journals' source names kept; the night's take renamed the 25 November row "
+                  "and its text before the list, kept a row whose name another has, a Senate "
+                  "calendar and a journal, and moved nothing the night after; the 2027 "
                   "committee reports read from HC 1 as it was, and from HC001, HC 2 and HC 10 at "
                   "their first printing; an interim statement of HC 3 is House Calendar 3")
 
