@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.31
+# GRANITE_VERSION: 2026-11-16.32
 """
 preflight's checks of the browser's scripts (app.js, find.js, components.js, map.js).
 
@@ -139,14 +139,16 @@ def _class_collisions():
         # the request's page (components.term_mark, glossary.json) since the
         # owner's word of 15 November 2026, no class of its own.
         "lsrhist",
-        # THE SPONSORS TAB, a request's as a bill's: app.js draws it for a
-        # bill (spBlock) and for a request's card (lsrPane), and
-        # build_request_pages for a request's own page (sponsors_pane), the
-        # same count line, group headings and row of person chips (the same
-        # tab format as a bill). .chosen is also the row of
+        # THE SPONSORS, a request's as a bill's: the top of the Summary, a
+        # bill's since 19 November 2026 and a request's since 24 November
+        # (until then a Sponsors tab, whose headings were .sech and .spgrp):
+        # app.js's renderSponsors for a bill and for a request's card, and
+        # build_request_pages.sponsors_section for a request's own page, held
+        # to it by _request_sponsors_as_a_bills -- the same count line, a
+        # chamber's heading (.spch) and count, and row of person chips. .chosen is also the row of
         # the bill search's picked filters (app.js alone), one flex row that
         # both want; the sponsors' row is the bill page's own use of it.
-        "spcount", "sech", "sechn", "spgrp", "chosen",
+        "spcount", "sech", "sechn", "spgrp", "chosen", "spch",
         # THE BILL TEXT TAB, a request's as a bill's (17 November 2026): the
         # line saying what the text is and the block of a text, which app.js
         # draws for a bill (billTextSection, renderVersions) and for a
@@ -8753,7 +8755,10 @@ def _member_requests():
         and 'LSR20270009' not in p, f"the member's requests are not theirs alone: {p[-400:]!r}"
     assert "Requests, not bills yet." in p and "numbered 2027 bill" in p and "2 filed for 2027, 1 of them withdrawn" in p, (
         f"the requests' one line is not there: {p[:400]!r}")
-    assert "only its prime sponsor" in has["co"] and "not voted on" in has["votes"], (
+    # A request names its co-sponsors where the results page does (24 November 2026): her
+    # Co-sponsored tab says she co-sponsors none, where it said none could be co-sponsored
+    # (_member_cosponsored_requests lists one that names her).
+    assert "No bill requests co-sponsored for 2027." in has["co"] and "not voted on" in has["votes"], (
         "the co-sponsored or Votes tab does not say why a request term has nothing there")
     assert none["terms"][0] == "2025-2026" and "2027-requests" not in none["terms"], (
         f"a member with no requests is offered {none['terms']}: it should open on 2025-2026 (B4)")

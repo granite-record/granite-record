@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.55
+# GRANITE_VERSION: 2026-11-16.56
 """
 preflight's checks of the bill pages, versions, requests and topics (build_site_v2.py).
 
@@ -1546,25 +1546,23 @@ def _request_pages():
             f"a returning former member's request page draws the sponsor as {dd and dd.group(1)!r}, "
             "not as the row's own 'Ben Baroody (D)', linked, with no old seat")
         # EVERY PLACE A REQUEST'S PAGE DRAWS A PERSON: the head's Prime
-        # Sponsor and Co-Sponsors, and the Sponsors tab's two groups -- four
-        # chips of the former member, each linked, none with the old seat
-        # (24 November 2026: the tabs added the second two; the check
-        # counted two).
-        pane = re.search(r'<div class="pane sspane"[^>]*id="pane_LSR20270004_4"[^>]*>(.*?)(?=<div class="pane sspane"|\Z)',
-                         fp, re.S)
-        assert pane, "a request with co-sponsors has no Sponsors tab"
-        grp = re.findall(r'<div class="chosen">(.*?)</div>', pane.group(1), re.S)
-        assert len(grp) == 2, f"the Sponsors tab draws {len(grp)} groups of people, not the prime sponsor and the co-sponsors"
+        # Sponsor, and the Summary's Sponsors, as a bill's (24 November 2026:
+        # until the co-sponsors came, the head's Co-Sponsors and a Sponsors
+        # tab) -- three chips of the former member, each linked, none with the
+        # old seat, and the sitting co-sponsor's with hers.
+        sec = re.search(r'<section class="w4" id="sponsors">(.*?)</section>', fp, re.S)
+        assert sec, "a request with co-sponsors has no Sponsors at the top of its Summary"
+        grp = re.findall(r'<div class="chosen">(.*?)</div>', sec.group(1), re.S)
+        assert len(grp) == 1, f"the Sponsors draw {len(grp)} groups of people, where no chamber is on file"
         link = 'href="legislator/benjamin-baroody-hills-39"'
         assert fp.count("Hills 39") == 0 \
-            and 'Ben Baroody <span class="mtag">(D)</span>' in grp[0] and link in grp[0] \
-            and "Rep." not in grp[0] \
-            and 'Ben Baroody <span class="mtag">(D)</span>' in grp[1] and link in grp[1] \
-            and 'Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>' in grp[1] \
-            and fp.count(link) == 4 \
-            and fp.count('Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>') == 2, (
+            and grp[0].count('Ben Baroody <span class="mtag">(D)</span>') == 2 and grp[0].count(link) == 2 \
+            and "Rep. Ben" not in fp and "Rep. Benjamin" not in fp \
+            and 'Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>' in grp[0] \
+            and fp.count(link) == 3 \
+            and fp.count('Rep. Jodi Nelson <span class="mtag">(R - Rock 13)</span>') == 1, (
             "a former member on a request's page is drawn with the old seat or unlinked in the head or the "
-            f"Sponsors tab, or a sitting co-sponsor loses hers (links to the former member: {fp.count(link)}, not 4)")
+            f"Sponsors, or a sitting co-sponsor loses hers (links to the former member: {fp.count(link)}, not 3)")
     # Filing complete: the rest forward to their sponsor; a withdrawn one stays.
     old = dict(L.FILING_COMPLETE)
     try:
@@ -1601,8 +1599,9 @@ def _request_tabs_switch(build_lsrs):
     id="summary" and bills.html already carries <p class="count"
     id="summary">; app.js's ssPaneOf finds a pane by getElementById, found the
     <p>, and never took data-on off the pane. The panes are a bill's,
-    pane_<id>_<key> (0 Summary, 6 Bill Text, 4 Sponsors, 7 History) since 16
-    November 2026. And the owner's "just let the pages speak for themselves":
+    pane_<id>_<key> (0 Summary, 6 Bill Text, 7 History) since 16 November
+    2026, and no Sponsors tab since 24 November 2026, as a bill has none: the
+    co-sponsors open the Summary. And the owner's "just let the pages speak for themselves":
     no Status, Kind, Prime Sponsor or Topic said again in the Summary under the
     chip and the byline. Every request has a Bill Text tab beside its Summary
     since 17 November 2026 (_request_bill_text_tab), so the page and the card
@@ -1648,7 +1647,7 @@ def _request_tabs_switch(build_lsrs):
         dup = sorted(i for i, c in collections.Counter(ids).items() if c > 1)
         assert not dup, f"a request page ({label}) carries an id twice: {dup}"
     tabs = re.findall(r'<button[^>]*role="tab"[^>]*aria-controls="([^"]+)"', many)
-    assert tabs == ["pane_LSR20270001_0", "pane_LSR20270001_6", "pane_LSR20270001_4", "pane_LSR20270001_7"], (
+    assert tabs == ["pane_LSR20270001_0", "pane_LSR20270001_6", "pane_LSR20270001_7"], (
         f"a request page with co-sponsors and a History has tabs controlling {tabs}")
     for t in tabs:
         own = re.findall(r'<div class="pane sspane"[^>]*\sid="%s"' % re.escape(t), many)
@@ -1687,8 +1686,8 @@ def _request_tabs_switch(build_lsrs):
         assert got["one"].count('id="%s"' % c) == 1, f"a card tab controls {c!r}, which is not one pane"
     assert got["one"].count('role="tablist"') == 1 and got["one"].count('role="tab"') == 2, (
         "a request's card with no co-sponsor and no History does not draw Summary and Bill Text")
-    assert got["many"].count('role="tab"') == 4, "a request's card with co-sponsors and a History lost a tab"
-    return "ok", ("a request page's four panes have their own ids, unique on the page, each tab pointing at "
+    assert got["many"].count('role="tab"') == 3, "a request's card with co-sponsors and a History lost a tab"
+    return "ok", ("a request page's three panes have their own ids, unique on the page, each tab pointing at "
                   "its pane, on the page and the card; Summary and Bill Text at least on both; the Summary "
                   "does not repeat the chip or the byline")
 
@@ -1753,14 +1752,15 @@ def _request_card_summary_explains(build_lsrs):
             f"{n}'s opened card does not say what a request is as its page does, in its Summary: {pane[:900]!r}")
         link = pane.find("Open the request’s own page")
         assert 0 <= pane.find(about) < link, f"{n}'s card puts About Requests after the link to its page"
-        for said in ("<b>Co-Sponsor:</b>", "<b>Filed As:</b>"):
+        # The co-sponsors as a bill's Summary opens with its sponsors (24 November 2026).
+        for said in ('<h2 class="w4h">Sponsors</h2>', "<b>Filed As:</b>"):
             assert said not in pane or pane.find(said) < pane.find(about), (
                 f"{n}'s card puts {said!r} under About Requests")
-    assert "<b>Co-Sponsor:</b>" in got[0] and "<b>Filed As:</b>" in got[2], (
+    assert '<h2 class="w4h">Sponsors</h2>' in got[0] and "<b>Filed As:</b>" in got[2], (
         "the card lost its co-sponsor or the bill it was filed as")
     return "ok", ("three requests' pages (requested with a co-sponsor, withdrawn, filed as HB 5) carry About "
                   "Requests in their Summary, and each one's opened card the same section in its Summary, "
-                  "byte for byte, after the co-sponsor and Filed As and before the link to the page")
+                  "byte for byte, after the sponsors and Filed As and before the link to the page")
 
 
 @check("frontend", "a bill's page and card and a request's card draw their tabs with the record's one "
@@ -1808,8 +1808,10 @@ def _one_record_tab_strip():
     want = {"bill": C.record_tabs("HB1", [["0", "Summary", 0], ["1", "Votes", 1]] + rest, "0"),
             "texted": C.record_tabs("HB1", [["0", "Summary", 0], ["6", "Bill Text", 0], ["1", "Votes", 0]]
                                     + rest, "0"),
+            # A request's card has no Sponsors tab either (24 November 2026): its co-sponsors
+            # open its Summary (_request_sponsors_as_a_bills).
             "card": C.record_tabs("LSR20279999", [["0", "Summary", 0], ["6", "Bill Text", "0"],
-                                                  ["4", "Sponsors", 3], ["7", "History", 1]], "7")}
+                                                  ["7", "History", 1]], "7")}
     for k, w in want.items():
         assert w in got[k], f"the {k} strip is not record_tabs' answer: {got[k][:500]!r}, not {w!r}"
     assert got["bill"].startswith(want["bill"]) and got["texted"].startswith(want["texted"]), (
@@ -3230,6 +3232,157 @@ def _request_cosponsors_matched(build_lsrs):
     return "ok", ("2027-0008's three, a senator and two representatives, in the page's order with label, page, "
                   "party and chamber; Jane Doe as printed; a winner by the whole name and one by the middle-name "
                   "rule in her one chamber; a name of two people nobody; a request with none unchanged")
+
+
+@check("build", "a request's co-sponsors open its page's and its card's Summary as a bill's sponsors open "
+                "its Summary: the prime labelled and first, each chamber under its heading where they are of "
+                "both, the count under the chips, no Sponsors tab; a request with none draws as before",
+       needs=("build_lsrs", "build_request_pages"))
+def _request_sponsors_as_a_bills(build_lsrs, build_request_pages):
+    """The owner, 24 November 2026 ("Yes, take them"): a request lists its co-sponsors "as a bill
+    does". A bill's page has drawn its sponsors at the top of its Summary since 19 November 2026
+    (app.js renderSponsors, _bill_tabs_one_line), with no Sponsors tab; a request's page and card
+    had a Sponsors tab and a Co-Sponsors line in the head, drawn for a list that named none until
+    now. Held on build_lsrs' rows for the fixture's 2027-0008 (Nancy Murphy, with David Watters,
+    a senator, Rosemarie Rung and Wendy Thomas), its HJR (Bob Roe Jr. and Jane Doe, whom nobody
+    has) and 2027-0001 (none), on the page build_request_pages writes and the card app.js draws:
+
+      - the page's Summary opens with "Sponsors" (the bill's heading and anchor), then About
+        Requests; the chips are Nancy Murphy, labelled Prime, Rosemarie Rung and Wendy Thomas
+        under "Representatives 3", then David Watters under "Senators 1", and "4 Sponsors · 4 D"
+        under them; Jane Doe drawn as printed, with no party and no link, under "Chamber Not on
+        File"; the head names the prime sponsor alone and there is no Sponsors tab;
+      - the card's Summary opens with the same section, byte for byte but the anchor, drawn by
+        the bill's own renderSponsors, and has no Sponsors tab;
+      - 2027-0001's page has Summary and Bill Text, its Summary About Requests alone, and is the
+        same page whether its row says no co-sponsor or says nothing of them."""
+    import tempfile
+    import components as C
+    L, RP = build_lsrs, build_request_pages
+    who = {"nancymurphy": ("Rep. Nancy Murphy (D)", "nancy-murphy-hills-12", "H"),
+           "davidwatters": ("Sen. David Watters (D)", "david-watters-sd-4", "S"),
+           "rosemarierung": ("Rep. Rosemarie Rung (D)", "rosemarie-rung-hills-12", "H"),
+           "wendythomas": ("Rep. Wendy Thomas (D)", "wendy-thomas-hills-12", "H"),
+           "ellenread": ("Rep. Ellen Read (D)", "ellen-read-rock-10", "H")}
+    lsrs = [{"lsr": n, "session": 2027, "body": k, "title": t, "sponsor": p, "cosponsors": list(c),
+             "withdrawn": False} for n, k, t, p, c in _LSR_PAGE[:3]]
+    rows, _ = L.rows_from(lsrs, who, year=2027)
+    by = {r["n"][4:]: r for r in rows}
+    req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "abbr": L.ABBR}
+
+    def pages(rs):
+        with tempfile.TemporaryDirectory() as d:
+            site = Path(d)
+            (site / "idx").mkdir()
+            (site / "bills.html").write_text(_source("src/pages/bills.html"), encoding="utf-8")
+            (site / "meta.json").write_text(json.dumps({"requests": req}), encoding="utf-8")
+            (site / "idx" / "2027-requests.json").write_text(json.dumps(rs), encoding="utf-8")
+            RP.write(site, "https://x")
+            return {p.stem: p.read_text(encoding="utf-8") for p in (site / "request").glob("*.html")}
+    got = pages(rows)
+
+    def summary(html, rid):
+        s = html[html.index(f'id="pane_{rid}_0"'):]
+        return s[:s.find('<div class="pane', 10)] if '<div class="pane' in s[10:] else s
+    pg, hj, one = got["2027-0008"], got["2027-0400"], got["2027-0001"]
+    s8 = summary(pg, "LSR20270008")
+    secs = re.findall(r'<section class="w4"( id="[^"]*")?><h2 class="w4h">([^<]*)</h2>', s8)
+    assert secs == [(' id="sponsors"', "Sponsors"), (' id="about"', "About Requests")], (
+        f"2027-0008's Summary is {secs}, not its Sponsors and then About Requests")
+    sec = s8[:s8.index("</section>")]
+    chips = re.findall(r'class="mchip p-(\w)" translate="no"><a href="legislator/([^"]+)"', sec)
+    assert chips == [("D", "nancy-murphy-hills-12"), ("D", "rosemarie-rung-hills-12"),
+                     ("D", "wendy-thomas-hills-12"), ("D", "david-watters-sd-4")], (
+        f"the sponsors are not the prime, then the page's order by chamber, the prime's first: {chips}")
+    assert re.findall(r'<h3 class="spch">(\w+) <span class="sechn">(\d+)</span>', sec) == [
+        ("Representatives", "3"), ("Senators", "1")] \
+        and '<i translate="yes">Prime</i>' in sec.split("rosemarie-rung")[0] and sec.count(">Prime</i>") == 1, (
+        "the chambers are not headed, or the prime sponsor is not the one labelled Prime")
+    assert re.search(r'</div>\s*<p class="spcount">4 Sponsors · <span title="Democrat">4 D</span></p>', sec), (
+        "the sponsors' count is not under their chips, as a bill's is")
+    hsec = summary(hj, "LSR20270400")
+    assert '<span class="mchip p-X" translate="no">Jane Doe</span>' in hsec \
+        and re.search(r'<h3 class="spch">Chamber Not on File <span class="sechn">1</span></h3>', hsec), (
+        f"a co-sponsor nobody has is not drawn as printed: {hsec[:900]!r}")
+    for n, html in got.items():
+        head = re.search(r'<dl class="rfacts">.*?</dl>', html, re.S).group(0)
+        tabs = re.findall(r'<button[^>]*role="tab"[^>]*>([^<]*)<', html)
+        assert "Co-Sponsor" not in head and "Prime Sponsor" in head and tabs == ["Summary", "Bill Text"] \
+            and not re.search(r'id="(?:tab|pane)_LSR\d+_4"', html), (
+            f"/request/{n} names its co-sponsors in its head, or keeps a Sponsors tab: {tabs}")
+    s1 = summary(one, "LSR20270001")
+    assert re.findall(r'<section class="w4"( id="[^"]*")?>', s1) == [' id="about"'] and "spcount" not in one \
+        and "spch" not in one, "a request with no co-sponsor draws a Sponsors section"
+    bare = {k: v for k, v in by["2027-0001"].items() if k not in ("cosponsors", "cosp", "sponsor_chamber")}
+    assert pages([bare])["2027-0001"] == one, "a request's page with no co-sponsor depends on how its row says so"
+    # THE CARD, in node: the bill's renderSponsors, under the bill's heading, with no anchor.
+    js = ("(() => { scope.setMeta({requests: " + json.dumps(req) + "}); const rows = "
+          + json.dumps([by["2027-0008"], by["2027-0400"], by["2027-0001"]]) + ";"
+          " rows.forEach(r => scope.openCards.add(r.id)); return rows.map(r => scope.lsrCardHtml(r, '')); })()")
+    cards = _app_js(js, names=("lsrCardHtml", "openCards", "setMeta: x => (META = x)"))
+    if cards is None:
+        return "skip", "the pages hold; node, app.js or the stub is not here for the card"
+    for (n, rid), card in zip((("2027-0008", "LSR20270008"), ("2027-0400", "LSR20270400"),
+                               ("2027-0001", "LSR20270001")), cards):
+        page_sec = re.search(r'<section class="w4" id="sponsors">.*?</section>', summary(got[n], rid), re.S)
+        card_sec = re.search(r'<section class="w4"><h2 class="w4h">Sponsors</h2>.*?</section>',
+                             summary(card, rid), re.S)
+        if n == "2027-0001":
+            assert not page_sec and not card_sec and 'class="spcount"' not in card, (
+                "a card with no co-sponsor draws a Sponsors section")
+        else:
+            assert page_sec and card_sec and page_sec.group(0).replace(' id="sponsors"', "", 1) == card_sec.group(0), (
+                f"{n}'s card does not draw its page's Sponsors: {card_sec and card_sec.group(0)[:700]!r} != "
+                f"{page_sec and page_sec.group(0)[:700]!r}")
+        assert 'data-t="4"' not in card and C.record_tabs(rid, [["0", "Summary", 0], ["6", "Bill Text", "0"]], "0") \
+            in card, f"{n}'s card keeps a Sponsors tab, or not the strip its page has"
+    return "ok", ("2027-0008's Summary opens with its Sponsors, the prime labelled and first, Representatives 3 "
+                  "then Senators 1, 4 Sponsors · 4 D under them; Jane Doe as printed; no Sponsors tab and the "
+                  "head the prime's alone; the card's section the page's byte for byte; a request with none "
+                  "drawn as before")
+
+
+@check("frontend", "in the requests' term, a member's Co-sponsored tab lists the requests that name them "
+                   "a co-sponsor, as it lists the bills they co-sponsor, and their Prime sponsored tab their own",
+       needs=("build_lsrs",))
+def _member_cosponsored_requests(build_lsrs):
+    """app.js renderMemberRequests. Until 24 November 2026 a request named its prime sponsor alone,
+    and a member's Co-sponsored tab in the requests' term said "A request names only its prime
+    sponsor, so none is co-sponsored". Now a request names the co-sponsors the results page names
+    (fetch_lsrs), and that sentence would be untrue on the page of every member who co-sponsors
+    one. Held on build_lsrs' rows for the fixture's 2027-0008, in node: Wendy Thomas's Co-sponsored
+    tab lists its card and says 1 co-sponsored for 2027, her Prime sponsored tab none for 2027;
+    Nancy Murphy's Prime sponsored tab lists it as before and her Co-sponsored tab says none is
+    co-sponsored for 2027; and the old sentence is nowhere."""
+    L = build_lsrs
+    who = {"nancymurphy": ("Rep. Nancy Murphy (D)", "nancy-murphy-hills-12", "H"),
+           "davidwatters": ("Sen. David Watters (D)", "david-watters-sd-4", "S"),
+           "rosemarierung": ("Rep. Rosemarie Rung (D)", "rosemarie-rung-hills-12", "H"),
+           "wendythomas": ("Rep. Wendy Thomas (D)", "wendy-thomas-hills-12", "H")}
+    n, k, t, p, c = _LSR_PAGE[1]
+    rows, _ = L.rows_from([{"lsr": n, "session": 2027, "body": k, "title": t, "sponsor": p,
+                            "cosponsors": list(c), "withdrawn": False}], who, year=2027)
+    req = {"term": "2027-requests", "label": "2027 Bill Requests", "year": 2027, "abbr": L.ABBR}
+    js = ("(() => { scope.setMeta({requests: " + json.dumps(req) + "}); scope.IDX.length = 0; "
+          + "".join(f"scope.IDX.push({json.dumps(r)}); " for r in rows)
+          + "scope.LOADED.add('2027-requests'); const her = {slug: 'wendy-thomas-hills-12'}, "
+          "prime = {slug: 'nancy-murphy-hills-12'}; return {co: scope.renderMemberRequests(her, false), "
+          "own: scope.renderMemberRequests(her, true), filed: scope.renderMemberRequests(prime, true), "
+          "none: scope.renderMemberRequests(prime, false)}; })()")
+    got = _app_js(js, names=("renderMemberRequests", "IDX", "LOADED", "setMeta: x => (META = x)"))
+    if got is None:
+        return "skip", "node, app.js or the stub is not here"
+    plain = lambda h: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", h)).strip()
+    assert 'data-id="LSR20270008"' in got["co"] and "1 co-sponsored for 2027." in plain(got["co"]), (
+        f"a co-sponsor's Co-sponsored tab does not list the request: {plain(got['co'])[:300]!r}")
+    assert plain(got["own"]) == "No bill requests for 2027." and 'data-id="LSR20270008"' in got["filed"] \
+        and "1 filed for 2027." in plain(got["filed"]) and plain(got["none"]) == "No bill requests co-sponsored for 2027.", (
+        f"the prime sponsor's tabs, or a member's with none: {[plain(got[x])[:120] for x in ('own', 'filed', 'none')]}")
+    assert not any("names only its prime sponsor" in v for v in got.values()) \
+        and "names only its prime sponsor" not in _source("src/pages/app.js"), (
+        "a member's page still says a request names only its prime sponsor")
+    return "ok", ("a co-sponsor's Co-sponsored tab lists the request, 1 co-sponsored for 2027; the prime sponsor's "
+                  "tab lists it as before; each member's other tab says none; the old sentence gone")
 
 
 @check("build", "the request texts' drain asks for what the list links and this disk has not settled, "
@@ -10635,8 +10788,9 @@ def _request_cards_like_bills(build_lsrs):
         RP.write(site, "https://x")
         page = (site / "request" / "2027-0001.html").read_text(encoding="utf-8")
         plain = (site / "request" / "2027-0002.html").read_text(encoding="utf-8")
+    # The co-sponsors open the Summary, as a bill's sponsors do (24 November 2026): no Sponsors tab.
     for want in ('<h1 class="rh1"><span data-term="LSR">LSR</span> 2027-0001',
-                 'id="tab_LSR20270001_4"', 'id="tab_LSR20270001_7"', 'href="bill/2024/hb7"', ">Died</span>",
+                 '<section class="w4" id="sponsors">', 'id="tab_LSR20270001_7"', 'href="bill/2024/hb7"', ">Died</span>",
                  "LSR stands for Legislative Service Request.", '<li aria-current="page">LSR 2027-0001</li>',
                  'class="mchip p-R"', 'class="mchip p-D"'):
         assert want in page, f"a request's page lacks {want!r}"
@@ -10647,8 +10801,10 @@ def _request_cards_like_bills(build_lsrs):
     assert "<abbr" not in page and page.count('data-term="LSR"') == 1 \
         and (RP.C.WORDBOOK.get("glossary") or {}).get("LSR", {}).get("name") == "Legislative Service Request", (
         "a request's page explains LSR otherwise than by the glossary's popover, or the glossary has no LSR")
-    assert 'id="tab_LSR20270002_7"' not in plain and 'id="tab_LSR20270002_4"' not in plain, (
-        "a request with no earlier bill and no co-sponsor has a tab for them")
+    assert 'id="tab_LSR20270002_7"' not in plain and 'id="sponsors"' not in plain \
+        and 'id="tab_LSR20270001_4"' not in page, (
+        "a request with no earlier bill and no co-sponsor has a tab or a section for them, or one with "
+        "co-sponsors a Sponsors tab")
     assert "<dt>Subject</dt><dd>Education - General" in page and "(from the title)" not in page, (
         "a request's page does not give its topic by name as a bill's page gives its subject")
     assert "<dt>Subject</dt>" not in plain and "Miscellaneous" not in plain, (
@@ -10695,8 +10851,9 @@ def _request_cards_like_bills(build_lsrs):
         "a request's card does not print its topic by name alone")
     assert "Miscellaneous" not in pl and "<abbr" not in pl, (
         "a request's card prints Miscellaneous, or its number has a tooltip")
-    assert 'data-t="4"' in shut and 'data-t="7"' in shut and 'data-t="0"' in shut, (
-        "a request with co-sponsors and a History has not the three tabs")
+    assert 'data-t="4"' not in shut and 'data-t="7"' in shut and 'data-t="0"' in shut \
+        and '<h2 class="w4h">Sponsors</h2>' in shut, (
+        "a request with co-sponsors and a History has not its Summary, opening with them, and its History")
     assert 'aria-expanded="true"' in op and '<div class="cbody">' in op \
         and 'id="pane_LSR20270001_7" aria-labelledby="tab_LSR20270001_7" tabindex="0" data-t="7">' in op \
         and 'href="bill/2024/hb7"' in op and 'class="mchip p-R"' in op, (

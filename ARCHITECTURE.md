@@ -2929,7 +2929,13 @@ the roster's chip, with the seat they hold, and a new member-elect the chip of
 their provisional page; anyone else the row names, a former member elected
 again among them, is drawn from the row's own label and party and linked to
 their page (`build_request_pages.person_chip`), since their old seat is
-someone else's now.
+someone else's now. A request with co-sponsors opens its Summary, on its page
+and its card, with its sponsors as a bill's Summary opens with its own (`app.js`
+`renderSponsors`; `build_request_pages.sponsors_section`, the same markup): the
+prime sponsor first and labelled, each chamber under its heading where they
+are of both, the count under the chips; neither has a Sponsors tab, as a bill
+has none since 19 November 2026. A member's Co-sponsored tab in the requests'
+term lists the requests that name them (`app.js` `renderMemberRequests`).
 
 A request's card is a bill card drawn from its row (`app.js`, `lsrCardHtml`),
 and its page a bill page's head (`build_request_pages.head`). Both draw the

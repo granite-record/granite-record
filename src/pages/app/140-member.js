@@ -125,24 +125,27 @@ const memberBills=(m,prime)=>(m.sponsored||[])
 // NEXT SESSION'S REQUESTS ON A MEMBER'S PAGE (Alice, 7 November 2026): until
 // the bills are introduced in January, a member's requests are that term's
 // "bills", as build_lsrs matched them (sponsor_slug, one sitting member of the
-// name). A request names only its prime sponsor, so the co-sponsored tab has
-// nothing to list.
+// name). AND THE ONES THEY CO-SPONSOR (24 November 2026): a request names its
+// co-sponsors where the General Court's results page does, so the co-sponsored
+// tab lists those naming this member's page among them, as it lists a
+// member's co-sponsored bills; until then it said none could be co-sponsored.
 const isReqTerm=t=>!!(META.requests&&t&&t===META.requests.term);
 const termLabel=t=>isReqTerm(t)?(META.requests.label||`${reqYear()} Bill Requests`):termDash(t);
-const memberRequests=m=>IDX.filter(b=>b.lsr&&isReqTerm(b.term)&&m.slug&&b.sponsor_slug===m.slug);
+const memberRequests=(m,prime=true)=>IDX.filter(b=>b.lsr&&isReqTerm(b.term)&&m.slug&&(prime
+  ?b.sponsor_slug===m.slug:(b.cosponsors||[]).some(c=>c.slug===m.slug)));
 function renderMemberRequests(m,prime){
-  if(!prime)return `<p class="src">A request names only its prime sponsor, so none is
-    co-sponsored.</p>`;
   // Not "none" before the list has come: the page is drawn before
   // idx/<year>-requests.json is fetched (ensureTerm), and again after.
   if(!LOADED.has(META.requests.term))return `<p class="src">Loading the bill requests&hellip;</p>`;
-  const rows=memberRequests(m);
-  if(!rows.length)return `<p class="src">No bill requests for ${esc(reqYear())}.</p>`;
+  const rows=memberRequests(m,prime);
+  if(!rows.length)return `<p class="src">${prime?`No bill requests for ${esc(reqYear())}.`
+    :tr("req.none_cosponsored","No bill requests co-sponsored for {year}.",{year:esc(reqYear())})}</p>`;
   const left=rows.filter(b=>b.withdrawn).length;
   // Alice's two sentences, the bill search's own note (bills.requests_note),
   // and then how many are this member's.
   return `<p class="src lsrnote">${tr("bills.requests_note","<b>Requests, not bills yet.</b> Each one, called an LSR (Legislative Service Request), is a member&rsquo;s request to have a bill drafted: a title and a sponsor, nothing more, until it is filed as a numbered {year} bill. Some are withdrawn first.",{year:esc(reqYear())})}
-    ${rows.length.toLocaleString()} filed for ${esc(reqYear())}${
+    ${prime?`${rows.length.toLocaleString()} filed for ${esc(reqYear())}`
+    :tr("req.n_cosponsored","{n} co-sponsored for {year}",{n:rows.length.toLocaleString(),year:esc(reqYear())})}${
     left?`, ${left.toLocaleString()} of them withdrawn`:""}.</p>
     <div class="cards" id="pbills">${rows.map(b=>lsrCardHtml(b,"")).join("")}</div>`;
 }
