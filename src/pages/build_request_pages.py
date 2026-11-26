@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.25
+# GRANITE_VERSION: 2026-11-08.27
 """
 A page for each bill request of the session the site lists, so a request can
 be shared by its own address rather than by the search.
@@ -109,11 +109,27 @@ def sponsors(site):
     the office, "Rep. Colin Mitchell (R)" (build_lsrs.office_title and
     took_office), as the request's row labels them for its card; a sitting
     member's is the roster's, as it was, with the chamber they sit in, which
-    person_chip reads for one elected to the other."""
+    person_chip reads for one elected to the other.
+
+    FROM THE DAY AFTER ORGANIZATION DAY UNTIL THE ROSTER TURNS (members.
+    read_switch; the owner, 25 November 2026), as the roster's turn will
+    draw them: a member elected to another seat, or to the other chamber,
+    has the chip of the seat they were elected to, "Rep. Pat Example (D -
+    Rock 7)", "Sen. Laura Telerski (D - SD13)"; a member not returning has
+    none here, and is drawn as a former member is, by the row's own label
+    and party (person_chip), since their seat is someone else's now; and a
+    former member elected again has a member's chip at the seat they won,
+    "Rep. Benjamin Baroody (D - Hills 16)", as the roster will give it."""
     import build_lsrs
+    import members as MEM
+    switch = MEM.read_switch(site)
     out = {}
     f = site / "legislators.json"
-    for m in (json.loads(f.read_text(encoding="utf-8")) if f.is_file() else []):
+    for m in [*(json.loads(f.read_text(encoding="utf-8")) if f.is_file() else []),
+              *switch["returning"].values()]:
+        if str(m.get("id") or "") in switch["leaving"]:
+            continue
+        m = switch["moved"].get(str(m.get("id") or ""), m)
         if m.get("slug"):
             out[m["slug"]] = {"party_code": m.get("party"), "slug": m["slug"],
                               "display_full": m.get("display_full") or m.get("display")

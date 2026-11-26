@@ -339,12 +339,14 @@
     {"args": ["2026-12-02", "today"], "want": " data-until=\"2026-12-02\""}
   ],
   "elect_now": [
-    {"args": ["2026-12-02", "2026-11-20"],
-     "want": "<p class=\"elnow\" data-elect data-until=\"2026-12-02\">Serving now</p>"},
-    {"args": ["2026-12-02", "2026-12-02"],
-     "want": "<p class=\"elnow\" data-elect data-until=\"2026-12-02\" hidden>Serving now</p>"},
-    {"args": ["2026-12-02", null],
-     "want": "<p class=\"elnow\" data-elect data-until=\"2026-12-02\">Serving now</p>"}
+    {"args": ["2026-12-03", "2026-11-20"],
+     "want": "<p class=\"elnow\" data-elect data-until=\"2026-12-03\">Serving now</p>"},
+    {"args": ["2026-12-03", "2026-12-02"],
+     "want": "<p class=\"elnow\" data-elect data-until=\"2026-12-03\">Serving now</p>"},
+    {"args": ["2026-12-03", "2026-12-03"],
+     "want": "<p class=\"elnow\" data-elect data-until=\"2026-12-03\" hidden>Serving now</p>"},
+    {"args": ["2026-12-03", null],
+     "want": "<p class=\"elnow\" data-elect data-until=\"2026-12-03\">Serving now</p>"}
   ],
   "elect_race": [
     {"args": [{"seats": 2, "elected": [], "not_final": 2, "held": 0}],
@@ -384,23 +386,32 @@
   ],
   "elect_block": [
     {"args": [[["", {"seats": 1, "elected": [], "not_final": 1, "held": 0}]],
-              "2026-11-03", "2026-12-02", "2026-11-20"],
-     "want": "<div class=\"elect\" data-elect data-until=\"2026-12-02\"><p class=\"elhead\"><b>Elected November 3, 2026</b> <span>Takes office December 2, 2026.</span></p><p class=\"elnf\"><b>Result not final</b></p></div>"},
+              "2026-11-03", "2026-12-02", "2026-11-20", "en", "2026-12-03"],
+     "want": "<div class=\"elect\" data-elect data-until=\"2026-12-03\"><p class=\"elhead\"><b>Elected November 3, 2026</b> <span>Takes office December 2, 2026.</span></p><p class=\"elnf\"><b>Result not final</b></p></div>"},
     {"args": [[["Rockingham 6", {"seats": 1, "elected": [{"n": "Michael Vose", "p": "R", "k": "former",
                                                          "id": "900001", "s": "michael-vose-rock-5"}],
                                  "not_final": 0, "held": 0}],
                ["Rockingham 32 (floterial)", {"seats": 1, "elected": [], "not_final": 1, "held": 0}]],
-              "2026-11-03", "2026-12-02", null]},
-    {"args": [null, "2026-11-03", "2026-12-02", "2026-12-02"],
-     "want": "<div class=\"elect\" data-elect data-until=\"2026-12-02\" hidden><p class=\"elhead\"><b>Elected November 3, 2026</b> <span>Takes office December 2, 2026.</span></p></div>"}
+              "2026-11-03", "2026-12-02", null, "en", "2026-12-03"]},
+    {"args": [null, "2026-11-03", "2026-12-02", "2026-12-02", "en", "2026-12-03"],
+     "want": "<div class=\"elect\" data-elect data-until=\"2026-12-03\"><p class=\"elhead\"><b>Elected November 3, 2026</b> <span>Takes office December 2, 2026.</span></p></div>"},
+    {"args": [null, "2026-11-03", "2026-12-02", "2026-12-03", "en", "2026-12-03"],
+     "want": "<div class=\"elect\" data-elect data-until=\"2026-12-03\" hidden><p class=\"elhead\"><b>Elected November 3, 2026</b> <span>Takes office December 2, 2026.</span></p></div>"},
+    {"args": [[["", {"seats": 1, "elected": [], "not_final": 1, "held": 0}]],
+              "2026-11-03", "2026-12-02", "2026-11-20"],
+     "want": "<div class=\"elect\" data-elect hidden><p class=\"elhead\"><b>Elected November 3, 2026</b> <span>Takes office December 2, 2026.</span></p><p class=\"elnf\"><b>Result not final</b></p></div>"}
   ],
   "elect_line": [
-    {"args": ["H|Rockingham|13", "2026-11-03", "2026-12-02", "2026-11-20"],
-     "want": "<p class=\"elline\" data-elect data-until=\"2026-12-02\">Elected November 3, 2026, for Rockingham district 13. Takes office December 2, 2026.</p>"},
-    {"args": ["S|24", "2026-11-03", "2026-12-02", null],
-     "want": "<p class=\"elline\" data-elect data-until=\"2026-12-02\">Elected November 3, 2026, for Senate District 24. Takes office December 2, 2026.</p>"},
-    {"args": ["no race", "2026-11-03", "2026-12-02", "2026-12-02"],
-     "want": "<p class=\"elline\" data-elect data-until=\"2026-12-02\" hidden>Elected November 3, 2026. Takes office December 2, 2026.</p>"},
-    {"args": [null, "2026-11-03", "2026-12-02", "2026-11-20"]}
+    {"args": ["H|Rockingham|13", "2026-11-03", "2026-12-02", "2026-11-20", "2026-12-03"],
+     "want": "<p class=\"elline\" data-elect data-until=\"2026-12-03\">Elected November 3, 2026, for Rockingham district 13. Takes office December 2, 2026.</p>"},
+    {"args": ["S|24", "2026-11-03", "2026-12-02", null, "2026-12-03"],
+     "want": "<p class=\"elline\" data-elect data-until=\"2026-12-03\">Elected November 3, 2026, for Senate District 24. Takes office December 2, 2026.</p>"},
+    {"args": ["no race", "2026-11-03", "2026-12-02", "2026-12-02", "2026-12-03"],
+     "want": "<p class=\"elline\" data-elect data-until=\"2026-12-03\">Elected November 3, 2026. Takes office December 2, 2026.</p>"},
+    {"args": ["no race", "2026-11-03", "2026-12-02", "2026-12-03", "2026-12-03"],
+     "want": "<p class=\"elline\" data-elect data-until=\"2026-12-03\" hidden>Elected November 3, 2026. Takes office December 2, 2026.</p>"},
+    {"args": ["S|24", "2026-11-03", "2026-12-02", "2026-11-20"],
+     "want": "<p class=\"elline\" data-elect hidden>Elected November 3, 2026, for Senate District 24. Takes office December 2, 2026.</p>"},
+    {"args": [null, "2026-11-03", "2026-12-02", "2026-11-20", "2026-12-03"]}
   ]
 }

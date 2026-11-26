@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.305
+# GRANITE_VERSION: 2026-09-04.306
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -3047,10 +3047,11 @@ def officials_pages(out, legs, C):
     today = build_date.today().isoformat()
     # THE LAST TAB, MEMBERS-ELECT (the person's decisions of 16 October
     # 2026): who November's election sent, from site/members_elect.json alone
-    # (build_members_elect.for_pages), between the election and Organization
-    # Day. With no file the tab and its panel are not drawn and the page is
-    # the page it was; with one, the tab, its panel and the panel's content
-    # each carry data-elect and retire on the day they take office. And the
+    # (build_members_elect.for_pages), between the election and the day after
+    # Organization Day. With no file the tab and its panel are not drawn and
+    # the page is the page it was; with one, the tab, its panel and the
+    # panel's content each carry data-elect and retire on the file's "until",
+    # the day after they take office. And the
     # map's note under My Town says "its sitting members", as the town pages'
     # copy does, the year round (build_town_pages.map_section says why).
     from build_members_elect import for_pages as members_elect
@@ -3063,7 +3064,7 @@ def officials_pages(out, legs, C):
         from build_members_elect import races_on_file
         elect_towns = {k: v["towns"] for k, v in
                        races_on_file(json.loads((out / "districts.json").read_text(encoding="utf-8")))[0].items()}
-    elect_attrs = (f" data-elect{until_attrs(elect['takes_office'], today)}"
+    elect_attrs = (f" data-elect{until_attrs(elect['until'], today)}"
                    if elect else "")
     # The general elections on file, for the overview's Elections block: the
     # results files build_elections makes a page of each of, beside the site

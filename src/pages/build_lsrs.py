@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.39
+# GRANITE_VERSION: 2026-09-18.42
 """
 Next session's bill requests, as a term the bill search can open.
 
@@ -145,18 +145,33 @@ def roster(site, collected="collected", year=None):
     if not p.exists():
         return {}
     out = {}
-    # AND FROM THE DAY THEY TAKE OFFICE, A SITTING MEMBER ELECTED TO THE OTHER
-    # CHAMBER IS LABELLED AS THE OFFICE THEY HOLD (chamber_moves; 25 November
-    # 2026): a House request of Laura Telerski's, or her name as a co-sponsor,
-    # would have read the House roster's "Rep. Laura Telerski (D)" on 2
-    # December, when she sits in the Senate. Matched as the roster has them --
-    # the third field stays the chamber it seats them in, so a request of the
-    # chamber they won still goes to its winners (below) -- and labelled with
-    # that chamber's title and the party they were elected under; the fourth
-    # field is the chamber they sit in now, which a request's Sponsors group
-    # them by (rows_from's "chamber" and "sponsor_chamber").
+    # AND FROM THE DAY AFTER THEY TAKE OFFICE, A SITTING MEMBER ELECTED TO THE
+    # OTHER CHAMBER IS LABELLED AS THE OFFICE THEY HOLD (chamber_moves; 25
+    # November 2026): a House request of Laura Telerski's, or her name as a
+    # co-sponsor, would have read the House roster's "Rep. Laura Telerski (D)"
+    # on 3 December, when she sits in the Senate. Matched as the roster has
+    # them -- the third field stays the chamber it seats them in, so a request
+    # of the chamber they won still goes to its winners (below) -- and labelled
+    # with that chamber's title and the party they were elected under; the
+    # fourth field is the chamber they sit in now, which a request's Sponsors
+    # group them by (rows_from's "chamber" and "sponsor_chamber").
+    #
+    # AND A MEMBER NOT RETURNING, FROM THE SAME DAY (members.read_switch; the
+    # owner, 25 November 2026), is not the roster's to label: they are drawn
+    # as the roster's turn draws them (departed, below), by name and party,
+    # never the seat they leave, linked to their page, which is the former
+    # member's from that day. And a FORMER MEMBER ELECTED AGAIN ("returning")
+    # is the roster's member they will be: matched and labelled from their row
+    # at the seat they won -- the record's name, "Rep. Benjamin Baroody (D)",
+    # never the ballot's "Ben Baroody" -- linked to the page they have, so
+    # their requests read as they will once the roster seats them.
+    import members as MEM
+    sw = MEM.read_switch(site)
+    leaving = sw["leaving"]
     moved = chamber_moves(site, collected) if took_office(site) else {}
-    for m in json.loads(p.read_text(encoding="utf-8")):
+    for m in [*json.loads(p.read_text(encoding="utf-8")), *sw["returning"].values()]:
+        if str(m.get("id") or "") in leaving:
+            continue
         # "Abbas, Daryl" -- surname first, and there are no separate first and
         # last fields on the roster to read instead; every one of the 406 has
         # them as None. The LSR source writes "Daryl Abbas", so the comma is
@@ -199,7 +214,11 @@ def roster(site, collected="collected", year=None):
     if ep.exists():
         fj = site / "former.json"
         gone = set()
-        for m in (json.loads(fj.read_text(encoding="utf-8")) if fj.exists() else []):
+        # The former members, and those the build draws as former from the day
+        # after Organization Day (`leaving`), whom former.json holds once the
+        # roster turns: a name one of them has is nobody's here, as it will be.
+        for m in [*(json.loads(fj.read_text(encoding="utf-8")) if fj.exists() else []),
+                  *leaving.values()]:
             last, _, first = str(m.get("name") or "").partition(",")
             gone.add(_fold(f"{first} {last}"))
         titled, took = elect_window(site), took_office(site)
@@ -224,7 +243,11 @@ def roster(site, collected="collected", year=None):
         key = _fold(first_last(m.get("name")))
         if not key or key in out and key not in seen:
             continue
-        party = f" ({m['party_code']})" if len(str(m.get("party_code") or "")) == 1 else ""
+        # The party as former.json's row gives it: build_legislators writes it as "party", the
+        # letter the member's last ballot carries (former_roster), and no party_code -- which
+        # this read alone, so on the real files a departed member was drawn with none.
+        pc = str(m.get("party_code") or m.get("party") or "").strip()[:1].upper()
+        party = f" ({pc})" if pc and pc in MEM.PARTY_INITIALS else ""
         out[key] = None if key in seen else (f"{first_last(m.get('name'))}{party}", m.get("slug"))
         seen.add(key)
     return out
@@ -238,7 +261,19 @@ def departed(site, collected="collected", year=None):
     for requests of a session `year` other than the elected term's first:
     the requests for 2028, filed from September 2027, are sitting members'
     alone, and a name of theirs that only someone gone in 2026 shares must
-    not link to that person's page."""
+    not link to that person's page.
+
+    AND BEFORE THE TURN, FROM THE DAY AFTER ORGANIZATION DAY (the owner, 25
+    November 2026), the members not returning the build has already drawn as
+    former members (members.read_switch's "leaving", their rows as
+    former.json will have them): the same people, drawn the same way, on the
+    nights between the day and the roster's turn."""
+    import members as MEM
+    sw = MEM.read_switch(site)
+    if sw["leaving"]:
+        if year is not None and str(year) != str(sw.get("term") or "")[:4]:
+            return []
+        return list(sw["leaving"].values())
     _races, turned, term, _why = election_races(site, collected)
     if not turned or year is not None and str(year) != term[:4]:
         return []
@@ -279,38 +314,47 @@ def office_title(chamber):
 
 
 def _takes_office(site):
-    """The day the members-elect take office, as the members-elect file gives it
-    (site/members_elect.json, else site/elect_pages.json, each "takes_office"),
-    or "" where neither is there."""
+    """The day the site switches to the members the election sent, the day
+    after Organization Day (proceedings.switch_day), as the members-elect file
+    gives it (site/members_elect.json, else site/elect_pages.json, each
+    "until", or the day after its "takes_office" in a file that names none:
+    build_members_elect.until_of), or "" where neither is there.
+
+    THE DAY AFTER, NOT THE DAY (the owner, 25 November 2026: "wait until
+    December 3rd to switch to the new titles since the swearing in ceremony
+    happens on the morning of December 2nd"): the night of Organization Day
+    publishes before they are sworn in, so its requests still read
+    "Rep.-elect"."""
+    import build_members_elect as BME
     for name in ("members_elect.json", "elect_pages.json"):
         p = Path(site) / name
         try:
-            day = str((json.loads(p.read_text(encoding="utf-8")) or {}).get("takes_office") or "")
+            day = BME.until_of(json.loads(p.read_text(encoding="utf-8")) or {})
         except (OSError, ValueError, AttributeError):
             continue
         if day:
-            return day
+            return day.isoformat()
     return ""
 
 
 def elect_window(site):
     """Whether a request's member-elect sponsor is drawn under their title:
-    from the election until the day they take office, which the members-elect
-    file gives (site/members_elect.json, else site/elect_pages.json, each
-    "takes_office"), by the build's day. False where neither is there."""
+    from the election until the day after Organization Day, which the
+    members-elect file gives (_takes_office), by the build's day. False where
+    neither file is there."""
     import build_date
     day = _takes_office(site)
     return bool(day) and build_date.today().isoformat() < day
 
 
 def took_office(site):
-    """Whether the members-elect have taken office by the build's day: on or
-    after the day the members-elect file gives (_takes_office), the other side
-    of elect_window. From then a request draws each of them under the title of
-    the office they hold that day, "Rep." or "Sen." (office_title), never the
-    name alone -- the "-elect" goes, the title stays (Organization Day, 2
-    December 2026, when the members-elect file retires and the provisional
-    pages stay). False where neither file gives the day."""
+    """Whether the site has switched to the members the election sent, by the
+    build's day: on or after the day after Organization Day (_takes_office),
+    the other side of elect_window. From then a request draws each of them
+    under the title of the office they hold, "Rep." or "Sen." (office_title),
+    never the name alone -- the "-elect" goes, the title stays (3 December
+    2026, when the members-elect file retires and the provisional pages
+    stay). False where neither file gives the day."""
     import build_date
     day = _takes_office(site)
     return bool(day) and build_date.today().isoformat() >= day
@@ -1162,6 +1206,14 @@ def retire(rows, year, today):
     return n
 
 
+def _turned_rosters():
+    """The terms whose frozen roster the installed one has turned from, by the
+    day files in the working folder (freeze_term.own_roster_terms), as
+    build_site_v2 reads them."""
+    import freeze_term
+    return set(freeze_term.own_roster_terms())
+
+
 def election_races(site, collected="collected", hand_path=None):
     """(races, turned, term, why) for the newest general election: its races
     as the members-elect step draws them ("races" of site/members_elect.json),
@@ -1192,6 +1244,15 @@ def election_races(site, collected="collected", hand_path=None):
         term = str((results or {}).get("term") or "")
         terms = (rd("meta.json", {}) or {}).get("terms") or []
         if term and terms and terms[0] == term:
+            return None, True, term, ""
+        # AND ONCE THE ROSTER INSTALLED HAS TURNED FROM THE FROZEN ONE OF THE TERM
+        # THE ELECTION ENDED (freeze_term.own_roster_terms, the sign build_site_v2
+        # labels that term's members by), though meta.json's newest term may not
+        # have turned yet: the roster says who came back, and its former members
+        # are former.json's (departed) -- the same people the days after
+        # Organization Day drew as former members (members.read_switch), so
+        # nothing flips back on the night the roster turns.
+        if term and BME.term_before(term) in _turned_rosters():
             return None, True, term, ""
         if (site / "members_elect.json").is_file():
             doc = rd("members_elect.json", {}) or {}

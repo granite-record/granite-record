@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-10.31
+# GRANITE_VERSION: 2026-10-10.32
 """
 The Officials page's tabs that are not the legislators' (Polish 3, the
 person's feedback of 9 October 2026, item 4, and the decisions of that day):
 Federal Delegation, Executive Branch, Judicial Branch and County Officials,
 and the Presiding Officers at the head of the Legislators tab; and, between a
-general election and Organization Day, Members-Elect (16 October 2026).
+general election and the day after Organization Day, Members-Elect (16
+October 2026; the day after, the owner's of 25 November 2026).
 
     import officials_tabs as OT
     OT.federal(off), OT.executive(off, has_page), OT.judicial(off)
@@ -66,7 +67,7 @@ import inline_js as IJ
 
 from components import date_words, pchip, until_attrs
 from parts import tel, maillink, weblink
-from build_members_elect import KEY_RE, STATUSES, elect_status, race_order, read_officials
+from build_members_elect import KEY_RE, STATUSES, elect_status, race_order, read_officials, until_of
 
 E = lambda s: _html.escape(str(s or ""), quote=True)  # noqa: E731
 
@@ -1146,14 +1147,18 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
     member-elect holds no office yet. "" where there is no file, and the
     tab is then not drawn at all.
 
-    The whole tab carries data-elect and retires on the day they take
-    office, the panel's own content as well as the panel: the tab strip's
-    script shows a panel by its address, and the content's own data-until
-    keeps a page read after that day empty even then."""
+    The whole tab carries data-elect and retires the day after they take
+    office (the file's "until", the day after Organization Day: until_of),
+    the panel's own content as well as the panel: the tab strip's script
+    shows a panel by its address, and the content's own data-until keeps a
+    page read after that day empty even then. The day they take office is
+    the one its sentence prints."""
     races = (elect or {}).get("races") or {}
     if not races:
         return ""
     election, takes = elect.get("election"), elect.get("takes_office")
+    gone = until_of(elect)
+    until = gone.isoformat() if gone else None
     src = next((s for s in elect.get("sources") or []
                 if re.fullmatch(r"https?://\S+", str(s or ""))), "")
     count_words = I.say(lang, "off.sos_count", "the Secretary of State&rsquo;s count")
@@ -1287,7 +1292,7 @@ def members_elect(elect, today, lang="en", people=None, towns=None):
 {"".join(county_parts)}
 </div>
 </section>"""
-    return (f'<div class="elpane" data-elect{until_attrs(takes, today)}>' + intro
+    return (f'<div class="elpane" data-elect{until_attrs(until, today)}>' + intro
             + elect_totals(races, lang, by_id)
             + elect_controls([(k, e) for k, r in races.items() for e in r.get("elected") or []],
                              by_id, lang, races, towns)

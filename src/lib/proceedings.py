@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.20
+# GRANITE_VERSION: 2026-09-05.21
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -237,6 +237,28 @@ def organization_day(year):
         return None
     first = _dt.date(y, 12, 1)
     return first + _dt.timedelta(days=(2 - first.weekday()) % 7)
+
+
+# THE DAY THE SITE SAYS WHO HOLDS EACH SEAT NOW: THE DAY AFTER ORGANIZATION DAY
+# (the owner, 25 November 2026: "I would say wait until December 3rd to switch
+# to the new titles since the swearing in ceremony happens on the morning of
+# December 2nd"). The night of Organization Day publishes at about 4:20 a.m.
+# in Concord, before the members are sworn in, so it still shows the old
+# House; the night after shows the new one. Every reader-facing switch of a
+# title, a seat or a members-elect block reads this day, and nothing else:
+# the members-elect retire on it (build_members_elect), a member-elect's
+# "-elect" goes on it (build_lsrs.took_office, the provisional pages, the
+# search), and a member not returning, or elected to another seat, is drawn
+# so from it (members.seat_switch). What stays on Organization Day itself is
+# what is a fact of the day and not a title: the day printed where they take
+# office, the officers' tenures the journals give, the session day, and the
+# term clock above (term_on, vote_term), which dates a term and names no one.
+def switch_day(year):
+    """The day after Organization Day of an even `year`, as a date -- 3
+    December 2026 -- or None where organization_day gives none."""
+    import datetime as _dt
+    org = organization_day(year)
+    return org + _dt.timedelta(days=1) if org else None
 
 
 def vote_day(when):

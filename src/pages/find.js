@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.76
+// GRANITE_VERSION: 2026-09-16.77
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -128,12 +128,13 @@ function findElectName(r){
 }
 /* AND ONLY UNTIL THEY TAKE OFFICE. A former member elected again is a
    member-elect while the members-elect file lasts, and their own page is
-   headed so until the day they take office, by the reader's clock as well
+   headed so until the day after they take office (the file's "until"),
+   by the reader's clock as well
    as the build's (app.js, renderMemberHead): from that day it is the former
    member's page again until the General Court numbers them. Their row says
    the same. It carries that day, r[5], and the row it stands in for, r[6]
    -- "Former Rep. ..." -- which is the row from the day on, as a page
-   built on 1 December and read on the 3rd shows it. A new member-elect's row
+   built on 2 December and read on the 3rd shows it. A new member-elect's row
    carries neither: their own page changes with the build, and so does the
    row. Done once, as find.json arrives (findRows). `day` is "YYYY-MM-DD",
    the reader's own date where none is given. */
@@ -1900,7 +1901,8 @@ function ytHolder(k,o){
   return h;
 }
 /* WHO NOVEMBER'S ELECTION SENT, IN THE CARD (the person's decisions of 16
-   October 2026): between the election and Organization Day a place's "e"
+   October 2026): between the election and the day after Organization Day a
+   place's "e"
    names its races in places.json's "elect", and the State House and Senate
    seats draw them under the sitting members, with "Serving now" over those,
    in components.js's electBlock and electNow -- the town page's own block,
@@ -1915,9 +1917,11 @@ function ytElect(p,chamber,only){
   if(!keys.length)return ["",""];
   const say=k=>{const x=(p.h||[]).find(h=>"H|"+h[0]+"|"+h[1]===k);
     return x?`${x[0]} ${x[1]}${x[2]?" ("+tr("yt.floterial","floterial")+")":""}`:k;};
-  return [electNow(E.takes_office,null),
+  // Retired on the file's "until", the day after Organization Day; the day
+  // they take office is the one the block prints.
+  return [electNow(E.until,null),
     electBlock(keys.map(k=>[keys.length>1?say(k):"",E.races[k]]),E.election,E.takes_office,null,
-      typeof window!=="undefined"?window.GR_LANG:undefined)];
+      typeof window!=="undefined"?window.GR_LANG:undefined,E.until)];
 }
 // A House member's district, read off their page's address as the roster
 // writes it ("anita-burroughs-carr-2": Carroll 2), so each of a town's House

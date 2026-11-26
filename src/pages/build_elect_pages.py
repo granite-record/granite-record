@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-08.11
+# GRANITE_VERSION: 2026-11-08.12
 """
 A provisional page for each new member-elect: who they are until the General
 Court numbers them.
@@ -18,8 +18,11 @@ elected them as well, and the source it was read from.
 
 WHAT THIS WRITES
 
-  site/elect_pages.json   {"election", "takes_office", "sources", "pages":
-                          [...], "moved"}, one entry in "pages" for each new
+  site/elect_pages.json   {"election", "takes_office", "until", "sources",
+                          "pages": [...], "moved"} -- takes_office
+                          Organization Day, the day the pages print, and
+                          until the day after, when the "-elect" goes
+                          (proceedings.switch_day) -- one entry in "pages" for each new
                           member-elect with a page: slug, name as the results
                           print it, party, chamber, county, district, race and
                           towns; "result", their race's row as a member's
@@ -61,8 +64,8 @@ WHO GETS ONE. The winners build_members_elect.members_elect() calls new
 ("k": "new") in the newest general election's results, by its rules --
 final races only, the owner's "matches" and "held" applied -- and nobody
 else. It is called here outside the members-elect window on purpose: the
-members-elect file and its blocks retire on Organization Day, and these
-pages do not (B3).
+members-elect file and its blocks retire the day after Organization Day, and
+these pages do not (B3).
 
 THE ADDRESS is build_site_v2.member_slug of the printed name and the race,
 the roster's own function, so most pages keep their address when the person
@@ -86,13 +89,17 @@ step comes to call sitting once the roster has them is still followed; and
 one the owner matches to their new number by hand is followed too, from the
 address their page had to the page of that number.
 
-ON ORGANIZATION DAY, 2 December 2026, the members-elect file and every block
-drawn from it retire, as the owner decided on 16 October; these pages do not
-(B3). From that day a page says the person is a member, who took office that
-day, rather than a member-elect, and is otherwise as it was -- their race,
-their requests (build_lsrs still matches them here), the elections page's
-link to it -- until the General Court numbers them, when it gives way as
-NUMBERED says.
+THE DAY AFTER ORGANIZATION DAY, 3 December 2026 (proceedings.switch_day;
+the owner, 25 November 2026: "wait until December 3rd to switch to the new
+titles since the swearing in ceremony happens on the morning of December
+2nd"), the members-elect file and every block drawn from it retire, as the
+owner decided on 16 October for Organization Day itself; these pages do not
+(B3). From that day a page says the person is a member, who took office on
+Organization Day, rather than a member-elect, and is otherwise as it was --
+their race, their requests (build_lsrs still matches them here), the
+elections page's link to it -- until the General Court numbers them, when it
+gives way as NUMBERED says. NUMBERED keeps Organization Day: it is the day
+the roster may first be the new term's, a fact of the roster and no title.
 """
 
 # The bootstrap: _paths.py, found above this file, puts every code folder on the import path.
@@ -367,6 +374,9 @@ def main():
                              roster_term=(terms or [None])[0] if isinstance(terms, list) else None,
                              filed=filed)
     doc = {"election": results["election"], "takes_office": takes_office.isoformat(),
+           # The day the "-elect" goes from their pages, chips and rows: the day
+           # after Organization Day (proceedings.switch_day).
+           "until": proceedings.switch_day(election.year).isoformat(),
            "sources": [s.get("url") for s in results.get("_source") or [] if s.get("url")],
            "pages": got,
            # A provisional address the roster numbered its person at another:

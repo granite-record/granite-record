@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-10-09.38
+// GRANITE_VERSION: 2026-10-09.39
 /* THE SITE'S COMPONENTS, IN THE BROWSER. Published as site/components.js and
    loaded by every page, in its head, before app.js, find.js and any page's
    own script, so each of them draws a person, a committee, a date or a time
@@ -503,10 +503,11 @@ function untilAttrs(until,today){
 // why. The My Town card, the district map's panel and a member's own page
 // draw them here, the town pages and the Officials tab in Python, and
 // preflight holds the two to one answer. Each element carries data-elect
-// and untilAttrs; handed no day, as the browser's scripts hand it, the
-// behaviour below judges it by the reader's clock.
-function electNow(takesOffice,today){
-  return `<p class="elnow" data-elect${untilAttrs(takesOffice,today)}>${tr("elect.serving","Serving now")}</p>`;
+// and untilAttrs of `until`, the file's day after Organization Day, which
+// the file hands the page; handed no day, as the browser's scripts hand
+// it, the behaviour below judges it by the reader's clock.
+function electNow(until,today){
+  return `<p class="elnow" data-elect${untilAttrs(until,today)}>${tr("elect.serving","Serving now")}</p>`;
 }
 function electRace(race,lang){
   const r=race||{}, won=r.elected||[];
@@ -525,17 +526,17 @@ function electRace(race,lang){
     +(left>0?'<p class="elnone">'+(left===1?tr("elect.none_one","No member-elect on file for {n} seat.",{n:left})
       :tr("elect.none","No member-elect on file for {n} seats.",{n:left}))+"</p>":"");
 }
-function electBlock(races,election,takesOffice,today,lang){
+function electBlock(races,election,takesOffice,today,lang,until){
   const body=(races||[]).map(([label,race])=>
     (label?`<p class="elwhere">${esc(label)}</p>`:"")+electRace(race,lang)).join("");
-  return `<div class="elect" data-elect${untilAttrs(takesOffice,today)}>`+
+  return `<div class="elect" data-elect${untilAttrs(until,today)}>`+
     `<p class="elhead"><b>${tr("elect.elected","Elected {day}",{day:esc(dateWords(election,"full",lang))})}</b> `+
     `<span>${tr("elect.takes","Takes office {day}.",{day:esc(dateWords(takesOffice,"full",lang))})}</span></p>${body}</div>`;
 }
-function electLine(key,election,takesOffice,today){
+function electLine(key,election,takesOffice,today,until){
   const m=/^(?:H\|([^|]+)\|([0-9]+)|S\|([0-9]+))$/.exec(key==null?"":String(key));
   const where=!m?"":m[3]?`Senate District ${m[3]}`:`${m[1]} district ${m[2]}`;
-  return `<p class="elline" data-elect${untilAttrs(takesOffice,today)}>`+
+  return `<p class="elline" data-elect${untilAttrs(until,today)}>`+
     `Elected ${esc(dateWords(election,"full"))}`+(where?`, for ${esc(where)}`:"")+
     `. Takes office ${esc(dateWords(takesOffice,"full"))}.</p>`;
 }
@@ -669,9 +670,10 @@ function electLine(key,election,takesOffice,today){
 // WHAT RETIRES ON A DAY GOES BY THE READER'S CLOCK (the members-elect, 16
 // October 2026). Every element carrying data-until is judged by untilAttrs
 // with the reader's own date, when the page loads and whenever it draws
-// itself again, and hidden from that day on: a page built on 1 December and
-// read on the 3rd -- a night held, a copy a browser kept -- shows no
-// member-elect, because the day they take office has come. Only ever hides:
+// itself again, and hidden from that day on: a page built on 2 December and
+// read on the 3rd -- before that night's build, a night held, a copy a
+// browser kept -- shows no member-elect, because the day after they took
+// office has come (proceedings.switch_day). Only ever hides:
 // what the build hid stays hidden whatever the reader's clock says. The
 // reader's day by that choice, not because a day's name is the reader's: a
 // day someone takes office is an event in Concord, as a testimony deadline

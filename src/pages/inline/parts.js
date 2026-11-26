@@ -12,7 +12,7 @@
     return null;
   }
   function hash(){try{return decodeURIComponent(location.hash.slice(1));}catch(e){return "";}}
-  // A TAB THAT HAS RETIRED (the owner, 7 November 2026): from 2 December
+  // A TAB THAT HAS RETIRED (the owner, 7 November 2026): from 3 December
   // the Officials page's Members-Elect tab hides itself (data-until, judged
   // by the reader's own date as components.js judges it), and an address
   // naming it -- a bookmark, a link someone shared -- opened six tabs with

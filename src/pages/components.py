@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-10-09.35
+# GRANITE_VERSION: 2026-10-09.36
 """
 The site's components, in Python: what the builders draw a person, a
 committee, a chip, a date and a time with, and the words they say.
@@ -790,23 +790,27 @@ def section(heading, body, sid=""):
 
 
 # WHAT RETIRES ON A DAY (the members-elect, the person's decisions of 16
-# October 2026). A member-elect is drawn until Organization Day and not on
-# it, and a page built on the 1st may still be read on the 3rd: a night held,
-# a copy a browser kept. So whatever retires carries its last day in
-# data-until, and components.js's behaviour hides it by the reader's own
-# clock, as the home page's stale warning works its age out again. The build
-# also stops writing site/members_elect.json that day; this is the reader's
-# half of the same rule.
+# October 2026). A member-elect is drawn until the day after Organization Day
+# and not on it (proceedings.switch_day; the owner, 25 November 2026: "wait
+# until December 3rd to switch to the new titles since the swearing in
+# ceremony happens on the morning of December 2nd"), and a page built on the
+# 2nd may still be read on the 3rd: a night held, a copy a browser kept. So
+# whatever retires carries the day it goes in data-until, and components.js's
+# behaviour hides it by the reader's own clock, as the home page's stale
+# warning works its age out again. The build also stops writing
+# site/members_elect.json that day; this is the reader's half of the same
+# rule.
 UNTIL_DAY = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 
 def until_attrs(until, today):
     """The attributes of an element that retires on `until` ("YYYY-MM-DD",
-    or a date), as drawn on `today` -- the build's day in Python, the
-    reader's in the browser:
+    or a date; for a members-elect block, the day after Organization Day), as
+    drawn on `today` -- the build's day in Python, the reader's in the
+    browser:
 
-        until_attrs("2026-12-02", "2026-11-20")  -> ' data-until="2026-12-02"'
-        until_attrs("2026-12-02", "2026-12-02")  -> ' data-until="2026-12-02" hidden'
+        until_attrs("2026-12-03", "2026-11-20")  -> ' data-until="2026-12-03"'
+        until_attrs("2026-12-03", "2026-12-03")  -> ' data-until="2026-12-03" hidden'
 
     Hidden from its day on. An `until` that is no day is hidden at once: a
     block that cannot say when it ends is not shown at all. A `today` that
@@ -827,23 +831,25 @@ def until_attrs(until, today):
 # its words and its chip are these helpers in both languages and nowhere
 # else. Every one of them is drawn from site/members_elect.json alone, never
 # from the roster; each element carries data-elect, which says what it is,
-# and until_attrs, which retires it on the day they take office. The words
-# are the person's: "Elected November 3, 2026", "Takes office December 2,
-# 2026.", "Result not final" with "a recount was requested" only where the
-# race says so, "No member-elect on file for 1 seat." and "Serving now". No
-# contact detail is drawn for a member-elect, and nothing about a sitting
-# member who is not on the list.
+# and until_attrs, which retires it on `until`, the file's day after
+# Organization Day (build_members_elect.until_of), not on the day they take
+# office, which is the day it prints. The words are the person's: "Elected
+# November 3, 2026", "Takes office December 2, 2026.", "Result not final"
+# with "a recount was requested" only where the race says so, "No
+# member-elect on file for 1 seat." and "Serving now". No contact detail is
+# drawn for a member-elect, and nothing about a sitting member who is not on
+# the list.
 ELECT_KEY = re.compile(r"H\|([^|]+)\|([0-9]+)|S\|([0-9]+)")
 
 
-def elect_now(takes_office, today, lang="en"):
+def elect_now(until, today, lang="en"):
     """"Serving now", the label over the sitting members wherever a
     members-elect block is drawn beside them, so that two lists of people
     under one district say which is which. It names nobody, and retires
-    with the block. Its words in `lang` (the Your Town card in Spanish, 25
-    October 2026), as components.js's tr gives them."""
+    with the block, on `until`. Its words in `lang` (the Your Town card in
+    Spanish, 25 October 2026), as components.js's tr gives them."""
     import i18n
-    return (f'<p class="elnow" data-elect{until_attrs(takes_office, today)}>'
+    return (f'<p class="elnow" data-elect{until_attrs(until, today)}>'
             + i18n.say(lang, "elect.serving", "Serving now") + "</p>")
 
 
@@ -891,17 +897,18 @@ def elect_race(race, lang="en"):
                + "</p>" if left > 0 else ""))
 
 
-def elect_block(races, election, takes_office, today, lang="en"):
+def elect_block(races, election, takes_office, today, lang="en", until=None):
     """The members-elect block: "Elected November 3, 2026" and "Takes office
     December 2, 2026." over each race in `races` -- [[label, race], ...],
     the label "" where the block sits under its district's own heading, as
     on a town page, and the district's name where one block holds two, as
     the My Town card's House seat can. The dates are the file's own
-    election and takes_office."""
+    election and takes_office; it retires on `until`, the file's day after
+    Organization Day, and is hidden at once where none is given."""
     import i18n
     body = "".join((f'<p class="elwhere">{esc(label)}</p>' if label else "") + elect_race(race, lang)
                    for label, race in races or [])
-    return (f'<div class="elect" data-elect{until_attrs(takes_office, today)}>'
+    return (f'<div class="elect" data-elect{until_attrs(until, today)}>'
             '<p class="elhead"><b>' + i18n.say(lang, "elect.elected", "Elected {day}",
                                               day=esc(date_words(election, "full", lang)))
             + "</b> <span>" + i18n.say(lang, "elect.takes", "Takes office {day}.",
@@ -909,17 +916,18 @@ def elect_block(races, election, takes_office, today, lang="en"):
             + f"</span></p>{body}</div>")
 
 
-def elect_line(key, election, takes_office, today):
+def elect_line(key, election, takes_office, today, until=None):
     """The one line on a returning or re-elected member's own page: "Elected
     November 3, 2026, for Rockingham district 13. Takes office December 2,
     2026." -- the race's own county and district, which may not be the seat
     the page's heading names, or "Senate District 24". The heading above it
     is left as it is until they take office ("Former Representative ..."
-    stays until the switch)."""
+    stays until the switch). It retires on `until`, the file's day after
+    Organization Day, and is hidden at once where none is given."""
     m = ELECT_KEY.fullmatch("" if key is None else str(key))
     where = ("" if not m else f"Senate District {m.group(3)}" if m.group(3)
              else f"{m.group(1)} district {m.group(2)}")
-    return (f'<p class="elline" data-elect{until_attrs(takes_office, today)}>'
+    return (f'<p class="elline" data-elect{until_attrs(until, today)}>'
             f'Elected {esc(date_words(election, "full"))}'
             + (f", for {esc(where)}" if where else "")
             + f'. Takes office {esc(date_words(takes_office, "full"))}.</p>')

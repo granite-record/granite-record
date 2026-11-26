@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-20.3
+# GRANITE_VERSION: 2026-11-20.4
 """
 The Officials overview: the page the Officials section opens on (the owner's
 choice of draft A, 21 November 2026; the mock is the helpers' draft-a.html).
@@ -29,13 +29,15 @@ legislature numbers after election results come in ... but make it clear
 that it's the incoming class of legislators", and "There should be a smaller
 summary of the previous legislative distribution compared to the incoming
 classes numbers"). leads_incoming() decides it from the data and the build's
-day alone: while there is a members-elect file with races in it and its
-take-office day has not come, the Legislature's lead bars are the incoming
-House and Senate, headed as the incoming legislature with the day it takes
-office, and the chambers as they sit follow on a thin bar each. Outside that
-window the chambers as they sit lead, and there is no incoming block. The
-incoming block carries data-elect and retires by the reader's own clock on
-the day, as every member-elect block does (components.until_attrs).
+day alone: while there is a members-elect file with races in it and the day
+after its take-office day has not come (the file's "until", the day the site
+switches to the new legislature: the owner, 25 November 2026), the
+Legislature's lead bars are the incoming House and Senate, headed as the
+incoming legislature with the day it takes office, and the chambers as they
+sit follow on a thin bar each. Outside that window the chambers as they sit
+lead, and there is no incoming block. The incoming block carries data-elect
+and retires by the reader's own clock on that day, as every member-elect
+block does (components.until_attrs).
 
 AN OFFICE WON ON 3 NOVEMBER (the owner, 21 November 2026: "Governor-elect
 makes sense along with Executive Councilor-elect"). Where the hand file's
@@ -64,13 +66,17 @@ E = OT.E
 
 def leads_incoming(elect, today):
     """Whether the incoming legislature leads the overview: a members-elect
-    file with races in it, whose take-office day is a day and has not come
-    by `today` (the build's day, "YYYY-MM-DD" or a date)."""
+    file with races in it, whose day of retiring -- the day after they take
+    office, the file's "until" (build_members_elect.until_of) -- has not come
+    by `today` (the build's day, "YYYY-MM-DD" or a date). On Organization
+    Day itself it still leads: that night publishes before they are sworn
+    in."""
     races = (elect or {}).get("races") or {}
-    takes = str((elect or {}).get("takes_office") or "")[:10]
+    gone = OT.until_of(elect or {})
+    until = gone.isoformat() if gone else ""
     day = str(today or "")[:10]
-    return bool(races) and bool(UNTIL_DAY.fullmatch(takes)) and bool(UNTIL_DAY.fullmatch(day)) \
-        and day < takes
+    return bool(races) and bool(UNTIL_DAY.fullmatch(until)) and bool(UNTIL_DAY.fullmatch(day)) \
+        and day < until
 
 
 # The office as a successor is titled before they take it, in the site's
@@ -224,8 +230,10 @@ def legislature(comp, elect, officers, legs, today, lang="en", facts=None):
     incoming = leads_incoming(elect, today)
     parts = []
     if incoming:
+        # The day they take office is the one it prints; it retires the day
+        # after (leads_incoming).
         takes, election = elect["takes_office"], elect.get("election")
-        until = until_attrs(takes, today)
+        until = until_attrs(OT.until_of(elect).isoformat(), today)
         parts.append(
             f'<div class="ovincoming" data-elect{until}>'
             + '<h3 class="ovinh">' + I.say(lang, "of.ov.incoming", "The incoming legislature") + "</h3>"
@@ -250,7 +258,7 @@ def legislature(comp, elect, officers, legs, today, lang="en", facts=None):
             + I.say(lang, "of.ov.all_legislators", "All {n} legislators", n=f"{len(legs):,}") + "</a>"]
     if incoming:
         more.append('<a href="officials.html#members-elect" data-elect'
-                    f'{until_attrs(elect["takes_office"], today)}>'
+                    f'{until_attrs(OT.until_of(elect).isoformat(), today)}>'
                     + I.say(lang, "nav.row.officials.members-elect", "Members-elect") + "</a>")
     if facts.get("former"):
         more.append('<a href="directory/former-legislators.html">'

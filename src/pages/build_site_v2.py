@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.334
+# GRANITE_VERSION: 2026-09-05.337
 """
 Generate the faceted site from real General Court data.
 
@@ -393,9 +393,11 @@ from members import (ATTENDANCE_KIND, FLOOR_RECORD, FORMER_LABEL, MOVED_ADDRESSE
                      _ATTENDANCE_PRESENT, _ATTENDANCE_RANK, _LABEL_SEAT, _SUFFIX, _member_address,
                      _roll_call_key, _surname, attendance_context, ballot_seat, build_legislators,
                      build_officers, corrected_seats, date_former_seats, floor_moment,
-                     former_movers, former_roster, keep_moved, last_term_labels, member_attendance,
+                     former_movers, former_roster, former_rows_had, keep_moved, last_term_labels,
+                     member_attendance,
                      member_office, printed_record, printed_seats, same_person, seat_of_the_lines,
-                     sponsored_in_order, term_seats, turned_addresses, write_floor_record)
+                     seat_switched, site_rows, sponsored_in_order, term_seats, turned_addresses,
+                     write_floor_record)
 
 
 def build_composition(a, legs):
@@ -2896,8 +2898,27 @@ def main():
               f"{sum(len(v) for v in term_rosters.values()):,} members; their sponsors are "
               "labelled from it and looked for among the members who hold no seat now")
     # AND THE ADDRESS EACH OF THEM HAD THEN, where their page is at another now
-    # (turned_addresses): a 301 to it, from the night the roster turns.
-    turned, turned_former = turned_addresses(term_rosters, legs, former, links)
+    # (turned_addresses): a 301 to it, from the night the roster turns. And a
+    # FORMER MEMBER THE ROSTER SEATS AGAIN, who held no seat in a term it froze
+    # but has a record (the 28 former members elected on 3 November 2026): the
+    # address of their former member's page (former_rows_had), answered the same.
+    froze = {str(k) for r in term_rosters.values() for k in r}
+    back = sorted(k for k in legs if term_rosters and k not in froze and votes_by_member.get(k))
+    had = (former_rows_had(back, legs, former, votes_by_member, links,
+                           load("former_members.json", {}), max(bills) if bills else "",
+                           district_lines, quiet=True) if back else {})
+    # AND EVERY ADDRESS RECORDED FOR THAT PAGE (MOVED_ADDRESSES, keep_moved), which
+    # it answered as a former member's -- Larry Brown's /legislator/larry-brown-straf-1
+    # among the 28 -- answered at the page they have now, never one that is a page's
+    # own (Timothy Egan's /legislator/timothy-egan-graf-1 is his from that night). The
+    # file's other members are said in main; nothing is said of them again here.
+    if had:
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            keep_moved(had, links=links,
+                       sitting={_member_address(m) for m in legs.values() if m.get("name")})
+    turned, turned_former = turned_addresses(term_rosters, legs, former, links, had=had)
     if turned or turned_former:
         print(f"  {sum(map(len, turned.values())) + turned_former} address(es) a member's page had "
               f"in {', '.join(term_rosters)} answer with a 301 to the page their record is on now: "
@@ -3077,10 +3098,26 @@ def main():
     manual, manual_left = manual_seats({**legs, **former}, links, sponsored, votes_by_member)
     for _said in manual_said(manual, manual_left):
         print(_said)
+    # THE SEATS AS THE ELECTION LEFT THEM, FROM THE DAY AFTER ORGANIZATION DAY
+    # (build_members_elect.seat_switch, members.seat_switched; the owner, 25
+    # November 2026): until the roster turns, a member not returning is drawn as
+    # a former member and one elected to another seat at it, on their own page
+    # and in the search. legislators.json stays the roster. After the bills,
+    # which name every member as they sat.
+    import build_members_elect as BME
+    try:
+        switched = seat_switched(
+            BME.seat_switch(*site_rows(legs, former, links), load(a.districts, {}),
+                            newest=max(bills) if bills else "", roster_terms=term_rosters),
+            legs, former, votes_by_member, links, load("former_members.json", {}),
+            max(bills) if bills else "", district_lines)
+    except BME.Refused as e:
+        switched = {}
+        print(f"  WARNING: no member is drawn as the election left them: {e}")
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
                            sponsored, bill_year, links, former, offices,
                            index_rows={(r.get("term"), r.get("id")): r for r in index},
-                           manual=manual, moved=turned)
+                           manual=manual, moved=turned, switched=switched)
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records

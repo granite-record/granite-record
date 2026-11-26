@@ -1783,6 +1783,41 @@ The rows of a finished term a night's files still carry go on the run's page
 a freeze only while the installed files are in the last session of their term,
 so a term's second January passes as a new session year.
 
+**The seats change hands on the site the day after Organization Day, by date**
+(25 November 2026; the owner: "wait until December 3rd to switch to the new
+titles since the swearing in ceremony happens on the morning of December
+2nd"). From `proceedings.switch_day` -- 3 December 2026, worked out from
+`organization_day` -- until the roster turns, `build_site_v2` asks
+`build_members_elect.seat_switch` what the newest election did to each sitting
+member, by the members-elect step's own matching and the requests' own rule
+(`seat_changes`: not among any race's winners, their own race decided; or among
+another race's winners), and `members.seat_switched` draws each so as the
+roster's turn will: a member not returning gets their former member's file
+(`former_roster`, `date_former_seats`, `last_term_labels`), so their page reads
+"Former Representative ...", their search row "Former Rep. ...", and they are in
+Former members; one elected to another district or to the Senate is drawn at
+the seat they won; and a former member elected again (`seat_changes`'
+"returning", the 28 of 3 November 2026) is a member from that day, their record
+at the seat they won under the party the ballot printed, "Representative ..." on
+their page with the day they took office, a member's row in the search and in
+the requests (the record's name, not the ballot's), off Former members, their
+earlier service kept, and no email, committee, floor seat or feed until the
+General Court publishes them. Their rows go to `site/seat_switch.json`, which
+`build_legislator_pages`, `build_indexes` and the requests (`build_lsrs`,
+`build_request_pages`) read through `members.read_switch`; `legislators.json`
+and `former.json` stay the roster's and the record's, so the census and every
+list of who holds a seat (the Legislators tab, the town pages, the map, the
+committees) are the old roster's until it turns, and bills, roll calls and
+committee rosters name each member as they sat. A page keeps its address until
+the turn, when `members.turned_addresses` moves it with a 301 -- a former member
+elected again's too, from the address of their former member's page
+(`former_rows_had`), since no frozen roster holds them. None is written
+before the day, or once the roster has turned, which says the same itself. The
+Speaker of 2025-2026, Sherman Packard, is among those not returning: from 3
+December his page is a former member's and names no office, so none names the
+Speaker until the roster seats the next one in the chair, and the night's
+`_speaker_page_built` allows exactly that while `site/seat_switch.json` says so.
+
 **Fix, for what is left: `(term, bill)` everywhere.**
 `probe_archive.py` and `setup_archive.py`, both since deleted, sketched this;
 the per-term files took a different road, `{term: {bill: ...}}` inside each
@@ -2376,10 +2411,17 @@ not final, holds a winner off the pages and, under `party`, gives the party a
 cross-nominated winner filed under (the results print both nominations).
 
 Four rules, the person's. The file is written only while the build's day is
-after the election and before Organization Day (`proceedings.organization_day`)
-and `site/meta.json`'s newest term is the one before theirs; otherwise the
-step removes it and says why, so they retire on their own, and
-`src/checks/check_site.py` refuses a file still there on its `takes_office`. A winner is
+after the election and before the day after Organization Day
+(`proceedings.switch_day`, 3 December 2026: the owner, 25 November 2026, "wait
+until December 3rd to switch to the new titles since the swearing in ceremony
+happens on the morning of December 2nd" -- Organization Day's night publishes
+before they are sworn in) and `site/meta.json`'s newest term is the one before
+theirs; otherwise the step removes it and says why, so they retire on their
+own, and `src/checks/check_site.py` refuses a file still there on its `until`.
+The file names both days: `takes_office`, Organization Day, which the pages
+print, and `until`, the day after, which every block retires on
+(`build_members_elect.until_of` reads it, or the day after `takes_office` in a
+file that names none). A winner is
 linked to a page only as the seat's sitting member (the same first name, a
 short form `member_links.SHORT` lists, or -- widened by the person on 17
 October 2026 -- a first name of four letters or more the other runs on from by
@@ -2608,7 +2650,8 @@ district's towns, the election's line, a tab of
 their requests as a member's page lists them (or that none is filed yet) and
 a tab of the race as the Elections tab draws it (`build_member_elections.race_row`),
 with any seats not final and the day the race's results file was saved.
-From Organization Day it says they took office, and it gives way to their
+From the day after Organization Day it says they took office (on Organization
+Day), and it gives way to their
 regular page when the General Court numbers them. Only a former member elected again is
 re-headed: their own page is headed as a new member-elect's is, the
 member-elect of the new seat, with the earlier seat kept below. A sitting
@@ -2877,11 +2920,15 @@ amendment request, which either chamber may file, is matched by the whole name
 alone, where one sitting member, member-elect or winner has it and nobody else. A request whose sponsor is not returning is dropped and its address
 forwards to the requests' list, matched by member and never by name: by the
 members-elect file's races while it is drawn, by the same races worked out
-again from Organization Day, when it retires, while the roster is still the
-old term's (`election_races`), and once the roster is the new term's by the
+again from the day after Organization Day, when it retires, while the roster is still the
+old term's (`election_races`), and once the roster is the new term's -- by
+`site/meta.json`'s newest term, or by the installed roster turned from its
+frozen one (`freeze_term.own_roster_terms`) -- by the
 roster itself, each member of the old term not on it (`departed`), whom a
 request's sponsor is matched to as a sitting member is and drawn by name and
-party, never the seat they left. The night takes the list whole or not at
+party, never the seat they left; and from the day after Organization Day until
+then, the members the build already draws as not returning
+(`members.read_switch`), drawn the same way. The night takes the list whole or not at
 all (`nightly.take_lsrs`): it keeps the earlier list where the fetch failed,
 wrote nothing, or would newly withdraw more than a tenth of the standing
 requests (and more than five), a request the docket files as a bill not

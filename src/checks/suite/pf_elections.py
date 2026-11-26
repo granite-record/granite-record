@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.46
+# GRANITE_VERSION: 2026-11-16.47
 """
 preflight's checks of members-elect and election results.
 
@@ -521,6 +521,7 @@ def _elect_page_member_form(LP):
            "display": "Rep. Bob McLean (D)", "county": "Belknap", "district": "2",
            "slug": "bob-mclean-belk-2", "served": {"terms": ["2017-2018"]}, "attendance": {"2017-2018": {"days": 1}}}
     ge = {"id": "900009", "key": "H|Belknap|6", "election": "2026-11-03", "takes_office": "2999-01-01",
+          "until": "2999-01-02",
           "mode": "returning", "name": "Bob McLean", "party": "D", "title": "Rep.-elect",
           "where": "Member-elect of the New Hampshire House of Representatives, Belknap 6."}
     rows = [p["result"], sen["result"], dict(p["result"], r="open", fl=1, pl=None, of=None),
@@ -6543,23 +6544,25 @@ def _elect_score_frozen_seat(SME, build_data):
                   "sat; with no frozen roster both read the installed roster's, as before")
 
 
-@check("build", "members-elect on the pages: nothing drawn on 2 December, before the election or "
+@check("build", "members-elect on the pages: nothing drawn on 3 December, before the election or "
                 "once the term is theirs, even from a file left behind; every element drawn "
                 "carries the day it retires", needs=("build_members_elect",))
 def _elect_pages_retire(BME):
     """The plan's check 3, for the pages (the person's decisions of 16 October
-    2026: a block retires itself on 2 December). Every element the fixture's
-    pages draw with data-elect carries data-until="2026-12-02" and is not
+    2026: a block retires itself; on the day after Organization Day since the
+    owner's word of 25 November, 3 December). Every element the fixture's
+    pages draw with data-elect carries data-until="2026-12-03" and is not
     hidden on 20 November. The pages hold the step's window themselves
     (build_members_elect.for_pages), so a file a build left behind is not
-    drawn by a page builder run on its own: the four builders run on 2
+    drawn by a page builder run on its own: the four builders run on 3
     December over the site with the file still in it draw no data-elect,
     no tab, no "e" or "elect" in places.json, none in the map's file and no
     GR_ELECT, and say why -- and the site they leave is, byte for byte but
     the file itself, the site the same builders leave on that day with no
     file at all. And for_pages, on the same file, gives it to the
-    pages on 20 November and 1 December and not on the election day, in
-    October, on 2 December, in January, once site/meta.json's newest term is
+    pages on 20 November, 1 December and 2 December (Organization Day, whose
+    night publishes before they are sworn in) and not on the election day, in
+    October, on 3 December, in January, once site/meta.json's newest term is
     2027-2028, or with no meta.json; a file that will not read stops it."""
     import contextlib
     import io
@@ -6572,30 +6575,30 @@ def _elect_pages_retire(BME):
         t = f.read_text(encoding="utf-8")
         for a, b in _elect_blocks(t):
             head = _ELECT_TAG.match(t, a).group(0)
-            if 'data-until="2026-12-02"' not in head or re.search(r"\shidden\b", head):
+            if 'data-until="2026-12-03"' not in head or re.search(r"\shidden\b", head):
                 bad.append(f"{f.relative_to(w / 'site').as_posix()}: {head[:120]}")
     root = Path(tempfile.mkdtemp(prefix="gr-elect-gone-"))
     bare = Path(tempfile.mkdtemp(prefix="gr-elect-none-"))
     saved = os.environ.get("GRANITE_BUILD_DATE")
     try:
-        # THE PROOF THE PERSON ASKED FOR: on 2 December the site built with
+        # THE PROOF THE PERSON ASKED FOR: on 3 December the site built with
         # the last file still in it is the site built with none, byte for
         # byte, but for the file itself -- every page, places.json and the
         # map's file.
         shutil.copytree(w, root, dirs_exist_ok=True)
         shutil.copytree(o, bare, dirs_exist_ok=True)
         site = root / "site"
-        said = _elect_pages(root, "2026-12-02")
-        _elect_pages(bare, "2026-12-02")
-        if said.count("is not drawn -- the build's day, 2026-12-02, is on or after "
-                      "Organization Day") != len(_ELECT_PAGES):
-            bad.append("the builders dated 2 December do not each say why the file is not drawn")
+        said = _elect_pages(root, "2026-12-03")
+        _elect_pages(bare, "2026-12-03")
+        if said.count("is not drawn -- the build's day, 2026-12-03, is on or after 2026-12-03, "
+                      "the day after Organization Day") != len(_ELECT_PAGES):
+            bad.append("the builders dated 3 December do not each say why the file is not drawn")
         left = [f.relative_to(site).as_posix() for f in site.rglob("*.html")
                 if re.search(r"data-elect|GR_ELECT", f.read_text(encoding="utf-8"))]
         places = json.loads((site / "places.json").read_text(encoding="utf-8"))
         if left or "elect" in places or any("e" in p for p in places["places"]) \
                 or "elect" in json.loads((site / "district_map.json").read_text(encoding="utf-8")):
-            bad.append(f"drawn on 2 December from a file left behind: {left[:6]}, places.json "
+            bad.append(f"drawn on 3 December from a file left behind: {left[:6]}, places.json "
                        f"{'elect' in places}, the map's file")
         mine = {f.relative_to(site).as_posix(): f.read_bytes() for f in site.rglob("*")
                 if f.is_file()}
@@ -6604,7 +6607,7 @@ def _elect_pages_retire(BME):
         differ = sorted(k for k in set(mine) | set(none)
                         if k != "members_elect.json" and mine.get(k) != none.get(k))
         if differ:
-            bad.append(f"on 2 December the site built with the last file in it differs from the "
+            bad.append(f"on 3 December the site built with the last file in it differs from the "
                        f"site built with none: {differ[:6]}")
         meta_p = site / "meta.json"
         meta = json.loads(meta_p.read_text(encoding="utf-8"))
@@ -6622,10 +6625,11 @@ def _elect_pages_retire(BME):
         got = {label: shown(*args) for label, args in (
             ("20 November", ("2026-11-20",)), ("1 December", ("2026-12-01",)),
             ("the election day", ("2026-11-03",)), ("October", ("2026-10-16",)),
-            ("2 December", ("2026-12-02",)), ("January", ("2027-01-06",)),
+            ("2 December", ("2026-12-02",)), ("3 December", ("2026-12-03",)),
+            ("January", ("2027-01-06",)),
             ("2027-2028 the newest term", ("2026-11-20", ["2027-2028"] + meta["terms"])),
             ("no meta.json", ("2026-11-20", None, True)))}
-        want = {k: k in ("20 November", "1 December") for k in got}
+        want = {k: k in ("20 November", "1 December", "2 December") for k in got}
         if got != want:
             bad.append(f"for_pages draws the file {[k for k, v in got.items() if v]}, wanted on "
                        f"{[k for k, v in want.items() if v]}")
@@ -6647,8 +6651,9 @@ def _elect_pages_retire(BME):
         shutil.rmtree(root, ignore_errors=True)
         shutil.rmtree(bare, ignore_errors=True)
     assert not bad, "; ".join(bad)
-    return "ok", ("every element drawn retires on 2 December; on that day a file left behind is "
+    return "ok", ("every element drawn retires on 3 December; on that day a file left behind is "
                   f"drawn nowhere, each builder says why, and the site's {len(none):,} files are "
-                  "the site built with no file, byte for byte; drawn on 20 November and 1 "
-                  "December, not on the election day, in October, in January, once the term is "
-                  "theirs or with no meta.json; a file that will not read stops the page")
+                  "the site built with no file, byte for byte; drawn on 20 November, 1 December "
+                  "and 2 December, not on the election day, in October, on 3 December, in "
+                  "January, once the term is theirs or with no meta.json; a file that will not "
+                  "read stops the page")

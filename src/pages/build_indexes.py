@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.38
+# GRANITE_VERSION: 2026-09-13.41
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -52,6 +52,7 @@ import build_date
 import build_legislator_pages as BLP
 import slugs
 import guides as G
+import members as MEM
 import officials_tabs as OT
 import shell as S
 import structured as LD
@@ -283,10 +284,19 @@ def former_page(site, base, urls):
     more one). Named as the record names them -- "Former" is said on a
     member's own page and in search results and nowhere else -- under a
     heading that says what the list is; each with their chamber, seat and the
-    years the record holds them."""
+    years the record holds them.
+
+    AND, FROM THE DAY AFTER ORGANIZATION DAY UNTIL THE ROSTER TURNS, THE MEMBERS
+    NOT RETURNING (members.read_switch's "leaving"), each by the former
+    member's row the roster's turn will give them, and not the former members
+    elected again ("returning"), members from that day -- so the list on the
+    night the roster turns is the list it already was."""
     fm = site / "former.json"
-    people = [m for m in (json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else [])
-              if m.get("slug") and (site / "legislator" / f"{m['slug']}.html").exists()]
+    switch = MEM.read_switch(site)
+    people = [m for m in [*(json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else []),
+                          *switch["leaving"].values()]
+              if m.get("slug") and (site / "legislator" / f"{m['slug']}.html").exists()
+              and str(m.get("id") or "") not in switch["returning"]]
     if not people:
         return 0
     # A PERSON WHO SAT IN BOTH IS UNDER EACH (the deep walk of dry run 183, 7
@@ -545,17 +555,18 @@ def elect_rows(site, rows, people):
 
       a NEW member-elect, from their provisional page's own file
         (site/elect_pages.json, build_elect_pages.py), leading to that page.
-        From the day they take office the page says they are a member, by
+        From the day after they take office the page says they are a member, by
         the build's day (build_legislator_pages.elect_body), and so does the
         row: a member's, "Rep. Heather Deiner (D - Hills 25)", until the
         General Court numbers them and their page gives way to their own;
       a FORMER MEMBER ELECTED AGAIN, from the members-elect file through its
-        one reader (build_members_elect.for_pages), which ends on the day
+        one reader (build_members_elect.for_pages), which ends the day after
         they take office: leading to their own page, whose head is the
         member-elect's while the file lasts, named as that head names them
         (elect_member_name), the name the results print among its words.
         It stands in for their "Former Rep." row and carries it whole, as
-        r[6], with the day they take office as r[5]: from that day the page
+        r[6], with the day after they take office as r[5] (the file's "until",
+        the day after Organization Day): from that day the page
         goes back to the former member's form by the reader's clock as well
         as the build's (app.js renderMemberHead), and so does the row
         (find.js, findNow).
@@ -566,7 +577,7 @@ def elect_rows(site, rows, people):
         same file: "Sen.-elect Laura Telerski (D - SD13)", leading to the
         page of the record they sit under now, which their page heads the
         same way while the file lasts. It stands in for their member's row
-        and carries it whole, with the day they take office, as a former
+        and carries it whole, with the day after they take office, as a former
         member's does, the words of the seat they hold now among its own,
         until the General Court numbers them in the chamber they were
         elected to.
@@ -596,7 +607,11 @@ def elect_rows(site, rows, people):
         doc = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else {}
     except ValueError:
         doc = {}
-    took = bool(doc.get("takes_office")) and today >= str(doc["takes_office"])
+    # FROM THE DAY AFTER THEY TAKE OFFICE (the file's "until", the day after
+    # Organization Day: BME.until_of; the owner, 25 November 2026), as their
+    # page says it: the night of Organization Day still calls them members-elect.
+    gone = BME.until_of(doc)
+    took = bool(gone) and today >= gone.isoformat()
     for p in doc.get("pages") or []:
         if not (p.get("slug") and p.get("name")):
             continue
@@ -630,7 +645,7 @@ def elect_rows(site, rows, people):
                     "elect", f"{BLP.elect_title(ch)} {name}{seat(party, tag)}",
                     elect_line(ch, tag, party), addr,
                     " ".join(x for x in (str(e.get("n") or ""), own[4], now, ELECT_WORDS[ch]) if x),
-                    elect["takes_office"], own]))
+                    elect["until"], own]))
                 taken.add(addr)
                 continue
             if e.get("k") != "former" or not (e.get("id") and e.get("s")) or addr not in was:
@@ -642,7 +657,7 @@ def elect_rows(site, rows, people):
                 elect_line(ch, tag, party), addr,
                 " ".join(x for x in (str(e.get("n") or ""), m.group(1) or "", was[addr][4],
                                      ELECT_WORDS[ch]) if x),
-                elect["takes_office"], was[addr]]))
+                elect["until"], was[addr]]))
             taken.add(addr)
     out.sort(key=lambda x: x[0])
     return [r for _o, r in out], taken
@@ -667,8 +682,9 @@ def find_index(site, legs, towns):
     committee no longer on the General Court's list carries the same sixth,
     the year it last sat, and a seventh, the years its page gives. A
     member-elect's row is of the kind "elect" (elect_rows), and a former
-    member elected again carries two more: the day they take office, and
-    the row they had as a former member, which is theirs again from that day.
+    member elected again carries two more: the day after they take office
+    (the day after Organization Day), and the row they had as a former
+    member, which is theirs again from that day.
     A how-to guide's row carries a sixth: its task and the words that ask how
     to do it (guides.asked_words), which find.js reads to put the guide above
     the bills for a search that asks how (findAsks).
@@ -683,7 +699,17 @@ def find_index(site, legs, towns):
     pays. Once, when they first open the box, and never on a page load.
     """
     rows = []
-    for m in legs:
+    # THE SEATS AS THE ELECTION LEFT THEM (members.read_switch), from the day
+    # after Organization Day until the roster turns: a member not returning has
+    # the former member's row below, "Former Rep. ...", in place of this one,
+    # and one elected to another seat this row at the seat they won; and a
+    # former member elected again a member's row, at the seat they won, in place
+    # of their former member's row below.
+    switch = MEM.read_switch(site)
+    for m in [*legs, *switch["returning"].values()]:
+        if str(m.get("id") or "") in switch["leaving"]:
+            continue
+        m = switch["moved"].get(str(m.get("id") or ""), m)
         where = m.get("district_label") or m.get("county") or ""
         rows.append(["legislator", m.get("display_full") or m.get("name") or "",
                      " · ".join(x for x in (
@@ -777,8 +803,9 @@ def find_index(site, legs, towns):
     # other, just later.
     fm = site / "former.json"
     people = {}
-    for m in (json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else []):
-        if not m.get("slug"):
+    for m in [*(json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else []),
+              *switch["leaving"].values()]:
+        if not m.get("slug") or str(m.get("id") or "") in switch["returning"]:
             continue
         people[S.canon(f"legislator/{m['slug']}.html")] = m
         terms = (m.get("served") or {}).get("terms") or []
@@ -808,7 +835,7 @@ def find_index(site, legs, towns):
     # THE MEMBERS-ELECT (elect_rows), after the sitting members: a former
     # member elected again, and a sitting member elected to the other
     # chamber, in place of their row above, which their own row carries for
-    # the day they take office.
+    # the day after they take office.
     elect, taken = elect_rows(site, rows, people)
     rows = ([r for r in rows[:seated] if not (r[0] == "legislator" and r[3] in taken)] + elect
             + [r for r in rows[seated:] if not (r[0] == "former" and r[3] in taken)])
