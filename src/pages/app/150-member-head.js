@@ -164,11 +164,11 @@ function renderMemberHead(m){
   // file is a member's at the seat they won, and its "took" the election and the
   // day they took office, said as a new member's provisional page says it
   // (build_legislator_pages.took_line).
-  const tk=m.took||{},day=/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
-  const took=!former&&!elect&&day.test(String(tk.election||""))&&day.test(String(tk.day||""))
+  const tk=m.took||{},iso=/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+  const tookLine=!former&&!elect&&iso.test(String(tk.election||""))&&iso.test(String(tk.day||""))
     ?`<p class="elline">Elected ${esc(dateWords(tk.election,"full"))}. Took office ${
       esc(dateWords(tk.day,"full"))}.</p>`:"";
-  return head+note+elect+took;
+  return head+note+elect+tookLine;
 }
 
 // THE TERM AT A GLANCE (the person's feedback of 9 October 2026, item 7:
