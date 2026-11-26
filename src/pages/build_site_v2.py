@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.336
+# GRANITE_VERSION: 2026-09-05.337
 """
 Generate the faceted site from real General Court data.
 
@@ -2907,6 +2907,17 @@ def main():
     had = (former_rows_had(back, legs, former, votes_by_member, links,
                            load("former_members.json", {}), max(bills) if bills else "",
                            district_lines, quiet=True) if back else {})
+    # AND EVERY ADDRESS RECORDED FOR THAT PAGE (MOVED_ADDRESSES, keep_moved), which
+    # it answered as a former member's -- Larry Brown's /legislator/larry-brown-straf-1
+    # among the 28 -- answered at the page they have now, never one that is a page's
+    # own (Timothy Egan's /legislator/timothy-egan-graf-1 is his from that night). The
+    # file's other members are said in main; nothing is said of them again here.
+    if had:
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            keep_moved(had, links=links,
+                       sitting={_member_address(m) for m in legs.values() if m.get("name")})
     turned, turned_former = turned_addresses(term_rosters, legs, former, links, had=had)
     if turned or turned_former:
         print(f"  {sum(map(len, turned.values())) + turned_former} address(es) a member's page had "

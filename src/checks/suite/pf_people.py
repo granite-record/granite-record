@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 preflight's checks of sponsors, members and officials.
 
@@ -2098,6 +2098,11 @@ def _switch_fixture(root, turned=False):
     dist["Kingston"] = {"0": {"congress": 1, "council": 3, "senate": 23, "house": [
         {"county": "Rockingham", "district": 9, "floterial": False, "seats": 1}]}}
     dp.write_text(json.dumps(dist), encoding="utf-8")
+    # And an address recorded for Holt's page (generated/moved_addresses.json, keep_moved): the
+    # one it had before its seat was put right, answered with a 301 wherever his page is.
+    (root / "generated").mkdir(exist_ok=True)
+    (root / "generated" / "moved_addresses.json").write_text(
+        json.dumps({"/legislator/sam-holt-rock-12": "377310"}), encoding="utf-8")
 
     def leg(mid, last, first, ch, district, party="R", towns=(), committees=(), seat=""):
         tag = f"SD{district}" if ch == "S" else f"Rock {district}"
@@ -2334,7 +2339,8 @@ def _seat_switch_by_day(B, FT):
     with no email, no feed named; the search's member row; off Former members; his request "Rep.
     Sam Holt (R)", the record's name, its chip the seat's -- at his page's address; and the night
     the roster seats him under his own number the same words at the seat's own address, the day he
-    took office no longer said, the old address a 301 to it."""
+    took office no longer said, the old address a 301 to it, and the one recorded for his former
+    page (generated/moved_addresses.json) as well."""
     here = Path(".").resolve()
     missing = [x for x in CHAIN_NEEDS + ["build_members_elect.py", "build_elect_pages.py",
                                          "build_lsrs.py", "build_request_pages.py"]
@@ -2515,10 +2521,15 @@ def _seat_switch_by_day(B, FT):
     if (d1["former_holt"], d3["former_holt"], dt["former_holt"]) != (True, False, False):
         bad.append(f"Former members lists Holt on 1 Dec {d1['former_holt']}, 3 Dec "
                    f"{d3['former_holt']}, turned {dt['former_holt']}")
-    if "/legislator/sam-holt-rock-11 /legislator/sam-holt-rock-9 301" not in dt["redirects"] \
-            or any("sam-holt" in r for r in d3["redirects"]):
-        bad.append(f"Holt's old address: 3 Dec {[r for r in d3['redirects'] if 'sam-holt' in r]}, "
-                   f"turned {[r for r in dt['redirects'] if 'sam-holt' in r]}")
+    # Each page's own address, as _redirects writes it before its other forms (.html, a slash, a tab).
+    holt301 = {k: sorted(r for r in seen[k]["redirects"]
+                         if re.fullmatch(r"/legislator/sam-holt[a-z0-9-]* /legislator/[a-z0-9-]+ 301", r))
+               for k in ("1 Dec", "3 Dec", "turned")}
+    if holt301["1 Dec"] != ["/legislator/sam-holt-rock-12 /legislator/sam-holt-rock-11 301"] \
+            or holt301["3 Dec"] != holt301["1 Dec"] or holt301["turned"] != [
+                "/legislator/sam-holt-rock-11 /legislator/sam-holt-rock-9 301",
+                "/legislator/sam-holt-rock-12 /legislator/sam-holt-rock-9 301"]:
+        bad.append(f"Holt's old addresses: {holt301}")
     # THE ROSTER STAYS THE ROSTER until it turns, and the records name each as they sat.
     if d3["roster"] != sorted(["377204", "377207", "377300", "377301"]):
         bad.append(f"3 December's legislators.json holds {d3['roster']}: wanted the roster's four")
