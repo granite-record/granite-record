@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.32
+# GRANITE_VERSION: 2026-11-16.35
 """
 preflight's checks of the model of people, offices, terms, districts and elections
 (src/lib/entities.py, written by src/parse/build_entities.py into data/entities/).
@@ -124,7 +124,8 @@ def _world(root, PE, careers_extra=None):
              "kind": "elected", "source": "a journal, made up"}]}, separators=(",", ":")),
         encoding="utf-8")
     (root / "site" / "members_elect.json").write_text(json.dumps({
-        "election": "2026-11-03", "takes_office": "2026-12-02", "term": "2027-2028",
+        "election": "2026-11-03", "takes_office": "2026-12-02", "until": "2026-12-03",
+        "term": "2027-2028",
         "sources": ["https://results.example/2026", "https://results.example/2026"],
         "races": {
             "S|15": {"seats": 1, "elected": [{"n": "Cy Lund", "p": "R", "k": "sitting", "id": "11700",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.13
+# GRANITE_VERSION: 2026-11-16.14
 """
 One model of the people, offices, terms, districts and elections the site's files describe:
 the shape of each kind of record, the rules a model holds to, and the views that give today's
@@ -1179,9 +1179,15 @@ def view_members_elect(model, layouts=None):
                 e["e"] = keys["elect_page"]
             row["elected"].append(e)
         races[c["keys"]["results"]] = row
-    sources = ((layouts or {}).get(first["source"]) or {}).get("sources", first.get("sources") or [])
-    return {"election": first["election"], "takes_office": first["takes_office"],
-            "term": first["term"], "sources": list(sources), "races": races}
+    layout = (layouts or {}).get(first["source"]) or {}
+    sources = layout.get("sources", first.get("sources") or [])
+    out = {"election": first["election"], "takes_office": first["takes_office"]}
+    # The day the file's blocks retire, after takes_office as build_members_elect.py writes it,
+    # where the file had one: the layout's (build_entities.members_elect).
+    if "until" in layout:
+        out["until"] = layout["until"]
+    out.update({"term": first["term"], "sources": list(sources), "races": races})
+    return out
 
 
 def view_districts(model, era):

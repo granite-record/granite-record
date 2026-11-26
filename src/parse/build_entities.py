@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-11-16.11
+# GRANITE_VERSION: 2026-11-16.12
 """
 The model of people, offices, terms, districts and elections, written to data/entities/ from
 the files on disk (src/lib/entities.py says what the model is).
@@ -633,7 +633,7 @@ def members_elect(root, settings, by_mid):
     """(contests, candidacies, tenures, layout) of site/members_elect.json, in its order; nothing
     where the file is not on disk, as outside the weeks between the election and Organization
     Day. Its layout is what the file says that is no record's: its list of the results'
-    addresses, one for each spreadsheet read."""
+    addresses, one for each spreadsheet read, and its "until", where it has one."""
     p = Path(root) / ELECT
     if not p.is_file():
         return [], [], [], None
@@ -693,7 +693,15 @@ def members_elect(root, settings, by_mid):
             t.update({"printed": e["n"], "party": e.get("p", ""), "from": doc["takes_office"],
                       "candidacy": xid, "files": [ELECT]})
             tenures.append(t)
-    return contests, cands, tenures, {"sources": list(doc.get("sources") or [])}
+    layout = {"sources": list(doc.get("sources") or [])}
+    # THE DAY THE FILE RETIRES (the owner, 25 November 2026: the members-elect go on
+    # 3 December, the day after Organization Day). build_members_elect.py writes "until" after
+    # "takes_office": the site's rule for showing the file, a fact of no race, so the layout
+    # keeps it. The first night that wrote it held, the model giving the file back without it
+    # (dry run 45741232158, 26 November 2026). A file written before then has none and gets none.
+    if "until" in doc:
+        layout["until"] = doc["until"]
+    return contests, cands, tenures, layout
 
 
 # ---- terms ----------------------------------------------------------------------------------
